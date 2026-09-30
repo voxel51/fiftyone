@@ -1,6 +1,6 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { expectScreenshot } from "src/oss/utils/screenshot";
-import { EventUtils } from "src/shared/event-utils";
+import { EventCondition, EventUtils } from "src/shared/event-utils";
 import { afterPopout } from "../action-row/popout";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
@@ -88,6 +88,37 @@ export class ModalPom {
     return this.savedRangeTracks
       .filter({ hasText: sourceLabel })
       .locator("[data-event-index]:not([data-resize-handle])");
+  }
+
+  /**
+   * A saved-subset timeline row for `sourceLabel` shows exactly `spans`
+   * (`"0.20-0.50"`, comma separated), pinned or not when `pinned` is given
+   */
+  savedRangeShown(
+    sourceLabel: string,
+    spans: string,
+    pinned?: boolean,
+  ): EventCondition {
+    return {
+      events: "e2e:playback:track-shown",
+      predicate: (e) => {
+        const track = e.detail as {
+          id: string;
+          label: string;
+          eventLabels: string;
+          pinned: boolean;
+          pinnable: boolean;
+          spans: string;
+        };
+        return (
+          track.id.startsWith("fiftyone:saved-segments") &&
+          (track.label.includes(sourceLabel) ||
+            track.eventLabels.includes(sourceLabel)) &&
+          track.spans === spans &&
+          (pinned === undefined || (track.pinnable && track.pinned === pinned))
+        );
+      },
+    };
   }
 
   get groupLooker() {

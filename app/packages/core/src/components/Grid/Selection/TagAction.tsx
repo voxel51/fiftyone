@@ -34,6 +34,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ActionEntry from "./ActionEntry";
 import ActionSurface from "./ActionSurface";
+import { useSelectionShownSignal } from "./e2eSignals";
 import { scopePhrase, unitTitlePlural } from "./format";
 import { Notice } from "./Notice";
 import Segmented from "./Segmented";
@@ -232,6 +233,17 @@ function TagPicker({ capture }: { capture: Capture }) {
       setBusy(null);
     }
   };
+  useSelectionShownSignal(
+    "e2e:selection:tags-shown",
+    state || error
+      ? {
+          target,
+          busy: Boolean(busy),
+          all: tags.filter((value) => stateOf(value) === "all").join("\n"),
+          error,
+        }
+      : null,
+  );
   const toggle = (value: string) => change(value, stateOf(value) !== "all");
   const submit = () => {
     if (!tag) return;

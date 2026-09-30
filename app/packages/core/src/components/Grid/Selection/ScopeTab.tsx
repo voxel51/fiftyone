@@ -29,6 +29,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useContext, useState } from "react";
+import { useSelectionShownSignal } from "./e2eSignals";
 import { SubsetDetailsContext } from "./SubsetDetailsContext";
 import SubsetConfirmationDialog from "./SubsetConfirmationDialog";
 import styles from "./SelectionTray.module.css";
@@ -97,6 +98,10 @@ export default function SamplesScopeTab() {
       : null;
   const facet = segmentScope ? "Segments" : mixed ? `Whole ${unit.many}` : null;
   const selectedCount = selection.selected.size;
+  useSelectionShownSignal(
+    "e2e:selection:scope-shown",
+    enabled ? { label, facet: facet ?? "", count: countLabel ?? "" } : null,
+  );
 
   const choose = (
     subsetId?: string,

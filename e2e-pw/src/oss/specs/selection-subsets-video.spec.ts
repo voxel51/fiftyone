@@ -92,7 +92,8 @@ if fo.dataset_exists("${datasetName}"):
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
 });
 
 test("two clips from one video survive leaving and reopening the converted view", async ({
@@ -107,26 +108,32 @@ test("two clips from one video survive leaving and reopening the converted view"
     searchParams: new URLSearchParams({ view: "clips" }),
   });
   await grid.assert.isEntryCountTextEqualTo("3 clips");
-  await grid.toggleSelectNthSample(0);
-  await expect(tray.locator).toContainText(/1\s*clip selected/);
-  await grid.toggleSelectNthSample(1);
-  await expect(tray.locator).toContainText(/2\s*clips selected/);
-  await expect(tray.cards).toHaveCount(2);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
+  await tray.assert.contains(/1\s*clip selected/);
+  await tray.afterSelected(2, () => grid.toggleSelectNthSample(1));
+  await tray.assert.contains(/2\s*clips selected/);
+  expect(await tray.cards.count()).toBe(2);
   await tray.createSubset("Two moments");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("Two moments", "2 clips"));
   await grid.assert.isEntryCountTextEqualTo("2 clips");
-  await grid.openFirstSample();
+  await modal.sidebar.afterEntries({ support: "[3, 8]" }, () =>
+    grid.openFirstSample(),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("support", "[3, 8]");
-  await modal.navigateNextSample();
+  await modal.sidebar.afterEntries({ support: "[12, 17]" }, () =>
+    modal.navigateNextSample(),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("support", "[12, 17]");
   await modal.close();
 
-  await tray.chooseAllSamples();
+  await grid.run(() => tray.chooseAllSamples());
   await grid.assert.isEntryCountTextEqualTo("3 clips");
-  await grid.openNthSample(2);
+  await modal.sidebar.afterEntries({ support: "[18, 20]" }, () =>
+    grid.openNthSample(2),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("support", "[18, 20]");
   await modal.close();
-  await tray.chooseSubset("Two moments");
+  await grid.run(() => tray.chooseSubset("Two moments", undefined, "2 clips"));
   await grid.assert.isEntryCountTextEqualTo("2 clips");
 });
 
@@ -142,46 +149,65 @@ test("generated frame membership reopens on the original video frames", async ({
     searchParams: new URLSearchParams({ view: "frames" }),
   });
   await grid.assert.isEntryCountTextEqualTo("40 frames");
-  await grid.toggleSelectNthSample(2);
-  await grid.toggleSelectNthSample(4);
+  await tray.afterSelected(2, async () => {
+    await grid.toggleSelectNthSample(2);
+    await grid.toggleSelectNthSample(4);
+  });
   await tray.createSubset("Source frames");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("Source frames", "2 frames"));
   await grid.assert.isEntryCountTextEqualTo("2 frames");
-  await grid.openFirstSample();
+  await modal.sidebar.afterEntries(
+    { frame_number: "3", origin: "first-video" },
+    () => grid.openFirstSample(),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("frame_number", "3");
   await modal.sidebar.assert.verifySidebarEntryText("origin", "first-video");
-  await modal.navigateNextSample();
+  await modal.sidebar.afterEntries(
+    { frame_number: "5", origin: "first-video" },
+    () => modal.navigateNextSample(),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("frame_number", "5");
   await modal.sidebar.assert.verifySidebarEntryText("origin", "first-video");
   await modal.close();
 
-  await tray.chooseAllSamples();
+  await grid.run(() => tray.chooseAllSamples());
   await grid.assert.isEntryCountTextEqualTo("2 samples");
-  await tray.chooseSubset("Source frames");
+  await tray.afterResults(() =>
+    grid.run(() => tray.chooseSubset("Source frames", undefined, "2 frames")),
+  );
   await grid.assert.isEntryCountTextEqualTo("2 frames");
-  await expect(tray.locator).toContainText("Act on all frames in the grid");
+  await tray.assert.contains("Act on all frames in the grid");
 });
 
 test("saved video event ranges retain their frame bounds after source edits", async ({
   browser,
   datasetName,
+  eventUtils,
   fiftyoneLoader,
   grid,
   page,
   tray,
 }) => {
+  const name = "Frozen braking event";
+  const savedBraking = /Event: braking/;
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   const sidebar = new SidebarPom(page);
   await sidebar.clickFieldDropdown("events");
-  await sidebar.applyLabelFromList(["braking"], "select-detections-with-label");
-  await expect(tray.locator).toContainText(/1 segment across 1 sample/);
-  await tray.createSubset("Frozen braking event");
-  await tray.openCreatedSubset();
-  await expect(tray.scope).toContainText("1 sample · 1 segment");
-  await expect(grid.locator.getByTestId("saved-segment-tile")).toHaveAttribute(
-    "title",
-    /Event: braking/,
+  await tray.afterTray(
+    (shown) => !shown.explicit && shown.segments === 1,
+    () =>
+      sidebar.applyLabelFromList(["braking"], "select-detections-with-label"),
   );
+  await tray.assert.contains(/1 segment across 1 sample/);
+  await tray.createSubset(name);
+  await eventUtils.afterAll(
+    [tray.savedSegmentsShown({ title: savedBraking })],
+    () => grid.run(() => tray.openCreatedSubset(name, "1 sample · 1 segment")),
+  );
+  await tray.assert.scopeContains("1 sample · 1 segment");
+  expect(
+    await grid.locator.getByTestId("saved-segment-tile").getAttribute("title"),
+  ).toMatch(savedBraking);
 
   await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
@@ -194,24 +220,35 @@ sample.save()
   try {
     const freshPage = await context.newPage();
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshTray = new SelectionTrayPom(freshPage);
-    const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshTray.chooseSubset("Frozen braking event");
-    await freshGrid.assert.isTileCountEqualTo(1);
-    await expect(
-      freshGrid.locator.getByTestId("saved-segment-tile"),
-    ).toHaveAttribute("title", /Event: braking/);
-    await freshGrid.openFirstSample();
-    await expect(
-      freshModal.locator.getByText("Event: braking").first(),
-    ).toBeVisible();
-    await expect(freshModal.savedRangeBars).toHaveCount(1);
-    await expect(freshModal.savedRangeBars.first()).toHaveAttribute(
-      "title",
-      /Event: braking.*\(0\.20-0\.80s\)/,
+    const freshEvents = new EventUtils(freshPage);
+    const freshTray = new SelectionTrayPom(freshPage, freshEvents);
+    const freshGrid = new GridPom(freshPage, freshEvents);
+    const freshModal = new ModalPom(freshPage, freshEvents);
+    await freshEvents.afterAll(
+      [freshTray.savedSegmentsShown({ title: savedBraking })],
+      () => freshGrid.run(() => freshTray.chooseSubset(name)),
     );
-    await expect(freshModal.video.time).toHaveText("0:00.20 / 0:02.00");
+    await freshGrid.assert.isTileCountEqualTo(1);
+    expect(
+      await freshGrid.locator
+        .getByTestId("saved-segment-tile")
+        .getAttribute("title"),
+    ).toMatch(savedBraking);
+    await freshEvents.afterAll(
+      [
+        freshModal.savedRangeShown("Event: braking", "0.20-0.80"),
+        freshModal.episode.playhead("0:00.20 / 0:02.00"),
+      ],
+      () => freshGrid.openFirstSample(),
+    );
+    expect(
+      await freshModal.locator.getByText("Event: braking").first().isVisible(),
+    ).toBe(true);
+    expect(await freshModal.savedRangeBars.count()).toBe(1);
+    expect(
+      await freshModal.savedRangeBars.first().getAttribute("title"),
+    ).toMatch(/Event: braking.*\(0\.20-0\.80s\)/);
+    expect(await freshModal.video.time.textContent()).toBe("0:00.20 / 0:02.00");
     await freshModal.close();
   } finally {
     await context.close();

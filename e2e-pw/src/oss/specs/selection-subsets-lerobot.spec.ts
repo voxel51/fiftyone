@@ -8,6 +8,11 @@ import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
+/** The playhead opens on the saved range's start, snapped to a frame */
+const PLAYHEAD = /^0:00\.1[0-4] \/ 0:00\.20$/;
+type Shown = { label: string };
+const readout = (text: string) => text.replace(/\s+/g, " ").trim();
+
 const test = base.extend<
   {
     datasetName: string;
@@ -171,11 +176,13 @@ if fo.dataset_exists("${datasetName}"):
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
   sidebar: async ({ page }, use) => use(new SidebarPom(page)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
 });
 
 test("LeRobot whole episodes and temporal ranges reopen with their source", async ({
   datasetName,
+  eventUtils,
   fiftyoneLoader,
   grid,
   modal,
@@ -185,43 +192,63 @@ test("LeRobot whole episodes and temporal ranges reopen with their source", asyn
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await grid.assert.isTileCountEqualTo(2);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.createSubset("Whole pick episode");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("Whole pick episode"));
   await grid.assert.isTileCountEqualTo(1);
-  await grid.openFirstSample();
-  await modal.episode.waitForReady(/^Episode 0 · pick/);
+  await modal.episode.afterReady(/^Episode 0 · pick/, () =>
+    grid.openFirstSample(),
+  );
   await modal.close();
 
-  await tray.chooseAllSamples();
+  await grid.run(() => tray.chooseAllSamples());
   await sidebar.clickFieldDropdown("_temporal_tags");
-  await sidebar.applyFilter("inspection");
-  await expect(tray.locator).toContainText(/1 segment across 1 episode/);
-  await tray.createSubset("Place range");
-  await tray.openCreatedSubset();
-  await grid.assert.isTileCountEqualTo(1);
-  await expect(grid.locator.getByTestId("saved-segment-tile")).toHaveAttribute(
-    "title",
-    /Temporal tag: inspection/,
+  await tray.afterTray(
+    (shown) => !shown.explicit && shown.segments === 1,
+    () => grid.run(() => sidebar.applyFilter("inspection")),
   );
-  await grid.toggleSelectNthSample(0);
-  await expect(tray.cards.first()).toHaveAttribute(
-    "aria-label",
+  await tray.assert.contains(/1 segment across 1 episode/);
+  await tray.createSubset("Place range");
+  await eventUtils.afterAll(
+    [tray.savedSegmentsShown({ title: /Temporal tag: inspection/ })],
+    () => grid.run(() => tray.openCreatedSubset("Place range")),
+  );
+  await grid.assert.isTileCountEqualTo(1);
+  expect(
+    await grid.locator.getByTestId("saved-segment-tile").getAttribute("title"),
+  ).toMatch(/Temporal tag: inspection/);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
+  expect(await tray.cards.first().getAttribute("aria-label")).toMatch(
     /file-006\.mp4, 1 segment/,
   );
-  await grid.openFirstSample();
-  await expect(modal.episode.shell).toBeVisible();
-  await modal.episode.waitForReady(/^Episode 1 · place/);
-  await expect(
-    modal.locator.getByText("Temporal tag: inspection").first(),
-  ).toBeVisible({ timeout: 30_000 });
-  await expect(modal.savedRangeBars).toHaveCount(1);
-  await expect(modal.savedRangeBars.first()).toHaveAttribute(
-    "title",
+  await modal.episode.afterReady(
+    /^Episode 1 · place/,
+    () => grid.openFirstSample(),
+    [
+      modal.savedRangeShown("Temporal tag: inspection", "0.10-0.20"),
+      {
+        events: "e2e:playback:playhead-time",
+        predicate: (e) => PLAYHEAD.test(readout((e.detail as Shown).label)),
+      },
+    ],
+  );
+  expect(await modal.episode.shell.isVisible()).toBe(true);
+  expect(
+    await modal.locator
+      .getByText("Temporal tag: inspection")
+      .first()
+      .isVisible(),
+  ).toBe(true);
+  expect(await modal.savedRangeBars.count()).toBe(1);
+  expect(await modal.savedRangeBars.first().getAttribute("title")).toMatch(
     /Temporal tag: inspection.*\(0\.10-0\.20s\)/,
   );
-  await expect(
-    modal.episode.controls.locator('[data-testid="timeline-playhead-time"]'),
-  ).toHaveText(/^0:00\.1[0-4] \/ 0:00\.20$/);
+  expect(
+    readout(
+      (await modal.episode.controls
+        .locator('[data-testid="timeline-playhead-time"]')
+        .textContent()) ?? "",
+    ),
+  ).toMatch(PLAYHEAD);
   await modal.close();
 });

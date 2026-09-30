@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
@@ -88,8 +88,10 @@ if fo.dataset_exists("${datasetName}"):
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
-  viewBar: async ({ page }, use) => use(new ViewBarPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
+  viewBar: async ({ page, eventUtils }, use) =>
+    use(new ViewBarPom(page, eventUtils)),
 });
 
 test("selected group slices exclude unchosen siblings", async ({
@@ -101,11 +103,11 @@ test("selected group slices exclude unchosen siblings", async ({
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await grid.assert.isTileCountEqualTo(2);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.createSubset("Left only", "Selected samples");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("Left only"));
   await grid.assert.isTileCountEqualTo(1);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.assert.cardsHaveNames(["g0-left.png"]);
   await grid.run(() => grid.selectSlice("right"));
   await grid.assert.isEntryCountTextEqualTo("0 groups with slice");
@@ -122,13 +124,13 @@ test("all group slices include the selected group's sibling", async ({
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.createSubset("Both cameras", "All slices of these groups");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("Both cameras"));
   await grid.assert.isTileCountEqualTo(1);
   await grid.selectSlice("right");
   await grid.assert.isTileCountEqualTo(1);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.assert.cardsHaveNames(["g0-right.png"]);
 });
 
@@ -149,20 +151,27 @@ test("a limited dynamic group saves its concrete members", async ({
   await editor.fill("limit", "1");
   await grid.run(() => editor.commit("limit"));
   await grid.assert.isEntryCountTextEqualTo("1 group");
-  await grid.toggleSelectNthSample(0);
-  await expect(tray.locator).toContainText(/1\s*group/);
-  await expect(tray.locator).toContainText(/2\s*samples/);
+  await tray.afterTray(
+    (shown) => shown.explicit && shown.groups === 1,
+    () => grid.toggleSelectNthSample(0),
+  );
+  await tray.assert.contains(/1\s*group/);
+  await tray.assert.contains(/2\s*samples/);
   await tray.createSubset("First scene");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("First scene"));
   await grid.assert.isTileCountEqualTo(1);
-  await grid.openFirstSample();
+  await modal.group.dynamicGroupPagination.afterShown(() =>
+    grid.openFirstSample(),
+  );
   await modal.group.dynamicGroupPagination.assert.verifyPage(2);
   await modal.close();
   await viewBar.expand();
-  await viewBar.viewStages
-    .first()
-    .getByRole("button", { name: "Remove stage" })
-    .click();
+  await grid.run(() =>
+    viewBar.viewStages
+      .first()
+      .getByRole("button", { name: "Remove stage" })
+      .click(),
+  );
   await grid.assert.isEntryCountTextEqualTo("1 group");
   await grid.assert.isTileCountEqualTo(1);
 });

@@ -21,6 +21,7 @@ import {
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
 import { savedSegmentIntervalSource } from "../extensions/episode-intervals/saved-segments";
+import { ShownSignal } from "../visualization/ShownSignal";
 import styles from "./grid-overlay.module.css";
 
 /** Cap the stacked levels so the lane stays compact on a small grid tile. */
@@ -270,6 +271,16 @@ function IntervalLane({
       ref={containerRef}
     >
       {sentinel}
+      <ShownSignal
+        event="e2e:multimodal:grid-lane-shown"
+        detail={{
+          sampleId: episodeId,
+          marks: levels.reduce((total, placed) => total + placed.length, 0),
+          sources: [
+            ...new Set(levels.flat().map((interval) => interval.sourceId)),
+          ].join(","),
+        }}
+      />
       {fitsReadout && (
         <Readout
           intervals={intervals}

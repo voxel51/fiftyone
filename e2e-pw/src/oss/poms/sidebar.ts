@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventCondition } from "src/shared/event-utils";
 
 export class SidebarPom {
   readonly page: Page;
@@ -10,6 +11,28 @@ export class SidebarPom {
     this.asserter = new SidebarAsserter(this);
 
     this.sidebar = page.getByTestId("sidebar");
+  }
+
+  /**
+   * The grid sidebar's filter list for `path` shows exactly `values`
+   * (`value:count` rows; `[]` for "No results")
+   */
+  filterValuesShown(path: string, values: readonly string[]): EventCondition {
+    return {
+      events: "e2e:filters:checkboxes-shown",
+      predicate: (e) => {
+        const shown = e.detail as {
+          path: string;
+          modal: boolean;
+          values: string;
+        };
+        return (
+          shown.path === path &&
+          !shown.modal &&
+          shown.values === values.join("\n")
+        );
+      },
+    };
   }
 
   groupField(groupName: string) {

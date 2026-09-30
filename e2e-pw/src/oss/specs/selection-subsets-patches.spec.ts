@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { SavedViewsPom } from "src/oss/poms/saved-views";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
@@ -45,7 +45,8 @@ if fo.dataset_exists("${datasetName}"):
     }
   },
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
 });
 
 test.beforeAll(async ({ foWebServer }) => foWebServer.startWebServer());
@@ -53,39 +54,54 @@ test.afterAll(async ({ foWebServer }) => foWebServer.stopWebServer());
 
 test("patch subsets preserve two labels from one parent across scope switches", async ({
   datasetName,
+  eventUtils,
   fiftyoneLoader,
   grid,
   page,
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(1);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(1));
   await tray.createSubset("Other parent");
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset("Other parent", "1 sample"));
   await grid.assert.isEntryCountTextEqualTo("1 sample");
-  await tray.chooseAllSamples();
+  await grid.run(() => tray.chooseAllSamples());
 
-  const savedViews = new SavedViewsPom(page);
+  const savedViews = new SavedViewsPom(page, eventUtils);
   await savedViews.openSelect();
-  await savedViews.savedViewOption("patches").click();
+  await grid.afterTilesDrawn(4, () =>
+    grid.run(() => savedViews.savedViewOption("patches").click()),
+  );
   await grid.assert.isEntryCountTextEqualTo("4 patches");
   await grid.assert.nthSampleHasTagValue(0, "predictions", "parent-0-cat");
   await grid.assert.nthSampleHasTagValue(1, "predictions", "parent-0-dog");
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(1);
+  await tray.afterSelected(2, async () => {
+    await grid.toggleSelectNthSample(0);
+    await grid.toggleSelectNthSample(1);
+  });
   await tray.createSubset("First parent patches");
-  await tray.openCreatedSubset();
+  await grid.afterTilesDrawn(2, () =>
+    grid.run(() => tray.openCreatedSubset("First parent patches", "2 patches")),
+  );
   await grid.assert.isEntryCountTextEqualTo("2 patches");
   await grid.assert.nthSampleHasTagValue(0, "predictions", "parent-0-cat");
   await grid.assert.nthSampleHasTagValue(1, "predictions", "parent-0-dog");
 
-  await tray.chooseSubset("Other parent");
+  await grid.run(() =>
+    tray.chooseSubset("Other parent", undefined, "1 sample"),
+  );
   await grid.assert.isEntryCountTextEqualTo("1 sample");
-  await expect(tray.cards).toHaveCount(0);
-  await tray.chooseSubset("First parent patches");
+  await tray.assert.noCards();
+  await tray.afterResults(() =>
+    grid.afterTilesDrawn(2, () =>
+      grid.run(() =>
+        tray.chooseSubset("First parent patches", undefined, "2 patches"),
+      ),
+    ),
+  );
   await grid.assert.isEntryCountTextEqualTo("2 patches");
-  await expect(tray.cards).toHaveCount(0);
+  await tray.assert.noCards();
   await grid.assert.nthSampleHasTagValue(0, "predictions", "parent-0-cat");
   await grid.assert.nthSampleHasTagValue(1, "predictions", "parent-0-dog");
-  await expect(tray.locator).toContainText("Act on all patches in the grid");
+  await tray.assert.contains("Act on all patches in the grid");
 });

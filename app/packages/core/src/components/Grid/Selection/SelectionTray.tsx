@@ -51,6 +51,7 @@ import {
   type RefObject,
 } from "react";
 import BucketColumn from "./BucketColumn";
+import { useSelectionShownSignal } from "./e2eSignals";
 import {
   gestureLabel,
   useHeldGesture,
@@ -316,6 +317,19 @@ export default function SelectionTray({
         : undefined;
   const bucketName = (bucket: SelectionBucket) =>
     selectionBucketTitle(bucket, buckets.indexOf(bucket));
+  useSelectionShownSignal("e2e:selection:tray-shown", {
+    loading,
+    explicit,
+    error,
+    cards: captured.length,
+    buckets: buckets.map((bucket) => capturesOf(bucket.id).size).join(","),
+    episodes: counts.episodes,
+    fullEpisodes: counts.fullEpisodes,
+    segments: counts.segments,
+    segmentEpisodes: counts.segmentEpisodes,
+    groups: counts.groups ?? 0,
+    outside,
+  });
 
   // This effect retires the undo affordance after a pause, or as soon as a
   // new selection starts after the clear. It arms only once the clear has

@@ -124,8 +124,12 @@ export class EpisodePom {
   }
 
   /** The episode for `fileName` is ready: no source swap is in flight */
-  ready(fileName: string): EventCondition {
-    return shown("episode-ready", (d) => d.fileName === fileName);
+  ready(fileName: string | RegExp): EventCondition {
+    return shown("episode-ready", (d) =>
+      typeof fileName === "string"
+        ? d.fileName === fileName
+        : fileName.test(String(d.fileName)),
+    );
   }
 
   /** The playback state message reads `text` */
@@ -241,7 +245,7 @@ export class EpisodePom {
    * is ready and each of `conditions` is met
    */
   async afterReady<T>(
-    fileName: string,
+    fileName: string | RegExp,
     action: () => Promise<T>,
     conditions: readonly EventCondition[] = [],
   ): Promise<T> {

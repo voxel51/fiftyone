@@ -13,6 +13,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useEffect, useState, type ReactNode } from "react";
+import { useSelectionShownSignal } from "./e2eSignals";
 import styles from "./SelectionTray.module.css";
 import { SUBSET_PAGE_SIZE, useSavedSubsets } from "./useSubsetScope";
 
@@ -40,6 +41,12 @@ export default function SubsetBrowser({
     page,
     view,
   });
+  useSelectionShownSignal(
+    "e2e:selection:subsets-listed",
+    loading || (subsets === null && !error)
+      ? null
+      : { count: subsets?.length ?? 0, error: error ?? null },
+  );
   const pages = Math.max(1, Math.ceil(total / SUBSET_PAGE_SIZE));
   useEffect(() => {
     if (!loading && !error) setPage((current) => Math.min(current, pages - 1));

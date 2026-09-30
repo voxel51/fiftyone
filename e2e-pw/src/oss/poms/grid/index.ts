@@ -13,6 +13,13 @@ import { UrlPom } from "../url";
  */
 const TILE_SELECTOR = "[data-cy=looker], [data-cy=grid-custom-renderer]";
 const CUSTOM_RENDERER_TEST_ID = "grid-custom-renderer";
+const LANE_SHOWN = "e2e:multimodal:grid-lane-shown";
+
+/** A lane showing exactly `marks` marks, all of them temporal tags */
+const isTemporalTagLane = (detail: unknown, marks: number) => {
+  const lane = detail as { marks: number; sources: string };
+  return lane.marks === marks && lane.sources === "fiftyone:temporal-tags";
+};
 
 export class GridPom {
   readonly assert: GridAsserter;
@@ -65,9 +72,7 @@ export class GridPom {
     if (await this.isCustomRendererTile(tile)) {
       // the selection checkbox is revealed in the tile's top selection region
       await tile.hover({ position: { x: 10, y: 5 } });
-      const checkbox = tile.locator("[data-fo-selection-checkbox]");
-      await expect(checkbox).toBeVisible();
-      await checkbox.click();
+      await tile.locator("[data-fo-selection-checkbox]").click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
@@ -85,11 +90,9 @@ export class GridPom {
     await tile.hover({
       position: { x: box.width / 2, y: Math.min(20, box.height / 8) },
     });
-    const button = this.page.getByRole("button", {
-      name: `Add to ${bucketName}`,
-    });
-    await expect(button).toBeVisible();
-    await button.click();
+    await this.page
+      .getByRole("button", { name: `Add to ${bucketName}` })
+      .click();
   }
 
   async openNthSample(n: number) {
@@ -128,6 +131,34 @@ export class GridPom {
 
   async temporalTagMarkCount(): Promise<number> {
     return this.temporalTagMarks().count();
+  }
+
+  /**
+   * Run `action` and resolve once a tile's interval lane draws `marks`
+   * temporal-tag marks because of it
+   */
+  async afterTemporalTagMarks<T>(
+    marks: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after(LANE_SHOWN, action, (e) =>
+      isTemporalTagLane(e.detail, marks),
+    );
+  }
+
+  /**
+   * Resolve once a tile's interval lane has drawn `marks` temporal-tag marks,
+   * which it does on its own as the page loads
+   */
+  async untilTemporalTagMarks(marks: number) {
+    await this.eventUtils.untilState(
+      LANE_SHOWN,
+      async () =>
+        (await this.eventUtils.recorded(LANE_SHOWN)).some((detail) =>
+          isTemporalTagLane(detail, marks),
+        ),
+      (e) => isTemporalTagLane(e.detail, marks),
+    );
   }
 
   /**
@@ -250,10 +281,6 @@ export class GridPom {
     });
   }
 
-  /**
-   * Run `action` and resolve once the tiles of every one of `filepaths` have
-   * redrawn their tag bubbles because of it
-   */
   /** How many tile tag renders the document has recorded so far */
   async tagsRenderedMark(): Promise<number> {
     return (await this.eventUtils.recorded("e2e:looker:tags-rendered")).length;
@@ -277,6 +304,26 @@ export class GridPom {
     );
   }
 
+  /**
+   * {@link afterTagsRendered} for tiles addressed by file name rather than
+   * full filepath
+   */
+  async afterTagsRenderedNamed<T>(
+    fileNames: string[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const pending = new Set(fileNames);
+    return this.eventUtils.after("e2e:looker:tags-rendered", action, (e) => {
+      const { sampleFilepath } = e.detail as { sampleFilepath: string };
+      pending.delete(sampleFilepath.split("/").pop() ?? "");
+      return pending.size === 0;
+    });
+  }
+
+  /**
+   * Run `action` and resolve once the tiles of every one of `filepaths` have
+   * redrawn their tag bubbles because of it
+   */
   async afterTagsRendered<T>(
     filepaths: string[],
     action: () => Promise<T>,
@@ -337,7 +384,7 @@ class GridAsserter {
   }
 
   async isTileCountEqualTo(n: number) {
-    await expect(this.gridPom.locator.locator(TILE_SELECTOR)).toHaveCount(n);
+    expect(await this.gridPom.locator.locator(TILE_SELECTOR).count()).toBe(n);
   }
 
   async isNthSampleSelected(n: number) {

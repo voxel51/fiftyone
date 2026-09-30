@@ -22,8 +22,8 @@ const test = base.extend<{
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  tray: async ({ page }, use) => {
-    await use(new SelectionTrayPom(page));
+  tray: async ({ page, eventUtils }, use) => {
+    await use(new SelectionTrayPom(page, eventUtils));
   },
 });
 
@@ -49,9 +49,13 @@ test.describe.serial("tag", () => {
     tray,
   }) => {
     await tray.openTagPicker();
-    await expect(page.getByText("Tag all 5 samples in view")).toBeVisible();
-    await page.getByRole("radio", { name: "Labels" }).click();
-    await expect(page.getByRole("radio", { name: "Labels" })).toBeChecked();
+    expect(await page.getByText("Tag all 5 samples in view").isVisible()).toBe(
+      true,
+    );
+    await tray.chooseLabelTags();
+    expect(await page.getByRole("radio", { name: "Labels" }).isChecked()).toBe(
+      true,
+    );
     await tray.closeTagPicker();
   });
 
@@ -118,9 +122,11 @@ test.describe.serial("tag", () => {
       await modal.sidebar.clickFieldDropdown("predictions");
     });
     await modal.sidebar.applyFilter("bird");
-    await expect(
-      modal.sidebar.locator.getByTestId("clear-filters-labels"),
-    ).toBeVisible();
+    expect(
+      await modal.sidebar.locator
+        .getByTestId("clear-filters-labels")
+        .isVisible(),
+    ).toBe(true);
 
     await modal.looker.hover();
 

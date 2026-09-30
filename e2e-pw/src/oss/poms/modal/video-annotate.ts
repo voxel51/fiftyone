@@ -178,23 +178,23 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Resolves once a temporal-tag write lands, giving the caller the response
-   * so it can be checked against the sample it was supposed to be scoped to.
-   *
-   * Deliberately matches any status: filtering to 2xx here would turn a
-   * rejected write into a test timeout with nothing to read, instead of a
-   * failure carrying the server's reason.
+   * Run `action` and resolve once the temporal-tag mode reaches `phase`
+   * (`idle`, `ready`, `selecting`, `selected`) because of it
    */
-  waitForTemporalTagWrite(method: "POST" | "PATCH" | "DELETE" = "POST") {
-    return this.page.waitForResponse(
-      (resp) =>
-        resp.request().method() === method &&
-        /\/dataset\/[^/]+\/sample\/[^/]+\/tags/.test(resp.url()),
+  private async afterTagMode<T>(
+    phase: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:playback:temporal-tag-mode",
+      action,
+      (e) => (e.detail as { phase: string }).phase === phase,
     );
   }
 
   /**
-   * Drag a range on the tag-mode overlay and save it under `label`.
+   * Drag a range on the tag-mode overlay and save it under `label`,
+   * resolving once its row is on the timeline and tag mode has closed.
    *
    * The drag only has to land somewhere in the ruler's right half; the popup's
    * nudge buttons then walk the bounds to a fixed number of steps, so the
@@ -205,10 +205,9 @@ export class VideoAnnotatePom {
     // Shift+T rather than clicking the toggle: on a grouped modal the media
     // canvas overlaps the controls row and swallows the click, and the hotkey
     // is the same documented affordance.
-    await expect(this.temporalTagModeButton).toBeVisible();
-    await this.page.keyboard.press("Shift+T");
-    await expect(this.temporalTagModeButton).toHaveAttribute(
-      "aria-pressed",
+    expect(await this.temporalTagModeButton.isVisible()).toBe(true);
+    await this.afterTagMode("ready", () => this.page.keyboard.press("Shift+T"));
+    expect(await this.temporalTagModeButton.getAttribute("aria-pressed")).toBe(
       "true",
     );
 
@@ -230,10 +229,10 @@ export class VideoAnnotatePom {
     for (let i = 1; i <= 8; i++) {
       await this.page.mouse.move(from + ((to - from) * i) / 8, y);
     }
-    await this.page.mouse.up();
+    await this.afterTagMode("selected", () => this.page.mouse.up());
 
     const popup = this.temporalTagPopup();
-    await expect(popup).toBeVisible();
+    expect(await popup.isVisible()).toBe(true);
 
     // Same count on both edges keeps the interval's width fixed as well as its
     // endpoints' relationship to wherever the drag started.
@@ -244,17 +243,21 @@ export class VideoAnnotatePom {
 
     await popup.getByRole("textbox", { name: "Tag" }).fill(label);
 
-    const written = this.waitForTemporalTagWrite("POST");
-    await popup.getByRole("button", { name: "Accept" }).click();
-    const response = await written;
-    if (!response.ok()) {
-      throw new Error(
-        `temporal tag write failed: ${response.status()} ${await response.text()}`,
-      );
-    }
-    await expect(popup).toBeHidden();
-
-    return response;
+    const trackId = `${TEMPORAL_TAG_TRACK_PREFIX}${label}`;
+    await this.modal.eventUtils.afterAll(
+      [
+        {
+          events: TRACKS_RENDERED,
+          predicate: (e) => renderedIds(e).includes(trackId),
+        },
+        {
+          events: "e2e:playback:temporal-tag-mode",
+          predicate: (e) => (e.detail as { phase: string }).phase === "idle",
+        },
+      ],
+      () => popup.getByRole("button", { name: "Accept" }).click(),
+    );
+    expect(await popup.isVisible()).toBe(false);
   }
 
   /** A timeline track row by its id (object instanceId or `td-…`). */
