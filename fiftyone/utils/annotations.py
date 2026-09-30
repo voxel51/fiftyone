@@ -1807,6 +1807,10 @@ def _merge_label(
         _class = label.get_attribute_value("label", None)
         attr_names = global_attrs + class_attrs.get(_class, [])
         for name in attr_names:
+            if name in spatial_fields:
+                # handled above, subject to ``allow_spatial_edits``
+                continue
+
             value = anno_label.get_attribute_value(name, None)
             label.set_attribute_value(name, value)
 

@@ -6577,12 +6577,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "attributes": attributes,
                 }
 
-                if shape_type == "rectangle" and isinstance(
-                    det.get_attribute_value("rotation", None), (int, float)
+                rotation = det.get_attribute_value("rotation", None)
+                if (
+                    shape_type == "rectangle"
+                    and isinstance(rotation, (int, float))
+                    and not isinstance(rotation, bool)
                 ):
                     # FiftyOne stores 2D rotation in radians; CVAT expects
                     # degrees in ``[0, 360)``
-                    shape["rotation"] = math.degrees(det["rotation"]) % 360
+                    shape["rotation"] = math.degrees(rotation) % 360
 
                 curr_shapes.append(shape)
             elif label_type in ("instance", "instances"):
@@ -7926,13 +7929,26 @@ def _parse_occlusion_value(value):
 # Track interpolation code sourced from CVAT:
 # https://github.com/opencv/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
 def _get_interpolated_shapes(track_shapes):
-    def copy_shape(source, frame, points=None):
+    def copy_shape(source, frame, points=None, rotation=None):
         copied = deepcopy(source)
         copied["keyframe"] = False
         copied["frame"] = frame
         if points is not None:
             copied["points"] = points
+        if rotation is not None:
+            copied["rotation"] = rotation
         return copied
+
+    def interpolate_rotation(shape0, shape1, offset):
+        # Rectangle rotation (degrees) interpolates along the shortest
+        # angular path, matching CVAT's own track interpolation
+        r0 = shape0.get("rotation", None)
+        r1 = shape1.get("rotation", None)
+        if r0 is None or r1 is None:
+            return None
+
+        diff = ((r1 - r0 + 180) % 360) - 180
+        return (r0 + diff * offset) % 360
 
     def simple_interpolation(shape0, shape1):
         shapes = []
@@ -7942,8 +7958,9 @@ def _get_interpolated_shapes(track_shapes):
         for frame in range(shape0["frame"] + 1, shape1["frame"]):
             offset = (frame - shape0["frame"]) / distance
             points = shape0["points"] + diff * offset
+            rotation = interpolate_rotation(shape0, shape1, offset)
 
-            shapes.append(copy_shape(shape0, frame, points.tolist()))
+            shapes.append(copy_shape(shape0, frame, points.tolist(), rotation))
 
         return shapes
 
