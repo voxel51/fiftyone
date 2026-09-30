@@ -17,6 +17,7 @@ import type { Scene3dViewStateStore } from "../camera/scene-3d-view-state";
 import { useScene3dViewStateStore } from "../camera/scene-3d-view-state-context";
 import {
   chooseCameraTarget,
+  chooseEgoCameraTarget,
   createReferenceSelectionState,
   referenceSelectionReducer,
   type FrameObservation,
@@ -32,14 +33,6 @@ import {
   compareFrameIds,
   uniqueSortedFrameIds,
 } from "../../../../utils/frame-ids";
-
-/** Frame names considered ego-centric automatic camera targets, in priority order. */
-export const PREFERRED_CAMERA_TARGET_FRAMES = [
-  "base_link",
-  "ego_vehicle",
-  "ego",
-  "vehicle",
-] as const;
 
 /** Whether a rendered frame choice was automatic or explicitly selected. */
 export type FrameSelectionSource = "auto" | "user";
@@ -301,6 +294,10 @@ export function useScene3dFrameSelection({
   const navigationReferenceSettled =
     transformBootstrapSettled &&
     placementTimeSettled &&
+    !scene3dUserFrameRestoreApplies(
+      pendingUserWorldFrameIdRef.current,
+      localFrameIds,
+    ) &&
     (referenceAuthority !== null ||
       (selection.facts.revisionKey === facts.revisionKey &&
         pendingPromotion === null));
@@ -368,9 +365,9 @@ export function useScene3dFrameSelection({
     }
   }, [indexedRangeKey, pendingPromotion]);
 
-  const autoCameraTargetFrameId = chooseCameraTarget(
-    activeComponentFrameIds,
-    worldFrameId,
+  const autoCameraTargetFrameId = useMemo(
+    () => chooseCameraTarget(activeComponentFrameIds, worldFrameId),
+    [activeComponentFrameIds, worldFrameId],
   );
   const availableCarriedCameraTargetFrameId =
     carriedCameraTargetFrameId &&
@@ -385,6 +382,16 @@ export function useScene3dFrameSelection({
     userCameraTargetFrameId && frameIds.includes(userCameraTargetFrameId)
       ? "user"
       : "auto";
+  const matchedEgoFrameId = useMemo(
+    () => chooseEgoCameraTarget(activeComponentFrameIds),
+    [activeComponentFrameIds],
+  );
+  // Carried frame choices are adopted by an effect. Do not let startup use
+  // the automatic target during the commit immediately before that adoption.
+  const cameraTargetSettled = !scene3dUserFrameRestoreApplies(
+    pendingUserCameraTargetFrameIdRef.current,
+    frameIds,
+  );
 
   const updateLocalWorldFrameId = useCallback(
     (frameId: string) => {
@@ -431,6 +438,9 @@ export function useScene3dFrameSelection({
   return {
     activeComponentFrameIds,
     cameraTargetFrameId,
+    cameraTargetIsEgo:
+      Boolean(matchedEgoFrameId) && cameraTargetFrameId === matchedEgoFrameId,
+    cameraTargetSettled,
     cameraTargetSelectionSource,
     frameIds,
     localActiveComponentFrameIds: localDecision.activeComponentFrameIds,

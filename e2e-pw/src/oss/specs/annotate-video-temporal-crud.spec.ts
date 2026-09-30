@@ -1,20 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Temporal-detection (TD) create / edit / delete on the video-annotation
- * surface, all engine-routed:
- *
- *  - create + edit: the "New TD" toolbar action mints a sample-level TD at the
- *    playhead; selecting it opens the editor and a class assigns through the
- *    engine and persists.
- *  - mid-list delete id-preservation (guards step-4 `idAlignedListDelta`):
- *    deleting the MIDDLE of three TDs must not renumber/rewrite the siblings.
- *    The sample-level list diff is id-aligned, so the surviving two keep their
- *    exact `_id`s and labels across a true round-trip (fresh browser context).
- *    The regression this guards rewrote a sibling's `_id` on a mid-list delete.
- *
- * Seeded with the three demo events (approach [1,6] / pass [7,13] /
- * depart [14,20] over a 20-frame clip), re-seeded per test for isolation.
+ * Temporal-detection (TD) create/edit/delete on the video surface: the "New TD"
+ * action mints a TD at the playhead whose class assigns and persists, and
+ * deleting the middle of three TDs leaves the siblings' `_id`s and labels
+ * intact across a fresh browser context (the list diff is id-aligned).
+ * Re-seeded per test with the demo events approach [1,6] / pass [7,13] /
+ * depart [14,20].
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -25,7 +17,6 @@ import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-td-crud");
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -50,25 +41,67 @@ const collectEngineErrors = (page: Page): string[] => {
   return out;
 };
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
+test.beforeEach(async ({ datasetFactory }) => {
   // three TDs: approach [1,6], pass [7,13], depart [14,20].
-  await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
+  await datasetFactory.createDataset({
+    mediaType: "video",
+    datasetName,
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      events: "TemporalDetections",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      events: {
+        type: "temporaldetections",
+        component: "dropdown",
+        classes: ["approach", "pass", "depart"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+        ],
+      },
+    },
+    // three events split the clip into thirds
+    withSampleData: ({ numFrames }, { label }) => {
+      const a = Math.max(1, Math.floor(numFrames / 3));
+      const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+      return {
+        events: label.temporalDetections([
+          label.temporalDetection({ label: "approach", support: [1, a] }),
+          label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+          label.temporalDetection({
+            label: "depart",
+            support: [b + 1, numFrames],
+          }),
+        ]),
+      };
+    },
+    // present-but-empty on every frame, so the first draw's patch can append
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
+  });
 });
 
 const openAnnotate = async (

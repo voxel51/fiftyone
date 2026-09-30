@@ -1,4 +1,5 @@
-import React, { type RefObject, useRef, useState } from "react";
+import { useViewportInitReveal } from "@fiftyone/lighter";
+import React, { type RefObject, useRef, useState, useEffect } from "react";
 import {
   usePlayback,
   usePublishCurrentFrame,
@@ -50,6 +51,8 @@ export interface LighterVideoProps {
    * read-only overlay path.
    */
   mode?: LighterVideoMode;
+  /** Disable when the host owns the opening seek (for example, saved ranges). */
+  autoSeekOnLoad?: boolean;
   /**
    * Demuxer verdict on whether the source has an audio track, when the
    * caller has one. `false` hides the volume control without waiting on the
@@ -65,6 +68,7 @@ export interface LighterVideoProps {
   onLoadStart?: (element: HTMLVideoElement) => void;
   onLoadedData?: (element: HTMLVideoElement) => void;
   onError?: (element: HTMLVideoElement) => void;
+  onRevealChange?: (revealed: boolean) => void;
 }
 
 /**
@@ -74,10 +78,12 @@ export interface LighterVideoProps {
 export const LighterVideo: React.FC<LighterVideoProps> = ({
   videoSrc,
   mode = "annotate",
+  autoSeekOnLoad = true,
   hasAudio,
   onLoadStart,
   onLoadedData,
   onError,
+  onRevealChange,
 }) => {
   const sourceId = VIDEO_STREAM_ID;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -153,6 +159,11 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   // Explore is where it is a restoration. Annotate never had one, and popping
   // a tooltip over the canvas mid-draw is a product change in its own right —
   // `null` routes the hook at the undefined channel, so it observes nothing.
+  const revealed = useViewportInitReveal(scene);
+  useEffect(() => {
+    onRevealChange?.(revealed);
+  }, [revealed, onRevealChange]);
+
   useLighterTooltipEventHandler(mode === "explore" ? scene : null);
 
   // Canvas selection <-> `fos.selectedLabels`, which the modal's Tag and
@@ -199,7 +210,7 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
           // (after a seek that crossed an unbuffered range, etc.) does
           // NOT reset the playhead. We only kick the engine on the
           // FIRST `loadeddata` per `videoSrc`.
-          if (kickedSrcRef.current === videoSrc) return;
+          if (!autoSeekOnLoad || kickedSrcRef.current === videoSrc) return;
           kickedSrcRef.current = videoSrc;
           seek(0);
         }}
