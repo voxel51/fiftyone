@@ -503,7 +503,11 @@ export const KeypointDetails = () => {
       spacing={Spacing.Xs}
       style={{ padding: "0.25rem" }}
     >
-      <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+      <Text
+        color={TextColor.Secondary}
+        variant={TextVariant.Sm}
+        data-cy="keypoint-placed-summary"
+      >
         {placedCount} of {nodeCount} placed
         {skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
       </Text>

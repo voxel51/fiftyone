@@ -17,12 +17,12 @@
  * Two same-type `Keypoints` fields with DIFFERENT skeletons (4 nodes vs 3)
  * give the dropdown a destination whose node count the checklist must follow.
  */
-import { expect, test as base, type Page } from "src/oss/fixtures";
+import { type Browser, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { readKeypointsState } from "src/oss/utils/keypoints";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { LabelSchema } from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
 import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
@@ -58,20 +58,6 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-const expectNodeStatus = (
-  modal: ModalPom,
-  index: number,
-  status: "placed" | "target" | "skipped" | "pending",
-) =>
-  expect(modal.sidebar.edit.keypointNodeRow(index)).toHaveAttribute(
-    "data-cy-status",
-    status,
-  );
-
-/** The node checklist's summary line, e.g. "2 of 4 placed". */
-const expectPlacedSummary = (modal: ModalPom, summary: string) =>
-  expect(modal.sidebar.edit.keypointPlacedSummary).toHaveText(summary);
-
 /** Open the modal in annotate mode, deep-linked to one sample. */
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
@@ -86,6 +72,35 @@ const openAnnotate = async (
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
   await modal.waitForLighterReady();
+};
+
+/**
+ * Reopen a sample in a new browser context (nothing cached) and check its
+ * one keypoint through the App: it lives on `FIELD`, with these node statuses.
+ */
+const expectPersisted = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  sampleId: string,
+  statuses: Array<"placed" | "target" | "pending">,
+) => {
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+  try {
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, freshModal, freshPage, sampleId);
+    // one label: the undone move left nothing behind at the destination
+    await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
+    await freshModal.sidebar.annotate.selectActiveLabel("person", 0);
+
+    const freshEdit = freshModal.sidebar.edit;
+    await freshEdit.assert.currentField(FIELD);
+    for (const [index, status] of statuses.entries()) {
+      await freshEdit.assert.keypointNodeStatus(index, status);
+    }
+  } finally {
+    await context.close();
+  }
 };
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
@@ -145,6 +160,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.describe("keypoint field swap", () => {
   test("a fresh keypoint survives a field swap and undo restores its placements", async ({
+    browser,
     fiftyoneLoader,
     modal,
     page,
@@ -161,18 +177,18 @@ test.describe("keypoint field swap", () => {
       if ((await edit.getCurrentField()) !== FIELD) {
         await edit.moveFieldTo(FIELD);
       }
-      await expect.poll(() => edit.getCurrentField()).toBe(FIELD);
+      await edit.assert.currentField(FIELD);
     });
 
     await test.step("place nodes 0 and 1", async () => {
-      await expectNodeStatus(modal, 0, "target");
-      await modal.sampleCanvas.click(...PLACEMENTS[0]);
-      await expectNodeStatus(modal, 0, "placed");
+      await edit.assert.keypointNodeStatus(0, "target");
+      await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[0]);
+      await edit.assert.keypointNodeStatus(0, "placed");
 
-      await modal.sampleCanvas.click(...PLACEMENTS[1]);
-      await expectNodeStatus(modal, 1, "placed");
+      await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[1]);
+      await edit.assert.keypointNodeStatus(1, "placed");
 
-      await expectPlacedSummary(modal, "2 of 4 placed");
+      await edit.assert.keypointPlacedSummary("2 of 4 placed");
     });
 
     await test.step("move the label to the 3-node field", async () => {
@@ -181,8 +197,8 @@ test.describe("keypoint field swap", () => {
 
     await test.step("the form stays open with the destination's empty checklist", async () => {
       await edit.assert.isOpen();
-      await expect.poll(() => edit.getCurrentField()).toBe(ALT_FIELD);
-      await expectPlacedSummary(modal, "0 of 3 placed");
+      await edit.assert.currentField(ALT_FIELD);
+      await edit.assert.keypointPlacedSummary("0 of 3 placed");
     });
 
     await test.step("the session survives the autosave settle", async () => {
@@ -197,44 +213,27 @@ test.describe("keypoint field swap", () => {
 
     await test.step("the source field and its placements come back", async () => {
       await edit.assert.isOpen();
-      await expect.poll(() => edit.getCurrentField()).toBe(FIELD);
-      await expectPlacedSummary(modal, "2 of 4 placed");
-      await expectNodeStatus(modal, 0, "placed");
-      await expectNodeStatus(modal, 1, "placed");
+      await edit.assert.currentField(FIELD);
+      await edit.assert.keypointPlacedSummary("2 of 4 placed");
+      await edit.assert.keypointNodeStatus(0, "placed");
+      await edit.assert.keypointNodeStatus(1, "placed");
     });
 
     await test.step("the restored geometry persists", async () => {
       await modal.sidebar.annotate.waitForSavesSettled();
 
-      // Placed nodes are finite; the two never-placed nodes stay NaN holes
-      // ([null, null] over JSON).
-      const state = await readKeypointsState(
-        fiftyoneLoader,
-        datasetName,
-        FIELD,
-        { sampleIndex: 0 },
-      );
-      expect(state.count).toBe(1);
-      expect(state.points).toHaveLength(SKELETON_NODES.length);
-      for (const index of [0, 1]) {
-        expect(state.points[index][0]).toEqual(expect.any(Number));
-        expect(state.points[index][1]).toEqual(expect.any(Number));
-      }
-      expect(state.points[2]).toEqual([null, null]);
-      expect(state.points[3]).toEqual([null, null]);
-
-      // the undone move leaves nothing behind at the destination.
-      const alt = await readKeypointsState(
-        fiftyoneLoader,
-        datasetName,
-        ALT_FIELD,
-        { sampleIndex: 0 },
-      );
-      expect(alt.present).toBe(false);
+      // placed nodes read back placed, the never-placed ones stay holes
+      await expectPersisted(browser, fiftyoneLoader, indexToId(0), [
+        "placed",
+        "placed",
+        "target",
+        "pending",
+      ]);
     });
   });
 
   test("an existing keypoint survives a field swap and undo restores its placements", async ({
+    browser,
     fiftyoneLoader,
     modal,
     page,
@@ -243,10 +242,13 @@ test.describe("keypoint field swap", () => {
 
     await test.step("open the seeded keypoint from the label list", async () => {
       await openAnnotate(fiftyoneLoader, modal, page, indexToId(1));
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "keypoint-field-swap-seeded.png",
+      );
       await modal.sidebar.annotate.selectActiveLabel("person", 0);
 
       await edit.assert.isOpen();
-      await expectPlacedSummary(modal, "4 of 4 placed");
+      await edit.assert.keypointPlacedSummary("4 of 4 placed");
       // an existing label opens PASSIVELY: placement is not armed.
       await modal.sidebar.annotate.assert.keypointModeIsActive(false);
     });
@@ -257,13 +259,20 @@ test.describe("keypoint field swap", () => {
 
     await test.step("the form stays open with the destination's empty checklist", async () => {
       await edit.assert.isOpen();
-      await expect.poll(() => edit.getCurrentField()).toBe(ALT_FIELD);
-      await expectPlacedSummary(modal, "0 of 3 placed");
+      await edit.assert.currentField(ALT_FIELD);
+      await edit.assert.keypointPlacedSummary("0 of 3 placed");
     });
 
     await test.step("the session survives the autosave settle", async () => {
       await modal.sidebar.annotate.waitForSavesSettled();
       await edit.assert.isOpen();
+    });
+
+    await test.step("the erased destination draws nothing", async () => {
+      // taken with the form still open: the undo below runs from it
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "keypoint-field-swap-destination.png",
+      );
     });
 
     await test.step("undo the move", async () => {
@@ -273,40 +282,29 @@ test.describe("keypoint field swap", () => {
 
     await test.step("the source field and its placements come back", async () => {
       await edit.assert.isOpen();
-      await expect.poll(() => edit.getCurrentField()).toBe(FIELD);
-      await expectPlacedSummary(modal, "4 of 4 placed");
+      await edit.assert.currentField(FIELD);
+      await edit.assert.keypointPlacedSummary("4 of 4 placed");
       for (const index of SEEDED_POINTS.keys()) {
-        await expectNodeStatus(modal, index, "placed");
+        await edit.assert.keypointNodeStatus(index, "placed");
       }
     });
 
     await test.step("the restored geometry persists", async () => {
       await modal.sidebar.annotate.waitForSavesSettled();
+      await expectPersisted(browser, fiftyoneLoader, indexToId(1), [
+        "placed",
+        "placed",
+        "placed",
+        "placed",
+      ]);
+    });
 
-      // the undo restores the captured original, so every node reads back at
-      // the coordinate it was seeded with.
-      const state = await readKeypointsState(
-        fiftyoneLoader,
-        datasetName,
-        FIELD,
-        { sampleIndex: 1 },
+    await test.step("the restored nodes draw where they were seeded", async () => {
+      await edit.backButton.click();
+      await edit.assert.isClosed();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "keypoint-field-swap-seeded.png",
       );
-      expect(state.count).toBe(1);
-      expect(state.points).toHaveLength(SEEDED_POINTS.length);
-      for (const [index, [x, y]] of SEEDED_POINTS.entries()) {
-        expect(state.points[index]).toEqual([
-          expect.closeTo(x, 2),
-          expect.closeTo(y, 2),
-        ]);
-      }
-
-      const alt = await readKeypointsState(
-        fiftyoneLoader,
-        datasetName,
-        ALT_FIELD,
-        { sampleIndex: 1 },
-      );
-      expect(alt.present).toBe(false);
     });
   });
 });

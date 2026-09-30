@@ -233,7 +233,9 @@ const Header = () => {
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
-        <div style={{ marginRight: "0.75rem" }}>Edit {type}</div>
+        <div style={{ marginRight: "0.75rem" }} data-cy="annotate-edit-title">
+          Edit {type}
+        </div>
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
