@@ -114,7 +114,9 @@ test("two clips from one video survive leaving and reopening the converted view"
   await tray.assert.contains(/2\s*clips selected/);
   expect(await tray.cards.count()).toBe(2);
   await tray.createSubset("Two moments");
-  await grid.run(() => tray.openCreatedSubset("Two moments", "2 clips"));
+  await grid.afterEntryCounts(() =>
+    grid.run(() => tray.openCreatedSubset("Two moments", "2 clips")),
+  );
   await grid.assert.isEntryCountTextEqualTo("2 clips");
   await modal.sidebar.afterEntries({ support: "[3, 8]" }, () =>
     grid.openFirstSample(),
@@ -126,14 +128,16 @@ test("two clips from one video survive leaving and reopening the converted view"
   await modal.sidebar.assert.verifySidebarEntryText("support", "[12, 17]");
   await modal.close();
 
-  await grid.run(() => tray.chooseAllSamples());
+  await grid.afterEntryCounts(() => grid.run(() => tray.chooseAllSamples()));
   await grid.assert.isEntryCountTextEqualTo("3 clips");
   await modal.sidebar.afterEntries({ support: "[18, 20]" }, () =>
     grid.openNthSample(2),
   );
   await modal.sidebar.assert.verifySidebarEntryText("support", "[18, 20]");
   await modal.close();
-  await grid.run(() => tray.chooseSubset("Two moments", undefined, "2 clips"));
+  await grid.afterEntryCounts(() =>
+    grid.run(() => tray.chooseSubset("Two moments", undefined, "2 clips")),
+  );
   await grid.assert.isEntryCountTextEqualTo("2 clips");
 });
 
@@ -154,7 +158,9 @@ test("generated frame membership reopens on the original video frames", async ({
     await grid.toggleSelectNthSample(4);
   });
   await tray.createSubset("Source frames");
-  await grid.run(() => tray.openCreatedSubset("Source frames", "2 frames"));
+  await grid.afterEntryCounts(() =>
+    grid.run(() => tray.openCreatedSubset("Source frames", "2 frames")),
+  );
   await grid.assert.isEntryCountTextEqualTo("2 frames");
   await modal.sidebar.afterEntries(
     { frame_number: "3", origin: "first-video" },
@@ -170,10 +176,12 @@ test("generated frame membership reopens on the original video frames", async ({
   await modal.sidebar.assert.verifySidebarEntryText("origin", "first-video");
   await modal.close();
 
-  await grid.run(() => tray.chooseAllSamples());
+  await grid.afterEntryCounts(() => grid.run(() => tray.chooseAllSamples()));
   await grid.assert.isEntryCountTextEqualTo("2 samples");
-  await tray.afterResults(() =>
-    grid.run(() => tray.chooseSubset("Source frames", undefined, "2 frames")),
+  await grid.afterEntryCounts(() =>
+    tray.afterResults(() =>
+      grid.run(() => tray.chooseSubset("Source frames", undefined, "2 frames")),
+    ),
   );
   await grid.assert.isEntryCountTextEqualTo("2 frames");
   await tray.assert.contains("Act on all frames in the grid");
