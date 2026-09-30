@@ -9,6 +9,8 @@ export type SelectionE2EEvents = {
     error: string | null;
     /** Captures in the target bucket, the cards its strip shows */
     cards: number;
+    /** Rendered target cards whose availability metadata has not landed */
+    undescribed: number;
     /** Captures per bucket, comma separated */
     buckets: string;
     episodes: number;

@@ -322,6 +322,9 @@ export default function SelectionTray({
     explicit,
     error,
     cards: captured.length,
+    undescribed: [...fold.head, ...fold.tail].filter(
+      (group) => group.unavailable === undefined,
+    ).length,
     buckets: buckets.map((bucket) => capturesOf(bucket.id).size).join(","),
     episodes: counts.episodes,
     fullEpisodes: counts.fullEpisodes,

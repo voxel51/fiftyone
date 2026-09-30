@@ -14,6 +14,8 @@ export interface TrayShown {
   readonly explicit: boolean;
   readonly error: string | null;
   readonly cards: number;
+  /** Rendered target cards still waiting on their availability metadata */
+  readonly undescribed: number;
   /** Captures per bucket, comma separated */
   readonly buckets: string;
   readonly episodes: number;
@@ -84,8 +86,8 @@ export class SelectionTrayPom {
   }
 
   /**
-   * Run `action` and resolve once the tray has settled (not loading) on a
-   * state `matches` accepts because of it
+   * Run `action` and resolve once the tray has settled (not loading, cards
+   * described) on a state `matches` accepts because of it
    */
   async afterTray<T>(
     matches: (shown: TrayShown) => boolean,
@@ -93,7 +95,7 @@ export class SelectionTrayPom {
   ): Promise<T> {
     return this.eventUtils.after(TRAY_SHOWN, action, (e) => {
       const shown = e.detail as TrayShown;
-      return !shown.loading && matches(shown);
+      return settledTray(shown) && matches(shown);
     });
   }
 
@@ -125,7 +127,7 @@ export class SelectionTrayPom {
   /** The tray settles on its own as a page loads; resolve once `matches` */
   async untilTray(matches: (shown: TrayShown) => boolean) {
     const settled = (shown?: unknown) =>
-      !!shown && !(shown as TrayShown).loading && matches(shown as TrayShown);
+      !!shown && settledTray(shown as TrayShown) && matches(shown as TrayShown);
     await this.eventUtils.untilState(
       TRAY_SHOWN,
       async () =>
@@ -461,6 +463,10 @@ class SelectionTrayAsserter {
       ),
     );
   }
+}
+
+function settledTray(shown: TrayShown) {
+  return !shown.loading && shown.undescribed === 0;
 }
 
 function escapeRegex(value: string): string {
