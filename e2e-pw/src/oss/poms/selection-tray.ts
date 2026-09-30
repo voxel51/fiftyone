@@ -7,6 +7,7 @@ const SUBSETS_LISTED = "e2e:selection:subsets-listed";
 const SUBSET_JOB = "e2e:selection:subset-job";
 const TAGS_SHOWN = "e2e:selection:tags-shown";
 const SAVED_SEGMENTS_SHOWN = "e2e:selection:saved-segments-shown";
+const GRID_RESET = "e2e:grid:reset";
 
 /** Detail of `e2e:selection:tray-shown`: what the tray has committed */
 export interface TrayShown {
@@ -219,9 +220,12 @@ export class SelectionTrayPom {
     await this.page
       .getByRole("textbox", { name: "Create or find tag" })
       .fill(tag);
-    await this.afterTags(
-      (shown) => !shown.busy && shown.all.split("\n").includes(tag),
-      () => this.page.getByRole("button", { name: `Create “${tag}”` }).click(),
+    await this.afterGridRefresh(() =>
+      this.afterTags(
+        (shown) => !shown.busy && shown.all.split("\n").includes(tag),
+        () =>
+          this.page.getByRole("button", { name: `Create “${tag}”` }).click(),
+      ),
     );
     expect(
       await this.page
@@ -367,10 +371,33 @@ export class SelectionTrayPom {
   }
 
   private async afterSaved<T>(name: string, action: () => Promise<T>) {
-    return this.eventUtils.after(SUBSET_JOB, action, (e) => {
-      const job = e.detail as { subsetName: string; result: boolean };
-      return job.subsetName === name && job.result;
-    });
+    return this.afterGridRefresh(() =>
+      this.eventUtils.after(SUBSET_JOB, action, (e) => {
+        const job = e.detail as { subsetName: string; result: boolean };
+        return job.subsetName === name && job.result;
+      }),
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the grid has remounted for the refresh it
+   * requests, which lands a server round trip after the write
+   */
+  private async afterGridRefresh<T>(action: () => Promise<T>): Promise<T> {
+    const last = (await this.eventUtils.latest([GRID_RESET]))[GRID_RESET];
+    const before = Number(last?.refresher ?? 0);
+    let reset = false;
+    return this.eventUtils.afterAll(
+      [
+        {
+          events: GRID_RESET,
+          predicate: (e) =>
+            (reset ||= (e.detail as { refresher: number }).refresher > before),
+        },
+        { events: "grid-mount", predicate: () => reset },
+      ],
+      action,
+    );
   }
 
   /** Browse the subset just saved as `name`, showing `count` when given */
