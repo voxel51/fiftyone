@@ -3,6 +3,7 @@ import { atomFamily } from "jotai/utils";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
+import { useTilingStore } from "./store-context";
 import { useTileId, useTiling } from "./TilingProvider";
 import type { RegisteredTile, SetTileTitleOptions, TilingTile } from "./types";
 
@@ -30,13 +31,17 @@ const tileHeaderExtraAtom = atomFamily(
 );
 
 export function useTileSelection<T = unknown>(): T | null {
+  const store = useTilingStore();
   const tileId = useTileId();
-  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
+  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE), {
+    store,
+  }) as T | null;
 }
 
 export function useSetTileSelection(): (selection: unknown) => void {
+  const store = useTilingStore();
   const tileId = useTileId();
-  const set = useSetAtom(tileSelectionAtom(tileId ?? NO_TILE));
+  const set = useSetAtom(tileSelectionAtom(tileId ?? NO_TILE), { store });
   return useCallback(
     (selection: unknown) => {
       if (!tileId) return;
@@ -50,7 +55,10 @@ export function useSetTileSelection(): (selection: unknown) => void {
 export function useTileSelectionFor<T = unknown>(
   tileId: string | null,
 ): T | null {
-  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE)) as T | null;
+  const store = useTilingStore();
+  return useAtomValue(tileSelectionAtom(tileId ?? NO_TILE), {
+    store,
+  }) as T | null;
 }
 
 export function useTileTitle(): string | null {
@@ -81,15 +89,20 @@ export function useSetTileTitle(): (
 
 /** Whether the surrounding tile's title has transient cross-panel emphasis. */
 export function useTileTitleHighlighted(): boolean {
+  const store = useTilingStore();
   const tileId = useTileId();
-  return useAtomValue(tileTitleHighlightedAtom(tileId ?? NO_TILE));
+  return useAtomValue(tileTitleHighlightedAtom(tileId ?? NO_TILE), { store });
 }
 
 /** Sets transient cross-panel emphasis on the surrounding tile's title. */
 export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
+  const store = useTilingStore();
   const tileId = useTileId();
   const setHighlighted = useSetAtom(
     tileTitleHighlightedAtom(tileId ?? NO_TILE),
+    {
+      store,
+    },
   );
   return useCallback(
     (highlighted: boolean) => {
@@ -103,13 +116,15 @@ export function useSetTileTitleHighlighted(): (highlighted: boolean) => void {
 
 /** The surrounding tile's extra header content, or `null` if none was published. */
 export function useTileHeaderExtra(): ReactNode {
+  const store = useTilingStore();
   const tileId = useTileId();
-  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE), { store });
 }
 
 /** Reads a specific tile's extra header content by id — used by `MosaicGrid`. */
 export function useTileHeaderExtraFor(tileId: string | null): ReactNode {
-  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  const store = useTilingStore();
+  return useAtomValue(tileHeaderExtraAtom(tileId ?? NO_TILE), { store });
 }
 
 /**
@@ -118,8 +133,11 @@ export function useTileHeaderExtraFor(tileId: string | null): ReactNode {
  * cleanup so the header reverts when the tile unmounts or stops needing it.
  */
 export function useSetTileHeaderExtra(): (node: ReactNode) => void {
+  const store = useTilingStore();
   const tileId = useTileId();
-  const setExtra = useSetAtom(tileHeaderExtraAtom(tileId ?? NO_TILE));
+  const setExtra = useSetAtom(tileHeaderExtraAtom(tileId ?? NO_TILE), {
+    store,
+  });
   return useCallback(
     (node: ReactNode) => {
       if (!tileId) return;
@@ -131,7 +149,8 @@ export function useSetTileHeaderExtra(): (node: ReactNode) => void {
 }
 
 export function useTileTypes(): RegisteredTile[] {
-  return useAtomValue(registeredTilesAtom);
+  const store = useTilingStore();
+  return useAtomValue(registeredTilesAtom, { store });
 }
 
 /**

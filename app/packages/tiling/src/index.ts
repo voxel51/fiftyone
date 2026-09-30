@@ -39,6 +39,8 @@ export {
 } from "./lib/use-tile-state";
 export { useRegisteredTiles } from "./lib/use-registered-tiles";
 export { useTileRegistry } from "./lib/use-tile-registry";
+export { TilingStoreContext, useTilingStore } from "./lib/store-context";
+export type { TilingStore } from "./lib/store-context";
 
 // --- View components -------------------------------------------------------
 export { default as MosaicGrid } from "./views/MosaicGrid/MosaicGrid";
