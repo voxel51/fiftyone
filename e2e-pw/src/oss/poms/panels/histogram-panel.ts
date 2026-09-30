@@ -1,5 +1,4 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventUtils } from "src/shared/event-utils";
 import { SelectorPom } from "../selector";
 
@@ -18,18 +17,28 @@ export class HistogramPom {
     this.selector = new SelectorPom(this.locator, eventUtils, "histograms");
   }
 
-  async selectField(field: string) {
-    await this.afterLoad(() => this.selector.selectResult(field), field);
+  /** Select `field`; resolves with its drawn bars (see {@link afterLoad}) */
+  selectField(field: string): Promise<string> {
+    return this.afterLoad(() => this.selector.selectResult(field), field);
   }
 
-  // run the action that reloads the histogram (mode switch, panel
-  // foreground); pass a path to ignore sibling histograms' draws
-  afterLoad<T>(action: () => Promise<T>, path?: string): Promise<T> {
-    return this.eventUtils.after(
-      "e2e:histograms:loaded",
-      action,
-      (e) => !path || (e.detail as { path?: string })?.path === path,
-    );
+  /**
+   * Run the action that (re)draws a histogram (opening the panel, a mode
+   * switch, a field choice) and resolve with its bars as `key:count` in axis
+   * order; pass a path to ignore sibling histograms' draws
+   */
+  async afterLoad(
+    action: () => Promise<unknown>,
+    path?: string,
+  ): Promise<string> {
+    let bars = "";
+    await this.eventUtils.after("e2e:histograms:loaded", action, (e) => {
+      const detail = e.detail as { path?: string; bars?: string };
+      if (path && detail?.path !== path) return false;
+      bars = detail?.bars ?? "";
+      return true;
+    });
+    return bars;
   }
 }
 
@@ -38,11 +47,6 @@ class HistogramAsserter {
 
   async isLoaded() {
     expect(await this.histogramPom.locator.isVisible()).toBe(true);
-  }
-
-  /** One capture of the panel; draw it first with `afterLoad` */
-  async hasScreenshot(name: string) {
-    await expectScreenshot(this.histogramPom.locator, name);
   }
 
   async verifyField(field: string) {
