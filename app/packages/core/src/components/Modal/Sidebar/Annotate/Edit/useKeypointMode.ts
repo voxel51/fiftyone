@@ -1,4 +1,10 @@
-import { FRAMES_PREFIX, useAnnotationEngine } from "@fiftyone/annotation";
+import {
+  FRAMES_PREFIX,
+  type LabelRef,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+  useEngineSelector,
+} from "@fiftyone/annotation";
 import {
   GuidedKeypointHandler,
   InteractiveCreationHandler,
@@ -35,6 +41,28 @@ const is2dKeypointSelected = (
   selected?.type === KEYPOINT &&
   selected.overlay instanceof KeypointOverlay &&
   !(selected.overlay instanceof PolylineOverlay);
+
+/** A stored keypoint row as `[x, y]`; anything else (`"nan"` reads, holes) is `[NaN, NaN]`. */
+const toPoint = (row: unknown): [number, number] => {
+  if (Array.isArray(row)) {
+    const [x, y] = row;
+    if (
+      typeof x === "number" &&
+      Number.isFinite(x) &&
+      typeof y === "number" &&
+      Number.isFinite(y)
+    ) {
+      return [x, y];
+    }
+  }
+
+  return [NaN, NaN];
+};
+
+/** Adapts a point list to the `getRelativePoints` shape the target helpers read. */
+const pointSource = (points: [number, number][]) => ({
+  getRelativePoints: () => points,
+});
 
 const keypointModeActiveAtom = atom<boolean>(false);
 export { keypointModeActiveAtom as _unsafeKeypointModeActiveAtom };
@@ -286,13 +314,54 @@ export const useKeypointMode = () => {
 };
 
 /**
+ * The selected keypoint's points. A committed label reads from the engine,
+ * the source of truth, so every consumer follows each committed change (undo
+ * and redo included) through the engine selector, with no canvas
+ * subscription. A draft the engine has not seen yet has no engine row: it
+ * reads the canvas overlay, its only home until the first commit, refreshed
+ * by the guided epoch that canvas point events bump.
+ */
+const useSelectedKeypointPoints = (
+  selected: AnnotationContextSelected | null | undefined,
+  overlay: KeypointOverlay | null,
+): [number, number][] | null => {
+  const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  // subscribe: a draft's canvas points change with no engine write
+  useAtomValue(guidedEpochAtom);
+
+  // the anchor's full ref (video frame + track instanceId + frames.<field>
+  // path) when present; the overlay's field + id is already right for an
+  // image label (cf. Position)
+  const ref = useMemo<LabelRef | null>(
+    () =>
+      selected?.ref ??
+      (overlay && sample
+        ? { sample, path: overlay.field, instanceId: overlay.id }
+        : null),
+    [selected?.ref, overlay, sample],
+  );
+
+  const committed = useEngineSelector(engine, (e) =>
+    ref ? e.getLabel(ref)?.points : undefined,
+  );
+
+  const committedPoints = useMemo(
+    () => (Array.isArray(committed) ? committed.map(toPoint) : null),
+    [committed],
+  );
+
+  return committedPoints ?? overlay?.getRelativePoints() ?? null;
+};
+
+/**
  * Guided-placement state for the currently selected skeleton keypoint —
  * consumed by the sidebar node checklist and the skip control.
  *
  * `targetIndex` is the node the next click places (`null` once every node is
  * resolved, or for free-form fields), `skipped` the indices the guided cursor
  * passed over, and `skip()` advances past the current target. Placement
- * status itself is derived from the overlay's live geometry — a node is
+ * status is derived from {@link useSelectedKeypointPoints} — a node is
  * "placed" iff its point is finite.
  */
 export const useGuidedKeypoints = () => {
@@ -301,8 +370,6 @@ export const useGuidedKeypoints = () => {
   const getSkeleton = useGetKeypointSkeleton();
   const [skips, setSkips] = useAtom(guidedSkipsAtom);
   const [forced, setForced] = useAtom(forcedTargetAtom);
-  // subscribe: recompute on every geometry change
-  useAtomValue(guidedEpochAtom);
   const { scene } = useLighter();
 
   // The selection context captures its overlay REFERENCE at selection time,
@@ -322,6 +389,7 @@ export const useGuidedKeypoints = () => {
     return live instanceof KeypointOverlay ? live : contextOverlay;
   }, [contextOverlay, scene]);
   const overlay = resolveOverlay();
+  const points = useSelectedKeypointPoints(selected, overlay);
   const field = selected?.field ?? null;
   const skeleton = field ? getSkeleton(field) : null;
   const nodeCount = skeletonNodeCount(skeleton);
@@ -334,9 +402,10 @@ export const useGuidedKeypoints = () => {
   const forcedIndex =
     overlay && forced?.overlayId === overlay.id ? forced.index : null;
 
-  const targetIndex = overlay
-    ? resolveTargetIndex(overlay, nodeCount, skipped, forcedIndex)
-    : null;
+  const targetIndex =
+    overlay && points
+      ? resolveTargetIndex(pointSource(points), nodeCount, skipped, forcedIndex)
+      : null;
 
   /**
    * Skip the current target node: it stays a `[NaN, NaN]` hole and the guided
@@ -346,10 +415,11 @@ export const useGuidedKeypoints = () => {
    */
   const skip = useCallback(() => {
     const target = resolveOverlay();
-    if (!target || targetIndex === null) return;
+    if (!target || !points || targetIndex === null) return;
 
+    const source = pointSource(points);
     const next = skipTarget(
-      target,
+      source,
       nodeCount,
       skipped,
       forcedIndex,
@@ -366,12 +436,13 @@ export const useGuidedKeypoints = () => {
       );
     }
 
-    if (computeTargetIndex(target, nodeCount, next.skipped) === null) {
+    if (computeTargetIndex(source, nodeCount, next.skipped) === null) {
       scene?.exitInteractiveMode();
     }
   }, [
     forcedIndex,
     nodeCount,
+    points,
     resolveOverlay,
     scene,
     setForced,
@@ -487,8 +558,11 @@ export const useGuidedKeypoints = () => {
      * label opens passively, so an unarmed target row offers Place.
      */
     modeActive,
-    /** Live relative points — `[NaN, NaN]` entries are unplaced holes. */
-    points: overlay?.getRelativePoints() ?? null,
+    /**
+     * Relative points, from the engine once committed — `[NaN, NaN]` entries
+     * are unplaced holes.
+     */
+    points,
     targetIndex,
     skipped,
     skip,
@@ -505,9 +579,9 @@ export const useGuidedKeypoints = () => {
     isDraft:
       !!selected?.isNew &&
       !!overlay &&
-      !overlay
-        .getRelativePoints()
-        .some((p) => Number.isFinite(p[0]) && Number.isFinite(p[1])),
+      !(points ?? []).some(
+        (p) => Number.isFinite(p[0]) && Number.isFinite(p[1]),
+      ),
   };
 };
 
@@ -555,8 +629,9 @@ export const useKeypointModeInstaller = (): void => {
   useLighterEvent("lighter:overlay-added", bumpEpoch);
   useLighterEvent("lighter:overlay-removed", bumpEpoch);
 
-  // Geometry changes (guided placement, drags, undo/redo) recompute the
-  // guided target and the sidebar checklist.
+  // Canvas point events recompute guided state for a draft, whose points live
+  // only on the overlay until the first commit. Committed geometry (undo and
+  // redo included) arrives through the engine: see selectedPoints below.
   const bumpGuidedEpoch = useCallback(
     () => setGuidedEpoch((n) => n + 1),
     [setGuidedEpoch],
@@ -564,14 +639,16 @@ export const useKeypointModeInstaller = (): void => {
   useLighterEvent("lighter:keypoint-point-moved", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-added", bumpGuidedEpoch);
   useLighterEvent("lighter:keypoint-point-deleted", bumpGuidedEpoch);
-  // Undo/redo are engine-owned: they write the store, and the Lighter bridge
-  // applies the result to the overlay silently (no point events). Observe the
-  // engine too, or an undone placement would leave the checklist and the
-  // guided target stale.
-  const engine = useAnnotationEngine();
-  useEffect(
-    () => engine.subscribeChanges(bumpGuidedEpoch),
-    [bumpGuidedEpoch, engine],
+
+  // The selected label's points, read from the engine once committed. The
+  // install effect re-runs on them, so an undo that reopens a hole after
+  // auto-finish reinstalls guided placement (the bridge applies undo to the
+  // overlay silently, so no canvas event would).
+  const selectedPoints = useSelectedKeypointPoints(
+    selected,
+    is2dKeypointSelected(selected)
+      ? (selected?.overlay as KeypointOverlay)
+      : null,
   );
 
   // Mirror the overlay's per-point sub-selection into sidebar state — canvas
@@ -1054,14 +1131,16 @@ export const useKeypointModeInstaller = (): void => {
     eventBus,
     exitInstalledHandler,
     getSkeleton,
-    // re-runs when point geometry changes (placement, drag, undo/redo), so
-    // an undo after auto-finish reinstalls the guided handler
+    // re-runs on canvas point events (a draft's placements and drags)
     guidedEpoch,
     keypointModeActive,
     scene,
     // re-runs when the selected track's overlay mounts / unmounts
     sceneEpoch,
     selected,
+    // re-runs on committed geometry changes from the engine, so an undo
+    // after auto-finish reinstalls the guided handler
+    selectedPoints,
     setForced,
     setSkips,
   ]);
