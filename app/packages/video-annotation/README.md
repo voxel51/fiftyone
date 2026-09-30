@@ -39,12 +39,21 @@ thereafter.
 
 **3. Tracks are ephemeral; frames are the truth.** On disk there are no
 "tracks" — just detections living on individual frames, tagged with an id. A
-track is something we _reconstruct_: walk the engine's labels, group them by
-`instanceId` across the clip, infer presence intervals, and draw a timeline row
-(the row id _is_ the instanceId). Keyframes mark the frames a human actually
-touched; **propagation** (linear interpolation or SAM2 tracking) fills
+track is something we _reconstruct_: the server's track index (`/video-labels`)
+groups each field's labels by instance across the clip, the frames edited this
+session are overlaid on it from the engine, and each track becomes a timeline
+row (the row id _is_ the instanceId). A chunk landing reuses the last build; an
+edit re-reads only the frames it touched. A field whose index failed to load
+falls back to overlaying every loaded frame. Keyframes mark the frames a human
+actually touched; **propagation** (linear interpolation or SAM2 tracking) fills
 everything between them. Edit a box and you've edited _one frame's_ detection —
 which is exactly what the engine persists.
+
+The label stream warms the whole clip in the background through the same
+in-flight budget as playback prefetch, keeping a slot free for the playhead's
+window. The engine's frame store is seeded once from whatever is already
+cached, then each landed window merges only its own frames
+(`FrameStore.mergeData`), so opening a clip costs time linear in its length.
 
 ## Two video backends, one set of machinery
 
@@ -149,9 +158,11 @@ flowchart TB
         TL[TimelineWithTracks]
     end
 
-    VFLS -. setData seed .-> VLS
+    VFLS -. seed once, then mergeData per window .-> VLS
     VLS --> TV --> BR
-    VLS --> FT & TDT
+    IDX[track index<br/>/video-labels] --> FT
+    VLS -. frames edited this session .-> FT
+    VLS --> TDT
     FT & TDT --> TL
     TEE -. drag spans .-> TL
     TILE --> SCENE

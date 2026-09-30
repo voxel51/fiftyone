@@ -7,6 +7,7 @@
  */
 
 import { act, renderHook } from "@testing-library/react";
+import { FrameStore } from "@fiftyone/annotation";
 import { Sample } from "@fiftyone/utilities";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -109,5 +110,31 @@ describe("useSyncAnnotationVideoStore loading state", () => {
 
     act(() => hoisted.stream?.listener?.([1, 60]));
     expect(hoisted.registered[0].isLoading()).toBe(false);
+  });
+
+  it("a later landing seeds only that window's frames", () => {
+    const cached = [{ frame_number: 1 }, { frame_number: 2 }];
+    hoisted.stream = makeStream(cached);
+
+    renderHook(() =>
+      useSyncAnnotationVideoStore({
+        labelTypes: {},
+        sampleLevelPaths: new Set<string>(),
+        seedWholeClip: false,
+      }),
+    );
+
+    const setData = vi.spyOn(FrameStore.prototype, "setData");
+    const mergeData = vi.spyOn(FrameStore.prototype, "mergeData");
+    cached.push({ frame_number: 61 }, { frame_number: 62 });
+
+    act(() => hoisted.stream?.listener?.([61, 120]));
+
+    expect(setData).not.toHaveBeenCalled();
+    expect(mergeData).toHaveBeenCalledTimes(1);
+    expect(Object.keys(mergeData.mock.calls[0][0])).toEqual(["61", "62"]);
+
+    setData.mockRestore();
+    mergeData.mockRestore();
   });
 });
