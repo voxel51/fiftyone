@@ -68,6 +68,7 @@ const renderSearch = (overrides: Partial<TextSearchController> = {}) => {
     Suggestions: HistorySuggestions,
     onOpenSettings: vi.fn(),
     sources: null,
+    indexSlices: new Map(),
     ...overrides,
   };
   const view = render(<LanguageSearch search={controls} />);

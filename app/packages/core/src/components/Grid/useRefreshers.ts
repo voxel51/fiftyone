@@ -9,7 +9,11 @@ import { gridAt, gridOffset, gridPage } from "./recoil";
 import { useGridJumpRevision } from "./useScrollLocation";
 
 export default function useRefreshers() {
-  const { key: selectionScopeKey } = useGridSelectionRequest();
+  // Keyed on the boundary the grid's pages are requested with; an extension's
+  // ranges landing after its stage commit must not rebuild an unchanged grid
+  const { key: selectionScopeKey } = useGridSelectionRequest({
+    rangeConstraint: false,
+  });
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(

@@ -15,6 +15,7 @@ const env = vi.hoisted(() => ({
   providerCancel: vi.fn(),
   ProviderSuggestions: () => null,
   sourcesWanted: vi.fn(),
+  indexSlices: new Map<string, string[]>(),
   onRun: null as null | ((index: { key: string }, query: string) => void),
 }));
 
@@ -34,6 +35,7 @@ vi.mock("./useOperatorSearch", () => ({
       run: env.operatorRun,
       claimView: () => false,
       sources: null,
+      indexSlices: env.indexSlices,
       Suggestions: env.OperatorSuggestions,
     };
   },
@@ -127,6 +129,14 @@ describe("useTextSearch", () => {
 
     act(() => result.current.onOpenSettings());
     expect(env.sourcesWanted).toHaveBeenLastCalledWith(true);
+  });
+
+  it("hands on the indexes' slices", () => {
+    env.promptKeys = [SERVER_INDEX];
+    env.indexSlices = new Map([["clip_sim", ["left", "right"]]]);
+    const { result } = renderController();
+
+    expect(result.current.indexSlices).toBe(env.indexSlices);
   });
 
   it("offers sources only when there are several to choose between", () => {

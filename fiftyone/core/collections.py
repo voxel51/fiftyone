@@ -8175,7 +8175,13 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by_similarity(
-        self, query, k=None, reverse=False, dist_field=None, brain_key=None
+        self,
+        query,
+        k=None,
+        reverse=False,
+        dist_field=None,
+        brain_key=None,
+        group_slices=None,
     ):
         """Sorts the collection by similarity to a specified query.
 
@@ -8230,7 +8236,9 @@ class SampleCollection(object):
                 -   a prompt or iterable of prompts (if supported by the index)
 
             k (None): the number of matches to return. By default, the entire
-                collection is sorted
+                collection is sorted. Applied to a grouped collection, ``k``
+                limits the matched samples, so fewer than ``k`` groups are
+                selected when several matches belong to the same group
             reverse (False): whether to sort by least similarity (True) or
                 greatest similarity (False). Some backends may not support
                 least similarity
@@ -8241,6 +8249,11 @@ class SampleCollection(object):
                 :meth:`fiftyone.brain.compute_similarity` run on the dataset.
                 If not specified, the dataset must have an applicable run,
                 which will be used by default
+            group_slices (None): when applied to a grouped collection, the
+                group slices to search. By default, every slice the index
+                covers is searched. Applied to a grouped collection, the
+                groups with a matching sample in any searched slice are
+                selected, in order of their best match
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -8252,6 +8265,7 @@ class SampleCollection(object):
                 reverse=reverse,
                 dist_field=dist_field,
                 brain_key=brain_key,
+                group_slices=group_slices,
             )
         )
 

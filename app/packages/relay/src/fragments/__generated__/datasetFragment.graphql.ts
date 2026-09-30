@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<efe93d7a0e4876d79fad76678634dba5>>
+ * @generated SignedSource<<9bab6d5985f6cfa2000747f76a25b976>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,6 +32,9 @@ export type datasetFragment$data = {
     readonly error: string | null;
     readonly key: string;
     readonly ready: boolean | null;
+    readonly resultsMeta: {
+      readonly groupSlices: ReadonlyArray<string> | null;
+    } | null;
     readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
@@ -275,6 +278,24 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "error",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "BrainRunResultsMeta",
+          "kind": "LinkedField",
+          "name": "resultsMeta",
+          "plural": false,
+          "selections": [
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "groupSlices",
+              "storageKey": null
+            }
+          ],
           "storageKey": null
         },
         {
@@ -526,6 +547,6 @@ return {
 };
 })();
 
-(node as any).hash = "ca48d00369663cf08a83df441475103c";
+(node as any).hash = "aff3a060c5da48ab86aea6bd5b27bb63";
 
 export default node;

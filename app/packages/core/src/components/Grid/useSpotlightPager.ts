@@ -69,7 +69,10 @@ const useSpotlightPager = ({
 }) => {
   const environment = useRelayEnvironment();
   const pager = useRecoilValue(pageSelector);
-  const [boundary] = useGridSelectionBoundary();
+  // An extension's ranges name its matched samples, which its extended stage
+  // already selects; as a page boundary they would also drop a grouped
+  // dataset's tile whose group matched through another slice
+  const [boundary] = useGridSelectionBoundary({ rangeConstraint: false });
   const { enabled: selectionEnabled } = useGridSelectionDataset();
   const reportSelectionError = useGridSelectionPagingError();
   const zoom = useRecoilValue(zoomSelector);

@@ -3,7 +3,9 @@
  *
  * Text search through the server's similarity search operator, for an index
  * the server can sort by. The operator builds and applies the result view
- * itself; whoever shows the view hands each arriving one to `claimView`.
+ * itself; whoever shows the view hands each arriving one to `claimView`. On a
+ * grouped dataset an index's sources are the group slices it covers; an index
+ * that recorded none offers the dataset's slices as unavailable.
  */
 
 import {
@@ -14,7 +16,7 @@ import {
 import type { PromptableSimilarityIndex } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { buildSimilarityRunName } from "@fiftyone/utilities";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { HistorySuggestions } from "./HistorySuggestions";
 import type { SearchStrategy } from "./searchStrategy";
@@ -24,20 +26,30 @@ import { useDeferredSearch } from "./useDeferredSearch";
 /** The Similarity action's server-side search operator. */
 export const SIMILARITY_SEARCH_OPERATOR = "@voxel51/panels/similarity_search";
 
+export const SLICES_UNAVAILABLE_REASON =
+  "This index does not support filtering by slice. The entire index will be searched.";
+
 export interface OperatorSearch extends SearchStrategy {
   onUnavailable: () => void;
   /** Whether a search run here produced an arriving view. */
   claimView: (view: readonly SerializedStage[]) => boolean;
+  /** The group slices each of the dataset's indexes covers, by brain key,
+   * on a grouped dataset. */
+  indexSlices: ReadonlyMap<string, readonly string[]>;
 }
 
 export const useOperatorSearch = ({
   currentView,
   onRun,
+  promptKeys,
+  selectedIndex,
   sortStageOffered,
 }: {
   currentView: readonly SerializedStage[];
   /** Called when a search actually runs, not when one is held. */
   onRun: (index: PromptableSimilarityIndex, query: string) => void;
+  promptKeys: readonly PromptableSimilarityIndex[];
+  selectedIndex: PromptableSimilarityIndex | undefined;
   /** The host can offer `SortBySimilarity`, which the operator adds. */
   sortStageOffered: boolean;
 }): OperatorSearch => {
@@ -45,6 +57,7 @@ export const useOperatorSearch = ({
   const notify = fos.useNotification();
   const registryState = useOperatorRegistryState();
   const registered = useOperatorAvailability(SIMILARITY_SEARCH_OPERATOR);
+  const datasetSlices = fos.useGroupSlices();
 
   // The run a submitted search created, then, once its view lands, the
   // fingerprint of that view
@@ -65,10 +78,12 @@ export const useOperatorSearch = ({
       index,
       query,
       k,
+      slices,
     }: {
       index: PromptableSimilarityIndex;
       query: string;
       k: number;
+      slices: string[] | null;
     }) => {
       onRun(index, query);
       // The pending treatment every view change gets, for the operator's
@@ -92,6 +107,10 @@ export const useOperatorSearch = ({
       };
       if (index.patchesField) {
         params.patches_field = index.patchesField;
+      }
+      // Only a narrowed pick: without one the operator searches every slice
+      if (slices) {
+        params.slices = slices;
       }
       if (
         lastSearch.current &&
@@ -136,9 +155,15 @@ export const useOperatorSearch = ({
     onDrop: drop,
   });
 
+  /** Runs `query`; on a grouped dataset, within `slices` of the index, or
+   * every slice it covers when null. */
   const run = useCallback(
-    (index: PromptableSimilarityIndex, query: string, k: number) =>
-      deferred({ index, query, k }),
+    (
+      index: PromptableSimilarityIndex,
+      query: string,
+      k: number,
+      slices: string[] | null,
+    ) => deferred({ index, query, k, slices }),
     [deferred],
   );
 
@@ -164,6 +189,33 @@ export const useOperatorSearch = ({
     return fromSearch;
   }, []);
 
+  const indexSlices = useMemo(
+    () =>
+      new Map(
+        promptKeys.flatMap(({ key, groupSlices }) =>
+          groupSlices?.length ? [[key, groupSlices] as const] : [],
+        ),
+      ),
+    [promptKeys],
+  );
+  const selectedSlices = selectedIndex && indexSlices.get(selectedIndex.key);
+  // Only a sample-level index searches by slice; a patches index has none
+  const unrecorded =
+    !!selectedIndex &&
+    !selectedIndex.patchesField &&
+    !selectedIndex.groupSlices?.length;
+  const sources = useMemo(() => {
+    if (selectedSlices) return { label: "Slices", values: [...selectedSlices] };
+    if (unrecorded && datasetSlices.length) {
+      return {
+        label: "Slices",
+        values: datasetSlices,
+        unavailableReason: SLICES_UNAVAILABLE_REASON,
+      };
+    }
+    return null;
+  }, [selectedSlices, unrecorded, datasetSlices]);
+
   // Until the registry loads the operator is not missing, only unknown: a
   // query is held and runs, or explains itself, once it lands
   const available = registered || registryState === "loading";
@@ -174,8 +226,8 @@ export const useOperatorSearch = ({
     onUnavailable,
     run,
     claimView,
-    // The operator's searches cannot be narrowed
-    sources: null,
+    sources,
+    indexSlices,
     Suggestions: HistorySuggestions,
   };
 };

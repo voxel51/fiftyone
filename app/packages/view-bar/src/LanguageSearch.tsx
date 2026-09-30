@@ -83,6 +83,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
     Suggestions,
     onOpenSettings,
     sources,
+    indexSlices,
   },
   onHasTextChange,
   onFocus,
@@ -288,6 +289,7 @@ const LanguageSearchField: React.FC<LanguageSearchProps> = ({
               />
             }
             promptKeys={promptKeys}
+            indexSlices={indexSlices}
             selectedKey={selectedKey}
             onSelectKey={onSelectKey}
             k={k}

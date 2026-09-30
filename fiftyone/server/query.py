@@ -151,8 +151,18 @@ class BrainRunConfig(RunConfig):
 
 
 @gql.type
+class BrainRunResultsMeta:
+    """The facts in a brain run's ``results_meta`` that the App reads. Only
+    the keys declared here are sent."""
+
+    #: The group slices a similarity index holds samples from.
+    group_slices: t.Optional[t.List[str]]
+
+
+@gql.type
 class BrainRun(Run):
     config: t.Optional[BrainRunConfig]
+    results_meta: t.Optional[BrainRunResultsMeta]
     #: Whether the run's results have been saved.
     ready: t.Optional[bool]
     #: Why this run cannot be used, when that is knowable WITHOUT loading its
@@ -194,6 +204,23 @@ def _brain_run_error(run: dict) -> t.Optional[str]:
         return "run document has no config"
 
     return _run_cls_error(cls_path)
+
+
+def _brain_run_results_meta(run: dict) -> t.Optional[dict]:
+    """The declared :class:`BrainRunResultsMeta` keys of a run's
+    ``results_meta``, dropping values of the wrong type so that one malformed
+    run cannot fail the dataset query."""
+    meta = run.get("results_meta")
+    if not isinstance(meta, dict):
+        return None
+
+    group_slices = meta.get("group_slices")
+    if not isinstance(group_slices, list) or not all(
+        isinstance(name, str) for name in group_slices
+    ):
+        group_slices = None
+
+    return {"group_slices": group_slices}
 
 
 @gql.type
@@ -376,6 +403,7 @@ class Dataset:
                     **run,
                     "ready": run.get("results") is not None,
                     "error": _brain_run_error(run),
+                    "results_meta": _brain_run_results_meta(run),
                 }
                 if isinstance(run, dict)
                 else run

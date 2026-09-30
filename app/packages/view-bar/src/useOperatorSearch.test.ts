@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const env = vi.hoisted(() => ({
   execute: vi.fn(),
   onRun: vi.fn(),
+  datasetSlices: [] as string[],
 }));
 
 vi.mock("@fiftyone/operators", () => ({
@@ -14,20 +15,34 @@ vi.mock("@fiftyone/operators", () => ({
 vi.mock("@fiftyone/state", () => ({
   useSetViewChangePending: () => vi.fn(),
   useNotification: () => vi.fn(),
+  useGroupSlices: () => env.datasetSlices,
 }));
 vi.mock("@fiftyone/utilities", () => ({
   buildSimilarityRunName: () => "run name",
 }));
 
+import type { PromptableSimilarityIndex } from "@fiftyone/state";
+
 import type { SerializedStage } from "./state";
-import { useOperatorSearch } from "./useOperatorSearch";
+import {
+  SLICES_UNAVAILABLE_REASON,
+  useOperatorSearch,
+} from "./useOperatorSearch";
 
-const INDEX = { key: "clip_sim", patchesField: null };
+const INDEX: PromptableSimilarityIndex = {
+  key: "clip_sim",
+  patchesField: null,
+};
 
-const operatorSearch = (view: readonly SerializedStage[]) =>
+const operatorSearch = (
+  view: readonly SerializedStage[],
+  index: PromptableSimilarityIndex = INDEX,
+) =>
   useOperatorSearch({
     currentView: view,
     onRun: env.onRun,
+    promptKeys: [index],
+    selectedIndex: index,
     sortStageOffered: true,
   });
 const RESULT_VIEW: SerializedStage[] = [
@@ -45,7 +60,9 @@ const searchAndLand = (
 };
 
 describe("useOperatorSearch", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("replaces a search typed over its unchanged result view", () => {
     const { result, rerender } = renderHook(
@@ -78,5 +95,50 @@ describe("useOperatorSearch", () => {
     act(() => result.current.run(INDEX, "a car", 25, null));
 
     expect(env.execute.mock.lastCall[1]).not.toHaveProperty("replace_run_id");
+  });
+
+  it("sends the slices only when the pick narrows the search", () => {
+    const { result } = renderHook(() => operatorSearch([]));
+
+    act(() => result.current.run(INDEX, "a car", 25, ["left"]));
+    expect(env.execute.mock.lastCall[1].slices).toStrictEqual(["left"]);
+
+    act(() => result.current.run(INDEX, "a car", 25, null));
+    expect(env.execute.mock.lastCall[1]).not.toHaveProperty("slices");
+  });
+
+  it("offers the slices the selected index recorded as its sources", () => {
+    const { result } = renderHook(() =>
+      operatorSearch([], { ...INDEX, groupSlices: ["left", "right"] }),
+    );
+
+    expect(result.current.sources).toStrictEqual({
+      label: "Slices",
+      values: ["left", "right"],
+    });
+    expect(result.current.indexSlices).toStrictEqual(
+      new Map([["clip_sim", ["left", "right"]]]),
+    );
+  });
+
+  it("offers no sources for an index that recorded no slices", () => {
+    const { result } = renderHook(() =>
+      operatorSearch([], { ...INDEX, groupSlices: [] }),
+    );
+
+    expect(result.current.sources).toBeNull();
+    expect(result.current.indexSlices).toStrictEqual(new Map());
+  });
+
+  it("offers the dataset's slices as unavailable on a grouped dataset for an index that recorded none", () => {
+    env.datasetSlices = ["left", "right"];
+    const { result } = renderHook(() => operatorSearch([]));
+    env.datasetSlices = [];
+
+    expect(result.current.sources).toStrictEqual({
+      label: "Slices",
+      values: ["left", "right"],
+      unavailableReason: SLICES_UNAVAILABLE_REASON,
+    });
   });
 });

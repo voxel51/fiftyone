@@ -74,6 +74,9 @@ export interface TextSearchController {
   /** What the selected index's matches can come from; null until the
    * settings open, and while there is nothing to choose between. */
   sources: SearchSources | null;
+  /** The group slices each index covers on a grouped dataset, by brain
+   * key, once the settings open. */
+  indexSlices: ReadonlyMap<string, readonly string[]>;
 }
 
 export interface TextSearch extends TextSearchController {
@@ -172,6 +175,8 @@ export const useTextSearch = ({
   const operator = useOperatorSearch({
     currentView,
     onRun,
+    promptKeys,
+    selectedIndex,
     sortStageOffered,
   });
   const provider = useProviderSearch({
@@ -226,6 +231,7 @@ export const useTextSearch = ({
       strategy.sources && strategy.sources.values.length > 1
         ? strategy.sources
         : null,
+    indexSlices: operator.indexSlices,
     claimView: operator.claimView,
     cancel: provider.cancel,
   };

@@ -134,12 +134,17 @@ class SimilaritySearchOperator(foo.Operator):
 
                     view = DatasetView._build(dataset, base_stages)
 
+            # A grouped dataset is searched as a grouped collection, so a
+            # match in any slice the index covers selects its group, and
+            # the dataset target is the whole index rather than the active
+            # slice. Patches need a flat collection
+            grouped = dataset.media_type == "group" and not patches_field
             if view is None:
-                view = ctx.target_view(require_flat=True)
+                view = ctx.target_view(require_flat=not grouped)
 
-            # Recorded flat (pre-patches), so a replacing search of either
-            # kind can rebuild it. The target is the dataset itself when
-            # nothing narrows it, and only a view serializes its stages
+            # Recorded before any patches conversion, so a replacing search
+            # of either kind can rebuild it. The target is the dataset itself
+            # when nothing narrows it, and only a view serializes its stages
             run_data["base_view"] = view.view()._serialize(include_uuids=False)
 
             ctx.set_progress(0.2, label="Preparing query...")
@@ -179,6 +184,11 @@ class SimilaritySearchOperator(foo.Operator):
             if dist_field:
                 kwargs["dist_field"] = dist_field
 
+            # The view bar's slice picker sends only a narrowed pick
+            slices = ctx.params.get("slices")
+            if grouped and slices:
+                kwargs["group_slices"] = list(slices)
+
             result_view = view.sort_by_similarity(query, **kwargs)
 
             ctx.set_progress(0.7, label="Collecting results...")
@@ -193,6 +203,10 @@ class SimilaritySearchOperator(foo.Operator):
             # NewSearch.tsx — awaiting user feedback before deciding
             # whether to remove it entirely.
             dynamic_results = ctx.params.get("dynamic_results", False)
+            # Stored IDs can only rebuild a flattened, mixed-slice view, and
+            # the stage's state carries which slices matched per group
+            if grouped:
+                dynamic_results = True
 
             result_ids = []
             result_view_stages = None
