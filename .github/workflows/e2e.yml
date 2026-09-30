@@ -296,6 +296,12 @@ jobs:
         run: yarn lint
         working-directory: e2e-pw
 
+      - name: Check e2e waits
+        # specs wait on the app event an action causes, then read once:
+        # no polls, timeouts, retrying assertions or DOM waits
+        if: matrix.shard == 1
+        run: python3 e2e-pw/scripts/check-e2e-waits.py .
+
       - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7
