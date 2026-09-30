@@ -46,7 +46,7 @@ function isLabelType(fieldType: string): fieldType is Label {
  * The App assigns pool colors in first-request order, so a multi-color pool
  * makes screenshots depend on render order; one color makes them exact
  */
-export const DEFAULT_COLOR_SCHEME = { colorPool: ["#009999"] };
+export const DEFAULT_COLOR_SCHEME = { color_pool: ["#009999"] };
 
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,

@@ -265,7 +265,7 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
    * never depend on the order the App assigns colors in.
    *
    * @example
-   * colorScheme: { colorBy: "value", colorPool: ["#ee0000", "#009999"] }
+   * colorScheme: { color_by: "value", color_pool: ["#ee0000", "#009999"] }
    */
   colorScheme?: JSONObject;
 
