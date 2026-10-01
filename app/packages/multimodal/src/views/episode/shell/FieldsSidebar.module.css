@@ -42,7 +42,7 @@
 }
 
 .fieldValue {
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   font-size: 12px;
   line-height: 1.4;
   min-width: 0;

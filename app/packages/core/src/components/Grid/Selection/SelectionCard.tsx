@@ -318,7 +318,7 @@ export default function SelectionCard({
         </button>
         {(dynamicGroup || (temporal && !full)) && (
           <span className={styles.kind}>
-            <Text variant={TextVariant.Label} color={TextColor.Fg}>
+            <Text variant={TextVariant.Label} color={TextColor.Foreground}>
               {dynamicGroup ? "Group" : descriptor}
             </Text>
           </span>
@@ -397,7 +397,7 @@ export default function SelectionCard({
                 size={Size.Xs}
                 icon={WarningAmberIcon}
                 backgroundColor={SemanticColor.Warning}
-                color={TextColor.Fg}
+                color={TextColor.Foreground}
               >
                 Unavailable
               </Pill>

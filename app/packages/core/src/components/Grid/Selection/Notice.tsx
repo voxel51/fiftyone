@@ -16,7 +16,7 @@ const ICON_COLOR: Record<Tone, TextColor> = {
   info: TextColor.Secondary,
   success: TextColor.Success,
   warning: TextColor.Warning,
-  error: TextColor.Destructive,
+  error: TextColor.Failure,
 };
 
 interface NoticeProps {
@@ -62,7 +62,7 @@ export function ScopePill({ source }: { source: "explicit" | "results" }) {
     <Pill
       size={Size.Xs}
       backgroundColor={
-        explicit ? BackgroundColor.Selected : BackgroundColor.Raised
+        explicit ? BackgroundColor.Selected : BackgroundColor.CardElevated
       }
       color={explicit ? TextColor.Accent : TextColor.Secondary}
     >

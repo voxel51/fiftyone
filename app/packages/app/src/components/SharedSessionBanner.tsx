@@ -28,8 +28,8 @@ import styles from "./SharedSessionBanner.module.css";
 import SharedSessionUpgrade from "./SharedSessionUpgrade";
 
 const TOKENS = {
-  "--banner-tint": `var(${getColorCssVar(SemanticColor.Warning)})`,
-  "--banner-surface": `var(${getColorCssVar(BackgroundColor.Background)})`,
+  "--banner-tint": getColorCssVar(SemanticColor.Warning),
+  "--banner-surface": getColorCssVar(BackgroundColor.Background),
 } as CSSProperties;
 
 const Notice = () => {
@@ -68,7 +68,7 @@ const Notice = () => {
         <span className={styles.divider} aria-hidden="true" />
         <Text
           variant={TextVariant.Sm}
-          color={TextColor.Fg}
+          color={TextColor.Foreground}
           className={styles.message}
         >
           Open in <span className={styles.count}>{count} tabs</span> that share

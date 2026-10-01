@@ -20,7 +20,7 @@ import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
 
 const CARD_BACKGROUND: React.CSSProperties = {
-  background: `var(${getColorCssVar(BackgroundColor.Card1)})`,
+  background: getColorCssVar(BackgroundColor.Card),
 };
 
 /**

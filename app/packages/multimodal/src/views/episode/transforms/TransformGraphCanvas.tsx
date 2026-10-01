@@ -93,10 +93,10 @@ interface ComponentRect {
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 2.5;
 const FIT_OPTIONS = { maxZoom: 1.25, padding: 0.08 } as const;
-const ACTIVE_EDGE_COLOR = `var(${getColorCssVar(BrandColor.Primary)})`;
-const GRID_DOT_COLOR = `var(${getColorCssVar(IconColor.Muted)})`;
-const STATIC_EDGE_COLOR = `var(${getColorCssVar(IconColor.Muted)})`;
-const TEMPORAL_EDGE_COLOR = `var(${getColorCssVar(IconColor.Info)})`;
+const ACTIVE_EDGE_COLOR = `${getColorCssVar(BrandColor.Primary)}`;
+const GRID_DOT_COLOR = `${getColorCssVar(IconColor.Muted)}`;
+const STATIC_EDGE_COLOR = `${getColorCssVar(IconColor.Muted)}`;
+const TEMPORAL_EDGE_COLOR = `${getColorCssVar(IconColor.Info)}`;
 const NODE_TYPES = {
   "transform-component": TransformComponentNode,
   "transform-frame": TransformFrameNode,
@@ -463,7 +463,7 @@ function TransformFrameNode({ data, selected }: NodeProps<FrameFlowNode>) {
   const iconColor = selected
     ? BrandColor.Accent
     : data.isolated
-      ? IconColor.Destructive
+      ? IconColor.Failure
       : data.dataBearing
         ? IconColor.Info
         : IconColor.Muted;
