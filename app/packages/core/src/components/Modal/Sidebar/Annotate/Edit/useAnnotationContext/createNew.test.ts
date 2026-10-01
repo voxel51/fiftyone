@@ -60,6 +60,16 @@ describe("buildNewLabelData", () => {
       const data = buildNewLabelData("foo", "Polyline");
       expect(data._cls).toBe("Polyline");
     });
+
+    it("returns _cls 'Keypoint' for KEYPOINT", () => {
+      const data = buildNewLabelData("foo", "Keypoint");
+      expect(data._cls).toBe("Keypoint");
+    });
+
+    it("omits _cls when the type is missing", () => {
+      const data = buildNewLabelData("foo", undefined as never);
+      expect(data).not.toHaveProperty("_cls");
+    });
   });
 
   describe("id", () => {
