@@ -405,16 +405,18 @@ const NewFieldSchema = () => {
           {/* Label field config: Classes and Attributes */}
           {category === "label" && (
             <>
-              <ClassesSection
-                classes={classes}
-                attributeCount={attributes.length}
-                component={classesComponent}
-                onAddClass={handleAddClass}
-                onEditClass={handleEditClass}
-                onDeleteClass={handleDeleteClass}
-                onComponentChange={setClassesComponentChoice}
-                onOrderChange={handleClassOrderChange}
-              />
+              {labelType !== "regression" && (
+                <ClassesSection
+                  classes={classes}
+                  attributeCount={attributes.length}
+                  component={classesComponent}
+                  onAddClass={handleAddClass}
+                  onEditClass={handleEditClass}
+                  onDeleteClass={handleDeleteClass}
+                  onComponentChange={setClassesComponentChoice}
+                  onOrderChange={handleClassOrderChange}
+                />
+              )}
               <AttributesSection
                 attributes={attributes}
                 onAddAttribute={handleAddAttribute}

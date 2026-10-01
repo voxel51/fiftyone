@@ -107,6 +107,7 @@ export type Label =
   | "Instance"
   | "Polyline"
   | "Polylines"
+  | "Regression"
   | "Segmentation"
   | "TemporalDetection"
   | "TemporalDetections";

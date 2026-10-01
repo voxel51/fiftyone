@@ -192,6 +192,20 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * The next successful sample PATCH whose body contains `fragment`, for
+   * edits that first write an empty label and then the value.
+   */
+  waitForPatchContaining(fragment: string) {
+    return this.page.waitForResponse(
+      (resp) =>
+        resp.request().method() === "PATCH" &&
+        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
+        resp.status() < 400 &&
+        (resp.request().postData() ?? "").includes(fragment),
+    );
+  }
+
+  /**
    * Click the Select action button
    */
   async selectAction() {
@@ -203,6 +217,13 @@ export class ModalAnnotateSidebarPom {
    */
   async createClassification() {
     await this.page.getByTestId("create-classification").click();
+  }
+
+  /**
+   * Click the Regression action button
+   */
+  async createRegression() {
+    await this.page.getByTestId("create-regression").click();
   }
 
   /**

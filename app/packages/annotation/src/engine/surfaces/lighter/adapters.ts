@@ -32,7 +32,12 @@ import type { AdapterMap, LabelKindAdapter } from "../../bridge/types";
  * mechanically enforces `overlay.id === instanceId`).
  */
 export interface LighterDescriptor {
-  factoryKey: "detection" | "classification" | "polyline" | "keypoint";
+  factoryKey:
+    | "detection"
+    | "classification"
+    | "regression"
+    | "polyline"
+    | "keypoint";
   options: { id: string; field: string; label: LabelData } & Record<
     string,
     unknown
@@ -168,6 +173,19 @@ export const classificationAdapter: LighterAdapter = {
   toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
 };
 
+export const regressionAdapter: LighterAdapter = {
+  buildHandle: (ref, label) => ({
+    factoryKey: "regression",
+    options: { id: ref.instanceId, field: ref.path, label },
+  }),
+
+  updateHandle: (overlay, label) => {
+    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+  },
+
+  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+};
+
 /**
  * Skeleton edges are what make a keypoint label draw as a figure rather than a
  * cloud of dots: each edge path is a list of indices into `label.points`, which
@@ -242,6 +260,7 @@ export const makeLighterAdapters = (
   [LabelType.Detections]: detectionAdapter,
   [LabelType.Classification]: classificationAdapter,
   [LabelType.Classifications]: classificationAdapter,
+  [LabelType.Regression]: regressionAdapter,
   [LabelType.Keypoint]: makeKeypointAdapter(deps),
   [LabelType.Keypoints]: makeKeypointAdapter(deps),
   [LabelType.Polyline]: polylineAdapter,

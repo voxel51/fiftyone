@@ -54,6 +54,9 @@ describe("embeddedDocTypeToLabelType", () => {
     expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Keypoint")).toBe(
       LabelType.Keypoint,
     );
+    expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Regression")).toBe(
+      LabelType.Regression,
+    );
     expect(
       embeddedDocTypeToLabelType("fiftyone.core.labels.TemporalDetections"),
     ).toBe(LabelType.TemporalDetections);

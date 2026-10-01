@@ -31,6 +31,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LabelType,
   POLYLINE,
+  REGRESSION_FIELD,
   type Stage,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
@@ -87,16 +88,20 @@ export const useTemporalDetectionFieldPaths = () =>
   );
 
 /**
- * Schema paths of the dataset's sample-level classification fields, single and
- * list alike. `space: SAMPLE` keeps `frames.*` out, since the composite store
- * routes each path to exactly one owner.
+ * Schema paths of the dataset's sample-level classification and regression
+ * fields, single and list alike. `space: SAMPLE` keeps `frames.*` out, since
+ * the composite store routes each path to exactly one owner.
  */
 export const useSampleClassificationFieldPaths = () =>
   useRecoilValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: [CLASSIFICATION_FIELD, CLASSIFICATIONS_FIELD],
+      embeddedDocType: [
+        CLASSIFICATION_FIELD,
+        CLASSIFICATIONS_FIELD,
+        REGRESSION_FIELD,
+      ],
     }),
   );
 

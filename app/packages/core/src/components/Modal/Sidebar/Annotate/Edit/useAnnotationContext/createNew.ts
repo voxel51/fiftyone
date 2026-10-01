@@ -7,6 +7,9 @@ import type {
   PolylineLabel,
   PolylineOptions,
   PolylineOverlay,
+  RegressionLabel,
+  RegressionOptions,
+  RegressionOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler } from "@fiftyone/lighter";
 import type { ClassificationLabel } from "@fiftyone/looker";
@@ -17,6 +20,7 @@ import {
   type LabelData,
   objectId,
   POLYLINE,
+  REGRESSION,
 } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
@@ -46,20 +50,22 @@ export function createNewLabel(
     origin: options?.origin,
   });
 
-  if (type === CLASSIFICATION) {
-    const overlay = overlayFactory.create<
-      ClassificationOptions,
-      ClassificationOverlay
-    >("classification", {
-      field,
-      id,
-      label: data as ClassificationLabel,
-    });
+  if (type === CLASSIFICATION || type === REGRESSION) {
+    const overlay =
+      type === CLASSIFICATION
+        ? overlayFactory.create<ClassificationOptions, ClassificationOverlay>(
+            "classification",
+            { field, id, label: data as ClassificationLabel },
+          )
+        : overlayFactory.create<RegressionOptions, RegressionOverlay>(
+            "regression",
+            { field, id, label: data as RegressionLabel },
+          );
     addOverlay(overlay);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
 
-    // Persist the new Classification through to the engine immediately.
-    // Classification has no draw gesture — there is no
+    // Persist the new chip through to the engine immediately. Neither a
+    // Classification nor a Regression has a draw gesture — there is no
     // `lighter:overlay-establish` to commit on, and the bridge is disabled on
     // video — so without this write the label would live only in the sidebar's
     // jotai draft (no engine row, no labels-list entry, no sample-document
@@ -126,6 +132,13 @@ export function createNewLabel(
   return null;
 }
 
+const NEW_LABEL_CLS: Partial<Record<LabelType, string>> = {
+  [CLASSIFICATION]: "Classification",
+  [DETECTION]: "Detection",
+  [POLYLINE]: "Polyline",
+  [REGRESSION]: "Regression",
+};
+
 /**
  * Build the initial label-data payload: schema-default → labelValue → first
  * class for `label`, per-attribute defaults, and polyline `points` seeded
@@ -157,17 +170,11 @@ export function buildNewLabelData(
   }
 
   const data = {
-    _cls:
-      type === CLASSIFICATION
-        ? "Classification"
-        : type === DETECTION
-          ? "Detection"
-          : type === POLYLINE
-            ? "Polyline"
-            : undefined,
+    _cls: NEW_LABEL_CLS[type],
     _id: labelId,
     ...defaults,
-    ...(labelValue && { label: labelValue }),
+    // a Regression carries a numeric `value`, never a class
+    ...(labelValue && type !== REGRESSION && { label: labelValue }),
   };
 
   if (type === POLYLINE) {

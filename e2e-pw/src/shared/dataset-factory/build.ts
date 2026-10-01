@@ -26,6 +26,7 @@ const LABEL_TYPES = new Set([
   "Instance",
   "Polyline",
   "Polylines",
+  "Regression",
   "Segmentation",
   "TemporalDetection",
   "TemporalDetections",

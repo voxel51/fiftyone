@@ -15,6 +15,7 @@ export enum LabelType {
   Polylines = "Polylines",
   Segmentation = "Segmentation",
   Heatmap = "Heatmap",
+  Regression = "Regression",
   TemporalDetection = "TemporalDetection",
   TemporalDetections = "TemporalDetections",
   Unknown = "Unknown",

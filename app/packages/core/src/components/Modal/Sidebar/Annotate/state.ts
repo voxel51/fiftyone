@@ -44,7 +44,11 @@ export const exploreActiveFields = atom<string[] | null>(null);
 export const annotationSliceMediaType = atom<string | null>(null);
 
 const FRAMES_PREFIX = "frames.";
-const CLASSIFICATION_TYPES = new Set(["classification", "classifications"]);
+const WHOLE_SAMPLE_LABEL_TYPES = new Set([
+  "classification",
+  "classifications",
+  "regression",
+]);
 const TEMPORAL_TYPES = new Set(["temporaldetection", "temporaldetections"]);
 
 /**
@@ -55,7 +59,8 @@ const TEMPORAL_TYPES = new Set(["temporaldetection", "temporaldetections"]);
  *   - temporal detections span frames, so they're video-only;
  *   - spatial sample-level labels (detection/polyline/keypoint/seg) live in
  *     `frames.*` on video, so at the sample level they belong to image/3d;
- *   - classifications and primitive scalars are whole-sample — valid anywhere.
+ *   - classifications, regressions and primitive scalars are whole-sample —
+ *     valid anywhere.
  * `sliceMediaType == null` means the dataset isn't grouped → no filtering.
  */
 const isPathAnnotatableOnSlice = (
@@ -80,7 +85,7 @@ const isPathAnnotatableOnSlice = (
 
   const type = (rawType ?? "").toLowerCase();
 
-  if (CLASSIFICATION_TYPES.has(type)) {
+  if (WHOLE_SAMPLE_LABEL_TYPES.has(type)) {
     return true;
   }
 

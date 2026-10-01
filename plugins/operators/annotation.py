@@ -354,6 +354,13 @@ class CreateAndActivateField(foo.Operator):
 
         # Get label schema config from frontend
         label_schema_config = ctx.params.get("label_schema_config", {})
+        attributes = label_schema_config.get("attributes", [])
+
+        # A label type without a `label` class (e.g. Regression) has no
+        # classes to pick from, so its schema carries no component
+        if "label" not in label_cls._fields:
+            return {"type": field_type, "attributes": attributes}
+
         classes = label_schema_config.get("classes")
 
         # Honor an explicit input type from the form; otherwise pick one
@@ -372,7 +379,7 @@ class CreateAndActivateField(foo.Operator):
         return {
             "type": field_type,
             "component": component,
-            "attributes": label_schema_config.get("attributes", []),
+            "attributes": attributes,
             **({"classes": classes} if classes else {}),
         }
 

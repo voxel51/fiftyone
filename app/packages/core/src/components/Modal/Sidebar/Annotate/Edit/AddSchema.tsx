@@ -6,6 +6,7 @@ import {
   Polyline,
 } from "@mui/icons-material";
 import { Alert, Typography } from "@mui/material";
+import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import styled from "styled-components";
 import { activeSchemaTab } from "../state";
@@ -24,10 +25,17 @@ const Container = styled.div`
   height: 100%;
 `;
 
+const Regression = () => (
+  <span style={{ color: "var(--color-brand-accent)", display: "flex" }}>
+    <Icon name={IconName.Slider} size={Size.Xl} />
+  </span>
+);
+
 const ICONS = {
   Classification,
   Detection,
   Polyline,
+  Regression,
 };
 
 const AddSchema = ({ type }: { type: string }) => {

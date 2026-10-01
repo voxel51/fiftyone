@@ -23,7 +23,15 @@ export type {
 } from "./overlay/DetectionOverlay";
 export type { MaskSnapshot, PaintStrokeData } from "./overlay/MaskCanvas";
 export { ClassificationOverlay } from "./overlay/ClassificationOverlay";
-export type { ClassificationOptions } from "./overlay/ClassificationOverlay";
+export type {
+  ClassificationLabel,
+  ClassificationOptions,
+} from "./overlay/ClassificationOverlay";
+export { RegressionOverlay } from "./overlay/RegressionOverlay";
+export type {
+  RegressionLabel,
+  RegressionOptions,
+} from "./overlay/RegressionOverlay";
 export { TemporalOverlay } from "./overlay/TemporalOverlay";
 export type { TemporalLabel, TemporalOptions } from "./overlay/TemporalOverlay";
 export { ImageOverlay } from "./overlay/ImageOverlay";
