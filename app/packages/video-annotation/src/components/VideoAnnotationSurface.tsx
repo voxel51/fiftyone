@@ -348,15 +348,14 @@ const VideoAnnotationSurfaceForSample: React.FC<
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
-            readouts={
-              <>
-                <DecodeStrategyReadout
-                  strategy={strategy}
-                  reason={reason}
-                  fellBackFrom={fellBack ? unplayable?.from : undefined}
-                />
-                <OrderByReadout />
-              </>
+            readouts={<OrderByReadout />}
+            trailingActions={
+              <DecodeStrategyReadout
+                strategy={strategy}
+                reason={reason}
+                fellBackFrom={fellBack ? unplayable?.from : undefined}
+                hasFrames={resolution.hasFrames}
+              />
             }
             onReadyChange={setTracksReady}
           />
