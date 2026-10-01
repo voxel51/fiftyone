@@ -8,14 +8,26 @@ import { expect, Locator } from "src/oss/fixtures";
 export const expectScreenshot = async (
   target: Locator,
   name: string,
-  options: { mask?: Locator[]; style?: string } = {},
+  options: { inset?: number; mask?: Locator[]; style?: string } = {},
 ) => {
+  const capture = {
+    animations: "disabled" as const,
+    mask: options.mask,
+    style: options.style,
+  };
+  const box = options.inset ? await target.boundingBox() : null;
   expect(
-    await target.screenshot({
-      animations: "disabled",
-      mask: options.mask,
-      style: options.style,
-    }),
+    box
+      ? await target.page().screenshot({
+          ...capture,
+          clip: {
+            x: box.x + options.inset,
+            y: box.y + options.inset,
+            width: box.width - 2 * options.inset,
+            height: box.height - 2 * options.inset,
+          },
+        })
+      : await target.screenshot(capture),
   ).toMatchSnapshot(name, { maxDiffPixelRatio: 0, threshold: 0 });
 };
 

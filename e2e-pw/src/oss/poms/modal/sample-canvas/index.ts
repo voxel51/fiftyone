@@ -345,6 +345,9 @@ export class SampleCanvasPom {
   }
 }
 
+/** The modal content's corner radius, in px */
+const MODAL_RADIUS = 8;
+
 /**
  * Sample canvas asserter
  */
@@ -390,7 +393,9 @@ class SampleCanvasAsserter {
     if ((await this.sampleCanvasPom.lighterCanvas.count()) > 0) {
       await this.sampleCanvasPom.eventUtils.next("e2e:lighter:frame-painted");
     }
+    // the modal's rounded corners antialias differently run to run
     await expectScreenshot(target, name, {
+      inset: MODAL_RADIUS,
       style: ".segmentation-toolbar { display: none !important; }",
     });
   }
