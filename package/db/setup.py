@@ -219,6 +219,8 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "manylinux1_i686"
         elif is_platform("Linux", "aarch64"):
             self.plat_name = "manylinux2014_aarch64"
+        elif is_platform("Linux", "riscv64"):
+            self.plat_name = "manylinux_2_39_riscv64"
         elif is_platform("Linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
         elif is_platform("Darwin", "arm64"):
