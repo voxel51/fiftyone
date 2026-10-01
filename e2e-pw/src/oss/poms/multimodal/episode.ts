@@ -168,6 +168,23 @@ export class EpisodePom {
     );
   }
 
+  /**
+   * The raw tile for `stream` shows the record it settled on for the
+   * playhead at `time`, to the millisecond the readout shows; a scrub settles
+   * each time it passes
+   */
+  rawAt(stream: string, time: string): EventCondition {
+    const targetMs = BigInt(utcDateTimeToNanoseconds(time)) / 1_000_000n;
+    return shown(
+      "raw-shown",
+      (d) =>
+        d.stream === stream &&
+        typeof d.targetNs === "string" &&
+        d.targetNs !== "" &&
+        BigInt(d.targetNs) / 1_000_000n === targetMs,
+    );
+  }
+
   /** The log console, in `mode`, shows each of `texts` */
   logs(texts: readonly string[], mode: "logs" | "diagnostics" = "logs") {
     return shown("log-rows", (d) => {
@@ -627,32 +644,42 @@ export class EpisodePom {
       changed.events,
       changed.predicate,
     );
+    // `conditions` describe `time`, which a step after the seek may reach
+    const landed = await Promise.all(
+      conditions.map(({ events, predicate }) =>
+        this.eventUtils.arm(events, predicate),
+      ),
+    );
     try {
-      let moved = true;
-      await this.after(
-        [
-          {
-            events: "e2e:playback:seek-applied",
-            predicate: (e) => {
-              moved = (e.detail as { moved: boolean }).moved;
-              return true;
+      try {
+        let moved = true;
+        await this.after(
+          [
+            {
+              events: "e2e:playback:seek-applied",
+              predicate: (e) => {
+                moved = (e.detail as { moved: boolean }).moved;
+                return true;
+              },
             },
-          },
-          ...conditions,
-        ],
-        seek,
-      );
-      if (moved) await readout.received;
+          ],
+          seek,
+        );
+        if (moved) await readout.received;
+      } finally {
+        await readout.dispose();
+      }
+      const current = await this.timestampButton.textContent();
+      expect(
+        inRange(current),
+        `readout ${current} should be within ${maxStepMs}ms before ${time}`,
+      ).toBe(true);
+      if (current !== time) {
+        await this.after([this.utcTime(time)], () => this.stepForward());
+      }
+      await Promise.all(landed.map(({ received }) => received));
     } finally {
-      await readout.dispose();
-    }
-    const current = await this.timestampButton.textContent();
-    expect(
-      inRange(current),
-      `readout ${current} should be within ${maxStepMs}ms before ${time}`,
-    ).toBe(true);
-    if (current !== time) {
-      await this.after([this.utcTime(time)], () => this.stepForward());
+      await Promise.all(landed.map((armed) => armed.dispose()));
     }
     await this.expectUtcTime(time);
   }

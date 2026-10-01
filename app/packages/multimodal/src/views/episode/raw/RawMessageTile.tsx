@@ -191,6 +191,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
           detail={{
             stream: selectedSourceName ?? streamKey,
             validFromNs: String(result.validFromNs),
+            targetNs: String(state?.targetNs ?? ""),
             status: state?.status ?? "",
           }}
         />

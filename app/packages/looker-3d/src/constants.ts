@@ -32,6 +32,8 @@ export const DRAFT_VERTICES_EVENT = "e2e:looker3d:draft-vertices";
 export const GRID_TOGGLED_EVENT = "e2e:looker3d:grid-toggled";
 /** Dispatched as the 3D slice selector's checkboxes mount and unmount. */
 export const SLICE_SELECTOR_EVENT = "e2e:looker3d:slice-selector";
+/** Dispatched as the annotation toolbar shows, with its active transform ("" for none). */
+export const ANNOTATION_TOOLBAR_EVENT = "e2e:looker3d:annotation-toolbar";
 
 /** The 3D viewer's `e2e:` bus events. */
 export type Looker3dE2EEvents = {
@@ -43,6 +45,7 @@ export type Looker3dE2EEvents = {
   [DRAFT_VERTICES_EVENT]: { count: number };
   [GRID_TOGGLED_EVENT]: { on: boolean };
   [SLICE_SELECTOR_EVENT]: { open: boolean };
+  [ANNOTATION_TOOLBAR_EVENT]: { visible: boolean; transformMode: string };
 };
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 

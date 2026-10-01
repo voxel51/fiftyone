@@ -128,11 +128,16 @@ export class ModalImaAsVideoControlsPom {
     );
     const loopInput = loopLabel.getByTestId("looker-checkbox-input-Loop video");
 
-    const loopInputChecked = await loopInput.isEnabled();
-
-    if (isLooping !== loopInputChecked) {
-      await loopLabel.click();
+    if (isLooping === (await loopInput.isChecked())) {
+      return;
     }
+
+    // the timeline loops by its own config, which the toggle updates on a
+    // later render
+    await this.modal.eventUtils.after("e2e:playback:looping", () =>
+      loopLabel.click(),
+    );
+    expect(await loopInput.isChecked()).toBe(isLooping);
   }
 }
 

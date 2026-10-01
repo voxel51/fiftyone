@@ -55,7 +55,8 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
     modalSample: "loaded",
   });
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  // the loading cover takes pointer events until Lighter reveals the sample
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 });
 
 /** Read a numeric edit-form field value. */

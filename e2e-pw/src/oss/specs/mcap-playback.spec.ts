@@ -387,8 +387,8 @@ test.describe("MCAP playback", () => {
       () =>
         episode.scrubToFraction(fractionOfLongRecording(long.midpointSecond)),
       [
-        episode.raw("/diagnostics"),
-        episode.raw("/rosout"),
+        episode.rawAt("/diagnostics", "2024-01-01 00:30:00.000"),
+        episode.rawAt("/rosout", "2024-01-01 00:30:00.000"),
         episode.logs(["LONG midpoint warning"]),
         episode.imageShown("camera/front"),
       ],
@@ -425,7 +425,10 @@ test.describe("MCAP playback", () => {
         episode.scrubToFraction(
           fractionOfLongRecording(long.midpointSecond - 0.5),
         ),
-      [episode.raw("/diagnostics"), episode.raw("/rosout")],
+      [
+        episode.rawAt("/diagnostics", "2024-01-01 00:29:59.500"),
+        episode.rawAt("/rosout", "2024-01-01 00:29:59.500"),
+      ],
     );
     episode.focusRawTile("/diagnostics");
     await episode.expectRawMeta(

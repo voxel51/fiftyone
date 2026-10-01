@@ -20,6 +20,7 @@ import {
 type TimelineViewE2EEvents = {
   "e2e:playback:status-shown": { timelineName: string; text: string };
   "e2e:playback:playhead-state": { timelineName: string; state: string };
+  "e2e:playback:looping": { timelineName: string; loop: boolean };
 };
 
 interface TimelineProps {
@@ -55,6 +56,13 @@ export const Timeline = React.memo(
           },
         );
       }, [name, frameNumber, config.totalFrames]);
+
+      React.useEffect(() => {
+        getEventBus<TimelineViewE2EEvents>().dispatch("e2e:playback:looping", {
+          timelineName: name,
+          loop: config.loop,
+        });
+      }, [name, config.loop]);
 
       React.useEffect(() => {
         getEventBus<TimelineViewE2EEvents>().dispatch(

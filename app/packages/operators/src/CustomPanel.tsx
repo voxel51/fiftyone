@@ -11,7 +11,10 @@ import { Box, Typography } from "@mui/material";
 import { useEffect } from "react";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
-import { useActivePanelEventsCount } from "./hooks";
+import {
+  useActivePanelEventsCount,
+  useInFlightInvocationsCount,
+} from "./hooks";
 import { Property, type PropertyJSON } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
@@ -34,6 +37,7 @@ export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
+  const inFlight = useInFlightInvocationsCount();
   const [_, setLoading] = usePanelLoading(panelId);
   const triggerPanelEvent = usePanelEvent();
 
@@ -63,14 +67,15 @@ export function CustomPanel(props: CustomPanelProps) {
     setLoading(count > 0);
   }, [setLoading, count]);
 
-  // an event's render lands with its result, before its count drops
+  // an event's count drops with its result, before the panel state updates
+  // it triggers have run
   useEffect(() => {
     if (!panelSchema) return;
     getEventBus<CustomPanelE2EEvents>().dispatch(
       "e2e:operators:panel-rendered",
-      { panelName, pending: count },
+      { panelName, pending: count + inFlight },
     );
-  }, [panelName, panelSchema, data, count]);
+  }, [panelName, panelSchema, data, count, inFlight]);
 
   if (pending && !panelSchema) {
     return <PanelSkeleton />;

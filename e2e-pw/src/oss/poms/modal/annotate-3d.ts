@@ -149,6 +149,21 @@ export class ModalAnnotate3dPom {
   }
 
   /**
+   * Run `action` (a cuboid selection) and resolve once the annotation toolbar
+   * shows the transform group it arms
+   */
+  async afterTransformShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:annotation-toolbar",
+      action,
+      (e) => {
+        const detail = e.detail as { visible: boolean; transformMode: string };
+        return detail.visible && detail.transformMode !== "";
+      },
+    );
+  }
+
+  /**
    * The engine instanceId of a listed label (strips the `annotate-label-`
    * prefix from its `data-cy`).
    */

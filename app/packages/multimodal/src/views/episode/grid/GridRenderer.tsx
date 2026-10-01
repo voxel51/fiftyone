@@ -355,17 +355,21 @@ export function GridRenderer({
       size: BitmapDrawSize,
       snapshotPoseKey?: string,
     ) => {
-      // announced like a looker tile's draw, so grid loads count it
-      getEventBus<GridRendererE2EEvents>().dispatch(
-        "e2e:looker:canvas-loaded",
-        {
-          sampleFilepath: String(
-            (ctx.sample.sample as { filepath?: string }).filepath,
-          ),
-          sampleId: String(sampleId),
-          thumbnail: true,
-        },
-      );
+      // announced like a looker tile's draw, so grid loads count it; a canvas
+      // not yet laid out (or detached) commits too, and redraws once it is
+      const shown = canvas.getBoundingClientRect();
+      if (canvas.isConnected && shown.width > 0 && shown.height > 0) {
+        getEventBus<GridRendererE2EEvents>().dispatch(
+          "e2e:looker:canvas-loaded",
+          {
+            sampleFilepath: String(
+              (ctx.sample.sample as { filepath?: string }).filepath,
+            ),
+            sampleId: String(sampleId),
+            thumbnail: true,
+          },
+        );
+      }
       if (!cacheKey) return;
       if (capturedTokensRef.current.cacheKey !== cacheKey) {
         capturedTokensRef.current = { cacheKey, tokens: new Set() };

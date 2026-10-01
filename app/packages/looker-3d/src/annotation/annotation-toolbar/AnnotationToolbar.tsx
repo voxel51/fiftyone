@@ -1,15 +1,20 @@
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { ActionToolbar } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
+import {
+  ANNOTATION_TOOLBAR_EVENT,
+  type Looker3dE2EEvents,
+} from "../../constants";
 import type { AnnotationToolbarProps } from "../types";
 import { useAnnotationActions } from "./useAnnotationActions";
 import { Orientation, ZIndex } from "@voxel51/voodo";
 
 export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
-  const { actions } = useAnnotationActions();
+  const { actions, transformMode } = useAnnotationActions();
   const canAnnotate = useCanAnnotate();
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null,
@@ -31,7 +36,21 @@ export const AnnotationToolbar = ({ className }: AnnotationToolbarProps) => {
     }
   }, [canAnnotate]);
 
-  if (!canAnnotate || !portalContainer) {
+  const visible = canAnnotate && !!portalContainer;
+  const shownTransformMode = actions.some(
+    (group) => group.id === "transform-actions" && !group.isHidden,
+  )
+    ? transformMode
+    : "";
+
+  useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(ANNOTATION_TOOLBAR_EVENT, {
+      visible,
+      transformMode: visible ? shownTransformMode : "",
+    });
+  }, [visible, shownTransformMode]);
+
+  if (!visible) {
     return null;
   }
 

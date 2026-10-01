@@ -65,9 +65,10 @@ test("grid remounts exactly once per spaces layout change", async ({
     await panel.openInSplit("Histograms");
     return at;
   });
+  // a second teardown would hide the tiles, so the cycle count reads first
+  await assertCycles(1, { splitAt });
   expect(await panel.getContent("Histograms").isVisible()).toBe(true);
   expect(await grid.getNthTile(0).isVisible()).toBe(true);
-  await assertCycles(1, { splitAt });
 
   // join: closing the split panel collapses the layout back to a single pane
   const joinAt = await grid.run(async () => {
@@ -75,7 +76,7 @@ test("grid remounts exactly once per spaces layout change", async ({
     await panel.closeTab("Histograms");
     return at;
   });
+  await assertCycles(2, { splitAt, joinAt });
   expect(await panel.getContent("Histograms").isVisible()).toBe(false);
   expect(await grid.getNthTile(0).isVisible()).toBe(true);
-  await assertCycles(2, { splitAt, joinAt });
 });

@@ -126,7 +126,9 @@ test.describe.serial("3d cuboid annotation", () => {
   test("selecting the cuboid opens its edit form, toolbar, and scale gizmo", async ({
     modal,
   }) => {
-    await modal.annotate3d.selectLabel("car");
+    await modal.annotate3d.afterTransformShown(() =>
+      modal.annotate3d.selectLabel("car"),
+    );
 
     // the edit form binds to the selected cuboid's class
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");

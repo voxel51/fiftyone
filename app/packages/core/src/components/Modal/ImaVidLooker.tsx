@@ -110,6 +110,7 @@ export const ImaVidLookerReact = React.memo(
     const handleError = useErrorHandler();
 
     const updateLookerOptions = useLookerOptionsUpdate();
+    useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
     useEventHandler(looker, "showOverlays", useShowOverlays());
     useEventHandler(looker, "reset", () => {
       setReset((c) => !c);
