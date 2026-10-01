@@ -5,6 +5,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { createQuickstartDataset } from "./quickstart-data";
 
 const test = base.extend<{
   sidebar: SidebarPom;
@@ -40,27 +41,12 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {
-    max_samples: 5,
-  });
+  await createQuickstartDataset(datasetFactory, quickstartColorByField);
 
   await fiftyoneLoader.executePythonCode(`
       import fiftyone as fo
-      import random
-      quickstart_color_by_field = fo.load_dataset("${quickstartColorByField}")      
-
-      n = len(quickstart_color_by_field)
-      labels = ["foo", "bar", "spam", "eggs"]
-      collaborators = ["alice", "bob", "charlie", "peter", "susan"]
-
-      # Add label attributes of each primitive type
-      patches = quickstart_color_by_field.to_patches("ground_truth")
-      p = len(patches)
-
-      quickstart_color_by_field.add_sample_field("ground_truth.detections.str_field", fo.StringField)
-      patches.set_values("ground_truth.str_field", [labels[index % 4] for index in range(p)])
 
       dummy_color_by_instance = fo.Dataset("${dummyDatasetColorByInstance}")
       dummy_color_by_instance.persistent = True

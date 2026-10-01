@@ -3,6 +3,7 @@ import { GridPom, TileLabels } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
+import { createQuickstartDataset } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
@@ -23,11 +24,11 @@ const TABLE_SETTING = [
 ];
 
 const GROUND_TRUTH: TileLabels = {
-  "000880.jpg": gt("bird", "bird", "bird"),
-  "001599.jpg": gt("horse", "person"),
-  "003344.jpg": gt("carrot", "cat"),
-  "001430.jpg": gt(...BOTTLES, ...CUPS, ...TABLE_SETTING),
-  "000793.jpg": gt("cake", "surfboard", "surfboard"),
+  "0.png": gt("bird", "bird", "bird"),
+  "1.png": gt("horse", "person"),
+  "2.png": gt("carrot", "cat"),
+  "3.png": gt(...BOTTLES, ...CUPS, ...TABLE_SETTING),
+  "4.png": gt("cake", "surfboard", "surfboard"),
 };
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
@@ -43,12 +44,9 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
-  });
+  await createQuickstartDataset(datasetFactory, datasetName);
 });
 
 test.describe.serial("sidebar-filter-visibility", () => {
@@ -71,7 +69,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
       // selecting a value filters in the default mode, selecting labels
       expect(
         await grid.afterGridRefreshed(() => sidebar.applyFilter("bottle")),
-      ).toEqual({ "001430.jpg": gt(...BOTTLES) });
+      ).toEqual({ "3.png": gt(...BOTTLES) });
       await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
       await grid.assert.isTileCountEqualTo(1);
       expect(await sidebar.filterModeText(LABEL_PATH)).toBe(
@@ -100,17 +98,17 @@ test.describe.serial("sidebar-filter-visibility", () => {
     // selecting a value shows only the selected values' labels
     expect(
       await grid.afterTilesUpdated(() => sidebar.applyFilter("cat")),
-    ).toEqual({ "001430.jpg": [] });
+    ).toEqual({ "3.png": [] });
     expect(await sidebar.filterModeText(LABEL_PATH)).toBe("Show label");
     expect(
       await grid.afterTilesUpdated(() => sidebar.applyFilter("person")),
-    ).toEqual({ "001430.jpg": [] });
+    ).toEqual({ "3.png": [] });
 
     expect(
       await grid.afterTilesUpdated(() =>
         sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
       ),
-    ).toEqual({ "001430.jpg": gt(...BOTTLES) });
+    ).toEqual({ "3.png": gt(...BOTTLES) });
   });
 
   test("In grid, exclude a label filter works", async ({
@@ -124,7 +122,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
       ),
     ).toEqual({
       ...GROUND_TRUTH,
-      "001430.jpg": gt(...CUPS, ...TABLE_SETTING),
+      "3.png": gt(...CUPS, ...TABLE_SETTING),
     });
     await grid.assert.isEntryCountTextEqualTo("5 samples");
     await grid.assert.isTileCountEqualTo(5);
@@ -134,18 +132,18 @@ test.describe.serial("sidebar-filter-visibility", () => {
     expect(
       await grid.afterTilesUpdated(() => sidebar.applyFilter("cup")),
     ).toEqual({
-      "000880.jpg": [],
-      "001599.jpg": [],
-      "003344.jpg": [],
-      "001430.jpg": gt(...CUPS),
-      "000793.jpg": [],
+      "0.png": [],
+      "1.png": [],
+      "2.png": [],
+      "3.png": gt(...CUPS),
+      "4.png": [],
     });
 
     expect(
       await grid.afterTilesUpdated(() =>
         sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
       ),
-    ).toEqual({ ...GROUND_TRUTH, "001430.jpg": gt(...TABLE_SETTING) });
+    ).toEqual({ ...GROUND_TRUTH, "3.png": gt(...TABLE_SETTING) });
   });
 
   test("In grid, show samples with a label filter works", async ({
@@ -157,7 +155,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
       await grid.afterGridRefreshed(() =>
         sidebar.selectFilterMode(LABEL_PATH, "show-samples-with-label"),
       ),
-    ).toEqual({ "001430.jpg": GROUND_TRUTH["001430.jpg"] });
+    ).toEqual({ "3.png": GROUND_TRUTH["3.png"] });
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
     await grid.assert.isTileCountEqualTo(1);
 
@@ -165,13 +163,13 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
     expect(
       await grid.afterTilesUpdated(() => sidebar.applyFilter("cup")),
-    ).toEqual({ "001430.jpg": gt(...CUPS) });
+    ).toEqual({ "3.png": gt(...CUPS) });
 
     expect(
       await grid.afterTilesUpdated(() =>
         sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
       ),
-    ).toEqual({ "001430.jpg": gt(...BOTTLES, ...TABLE_SETTING) });
+    ).toEqual({ "3.png": gt(...BOTTLES, ...TABLE_SETTING) });
   });
 
   test("In grid, omit samples with a label filter works", async ({
@@ -180,7 +178,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
     eventUtils,
   }) => {
     const withoutBottles = Object.fromEntries(
-      Object.entries(GROUND_TRUTH).filter(([file]) => file !== "001430.jpg"),
+      Object.entries(GROUND_TRUTH).filter(([file]) => file !== "3.png"),
     );
     expect(
       await grid.afterGridRefreshed(() =>
@@ -195,16 +193,16 @@ test.describe.serial("sidebar-filter-visibility", () => {
     expect(
       await grid.afterTilesUpdated(() => sidebar.applyFilter("horse")),
     ).toEqual({
-      "000880.jpg": [],
-      "001599.jpg": gt("horse"),
-      "003344.jpg": [],
-      "000793.jpg": [],
+      "0.png": [],
+      "1.png": gt("horse"),
+      "2.png": [],
+      "4.png": [],
     });
 
     expect(
       await grid.afterTilesUpdated(() =>
         sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
       ),
-    ).toEqual({ ...withoutBottles, "001599.jpg": gt("person") });
+    ).toEqual({ ...withoutBottles, "1.png": gt("person") });
   });
 });

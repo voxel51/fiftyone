@@ -23,18 +23,23 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
+
+  // the field visibility asserter reads these quickstart fields by name
+  await datasetFactory.createDataset({
+    datasetName,
+    schema: {
+      ground_truth: "Detections",
+      predictions: "Detections",
+      uniqueness: "FloatField",
+    },
+  });
 
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
-    import fiftyone.zoo as foz
 
-    # just for the schema
-    dataset = foz.load_zoo_dataset("quickstart", dataset_name="${datasetName}", max_samples=0)
-    dataset.persistent = True
-    dataset.save()
-    dataset.add_sample(fo.Sample(filepath="dummy.png"))
+    dataset = fo.load_dataset("${datasetName}")
 
     field = dataset.get_field("ground_truth")
     field.description = "ground_truth description"
@@ -45,8 +50,6 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
     field.description = "metadata.width description"
     field.info = {"owner": "bob"}
     field.save()
-
-    dataset.save()
   `);
 });
 

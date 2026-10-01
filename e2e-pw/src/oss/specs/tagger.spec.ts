@@ -4,6 +4,7 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { createQuickstartDataset } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
@@ -31,12 +32,9 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
-  });
+  await createQuickstartDataset(datasetFactory, datasetName);
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -89,10 +87,10 @@ test.describe.serial("tag", () => {
     await grid.afterTilesDrawn(5, () =>
       grid.run(() => tray.tagLabels("labelTest")),
     );
-    // verify the bubble in the image
-    // the first sample has 17 label tag count, the second sample has 22 tag count
-    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-17");
-    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-22");
+    // every ground_truth and predictions label is tagged: 3 + 3 on the first
+    // sample, 2 + 5 on the second
+    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-6");
+    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-7");
     expect(await bubble1.isVisible()).toBe(true);
     expect(await bubble2.isVisible()).toBe(true);
 

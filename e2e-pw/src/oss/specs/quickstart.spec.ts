@@ -3,6 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { createQuickstartDataset } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
@@ -22,24 +23,13 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset_name = "${datasetName}"
-    dataset = foz.load_zoo_dataset(
-      "quickstart", max_samples=5, dataset_name=dataset_name
-    )
-    dataset.persistent = True
-
-    patches = dataset.to_patches("predictions")
-    dataset.save_view("patches", patches)
-
-    grouped_patches = patches.group_by("predictions.label")
-    dataset.save_view("grouped-patches", grouped_patches)
-  `);
+  await createQuickstartDataset(datasetFactory, datasetName, {
+    patches: 'dataset.to_patches("predictions")',
+    "grouped-patches":
+      'dataset.to_patches("predictions").group_by("predictions.label")',
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -98,13 +88,14 @@ test.describe.serial("quickstart", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "patches" }),
     });
-    await grid.assert.isEntryCountTextEqualTo("122 patches");
+    // one patch per prediction, one group per distinct prediction label
+    await grid.assert.isEntryCountTextEqualTo("16 patches");
 
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "grouped-patches" }),
     });
 
-    await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
+    await grid.assert.isEntryCountTextEqualTo("13 groups of patches");
   });
 
   test("sidebar persistence", async ({ grid, modal, sidebar }) => {

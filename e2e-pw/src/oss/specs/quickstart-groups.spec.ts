@@ -5,11 +5,13 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { QUICKSTART_GROUP_SLICES } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
 
-const FIRST_SAMPLE_FILENAME = "003037.png";
-const SECOND_SAMPLE_FILENAME = "007195.png";
+// the factory names group media `<slice>-<groupIndex>`
+const FIRST_SAMPLE_FILENAME = "left-0.png";
+const SECOND_SAMPLE_FILENAME = "left-1.png";
 
 const test = base.extend<{
   grid: GridPom;
@@ -39,11 +41,15 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-    max_samples: 12,
+  // 4 groups x 3 slices = 12 samples
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 4,
+    slices: QUICKSTART_GROUP_SLICES,
   });
 });
 
