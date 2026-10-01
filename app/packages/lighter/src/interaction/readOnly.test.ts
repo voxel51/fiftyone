@@ -65,14 +65,19 @@ const makeCanvas = (): HTMLCanvasElement => {
   return canvas;
 };
 
-const pointerDown = (canvas: HTMLCanvasElement) => {
+const pointerDown = (canvas: HTMLCanvasElement, { shiftKey = false } = {}) => {
   canvas.dispatchEvent(
     new MouseEvent("pointerdown", {
       clientX: 10,
       clientY: 10,
+      shiftKey,
       bubbles: true,
     }),
   );
+};
+
+const pointerCancel = (canvas: HTMLCanvasElement) => {
+  canvas.dispatchEvent(new MouseEvent("pointercancel", { bubbles: true }));
 };
 
 const pointerMove = (canvas: HTMLCanvasElement, clientX: number) => {
@@ -183,6 +188,28 @@ describe("InteractionManager read-only", () => {
       pointerUp(canvas, 40);
 
       expect(selection.isSelected("d1")).toBe(false);
+    });
+
+    it("does not select when a Shift press for panning is released in place", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas, { shiftKey: true });
+      pointerUp(canvas);
+
+      expect(selection.isSelected("d1")).toBe(false);
+    });
+
+    it("drops the pan cursor when a pan is cancelled", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas);
+      pointerMove(canvas, 40);
+      expect(canvas.style.cursor).toBe("all-scroll");
+
+      // an unpressed move far from the old press must not read as a pan
+      pointerCancel(canvas);
+      pointerMove(canvas, 60);
+      expect(canvas.style.cursor).toBe("pointer");
     });
   });
 

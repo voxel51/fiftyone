@@ -261,6 +261,8 @@ export class InteractionManager {
 
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
   private readOnlyPanning = false;
+  /** The press began with the pan modifier, so its release never selects */
+  private pressReservedForPan = false;
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
@@ -442,6 +444,7 @@ export class InteractionManager {
       // disableZoomPan / capture / pendingAction) and bail before any selection,
       // draw, or resize so the drag only pans.
       if (this.isPanModifierActive()) {
+        this.pressReservedForPan = true;
         return;
       }
 
@@ -1104,11 +1107,22 @@ export class InteractionManager {
       this.readOnlyPanning = false;
       this.setCursor(this.readOnlyCursor(handler));
     }
-    this.clickStartPoint = undefined;
-    this.clickStartTime = 0;
+    this.endPress();
   };
 
+  /** Forget the press; a cancelled or abandoned gesture never gets a pointer-up */
+  private endPress(): void {
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+    this.pressReservedForPan = false;
+    if (this.readOnlyPanning) {
+      this.readOnlyPanning = false;
+      this.setCursor(this.readOnlyCursor());
+    }
+  }
+
   private handlePointerCancel = (event: PointerEvent): void => {
+    this.endPress();
     if (this.pendingAction) {
       this.pendingAction = undefined;
       this.renderer.enableZoomPan();
@@ -1126,6 +1140,10 @@ export class InteractionManager {
   private handlePointerLeave = (event: PointerEvent): void => {
     // Cancel next hover cycle; no longer on the canvas
     this.cancelPendingHover();
+    // a press still held keeps its gesture; one released off-canvas is over
+    if (event.buttons === 0) {
+      this.endPress();
+    }
 
     // Clear hover state when leaving canvas
     if (this.hoveredHandler) {
@@ -1298,6 +1316,7 @@ export class InteractionManager {
 
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
+    if (this.pressReservedForPan) return;
 
     // Check if this is a valid click (not a drag)
     if (!this.isSpatialDragEvent(event)) {
