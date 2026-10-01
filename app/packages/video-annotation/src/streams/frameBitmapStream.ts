@@ -278,7 +278,14 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
         continue;
       }
 
-      this.requestChunkStartingAt(f, startFrame + window - f);
+      // Past the playhead, wait until a whole chunk fits: each one-frame
+      // advance opens one slot, and refilling it alone is a request per tick
+      const open = startFrame + window - f;
+      if (f > startFrame && open < this.budget.chunkLengthAt(f)) {
+        return;
+      }
+
+      this.requestChunkStartingAt(f, open);
       return;
     }
   }

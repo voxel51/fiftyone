@@ -9,7 +9,7 @@ Frame-first pipeline tests.
 import unittest
 
 import fiftyone as fo
-from fiftyone import ViewField as F
+from fiftyone import ViewField as F, VALUE
 import fiftyone.core.frame_pipelines as fofp
 
 from decorators import drop_datasets
@@ -75,6 +75,30 @@ class FramePipelinesTests(unittest.TestCase):
         self.assertEqual(actual, expected, view)
 
         return actual
+
+    @drop_datasets
+    def test_reduce_counts_need_nonnegative_terms(self):
+        dataset = fo.Dataset()
+        video = fo.Sample(filepath="video.mp4")
+        video[1]["score"] = 1
+        video[2]["score"] = -1
+        dataset.add_sample(video)
+
+        # booleans cast to 0 or 1 are planned and agree with the old path
+        exists = dataset.match(
+            F("frames").reduce(
+                VALUE + F("score").exists().to_int(), init_val=0
+            )
+            > 0
+        )
+        self.assertEqual(self._assert_matches_old_path(exists)["count"], 1)
+
+        # signed terms cancel out, so the rewrite does not apply
+        signed = dataset.match(
+            F("frames").reduce(VALUE + F("score").to_int(), init_val=0) > 0
+        )
+        self.assertIsNone(fofp.make_pipeline(signed))
+        self.assertEqual(signed.count(), 0)
 
     @drop_datasets
     def test_frame_matches(self):

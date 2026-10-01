@@ -158,6 +158,49 @@ describe("DynamicGroupImageStream decode-ahead budget", () => {
     stream.destroy();
   });
 
+  it("refills the window a whole chunk at a time", () => {
+    // 100x100 frames are 40_000 bytes, so this budget's forward window is
+    // eight frames, split into chunks
+    const stream = makeStream(640_000);
+    const worker = FakeWorker.instances[0];
+
+    const landAll = () => {
+      for (const chunk of fetchChunks(worker)) {
+        const { frameNumber, numFrames } = chunk.request!;
+        for (let f = frameNumber; f < frameNumber + numFrames; f++) {
+          landFrame(worker, chunk.reqId!, f, 100);
+        }
+      }
+    };
+
+    // fill the window ahead of a playhead parked on frame 1
+    let issued = -1;
+    while (issued !== fetchChunks(worker).length) {
+      issued = fetchChunks(worker).length;
+      stream.prefetch([0, 3]);
+      landAll();
+    }
+    const chunk = fetchChunks(worker).at(-1)!.request!.numFrames;
+    const windowEnd = fetchChunks(worker).reduce(
+      (end, c) =>
+        Math.max(end, c.request!.frameNumber + c.request!.numFrames - 1),
+      0,
+    );
+    expect(chunk).toBeGreaterThan(1);
+
+    // one frame of advance opens one slot: no one-frame request
+    stream.prefetch([1 / 30, 3]);
+    expect(fetchChunks(worker)).toHaveLength(issued);
+
+    // a whole chunk's worth of open slots refills as one chunk
+    stream.prefetch([chunk / 30, 3]);
+    const refill = fetchChunks(worker)[issued];
+    expect(refill.request!.frameNumber).toBe(windowEnd + 1);
+    expect(refill.request!.numFrames).toBe(chunk);
+
+    stream.destroy();
+  });
+
   it("keeps the full chunk when frames are small next to the budget", () => {
     const stream = makeStream(1e9);
     const worker = FakeWorker.instances[0];

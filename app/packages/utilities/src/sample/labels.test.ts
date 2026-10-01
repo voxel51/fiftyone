@@ -67,9 +67,9 @@ describe("embeddedDocTypeToLabelType", () => {
       LabelType.Unknown,
     );
     // a real label class the taxonomy does not model
-    expect(embeddedDocTypeToLabelType("fiftyone.core.labels.Regression")).toBe(
-      LabelType.Unknown,
-    );
+    expect(
+      embeddedDocTypeToLabelType("fiftyone.core.labels.GeoLocations"),
+    ).toBe(LabelType.Unknown);
     expect(embeddedDocTypeToLabelType(null)).toBe(LabelType.Unknown);
     expect(embeddedDocTypeToLabelType(undefined)).toBe(LabelType.Unknown);
     expect(embeddedDocTypeToLabelType("")).toBe(LabelType.Unknown);

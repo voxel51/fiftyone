@@ -425,12 +425,13 @@ def _parse_frame_count(count):
         ):
             return None
 
-        # Only nonnegative terms, so a positive sum means a positive term
+        # Only nonnegative, non-null terms, so a positive sum means a positive
+        # term: sizes, and booleans cast to 0 or 1
         term = terms[1]
         if (
             not isinstance(term, dict)
             or len(term) != 1
-            or next(iter(term)) not in ("$size", "$toInt")
+            or not _is_nonnegative_count(term)
             or _has_root_refs(term)
             or _contains(term, "$$value")
         ):
@@ -452,6 +453,38 @@ def _parse_frame_count(count):
         )
 
     return None
+
+
+_BOOLEAN_OPERATORS = {
+    "$and",
+    "$or",
+    "$not",
+    "$eq",
+    "$ne",
+    "$gt",
+    "$gte",
+    "$lt",
+    "$lte",
+    "$in",
+    "$anyElementTrue",
+    "$allElementsTrue",
+    "$isArray",
+    "$regexMatch",
+}
+
+
+def _is_nonnegative_count(term):
+    """Whether a ``$reduce`` term is a ``$size`` or a boolean cast to 0 or 1."""
+    op, arg = next(iter(term.items()))
+    if op == "$size":
+        return True
+
+    return (
+        op == "$toInt"
+        and isinstance(arg, dict)
+        and len(arg) == 1
+        and next(iter(arg)) in _BOOLEAN_OPERATORS
+    )
 
 
 def _has_root_refs(expr):
