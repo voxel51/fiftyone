@@ -196,6 +196,9 @@ const Modal = () => {
     <ModalBackground onClick={() => closeSchemaManager()}>
       <ModalContainer
         data-cy="schema-manager"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Schema manager"
         onClick={(e) => e.stopPropagation()}
       >
         <ModalHeader>
