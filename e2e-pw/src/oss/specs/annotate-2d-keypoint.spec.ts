@@ -36,7 +36,11 @@ const BOX_FIELD = "boxes";
 /** The skeleton's node names, in placement order. */
 const SKELETON_NODES = ["nose", "left-eye", "right-eye", "mouth"];
 
-/** Container-relative [0,1] placements, one per skeleton node. */
+/**
+ * Container-relative [0,1] placements, one per skeleton node. The node names
+ * are labels only: the full skeleton draws a diamond (nose top, eyes left and
+ * right, mouth bottom), and a skipped node removes its corner and both edges.
+ */
 const PLACEMENTS: Array<[number, number]> = [
   [0.45, 0.3],
   [0.35, 0.42],
@@ -214,8 +218,8 @@ test.describe("2D annotation keypoint", () => {
     await edit.assert.verifyFieldValue("label", "person");
     await modal.sidebar.annotate.waitForSavesSettled();
 
-    // the render, deselected: three dots, the edges between placed nodes,
-    // and nothing at the hole
+    // the render, deselected: the diamond without its right-eye corner. Three
+    // dots, two edges, and nothing at the hole.
     await edit.backButton.click();
     await edit.assert.isClosed();
     await modal.sampleCanvas.assert.hasScreenshot("keypoint-guided-skip.png");
