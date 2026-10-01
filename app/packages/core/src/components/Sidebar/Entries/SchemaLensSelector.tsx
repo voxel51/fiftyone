@@ -18,7 +18,7 @@
  * Renders as a text trigger (layers icon + current schema + chevron)
  * opening a menu of check items — the dataset default first — with a
  * "Manage schema" entry below a separator for schema managers.
- * ``SchemaLensRow`` places it in the sidebar with a reset control.
+ * ``SchemaLensRow`` places it in the sidebar.
  */
 
 import { useOperatorAvailability } from "@fiftyone/operators";
