@@ -22,14 +22,19 @@ export enum LabelType {
 }
 
 /**
- * Label types that are a SINGLE embedded document per field, rather than a
- * document carrying a list of elements. A field holds at most one of these, so
- * the field path is its whole identity — there is no per-element id to address
- * by, and no list child to persist through.
+ * Single-document label types whose per-frame value is addressed by its FIELD:
+ * a field holds at most one per frame, so the field path is its whole
+ * identity, with no per-element id to address by and no list child to persist
+ * through. Must match the server's `_SINGLETON_LABEL_TYPES`.
+ *
+ * Detection, Polyline and Keypoint are single documents too, but their frames
+ * belong to instance tracks, so they are not singletons.
  */
 export const SINGLETON_LABEL_TYPES: ReadonlySet<LabelType> = new Set([
-  LabelType.Segmentation,
+  LabelType.Classification,
   LabelType.Heatmap,
+  LabelType.Regression,
+  LabelType.Segmentation,
 ]);
 
 /** True if the given label type is a single-document label (e.g. Segmentation). */

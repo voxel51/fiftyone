@@ -23,15 +23,22 @@ const createSchema = () => ({
 });
 
 const Id = () => {
-  const overlay = useAnnotationContext().selected?.overlay;
+  const selected = useAnnotationContext().selected;
+  const overlay = selected?.overlay;
   if (!overlay) {
     return null;
   }
 
+  // a video frame field's value is addressed by its field; show its document
+  const docId = (selected?.data as { _docId?: string } | undefined)?._docId;
+
   return (
     <>
       <div>
-        <SchemaIOComponent schema={createSchema()} data={{ id: overlay?.id }} />
+        <SchemaIOComponent
+          schema={createSchema()}
+          data={{ id: docId || overlay.id }}
+        />
       </div>
     </>
   );

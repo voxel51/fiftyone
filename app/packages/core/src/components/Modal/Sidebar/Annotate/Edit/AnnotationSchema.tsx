@@ -1,5 +1,6 @@
 import {
   isFrameScopedPath,
+  isSingletonAddressId,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
@@ -286,7 +287,8 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // instance appears on; a schema-declared dynamic attribute carries
       // per-frame meaning, so it forward-fills from this frame to the track's
       // next change. Geometry stays on this frame; image / sample-level labels
-      // have no sibling frames, so both are empty for them.
+      // have no sibling frames, and a singleton field's value is per frame,
+      // so both are empty for them.
       const dynamicKeys = new Set(
         allAttributes
           .filter((attr) => attr.dynamic && attr.name)
@@ -294,7 +296,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       );
 
       const { trackPartial, dynamicPartial }: TrackEditSplit =
-        isFrameField && ref.frame != null
+        isFrameField && ref.frame != null && !isSingletonAddressId(instanceId)
           ? splitTrackEdit(persistableValue, dynamicKeys)
           : { trackPartial: {}, dynamicPartial: {} };
 

@@ -39,10 +39,13 @@ export function createNewLabel(
 ): AnnotationLabel | null {
   const { scene, addOverlay, overlayFactory, engine, sample } = deps;
   const store = getDefaultStore();
-  const id = options?.id ?? objectId();
 
   const field = options?.field ?? store.get(defaultField(type));
   if (!field) return null;
+
+  const isSingleLabel = type === CLASSIFICATION || type === REGRESSION;
+  const slot = isSingleLabel ? deps.frameSlotOf?.(field) : undefined;
+  const id = slot?.instanceId ?? options?.id ?? objectId();
 
   const data = buildNewLabelData(field, type, {
     id,
@@ -50,7 +53,7 @@ export function createNewLabel(
     origin: options?.origin,
   });
 
-  if (type === CLASSIFICATION || type === REGRESSION) {
+  if (isSingleLabel) {
     const overlay =
       type === CLASSIFICATION
         ? overlayFactory.create<ClassificationOptions, ClassificationOverlay>(
@@ -66,15 +69,12 @@ export function createNewLabel(
 
     // Persist the new chip through to the engine immediately. Neither a
     // Classification nor a Regression has a draw gesture — there is no
-    // `lighter:overlay-establish` to commit on, and the bridge is disabled on
-    // video — so without this write the label would live only in the sidebar's
-    // jotai draft (no engine row, no labels-list entry, no sample-document
-    // mutation). Sample-level only by design (the toolbar's field picker
-    // filters frame-level paths out, and the engine routes a sample-level path
-    // to the sample-level store on video too).
+    // `lighter:overlay-establish` to commit on — so without this write the
+    // label would live only in the sidebar's jotai draft. On a video frame
+    // field it is the playhead frame's value.
     if (sample) {
       engine.updateLabel(
-        { sample, path: field, instanceId: id },
+        { sample, path: field, instanceId: id, frame: slot?.frame },
         data as Partial<LabelData>,
       );
     }

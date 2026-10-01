@@ -355,3 +355,57 @@ describe("parseFramesData — singleton frame fields", () => {
     expect(data[1]["frames.segmentation"][0]._cls).toBe("Segmentation");
   });
 });
+
+describe("parseFramesData — single-label frame fields", () => {
+  it("parses Classification and Regression fields as singletons", () => {
+    const data = parseFramesData(
+      [
+        {
+          frame_number: 1,
+          cls: { _id: "c1", _cls: "Classification", label: "cat" },
+          reg: { _id: "r1", _cls: "Regression", value: 0.5 },
+        },
+        {
+          frame_number: 2,
+          cls: { _id: "c2", _cls: "Classification", label: "dog" },
+        },
+      ],
+      {
+        "frames.cls": LabelType.Classification,
+        "frames.reg": LabelType.Regression,
+      },
+    );
+
+    expect(data[1]["frames.cls"]).toEqual([
+      {
+        _id: singletonAddressId("frames.cls"),
+        _docId: "c1",
+        _cls: "Classification",
+        label: "cat",
+      },
+    ]);
+    expect(data[2]["frames.cls"][0]).toMatchObject({
+      _id: singletonAddressId("frames.cls"),
+      _docId: "c2",
+      label: "dog",
+    });
+    expect(data[1]["frames.reg"][0]).toMatchObject({
+      _id: singletonAddressId("frames.reg"),
+      _docId: "r1",
+      value: 0.5,
+    });
+    expect(data[2]["frames.reg"]).toEqual([]);
+  });
+
+  it("addresses a dynamic group member's field by its bare path", () => {
+    const data = parseFramesData(
+      [{ frame_number: 3, cls: { _id: "m3", _cls: "Classification" } }],
+      { cls: LabelType.Classification },
+    );
+
+    expect(data[3].cls[0]).toMatchObject({
+      _id: singletonAddressId("cls"),
+      _docId: "m3",
+    });
+  });
+});

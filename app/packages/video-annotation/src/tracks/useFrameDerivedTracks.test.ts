@@ -32,6 +32,7 @@ vi.mock("@fiftyone/annotation", () => ({
   useActiveSampleId: () => "sample-1",
   useAnnotationEngine: () => ENGINE,
   useEngineSelector: (_engine: unknown, selector: () => unknown) => selector(),
+  singletonAddressId: (path: string) => `field:${path}`,
 }));
 
 vi.mock("../hooks/useVideoLabelsIndex", () => ({

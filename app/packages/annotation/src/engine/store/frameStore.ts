@@ -22,10 +22,13 @@
  * during a save survives as the next delta; a failed save touches nothing, so
  * the next `getJsonPatch` re-emits idempotently.
  *
- * Handles list-label frame fields (Detections/Keypoints/…). The server
- * echo/seed payload is the flat {@link FramesData} shape. Registered per-frame
- * primitive fields (`valuePaths`) ride alongside as a read-only source layer
- * seeded from the same frame documents.
+ * Handles list-label frame fields (Detections/Keypoints/…) and singleton
+ * fields (Classification/Regression/…), held as a zero-or-one list addressed
+ * by `singletonAddressId(path)`, with the document id kept as `_docId` (see
+ * `./singletons`). The server echo/seed payload is the flat
+ * {@link FramesData} shape. Registered per-frame primitive fields
+ * (`valuePaths`) ride alongside as a read-only source layer seeded from the
+ * same frame documents.
  */
 
 import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
@@ -34,12 +37,17 @@ import {
   equalsNormalized,
   idAlignedListDelta,
   isListLabelType,
+  isSingletonLabelType,
   LIST_LABEL_CHILD,
   objectId,
 } from "@fiftyone/utilities";
 
 import { toSchemaField } from "../identity/framePath";
-import { addressIdOf, indexFromAddressId } from "../identity/ref";
+import {
+  addressIdOf,
+  indexFromAddressId,
+  singletonAddressId,
+} from "../identity/ref";
 import type { LabelRef } from "../identity/ref";
 import type {
   ReconcileOpts,
@@ -50,6 +58,11 @@ import type {
   StoreSnapshot,
 } from "./types";
 import { wholeSampleReset } from "./types";
+import {
+  fromSingletonWire,
+  singletonDelta,
+  toSingletonWire,
+} from "./singletons";
 
 /** One frame's labels, keyed by frame-agnostic field path → element list. */
 type FrameDoc = Map<string, LabelData[]>;
@@ -257,7 +270,18 @@ export class FrameStore implements LabelStore {
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {
+    const singleton = this.isSingleton(ref.path);
+
     this.writeFrame(ref, (existing) => {
+      if (existing && singleton) {
+        return {
+          ...existing,
+          ...partial,
+          _id: existing._id,
+          _docId: existing._docId,
+        };
+      }
+
       if (existing) {
         // merge; identity fields are the store's, never the partial's
         return {
@@ -273,6 +297,15 @@ export class FrameStore implements LabelStore {
   }
 
   replaceLabel(ref: LabelRef, value: Partial<LabelData>): void {
+    if (this.isSingleton(ref.path)) {
+      this.writeFrame(ref, (existing) => ({
+        ...value,
+        _id: singletonAddressId(ref.path),
+        _docId: value._docId ?? existing?._docId ?? objectId(),
+      }));
+      return;
+    }
+
     // exact value (undo/redo replays) but identity survives the round-trip
     this.writeFrame(ref, (existing) => ({
       ...value,
@@ -381,19 +414,23 @@ export class FrameStore implements LabelStore {
       for (const path of Object.keys(this.labelTypes)) {
         const type = this.labelTypes[path];
         const child = LIST_LABEL_CHILD[type];
-
-        if (!isListLabelType(type) || !child) {
-          continue;
-        }
-
         const current = doc.get(path) ?? [];
         const baseline = source?.get(path) ?? [];
+        const container = `/frames/${frame}/${toSchemaField(path)}`;
 
         if (current === baseline) {
           continue;
         }
 
-        const container = `/frames/${frame}/${toSchemaField(path)}`;
+        if (isSingletonLabelType(type)) {
+          ops.push(...singletonDelta(current[0], baseline[0], container));
+          continue;
+        }
+
+        if (!isListLabelType(type) || !child) {
+          continue;
+        }
+
         ops.push(...idAlignedListDelta(current, baseline, container, child));
       }
     }
@@ -486,8 +523,13 @@ export class FrameStore implements LabelStore {
     for (const op of deltas) {
       const segments = op.path.split("/").filter(Boolean);
 
-      // /frames/<n>/<wireField>/<listChild>/...
-      if (segments[0] !== "frames" || segments.length < 4) {
+      // /frames/<n>/<wireField>/<listChild>/..., or a singleton's
+      // /frames/<n>/<wireField>[/...]
+      if (
+        segments[0] !== "frames" ||
+        segments.length < 3 ||
+        (segments.length === 3 && !this.isSingletonField(segments[2]))
+      ) {
         continue;
       }
 
@@ -879,6 +921,15 @@ export class FrameStore implements LabelStore {
 
     const doc = this.editableFrame(ref.frame);
     const list = doc.get(ref.path) ?? [];
+
+    if (this.isSingleton(ref.path)) {
+      // a frame holds one value per singleton field, so a write replaces it
+      const instanceId = singletonAddressId(ref.path);
+      doc.set(ref.path, [produce(list[0])]);
+      this.emit([{ ref: { ...ref, instanceId }, kind: "update" }]);
+      return;
+    }
+
     const index = list.findIndex(
       (label) => addressIdOf(label) === ref.instanceId,
     );
@@ -896,6 +947,14 @@ export class FrameStore implements LabelStore {
 
   /** A freshly born element: minted doc id, identity stamped from the track ref. */
   private born(ref: LabelRef, partial: Partial<LabelData>): LabelData {
+    if (this.isSingleton(ref.path)) {
+      return {
+        ...partial,
+        _id: singletonAddressId(ref.path),
+        _docId: partial._docId ?? objectId(),
+      };
+    }
+
     return {
       ...partial,
       ...identityFields(ref.instanceId),
@@ -913,13 +972,18 @@ export class FrameStore implements LabelStore {
    */
   private rebaseFrame(frame: number, frameOps: JSONDeltas): FrameDoc {
     const source = this.source.get(frame);
-    const doc: Record<string, Record<string, LabelData[]>> = {};
+    const doc: Record<string, unknown> = {};
 
     for (const path of Object.keys(this.labelTypes)) {
       const child = LIST_LABEL_CHILD[this.labelTypes[path]];
+      const list = source?.get(path) ?? [];
 
-      if (child) {
-        doc[toSchemaField(path)] = { [child]: [...(source?.get(path) ?? [])] };
+      if (this.isSingleton(path)) {
+        if (list[0]) {
+          doc[toSchemaField(path)] = toSingletonWire(list[0]);
+        }
+      } else if (child) {
+        doc[toSchemaField(path)] = { [child]: [...list] };
       }
     }
 
@@ -928,19 +992,37 @@ export class FrameStore implements LabelStore {
       path: `/${op.path.split("/").filter(Boolean).slice(2).join("/")}`,
     }));
 
-    const next = applyDeltas(doc, scoped);
+    const next = applyDeltas(doc, scoped) as Record<
+      string,
+      Record<string, unknown> | undefined
+    >;
 
     const rebased: FrameDoc = source ? new Map(source) : new Map();
 
     for (const path of Object.keys(this.labelTypes)) {
       const child = LIST_LABEL_CHILD[this.labelTypes[path]];
+      const value = next[toSchemaField(path)];
 
-      if (child) {
-        rebased.set(path, next[toSchemaField(path)]?.[child] ?? []);
+      if (this.isSingleton(path)) {
+        rebased.set(path, value ? [fromSingletonWire(value, path)] : []);
+      } else if (child) {
+        rebased.set(path, (value?.[child] as LabelData[] | undefined) ?? []);
       }
     }
 
     return rebased;
+  }
+
+  private isSingleton(path: string): boolean {
+    const type = this.labelTypes[path];
+    return type !== undefined && isSingletonLabelType(type);
+  }
+
+  /** Whether an in-frame-doc field (`cls`) is a registered singleton's. */
+  private isSingletonField(field: string): boolean {
+    return Object.keys(this.labelTypes).some(
+      (path) => toSchemaField(path) === field && this.isSingleton(path),
+    );
   }
 
   private frameEquals(doc: FrameDoc, source: FrameDoc | undefined): boolean {

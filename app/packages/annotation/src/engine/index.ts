@@ -10,12 +10,16 @@ export type { LabelRef, ScopedRef } from "./identity/ref";
 export {
   addressIdOf,
   indexFromAddressId,
+  isSingletonAddressId,
   linkageKey,
   refKey,
   refsEqual,
+  SINGLETON_ADDRESS_PREFIX,
+  singletonAddressId,
   toLabelRef,
   TRACK_INDEX_PREFIX,
 } from "./identity/ref";
+export { fromSingletonWire, toSingletonWire } from "./store/singletons";
 export {
   FRAMES_PREFIX,
   isFrameScopedPath,

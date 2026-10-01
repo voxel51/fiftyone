@@ -42,11 +42,16 @@ import fiftyone.server.view as fosv
 # the engine address the same track by the same id.
 TRACK_INDEX_PREFIX = "track-"
 
-# Label types the client addresses by field rather than per label, as
-# ``field:<path>``. Must match ``singletonAddressId`` in
-# ``@fiftyone/video-annotation`` so a mask field is one timeline row.
+# Single-label types the client addresses by field rather than per label, as
+# ``field:<path>``. Must match ``SINGLETON_LABEL_TYPES`` and
+# ``singletonAddressId`` in the App so each such field is one timeline row.
 SINGLETON_ADDRESS_PREFIX = "field:"
-_SINGLETON_LABEL_TYPES = (fol.Segmentation, fol.Heatmap)
+_SINGLETON_LABEL_TYPES = (
+    fol.Classification,
+    fol.Heatmap,
+    fol.Regression,
+    fol.Segmentation,
+)
 
 # A stage that drops a sample by a predicate over all of its frames
 # (``"frame_match"``) can drop it for frames outside the window, so it needs
@@ -141,7 +146,7 @@ def resolve_singleton_address_id(
     dataset, field: str, dynamic_group: bool = False
 ) -> t.Optional[str]:
     """The client's field-level address id when ``field`` holds a
-    Segmentation or Heatmap, else ``None``.
+    Classification, Heatmap, Regression or Segmentation, else ``None``.
     """
     schema = (
         dataset.get_field_schema()
@@ -173,7 +178,7 @@ def index_post_pipeline(
     a persisted ``index`` (so its frames coalesce into one track), and finally
     to the per-frame label ``_id`` for a bare detection with neither. A
     ``singleton_address_id`` (see :func:`resolve_singleton_address_id`)
-    replaces all of that, so a Segmentation or Heatmap field is one group.
+    replaces all of that, so a single-label field is one group.
     This mirrors the client ``addressIdOf`` exactly. The run-length encoding itself
     happens in Python on the grouped output; see :func:`run_length_encode`.
 

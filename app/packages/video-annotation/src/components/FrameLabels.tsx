@@ -231,8 +231,8 @@ export const RegisterFrameLabels: React.FC<{
    * fields get fetched.
    *
    * Annotate reads the annotation schemas (`useFrameLabelFields`), which know
-   * only the types the editor can create — Detections and Polylines — and only
-   * the ones activated in the Schema Manager. Explore paints from the
+   * only the types the editor can create, and only the ones activated in the
+   * Schema Manager. Explore paints from the
    * sidebar's active paths instead, across every type the per-frame pipeline
    * can project. Fetching one set while registering and painting the other is
    * how `frames.keypoints` and `frames.classifications` ended up never

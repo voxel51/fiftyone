@@ -48,6 +48,14 @@ export interface CreateDeps {
    */
   engine: AnnotationEngine;
   sample: string;
+  /** The frame a new single-label value lands on, for a frame field. */
+  frameSlotOf?: (path: string) => FrameSingletonSlot | undefined;
+}
+
+/** A frame-scoped singleton field's engine address at one frame. */
+export interface FrameSingletonSlot {
+  instanceId: string;
+  frame: number;
 }
 
 /**

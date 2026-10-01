@@ -286,6 +286,58 @@ class VideoLabelsAggregationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(instances[0]["segments"], [[1, 2], [4, 4]])
 
     @drop_async_dataset
+    async def test_index_single_label_fields_are_one_track(self, dataset):
+        video = fo.Sample(filepath="video.mp4")
+        # every frame's label is its own document with its own class, so only
+        # the field can coalesce them
+        for fn, label in ((1, "cat"), (2, "dog"), (4, "cat")):
+            video[fn]["cls"] = fo.Classification(label=label)
+            video[fn]["reg"] = fo.Regression(value=float(fn))
+
+        dataset.add_sample(video)
+
+        view = fov.make_optimized_select_view(
+            dataset.view(), video.id, flatten=True
+        )
+        result = await aggregate_index(view, ["cls", "reg"])
+
+        for field in ("cls", "reg"):
+            instances = result[field]["instances"]
+            self.assertEqual(len(instances), 1)
+            self.assertEqual(
+                instances[0]["instanceId"], "field:frames.%s" % field
+            )
+            self.assertEqual(instances[0]["segments"], [[1, 2], [4, 4]])
+
+    @drop_async_dataset
+    async def test_dynamic_group_single_label_field_is_one_track(
+        self, dataset
+    ):
+        samples = [
+            fo.Sample(
+                filepath="%d.png" % order,
+                scene="a",
+                order=order,
+                cls=fo.Classification(label="cat" if order % 2 else "dog"),
+            )
+            for order in range(3)
+        ]
+        dataset.add_samples(samples)
+        view = dataset.group_by("scene", order_by="order").get_dynamic_group(
+            "a"
+        )
+
+        result = await aggregate_index(view, ["cls"], dynamic_group=True)
+
+        instances = result["cls"]["instances"]
+        self.assertEqual(len(instances), 1)
+        self.assertEqual(instances[0]["instanceId"], "field:cls")
+        self.assertEqual(
+            sorted(str(member) for member in instances[0]["members"]),
+            sorted(sample.id for sample in samples),
+        )
+
+    @drop_async_dataset
     async def test_index_dynamic_attribute_segments(self, dataset):
         inst = fo.Instance()
 
