@@ -90,6 +90,16 @@ export const decodeSegmentationIndices = (
     return { indices: source, width, height };
   }
 
+  if (source instanceof Uint8ClampedArray) {
+    // The on-disk decoder hands back clamped bytes: same memory, so view it
+    // as plain 8-bit rather than narrowing a megapixel copy into Uint16.
+    return {
+      indices: new Uint8Array(source.buffer, source.byteOffset, source.length),
+      width,
+      height,
+    };
+  }
+
   const indices = new Uint16Array(pixels);
   for (let i = 0; i < pixels; i++) {
     const value = source[i];

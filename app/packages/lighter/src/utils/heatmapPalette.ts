@@ -89,10 +89,12 @@ export const resolveHeatmapPalette = (
     (colorScheme.colorBy?.toLowerCase() as COLOR_BY | undefined) ??
     COLOR_BY.FIELD;
 
-  // Value mode needs a scale to index. With none resolved, opacity-ramping one
-  // color still conveys the data; painting nothing would just look broken.
+  // Anything but field coloring indexes the scale, matching the looker's
+  // painter (color-by instance included). Value mode needs a scale to index;
+  // with none resolved, opacity-ramping one color still conveys the data,
+  // where painting nothing would just look broken.
   const mode =
-    requested === COLOR_BY.VALUE && scale.length > 0
+    requested !== COLOR_BY.FIELD && scale.length > 0
       ? COLOR_BY.VALUE
       : COLOR_BY.FIELD;
 
