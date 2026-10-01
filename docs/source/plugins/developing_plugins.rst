@@ -4800,6 +4800,52 @@ The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-bui
 package offers a utility for configuring `vite <https://vite.dev>`_ to build your
 JS plugin bundle.
 
+Theme colors
+------------
+
+The App's theme is built on the `Voodo <https://github.com/voxel51/design-system>`_
+design system. Every color returned by `useTheme()` from
+`@fiftyone/components`, and every `--fo-palette-*` CSS variable, is a CSS
+`var()` reference to a Voodo token rather than a literal color value, so the
+App follows light and dark mode without re-rendering.
+
+These values work anywhere the browser parses CSS: styled-components, `sx`
+props, inline styles, and `color-mix()` expressions. They cannot be parsed in
+JavaScript. Hex-suffix alpha tricks, MUI's `alpha()`/`lighten()`/`darken()`
+helpers, and color libraries all fail on a `var()` string, as do consumers that
+parse colors themselves: plotly layouts and traces, canvas `fillStyle`,
+three.js `Color`, and MapLibre paint objects.
+
+For those consumers, resolve the theme color to its current concrete value
+with `resolveCssColor()` (one string) or `resolveCssColorsDeep()` (a whole
+layout or paint object) from `@fiftyone/utilities`, or with the
+`useResolvedCssColor()` hook from `@fiftyone/components`, which re-resolves
+when the theme mode changes:
+
+.. code-block:: jsx
+    :linenos:
+
+    import { useResolvedCssColor, useTheme } from "@fiftyone/components";
+    import { resolveCssColorsDeep } from "@fiftyone/utilities";
+
+    function MyPlot({ data }) {
+      const theme = useTheme();
+
+      // CSS consumers can take the var() reference directly
+      const tint = `color-mix(in srgb, ${theme.primary.main} 20%, transparent)`;
+
+      // plotly parses colors itself, so hand it concrete values
+      const layout = resolveCssColorsDeep({
+        paper_bgcolor: theme.background.level1,
+        font: { color: theme.text.secondary },
+      });
+
+      // a single color that must track theme switches
+      const barColor = useResolvedCssColor(theme.primary.main);
+
+      // ...
+    }
+
 Component types
 ---------------
 

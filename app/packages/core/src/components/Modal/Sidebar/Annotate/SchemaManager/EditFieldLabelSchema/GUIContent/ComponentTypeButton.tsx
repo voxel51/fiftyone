@@ -62,8 +62,10 @@ const ComponentTypeButton = ({
             border: isSelected
               ? `1px solid ${theme.voxel[500]}`
               : `1px solid ${theme.primary.softBorder}`,
+            // The theme value is a var() reference, so the tint is mixed in
+            // CSS rather than by appending a hex alpha byte
             backgroundColor: isSelected
-              ? `${theme.voxel[500]}1A`
+              ? `color-mix(in srgb, ${theme.voxel[500]} 10%, transparent)`
               : "transparent",
             cursor: disabled ? "not-allowed" : "pointer",
           }}
