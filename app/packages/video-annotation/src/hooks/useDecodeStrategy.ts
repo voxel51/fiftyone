@@ -27,6 +27,8 @@ export interface DecodeResolution {
   strategy?: DecodeStrategy;
   /** Audio-track presence from the probe; undefined = unknown. */
   hasAudio?: boolean;
+  /** Why the strategy isn't `extract`, when it isn't (diagnostics). */
+  reason?: string;
 }
 
 export interface DecodeStrategyInput {
@@ -72,14 +74,25 @@ export function useDecodeStrategy(
     return { status: "resolving" };
   }
 
+  const strategy = resolveDecodeStrategy({
+    hasVideoSrc: Boolean(videoSrc),
+    nativeDecodable: native.decodable,
+    hasFrames: framesState === "sampled",
+  });
+
   return {
     status: "resolved",
-    strategy: resolveDecodeStrategy({
-      hasVideoSrc: Boolean(videoSrc),
-      nativeDecodable: native.decodable,
-      hasFrames: framesState === "sampled",
-    }),
+    strategy,
     hasAudio: native.hasAudio,
+    reason:
+      strategy === "extract"
+        ? undefined
+        : [
+            native.reason,
+            strategy === "html" ? "no extracted frame images" : undefined,
+          ]
+            .filter(Boolean)
+            .join("; "),
   };
 }
 
@@ -88,6 +101,8 @@ interface NativeDecodableState {
   decodable: boolean;
   /** Audio-track presence from the probe; undefined = unknown. */
   hasAudio?: boolean;
+  /** Why the source isn't decodable, when it isn't. */
+  reason?: string;
 }
 
 interface NativeDecodableInput {
@@ -112,15 +127,20 @@ function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
   });
 
   useEffect(() => {
-    if (
-      !enabled ||
-      !videoSrc ||
-      !dataset ||
-      !sampleId ||
-      !webCodecsAvailable() ||
-      !looksDemuxable(videoSrc)
-    ) {
-      setState({ checking: false, decodable: false });
+    const skipped = !videoSrc
+      ? "no video URL"
+      : !webCodecsAvailable()
+        ? "this browser has no WebCodecs"
+        : !looksDemuxable(videoSrc)
+          ? "the video container isn't MP4"
+          : null;
+
+    if (!enabled || !videoSrc || !dataset || !sampleId || skipped) {
+      setState({
+        checking: false,
+        decodable: false,
+        reason: skipped ?? undefined,
+      });
       return undefined;
     }
 
@@ -130,6 +150,9 @@ function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
         checking: false,
         decodable: cached.decodable,
         hasAudio: cached.hasAudio,
+        reason: cached.decodable
+          ? undefined
+          : `this browser can't decode ${cached.codec} (remembered)`,
       });
       return undefined;
     }
@@ -159,6 +182,9 @@ function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
           checking: false,
           decodable: result.decodable,
           hasAudio: result.hasAudio,
+          reason: result.decodable
+            ? undefined
+            : (result.reason ?? "the decode check failed"),
         });
       },
     );

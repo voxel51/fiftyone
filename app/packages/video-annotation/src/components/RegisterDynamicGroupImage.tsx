@@ -43,8 +43,17 @@ export const RegisterDynamicGroupImage: React.FC<{
   frameCount: number;
   frameRate: number;
   videoSrc?: string | null;
+  /** The source loaded no frames at all. */
+  onUnplayable?: (reason: string) => void;
   children: React.ReactNode;
-}> = ({ source, frameCount, frameRate, videoSrc = null, children }) => {
+}> = ({
+  source,
+  frameCount,
+  frameRate,
+  videoSrc = null,
+  onUnplayable,
+  children,
+}) => {
   const dataset = useDatasetName();
   const view = useView();
   const slice = useGroupSlice();
@@ -77,6 +86,7 @@ export const RegisterDynamicGroupImage: React.FC<{
       frameCount={frameCount}
       frameRate={frameRate}
       videoSrc={videoSrc}
+      onUnplayable={onUnplayable}
     >
       {children}
     </DynamicGroupImageRegistration>
@@ -94,12 +104,19 @@ interface DynamicGroupImageRegistrationProps {
   frameCount: number;
   frameRate: number;
   videoSrc: string | null;
+  onUnplayable?: (reason: string) => void;
   children: React.ReactNode;
 }
 
 const DynamicGroupImageRegistration: React.FC<
   DynamicGroupImageRegistrationProps
-> = ({ children, ...props }) => {
+> = ({ children, onUnplayable, ...props }) => {
+  // the stream is built once; the callback it reports through stays current
+  const onUnplayableRef = useRef(onUnplayable);
+  onUnplayableRef.current = onUnplayable;
+  const reportUnplayable = (reason: string) =>
+    onUnplayableRef.current?.(reason);
+
   const streamRef = useRef<FrameBitmapStream | null>(null);
   if (streamRef.current === null) {
     streamRef.current =
@@ -110,6 +127,7 @@ const DynamicGroupImageRegistration: React.FC<
             frameCount: props.frameCount,
             frameRate: props.frameRate,
             videoSrc: props.videoSrc,
+            onUnplayable: reportUnplayable,
           })
         : new DynamicGroupImageStream({
             id: DYNAMIC_GROUP_STREAM_ID,
@@ -121,6 +139,7 @@ const DynamicGroupImageRegistration: React.FC<
             mediaField: props.mediaField,
             frameCount: props.frameCount,
             frameRate: props.frameRate,
+            onUnplayable: reportUnplayable,
           });
   }
 

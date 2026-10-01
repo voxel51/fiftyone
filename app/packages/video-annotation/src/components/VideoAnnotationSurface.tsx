@@ -11,7 +11,7 @@ import {
   useEngineSelector,
 } from "@fiftyone/annotation";
 import { Size, Spinner } from "@voxel51/voodo";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
@@ -39,6 +39,7 @@ import {
   AnnotatePrerequisiteNotice,
 } from "./AnnotatePrerequisiteNotice";
 import { FrameLabelsTracks, RegisterFrameLabels } from "./FrameLabels";
+import { DecodeStrategyReadout } from "./DecodeStrategyReadout";
 import { OrderByReadout } from "./OrderByReadout";
 import { DynamicGroupLighterTile } from "./DynamicGroupLighterTile";
 import { RegisterDynamicGroupImage } from "./RegisterDynamicGroupImage";
@@ -87,6 +88,8 @@ interface RegistrarProps {
   frameCount: number;
   frameRate: number;
   videoSrc: string | null;
+  /** The source loaded no frames at all (see `FrameBitmapStream`). */
+  onUnplayable: (reason: string) => void;
   children: React.ReactNode;
 }
 
@@ -252,6 +255,38 @@ const VideoAnnotationSurfaceForSample: React.FC<
       urlForcedStrategy ?? (isImageDynamicGroupVideo ? "fetch" : undefined),
   });
 
+  // A strategy that loads no frames at all (the media host refuses the CORS
+  // fetch, say) falls back to `<video>`, which needs no CORS, rather than
+  // leaving a blank tile. An image group has no video to fall back to.
+  const [unplayable, setUnplayable] = useState<{
+    from: DecodeStrategy;
+    reason: string;
+  } | null>(null);
+  const fellBack = unplayable !== null && videoSrc !== null;
+  const strategy = fellBack ? "html" : resolution.strategy;
+  const reason = unplayable
+    ? unplayable.reason
+    : urlForcedStrategy
+      ? "set by ?video-decode in the URL"
+      : isImageDynamicGroupVideo
+        ? "an image group has no video to decode"
+        : resolution.reason;
+
+  useEffect(() => {
+    if (!strategy) {
+      return;
+    }
+
+    const message = `[VideoAnnotationSurface] decode strategy: ${strategy}${
+      reason ? ` (${reason})` : ""
+    }`;
+    if (unplayable) {
+      console.warn(message, `— ${unplayable.from} loaded no frames`);
+    } else {
+      console.info(message);
+    }
+  }, [strategy, reason, unplayable]);
+
   // Metadata gate: without a frame count no strategy can mount, so show an
   // actionable prompt instead of a stream that would throw or blank out.
   if (prerequisites.status === "blocked") {
@@ -269,7 +304,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
 
   // Strategy still resolving (a frames / native-decode probe is in flight):
   // hold on a spinner so the scaffolding mounts exactly once, on the winner.
-  if (resolution.status !== "resolved" || !resolution.strategy) {
+  if (resolution.status !== "resolved" || !strategy) {
     return (
       <div
         ref={dimensions.ref as React.RefObject<HTMLDivElement>}
@@ -282,7 +317,6 @@ const VideoAnnotationSurfaceForSample: React.FC<
     );
   }
 
-  const strategy = resolution.strategy;
   const Tile = STRATEGY_TILE[strategy];
   const Registrar = STRATEGY_REGISTRAR[strategy];
   const hasMedia = strategy !== "html" || videoSrc !== null;
@@ -314,7 +348,16 @@ const VideoAnnotationSurfaceForSample: React.FC<
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
-            readouts={<OrderByReadout />}
+            readouts={
+              <>
+                <DecodeStrategyReadout
+                  strategy={strategy}
+                  reason={reason}
+                  fellBackFrom={fellBack ? unplayable?.from : undefined}
+                />
+                <OrderByReadout />
+              </>
+            }
             onReadyChange={setTracksReady}
           />
         )}
@@ -348,6 +391,11 @@ const VideoAnnotationSurfaceForSample: React.FC<
       frameCount={prerequisites.frameCount as number}
       frameRate={prerequisites.frameRate as number}
       videoSrc={videoSrc}
+      onUnplayable={(failure) =>
+        setUnplayable(
+          (current) => current ?? { from: strategy, reason: failure },
+        )
+      }
     >
       {labels}
     </Registrar>

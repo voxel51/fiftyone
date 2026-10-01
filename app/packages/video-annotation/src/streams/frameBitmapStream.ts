@@ -56,6 +56,12 @@ export interface FrameBitmapStreamOptions {
    * @default 1e9
    */
   maxBytes?: number;
+  /**
+   * Called once when this source can't produce any frame: a frame used up its
+   * attempts before a single frame decoded. `reason` is the worker's last
+   * error, when it reported one.
+   */
+  onUnplayable?: (reason: string) => void;
 }
 
 const DEFAULT_CHUNK_SIZE = 60;
@@ -111,6 +117,11 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
   private initialized = false;
   private nextReqId = 1;
   private destroyed = false;
+  private readonly onUnplayable?: (reason: string) => void;
+  /** Whether any frame has ever decoded; once one has, the source plays. */
+  private decodedAny = false;
+  private unplayableReported = false;
+  private lastError: string | null = null;
 
   constructor(opts: FrameBitmapStreamOptions) {
     super(opts.id, {
@@ -128,6 +139,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     this.frameRate = opts.frameRate;
     this.chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_SIZE;
     this.cache = new FrameBitmapCache<M>(opts.maxBytes);
+    this.onUnplayable = opts.onUnplayable;
 
     // `createWorker` is field-independent (just `new Worker(url)`), so it's
     // safe to call from the base constructor before subclass fields are set.
@@ -386,6 +398,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
       return;
     }
 
+    this.decodedAny = true;
     this.cache.set(msg.frameNumber, {
       bitmap: msg.bitmap,
       width: msg.width,
@@ -409,6 +422,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     console.error(
       `[FrameBitmapStream:${this.id}] worker chunk ${msg.reqId} failed: ${msg.error}`,
     );
+    this.lastError = msg.error;
     this.resolveOutstandingFrames(msg.reqId);
   }
 
@@ -436,11 +450,22 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
       this.attempts.set(f, attempts);
       if (attempts >= MAX_FRAME_ATTEMPTS) {
         this.failed.add(f);
+        this.reportUnplayable();
       }
 
       entry.resolve();
       this.inflight.delete(f);
     }
+  }
+
+  /** A frame turned terminal before any decoded: nothing will play. */
+  private reportUnplayable(): void {
+    if (this.decodedAny || this.unplayableReported || this.destroyed) {
+      return;
+    }
+
+    this.unplayableReported = true;
+    this.onUnplayable?.(this.lastError ?? "no frame could be loaded");
   }
 }
 
