@@ -62,7 +62,7 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Annotating datasets __SUB_NEW__
-    :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
+    :description: Create, edit, and delete labels directly in the FiftyOne App with in-App annotation.
     :button_text: Learn more about annotations
     :button_link: annotation.html
 
