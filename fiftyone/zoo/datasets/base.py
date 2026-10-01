@@ -3969,6 +3969,75 @@ class HiltiTrimbleSLAMChallenge2026Dataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class NTNUUnderwaterMulticamDataset(FiftyOneDataset):
+    """Piloted underwater robot runs with five cameras and an inertial unit,
+    as native ``.mcap`` episodes.
+
+    Ariel, the NTNU Autonomous Robots Lab's underwater robot built on the
+    BlueROV2 Heavy configuration, is piloted through the Trondheim Fjord and
+    the Marine Cybernetics Laboratory pool. An Alphasense rig records five
+    monochrome cameras, a forward stereo pair and cameras looking up, left
+    and right, with a 200 Hz inertial unit, while the vehicle's autopilot
+    logs a second inertial unit, a barometer, a downward rangefinder and
+    the thruster outputs. Each run carries the authors' ReAqROVIO reference
+    trajectory and the rig's calibration.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("ntnu-underwater-multicam")
+
+        # The deepest dives
+        view = dataset.sort_by("max_depth_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        1.31 GB
+    """
+
+    _REPO_ID = "Voxel51/NTNU-Underwater-Multicam"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "71882c95fece2c9b9b8ad10f41d9dd893d7bd82d"
+
+    @property
+    def name(self):
+        return "ntnu-underwater-multicam"
+
+    @property
+    def license(self):
+        return "BSD-3-Clause"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "underwater", "robotics", "slam")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
     """Construction-site recordings from an autonomous mobile robot, as
     native ``.mcap`` episodes.
@@ -4294,6 +4363,7 @@ AVAILABLE_DATASETS = {
     "kitti": KITTIDataset,
     "kitti-multiview": KITTIMultiviewDataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "ntnu-underwater-multicam": NTNUUnderwaterMulticamDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
     "places": PlacesDataset,
