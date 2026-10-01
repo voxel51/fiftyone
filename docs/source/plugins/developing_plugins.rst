@@ -4804,44 +4804,34 @@ Theme colors
 ------------
 
 The App's theme is built on the `Voodo <https://github.com/voxel51/design-system>`_
-design system. Every color returned by `useTheme()` from
-`@fiftyone/components`, and every `--fo-palette-*` CSS variable, is a CSS
-`var()` reference to a Voodo token rather than a literal color value, so the
-App follows light and dark mode without re-rendering.
+design system. The colors returned by `useTheme()` from `@fiftyone/components`
+and the `--fo-palette-*` CSS variables are plain color values taken from
+Voodo's tokens for the active light or dark mode, so they can be used anywhere,
+including libraries that parse colors such as plotly, canvas and three.js.
 
-These values work anywhere the browser parses CSS: styled-components, `sx`
-props, inline styles, and `color-mix()` expressions. They cannot be parsed in
-JavaScript. Hex-suffix alpha tricks, MUI's `alpha()`/`lighten()`/`darken()`
-helpers, and color libraries all fail on a `var()` string, as do consumers that
-parse colors themselves: plotly layouts and traces, canvas `fillStyle`,
-three.js `Color`, and MapLibre paint objects.
-
-For those consumers, resolve the theme color to its current concrete value
-with `resolveCssColor()` (one string) or `resolveCssColorsDeep()` (a whole
-layout or paint object) from `@fiftyone/utilities`, or with the
-`useResolvedCssColor()` hook from `@fiftyone/components`, which re-resolves
-when the theme mode changes:
+Voodo's own `cssVar.color.*` tokens from `@voxel51/voodo` are CSS `var()`
+references. They work in any CSS context but cannot be parsed in JavaScript.
+If you pass one to a library that parses colors, resolve it first with
+`resolveCssColor()` or `resolveCssColorsDeep()` from `@fiftyone/utilities`,
+or with the `useResolvedCssColor()` hook from `@fiftyone/components`, which
+re-resolves when the theme mode changes:
 
 .. code-block:: jsx
     :linenos:
 
     import { useResolvedCssColor, useTheme } from "@fiftyone/components";
-    import { resolveCssColorsDeep } from "@fiftyone/utilities";
+    import { cssVar } from "@voxel51/voodo";
 
     function MyPlot({ data }) {
+      // plain colors; safe to hand straight to plotly
       const theme = useTheme();
-
-      // CSS consumers can take the var() reference directly
-      const tint = `color-mix(in srgb, ${theme.primary.main} 20%, transparent)`;
-
-      // plotly parses colors itself, so hand it concrete values
-      const layout = resolveCssColorsDeep({
+      const layout = {
         paper_bgcolor: theme.background.level1,
         font: { color: theme.text.secondary },
-      });
+      };
 
-      // a single color that must track theme switches
-      const barColor = useResolvedCssColor(theme.primary.main);
+      // a Voodo token, resolved to a concrete color for a parser
+      const accent = useResolvedCssColor(cssVar.color.brand.primary);
 
       // ...
     }

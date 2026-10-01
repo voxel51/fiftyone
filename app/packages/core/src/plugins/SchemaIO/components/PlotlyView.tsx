@@ -149,8 +149,8 @@ export default function PlotlyView(props: ViewPropsType) {
     return {};
   }, []);
   const layoutDefaults = useMemo(() => {
-    // plotly parses colours itself, so the theme's var() references have
-    // to be resolved to concrete values here
+    // plotly parses colours itself; the theme values are literals, and
+    // resolving is a no-op for those, but it keeps any token safe
     const text = {
       secondary: resolveCssColor(theme.text.secondary),
       tertiary: resolveCssColor(theme.text.tertiary),
@@ -219,7 +219,7 @@ export default function PlotlyView(props: ViewPropsType) {
     return merge({}, configDefaults, config);
   }, [configDefaults, config]);
   const mergedData = useMemo(() => {
-    // plotly parses colours; resolve any theme token an operator passed
+    // plotly parses colours; resolve any Voodo token an operator passed
     return resolveCssColorsDeep(
       mergeData(data || schema?.view?.data, dataDefaults),
     );

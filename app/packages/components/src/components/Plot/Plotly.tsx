@@ -95,8 +95,8 @@ function Plotly(props: EvaluationPlotProps) {
     };
   }, [theme]);
 
-  // plotly parses colours itself, so theme var() references (and any token
-  // a caller put in a trace) are resolved to concrete values here
+  // plotly parses colours itself, so any Voodo token a caller put in a
+  // layout or trace is resolved to a concrete value here
   const mergedLayout = useMemo(() => {
     return resolveCssColorsDeep(merge({}, layoutDefaults, layout));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
