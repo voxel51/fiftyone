@@ -300,6 +300,26 @@ describe("getNewLabelDefaults", () => {
     });
   });
 
+  it("keeps iterating until mutually dependent owners converge", () => {
+    const when = (field: string, value: string) => ({
+      operator: "equals",
+      field,
+      value,
+    });
+    setSchema("foo", {
+      attributes: [
+        { name: "a", type: "str", default: "two", when: when("b", "x") },
+        { name: "a", type: "str", default: "three", when: when("b", "y") },
+        { name: "a", type: "str", default: "one", when: when("label", "car") },
+        { name: "b", type: "str", default: "x", when: when("a", "one") },
+        { name: "b", type: "str", default: "y", when: when("a", "two") },
+        { name: "b", type: "str", default: "y", when: when("a", "three") },
+      ],
+    });
+    // Needs more passes than there are conditional names to settle.
+    expect(getNewLabelDefaults("foo", "car")).toEqual({ a: "three", b: "y" });
+  });
+
   it("terminates on cyclic conditions", () => {
     setSchema("foo", {
       attributes: [

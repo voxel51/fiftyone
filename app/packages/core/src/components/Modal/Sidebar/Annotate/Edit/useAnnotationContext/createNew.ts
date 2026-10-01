@@ -164,12 +164,19 @@ export function getNewLabelDefaults(
   // with, so `when: { field: "label", ... }` sees the new label's class.
   // Iterate to a fixed point so a conditional default can enable another
   // conditional attribute regardless of schema order; each pass recomputes
-  // every owner, and the pass cap guards against cyclic conditions.
+  // every owner. Stop when a state repeats: a converged state repeats on the
+  // next pass, and a cyclic schema repeats eventually (the state space is
+  // finite — each name holds one of its entries' defaults or nothing).
   const conditionalNames = new Set(
     attributes.filter((a) => a.name && a.when).map((a) => a.name),
   );
   let conditional: Record<string, unknown> = {};
-  for (let pass = 0; pass <= conditionalNames.size; pass++) {
+  const seen = new Set<string>();
+  for (;;) {
+    const state = JSON.stringify(conditional);
+    if (seen.has(state)) break;
+    seen.add(state);
+
     const values = {
       ...defaults,
       ...conditional,
@@ -182,14 +189,7 @@ export function getNewLabelDefaults(
         next[name] = owner.default;
       }
     }
-
-    const stable =
-      Object.keys(next).length === Object.keys(conditional).length &&
-      Object.entries(next).every(
-        ([name, value]) => conditional[name] === value,
-      );
     conditional = next;
-    if (stable) break;
   }
 
   return { ...defaults, ...conditional };
