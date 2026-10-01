@@ -53,7 +53,11 @@ export default defineConfig({
         },
         channel: "chromium",
         bypassCSP: true,
-        launchOptions: { args: ["--disable-web-security"] },
+        launchOptions: {
+          // macOS renders at 2x and downscales captures, so edges near half
+          // a pixel vary run to run; 1x matches CI's Linux rendering
+          args: ["--disable-web-security", "--force-device-scale-factor=1"],
+        },
       },
     },
   ],

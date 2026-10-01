@@ -73,7 +73,8 @@ APP_RULES = [
 
 # files whose matches are infrastructure, not waits in the page
 E2E_SKIP = re.compile(
-    r"(shared/network-utils/|shared/media-factory/|oss/fixtures/fo-server\.ts|shared/python-runner/)"
+    # test plugin sources run inside the App; their timers are not test waits
+    r"(shared/network-utils/|shared/media-factory/|oss/fixtures/fo-server\.ts|shared/python-runner/|shared/assets/plugins/)"
 )
 
 # accepted sites, as "relative/path:substring of the matched text" -> reason.
