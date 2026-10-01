@@ -748,6 +748,66 @@ class FrameLabelSchemaTests(unittest.TestCase):
             sample.frames[1].detections.detections[0].instance.id, original_id
         )
 
+    def _assert_one_track_per_scene(self, dataset):
+        tracks = _instance_ids_by_scene(dataset)
+        self.assertEqual(len(tracks["a"]), 1)
+        self.assertEqual(len(tracks["b"]), 1)
+        self.assertNotIn(None, tracks["a"] | tracks["b"])
+        self.assertNotEqual(tracks["a"], tracks["b"])
+
+    @drop_datasets
+    def test_backfill_instances_from_index_dynamic_groups(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_image_scenes_dataset()
+
+        foau.backfill_instances_from_index(
+            dataset.group_by("scene", order_by="frame"), "detections"
+        )
+
+        # one track per (label, index) within each scene, across its frames;
+        # scenes are separate videos, so their tracks are distinct
+        self._assert_one_track_per_scene(dataset)
+
+    @drop_datasets
+    def test_backfill_instances_from_index_image_samples(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_image_scenes_dataset()
+
+        foau.backfill_instances_from_index(dataset, "detections")
+
+        # without dynamic groups, each image is its own scope
+        self.assertEqual(_count_instances(dataset), len(dataset))
+
+    @drop_datasets
+    def test_generate_label_schemas_operator_dynamic_group_tracks(self):
+        dataset = _make_image_scenes_dataset()
+        view = dataset.group_by("scene", order_by="frame")
+
+        result = _execute_generate_label_schemas(dataset, view=view)
+        self.assertIn("label_schema", result)
+
+        self._assert_one_track_per_scene(dataset)
+
+    @drop_datasets
+    def test_generate_label_schemas_operator_unordered_group_unchanged(self):
+        dataset = _make_image_scenes_dataset()
+        view = dataset.group_by("scene")
+
+        _execute_generate_label_schemas(dataset, view=view)
+
+        # an unordered dynamic group is not played as a video
+        self.assertEqual(_count_instances(dataset), len(dataset))
+
+    @drop_datasets
+    def test_generate_label_schemas_operator_image_dataset_unchanged(self):
+        dataset = _make_image_scenes_dataset()
+
+        _execute_generate_label_schemas(dataset)
+
+        self.assertEqual(_count_instances(dataset), len(dataset))
+
     @drop_datasets
     def test_frame_attribute_dynamic_flag(self):
         dataset = _make_video_dataset()
@@ -909,6 +969,69 @@ def _make_video_dataset():
         "detections", fo.EmbeddedDocumentField, fo.Detections
     )
     return dataset
+
+
+def _make_image_scenes_dataset():
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath=f"/tmp/{scene}{frame}.jpg",
+                scene=scene,
+                frame=frame,
+                detections=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="car",
+                            index=1,
+                            bounding_box=[0, 0, 0.1, 0.1],
+                        )
+                    ]
+                ),
+            )
+            for scene in ("a", "b")
+            for frame in (1, 2, 3)
+        ]
+    )
+    return dataset
+
+
+def _instance_ids_by_scene(dataset):
+    tracks = {}
+    for sample in dataset:
+        tracks.setdefault(sample.scene, set()).update(
+            d.instance.id if d.instance else None
+            for d in sample.detections.detections
+        )
+
+    return tracks
+
+
+def _count_instances(dataset):
+    instance_ids = set()
+    for scene_ids in _instance_ids_by_scene(dataset).values():
+        instance_ids |= scene_ids
+
+    instance_ids.discard(None)
+    return len(instance_ids)
+
+
+def _execute_generate_label_schemas(dataset, view=None):
+    from fiftyone.operators.executor import ExecutionContext
+    from plugins.operators.annotation import GenerateLabelSchemas
+
+    request_params = {
+        "dataset_name": dataset.name,
+        "params": {"field": "detections", "scan_samples": True},
+    }
+    if view is not None:
+        request_params["view"] = view._serialize()
+
+    ctx = ExecutionContext(
+        operator_uri="generate_label_schemas",
+        request_params=request_params,
+    )
+    return GenerateLabelSchemas().execute(ctx)
 
 
 def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):

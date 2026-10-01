@@ -17,6 +17,7 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
@@ -34,6 +35,24 @@ def _strip_frames_prefix(field_name, is_frame_field):
         return field_name[len(_FRAMES_PREFIX) :]
 
     return field_name
+
+
+def _get_track_collection(ctx):
+    """Returns the collection whose samples or groups scope tracks.
+
+    An ordered dynamic group of image samples plays as a video, so its
+    groups scope tracks. The grouping is applied to the full dataset so that
+    every sample of each group is covered.
+    """
+    view = ctx.view
+    if ctx.dataset.media_type != fom.IMAGE or not view._is_dynamic_groups:
+        return ctx.dataset
+
+    stage = next(s for s in reversed(view._stages) if s.outputs_dynamic_groups)
+    if stage.order_by is None:
+        return ctx.dataset
+
+    return ctx.dataset.group_by(stage.field_or_expr, order_by=stage.order_by)
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -117,7 +136,9 @@ class GenerateLabelSchemas(foo.Operator):
         # limited view) and only fills fields that have indexes but no
         # instances yet, so existing tracks are never clobbered.
         if scan_samples:
-            foau.backfill_instances_from_index(ctx.dataset, field)
+            foau.backfill_instances_from_index(
+                _get_track_collection(ctx), field
+            )
 
         if limit:
             view = ctx.dataset.limit(limit)

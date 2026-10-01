@@ -7,9 +7,11 @@ Label utilities.
 """
 
 import eta.core.utils as etau
+import functools
 from typing import Any, Callable, Dict, List, Optional
 import logging
 
+import fiftyone.core.expressions as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -914,6 +916,11 @@ def index_to_instance(
     ``instance``attribute of the specified label field based on the values in
     the specified index attribute.
 
+    Instances are scoped to each sample, or to each group when the collection
+    is grouped. When the collection contains dynamic groups, all samples in a
+    dynamic group share one scope, so objects with the same index across the
+    group's samples are assigned the same instance.
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -950,16 +957,24 @@ def index_to_instance(
         ),
     )
 
-    if sample_collection.media_type == fom.GROUP:
-        id_path = sample_collection.group_field + ".id"
-        ids = sample_collection.values(id_path)
-
-        sample_collection = sample_collection.select_group_slices(
-            _allow_mixed=True
-        )
+    if sample_collection._is_dynamic_groups:
+        group_expr, _, root_view, _ = sample_collection._parse_dynamic_groups()
+        ids = sample_collection.values(foe.ViewExpression(group_expr))
+        select_group = sample_collection.get_dynamic_group
+        sample_collection = root_view
     else:
-        id_path = "id"
-        ids = sample_collection.values(id_path)
+        if sample_collection.media_type == fom.GROUP:
+            id_path = sample_collection.group_field + ".id"
+            ids = sample_collection.values(id_path)
+
+            sample_collection = sample_collection.select_group_slices(
+                _allow_mixed=True
+            )
+        else:
+            id_path = "id"
+            ids = sample_collection.values(id_path)
+
+        select_group = functools.partial(sample_collection.select_by, id_path)
 
     is_frame_field = sample_collection._is_frame_field(label_field)
     root, _ = sample_collection._get_label_field_root(label_field)
@@ -973,7 +988,7 @@ def index_to_instance(
 
     with fou.ProgressBar(progress=progress) as pb:
         for id in pb(ids):
-            view = sample_collection.select_by(id_path, id)
+            view = select_group(id)
 
             if is_frame_field:
                 sample_ids, frame_numbers, *indexes = view.values(

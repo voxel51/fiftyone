@@ -805,6 +805,45 @@ class LabelUtilsTests(unittest.TestCase):
         self.assertDictEqual(indexes, {None: 11})
 
     @drop_datasets
+    def test_label_to_instance_dynamic_groups(self):
+        samples = [
+            fo.Sample(
+                filepath=f"{scene}-{frame}.jpg",
+                scene=scene,
+                frame=frame,
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(label="cat", index=1),
+                        fo.Detection(label="dog", index=1),
+                        fo.Detection(label="none"),
+                    ]
+                ),
+            )
+            for scene in ("a", "b")
+            for frame in (1, 2)
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        foul.index_to_instance(
+            dataset.group_by("scene", order_by="frame"), "ground_truth"
+        )
+
+        instances = dataset.count_values(
+            "ground_truth.detections.instance._id"
+        )
+
+        cat_a = samples[0].ground_truth.detections[0].instance._id
+        dog_a = samples[0].ground_truth.detections[1].instance._id
+        cat_b = samples[2].ground_truth.detections[0].instance._id
+        dog_b = samples[2].ground_truth.detections[1].instance._id
+
+        self.assertDictEqual(
+            instances, {cat_a: 2, dog_a: 2, cat_b: 2, dog_b: 2, None: 4}
+        )
+
+    @drop_datasets
     def test_perform_nms(self):
         detections = [
             fo.Detection(
