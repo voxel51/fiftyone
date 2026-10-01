@@ -22,8 +22,9 @@ test.describe("MCAP surfaces", () => {
     modal,
     page,
   }) => {
-    await grid.untilTileDrawn(tinyA.fileName);
-    const tile = grid.getNthTile(0);
+    // episode A backs three tiles; only episode B's draw names one tile
+    await grid.untilTileDrawn(tinyB.fileName);
+    const tile = grid.getNthTile(sampleIndex.episodeB);
     expect(await tile.locator("canvas").isVisible()).toBe(true);
     expect(
       await page

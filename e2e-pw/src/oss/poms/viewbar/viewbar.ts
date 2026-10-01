@@ -4,6 +4,7 @@ import type { EventUtils } from "src/shared/event-utils";
 /** The bar moves the keyboard a frame after an edit, then dispatches this */
 const FOCUS_PLACED = "e2e:view-bar:focus-placed";
 const STAGE_EDITOR = "e2e:view-bar:stage-editor";
+const EXPRESSION_MOUNTED = "e2e:view-bar:expression-mounted";
 
 /** Run `action`, resolving once a stage editor has opened or closed */
 const afterStageEditor = <T>(
@@ -178,6 +179,24 @@ export class ViewBarPom {
   async editStage(index: number) {
     await afterStageEditor(this.eventUtils, true, () =>
       this.viewStages.nth(index).getByLabel("Edit stage").click(),
+    );
+    return this.stageEditor;
+  }
+
+  /**
+   * Reopens an applied stage that opens on an expression, resolving once its
+   * expression editor has mounted too, which happens after the editor opens
+   */
+  async editExpressionStage(index: number) {
+    await this.eventUtils.afterAll(
+      [
+        {
+          events: STAGE_EDITOR,
+          predicate: (e) => (e.detail as { open: boolean }).open,
+        },
+        { events: EXPRESSION_MOUNTED },
+      ],
+      () => this.viewStages.nth(index).getByLabel("Edit stage").click(),
     );
     return this.stageEditor;
   }

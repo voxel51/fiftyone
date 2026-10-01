@@ -133,9 +133,11 @@ export class ModalImaAsVideoControlsPom {
     }
 
     // the timeline loops by its own config, which the toggle updates on a
-    // later render
-    await this.modal.eventUtils.after("e2e:playback:looping", () =>
-      loopLabel.click(),
+    // later render; the timeline's creation reports its initial loop too
+    await this.modal.eventUtils.after(
+      "e2e:playback:looping",
+      () => loopLabel.click(),
+      (e) => (e.detail as { loop: boolean }).loop === isLooping,
     );
     expect(await loopInput.isChecked()).toBe(isLooping);
   }

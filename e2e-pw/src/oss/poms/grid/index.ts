@@ -297,7 +297,8 @@ export class GridPom {
 
   /**
    * Resolve once the tile of `fileName` has drawn, which it does on its own
-   * after the page loads
+   * after the page loads. `fileName` must back only one tile, since any tile
+   * of it resolves the wait
    */
   async untilTileDrawn(fileName: string) {
     const isTile = (detail: unknown) =>

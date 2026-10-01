@@ -155,7 +155,7 @@ test.describe("view bar", () => {
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("FilterLabels");
 
-    const reopened = await viewBar.editStage(0);
+    const reopened = await viewBar.editExpressionStage(0);
     await reopened.assert.activeEditor("filter", "expr");
     // What reopens is the printed canonical form, not the keystrokes
     await reopened.assert.paramText("filter", "F('label') == 'cat'");
@@ -176,7 +176,7 @@ test.describe("view bar", () => {
     await viewBar.assert.hasViewStage("Match");
 
     // An expression is an expression whoever wrote it, so it opens as Python
-    const editor = await viewBar.editStage(0);
+    const editor = await viewBar.editExpressionStage(0);
     await editor.assert.activeEditor("filter", "expr");
     await editor.assert.paramText("filter", "F('index') > 4");
   });
