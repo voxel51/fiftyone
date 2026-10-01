@@ -1,4 +1,4 @@
-@import "../../core/src/fonts/fonts.css";
+@import "./fonts/fonts.css";
 
 :root {
   color-scheme: var(--fo-palette-themeMode);
