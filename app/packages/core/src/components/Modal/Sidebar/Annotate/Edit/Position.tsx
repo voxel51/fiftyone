@@ -286,6 +286,7 @@ export default function Position({ readOnly = false }: PositionProps) {
           const storedLabel = engine.getLabel(ref);
           const unchanged =
             Array.isArray(storedLabel?.bounding_box) &&
+            storedLabel.bounding_box.length === next.length &&
             storedLabel.bounding_box.every(
               (v: number, i: number) => v === next[i],
             ) &&
