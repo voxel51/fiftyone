@@ -27,7 +27,7 @@ export interface FrameReader {
   read(instanceId: string, frame: number): LabelData | undefined;
   /** A detection's content minus engine-owned identity (re-stamped on write). */
   content(label: LabelData): Partial<LabelData>;
-  /** Every frame [1, total] this track appears on. */
+  /** Every frame [1, total] this track appears on, held or not. */
   trackFrames(instanceId: string): number[];
 }
 
@@ -59,17 +59,9 @@ export const makeFrameReader = (
     return rest;
   };
 
-  const trackFrames = (instanceId: string): number[] => {
-    const frames: number[] = [];
-
-    for (let frame = 1; frame <= ctx.totalFrames; frame++) {
-      if (read(instanceId, frame)) {
-        frames.push(frame);
-      }
-    }
-
-    return frames;
-  };
+  const trackFrames = (instanceId: string): number[] =>
+    engine.trackFrames({ sample: ctx.sample, path: ctx.path, instanceId })
+      .frames;
 
   return { read, content, trackFrames };
 };
@@ -87,6 +79,24 @@ export const makeReaderResolver = (
     fieldPath === deps.ctx.path
       ? primary
       : makeFrameReader(deps.engine, { ...deps.ctx, path: fieldPath });
+};
+
+/**
+ * Load `frames` and keep them while `run` reads and writes them, so every
+ * write diffs against the whole frame. Resolves once `run` has returned.
+ */
+export const withHeldFrames = async (
+  deps: SurfaceOpsDeps,
+  frames: readonly number[],
+  run: () => void,
+): Promise<void> => {
+  const release = await deps.engine.holdFrames(deps.ctx.sample, frames);
+
+  try {
+    run();
+  } finally {
+    release();
+  }
 };
 
 /** A track's frames with detections read up front, for a stable snapshot. */

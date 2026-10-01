@@ -28,7 +28,7 @@ export const useAutoInterpolate = (): void => {
   useAnnotationEventHandler(
     "annotation:keyframeChanged",
     useCallback(
-      (payload) => {
+      async (payload) => {
         if (!stream) {
           return;
         }
@@ -42,29 +42,10 @@ export const useAutoInterpolate = (): void => {
         // re-lerp on the field the change happened on (a non-primary track,
         // e.g. a polyline, re-lerps in place); fall back to the primary field
         const path = payload.path ?? stream.labelsPath;
-        const keyframeFrames: number[] = [];
-        // Every frame the instance is present on (keyframe or filler). The tail
-        // step-hold below walks the trailing filler.
-        const presentFrames: number[] = [];
-
-        for (let f = 1; f <= stream.totalFrames; f++) {
-          const det = engine.getLabel({
-            sample: sampleId,
-            path,
-            instanceId,
-            frame: f,
-          });
-
-          if (!det) {
-            continue;
-          }
-
-          presentFrames.push(f);
-
-          if (det.keyframe) {
-            keyframeFrames.push(f);
-          }
-        }
+        // Every frame the instance is present on (keyframe or filler), held
+        // or not. The tail step-hold below walks the trailing filler.
+        const { frames: presentFrames, keyframes: keyframeFrames } =
+          engine.trackFrames({ sample: sampleId, path, instanceId });
 
         const segments = resolveSegmentsToRepropagate(
           keyframeFrames,
@@ -123,29 +104,35 @@ export const useAutoInterpolate = (): void => {
             const tailFrames = presentFrames.filter((f) => f > frame);
 
             if (tailFrames.length > 0) {
-              actions.transaction(
-                () => {
-                  for (const tailFrame of tailFrames) {
-                    const existing = engine.getLabel({
-                      sample: sampleId,
-                      path,
-                      instanceId,
-                      frame: tailFrame,
-                    });
+              const release = await engine.holdFrames(sampleId, tailFrames);
 
-                    // Only overwrite filler — never a real keyframe in the tail.
-                    if (!existing || existing.keyframe === true) {
-                      continue;
+              try {
+                actions.transaction(
+                  () => {
+                    for (const tailFrame of tailFrames) {
+                      const existing = engine.getLabel({
+                        sample: sampleId,
+                        path,
+                        instanceId,
+                        frame: tailFrame,
+                      });
+
+                      // Only overwrite filler — never a real keyframe in the tail.
+                      if (!existing || existing.keyframe === true) {
+                        continue;
+                      }
+
+                      actions.updateLabel(
+                        { path, instanceId, frame: tailFrame },
+                        { ...held, keyframe: false },
+                      );
                     }
-
-                    actions.updateLabel(
-                      { path, instanceId, frame: tailFrame },
-                      { ...held, keyframe: false },
-                    );
-                  }
-                },
-                undoKey ? { undoKey } : undefined,
-              );
+                  },
+                  undoKey ? { undoKey } : undefined,
+                );
+              } finally {
+                release();
+              }
             }
           }
         }

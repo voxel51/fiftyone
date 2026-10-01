@@ -34,6 +34,7 @@ import type {
   LabelStore,
   ReconcileOpts,
   StoreSnapshot,
+  TrackFrames,
 } from "./types";
 
 /** Bundles the children's opaque transient snapshots into one. */
@@ -125,6 +126,14 @@ export class VideoLabelStore implements LabelStore {
   /** `NaN` when the frame half has no edit version: it never matches. */
   editVersion(): number {
     return this.frames.editVersion?.() ?? Number.NaN;
+  }
+
+  trackFrames(path: string, instanceId: string): TrackFrames {
+    return this.frames.trackFrames(path, instanceId);
+  }
+
+  holdFrames(frames: readonly number[]): Promise<() => void> {
+    return this.frames.holdFrames(frames);
   }
 
   // ---- mutation ----

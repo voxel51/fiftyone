@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DynamicGroupImageStream } from "./DynamicGroupImageStream";
+import { FrameCache } from "./frameCache";
 import { MAX_FRAME_ATTEMPTS } from "./frameBitmapStream";
 
 interface WorkerMessage {
@@ -42,7 +43,7 @@ class FakeWorker {
 const fetchChunks = (w: FakeWorker) =>
   w.posted.filter((m) => m.type === "fetchChunk");
 
-const makeStream = (maxBytes?: number) =>
+const makeStream = (budgetBytes = 1e9) =>
   new DynamicGroupImageStream({
     id: "test",
     sampleId: "s1",
@@ -51,7 +52,7 @@ const makeStream = (maxBytes?: number) =>
     frameCount: 120,
     frameRate: 30,
     chunkSize: 4,
-    maxBytes,
+    frameCache: new FrameCache({ frameCount: 120, budgetBytes }),
   });
 
 /** Land one decoded frame so the cache learns the frame size. */

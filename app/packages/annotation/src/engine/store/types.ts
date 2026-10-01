@@ -62,6 +62,22 @@ export const isWholeSampleReset = (change: LabelChange): boolean =>
  */
 export type PersistenceAdapter = (deltas: JSONDeltas) => Promise<boolean>;
 
+/** A track's frames and keyframes, ascending. */
+export interface TrackFrames {
+  frames: number[];
+  keyframes: number[];
+}
+
+/** Where a frame store's frames come from beyond what it holds. */
+export interface FrameSource {
+  /** A track's frames and keyframes per the server index; `null` without one
+   *  for `path`. */
+  indexedTrack(path: string, instanceId: string): TrackFrames | null;
+
+  /** Load `frames` and keep them until the returned release runs. */
+  hold(frames: readonly number[]): Promise<() => void>;
+}
+
 /**
  * The committed source of truth for one (sample, shape-region); transient wins
  * over source on read. `snapshot`/`restore` cover transient state and dirty
@@ -123,6 +139,15 @@ export interface LabelStore {
   /** Bumps whenever an {@link editedFrames} frame's content may have moved.
    *  Optional, paired with {@link editedFrames}. */
   editVersion?(): number;
+
+  /** The frames and keyframes a track occupies across the clip, including
+   *  frames the store doesn't hold. Optional; the engine scans
+   *  {@link loadedFrames} for a store without it. */
+  trackFrames?(path: string, instanceId: string): TrackFrames;
+
+  /** Load `frames` and keep them until the returned release runs. Optional;
+   *  a store without it holds every frame it has. */
+  holdFrames?(frames: readonly number[]): Promise<() => void>;
 
   // mutation (upsert by instanceId for list labels) — the store stamps
   // `_id = ref.instanceId`; callers never reconstruct arrays. `updateLabel`

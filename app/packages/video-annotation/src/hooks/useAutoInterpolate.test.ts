@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Tests for the synchronous, field-aware `useAutoInterpolate` handler: the
+ * Tests for the field-aware `useAutoInterpolate` handler: the
  * bracketing re-lerp (delegated to `useVideoPropagate`, carrying the changed
  * field path + the edit's undo key) and the Case C tail step-hold (geometry
  * held forward over the trailing filler when the LAST keyframe is edited).
@@ -16,7 +16,10 @@ const {
   transaction,
   getLabelImpl,
 } = vi.hoisted(() => ({
-  annotationHandlers: new Map<string, (payload: unknown) => void>(),
+  annotationHandlers: new Map<
+    string,
+    (payload: unknown) => void | Promise<void>
+  >(),
   propagate: vi.fn(),
   updateLabel: vi.fn(),
   transaction: vi.fn((fn: () => void) => fn()),
@@ -34,12 +37,33 @@ const {
 vi.mock("@fiftyone/annotation", () => ({
   useAnnotationEventHandler: (
     event: string,
-    cb: (payload: unknown) => void,
+    cb: (payload: unknown) => void | Promise<void>,
   ) => {
     annotationHandlers.set(event, cb);
   },
   useAnnotationEngine: () => ({
     getLabel: (args: { frame: number }) => getLabelImpl.current(args),
+    // the clip's frames as the store reports them: every frame the table has
+    trackFrames: () => {
+      const total = (streamRef.current as { totalFrames: number }).totalFrames;
+      const frames: number[] = [];
+      const keyframes: number[] = [];
+
+      for (let frame = 1; frame <= total; frame++) {
+        const label = getLabelImpl.current({ frame });
+
+        if (label) {
+          frames.push(frame);
+
+          if (label.keyframe) {
+            keyframes.push(frame);
+          }
+        }
+      }
+
+      return { frames, keyframes };
+    },
+    holdFrames: async () => () => {},
   }),
   useActiveSampleId: () => "sample-1",
   useSurfaceActions: () => ({ transaction, updateLabel }),
@@ -66,7 +90,9 @@ vi.mock("./useVideoPropagate", () => ({
 import { useAutoInterpolate } from "./useAutoInterpolate";
 
 const fireKeyframeChanged = (payload: unknown) =>
-  act(() => annotationHandlers.get("annotation:keyframeChanged")!(payload));
+  act(async () => {
+    await annotationHandlers.get("annotation:keyframeChanged")!(payload);
+  });
 
 beforeEach(() => {
   annotationHandlers.clear();
@@ -87,10 +113,10 @@ afterEach(() => {
 });
 
 describe("useAutoInterpolate (re-lerp)", () => {
-  it("re-lerps both bracketing segments on a middle keyframe edit, threading the field path and undo key", () => {
+  it("re-lerps both bracketing segments on a middle keyframe edit, threading the field path and undo key", async () => {
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 2,
@@ -120,10 +146,10 @@ describe("useAutoInterpolate (re-lerp)", () => {
     expect(updateLabel).not.toHaveBeenCalled();
   });
 
-  it("falls back to the primary field path when the payload omits one", () => {
+  it("falls back to the primary field path when the payload omits one", async () => {
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 2,
@@ -140,11 +166,11 @@ describe("useAutoInterpolate (re-lerp)", () => {
     });
   });
 
-  it("is a no-op without a stream", () => {
+  it("is a no-op without a stream", async () => {
     streamRef.current = null;
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 2,
@@ -157,7 +183,7 @@ describe("useAutoInterpolate (re-lerp)", () => {
 });
 
 describe("useAutoInterpolate (Case C — tail step-hold)", () => {
-  it("step-holds non-keyframe filler after the edited last keyframe, coalesced under the edit's undo key", () => {
+  it("step-holds non-keyframe filler after the edited last keyframe, coalesced under the edit's undo key", async () => {
     // 5 frames: keyframes at 1 and 3 (3 is the last keyframe); 4 and 5 are
     // non-keyframe filler with stale geometry.
     streamRef.current = {
@@ -178,7 +204,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 3,
@@ -215,7 +241,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     });
   });
 
-  it("step-holds all subsequent frames on a single-keyframe track", () => {
+  it("step-holds all subsequent frames on a single-keyframe track", async () => {
     streamRef.current = {
       labelsField: "detections",
       labelsPath: "frames.detections",
@@ -233,7 +259,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,
@@ -251,7 +277,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     );
   });
 
-  it("step-holds a polyline anchor's points forward over filler", () => {
+  it("step-holds a polyline anchor's points forward over filler", async () => {
     // A polyline track's filler is written when the shape is first drawn — one
     // vertex — so every vertex added to the keyframe afterwards has to be held
     // forward, exactly as a resized box is. Without this the drawn frame keeps
@@ -277,7 +303,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,
@@ -302,7 +328,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     );
   });
 
-  it("does not step-hold an anchor with no geometry at all", () => {
+  it("does not step-hold an anchor with no geometry at all", async () => {
     // Neither a bbox nor points — nothing to hold forward.
     streamRef.current = { labelsField: "polylines", totalFrames: 3 };
     getLabelImpl.current = ({ frame }: { frame: number }) => {
@@ -313,7 +339,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,
@@ -324,7 +350,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
     expect(updateLabel).not.toHaveBeenCalled();
   });
 
-  it("does not step-hold on a keyframe removal", () => {
+  it("does not step-hold on a keyframe removal", async () => {
     streamRef.current = {
       labelsField: "detections",
       labelsPath: "frames.detections",
@@ -339,7 +365,7 @@ describe("useAutoInterpolate (Case C — tail step-hold)", () => {
 
     renderHook(() => useAutoInterpolate());
 
-    fireKeyframeChanged({
+    await fireKeyframeChanged({
       trackId: "t1",
       instanceId: "i1",
       frame: 1,

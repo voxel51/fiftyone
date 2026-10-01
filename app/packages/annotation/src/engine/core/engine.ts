@@ -12,7 +12,11 @@ import type {
   PersistenceAdapter,
   StoreSnapshot,
 } from "../store/types";
-import { ReconcileOpts, wholeSampleReset } from "../store/types";
+import {
+  ReconcileOpts,
+  wholeSampleReset,
+  type TrackFrames,
+} from "../store/types";
 import { registerBridgeLoop } from "../bridge/bridgeLoop";
 import type { AdapterMap, SurfaceBridge } from "../bridge/types";
 import type { EntityId } from "../identity/entityId";
@@ -352,6 +356,51 @@ export class AnnotationEngine {
   /** The store's edit version; `NaN`, which never matches, when it has none. */
   editVersion(sample: string): number {
     return this.stores.get(sample)?.editVersion?.() ?? Number.NaN;
+  }
+
+  /**
+   * The frames and keyframes a track occupies across the clip, including frames
+   * the store doesn't hold; for a store that can't say, its loaded frames.
+   */
+  trackFrames(ref: {
+    sample: string;
+    path: string;
+    instanceId: string;
+  }): TrackFrames {
+    const store = this.stores.get(ref.sample);
+
+    if (store?.trackFrames) {
+      return store.trackFrames(ref.path, ref.instanceId);
+    }
+
+    const frames: number[] = [];
+    const keyframes: number[] = [];
+
+    for (const frame of [...(store?.loadedFrames() ?? [])].sort(
+      (a, b) => a - b,
+    )) {
+      const label = store?.getLabel({ ...ref, frame });
+
+      if (label) {
+        frames.push(frame);
+
+        if (label.keyframe) {
+          keyframes.push(frame);
+        }
+      }
+    }
+
+    return { frames, keyframes };
+  }
+
+  /**
+   * Load a sample's `frames` and keep them until the returned release runs, so
+   * an operation reads and writes whole frames away from the playhead.
+   */
+  holdFrames(sample: string, frames: readonly number[]): Promise<() => void> {
+    return (
+      this.stores.get(sample)?.holdFrames?.(frames) ?? Promise.resolve(() => {})
+    );
   }
 
   /** Current labels across all stores, for hydration. */

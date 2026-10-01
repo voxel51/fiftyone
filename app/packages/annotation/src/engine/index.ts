@@ -36,9 +36,11 @@ export {
 export type {
   ChangeListener,
   DisplayListener,
+  FrameSource,
   LabelChange,
   LabelChangeKind,
   LabelStore,
+  TrackFrames,
 } from "./store/types";
 export { isWholeSampleReset, wholeSampleReset } from "./store/types";
 export { SampleLabelStore } from "./store/sampleLabelStore";

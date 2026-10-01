@@ -27,11 +27,13 @@ const det = (
  * state on that frame (absent = the object isn't present). Only the surface
  * the resolver touches (`getValue` / `fps` / `totalFrames`) is implemented.
  */
+const tables = new WeakMap<object, Record<number, boolean>>();
+
 const fakeStream = (
   totalFrames: number,
   keyframeByFrame: Record<number, boolean>,
-): VideoFrameLabelsStream =>
-  ({
+): VideoFrameLabelsStream => {
+  const stream = {
     fps: FPS,
     totalFrames,
     getValue(time: number): FrameLabelSnapshot | null {
@@ -44,16 +46,30 @@ const fakeStream = (
           : [],
       };
     },
-  }) as unknown as VideoFrameLabelsStream;
+  } as unknown as VideoFrameLabelsStream;
+  tables.set(stream, keyframeByFrame);
+  return stream;
+};
+
+/** Resolve against the fixture's table, as `engine.trackFrames` reports it. */
+const resolve = (
+  stream: VideoFrameLabelsStream,
+  selectedIds: readonly string[],
+  time: number,
+) =>
+  resolvePropagationTarget(stream, selectedIds, time, () => {
+    const table = tables.get(stream) ?? {};
+    const frames = Object.keys(table)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    return { frames, keyframes: frames.filter((frame) => table[frame]) };
+  });
 
 describe("resolvePropagationTarget", () => {
   it("brackets between two keyframes around the playhead", () => {
     const stream = fakeStream(100, { 10: true, 20: false, 40: true });
-    const target = resolvePropagationTarget(
-      stream,
-      [INSTANCE],
-      timeOfFrame(20),
-    );
+    const target = resolve(stream, [INSTANCE], timeOfFrame(20));
     expect(target).toEqual({
       ok: true,
       instanceId: INSTANCE,
@@ -67,11 +83,7 @@ describe("resolvePropagationTarget", () => {
     const frames: Record<number, boolean> = { 10: true };
     for (let f = 11; f <= 45; f++) frames[f] = false;
     const stream = fakeStream(100, frames);
-    const target = resolvePropagationTarget(
-      stream,
-      [INSTANCE],
-      timeOfFrame(20),
-    );
+    const target = resolve(stream, [INSTANCE], timeOfFrame(20));
     expect(target).toEqual({
       ok: true,
       instanceId: INSTANCE,
@@ -84,11 +96,7 @@ describe("resolvePropagationTarget", () => {
     // Same object, but now a later keyframe is present — prefer the bracket.
     // The tracked object is present (non-kf) at the playhead frame too.
     const stream = fakeStream(100, { 10: true, 30: false, 70: true });
-    const target = resolvePropagationTarget(
-      stream,
-      [INSTANCE],
-      timeOfFrame(30),
-    );
+    const target = resolve(stream, [INSTANCE], timeOfFrame(30));
     expect(target).toMatchObject({
       ok: true,
       fromFrame: 10,
@@ -99,11 +107,7 @@ describe("resolvePropagationTarget", () => {
   it("won't fill an un-extended single-frame track", () => {
     // Just a seed keyframe, nothing ahead — extend the track first.
     const stream = fakeStream(100, { 10: true });
-    const target = resolvePropagationTarget(
-      stream,
-      [INSTANCE],
-      timeOfFrame(10),
-    );
+    const target = resolve(stream, [INSTANCE], timeOfFrame(10));
     expect(target).toEqual({
       ok: false,
       reason: "Extend the track past this frame to fill it with SAM2.",
@@ -113,11 +117,7 @@ describe("resolvePropagationTarget", () => {
   it("needs a keyframe at or before the playhead", () => {
     // Only a keyframe after the playhead; the object is present (non-kf) now.
     const stream = fakeStream(100, { 10: false, 40: true });
-    const target = resolvePropagationTarget(
-      stream,
-      [INSTANCE],
-      timeOfFrame(10),
-    );
+    const target = resolve(stream, [INSTANCE], timeOfFrame(10));
     expect(target).toEqual({
       ok: false,
       reason: "Need a keyframe at or before this frame.",
@@ -126,11 +126,7 @@ describe("resolvePropagationTarget", () => {
 
   it("reports when the object has no keyframes yet", () => {
     const stream = fakeStream(100, { 10: false });
-    const target = resolvePropagationTarget(
-      stream,
-      [INSTANCE],
-      timeOfFrame(10),
-    );
+    const target = resolve(stream, [INSTANCE], timeOfFrame(10));
     expect(target).toEqual({
       ok: false,
       reason: "Mark a keyframe to seed propagation",
@@ -155,7 +151,7 @@ describe("resolvePropagationTarget", () => {
       },
     } as unknown as VideoFrameLabelsStream;
 
-    const target = resolvePropagationTarget(stream, [OVERLAY], timeOfFrame(10));
+    const target = resolve(stream, [OVERLAY], timeOfFrame(10));
     expect(target).toEqual({
       ok: false,
       reason:
@@ -165,7 +161,7 @@ describe("resolvePropagationTarget", () => {
 
   it("requires a selection", () => {
     const stream = fakeStream(100, { 10: true });
-    expect(resolvePropagationTarget(stream, [], timeOfFrame(10))).toEqual({
+    expect(resolve(stream, [], timeOfFrame(10))).toEqual({
       ok: false,
       reason: "Select a tracked object to propagate.",
     });

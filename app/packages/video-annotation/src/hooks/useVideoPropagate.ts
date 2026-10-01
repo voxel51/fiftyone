@@ -47,8 +47,6 @@ export const useVideoPropagate = (): ((
 
       // a non-primary track (e.g. a polyline) re-lerps in its own frame field
       const path = request.path ?? stream.labelsPath;
-      const at: FrameReader = (frame) =>
-        engine.getLabel({ sample: sampleId, path, instanceId, frame });
 
       // gate on the schema type, not the presence of geometry on the label
       const linearAgentId = linearAgentFor(engine.getLabelType(path));
@@ -57,36 +55,49 @@ export const useVideoPropagate = (): ((
         return false;
       }
 
-      const leftKeyframe = at(fromFrame);
+      // every frame between the keyframes is read and written, so load them
+      // and keep them until the run ends
+      const span = Array.from(
+        { length: toFrame - fromFrame + 1 },
+        (_, i) => fromFrame + i,
+      );
+      const release = await engine.holdFrames(sampleId, span);
 
-      if (!leftKeyframe?.keyframe) {
-        return false;
-      }
+      try {
+        const at: FrameReader = (frame) =>
+          engine.getLabel({ sample: sampleId, path, instanceId, frame });
+        const leftKeyframe = at(fromFrame);
 
-      const rightKeyframe = at(toFrame);
-      const args: PropagateArgs = {
-        instanceId,
-        fromFrame,
-        toFrame,
-        path,
-        at,
-        leftKeyframe,
-        rightKeyframe,
-        undoKey,
-        linearAgentId,
-      };
-
-      if (mode === "sam2") {
-        // SAM2 tracks a box; a polyline seed would convert to an undefined
-        // `bounding_box`, so fail closed
-        if (!isBoxFieldType(engine.getLabelType(path))) {
+        if (!leftKeyframe?.keyframe) {
           return false;
         }
 
-        return sam2Propagate(args);
-      }
+        const args: PropagateArgs = {
+          instanceId,
+          fromFrame,
+          toFrame,
+          path,
+          at,
+          leftKeyframe,
+          rightKeyframe: at(toFrame),
+          undoKey,
+          linearAgentId,
+        };
 
-      return linearPropagate(args);
+        if (mode === "sam2") {
+          // SAM2 tracks a box; a polyline seed would convert to an undefined
+          // `bounding_box`, so fail closed
+          if (!isBoxFieldType(engine.getLabelType(path))) {
+            return false;
+          }
+
+          return await sam2Propagate(args);
+        }
+
+        return await linearPropagate(args);
+      } finally {
+        release();
+      }
     },
     [engine, sampleId, stream, sam2Propagate, linearPropagate],
   );

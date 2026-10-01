@@ -1,9 +1,16 @@
 import { createStore } from "jotai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { FrameCache } from "./frameCache";
 import {
   resolveSyntheticId,
   VideoFrameLabelsStream,
 } from "./VideoFrameLabelsStream";
+
+/** A decoded mask as the stream reads it: 10x10 costs 500 bytes held. */
+type DecodedStub = {
+  bitmap: unknown;
+  rawPixels: { width: number; height: number };
+};
 
 /**
  * Stand-in for the shared mask bitmap cache, so gate tests drive readiness
@@ -23,15 +30,15 @@ const maskCache = vi.hoisted(() => ({
   isWarming(): boolean {
     return false;
   },
-  acquire(source: string): { bitmap: unknown } | undefined {
+  acquire(source: string): DecodedStub | undefined {
     if (!this.decoded.has(source)) {
       return undefined;
     }
 
     this.refs.set(source, (this.refs.get(source) ?? 0) + 1);
-    return { bitmap: source };
+    return { bitmap: source, rawPixels: { width: 10, height: 10 } };
   },
-  async acquireAsync(source: string): Promise<{ bitmap: unknown }> {
+  async acquireAsync(source: string): Promise<DecodedStub> {
     this.warmed.push(source);
 
     if (this.undecodable.has(source)) {
@@ -40,7 +47,7 @@ const maskCache = vi.hoisted(() => ({
 
     this.decoded.add(source);
     this.refs.set(source, (this.refs.get(source) ?? 0) + 1);
-    return { bitmap: source };
+    return { bitmap: source, rawPixels: { width: 10, height: 10 } };
   },
   release(source: string): void {
     const refs = this.refs.get(source) ?? 0;
@@ -76,7 +83,7 @@ vi.mock("@fiftyone/lighter", () => ({
   maskSourceOf: (mask?: unknown) => mask ?? undefined,
 }));
 
-function buildStream(): VideoFrameLabelsStream {
+function buildStream(frameCache?: FrameCache): VideoFrameLabelsStream {
   return new VideoFrameLabelsStream({
     id: "test",
     sampleId: "s",
@@ -84,6 +91,7 @@ function buildStream(): VideoFrameLabelsStream {
     view: [],
     frameCount: 100,
     frameRate: 30,
+    frameCache,
   });
 }
 
@@ -327,8 +335,12 @@ describe("VideoFrameLabelsStream mask gate", () => {
     expect(stream.bufferState(timeOfFrame(10, 30))).toBe("ready");
   });
 
-  it("releases masks the playhead has left behind", async () => {
-    const stream = buildStream();
+  it("keeps masks after the playhead leaves, until the frame is evicted", async () => {
+    // two frames' masks (500 bytes each) don't fit
+    const frameCache = new FrameCache({ frameCount: 100, budgetBytes: 600 });
+    const stream = buildStream(frameCache);
+    const evicted: number[] = [];
+    stream.subscribeToEvictions((frame) => evicted.push(frame));
     seedFrame(stream, 10, ["mask-a"]);
     seedFrame(stream, 60, ["mask-far"]);
 
@@ -336,10 +348,11 @@ describe("VideoFrameLabelsStream mask gate", () => {
     await flush();
     expect(maskCache.borrows("mask-a")).toBe(1);
 
-    // Playhead jumps well past the hold window.
+    frameCache.setPlayhead(60);
     stream.prefetch([timeOfFrame(60, 30), timeOfFrame(60, 30)]);
     await flush();
 
+    expect(evicted).toEqual([10]);
     expect(maskCache.borrows("mask-a")).toBe(0);
     expect(maskCache.borrows("mask-far")).toBe(1);
     expect(stream.bufferState(timeOfFrame(10, 30))).toBe("missing");

@@ -1,3 +1,4 @@
+import type { TrackFrames } from "@fiftyone/annotation";
 import { frameAt } from "@fiftyone/playback";
 import type { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
@@ -49,6 +50,8 @@ export function resolvePropagationTarget(
   stream: VideoFrameLabelsStream,
   selectedIds: readonly string[],
   time: number,
+  /** The track's frames and keyframes across the clip (`engine.trackFrames`). */
+  trackFrames: (instanceId: string) => TrackFrames,
 ): PropagationTarget {
   if (selectedIds.length === 0) {
     return { ok: false, reason: "Select a tracked object to propagate." };
@@ -83,9 +86,9 @@ export function resolvePropagationTarget(
 
   const currentFrame = frameAt(time, stream.fps, stream.totalFrames);
 
+  const track = trackFrames(instanceId);
   const { leftFrame, rightFrame } = findBracketingKeyframes(
-    stream,
-    instanceId,
+    track.keyframes,
     currentFrame,
   );
 
@@ -107,7 +110,7 @@ export function resolvePropagationTarget(
 
   // Forward run: only the seed keyframe exists. Fill forward to the end of
   // the track's contiguous presence run containing the playhead.
-  const endFrame = forwardPresenceEnd(stream, instanceId, currentFrame);
+  const endFrame = forwardPresenceEnd(track.frames, currentFrame);
 
   if (endFrame <= leftFrame) {
     return {
@@ -120,37 +123,20 @@ export function resolvePropagationTarget(
 }
 
 /**
- * Walk the cached frames for the keyframes bracketing the playhead: the most
- * recent keyframe at or before it (`leftFrame`), and the first keyframe strictly
- * after (`rightFrame`). `leftFrame` keeps updating until the loop hits a frame
- * past the playhead, at which point `rightFrame` is locked in.
+ * The keyframes bracketing the playhead: the last at or before it
+ * (`leftFrame`), and the first strictly after (`rightFrame`).
  */
 function findBracketingKeyframes(
-  stream: VideoFrameLabelsStream,
-  instanceId: string,
+  keyframes: readonly number[],
   currentFrame: number,
 ): { leftFrame: number | null; rightFrame: number | null } {
   let leftFrame: number | null = null;
   let rightFrame: number | null = null;
 
-  for (let f = 1; f <= stream.totalFrames; f++) {
-    const snap = stream.getValue((f - 1) / stream.fps);
-    if (!snap) {
-      continue;
-    }
-
-    const det = snap.detections.find(
-      (d) => d.keyframe && d.instance?._id === instanceId,
-    );
-    if (!det) {
-      continue;
-    }
-
+  for (const f of keyframes) {
     if (f <= currentFrame) {
       leftFrame = f;
-    }
-
-    if (f > currentFrame && rightFrame === null) {
+    } else {
       rightFrame = f;
       break;
     }
@@ -161,25 +147,16 @@ function findBracketingKeyframes(
 
 /**
  * Last frame of the track's contiguous presence run containing the playhead.
- * Walks forward from `currentFrame` until the instance is no longer present.
  */
 function forwardPresenceEnd(
-  stream: VideoFrameLabelsStream,
-  instanceId: string,
+  frames: readonly number[],
   currentFrame: number,
 ): number {
+  const present = new Set(frames);
   let endFrame = currentFrame;
 
-  for (let f = currentFrame + 1; f <= stream.totalFrames; f++) {
-    const present = stream
-      .getValue((f - 1) / stream.fps)
-      ?.detections.some((d) => d.instance?._id === instanceId);
-
-    if (!present) {
-      break;
-    }
-
-    endFrame = f;
+  while (present.has(endFrame + 1)) {
+    endFrame++;
   }
 
   return endFrame;

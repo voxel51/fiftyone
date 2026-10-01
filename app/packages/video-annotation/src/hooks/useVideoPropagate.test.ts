@@ -57,6 +57,7 @@ vi.mock("@fiftyone/annotation", () => ({
   }),
   useAnnotationEngine: () => ({
     getLabelType: () => labelTypeRef.current,
+    holdFrames: async () => () => {},
     getLabel: ({ frame }: { frame: number }) =>
       frame === 10 ? LEFT : frame === 20 ? RIGHT : { keyframe: false },
   }),

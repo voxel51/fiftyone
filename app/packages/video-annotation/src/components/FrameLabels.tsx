@@ -85,6 +85,7 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
+import { useVideoFrameSource } from "../streams/videoFrameSource";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
 const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
@@ -338,6 +339,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   ...props
 }) => {
   // Construct once per mount; the parent re-mounts on identity changes.
+  const frameCache = useVideoFrameSource()?.cache;
   const streamRef = useRef<VideoFrameLabelsStream | null>(null);
   if (streamRef.current === null) {
     streamRef.current = new VideoFrameLabelsStream({
@@ -350,6 +352,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       frameRate: props.frameRate,
       frameField: props.frameField,
       frameFields: props.frameFields,
+      frameCache,
     });
   }
 

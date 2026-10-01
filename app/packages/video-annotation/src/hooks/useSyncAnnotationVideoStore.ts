@@ -9,6 +9,7 @@ import {
 import type { LabelType } from "@fiftyone/utilities";
 import { useCallback, useEffect, useRef } from "react";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { useVideoFrameSource } from "../streams/videoFrameSource";
 import { seedFrameStore } from "../utils/frameStoreSeed";
 import { useCarriedFrameEdits } from "./useCarriedFrameEdits";
 import { useOnSampleLevelLabelsChange } from "./useOnSampleLevelLabelsChange";
@@ -20,8 +21,6 @@ export interface SyncVideoStoreOptions {
   sampleLevelPaths: ReadonlySet<string>;
   /** Frame-scoped primitive paths whose per-frame values the store serves. Default none. */
   valuePaths?: readonly string[];
-  /** Fetch every frame up front for consumers that walk the whole clip; `warmupAll` competes with playback. Default `true`. */
-  seedWholeClip?: boolean;
 }
 
 /**
@@ -36,12 +35,12 @@ export const useSyncAnnotationVideoStore = ({
   labelTypes,
   sampleLevelPaths,
   valuePaths = NO_VALUE_PATHS,
-  seedWholeClip = true,
 }: SyncVideoStoreOptions): void => {
   const engine = useAnnotationEngine();
   const sampleId = useActiveSampleId();
   const getSample = useSampleInstanceGetter();
   const stream = useFrameLabelsStream();
+  const frameSource = useVideoFrameSource();
   const carry = useCarriedFrameEdits();
 
   // The live sample-level backing, re-announced below without re-registering
@@ -59,19 +58,14 @@ export const useSyncAnnotationVideoStore = ({
       labelTypes,
       valuePaths,
       loading: true,
+      frameSource: frameSource ?? undefined,
     });
     const sampleLevel = new SampleLabelStore(sampleId, getSample(sampleId));
     const store = new VideoLabelStore(sampleId, frames, sampleLevel);
     const unregister = engine.registerStore(store);
     sampleLevelRef.current = sampleLevel;
 
-    const stopSeeding = seedFrameStore(
-      frames,
-      stream,
-      labelTypes,
-      valuePaths,
-      seedWholeClip,
-    );
+    const stopSeeding = seedFrameStore(frames, stream, labelTypes, valuePaths);
     carry.restore(frames, sampleId);
 
     return () => {
@@ -88,7 +82,7 @@ export const useSyncAnnotationVideoStore = ({
     valuePaths,
     getSample,
     stream,
-    seedWholeClip,
+    frameSource,
     carry,
   ]);
 

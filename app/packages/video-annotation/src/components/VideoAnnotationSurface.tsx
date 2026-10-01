@@ -49,6 +49,11 @@ import {
 } from "./SyntheticLabels";
 import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 import { LighterVideo } from "./LighterVideo";
+import { FrameCache } from "../streams/frameCache";
+import {
+  VideoFrameSource,
+  VideoFrameSourceProvider,
+} from "../streams/videoFrameSource";
 import styles from "./VideoAnnotationSurface.module.css";
 
 /**
@@ -198,6 +203,15 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const dimensions = useDimensions();
   const surfaceHeight = dimensions.bounds?.height ?? 0;
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
+
+  // One frame budget for the surface: the label stream, the bitmap stream and
+  // the frame store all keep their frames in it.
+  const frameCount = prerequisites.frameCount;
+  const frameSource = useMemo(
+    () =>
+      frameCount ? new VideoFrameSource(new FrameCache({ frameCount })) : null,
+    [frameCount],
+  );
 
   // Resolved top-level media URL for the `html` and `extract` sources; the
   // `fetch` source resolves per-frame URLs instead. A dynamic-group sample's
@@ -361,16 +375,18 @@ const VideoAnnotationSurfaceForSample: React.FC<
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
-    <PlaybackProvider snapToFrameOnSettle mode={mode}>
-      <VideoAnnotationHandlerRegistration />
-      {AUDIO_ONLY_STRATEGIES.has(strategy) && (
-        <RegisterTimelineAudio
-          videoSrc={videoSrc}
-          hasAudio={resolution.hasAudio}
-        />
-      )}
-      {registered}
-    </PlaybackProvider>
+    <VideoFrameSourceProvider value={frameSource}>
+      <PlaybackProvider snapToFrameOnSettle mode={mode}>
+        <VideoAnnotationHandlerRegistration />
+        {AUDIO_ONLY_STRATEGIES.has(strategy) && (
+          <RegisterTimelineAudio
+            videoSrc={videoSrc}
+            hasAudio={resolution.hasAudio}
+          />
+        )}
+        {registered}
+      </PlaybackProvider>
+    </VideoFrameSourceProvider>
   );
 };
 

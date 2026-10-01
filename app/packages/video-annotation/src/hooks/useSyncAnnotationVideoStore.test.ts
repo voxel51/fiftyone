@@ -2,8 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * The frame store is born loading. What settles it: cached data at seed time,
- * or the first landing — never only the whole-clip warmup, which the
- * read-only surface opts out of.
+ * or the first landing.
  */
 
 import { act, renderHook } from "@testing-library/react";
@@ -15,8 +14,7 @@ interface FakeStream {
   cachedFrames: () => { frame_number: number }[];
   cachedFramesIn: (range: [number, number]) => { frame_number: number }[];
   subscribeToEdits: (listener: (range: [number, number]) => void) => () => void;
-  warmupAll: () => Promise<void>;
-  cancelWarmup: () => void;
+  subscribeToEvictions: (listener: (frame: number) => void) => () => void;
   listener: ((range: [number, number]) => void) | null;
 }
 
@@ -67,9 +65,7 @@ const makeStream = (cached: { frame_number: number }[]): FakeStream => {
         stream.listener = null;
       };
     },
-    // Never resolves: settling must not depend on the warmup
-    warmupAll: () => new Promise(() => undefined),
-    cancelWarmup: () => undefined,
+    subscribeToEvictions: () => () => undefined,
     listener: null,
   };
   return stream;
@@ -87,7 +83,6 @@ describe("useSyncAnnotationVideoStore loading state", () => {
       useSyncAnnotationVideoStore({
         labelTypes: {},
         sampleLevelPaths: new Set<string>(),
-        seedWholeClip: false,
       }),
     );
 
@@ -102,7 +97,6 @@ describe("useSyncAnnotationVideoStore loading state", () => {
       useSyncAnnotationVideoStore({
         labelTypes: {},
         sampleLevelPaths: new Set<string>(),
-        seedWholeClip: false,
       }),
     );
 
@@ -120,7 +114,6 @@ describe("useSyncAnnotationVideoStore loading state", () => {
       useSyncAnnotationVideoStore({
         labelTypes: {},
         sampleLevelPaths: new Set<string>(),
-        seedWholeClip: false,
       }),
     );
 

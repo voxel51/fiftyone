@@ -53,9 +53,11 @@ import type {
   ReconcileOpts,
   ChangeListener,
   DisplayListener,
+  FrameSource,
   LabelChange,
   LabelStore,
   StoreSnapshot,
+  TrackFrames,
 } from "./types";
 import { wholeSampleReset } from "./types";
 import {
@@ -96,6 +98,11 @@ export interface FrameStoreOptions {
   values?: FrameValuesData;
   /** Start in the seed-in-flight state (see {@link LabelStore.isLoading}). */
   loading?: boolean;
+  /**
+   * Where frames the store doesn't hold come from. Without one the store
+   * answers only for the frames it holds.
+   */
+  frameSource?: FrameSource;
 }
 
 /**
@@ -131,7 +138,10 @@ export class FrameStore implements LabelStore {
   private loading = false;
   /** Frames written this session; survives the save that clears `working`. */
   private edited = new Set<number>();
+  /** Frames whose primitive values were written this session. */
+  private readonly valueEdited = new Set<number>();
   private edits = 0;
+  private readonly frameSource?: FrameSource;
 
   constructor(sample: string, options: FrameStoreOptions) {
     this.sample = sample;
@@ -140,6 +150,7 @@ export class FrameStore implements LabelStore {
     this.source = this.parse(options.data ?? {});
     this.valueSource = this.parseValues(options.values ?? {});
     this.loading = options.loading ?? false;
+    this.frameSource = options.frameSource;
   }
 
   isLoading(): boolean {
@@ -265,6 +276,83 @@ export class FrameStore implements LabelStore {
 
   editVersion(): number {
     return this.edits;
+  }
+
+  /**
+   * The frames and keyframes a track occupies across the clip: the frame
+   * source's index for frames nobody wrote this session, the store's own
+   * frames for the rest. Without an index, only the frames the store holds.
+   */
+  trackFrames(path: string, instanceId: string): TrackFrames {
+    const indexed = this.frameSource?.indexedTrack(path, instanceId) ?? null;
+    const frames = new Set<number>();
+    const keyframes = new Set<number>();
+
+    if (indexed) {
+      for (const frame of indexed.frames) {
+        if (!this.edited.has(frame)) {
+          frames.add(frame);
+        }
+      }
+
+      for (const frame of indexed.keyframes) {
+        if (!this.edited.has(frame)) {
+          keyframes.add(frame);
+        }
+      }
+    }
+
+    for (const frame of indexed ? this.edited : this.frames()) {
+      const label = this.getLabel({
+        sample: this.sample,
+        path,
+        instanceId,
+        frame,
+      });
+
+      if (label) {
+        frames.add(frame);
+
+        if (label.keyframe) {
+          keyframes.add(frame);
+        }
+      }
+    }
+
+    const byFrame = (a: number, b: number) => a - b;
+
+    return {
+      frames: [...frames].sort(byFrame),
+      keyframes: [...keyframes].sort(byFrame),
+    };
+  }
+
+  /**
+   * Load `frames` from the frame source and keep them until the returned
+   * release runs, so an operation reads and writes whole frames.
+   */
+  holdFrames(frames: readonly number[]): Promise<() => void> {
+    return this.frameSource?.hold(frames) ?? Promise.resolve(() => {});
+  }
+
+  /**
+   * Drop server frames the frame source no longer keeps. Frames written this
+   * session stay: their edits, undo history and timeline overlay need them.
+   */
+  evict(frames: Iterable<number>): void {
+    for (const frame of frames) {
+      if (
+        this.edited.has(frame) ||
+        this.valueEdited.has(frame) ||
+        this.working.has(frame) ||
+        this.workingValues.has(frame)
+      ) {
+        continue;
+      }
+
+      this.source.delete(frame);
+      this.valueSource.delete(frame);
+    }
   }
 
   // ---- mutation ----
@@ -400,6 +488,7 @@ export class FrameStore implements LabelStore {
 
     for (const [frame, edited] of workingValues) {
       this.workingValues.set(frame, new Map(edited));
+      this.valueEdited.add(frame);
     }
   }
 
@@ -836,6 +925,7 @@ export class FrameStore implements LabelStore {
     }
 
     edited.set(path, value);
+    this.valueEdited.add(frame);
 
     // a primitive is not a label, so there is no LabelChange to report; the
     // display tick is what re-reads the value

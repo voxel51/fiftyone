@@ -9,13 +9,14 @@ import {
 } from "@fiftyone/annotation";
 import type { Track } from "@fiftyone/playback";
 import type { LabelData, LabelType } from "@fiftyone/utilities";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
 import {
   useFrameLabelFields,
   useVisibleLabelSchemas,
 } from "../state/accessors";
 import { useFrameLabelsStream } from "../streams/frameLabelsStream";
+import { useVideoFrameSource } from "../streams/videoFrameSource";
 import {
   buildTracksFromIndex,
   type FrameOverlay,
@@ -100,6 +101,13 @@ export function useFrameDerivedTracks(
     allFields,
     allDynamicAttributes,
   );
+
+  // Track ops ask the frame store which frames a track spans; the index
+  // answers for frames the store doesn't hold.
+  const frameSource = useVideoFrameSource();
+  useEffect(() => {
+    frameSource?.setIndex(loaded ? indexByPath : null);
+  }, [frameSource, indexByPath, loaded]);
 
   // No visible frame field, or the index hasn't settled: no rows. Tracks build
   // per visible field from that field's index ⊕ its dirty-frame overlay, then
