@@ -104,6 +104,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: GrandTour Sample
+    :description: Three missions of an ANYmal D quadruped from the GrandTour legged robotics dataset in native MCAP format, pairing HDR and depth cameras and a Hesai LiDAR with inertial, joint, odometry and GNSS/INS streams on one clock.
+    :link: datasets/grandtour_sample.html
+    :image: ../_images/grandtour-sample.png
+    :tags: multimodal,mcap,robotics,legged,lidar
+
+.. customcarditem::
     :header: HMDB51
     :description: Action recognition dataset with 6,766 video clips across 51 action classes. Collected from movies and web videos with realistic human actions and diverse scenarios.
     :link: datasets/hmdb51.html
