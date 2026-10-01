@@ -12,6 +12,7 @@ import { Timeline } from "@fiftyone/playback/src/views/Timeline/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import type { BufferRange } from "@fiftyone/utilities";
+import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -357,7 +358,7 @@ export const ImaVidLookerReact = React.memo(
             width: "100%",
             height: "100%",
             minHeight: 0,
-            background: "var(--color-content-bg-card-1)",
+            background: getColorCssVar(BackgroundColor.Card),
             position: "relative",
           }}
         />

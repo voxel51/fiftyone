@@ -1,6 +1,7 @@
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
+import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -48,7 +49,7 @@ const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
         width: "100%",
         height: "100%",
         minHeight: 0,
-        background: "var(--color-content-bg-card-1)",
+        background: getColorCssVar(BackgroundColor.Card),
         position: "relative",
       }}
     />
