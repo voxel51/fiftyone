@@ -39,6 +39,7 @@ import {
 import { useAtomValue } from "jotai";
 import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import styled from "styled-components";
 import { useSchemaManagerModal } from "../../Modal/Sidebar/Annotate/SchemaManager/hooks";
 import {
   schemaManagerDisplayedAtom,
@@ -52,6 +53,26 @@ import {
 } from "../../Modal/Sidebar/Annotate/SchemaManager/useSchemaDocs";
 
 export const ALL_FIELDS_LENS = "__all__";
+
+/**
+ * A lens option styled like voodo's ``Select`` option (the design): the
+ * selected row sits on the ``Selected`` surface with an accent check on
+ * the right. voodo's menu check item only offers a leading, plain check
+ * and does not export its option component, so the same tokens are
+ * applied here (the variables come from voodo's stylesheet).
+ */
+const LensItem = styled(MenuCheckItem)`
+  flex-direction: row-reverse;
+  justify-content: space-between;
+
+  &[aria-checked="true"] {
+    background-color: var(--color-content-bg-selected);
+  }
+
+  &[aria-checked="true"] svg {
+    color: var(--color-brand-primary);
+  }
+`;
 
 /** Menu label of the dataset default; the trigger shows the short form. */
 export const DEFAULT_SCHEMA_LABEL = "Default schema (all fields)";
@@ -265,15 +286,15 @@ const SchemaLensSelector = ({
         </DropdownTrigger>
       }
     >
-      <MenuCheckItem
+      <LensItem
         data-cy="schema-lens-option-default"
         checked={current === ALL_FIELDS_LENS}
         onClick={() => select(ALL_FIELDS_LENS)}
       >
         {DEFAULT_SCHEMA_LABEL}
-      </MenuCheckItem>
+      </LensItem>
       {docs.map((doc) => (
-        <MenuCheckItem
+        <LensItem
           key={doc.id}
           data-cy="schema-lens-option"
           checked={current === doc.id}
@@ -291,7 +312,7 @@ const SchemaLensSelector = ({
           >
             {doc.name}
           </span>
-        </MenuCheckItem>
+        </LensItem>
       ))}
       {!loaded ? (
         <MenuTextItem disabled data-cy="schema-lens-loading">
