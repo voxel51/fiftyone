@@ -135,14 +135,14 @@ test.describe.serial("operator prompt", () => {
   }) => {
     await operatorsBrowser.show();
     await operatorsBrowser.search("E2E");
+    // Each progress step is on screen for ~500ms. Record what the modal
+    // renders rather than polling it live, so a slow runner cannot miss
+    // the intermediate step.
+    await operatorsPromptViewModal.recordContentText();
     await operatorsBrowser.choose("E2E: Progress");
     await operatorsPrompt.assert.isExecuting();
-    await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 1 of 2",
-    );
-    await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 2 of 2",
-    );
+    await operatorsPromptViewModal.assert.hasRenderedText("Loading 1 of 2");
+    await operatorsPromptViewModal.assert.hasRenderedText("Loading 2 of 2");
     await operatorsPromptViewModal.done();
     await operatorsPrompt.assert.isClosed();
     await operatorsPromptViewModal.assert.isClosed();
