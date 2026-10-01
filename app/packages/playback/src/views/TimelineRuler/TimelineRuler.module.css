@@ -158,7 +158,7 @@
 }
 
 .inspectionCaretCap {
-  background: var(--plot-surface, #050b12);
+  background: var(--color-content-bg-popover);
   border: 1px solid var(--color-semantic-warning);
   border-radius: 50%;
   height: 6px;
