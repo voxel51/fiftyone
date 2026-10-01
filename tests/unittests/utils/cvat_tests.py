@@ -54,6 +54,46 @@ class CVATRotationTests(unittest.TestCase):
         self.assertAlmostEqual(by_frame[2]["rotation"], 0.0)
         self.assertAlmostEqual(by_frame[3]["rotation"], 5.0)
 
+    def test_track_interpolation_180_tie_turns_clockwise(self):
+        # exactly opposite keyframes: CVAT resolves the tie as +180, so a
+        # quarter of the way from 0 is 45 (not 315), and from 180 it is 225
+        base = {
+            "frame": 0,
+            "type": "rectangle",
+            "points": [0.0, 0.0, 10.0, 10.0],
+            "keyframe": True,
+            "outside": False,
+            "attributes": [],
+        }
+        for r0, r1, expected in [(0.0, 180.0, 45.0), (180.0, 0.0, 225.0)]:
+            shapes = fouc._get_interpolated_shapes(
+                [
+                    {**base, "rotation": r0},
+                    {**base, "frame": 4, "rotation": r1},
+                ]
+            )
+            by_frame = {s["frame"]: s for s in shapes}
+            self.assertAlmostEqual(by_frame[1]["rotation"], expected)
+
+    def test_convert_rotations_to_radians_attributes_dict(self):
+        # legacy storage: ``label.attributes["rotation"].value``
+        dataset = fo.Dataset()
+        det = fo.Detection(label="a", bounding_box=[0.1, 0.1, 0.2, 0.2])
+        det.attributes["rotation"] = fo.NumericAttribute(value=45.0)
+        dataset.add_sample(
+            fo.Sample(
+                filepath="/tmp/x.jpg", gt=fo.Detections(detections=[det])
+            )
+        )
+
+        num = fouc.convert_rotations_to_radians(dataset, "gt")
+
+        self.assertEqual(num, 1)
+        value = (
+            dataset.first().gt.detections[0].get_attribute_value("rotation")
+        )
+        self.assertAlmostEqual(value, math.radians(45))
+
     def test_convert_rotations_to_radians(self):
         dataset = fo.Dataset()
         dataset.add_sample(

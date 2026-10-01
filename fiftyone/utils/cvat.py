@@ -7948,6 +7948,10 @@ def _get_interpolated_shapes(track_shapes):
             return None
 
         diff = ((r1 - r0 + 180) % 360) - 180
+        if diff == -180:
+            # exactly opposite angles: CVAT turns clockwise (+180) on the tie
+            diff = 180
+
         return (r0 + diff * offset) % 360
 
     def simple_interpolation(shape0, shape1):
@@ -8370,6 +8374,16 @@ def _get_next_frame(next_frame_idx, frame_step):
     return next_frame_idx + frame_step
 
 
+def _flatten(values, depth):
+    if depth <= 0:
+        yield from values
+        return
+
+    for value in values:
+        if value is not None:
+            yield from _flatten(value, depth - 1)
+
+
 def convert_rotations_to_radians(sample_collection, field, degrees=True):
     """Converts the 2D ``rotation`` attribute of the
     :class:`fiftyone.core.labels.Detection` labels in the given field of the
@@ -8436,6 +8450,24 @@ def convert_rotations_to_radians(sample_collection, field, degrees=True):
 
     if num_converted > 0:
         sample_collection.set_values(path, new_values)
+
+    # Rotations stored in the deprecated ``attributes`` dict
+    # (``label.attributes["rotation"].value``) are converted too
+    _, dict_path = sample_collection._get_label_field_path(
+        field, "attributes.rotation.value"
+    )
+    try:
+        dict_values = sample_collection.values(dict_path)
+    except Exception:
+        dict_values = None
+
+    if dict_values is not None and any(
+        v is not None for v in _flatten(dict_values, depth)
+    ):
+        before = num_converted
+        new_dict_values = [_convert(v, 0) for v in dict_values]
+        if num_converted > before:
+            sample_collection.set_values(dict_path, new_dict_values)
 
     logger.info(
         "Converted %d rotation value(s) in field '%s' to %s",
