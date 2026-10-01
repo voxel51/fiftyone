@@ -4269,6 +4269,77 @@ class DreamTacDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class EdgedUSLAMEventCameraDataset(FiftyOneDataset):
+    """Quadrotor flights with a DAVIS346 event camera, carrying every event,
+    as native ``.mcap`` episodes.
+
+    A DAVIS346 event camera rides a quadrotor flown in a motion-capture
+    room. Each run records the camera's asynchronous events, its grayscale
+    frames and its inertial unit with the Vicon pose of the vehicle, across
+    lines, squares, circles, aggressive turns and manual flights and under
+    lighting from under 5 lux to blinking lights and strong side light. The
+    events are carried as point clouds, one per 1/30 s window, beside a
+    render of each window.
+
+    The 13 runs cover 16 minutes 27 seconds of flight and 657,511,373
+    events.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("edged-uslam-event-camera")
+
+        # The darkest runs, where the frames see least
+        view = dataset.sort_by("mean_frame_brightness")
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        4.88 GB
+    """
+
+    _REPO_ID = "Voxel51/Edged-USLAM-Event-Camera"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "74597c8cad8f3bc802bb9d2505dcef50adc9f821"
+
+    @property
+    def name(self):
+        return "edged-uslam-event-camera"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "event-camera", "uav", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -4281,6 +4352,7 @@ AVAILABLE_DATASETS = {
     "coco-2017": COCO2017Dataset,
     "construction-site-traversability": ConstructionSiteTraversabilityDataset,
     "dreamtac": DreamTacDataset,
+    "edged-uslam-event-camera": EdgedUSLAMEventCameraDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
