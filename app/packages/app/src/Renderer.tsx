@@ -9,7 +9,6 @@ import { Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
-  activeSchemaLensKey,
   activeSchemaWireExclusions,
   theme,
   themeConfig,
@@ -77,7 +76,6 @@ const ColorScheme = () => {
 const TaskSchemaExclusions = () => {
   const router = useRouterContext();
   const exclusions = useRecoilValue(activeSchemaWireExclusions);
-  const lensKey = useRecoilValue(activeSchemaLensKey);
 
   useEffect(() => {
     const state = router.get().state;
@@ -86,9 +84,10 @@ const TaskSchemaExclusions = () => {
     const sameExclusions =
       current.length === next.length &&
       current.every((path, i) => path === next[i]);
-    // Keyed on schema IDENTITY too: switching schemas always refetches,
-    // even between schemas that hide the same fields.
-    if (sameExclusions && (state.schemaKey ?? "") === lensKey) {
+    // Keyed on the exclusion list itself: switching between schemas that
+    // hide the same fields (or editing a schema without changing what it
+    // hides) costs no reload.
+    if (sameExclusions) {
       return;
     }
     router.history.replace(
@@ -104,10 +103,9 @@ const TaskSchemaExclusions = () => {
         // states reuse the current page and skip the reload entirely.
         event: "schemaExclusion",
         schemaExclusion: next.length ? next : undefined,
-        schemaKey: lensKey || undefined,
       },
     );
-  }, [exclusions, lensKey, router]);
+  }, [exclusions, router]);
 
   return null;
 };

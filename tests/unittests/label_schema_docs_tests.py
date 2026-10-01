@@ -81,19 +81,6 @@ def test_create_requires_name():
         docs.create(dataset_id=DS, name="   ")
 
 
-def test_content_alias_still_writes_label_schema():
-    doc = docs.create(
-        dataset_id=DS,
-        name="legacy-writer",
-        content={"car": {"type": "detections"}},
-    )
-    assert doc["label_schema"] == {"car": {"type": "detections"}}
-    updated = docs.update(
-        doc["id"], dataset_id=DS, content={"gt": {"type": "detections"}}
-    )
-    assert updated["label_schema"] == {"gt": {"type": "detections"}}
-
-
 # ---------------------------------------------------------------------------
 # normalize_visibility
 # ---------------------------------------------------------------------------
@@ -107,7 +94,7 @@ def test_normalize_visibility_structured():
                 "tier": "annotate",
                 "attributes": {
                     "year": "hidden",
-                    "state": "editable",  # legacy spelling → annotate
+                    "state": "annotate",
                     "kind": "explore",
                     "bad": "nope",
                 },
@@ -133,29 +120,6 @@ def test_normalize_visibility_structured():
     }
     assert normalize_visibility(None) == {"fields": {}}
     assert normalize_visibility({"default": "annotate"}) == {"fields": {}}
-
-
-def test_normalize_visibility_converts_legacy_flat_maps():
-    raw = {
-        "car": "annotate",
-        "gt": "hidden",
-        "car.year": "hidden",
-        "car.state": "editable",
-        "frames.det": "explore",  # single frames. prefix = FIELD path
-        "*": "explore",
-        "bad_field": "nope",
-    }
-    assert normalize_visibility(raw) == {
-        "default": "explore",
-        "fields": {
-            "car": {
-                "tier": "annotate",
-                "attributes": {"year": "hidden", "state": "annotate"},
-            },
-            "gt": {"tier": "hidden"},
-            "frames.det": {"tier": "explore"},
-        },
-    }
 
 
 def test_normalize_visibility_never_hides_protected_attributes():
@@ -292,55 +256,6 @@ def test_resolve_defaults_are_permissive():
     assert out["excluded_paths"] == []
 
 
-def test_resolve_accepts_legacy_stored_shape():
-    legacy = {
-        "id": "d1",
-        "name": "old",
-        "content": {
-            "car": {
-                "type": "detections",
-                "attributes": [
-                    {"name": "color", "type": "str"},
-                    {"name": "occluded", "type": "bool"},
-                ],
-            }
-        },
-        "visibility": {
-            "*": "hidden",
-            "gt": "hidden",
-            "car.color": "explore",
-            "car.occluded": "read_only",  # legacy → annotate + lock
-        },
-    }
-    out = resolve(legacy, universe=["car", "gt", "brightness"])
-    assert out["active"] == ["car"]
-    attrs = out["label_schemas"]["car"]["label_schema"]["attributes"]
-    assert [a["name"] for a in attrs] == ["occluded"]
-    assert attrs[0]["read_only"] is True
-    assert out["excluded_paths"] == ["brightness", "gt"]
-
-
-def test_get_converts_legacy_stored_docs():
-    # Simulate a doc persisted by the earlier prototype.
-    docs._coll().insert_one(
-        {
-            "_id": "legacy1",
-            "dataset_id": DS,
-            "name": "old-shape",
-            "version": 3,
-            "content": {"car": {"type": "detections"}},
-            "visibility": {"*": "explore", "gt": "hidden"},
-        }
-    )
-    doc = docs.get("legacy1", dataset_id=DS)
-    assert doc["label_schema"] == {"car": {"type": "detections"}}
-    assert doc["visibility"] == {
-        "default": "explore",
-        "fields": {"gt": {"tier": "hidden"}},
-    }
-    assert "content" not in doc
-
-
 def test_propagate_field_fans_out_across_schemas():
     source = docs.create(dataset_id=DS, name="source")
     other = docs.create(dataset_id=DS, name="other")
@@ -406,3 +321,51 @@ def test_synthesize_default_empty_dataset():
     out = resolve(doc, universe=["car", "gt"])
     assert out["active"] == []
     assert out["excluded_paths"] == []
+
+
+def test_update_refuses_a_stale_version():
+    doc = docs.create(dataset_id=DS, name="shared")
+    assert doc["version"] == 1
+    bumped = docs.update(
+        doc["id"], dataset_id=DS, description="first", expected_version=1
+    )
+    assert bumped["version"] == 2
+    with pytest.raises(ValueError, match="changed by someone else"):
+        docs.update(
+            doc["id"], dataset_id=DS, description="stale", expected_version=1
+        )
+    # Unconditional updates still work, and a missing doc is None.
+    assert (
+        docs.update(doc["id"], dataset_id=DS, description="x")["version"] == 3
+    )
+    assert docs.update("missing", dataset_id=DS, expected_version=1) is None
+
+
+def test_label_schema_content_is_validated():
+    with pytest.raises(ValueError, match="mapping"):
+        docs.create(
+            dataset_id=DS, name="bad", label_schema=["not", "a", "map"]
+        )
+    with pytest.raises(ValueError, match="mapping"):
+        docs.create(dataset_id=DS, name="bad", label_schema={"car": "nope"})
+    with pytest.raises(ValueError, match="non-empty"):
+        docs.create(dataset_id=DS, name="bad", label_schema={"": {}})
+    huge = {"car": {"classes": ["x" * 1000] * 2000}}
+    with pytest.raises(ValueError, match="too large"):
+        docs.create(dataset_id=DS, name="bad", label_schema=huge)
+    doc = docs.create(dataset_id=DS, name="ok", label_schema={"car": {}})
+    with pytest.raises(ValueError, match="mapping"):
+        docs.update(doc["id"], dataset_id=DS, label_schema={"car": 1})
+    with pytest.raises(ValueError, match="mapping"):
+        docs.propagate_field("new", "nope", dataset_id=DS)
+
+
+def test_list_returns_summaries_without_content():
+    docs.create(
+        dataset_id=DS,
+        name="summary",
+        label_schema={"car": {"type": "detections"}},
+        visibility={"fields": {"gt": {"tier": "hidden"}}},
+    )
+    (row,) = docs.list_(dataset_id=DS)
+    assert set(row) == {"id", "name", "description", "updated_at", "version"}

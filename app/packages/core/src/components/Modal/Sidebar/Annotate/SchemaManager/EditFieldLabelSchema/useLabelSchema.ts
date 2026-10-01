@@ -310,8 +310,12 @@ const useSave = (
           field,
         );
         try {
-          await api.updateDoc(docId, { label_schema, visibility });
-          setDoc({ ...doc, label_schema, visibility });
+          const saved = await api.updateDoc(docId, {
+            label_schema,
+            visibility,
+            version: doc.version,
+          });
+          setDoc(saved);
           setCurrent(labelSchema);
           setAttributeTiers({});
         } catch (error) {

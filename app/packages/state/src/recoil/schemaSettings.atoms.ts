@@ -306,9 +306,58 @@ export interface SchemaLensValue {
   excludedAttrDb?: string[];
 }
 
+const SCHEMA_LENS_STORAGE_KEY = "fiftyone.schemaLens";
+
+/**
+ * Remembers the chosen lens across page reloads in this browser. The
+ * stored value carries its dataset, so another dataset ignores it, and
+ * the lens selector re-derives the hidden paths from the schema doc on
+ * load, so an edited schema never serves a stale list.
+ */
+const persistSchemaLens = ({
+  setSelf,
+  onSet,
+}: {
+  setSelf: (value: SchemaLensValue | null) => void;
+  onSet: (
+    handler: (
+      value: SchemaLensValue | null,
+      old: unknown,
+      reset: boolean,
+    ) => void,
+  ) => void;
+}) => {
+  try {
+    const raw = globalThis.localStorage?.getItem(SCHEMA_LENS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as SchemaLensValue;
+      if (parsed && typeof parsed.docId === "string" && parsed.dataset) {
+        setSelf(parsed);
+      }
+    }
+  } catch {
+    // storage unavailable or unreadable: start without a lens
+  }
+  onSet((value, _old, reset) => {
+    try {
+      if (reset || !value) {
+        globalThis.localStorage?.removeItem(SCHEMA_LENS_STORAGE_KEY);
+      } else {
+        globalThis.localStorage?.setItem(
+          SCHEMA_LENS_STORAGE_KEY,
+          JSON.stringify(value),
+        );
+      }
+    } catch {
+      // storage unavailable: the lens still applies for this session
+    }
+  });
+};
+
 export const schemaLens = atom<SchemaLensValue | null>({
   key: "schemaLens",
   default: null,
+  effects: [persistSchemaLens],
 });
 
 /**
@@ -458,27 +507,6 @@ export const activeSchemaAttrExclusions = selector<string[] | null>({
       return null;
     }
     return [...new Set([...(task ?? []), ...(lensExcluded ?? [])])].sort();
-  },
-});
-
-/**
- * Identity of the schema currently governing Explore fetches — the
- * page-query reload is keyed on THIS (not just the exclusion list), so
- * switching schemas always refetches even when two schemas hide the
- * same fields. Stable ("task") inside workflow tasks.
- */
-export const activeSchemaLensKey = selector<string>({
-  key: "activeSchemaLensKey",
-  get: ({ get }) => {
-    if (get(taskSchemaGoverns)) {
-      return "task";
-    }
-    const lens = lensContribution(
-      get(schemaLens),
-      false,
-      get(datasetNameSelector),
-    );
-    return lens?.docId ?? "";
   },
 });
 

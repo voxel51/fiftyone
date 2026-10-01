@@ -304,33 +304,6 @@ describe("task field exclusions and label enumeration", () => {
     expect(stages()).toStrictEqual([]);
   });
 
-  it("activeSchemaLensKey tracks the governing schema identity", () => {
-    const key = <TestSelector<typeof schemaSettings.activeSchemaLensKey>>(
-      (<unknown>schemaSettings.activeSchemaLensKey)
-    );
-
-    setMockAtoms({
-      taskSchemaGoverns: false,
-      _datasetName__setter: "quickstart",
-      schemaLens: {
-        dataset: "quickstart",
-        docId: "d1",
-        name: "lens",
-        excluded: [],
-      },
-    });
-    expect(key()).toBe("d1");
-
-    setMockAtoms({ taskSchemaGoverns: true });
-    expect(key()).toBe("task");
-
-    setMockAtoms({
-      taskSchemaGoverns: false,
-      schemaLens: null,
-    });
-    expect(key()).toBe("");
-  });
-
   it("labelPath falls back to the raw path when the field is unknown", () => {
     setMockAtoms({
       field: () => null,

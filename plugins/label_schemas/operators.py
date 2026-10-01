@@ -157,8 +157,10 @@ class UpdateLabelSchemaDocOperator(Operator):
         inputs.str("name", required=False)
         inputs.str("description", required=False)
         inputs.obj("label_schema", required=False)
-        inputs.obj("content", required=False)  # legacy alias
         inputs.obj("visibility", required=False)
+        # The doc version the caller loaded; when given, a save over a
+        # newer version is refused instead of overwriting it.
+        inputs.int("version", required=False)
         return fo_types.Property(inputs)
 
     def execute(self, ctx: ExecutionContext):
@@ -169,13 +171,7 @@ class UpdateLabelSchemaDocOperator(Operator):
             return {"ok": False, "error": "schema_id is required"}
         has_updates = any(
             ctx.params.get(k) is not None
-            for k in (
-                "name",
-                "description",
-                "label_schema",
-                "content",
-                "visibility",
-            )
+            for k in ("name", "description", "label_schema", "visibility")
         )
         try:
             if has_updates:
@@ -184,8 +180,8 @@ class UpdateLabelSchemaDocOperator(Operator):
                     name=ctx.params.get("name"),
                     description=ctx.params.get("description"),
                     label_schema=ctx.params.get("label_schema"),
-                    content=ctx.params.get("content"),
                     visibility=ctx.params.get("visibility"),
+                    expected_version=ctx.params.get("version"),
                     ctx=ctx,
                 )
             else:

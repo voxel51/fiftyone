@@ -377,12 +377,19 @@ const SchemaOverview = () => {
     if (!doc || doc.id !== selectedId) return;
     const previous = doc;
     setDoc({ ...doc, ...updates });
-    api.updateDoc(doc.id, updates).catch((err) => {
-      setError(String(err));
-      // Roll the optimistic update back, but only while this doc is
-      // still the selection: a newer selection owns the atom by then.
-      if (selectedIdRef.current === previous.id) setDoc(previous);
-    });
+    api
+      .updateDoc(doc.id, { ...updates, version: previous.version })
+      .then((saved) => {
+        // Adopt the saved doc (its new version keeps later saves
+        // conditional) while it is still the selection.
+        if (selectedIdRef.current === saved.id) setDoc(saved);
+      })
+      .catch((err) => {
+        setError(String(err));
+        // Roll the optimistic update back, but only while this doc is
+        // still the selection: a newer selection owns the atom by then.
+        if (selectedIdRef.current === previous.id) setDoc(previous);
+      });
   };
 
   // "Setup" = the original setup flow: open the field editor. In a

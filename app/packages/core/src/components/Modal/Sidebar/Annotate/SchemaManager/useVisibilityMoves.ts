@@ -38,10 +38,13 @@ export const useHideSelectedFields = () => {
     }
     setDoc({ ...doc, visibility });
     setSelected(new Set());
-    api.updateDoc(docId, { visibility }).catch(() => {
-      setDoc(doc);
-      setMessage({ msg: "Failed to hide fields", variant: "error" });
-    });
+    api
+      .updateDoc(docId, { visibility, version: doc.version })
+      .then((saved) => setDoc(saved))
+      .catch((err) => {
+        setDoc(doc);
+        setMessage({ msg: `Failed to hide fields: ${err}`, variant: "error" });
+      });
     setMessage({
       msg: `${paths.length} field${paths.length > 1 ? "s" : ""} moved to hidden fields`,
       variant: "success",
@@ -74,10 +77,16 @@ export const useUnhideSelectedFields = () => {
     }
     setDoc({ ...doc, visibility });
     setSelected(new Set());
-    api.updateDoc(docId, { visibility }).catch(() => {
-      setDoc(doc);
-      setMessage({ msg: "Failed to unhide fields", variant: "error" });
-    });
+    api
+      .updateDoc(docId, { visibility, version: doc.version })
+      .then((saved) => setDoc(saved))
+      .catch((err) => {
+        setDoc(doc);
+        setMessage({
+          msg: `Failed to unhide fields: ${err}`,
+          variant: "error",
+        });
+      });
     setMessage({
       msg: `${paths.length} field${paths.length > 1 ? "s" : ""} moved to active fields`,
       variant: "success",

@@ -2,12 +2,13 @@
 Authorization for the label-schema operators.
 
 Built on ``ctx.user`` (an
-:class:`fiftyone.operators.executor.ExecutionContextUser`), which
-FiftyOne Teams populates with the viewer's ``role`` and
-``dataset_permission`` — the same fields the other Teams plugins gate
-on. When there is no ``ctx.user`` the permission system is not being
-enforced (single-user OSS), so every check passes; an ADMIN bypasses
-dataset-permission thresholds.
+:class:`fiftyone.operators.executor.ExecutionContextUser`). FiftyOne
+has no users: ``ctx.user`` is ``None`` and every check passes, so the
+schema lens is a visibility preference any App user may edit. FiftyOne
+Enterprise populates ``ctx.user`` with the viewer's ``role`` and
+``dataset_permission`` on every operator execution, and these checks
+gate the operators there; an ADMIN bypasses dataset-permission
+thresholds.
 
 Reads are VIEW-gated: listing/getting docs feeds the Explore schema
 lens and the dataset's default-schema visibility, which must work for
@@ -52,7 +53,7 @@ def is_admin(ctx) -> bool:
 
 def has_min_dataset_permission(ctx, minimum: str) -> bool:
     """True when the viewer's dataset permission is at least ``minimum``
-    (no ``ctx.user`` → unenforced → True; ADMIN → True)."""
+    (no ``ctx.user`` → no permission system → True; ADMIN → True)."""
     user = getattr(ctx, "user", None)
     if user is None:
         return True

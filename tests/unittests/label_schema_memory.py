@@ -44,13 +44,19 @@ class MemoryCollection:
     def insert_one(self, doc: dict) -> None:
         self._docs.append(copy.deepcopy(doc))
 
-    def find(self, flt: Optional[dict] = None):
-        return [copy.deepcopy(d) for d in self._docs if _matches(d, flt)]
+    def find(
+        self, flt: Optional[dict] = None, projection: Optional[dict] = None
+    ):
+        return [
+            _project(d, projection) for d in self._docs if _matches(d, flt)
+        ]
 
-    def find_one(self, flt: Optional[dict] = None):
+    def find_one(
+        self, flt: Optional[dict] = None, projection: Optional[dict] = None
+    ):
         for d in self._docs:
             if _matches(d, flt):
-                return copy.deepcopy(d)
+                return _project(d, projection)
         return None
 
     def update_one(self, flt: dict, update: dict):
@@ -73,6 +79,14 @@ class MemoryCollection:
                 return SimpleNamespace(deleted_count=1)
         return SimpleNamespace(deleted_count=0)
 
+    def bulk_write(self, ops, ordered: bool = True):
+        """Applies ``pymongo.UpdateOne`` operations."""
+        modified = 0
+        for op in ops:
+            # pylint: disable=protected-access
+            modified += self.update_one(op._filter, op._doc).modified_count
+        return SimpleNamespace(modified_count=modified)
+
 
 class MemoryDatabase:
     def __init__(self):
@@ -84,6 +98,21 @@ class MemoryDatabase:
 
 def _matches(doc: dict, flt: Optional[dict]) -> bool:
     return all(doc.get(k) == v for k, v in (flt or {}).items())
+
+
+def _project(doc: dict, projection: Optional[dict]) -> dict:
+    """A copy of ``doc`` honoring an exclusion (``{field: 0}``) or
+    inclusion (``{field: 1}``) projection."""
+    out = copy.deepcopy(doc)
+    if not projection:
+        return out
+    if any(v for v in projection.values()):
+        keep = {k for k, v in projection.items() if v} | {"_id"}
+        return {k: v for k, v in out.items() if k in keep}
+    for k, v in projection.items():
+        if not v:
+            out.pop(k, None)
+    return out
 
 
 def install(monkeypatch) -> MemoryDatabase:

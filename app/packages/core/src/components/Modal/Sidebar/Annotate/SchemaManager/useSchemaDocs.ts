@@ -160,11 +160,16 @@ export interface SchemaDocsApi {
     includeResolved?: boolean,
   ): Promise<SchemaDoc & { resolved?: ResolvedSchemaDoc }>;
   createDoc(name: string, fromDataset: boolean): Promise<SchemaDoc>;
+  /**
+   * Partial update. Pass the loaded doc's `version` to make the save
+   * conditional: the operator refuses to overwrite a newer version (a
+   * second tab or user saved first) and the promise rejects.
+   */
   updateDoc(
     schemaId: string,
     updates: Partial<
       Pick<SchemaDoc, "name" | "description" | "label_schema" | "visibility">
-    >,
+    > & { version?: number },
   ): Promise<SchemaDoc>;
   deleteDoc(schemaId: string): Promise<void>;
   /**

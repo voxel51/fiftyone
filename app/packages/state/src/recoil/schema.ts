@@ -37,11 +37,12 @@ import {
   activeSchemaExclusions,
 } from "./schemaSettings.atoms";
 
-const LABEL_LIST_SEGMENTS = new Set(Object.values(LABEL_LIST));
 import { activeFieldsConfig } from "./selectors";
 import { sidebarPaths } from "./sidebar";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
+
+const LABEL_LIST_SEGMENTS = new Set(Object.values(LABEL_LIST));
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -453,9 +454,11 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
       // Must agree with the task-exclusion filtering in `fieldSchema`:
       // consumers deref each enumerated path via `field(path)`, which
       // returns null for excluded paths.
-      const excluded = new Set(get(activeSchemaExclusions) ?? []);
+      const excluded = get(activeSchemaExclusions) ?? [];
+      const isExcluded = (path: string) =>
+        excluded.some((e) => path === e || path.startsWith(`${e}.`));
       const drop = (paths: string[]) =>
-        excluded.size ? paths.filter((p) => !excluded.has(p)) : paths;
+        excluded.length ? paths.filter((p) => !isExcluded(p)) : paths;
 
       if (space) {
         return drop(

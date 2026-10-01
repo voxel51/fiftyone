@@ -29,7 +29,6 @@ export type LocationState<T extends OperationType = OperationType> = {
    * Changing it forces a hard page-query reload even when the
    * exclusion list is unchanged — schema switches always refetch.
    */
-  schemaKey?: string;
   groupSlice?: string;
   modalSelector?: ModalSelector;
   savedViewSlug?: string;

@@ -2,12 +2,13 @@
 Named label-schema documents: storage, CRUD and tier resolution.
 
 A label schema document is a self-contained, named schema for a
-dataset. It is workflow-neutral: the Schema Manager authors documents,
-the Explore "schema lens" and the App server's field-visibility
-enforcement (``fiftyone.server.field_visibility``) read them, and
-annotation workflow stages only reference one by id
-(``stage.config.label_schema``). The ``@voxel51/label-schemas`` plugin
-exposes the CRUD below as operators.
+dataset. The Schema Manager authors documents and the App's "schema
+lens" reads them: viewing a dataset through a schema hides its hidden
+fields and attributes from the sidebar and from the App's queries. In
+FiftyOne the lens is a visibility preference chosen in the client;
+FiftyOne Enterprise additionally enforces a schema server-side for
+annotation tasks, which reference a document by id. The
+``@voxel51/label-schemas`` plugin exposes the CRUD below as operators.
 
 Each document is stored as two SEPARATE halves (kept separable on
 purpose — ``visibility`` can later lift into shared, named policy docs
@@ -45,17 +46,12 @@ scoped by ``dataset_id``. Every store call takes the scope explicitly
 object whose ``dataset`` is a :class:`fiftyone.core.dataset.Dataset`,
 such as an operator's execution context).
 
-Resolution rules (see docs/label_schema_stage_visibility_design.md):
-an explicit ``tier`` wins; ``label_schema`` membership defaults a field
+Resolution rules: an explicit ``tier`` wins; ``label_schema`` membership defaults a field
 to ``annotate``; ``annotate`` without content degrades to ``explore``;
 ``hidden`` (and a ``hidden`` default expanded over the dataset universe)
 feeds the silent field-exclusion channel. Attribute tiers mask
 attributes at resolution; ``bbox``/``label`` content knobs stamp the
-geometry/class-input locks the App already enforces.
-
-Docs stored in the earlier prototype shape (``content`` + a flat dotted
-``visibility`` map) are converted on read; writes always produce the
-current shape.
+geometry/class-input locks the App applies.
 
 The dataset DEFAULT schema is not a document: :func:`synthesize_default`
 builds it from the dataset's own stored schemas (content fields
@@ -69,6 +65,8 @@ annotatable, everything else explore) and it is never persisted.
 from __future__ import annotations
 
 import copy
+import json
+import logging
 import time
 import uuid
 from typing import Any, Iterable, Mapping, Optional, Sequence
@@ -76,8 +74,13 @@ from typing import Any, Iterable, Mapping, Optional, Sequence
 import pymongo
 from bson import ObjectId
 
+logger = logging.getLogger(__name__)
+
 #: Mongo collection holding the documents (dataset-scoped by ``dataset_id``).
 COLLECTION = "label_schemas"
+
+#: Upper bound on a document's serialized ``label_schema`` content.
+MAX_LABEL_SCHEMA_BYTES = 1 << 20
 
 FIELD_TIERS = ("annotate", "explore", "hidden")
 ATTR_TIERS = ("annotate", "explore", "hidden")
@@ -151,8 +154,7 @@ def _db():
 
 def _index_needs_rebuild(existing: Mapping, desired: Mapping) -> bool:
     """True when an existing index's spec diverges from the desired one
-    (key order, ``unique``): ``create_indexes`` never alters an index in
-    place, so a same-named index with stale options would persist."""
+    (key order, ``unique``)."""
     if list(existing.get("key", {}).items()) != list(
         desired.get("key", {}).items()
     ):
@@ -163,6 +165,10 @@ def _index_needs_rebuild(existing: Mapping, desired: Mapping) -> bool:
 
 
 def _ensure_indexes(coll, indexes: Sequence[pymongo.IndexModel]) -> None:
+    """Creates the indexes that are missing. An existing index whose
+    spec differs is left alone and logged: dropping and recreating a
+    unique index on a live database is an operator's decision (and
+    fails outright if duplicates exist)."""
     existing = {idx["name"]: idx for idx in coll.list_indexes()}
     to_create = []
     for model in indexes:
@@ -171,8 +177,12 @@ def _ensure_indexes(coll, indexes: Sequence[pymongo.IndexModel]) -> None:
         if current is None:
             to_create.append(model)
         elif _index_needs_rebuild(current, spec):
-            coll.drop_index(spec["name"])
-            to_create.append(model)
+            logger.warning(
+                "Index %r on %r does not match its expected definition; "
+                "leaving it in place",
+                spec.get("name"),
+                COLLECTION,
+            )
     if to_create:
         coll.create_indexes(to_create)
 
@@ -281,56 +291,15 @@ def schema_universe(dataset) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# Visibility normalization (+ legacy-shape conversion)
+# Visibility normalization
 # ---------------------------------------------------------------------------
-
-
-def is_legacy_visibility(raw: Mapping) -> bool:
-    """Whether a stored visibility block is the prototype's flat map
-    (``{"*": tier, "field": tier, "field.attr": tier}``)."""
-    if "fields" in raw or "default" in raw:
-        return False
-    return any(isinstance(v, str) for v in raw.values())
-
-
-def legacy_is_attr_path(path: str) -> bool:
-    """Whether a legacy flat-map key names an attribute (``field.attr``)
-    rather than a field (``frames.field`` is a field)."""
-    return "." in path and not (
-        path.startswith("frames.") and path.count(".") == 1
-    )
-
-
-def convert_legacy_visibility(flat: Mapping) -> dict:
-    """The structured form of a legacy flat visibility map."""
-    out: dict = {"fields": {}}
-    for path, value in flat.items():
-        if not isinstance(path, str) or not isinstance(value, str):
-            continue
-        if path == "*":
-            if value in DEFAULT_TIERS:
-                out["default"] = value
-            continue
-        if legacy_is_attr_path(path):
-            field, attr = path.rsplit(".", 1)
-            if value in ("editable", "read_only"):
-                value = "annotate"
-            if value in ATTR_TIERS:
-                entry = out["fields"].setdefault(field, {})
-                entry.setdefault("attributes", {})[attr] = value
-        elif value in FIELD_TIERS:
-            out["fields"].setdefault(path, {})["tier"] = value
-    return out
 
 
 def normalize_visibility(raw: Any) -> dict:
     """Validated copy of a structured visibility block; invalid entries
-    dropped. Legacy flat maps (``"*"`` wildcard + dotted attr keys) are
-    converted first."""
+    dropped."""
     if not isinstance(raw, Mapping):
         return {"fields": {}}
-    if is_legacy_visibility(raw):
-        raw = convert_legacy_visibility(raw)
 
     out: dict = {"fields": {}}
     default = raw.get("default")
@@ -355,8 +324,6 @@ def normalize_visibility(raw: Any) -> dict:
             for name, atier in attrs.items():
                 if not isinstance(name, str) or not name:
                     continue
-                if atier == "editable":  # legacy spelling
-                    atier = "annotate"
                 if atier == "hidden" and name in PROTECTED_ATTRIBUTES:
                     atier = "annotate"
                 if atier in ATTR_TIERS:
@@ -369,40 +336,12 @@ def normalize_visibility(raw: Any) -> dict:
 
 
 def _to_current_shape(stored: Optional[dict]) -> Optional[dict]:
-    """Converts a stored doc (legacy or current) to the current shape.
-    Reads convert on the fly; writes always store the current shape, so
-    conversion is only a compatibility window, not a sync."""
+    """A copy of a stored doc with both halves present and validated."""
     if not stored:
         return stored
     doc = dict(stored)
-    if "label_schema" not in doc:
-        doc["label_schema"] = dict(doc.pop("content", None) or {})
-    else:
-        doc.pop("content", None)
-        doc["label_schema"] = dict(doc.get("label_schema") or {})
-    vis = doc.get("visibility")
-    if isinstance(vis, Mapping) and is_legacy_visibility(vis):
-        converted = convert_legacy_visibility(vis)
-        # Legacy "read_only" attr entries carried an input lock;
-        # preserve it on the content attribute object. Deep-copy first:
-        # store reads may share nested dicts with the backing document.
-        doc["label_schema"] = copy.deepcopy(doc["label_schema"])
-        for path, value in vis.items():
-            if value == "read_only" and legacy_is_attr_path(path):
-                field, attr = path.rsplit(".", 1)
-                entry = doc["label_schema"].get(field)
-                attrs = (
-                    entry.get("attributes")
-                    if isinstance(entry, Mapping)
-                    else None
-                )
-                if isinstance(attrs, list):
-                    for a in attrs:
-                        if isinstance(a, dict) and a.get("name") == attr:
-                            a["read_only"] = True
-        doc["visibility"] = converted
-    else:
-        doc["visibility"] = normalize_visibility(vis)
+    doc["label_schema"] = dict(doc.get("label_schema") or {})
+    doc["visibility"] = normalize_visibility(doc.get("visibility"))
     return doc
 
 
@@ -420,21 +359,56 @@ def _public(doc: Optional[dict]) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 
 
+def validate_label_schema(raw: Any) -> dict:
+    """The content block a doc may store: a mapping of field path to a
+    mapping (today's per-field label schema entry shape), JSON-serializable
+    and no larger than :data:`MAX_LABEL_SCHEMA_BYTES`. Raises ``ValueError``
+    otherwise."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, Mapping):
+        raise ValueError(
+            "label_schema must be a mapping of field path to entry"
+        )
+    out: dict = {}
+    for path, entry in raw.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError(
+                "label_schema field paths must be non-empty strings"
+            )
+        if not isinstance(entry, Mapping):
+            raise ValueError(
+                f"label_schema entry for {path!r} must be a mapping"
+            )
+        out[path] = dict(entry)
+    try:
+        size = len(json.dumps(out, default=str))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("label_schema must be JSON-serializable") from exc
+    if size > MAX_LABEL_SCHEMA_BYTES:
+        raise ValueError(
+            f"label_schema is too large ({size} bytes; the limit is "
+            f"{MAX_LABEL_SCHEMA_BYTES})"
+        )
+    return out
+
+
 def create(
     *,
     name: str,
     description: str = "",
     label_schema: Optional[Mapping] = None,
-    content: Optional[Mapping] = None,  # legacy alias
     visibility: Optional[Mapping] = None,
     created_by: str = "",
     ctx=None,
     dataset_id=None,
 ) -> dict:
-    """Creates a schema doc; raises ``ValueError`` on duplicate name."""
+    """Creates a schema doc; raises ``ValueError`` on a duplicate name or
+    invalid content."""
     name = (name or "").strip()
     if not name:
         raise ValueError("Schema name is required")
+    label_schema = validate_label_schema(label_schema)
     now = _now_ms()
     doc = {
         "_id": uuid.uuid4().hex,
@@ -445,9 +419,7 @@ def create(
         "created_at": now,
         "updated_at": now,
         "version": 1,
-        "label_schema": dict(
-            label_schema if label_schema is not None else (content or {})
-        ),
+        "label_schema": label_schema,
         "visibility": normalize_visibility(visibility),
     }
     coll = _coll()
@@ -470,7 +442,10 @@ def create(
 
 def list_(*, ctx=None, dataset_id=None) -> list[dict]:
     """``[{id, name, description, updated_at, version}]`` for the dataset."""
-    rows = _coll().find({"dataset_id": _scope(ctx=ctx, dataset_id=dataset_id)})
+    rows = _coll().find(
+        {"dataset_id": _scope(ctx=ctx, dataset_id=dataset_id)},
+        {"label_schema": 0, "visibility": 0},
+    )
     rows = sorted(rows, key=lambda d: d.get("name", ""))
     return [
         {
@@ -501,21 +476,25 @@ def update(
     name: Optional[str] = None,
     description: Optional[str] = None,
     label_schema: Optional[Mapping] = None,
-    content: Optional[Mapping] = None,  # legacy alias
     visibility: Optional[Mapping] = None,
+    expected_version: Optional[int] = None,
     ctx=None,
     dataset_id=None,
 ) -> Optional[dict]:
-    """Partial update; returns the updated public doc or ``None``."""
+    """Partial update; returns the updated public doc or ``None`` when it
+    does not exist.
+
+    ``expected_version`` makes the write conditional: when the stored
+    doc's ``version`` differs (someone else saved since this caller
+    loaded it), nothing is written and ``ValueError`` is raised.
+    """
     updates: dict = {"updated_at": _now_ms()}
     if name is not None and name.strip():
         updates["name"] = name.strip()
     if description is not None:
         updates["description"] = description
     if label_schema is not None:
-        updates["label_schema"] = dict(label_schema)
-    elif content is not None:
-        updates["label_schema"] = dict(content)
+        updates["label_schema"] = validate_label_schema(label_schema)
     if visibility is not None:
         updates["visibility"] = normalize_visibility(visibility)
     query = {
@@ -530,21 +509,24 @@ def update(
         )
         if clash and clash.get("_id") != doc_id:
             raise ValueError(f"A schema named {new_name!r} already exists")
-    if "label_schema" in updates:
-        # Retire the legacy key so converted docs don't carry both.
-        change = {
-            "$set": updates,
-            "$unset": {"content": ""},
-            "$inc": {"version": 1},
-        }
-    else:
-        change = {"$set": updates, "$inc": {"version": 1}}
+    change = {"$set": updates, "$inc": {"version": 1}}
+    write_query = dict(query)
+    if expected_version is not None:
+        write_query["version"] = int(expected_version)
     try:
-        coll.update_one(query, change)
+        result = coll.update_one(write_query, change)
     except pymongo.errors.DuplicateKeyError:
         # The name pre-check and the write are not atomic; the unique
         # (dataset_id, name) index is the last word.
         raise ValueError(f"A schema named {new_name!r} already exists")
+    if expected_version is not None and result.matched_count == 0:
+        current = coll.find_one(query, {"version": 1})
+        if current is None:
+            return None
+        raise ValueError(
+            "This schema was changed by someone else since it was loaded; "
+            "reload it and apply your change again"
+        )
     return _public(coll.find_one(query))
 
 
@@ -566,10 +548,12 @@ def propagate_field(
     path = (path or "").strip()
     if not path:
         raise ValueError("path is required")
+    if entry is not None:
+        entry = validate_label_schema({path: entry})[path]
     scope = _scope(ctx=ctx, dataset_id=dataset_id)
     coll = _coll()
     now = _now_ms()
-    updated = 0
+    ops = []
     for stored in coll.find({"dataset_id": scope}):
         current = _to_current_shape(dict(stored)) or {}
         label_schema = dict(current.get("label_schema") or {})
@@ -578,26 +562,28 @@ def propagate_field(
         if path in label_schema or path in fields:
             continue
         if stored.get("_id") == source_doc_id:
-            if not isinstance(entry, Mapping):
+            if entry is None:
                 continue
             label_schema[path] = dict(entry)
         else:
             fields[path] = {"tier": "hidden"}
         visibility["fields"] = fields
-        coll.update_one(
-            {"dataset_id": scope, "_id": stored["_id"]},
-            {
-                "$set": {
-                    "label_schema": label_schema,
-                    "visibility": normalize_visibility(visibility),
-                    "updated_at": now,
+        ops.append(
+            pymongo.UpdateOne(
+                {"dataset_id": scope, "_id": stored["_id"]},
+                {
+                    "$set": {
+                        "label_schema": label_schema,
+                        "visibility": normalize_visibility(visibility),
+                        "updated_at": now,
+                    },
+                    "$inc": {"version": 1},
                 },
-                "$unset": {"content": ""},
-                "$inc": {"version": 1},
-            },
+            )
         )
-        updated += 1
-    return updated
+    if ops:
+        coll.bulk_write(ops, ordered=False)
+    return len(ops)
 
 
 def delete(doc_id: str, *, ctx=None, dataset_id=None) -> bool:
@@ -628,7 +614,7 @@ def _field_tier(
         return "hidden"
     # Scanned (content-bearing) fields are annotate+explore — there is
     # no "explore only" state for a set-up field (an explicit
-    # ``explore`` tier on one is a legacy demotion, read as annotate).
+    # ``explore`` tier on one is read as annotate).
     # Unscanned fields are explore-only unless the default hides them.
     if path in label_schema:
         return "annotate"
