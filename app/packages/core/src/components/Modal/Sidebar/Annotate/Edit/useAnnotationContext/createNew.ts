@@ -162,18 +162,37 @@ export function getNewLabelDefaults(
 
   // Resolve conditional owners against the values the label will be born
   // with, so `when: { field: "label", ... }` sees the new label's class.
-  const values = { ...defaults, ...(labelValue && { label: labelValue }) };
+  // Iterate to a fixed point so a conditional default can enable another
+  // conditional attribute regardless of schema order; each pass recomputes
+  // every owner, and the pass cap guards against cyclic conditions.
   const conditionalNames = new Set(
     attributes.filter((a) => a.name && a.when).map((a) => a.name),
   );
-  for (const name of conditionalNames) {
-    const owner = resolveVisibleAttribute(name, attributes, values);
-    if (owner?.default !== undefined) {
-      defaults[name] = owner.default;
+  let conditional: Record<string, unknown> = {};
+  for (let pass = 0; pass <= conditionalNames.size; pass++) {
+    const values = {
+      ...defaults,
+      ...conditional,
+      ...(labelValue && { label: labelValue }),
+    };
+    const next: Record<string, unknown> = {};
+    for (const name of conditionalNames) {
+      const owner = resolveVisibleAttribute(name, attributes, values);
+      if (owner?.default !== undefined) {
+        next[name] = owner.default;
+      }
     }
+
+    const stable =
+      Object.keys(next).length === Object.keys(conditional).length &&
+      Object.entries(next).every(
+        ([name, value]) => conditional[name] === value,
+      );
+    conditional = next;
+    if (stable) break;
   }
 
-  return defaults;
+  return { ...defaults, ...conditional };
 }
 
 /**

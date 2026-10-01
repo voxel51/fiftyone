@@ -246,6 +246,80 @@ describe("getNewLabelDefaults", () => {
     });
   });
 
+  it("lets a conditional default enable another conditional attribute, regardless of schema order", () => {
+    setSchema("foo", {
+      attributes: [
+        // listed before the attribute it depends on
+        {
+          name: "trim",
+          type: "str",
+          default: "base",
+          when: { operator: "equals", field: "vehicle_type", value: "sedan" },
+        },
+        {
+          name: "vehicle_type",
+          type: "str",
+          default: "sedan",
+          when: { operator: "equals", field: "label", value: "car" },
+        },
+      ],
+    });
+    expect(getNewLabelDefaults("foo", "car")).toEqual({
+      vehicle_type: "sedan",
+      trim: "base",
+    });
+    expect(getNewLabelDefaults("foo", "pedestrian")).toEqual({});
+  });
+
+  it("picks the chained owner from the resolved conditional default", () => {
+    setSchema("foo", {
+      attributes: [
+        {
+          name: "trim",
+          type: "str",
+          default: "base",
+          when: { operator: "equals", field: "vehicle_type", value: "sedan" },
+        },
+        {
+          name: "trim",
+          type: "str",
+          default: "heavy",
+          when: { operator: "equals", field: "vehicle_type", value: "truck" },
+        },
+        {
+          name: "vehicle_type",
+          type: "str",
+          default: "truck",
+          when: { operator: "equals", field: "label", value: "car" },
+        },
+      ],
+    });
+    expect(getNewLabelDefaults("foo", "car")).toEqual({
+      vehicle_type: "truck",
+      trim: "heavy",
+    });
+  });
+
+  it("terminates on cyclic conditions", () => {
+    setSchema("foo", {
+      attributes: [
+        {
+          name: "a",
+          type: "bool",
+          default: true,
+          when: { operator: "in", field: "b", value: [null, undefined, false] },
+        },
+        {
+          name: "b",
+          type: "bool",
+          default: true,
+          when: { operator: "equals", field: "a", value: true },
+        },
+      ],
+    });
+    expect(() => getNewLabelDefaults("foo")).not.toThrow();
+  });
+
   it("buildNewLabelData seeds class-specific defaults for the first class", () => {
     setSchema("foo", classSpecificSchema);
     const data = buildNewLabelData("foo", "Detection") as Record<
