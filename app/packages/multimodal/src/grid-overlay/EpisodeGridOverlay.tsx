@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import type { IntervalTileContext } from "../extensions/episode-intervals";
 import {
   useCallback,
@@ -21,7 +22,6 @@ import {
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
 import { savedSegmentIntervalSource } from "../extensions/episode-intervals/saved-segments";
-import { ShownSignal } from "../visualization/ShownSignal";
 import styles from "./grid-overlay.module.css";
 
 /** Cap the stacked levels so the lane stays compact on a small grid tile. */
@@ -94,6 +94,29 @@ export function EpisodeGridOverlay({ ctx }: { ctx: IntervalTileContext }) {
       {(resolved) => <IntervalLane ctx={ctx} resolved={resolved} />}
     </EpisodeIntervalSources>
   );
+}
+
+type GridLaneE2EEvents = {
+  "e2e:multimodal:grid-lane-shown": {
+    sampleId: string;
+    marks: number;
+    sources: string;
+  };
+};
+
+/** Dispatches the lane's e2e signal after the commit that shows it */
+function LaneShown({
+  sampleId,
+  marks,
+  sources,
+}: GridLaneE2EEvents["e2e:multimodal:grid-lane-shown"]) {
+  useEffect(() => {
+    getEventBus<GridLaneE2EEvents>().dispatch(
+      "e2e:multimodal:grid-lane-shown",
+      { sampleId, marks, sources },
+    );
+  }, [sampleId, marks, sources]);
+  return null;
 }
 
 function IntervalLane({
@@ -271,15 +294,12 @@ function IntervalLane({
       ref={containerRef}
     >
       {sentinel}
-      <ShownSignal
-        event="e2e:multimodal:grid-lane-shown"
-        detail={{
-          sampleId: episodeId,
-          marks: levels.reduce((total, placed) => total + placed.length, 0),
-          sources: [
-            ...new Set(levels.flat().map((interval) => interval.sourceId)),
-          ].join(","),
-        }}
+      <LaneShown
+        sampleId={episodeId}
+        marks={levels.reduce((total, placed) => total + placed.length, 0)}
+        sources={[
+          ...new Set(levels.flat().map((interval) => interval.sourceId)),
+        ].join(",")}
       />
       {fitsReadout && (
         <Readout
