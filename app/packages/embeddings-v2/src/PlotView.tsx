@@ -41,13 +41,13 @@ import { type CameraAdapterFactory, type InteractionMode } from "./renderer";
 import { NONE_FIELD, useRunPlotData } from "./useRunPlotData";
 
 const TOKEN_VARS = {
-  "--emb-bg": `var(${getColorCssVar(BackgroundColor.Background)})`,
-  "--emb-card-bg": `var(${getColorCssVar(BackgroundColor.Card2)})`,
-  "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
-  "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
-  "--emb-border-strong": `var(${getColorCssVar(BorderColor.Strong)})`,
-  "--emb-brand": `var(${getColorCssVar(BrandColor.Primary)})`,
-  "--emb-fg": `var(${getColorCssVar(TextColor.Fg)})`,
+  "--emb-bg": `${getColorCssVar(BackgroundColor.Background)}`,
+  "--emb-card-bg": `${getColorCssVar(BackgroundColor.CardNested)}`,
+  "--emb-card-elevated": `${getColorCssVar(BackgroundColor.CardElevated)}`,
+  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
+  "--emb-border-strong": `${getColorCssVar(BorderColor.Strong)}`,
+  "--emb-brand": `${getColorCssVar(BrandColor.Primary)}`,
+  "--emb-fg": `${getColorCssVar(TextColor.Foreground)}`,
 } as CSSProperties;
 
 function ModeSegment({
@@ -71,11 +71,11 @@ function ModeSegment({
       <Icon
         name={icon}
         size={Size.Md}
-        color={active ? TextColor.Fg : TextColor.Secondary}
+        color={active ? TextColor.Foreground : TextColor.Secondary}
       />
       <Text
         variant={TextVariant.Md}
-        color={active ? TextColor.Fg : TextColor.Secondary}
+        color={active ? TextColor.Foreground : TextColor.Secondary}
       >
         {label}
       </Text>
@@ -215,7 +215,7 @@ export default function PlotView({
           onClick={onBack}
         />
         <div className="emb-plot-title">
-          <Text variant={TextVariant.Md} color={TextColor.Fg}>
+          <Text variant={TextVariant.Md} color={TextColor.Foreground}>
             {run.brainKey}
           </Text>
           <Text variant={TextVariant.Sm} color={TextColor.Tertiary}>
@@ -321,7 +321,7 @@ export default function PlotView({
       </div>
       {error && (
         <div className="emb-plot-error">
-          <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+          <Text variant={TextVariant.Sm} color={TextColor.Failure}>
             {error}
           </Text>
         </div>
@@ -484,7 +484,7 @@ export default function PlotView({
                 <Icon
                   name={IconName.Refresh}
                   size={Size.Xs}
-                  color={TextColor.Fg}
+                  color={TextColor.Foreground}
                 />
                 {canUpdate
                   ? `Apply to all ${total.toLocaleString()}`
@@ -498,8 +498,12 @@ export default function PlotView({
             describe */}
         {features.notice && (
           <div className="emb-toast" role="status" aria-live="polite">
-            <Icon name={IconName.Info} size={Size.Sm} color={TextColor.Fg} />
-            <Text variant={TextVariant.Sm} color={TextColor.Fg}>
+            <Icon
+              name={IconName.Info}
+              size={Size.Sm}
+              color={TextColor.Foreground}
+            />
+            <Text variant={TextVariant.Sm} color={TextColor.Foreground}>
               {features.notice.text}
             </Text>
             <button

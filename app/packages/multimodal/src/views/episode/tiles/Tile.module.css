@@ -63,7 +63,7 @@
 }
 
 .statusBadgeError {
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
 }
 
 .emptyText {
@@ -79,7 +79,7 @@
 }
 
 .emptyTextError {
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
 }
 
 /* Codec refusal where a video surface would go: the codec name is the point
@@ -87,7 +87,7 @@
 .codecRejection {
   align-items: center;
   box-sizing: border-box;
-  color: var(--color-content-text-destructive);
+  color: var(--color-content-text-failure);
   display: flex;
   font-size: 12px;
   height: 100%;

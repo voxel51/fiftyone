@@ -1,12 +1,14 @@
 """
-FiftyOne JSON handling tests.
+FiftyOne JSON stringify unit tests.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import io
 import unittest
+import zlib
 
 import numpy as np
 
@@ -14,41 +16,68 @@ import fiftyone.core.json as foj
 import fiftyone.core.utils as fou
 
 
-class StringifyMaskTests(unittest.TestCase):
-    def test_c_ordered_mask_matches_round_trip(self):
-        mask = np.arange(12, dtype=np.uint8).reshape(3, 4) > 5
-        raw = fou.serialize_numpy_array(mask)
+class NumpyArrayStringifyTests(unittest.TestCase):
+    def test_mask_bytes_are_passed_through_when_c_ordered(self):
+        array = np.arange(12, dtype=np.uint8).reshape(3, 4)
+        raw = fou.serialize_numpy_array(array)
 
-        actual = foj.stringify({"_cls": "Detection", "mask": raw})["mask"]
+        out = foj.stringify({"_cls": "Segmentation", "mask": raw})
 
-        expected = fou.serialize_numpy_array(
-            fou.deserialize_numpy_array(raw), ascii=True
+        # The stored bytes are already the wire format, so they are passed
+        # through. Byte-equal to a re-encode here only because this test
+        # wrote them with the same serializer; in general the guarantee is
+        # that they deserialize to the same array
+        self.assertEqual(
+            out["mask"], fou.serialize_numpy_array(array, ascii=True)
         )
-        self.assertEqual(actual, expected)
+        np.testing.assert_array_equal(
+            fou.deserialize_numpy_array(out["mask"], ascii=True), array
+        )
 
     def test_fortran_ordered_mask_is_made_contiguous(self):
-        mask = np.asfortranarray(np.arange(12, dtype=np.uint8).reshape(3, 4))
-        raw = fou.serialize_numpy_array(mask)
+        array = np.asfortranarray(np.arange(12, dtype=np.uint8).reshape(3, 4))
+        raw = fou.serialize_numpy_array(array)
 
-        actual = foj.stringify({"_cls": "Segmentation", "mask": raw})["mask"]
+        out = foj.stringify({"_cls": "Heatmap", "map": raw})
 
-        array = fou.deserialize_numpy_array(actual, ascii=True)
-        self.assertFalse(np.isfortran(array))
-        np.testing.assert_array_equal(array, mask)
-        self.assertNotEqual(actual, fou.serialize_numpy_array(mask, True))
+        back = fou.deserialize_numpy_array(out["map"], ascii=True)
+        np.testing.assert_array_equal(back, array)
+        self.assertTrue(back.flags.c_contiguous)
 
-    def test_non_mask_array_is_its_shape(self):
-        raw = fou.serialize_numpy_array(np.zeros((2, 5)))
+    def test_uint16_mask_round_trips(self):
+        array = np.full((2, 3), 300, dtype=np.uint16)
+        raw = fou.serialize_numpy_array(array)
 
-        actual = foj.stringify({"_cls": "Classification", "logits": raw})
+        out = foj.stringify({"_cls": "Segmentation", "mask": raw})
 
-        self.assertEqual(actual["logits"], "(2, 5)")
+        back = fou.deserialize_numpy_array(out["mask"], ascii=True)
+        self.assertEqual(back.dtype, np.uint16)
+        np.testing.assert_array_equal(back, array)
 
-    def test_other_bytes_are_stringified(self):
-        actual = foj.stringify({"_cls": "Detection", "mask": b"not numpy"})
+    def test_non_mask_bytes_become_a_shape_string(self):
+        array = np.zeros((5, 7, 3), dtype=np.float32)
+        raw = fou.serialize_numpy_array(array)
 
-        self.assertEqual(actual["mask"], str(b"not numpy"))
+        out = foj.stringify({"_cls": "Embedding", "vector": raw})
+
+        self.assertEqual(out["vector"], "(5, 7, 3)")
+
+    def test_object_dtype_bytes_are_not_passed_through(self):
+        with io.BytesIO() as f:
+            np.save(f, np.array([{"a": 1}], dtype=object), allow_pickle=True)
+            raw = zlib.compress(f.getvalue())
+
+        out = foj.stringify({"_cls": "Segmentation", "mask": raw})
+
+        # A readable header, but `np.load` refuses the pickle, so the bytes
+        # must not reach the client
+        self.assertEqual(out["mask"], str(raw))
+
+    def test_unreadable_bytes_fall_back_to_str(self):
+        out = foj.stringify({"_cls": "Segmentation", "mask": b"not numpy"})
+
+        self.assertEqual(out["mask"], str(b"not numpy"))
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    fou.run_tests_main()
