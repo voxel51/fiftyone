@@ -143,8 +143,6 @@ const palette = (mode: Mode) => {
       looker: c.bg.background,
       mediaSpace: c.bg.background,
       mediaSpaceTransparent: "transparent",
-      // scrim.light (30-40% black) matches the 30% grey this was on main;
-      // scrim.heavy blacked out the grid behind the sample modal
       modalBackdrop: c.scrim.light,
       sidebar: c.bg.background,
       tooltip: c.tooltip.bg,
