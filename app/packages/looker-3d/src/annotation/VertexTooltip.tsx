@@ -13,7 +13,7 @@ const TooltipContainer = styled.div`
 
 const TooltipContent = styled.div`
   background: ${cssVar.color.scrim.heavy};
-  color: ${cssVar.color.text.primary};
+  color: ${cssVar.color.tooltip.text};
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;

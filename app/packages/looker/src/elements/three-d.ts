@@ -35,7 +35,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
         this.ctx = this.canvas.getContext("2d");
         this.ctx.font = "32px";
-        this.ctx.fillStyle = resolveCssColor(cssVar.color.text.primary);
+        this.ctx.fillStyle = resolveCssColor(cssVar.color.tooltip.text);
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(this.element, 0, 0);
 
@@ -197,7 +197,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
     // outline
     this.ctx.globalAlpha = 0.7;
-    this.ctx.strokeStyle = resolveCssColor(cssVar.color.text.primary);
+    this.ctx.strokeStyle = resolveCssColor(cssVar.color.tooltip.text);
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.moveTo(cubeX, cubeY - half);
@@ -218,7 +218,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     this.ctx.shadowBlur = 6;
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 2;
-    this.ctx.fillStyle = resolveCssColor(cssVar.color.text.primary);
+    this.ctx.fillStyle = resolveCssColor(cssVar.color.tooltip.text);
     this.ctx.globalAlpha = 0.95;
     this.ctx.fillText(logoText, cubeX + half + 8, rectY + rectHeight / 2);
     this.ctx.restore();
@@ -293,7 +293,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 1.3;
 
-    this.ctx.fillStyle = resolveCssColor(cssVar.color.text.primary);
+    this.ctx.fillStyle = resolveCssColor(cssVar.color.tooltip.text);
     this.ctx.font =
       '500 28px system-ui, Roboto, "Helvetica Neue", Arial, sans-serif';
     this.ctx.textAlign = "center";

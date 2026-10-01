@@ -10,7 +10,7 @@ const HoverMetadataHUDContainer = styled.div`
   right: 1.5em;
   width: 300px;
   z-index: 500;
-  background: ${cssVar.color.tooltip.bg};
+  background: ${cssVar.color.bg["card-elevated"]};
   color: ${cssVar.color.text.primary};
   border-radius: 14px;
   box-shadow: 0 6px 32px 0 rgba(0, 0, 0, 0.22);
@@ -38,7 +38,7 @@ const TitleBar = styled.div`
   z-index: 1;
   align-items: center;
   justify-content: space-between;
-  background: ${cssVar.color.tooltip.bg};
+  background: ${cssVar.color.bg["card-elevated"]};
   padding: 0.7em 1.2em 0.7em 1.2em;
   border-bottom: 1px solid ${cssVar.color.border.default};
 `;

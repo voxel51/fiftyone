@@ -23,7 +23,7 @@ export const TooltipAnchor = styled.div<{ $alignEnd: boolean }>`
  */
 export const CoordLabel = styled.div<{ $fontSize: number }>`
   background: ${cssVar.color.scrim.default};
-  color: ${cssVar.color.text.primary};
+  color: ${cssVar.color.tooltip.text};
   font-size: ${({ $fontSize }) => $fontSize}px;
   line-height: 1;
   padding: ${({ $fontSize }) => `${$fontSize * 0.25}px ${$fontSize * 0.4}px`};

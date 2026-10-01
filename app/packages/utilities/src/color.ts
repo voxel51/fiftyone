@@ -324,9 +324,76 @@ const probeElement = (): HTMLElement | null => {
   return probe;
 };
 
+let pixelContext: CanvasRenderingContext2D | null | undefined;
+
+const pixelCanvas = (): CanvasRenderingContext2D | null => {
+  if (pixelContext === undefined) {
+    if (typeof document === "undefined") {
+      pixelContext = null;
+    } else {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      pixelContext = canvas.getContext("2d", { willReadFrequently: true });
+    }
+  }
+  return pixelContext;
+};
+
+// `color(srgb r g b)` / `color(srgb r g b / a)`, channels as 0-1 floats or
+// `none`, alpha as a float or percentage.
+const COLOR_SRGB =
+  /^color\(srgb\s+(none|[\d.]+)\s+(none|[\d.]+)\s+(none|[\d.]+)(?:\s*\/\s*(none|[\d.]+%?))?\s*\)$/;
+
+const channel255 = (v: string): number =>
+  v === "none" ? 0 : Math.round(Math.min(1, Math.max(0, Number(v))) * 255);
+
+const alpha1 = (v: string | undefined): number => {
+  if (v === undefined) return 1;
+  if (v === "none") return 0;
+  const n = v.endsWith("%") ? Number(v.slice(0, -1)) / 100 : Number(v);
+  return Math.min(1, Math.max(0, n));
+};
+
+const rgbString = (r: number, g: number, b: number, a: number): string =>
+  a >= 1
+    ? `rgb(${r}, ${g}, ${b})`
+    : `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(4))})`;
+
 /**
- * Resolves a CSS colour expression to the concrete `rgb()` / `rgba()` value
- * it currently has.
+ * Chromium serialises the computed value of a `color-mix()` as
+ * `color(srgb r g b / a)` (and keeps that syntax on a canvas `fillStyle`
+ * round-trip), which plotly's tinycolor mis-parses and three.js `Color` /
+ * MapLibre reject outright. That form is parsed exactly; anything else the
+ * browser understands but these consumers do not is read back from a 1x1
+ * canvas pixel instead.
+ */
+const toLegacySyntax = (computed: string): string => {
+  if (computed.startsWith("rgb") || computed.startsWith("#")) {
+    return computed;
+  }
+  const m = COLOR_SRGB.exec(computed);
+  if (m) {
+    return rgbString(
+      channel255(m[1]),
+      channel255(m[2]),
+      channel255(m[3]),
+      alpha1(m[4]),
+    );
+  }
+  const ctx = pixelCanvas();
+  if (!ctx) {
+    return computed;
+  }
+  ctx.clearRect(0, 0, 1, 1);
+  ctx.fillStyle = computed;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+  return rgbString(r, g, b, a / 255);
+};
+
+/**
+ * Resolves a CSS colour expression to the concrete `#rrggbb` / `rgb()` /
+ * `rgba()` value it currently has.
  *
  * The App's theme values are Voodo CSS variables so they follow light/dark
  * automatically, but a few consumers cannot take a `var()` string: canvas
@@ -352,7 +419,8 @@ export const resolveCssColor = (color: string): string => {
   if (!el.style.color) {
     return color;
   }
-  return getComputedStyle(el).color || color;
+  const computed = getComputedStyle(el).color;
+  return computed ? toLegacySyntax(computed) : color;
 };
 
 /**
