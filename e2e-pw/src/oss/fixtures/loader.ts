@@ -1,4 +1,3 @@
-import { DEFAULT_COLOR_SCHEME } from "src/shared/dataset-factory/build";
 import { Page } from "@playwright/test";
 import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
 import {
@@ -30,17 +29,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
     zooDatasetName: string,
     id: string,
     kwargs: Record<string, string> = {},
-    options: { colorScheme?: Record<string, unknown> } = {},
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
-    const colorScheme = `
-      import json
-      dataset.app_config.color_scheme = fo.ColorScheme(
-        **json.loads(${JSON.stringify(
-          JSON.stringify(options.colorScheme ?? DEFAULT_COLOR_SCHEME),
-        )})
-      )
-      dataset.save()`;
 
     return this.pythonRunner.exec(`
       import fcntl
@@ -62,7 +52,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
         )
 
       dataset.persistent = True
-${colorScheme}
     `);
   }
 

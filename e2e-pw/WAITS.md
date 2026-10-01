@@ -66,8 +66,8 @@ them before adding new ones.
 - Only canvases. Check DOM with exact reads.
 - Use `expectScreenshot` (exact: `maxDiffPixelRatio: 0, threshold: 0`). Masking
   or loosening a threshold is not allowed.
-- Rendering is deterministic: Chromium runs at 1x, test datasets default to a
-  one-color scheme, and the App renders once its bundled fonts load.
+- Rendering is deterministic: Chromium runs at 1x, the e2e server defaults to a
+  one-color pool, and the App renders once its bundled fonts load.
 
 ## When a test hangs
 

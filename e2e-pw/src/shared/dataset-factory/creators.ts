@@ -77,7 +77,6 @@ const createImageDataset = async ({
   promptableIndexes,
   savedViews,
   staticTransforms,
-  colorScheme,
   schema = {},
   withSampleData = () => ({}),
 }: ImageDatasetOptions) => {
@@ -113,7 +112,6 @@ const createImageDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
-    colorScheme,
   });
 };
 
@@ -154,7 +152,6 @@ const createGroupDataset = async ({
   promptableIndexes,
   savedViews,
   staticTransforms,
-  colorScheme,
   sceneOptions = { meshes: [{ color: [96, 208, 255] }] },
   schema,
   slices = DEFAULT_GROUP_SLICES,
@@ -225,7 +222,6 @@ const createGroupDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
-    colorScheme,
   });
 };
 
@@ -253,7 +249,6 @@ const createVideoDataset = async ({
   promptableIndexes,
   savedViews,
   staticTransforms,
-  colorScheme,
   schema,
   videoOptions,
   withFrameData,
@@ -281,7 +276,6 @@ const createVideoDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
-    colorScheme,
   });
 };
 
@@ -309,7 +303,6 @@ const create3dDataset = async ({
   promptableIndexes,
   savedViews,
   staticTransforms,
-  colorScheme,
   sceneOptions,
   schema,
   withSampleData = () => ({}),
@@ -332,7 +325,6 @@ const create3dDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
-    colorScheme,
   });
 };
 
@@ -351,7 +343,6 @@ const createMultimodalDataset = async ({
   promptableIndexes,
   savedViews,
   staticTransforms,
-  colorScheme,
   schema,
   withSampleData = () => ({}),
 }: MultimodalDatasetOptions) => {
@@ -373,6 +364,5 @@ const createMultimodalDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
-    colorScheme,
   });
 };

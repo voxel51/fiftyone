@@ -260,16 +260,6 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
   staticTransforms?: StaticTransform[];
 
   /**
-   * Keyword arguments of `fiftyone.core.odm.dataset.ColorScheme`, set as the
-   * dataset's App color scheme. Defaults to a one-color pool, so screenshots
-   * never depend on the order the App assigns colors in.
-   *
-   * @example
-   * colorScheme: { color_by: "value", color_pool: ["#ee0000", "#009999"] }
-   */
-  colorScheme?: JSONObject;
-
-  /**
    * Populates a sample: receives its scaffold and returns the sample's field
    * values as a `JSONObject`.
    *

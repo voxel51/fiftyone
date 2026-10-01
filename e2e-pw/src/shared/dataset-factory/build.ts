@@ -42,16 +42,9 @@ function isLabelType(fieldType: string): fieldType is Label {
   return LABEL_TYPES.has(fieldType);
 }
 
-/**
- * The App assigns pool colors in first-request order, so a multi-color pool
- * makes screenshots depend on render order; one color makes them exact
- */
-export const DEFAULT_COLOR_SCHEME = { color_pool: ["#009999"] };
-
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,
   | "datasetName"
-  | "colorScheme"
   | "labelSchemas"
   | "promptableIndexes"
   | "savedViews"
@@ -92,7 +85,6 @@ const addField = (fieldPath: string, fieldType: FieldType) => {
 export const build = (() => {
   const loader = new OssLoader();
   return async ({
-    colorScheme,
     datasetName,
     frames = [],
     groupSlices = [],
@@ -106,13 +98,7 @@ export const build = (() => {
     staticTransforms = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
-      JSON.stringify({
-        samples,
-        frames,
-        labelSchemas,
-        staticTransforms,
-        colorScheme: colorScheme ?? DEFAULT_COLOR_SCHEME,
-      }),
+      JSON.stringify({ samples, frames, labelSchemas, staticTransforms }),
       "json",
     );
     const hasVideo =
@@ -154,9 +140,6 @@ ${Object.entries(schema)
 
 for transform in payload["staticTransforms"]:
     dataset.add_static_transform(StaticTransform(**transform))
-
-dataset.app_config.color_scheme = fo.ColorScheme(**payload["colorScheme"])
-dataset.save()
 
 now = datetime.now()
 
