@@ -26,7 +26,7 @@ const ToolbarContainer = styled.div`
   height: 100%;
   color: ${({ theme }) => theme.text.secondary};
   background-color: ${({ theme }) => theme.background.level3};
-  box-shadow: 0 8px 15px 0 ${({ theme }) => theme.neutral.softBg};
+  box-shadow: 0 8px 15px 0 ${({ theme }) => theme.custom.shadow};
 `;
 
 /**
