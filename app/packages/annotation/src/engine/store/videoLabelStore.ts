@@ -100,12 +100,31 @@ export class VideoLabelStore implements LabelStore {
     ];
   }
 
+  enumerateLabelsAt(kinds: readonly LabelType[], frame: number): LabelRef[] {
+    const framed =
+      this.frames.enumerateLabelsAt?.(kinds, frame) ??
+      this.frames
+        .enumerateLabels(kinds)
+        .filter((ref) => ref.frame == null || ref.frame === frame);
+
+    return [...framed, ...this.sampleLevel.enumerateLabels(kinds)];
+  }
+
   dirtyFrames(): number[] {
     return this.frames.dirtyFrames();
   }
 
   loadedFrames(): number[] {
     return this.frames.loadedFrames();
+  }
+
+  editedFrames(): number[] {
+    return this.frames.editedFrames?.() ?? this.frames.loadedFrames();
+  }
+
+  /** `NaN` when the frame half has no edit version: it never matches. */
+  editVersion(): number {
+    return this.frames.editVersion?.() ?? Number.NaN;
   }
 
   // ---- mutation ----

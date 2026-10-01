@@ -116,6 +116,9 @@ export class FrameStore implements LabelStore {
   private readonly displayListeners = new Set<DisplayListener>();
   private readonly changeListeners = new Set<ChangeListener>();
   private loading = false;
+  /** Frames written this session; survives the save that clears `working`. */
+  private edited = new Set<number>();
+  private edits = 0;
 
   constructor(sample: string, options: FrameStoreOptions) {
     this.sample = sample;
@@ -217,12 +220,38 @@ export class FrameStore implements LabelStore {
     return refs;
   }
 
+  /** {@link enumerateLabels} restricted to one frame: that frame's labels only. */
+  enumerateLabelsAt(kinds: readonly LabelType[], frame: number): LabelRef[] {
+    const refs: LabelRef[] = [];
+
+    for (const path of Object.keys(this.labelTypes)) {
+      if (!kinds.includes(this.labelTypes[path])) {
+        continue;
+      }
+
+      for (const label of this.listAt(frame, path)) {
+        const instanceId = addressIdOf(label);
+        refs.push({ sample: this.sample, path, instanceId, frame });
+      }
+    }
+
+    return refs;
+  }
+
   dirtyFrames(): number[] {
     return [...this.working.keys()];
   }
 
   loadedFrames(): number[] {
     return this.frames();
+  }
+
+  editedFrames(): number[] {
+    return [...this.edited];
+  }
+
+  editVersion(): number {
+    return this.edits;
   }
 
   // ---- mutation ----
@@ -331,7 +360,10 @@ export class FrameStore implements LabelStore {
 
     for (const [frame, doc] of working) {
       this.working.set(frame, new Map(doc));
+      this.edited.add(frame);
     }
+
+    this.edits++;
 
     for (const [frame, edited] of workingValues) {
       this.workingValues.set(frame, new Map(edited));
@@ -489,7 +521,10 @@ export class FrameStore implements LabelStore {
 
     for (const [frame, frameOps] of byFrame) {
       this.source.set(frame, this.rebaseFrame(frame, frameOps));
+      this.edited.add(frame);
     }
+
+    this.edits++;
 
     for (const [frame, doc] of [...this.working]) {
       if (this.frameEquals(doc, this.source.get(frame))) {
@@ -620,6 +655,72 @@ export class FrameStore implements LabelStore {
       }
     }
 
+    this.bumpIfEdited(before.keys());
+    this.emit(this.diffDisplayed(before));
+  }
+
+  /**
+   * Merge a WINDOW of the `/frames` stream into the source, leaving every
+   * frame outside it untouched: the incremental counterpart to
+   * {@link setData}, so seeding a clip chunk by chunk is linear rather than
+   * re-reading the whole accumulated cache per chunk.
+   *
+   * Emission matches {@link setData}'s, restricted to the window's frames. A
+   * frame the window omits is not a removal; a frame it carries with an empty
+   * list for a path is.
+   */
+  mergeData(data: Record<string, unknown>, values?: FrameValuesData): void {
+    const next = this.parse(data as FramesData);
+    let valuesMoved = false;
+
+    if (values) {
+      for (const [frame, doc] of this.parseValues(values)) {
+        const prev = this.valueSource.get(frame);
+
+        if (!prev || !equalsNormalized([...prev], [...doc])) {
+          this.valueSource.set(frame, doc);
+          valuesMoved = true;
+        }
+      }
+
+      if (valuesMoved) {
+        this.gcValues();
+      }
+    }
+
+    const before = new Map<number, Map<string, Map<string, LabelData>>>();
+
+    for (const [frame, after] of next) {
+      const prev = this.source.get(frame);
+
+      if (prev === undefined || !this.frameEquals(prev, after)) {
+        before.set(frame, this.displayedById(frame));
+      }
+    }
+
+    if (before.size === 0) {
+      // nothing moved: a no-op display tick still walks every subscriber
+      if (valuesMoved) {
+        this.emit([]);
+      }
+      return;
+    }
+
+    for (const frame of before.keys()) {
+      this.source.set(frame, next.get(frame) as FrameDoc);
+    }
+
+    // GC only the window's frames; a working frame elsewhere cannot have
+    // changed dirtiness here
+    for (const frame of before.keys()) {
+      const doc = this.working.get(frame);
+
+      if (doc && this.frameEquals(doc, this.source.get(frame))) {
+        this.working.delete(frame);
+      }
+    }
+
+    this.bumpIfEdited(before.keys());
     this.emit(this.diffDisplayed(before));
   }
 
@@ -628,6 +729,8 @@ export class FrameStore implements LabelStore {
     this.working = new Map();
     this.valueSource = new Map();
     this.workingValues = new Map();
+    this.edited = new Set();
+    this.edits++;
     this.emit([wholeSampleReset(this.sample)]);
   }
 
@@ -722,6 +825,16 @@ export class FrameStore implements LabelStore {
     }
   }
 
+  /** A re-seed that moved an edited frame changes what the timeline overlays. */
+  private bumpIfEdited(frames: Iterable<number>): void {
+    for (const frame of frames) {
+      if (this.edited.has(frame)) {
+        this.edits++;
+        return;
+      }
+    }
+  }
+
   /** Read-through resolution: the working overlay wins, else source, else []. */
   private listAt(frame: number, path: string): LabelData[] {
     return (this.working.get(frame) ?? this.source.get(frame))?.get(path) ?? [];
@@ -734,6 +847,9 @@ export class FrameStore implements LabelStore {
 
   /** Copy-on-write the frame into the working overlay (clone source on first touch). */
   private editableFrame(frame: number): FrameDoc {
+    this.edited.add(frame);
+    this.edits++;
+
     let doc = this.working.get(frame);
 
     if (!doc) {

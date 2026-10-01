@@ -172,6 +172,14 @@ track rows that outlive the playhead). With no frame store registered,
 [`PoolTemporalView`](temporal/poolTemporalView.ts) makes presence ≡ pool and
 the whole apparatus inert by absence. `FrameStore`/`Clock` land with video.
 
+Presence is asked of the stores at one frame
+(`enumerateLabelsAt(kinds, frame)`): the frame store answers from that frame
+alone, plus sample-level labels, so a playhead tick costs the labels on screen,
+not the clip. A store that holds frames also reports which frames were edited
+this session (`editedFrames` / `editVersion`), so a pool-posture surface such
+as a timeline can overlay just those frames on a precomputed index instead of
+re-reading the pool.
+
 The [signal pipe](signals/signalPipe.ts) is the high-frequency channel for
 surface-owned transient state (mid-drag geometry, cursors): a pure firehose
 keyed by [`EntityId`](identity/entityId.ts) — no retention, no

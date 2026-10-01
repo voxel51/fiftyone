@@ -343,12 +343,46 @@ export class AnnotationEngine {
     return this.stores.get(sample)?.loadedFrames() ?? [];
   }
 
+  /** Frames written this session; every loaded frame for a store that doesn't track it. */
+  editedFrames(sample: string): number[] {
+    const store = this.stores.get(sample);
+    return store?.editedFrames?.() ?? store?.loadedFrames() ?? [];
+  }
+
+  /** The store's edit version; `NaN`, which never matches, when it has none. */
+  editVersion(sample: string): number {
+    return this.stores.get(sample)?.editVersion?.() ?? Number.NaN;
+  }
+
   /** Current labels across all stores, for hydration. */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[] {
     const refs: LabelRef[] = [];
 
+    // a loop, not `push(...refs)`: a spread passes every ref as an argument,
+    // and V8 throws RangeError past ~100k (one long clip's labels)
     for (const store of this.stores.values()) {
-      refs.push(...store.enumerateLabels(kinds));
+      for (const ref of store.enumerateLabels(kinds)) {
+        refs.push(ref);
+      }
+    }
+
+    return refs;
+  }
+
+  /** {@link enumerateLabels} at one frame: that frame's refs plus sample-level ones. */
+  enumerateLabelsAt(kinds: readonly LabelType[], frame: number): LabelRef[] {
+    const refs: LabelRef[] = [];
+
+    for (const store of this.stores.values()) {
+      const scoped =
+        store.enumerateLabelsAt?.(kinds, frame) ??
+        store
+          .enumerateLabels(kinds)
+          .filter((ref) => ref.frame == null || ref.frame === frame);
+
+      for (const ref of scoped) {
+        refs.push(ref);
+      }
     }
 
     return refs;
