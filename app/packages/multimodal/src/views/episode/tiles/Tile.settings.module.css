@@ -138,7 +138,7 @@
 }
 
 .select {
-  background: var(--color-content-bg-background);
+  background: var(--color-content-bg-card);
   border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   color: var(--color-content-text-primary);
@@ -296,7 +296,7 @@
 }
 
 .numberField {
-  background: var(--color-content-bg-background);
+  background: var(--color-content-bg-card);
   border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   color: var(--color-content-text-primary);
