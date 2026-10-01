@@ -3,9 +3,10 @@ In-memory stand-in for the ``label_schemas`` collection.
 
 ``fiftyone.core.label_schema_docs`` only needs equality filters,
 ``$set``/``$unset``/``$inc`` updates and single-document deletes, so a
-dict-backed collection is enough to run its suite (and the workflows
-plugin's, which creates docs for stage tests) without Mongo. Swap it
-in with ``monkeypatch.setattr(label_schema_docs, "_db", lambda: db)``.
+dict-backed collection is enough to run its suites (and, in FiftyOne
+Enterprise, the workflows plugin's, which creates docs for stage tests)
+without Mongo. Test modules import the ``memory_db`` fixture below, or
+call :func:`install` from their own fixtures.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,6 +19,7 @@ import copy
 from types import SimpleNamespace
 from typing import Optional
 
+import pytest
 from bson import ObjectId
 
 #: The scope the suites create docs under.
@@ -94,4 +96,16 @@ def install(monkeypatch) -> MemoryDatabase:
     return db
 
 
-__all__ = ["DATASET_ID", "MemoryCollection", "MemoryDatabase", "install"]
+@pytest.fixture
+def memory_db(monkeypatch):
+    """Points the core module at a fresh memory database for the test."""
+    yield install(monkeypatch)
+
+
+__all__ = [
+    "DATASET_ID",
+    "MemoryCollection",
+    "MemoryDatabase",
+    "install",
+    "memory_db",
+]

@@ -9,11 +9,14 @@ from fiftyone.core.label_schema_docs import (
     synthesize_default,
 )
 
-from .memory import DATASET_ID as DS
+from label_schema_memory import DATASET_ID as DS
+from label_schema_memory import memory_db  # noqa: F401  (fixture)
 
 # ---------------------------------------------------------------------------
 # CRUD
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.usefixtures("memory_db")
 
 
 def test_crud_roundtrip():
