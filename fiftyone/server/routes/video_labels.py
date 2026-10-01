@@ -184,24 +184,27 @@ def index_post_pipeline(
     the values is near-free; the cost the column adds is the pushed array, paid
     only for the attributes the caller asks for.
 
-    When ``dynamic_group`` is set the input is the group's ordered samples,
-    and the frame number is each sample's 1-indexed rank read from the
-    unwound array index rather than written into the document.
+    When ``dynamic_group`` is set the input is the group's samples, and each
+    label's ``fn`` is its member sample's ``_id`` rather than a frame number;
+    the client maps members to frames through the group's member order. See
+    :func:`build_member_index`.
+
+    Only the label attributes the index reads are projected, so masks and
+    other payloads never reach the grouping.
     """
-    labels_expr = "$%s.%s" % (field, list_field) if list_field else "$" + field
-    fn_expr: t.Any = "$frame_number"
-    rank_stages: t.List[dict] = []
-    if dynamic_group:
-        # Fold the ordered samples into one array and unwind it with its
-        # index. Only the label field is folded: the array is one document
-        # and a large group's full samples would breach the 16MB BSON limit.
-        rank_stages = [
-            {"$project": {field: True}},
-            {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
-            {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
-        ]
-        fn_expr = {"$add": ["$rank", 1]}
-        labels_expr = "$docs." + labels_expr[1:]
+    labels_path = "%s.%s" % (field, list_field) if list_field else field
+    fn_expr = "$_id" if dynamic_group else "$frame_number"
+
+    attrs = {"_id", "instance", "index", "keyframe", "label"}
+    attrs.update(dynamic_attributes)
+    # a path inside another projected path is a collision for MongoDB
+    project = {
+        "%s.%s" % (labels_path, attr): True
+        for attr in attrs
+        if not any(attr.startswith(other + ".") for other in attrs)
+    }
+    if not dynamic_group:
+        project["frame_number"] = True
 
     index_track_id = {
         "$cond": [
@@ -245,12 +248,12 @@ def index_post_pipeline(
         group["attributeSamples"] = {"$push": sample}
 
     return [
-        *rank_stages,
+        {"$project": project},
         {
             "$project": {
                 "_id": False,
                 "fn": fn_expr,
-                "labels": {"$ifNull": [labels_expr, []]},
+                "labels": {"$ifNull": ["$" + labels_path, []]},
             }
         },
         {"$unwind": "$labels"},
@@ -318,6 +321,53 @@ def build_instance_index(
     return instances
 
 
+def build_member_index(
+    groups: t.Iterable[dict],
+    dynamic_attributes: t.Sequence[str] = (),
+) -> t.List[dict]:
+    """Turn a dynamic group's grouped Mongo output into per-instance index
+    entries keyed by member sample.
+
+    Like :func:`build_instance_index`, but frame positions are left to the
+    client, which holds the group's member order: each entry lists the
+    ``members`` the instance appears on and the ``keyframeMembers`` carrying
+    a ``keyframe`` flag. When ``dynamic_attributes`` is non-empty, each entry
+    also carries ``attributeValues``: ``{attr: [[member, value], ...]}`` in
+    the group's order, a later value for the same member winning.
+    """
+    dynamic_attributes = list(dynamic_attributes)
+    instances: t.List[dict] = []
+
+    for group in groups:
+        members = group.get("frames") or []
+        if not members:
+            continue
+
+        entry = {
+            "instanceId": str(group["_id"]),
+            "classLabel": group.get("classLabel"),
+            "persistedIndex": group.get("persistedIndex"),
+            "instance": group.get("instance"),
+            "members": members,
+            "keyframeMembers": [
+                member
+                for member in (group.get("keyframes") or [])
+                if member is not None
+            ],
+        }
+
+        if dynamic_attributes:
+            samples = group.get("attributeSamples") or []
+            entry["attributeValues"] = {
+                attr: [[sample["fn"], sample.get(attr)] for sample in samples]
+                for attr in dynamic_attributes
+            }
+
+        instances.append(entry)
+
+    return instances
+
+
 async def aggregate_index(
     view,
     fields: t.Iterable[str],
@@ -330,9 +380,11 @@ async def aggregate_index(
     the dynamic group's ordered samples when ``dynamic_group`` is set. Returns
     ``{field: {"instances": [...]}}`` with frame numbers and ObjectIds still
     raw; ``dynamic_attributes`` adds the per-instance ``attributeSegments``
-    value runs (see :func:`build_instance_index`).
+    value runs (see :func:`build_instance_index`). A dynamic group's entries
+    are keyed by member sample instead (see :func:`build_member_index`).
     """
     collection = foo.get_async_db_conn()[view._dataset._sample_collection_name]
+    build = build_member_index if dynamic_group else build_instance_index
 
     result: t.Dict[str, dict] = {}
     for field in fields:
@@ -353,9 +405,7 @@ async def aggregate_index(
             ),
         )
         groups = await foo.aggregate(collection, pipeline).to_list(None)
-        result[field] = {
-            "instances": build_instance_index(groups, dynamic_attributes)
-        }
+        result[field] = {"instances": build(groups, dynamic_attributes)}
 
     return result
 

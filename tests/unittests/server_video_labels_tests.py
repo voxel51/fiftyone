@@ -8,6 +8,7 @@ FiftyOne Server /video-labels route tests.
 
 import unittest
 
+from bson import ObjectId
 import numpy as np
 
 import fiftyone as fo
@@ -19,7 +20,9 @@ from fiftyone.server.routes.video_labels import (
     aggregate_index,
     aggregate_window,
     build_instance_index,
+    index_post_pipeline,
     resolve_label_list_field,
+    resolve_singleton_address_id,
     run_length_encode,
     run_length_encode_values,
     window_view,
@@ -653,6 +656,220 @@ class VideoLabelsWindowViewTests(unittest.IsolatedAsyncioTestCase):
 
         for view, role in cases:
             self.assertEqual(view._get_frame_roles(), [role], view)
+
+
+def _add_dynamic_groups(dataset):
+    inst_a = fo.Instance()
+    inst_b = fo.Instance()
+    mask = np.ones((4, 4), dtype=bool)
+
+    samples = []
+    for scene, num_members in (("a", 9), ("b", 4)):
+        for order in range(num_members):
+            detections = [
+                fo.Detection(
+                    label="person",
+                    instance=inst_a,
+                    index=1,
+                    keyframe=order % 3 == 0,
+                    mask=mask,
+                    turn_signal="left" if order > 4 else "off",
+                )
+            ]
+            if order not in (3, 4):
+                detections.append(
+                    fo.Detection(label="car", instance=inst_b, mask=mask)
+                )
+            if order == 2:
+                detections.append(fo.Detection(label="sign", index=7))
+                detections.append(fo.Detection(label="bare"))
+
+            samples.append(
+                fo.Sample(
+                    filepath="%s-%d.png" % (scene, order),
+                    scene=scene,
+                    # stored out of order, so the group's order is not
+                    # insertion order
+                    order=(order * 5) % num_members,
+                    detections=fo.Detections(detections=detections),
+                    seg=(
+                        fo.Segmentation(mask=mask.astype(np.uint8))
+                        if order % 2
+                        else None
+                    ),
+                )
+            )
+
+    dataset.add_samples(samples)
+    return dataset.group_by("scene", order_by="order")
+
+
+def _old_dynamic_index(view, field, dynamic_attributes):
+    """The previous whole-group fold, ranking members by array index."""
+    dataset = view._dataset
+    fold = [
+        {"$project": {field: True}},
+        {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
+        {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
+        {
+            "$replaceRoot": {
+                "newRoot": {
+                    "$mergeObjects": [
+                        "$docs",
+                        {"frame_number": {"$add": ["$rank", 1]}},
+                    ]
+                }
+            }
+        },
+    ]
+    pipeline = view._pipeline(
+        post_pipeline=fold
+        + index_post_pipeline(
+            field,
+            resolve_label_list_field(dataset, field, True),
+            dynamic_attributes,
+            singleton_address_id=resolve_singleton_address_id(
+                dataset, field, True
+            ),
+        )
+    )
+    groups = list(foo.aggregate(dataset._sample_collection, pipeline))
+    return build_instance_index(groups, dynamic_attributes)
+
+
+def _member_entries_to_frames(entries, member_order, dynamic_attributes):
+    """What the client does with a dynamic group's member index."""
+    frame_of = {member: idx + 1 for idx, member in enumerate(member_order)}
+    instances = []
+    for entry in entries:
+        frames = [frame_of[m] for m in entry["members"] if m in frame_of]
+        segments = run_length_encode(frames)
+        if not segments:
+            continue
+
+        mapped = {
+            k: v
+            for k, v in entry.items()
+            if k not in ("members", "keyframeMembers", "attributeValues")
+        }
+        mapped["segments"] = segments
+        mapped["keyframes"] = sorted(
+            {frame_of[m] for m in entry["keyframeMembers"] if m in frame_of}
+        )
+        if dynamic_attributes:
+            mapped["attributeSegments"] = {}
+            for attr, pairs in entry["attributeValues"].items():
+                runs = run_length_encode_values(
+                    (frame_of[m], value) for m, value in pairs if m in frame_of
+                )
+                if runs:
+                    mapped["attributeSegments"][attr] = runs
+
+        instances.append(mapped)
+
+    return instances
+
+
+def _by_instance(instances):
+    return {entry["instanceId"]: entry for entry in instances}
+
+
+class VideoLabelsDynamicGroupIndexTests(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_member_index_matches_old_path(self, dataset):
+        grouped = _add_dynamic_groups(dataset)
+
+        for scene in ("a", "b"):
+            view = grouped.get_dynamic_group(scene)
+            member_order = [ObjectId(_id) for _id in view.values("id")]
+
+            for field, attrs in (
+                ("detections", []),
+                ("detections", ["turn_signal"]),
+                ("seg", []),
+            ):
+                result = await aggregate_index(
+                    view, [field], attrs, dynamic_group=True
+                )
+                actual = _member_entries_to_frames(
+                    result[field]["instances"], member_order, attrs
+                )
+                expected = _old_dynamic_index(view, field, attrs)
+
+                self.assertTrue(expected)
+                self.assertEqual(
+                    _by_instance(actual), _by_instance(expected), field
+                )
+
+    @drop_async_dataset
+    async def test_member_index_shape(self, dataset):
+        view = _add_dynamic_groups(dataset).get_dynamic_group("a")
+
+        post_pipeline = index_post_pipeline(
+            "detections", "detections", ["turn_signal"], dynamic_group=True
+        )
+        pipeline = view._pipeline(post_pipeline=post_pipeline)
+
+        self.assertNotIn(
+            {"$push": "$$ROOT"},
+            [
+                acc
+                for stage in pipeline
+                if "$group" in stage
+                for acc in stage["$group"].values()
+            ],
+        )
+        self.assertFalse(
+            any(
+                "$group" in stage and stage["$group"]["_id"] is None
+                for stage in pipeline
+            )
+        )
+        self.assertFalse(
+            any(
+                isinstance(stage.get("$unwind"), dict)
+                and "includeArrayIndex" in stage["$unwind"]
+                for stage in pipeline
+            )
+        )
+
+        # Only the label attributes the index reads reach the grouping
+        self.assertEqual(
+            post_pipeline[0],
+            {
+                "$project": {
+                    "detections.detections.%s" % attr: True
+                    for attr in (
+                        "_id",
+                        "index",
+                        "instance",
+                        "keyframe",
+                        "label",
+                        "turn_signal",
+                    )
+                }
+            },
+        )
+
+        docs = list(
+            foo.aggregate(
+                dataset._sample_collection,
+                view._pipeline(post_pipeline=post_pipeline[:-1]),
+            )
+        )
+        self.assertTrue(docs)
+        self.assertFalse(any("mask" in doc["labels"] for doc in docs))
+
+        result = await aggregate_index(
+            view, ["detections"], dynamic_group=True
+        )
+        [person] = [
+            e
+            for e in result["detections"]["instances"]
+            if e["classLabel"] == "person"
+        ]
+        self.assertEqual(len(person["members"]), 9)
+        self.assertNotIn("segments", person)
 
 
 if __name__ == "__main__":

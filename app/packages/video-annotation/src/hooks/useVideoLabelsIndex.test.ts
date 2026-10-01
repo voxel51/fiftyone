@@ -16,15 +16,16 @@ vi.mock("../../../core/src/client/videoLabelsClient", () => ({
   getVideoLabelsIndex: (...args: unknown[]) => h.getVideoLabelsIndex(...args),
 }));
 
+import { usePublishDynamicGroupMemberIndex } from "../state/dynamicGroupMemberIndex";
 import { useVideoLabelsIndex } from "./useVideoLabelsIndex";
 
-const stream = (sampleId: string) =>
+const stream = (sampleId: string, dynamicGroup: string | null = null) =>
   ({
     labelQuery: () => ({
       sampleId,
       dataset: "ds",
       view: [],
-      dynamicGroup: null,
+      dynamicGroup,
     }),
   }) as unknown as VideoFrameLabelsStream;
 
@@ -156,5 +157,53 @@ describe("useVideoLabelsIndex", () => {
     expect(h.getVideoLabelsIndex).toHaveBeenLastCalledWith(
       expect.objectContaining({ fields: ["a,frames.b"] }),
     );
+  });
+
+  it("maps a dynamic group's members onto frames once the member order loads", async () => {
+    h.getVideoLabelsIndex.mockResolvedValue({
+      detections: {
+        instances: [
+          {
+            instanceId: "i1",
+            classLabel: "car",
+            persistedIndex: null,
+            instance: null,
+            members: ["m3", "m1", "m2", "gone"],
+            keyframeMembers: ["m2"],
+          },
+        ],
+      },
+    });
+
+    const groupStream = stream("s1", "video-0");
+    const fields = ["frames.detections"];
+    const { result } = renderHook(() => ({
+      index: useVideoLabelsIndex(groupStream, fields),
+      publish: usePublishDynamicGroupMemberIndex(),
+    }));
+    await act(async () => {});
+
+    // The index landed, but frames come from the member order
+    expect(result.current.index).toEqual({ loaded: false, indexByPath: {} });
+
+    act(() => result.current.publish(["m1", "m2", "m3", "m9"]));
+
+    expect(result.current.index).toEqual({
+      loaded: true,
+      indexByPath: {
+        "frames.detections": [
+          {
+            instanceId: "i1",
+            classLabel: "car",
+            persistedIndex: null,
+            instance: null,
+            segments: [[1, 3]],
+            keyframes: [2],
+          },
+        ],
+      },
+    });
+
+    act(() => result.current.publish(null));
   });
 });

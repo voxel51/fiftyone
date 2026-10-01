@@ -63,8 +63,32 @@ export type VideoLabelIndexInstance = {
   attributeSegments?: Record<string, Array<[number, number, unknown]>>;
 };
 
+/**
+ * One tracked instance of a dynamic group, keyed by member sample rather than
+ * frame: the group's member order, which the client holds, maps members to
+ * frames.
+ */
+export type VideoLabelMemberIndexInstance = Omit<
+  VideoLabelIndexInstance,
+  "segments" | "keyframes" | "attributeSegments"
+> & {
+  /** Member sample ids the instance appears on, in no particular order. */
+  members: string[];
+  /** Member sample ids carrying a `keyframe` flag. */
+  keyframeMembers: string[];
+  /**
+   * Per declared-dynamic attribute, `[member, value]` pairs in group order, a
+   * later value for the same member winning. Present only when the request
+   * named `dynamicAttributes`.
+   */
+  attributeValues?: Record<string, Array<[string, unknown]>>;
+};
+
+/** Video samples answer with frame runs; dynamic groups with member ids. */
 export type GetVideoLabelsIndexResponse = {
-  [field: string]: { instances: VideoLabelIndexInstance[] };
+  [field: string]: {
+    instances: VideoLabelIndexInstance[] | VideoLabelMemberIndexInstance[];
+  };
 };
 
 export type GetVideoLabelsWindowResponse = {

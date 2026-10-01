@@ -6,9 +6,12 @@ FiftyOne JSON handling
 |
 """
 
+from base64 import b64encode
 import dataclasses
 from datetime import date, datetime
+import io
 import math
+import zlib
 
 from bson import ObjectId
 import numpy as np
@@ -28,9 +31,34 @@ def _handle_bytes(o):
     return o
 
 
+def _read_numpy_header(raw):
+    try:
+        with io.BytesIO(zlib.decompress(raw)) as f:
+            version = np.lib.format.read_magic(f)
+            if version == (1, 0):
+                return np.lib.format.read_array_header_1_0(f)
+
+            if version == (2, 0):
+                return np.lib.format.read_array_header_2_0(f)
+    except Exception:
+        pass
+
+    return None
+
+
 def _handle_numpy_array(raw, _cls=None):
+    header = _read_numpy_header(raw)
+
     if _cls not in _MASK_CLASSES:
+        if header is not None:
+            return str(header[0])
+
         return str(fou.deserialize_numpy_array(raw).shape)
+
+    # Stored arrays are already serialized as C-ordered, so only reordering
+    # them requires a full round trip
+    if header is not None and not header[1]:
+        return b64encode(raw).decode("ascii")
 
     array = fou.deserialize_numpy_array(raw)
 
