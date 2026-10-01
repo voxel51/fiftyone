@@ -7,7 +7,7 @@ import {
   useAnnotationEngine,
   usePatchSample,
 } from "@fiftyone/annotation";
-import type { JSONDeltas } from "@fiftyone/utilities";
+import { type JSONDeltas, objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
 import {
   type DynamicGroupMismatchBody,
@@ -21,14 +21,17 @@ import {
   useGroupSlice,
   useView,
 } from "../state/accessors";
+import { groupLabelValues } from "../utils/groupLabels";
 import { toMemberPatches, writtenMemberDeltas } from "../utils/memberPatches";
 import { useDynamicGroupIndex } from "./useDynamicGroupIndex";
 
 /**
  * Own the write path of a dynamic group played as video: `/frames/<n>/...`
  * deltas become per-member patches written through
- * `PATCH /dataset/{id}/dynamic-group` under one group version token. Inert
- * unless `enabled` with a resolved `frameCount`.
+ * `PATCH /dataset/{id}/dynamic-group` under one group version token. A
+ * single `Classification` field labels the whole clip, so the anchor's edit
+ * to one is copied onto every member in that same request. Inert unless
+ * `enabled` with a resolved `frameCount`.
  */
 export const useDynamicGroupPersistence = ({
   enabled,
@@ -62,6 +65,14 @@ export const useDynamicGroupPersistence = ({
 
   const persist = useCallback(
     async (deltas: JSONDeltas): Promise<boolean> => {
+      const groupLabels = {
+        values: groupLabelValues(deltas, {
+          labelType: (path) => engine.getLabelType(path),
+          value: (path) => engine.listLabels({ sample: sampleId, path })[0],
+        }),
+        mintId: objectId,
+      };
+
       await group.whenReady();
       let state = group.getState();
 
@@ -92,7 +103,12 @@ export const useDynamicGroupPersistence = ({
         );
       }
 
-      const { patches, rest } = toMemberPatches(deltas, state.index, sampleId);
+      const { patches, rest } = toMemberPatches(
+        deltas,
+        state.index,
+        sampleId,
+        groupLabels,
+      );
 
       if (patches.length > 0) {
         try {

@@ -110,6 +110,98 @@ describe("toMemberPatches", () => {
   });
 });
 
+describe("toMemberPatches group-wide labels", () => {
+  const mint = () => {
+    let next = 0;
+    return () => `copy-${++next}`;
+  };
+
+  it("copies a group-wide label onto every member besides the anchor", () => {
+    const deltas = [
+      { op: "replace", path: "/label/label", value: "dog" },
+      {
+        op: "replace",
+        path: "/frames/3/detections/detections/0/label",
+        value: "cat",
+      },
+    ] as JSONDeltas;
+    const values = new Map([
+      ["/label", { _id: "c1", _cls: "Classification", label: "dog" }],
+    ]);
+
+    const { patches, rest } = toMemberPatches(deltas, INDEX, "m2", {
+      values,
+      mintId: mint(),
+    });
+
+    expect(rest).toEqual([]);
+    expect(patches).toEqual([
+      {
+        sampleId: "m3",
+        patch: [
+          {
+            op: "replace",
+            path: "/detections/detections/0/label",
+            value: "cat",
+          },
+          {
+            op: "add",
+            path: "/label",
+            value: { _id: "copy-2", _cls: "Classification", label: "dog" },
+          },
+        ],
+      },
+      {
+        sampleId: "m2",
+        patch: [{ op: "replace", path: "/label/label", value: "dog" }],
+      },
+      {
+        sampleId: "m1",
+        patch: [
+          {
+            op: "add",
+            path: "/label",
+            value: { _id: "copy-1", _cls: "Classification", label: "dog" },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("clears a deleted group-wide label on every member", () => {
+    const deltas = [{ op: "remove", path: "/label" }] as JSONDeltas;
+    const values = new Map([["/label", null]]);
+
+    const { patches } = toMemberPatches(deltas, INDEX, "m1", {
+      values,
+      mintId: mint(),
+    });
+
+    expect(patches).toEqual([
+      { sampleId: "m1", patch: [{ op: "remove", path: "/label" }] },
+      { sampleId: "m2", patch: [{ op: "add", path: "/label", value: null }] },
+      { sampleId: "m3", patch: [{ op: "add", path: "/label", value: null }] },
+    ]);
+  });
+
+  it("copies nothing when the anchor is not a member", () => {
+    const deltas = [
+      { op: "replace", path: "/label/label", value: "dog" },
+    ] as JSONDeltas;
+    const values = new Map([
+      ["/label", { _id: "c1", _cls: "Classification", label: "dog" }],
+    ]);
+
+    const { patches, rest } = toMemberPatches(deltas, INDEX, "outsider", {
+      values,
+      mintId: mint(),
+    });
+
+    expect(patches).toEqual([]);
+    expect(rest).toEqual(deltas);
+  });
+});
+
 describe("writtenMemberDeltas", () => {
   const deltas = [
     { op: "add", path: "/frames/1/detections/detections/1", value: {} },

@@ -130,6 +130,17 @@ panels write the engine directly too. In every case `annotation` aggregates the
 persistence without importing this package. See
 [the broader picture](#fitting-into-the-annotation-ecosystem).
 
+An image dataset grouped into a video saves through
+[`useDynamicGroupPersistence`](src/hooks/useDynamicGroupPersistence.ts): each
+`/frames/<n>` op lands on the member sample at frame `n`, all in one
+`PATCH /dataset/{id}/dynamic-group` request. A single `Classification` field
+labels the whole clip, like a video's sample-level Classification. The engine
+holds it once, on the opened (anchor) sample, so create, edit, delete, and undo
+are each one engine step. On save, the anchor's value is copied onto every
+other member as a whole-field write, and each copy gets its own `_id`. Members
+that disagreed before the write are overwritten. Until then, the sidebar shows
+the anchor's value.
+
 ## The layers
 
 Server-backed **streams** _seed_ the engine; the engine projects state onto the
