@@ -127,7 +127,7 @@ export default function SelectionSummary({
             >
               <Pill
                 size={Size.Sm}
-                backgroundColor={BackgroundColor.CardElevated}
+                backgroundColor={BackgroundColor.Raised}
                 color={TextColor.Secondary}
                 className={`${styles.countPill} ${styles.bucketPill}`}
                 data-bucket-pill={bucket.id}
@@ -194,7 +194,7 @@ export default function SelectionSummary({
         >
           <Pill
             size={Size.Sm}
-            backgroundColor={BackgroundColor.CardElevated}
+            backgroundColor={BackgroundColor.Raised}
             color={TextColor.Secondary}
             className={styles.countPill}
             data-kind={pill.kind}
@@ -250,7 +250,7 @@ export default function SelectionSummary({
             <span className={styles.inlineAlert} role="alert">
               <Text
                 variant={TextVariant.Sm}
-                color={TextColor.Failure}
+                color={TextColor.Destructive}
                 className={styles.summaryLabel}
               >
                 {error}
@@ -320,7 +320,7 @@ export default function SelectionSummary({
           <span className={styles.inlineAlert}>
             <Text
               variant={TextVariant.Xs}
-              color={TextColor.Failure}
+              color={TextColor.Destructive}
               role="alert"
             >
               {error}

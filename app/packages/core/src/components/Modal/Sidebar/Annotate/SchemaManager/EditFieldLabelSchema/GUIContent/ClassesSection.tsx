@@ -69,7 +69,7 @@ const InlineEditExpandedContent = ({
         {error && (
           <Text
             variant={TextVariant.Md}
-            color={TextColor.Failure}
+            color={TextColor.Destructive}
             style={{ marginTop: 4 }}
           >
             {error}

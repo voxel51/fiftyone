@@ -152,7 +152,7 @@ function RemoveFromSubset({
             <Text
               role="alert"
               variant={TextVariant.Xs}
-              color={TextColor.Failure}
+              color={TextColor.Destructive}
             >
               {error}
             </Text>

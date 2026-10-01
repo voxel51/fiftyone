@@ -13,7 +13,7 @@ export default function SharedSessionUpgrade() {
   return (
     <Text
       variant={TextVariant.Sm}
-      color={TextColor.Foreground}
+      color={TextColor.Fg}
       className={styles.fixed}
     >
       To browse independently, please{" "}

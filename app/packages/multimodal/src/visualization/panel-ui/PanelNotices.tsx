@@ -97,7 +97,7 @@ const NOTICE_SEVERITY_ICON: Record<PanelNoticeSeverity, IconName> = {
 };
 
 const NOTICE_SEVERITY_ICON_COLOR: Record<PanelNoticeSeverity, IconColor> = {
-  error: IconColor.Failure,
+  error: IconColor.Destructive,
   info: IconColor.Info,
   warning: IconColor.Warning,
 };

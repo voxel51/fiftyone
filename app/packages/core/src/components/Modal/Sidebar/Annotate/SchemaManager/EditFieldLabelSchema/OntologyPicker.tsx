@@ -32,7 +32,7 @@ const OntologyPicker = ({
   }
   if (error) {
     return (
-      <Text variant={TextVariant.Md} color={TextColor.Failure}>
+      <Text variant={TextVariant.Md} color={TextColor.Destructive}>
         Failed to load {label}: {error}
       </Text>
     );

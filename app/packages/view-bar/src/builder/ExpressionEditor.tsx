@@ -155,7 +155,7 @@ const STATUS_ICON: Record<Status["state"], IconName> = {
 const STATUS_COLOR: Record<Status["state"], TextColor> = {
   empty: TextColor.Muted,
   valid: TextColor.Success,
-  invalid: TextColor.Failure,
+  invalid: TextColor.Destructive,
 };
 
 const KIND_LABEL: Record<Kind, string> = {

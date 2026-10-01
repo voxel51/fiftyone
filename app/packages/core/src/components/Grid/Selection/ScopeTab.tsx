@@ -184,7 +184,7 @@ export default function SamplesScopeTab() {
             {countLabel != null && (
               <Pill
                 size={Size.Xs}
-                backgroundColor={BackgroundColor.CardElevated}
+                backgroundColor={BackgroundColor.Raised}
                 color={TextColor.Secondary}
                 className={styles.scopeCount}
               >
@@ -364,7 +364,7 @@ export default function SamplesScopeTab() {
                       >
                         <DeleteOutlineIcon
                           size={Size.Sm}
-                          color={TextColor.Failure}
+                          color={TextColor.Destructive}
                         />
                       </Button>
                     </div>

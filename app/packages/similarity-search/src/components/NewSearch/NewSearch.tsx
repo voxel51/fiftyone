@@ -346,7 +346,7 @@ export default function NewSearch({
                 }}
               />
               {uploadError && (
-                <Text variant={TextVariant.Sm} color={TextColor.Failure}>
+                <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
                   {uploadError}
                 </Text>
               )}

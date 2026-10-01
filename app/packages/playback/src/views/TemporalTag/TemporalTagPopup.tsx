@@ -301,7 +301,7 @@ const TemporalTagPopup: React.FC = () => {
       )}
 
       {error && (
-        <Text variant={TextVariant.Xs} color={TextColor.Failure}>
+        <Text variant={TextVariant.Xs} color={TextColor.Destructive}>
           {error}
         </Text>
       )}

@@ -16,7 +16,7 @@ import styles from "./SaveStatusIndicator.module.css";
 const HEALTH_COLOR: Record<SaveHealth, IconColor> = {
   [SaveHealth.Healthy]: IconColor.Success,
   [SaveHealth.Unhealthy]: IconColor.Warning,
-  [SaveHealth.Stopped]: IconColor.Failure,
+  [SaveHealth.Stopped]: IconColor.Destructive,
 };
 
 const formatSyncedAt = (timestamp: number): string =>

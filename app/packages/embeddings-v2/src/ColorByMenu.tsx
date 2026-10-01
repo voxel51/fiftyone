@@ -196,7 +196,7 @@ export function ColorByMenu({
               Color by
             </Text>
             <span className="emb-facet-trigger-label">
-              <Text variant={TextVariant.Md} color={TextColor.Foreground}>
+              <Text variant={TextVariant.Md} color={TextColor.Fg}>
                 {selectedLabel}
               </Text>
             </span>
@@ -229,7 +229,7 @@ export function ColorByMenu({
                     <Icon
                       name={IconName.Check}
                       size={Size.Sm}
-                      color={TextColor.Foreground}
+                      color={TextColor.Fg}
                     />
                   )}
                 </span>

@@ -318,7 +318,10 @@ const AttributeFormContent = ({
                     value={formState.taxonomy}
                   />
                   {taxonomyError && (
-                    <Text variant={TextVariant.Sm} color={TextColor.Failure}>
+                    <Text
+                      variant={TextVariant.Sm}
+                      color={TextColor.Destructive}
+                    >
                       {taxonomyError}
                     </Text>
                   )}

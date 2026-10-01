@@ -30,7 +30,7 @@ function SavedSegmentTile({ sample }: { sample: TileDecoratorSample }) {
     >
       <Text
         variant={TextVariant.Xs}
-        color={error ? TextColor.Warning : TextColor.Foreground}
+        color={error ? TextColor.Warning : TextColor.Fg}
       >
         {error
           ? "Segments unavailable"

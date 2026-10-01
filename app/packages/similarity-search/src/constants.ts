@@ -23,7 +23,7 @@ export const STATUS_COLORS: Record<RunStatus, TextColor> = {
   [RunStatus.Pending]: TextColor.Muted,
   [RunStatus.Running]: TextColor.Info,
   [RunStatus.Completed]: TextColor.Success,
-  [RunStatus.Failed]: TextColor.Failure,
+  [RunStatus.Failed]: TextColor.Destructive,
 };
 
 export const STATUS_LABELS: Record<RunStatus, string> = {

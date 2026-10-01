@@ -84,7 +84,7 @@ export default function ObjectView(props) {
                   size={Size.Sm}
                   color={TextColor.Secondary}
                 />
-                <Text variant={TextVariant.Md} color={TextColor.Foreground}>
+                <Text variant={TextVariant.Md} color={TextColor.Fg}>
                   {label}
                 </Text>
               </Clickable>

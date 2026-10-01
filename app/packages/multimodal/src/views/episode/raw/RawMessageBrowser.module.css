@@ -57,7 +57,7 @@
 }
 
 .error {
-  color: var(--color-content-text-failure);
+  color: var(--color-content-text-error, #ff837a);
 }
 
 .rail {

@@ -115,7 +115,11 @@ export function SubsetJobStatus({
         {running && <p>You can keep working while this finishes.</p>}
       </Notice>
       {(connectionError || error) && (
-        <Text variant={TextVariant.Sm} color={TextColor.Failure} role="alert">
+        <Text
+          variant={TextVariant.Sm}
+          color={TextColor.Destructive}
+          role="alert"
+        >
           {error ?? "Connection lost. Reconnecting to the same operation…"}
         </Text>
       )}

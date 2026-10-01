@@ -218,7 +218,7 @@ const AIErrorStatus = ({ error }: { error: InferenceError }): ReactElement => (
     spacing={Spacing.Sm}
   >
     <ErrorOutline fontSize="small" color="error" />
-    <StatusText color={TextColor.Failure}>
+    <StatusText color={TextColor.Destructive}>
       {error ? ERROR_KIND_LABELS[error.kind] : STATUS_LABELS.error}
     </StatusText>
   </Stack>
@@ -269,7 +269,7 @@ const aiSegmentationHelp = (
       spacing={Spacing.Md}
     >
       <Marker color={TextColor.Success} label="Positive prompt" />
-      <Marker color={TextColor.Failure} label="Negative prompt" />
+      <Marker color={TextColor.Destructive} label="Negative prompt" />
     </Stack>
   </Stack>
 );

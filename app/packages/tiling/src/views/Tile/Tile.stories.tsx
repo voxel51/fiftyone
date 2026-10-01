@@ -34,7 +34,7 @@ export const HeaderOnly: StoryObj = {
     <div
       style={{
         width: 480,
-        background: "var(--color-content-bg-card)",
+        background: "var(--color-content-bg-card-1)",
         border: "1px solid var(--color-content-border-default)",
       }}
     >
