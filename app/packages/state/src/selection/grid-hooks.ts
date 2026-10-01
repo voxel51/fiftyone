@@ -81,11 +81,19 @@ export function useGridSelectionDataset() {
   };
 }
 
-/** Active range constraints include positive temporal-tag sidebar filters. */
-export function useGridSelectionBoundary() {
+/**
+ * Active range constraints include positive temporal-tag sidebar filters.
+ * `rangeConstraint: false` leaves out an extension's published ranges, for
+ * requests its own extended stage already narrows to their samples.
+ */
+export function useGridSelectionBoundary({
+  rangeConstraint: withRanges = true,
+}: { readonly rangeConstraint?: boolean } = {}) {
   const { domainId, conversion } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
-  const { filters: currentFilters, rangeConstraint } = useGridViewScope();
+  const { filters: currentFilters, rangeConstraint: published } =
+    useGridViewScope();
+  const rangeConstraint = withRanges ? published : undefined;
   const schema = useSampleSchema();
   const tags = currentFilters._temporal_tags;
   const effective = useMemo<SelectionBoundary>(() => {
@@ -97,7 +105,9 @@ export function useGridSelectionBoundary() {
     const providers: SegmentConstraint[] = boundary.provider
       ? [boundary.provider]
       : [];
-    if (!conversion && rangeConstraint)
+    // A pending capture's provider names no ranges yet, and constraining by
+    // it would match nothing until its snapshot lands
+    if (!conversion && rangeConstraint && !rangeConstraint.pending)
       providers.push(rangeConstraint.provider);
     if (!tags?.exclude && values.length)
       providers.push({ kind: "temporal-tags", values });
@@ -129,9 +139,15 @@ export function useGridSelectionBoundary() {
   return [effective, setBoundary] as const;
 }
 
-/** Capturable request: the pipeline, provider boundary, and active slice. */
-export function useGridSelectionRequest() {
-  const [boundary] = useGridSelectionBoundary();
+/**
+ * Capturable request: the pipeline, provider boundary, and active slice.
+ * `rangeConstraint: false` builds it from the boundary without an extension's
+ * published ranges, as the grid's pages are requested.
+ */
+export function useGridSelectionRequest({
+  rangeConstraint = true,
+}: { readonly rangeConstraint?: boolean } = {}) {
+  const [boundary] = useGridSelectionBoundary({ rangeConstraint });
   const {
     view: stages,
     filters: currentFilters,
@@ -653,7 +669,7 @@ export function reconcileSelection(
  */
 export function useSyncSelectionScope() {
   const { domainId, enabled } = useGridSelectionDataset();
-  const [boundary] = useGridSelectionBoundary();
+  const [boundary] = useGridSelectionBoundary({ rangeConstraint: false });
   const setScope = useSetSelectionScopeBoundary();
   // This effect mirrors the boundary whenever it changes.
   useEffect(() => {

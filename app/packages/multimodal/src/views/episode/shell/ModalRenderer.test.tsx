@@ -86,7 +86,7 @@ vi.mock("../../../extensions/timeline", () => ({
       tracks: [],
     });
   },
-  useSampleRendererFirstMatch: () => null,
+  useSampleFocus: () => null,
 }));
 
 vi.mock("../../../runtime", () => ({

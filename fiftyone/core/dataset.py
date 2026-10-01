@@ -5467,6 +5467,266 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.reload()
 
     @property
+    def has_subsets(self):
+        """Whether this dataset has any saved subsets, including empty ones."""
+        return fosub.has_subsets(self)
+
+    def has_subset(self, subset_id):
+        """Whether this dataset has a saved subset with the given ID.
+
+        Args:
+            subset_id: a subset ID; names are not resolved
+
+        Returns:
+            True/False; invalid IDs and IDs from other datasets return False
+        """
+        return fosub.has_subset(self, subset_id)
+
+    def create_subset(
+        self,
+        name,
+        samples=None,
+        description=None,
+        *,
+        members=None,
+        provenance=None,
+        lineage=None,
+        view=None,
+    ):
+        """Creates a saved subset with frozen membership and live sample data.
+
+        Subsets created here appear in the App's subset picker. They do not
+        copy media or annotations, and clones do not inherit them. Names need
+        not be unique; use the returned ID to address the subset.
+
+        ``created_by`` is an optional creator ID supplied by the host's request
+        context; standalone SDK calls leave it unset. ``created_at`` is a UTC
+        ISO 8601 timestamp.
+
+        Provenance and lineage are creation-time-only through this API. They
+        preserve original attribution, not a complete audit history of later
+        membership additions or removals.
+
+        Examples::
+
+            subset = dataset.create_subset(
+                "Needs review",
+                dataset.match_tags("review"),
+                provenance={"agent": "curator", "run_id": "run-42"},
+                lineage={"subset_ids": [parent_subset_id]},
+            )
+            review = dataset.load_subset(subset["id"])
+
+        .. note::
+
+            This convenience method captures member references in client
+            memory. For large selections, create an empty subset and call
+            :meth:`add_subset_members` with bounded batches.
+
+        Args:
+            name: a name of 1-200 characters
+            samples (None): a sample, sample ID, iterable of samples/IDs, or
+                :class:`fiftyone.core.collections.SampleCollection` belonging
+                to this dataset. Views capture their current membership,
+                including patches, frames, and clips. Grouped collections
+                capture all slices of their selected groups. Omit to create
+                an empty subset or provide ``members``
+            description (None): an optional description of up to 1000 characters
+            members (None): explicit episode/segment dictionaries, as returned
+                by :meth:`get_subset_members`. Mutually exclusive with samples.
+                Segments have ``episodeId``, ``kind="segment"``, and a ``range``
+                with ``start``, ``end``, ``timebase``, and ``streams``. Bounds
+                are half-open decimal integer strings; video frames use the
+                zero-based ``"sequence"`` timebase
+            provenance (None): a JSON dictionary describing the producing
+                agent, run, model, or parameters, limited to 64 KiB of BSON
+            lineage (None): a JSON dictionary describing upstream inputs, such
+                as ``{"subset_ids": [parent_id]}``, limited to 64 KiB of BSON.
+                These are descriptive references, not enforced foreign keys
+            view (None): a :class:`fiftyone.core.view.DatasetView` defining the
+                entity domain for explicit ``members``. Required when copying
+                converted members, e.g. ``view=dataset.load_subset(source_id)``.
+                Use ``members=[]`` to create an empty converted subset
+
+        Returns:
+            a metadata dict including ``id``, ``name``, ``memberCount``,
+            ``memberCounts``, ``created_by``, ``created_at``, ``provenance``,
+            and ``lineage``
+        """
+        return fosub.save_subset(
+            self,
+            name,
+            samples=samples,
+            description=description,
+            members=members,
+            provenance=provenance,
+            lineage=lineage,
+            view=view,
+        )
+
+    def list_subsets(self, info=False, name=None):
+        """Lists this dataset's saved subsets, including empty subsets.
+
+        Names need not be unique. An exact name filter may return multiple
+        matches; use the returned IDs to address them.
+
+        Args:
+            info (False): whether to return metadata dicts rather than IDs
+            name (None): an optional exact, case-sensitive name filter
+
+        Returns:
+            a list of stable subset IDs or metadata dicts, in creation order
+        """
+        return fosub.list_subsets(self, info=info, name=name)
+
+    def get_subset_info(self, subset_id, counts=False):
+        """Gets a saved subset's metadata, including provenance and lineage.
+
+        Only ``name`` and ``description`` can be edited via
+        :meth:`update_subset_info`. ``created_by`` is the original creator
+        ID (or None), and ``created_at`` is a UTC ISO 8601 timestamp (or None
+        for older records). These fields, provenance, and lineage retain the
+        original attribution; they are not a complete membership audit history.
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+            counts (False): whether to resolve live member availability
+
+        Returns:
+            a metadata dict; ``memberCount`` includes unavailable references,
+            while optional ``counts`` describes live availability
+        """
+        return fosub.subset_summary(self, subset_id, counts=counts)
+
+    def update_subset_info(self, subset_id, info):
+        """Updates a saved subset's name and/or description by ID.
+
+        Omitted fields remain unchanged. Names need not be unique, and renaming
+        a subset preserves its ID. Membership must be changed explicitly via
+        :meth:`add_subset_members` and :meth:`remove_subset_members`.
+
+        Provenance and lineage can only be set at creation. This preserves
+        original attribution, not a complete audit history of membership
+        changes. All fields other than ``name`` and ``description`` are rejected.
+
+        Examples::
+
+            dataset.update_subset_info(
+                subset_id,
+                {"name": "Reviewed", "description": "Ready for labeling"},
+            )
+            info = dataset.get_subset_info(subset_id)
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+            info: a dict with optional ``name`` (1-200 characters) and
+                ``description`` (at most 1000 characters) entries. Leading
+                and trailing whitespace is stripped. Set ``description`` to
+                None or blank text to clear it
+
+        Raises:
+            ValueError: if no subset matches a valid ID in this dataset, a field
+                is not editable, or a value is invalid
+            bson.errors.InvalidId: if the subset ID is a malformed ObjectId
+                string
+        """
+        fosub.update_subset_info(self, subset_id, info)
+
+    def load_subset(self, subset_id, scope=None):
+        """Loads a subset as a view of its currently available entities.
+
+        Segment members select their parent samples, without trimming media.
+        Use :meth:`get_subset_members` to read exact saved bounds. Deleted
+        entities are omitted from the view but retain their saved references.
+        Converted subsets reopen in their original patches/frames/clips domain.
+        Grouped subsets return a flattened view of their saved slices.
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+            scope (None): optionally select only whole ``"episodes"`` or
+                parents of saved ``"segments"``. Required for subsets that
+                contain both kinds
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        view, _ = fosub.subset_base_view(self, subset_id)
+        if view.media_type == "group":
+            view = view.select_group_slices(_allow_mixed=True)
+        return fosub.select_subset(view, subset_id, scope=scope)
+
+    def get_subset_members(self, subset_id, scope=None):
+        """Reads a subset's exact saved episode and segment references.
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+            scope (None): optionally read only ``"episodes"`` or ``"segments"``
+
+        Returns:
+            a list of member dicts, including unavailable references and
+            segment provenance
+        """
+        return fosub.subset_members(self, subset_id, scope=scope)
+
+    def add_subset_members(
+        self, subset_id, samples=None, *, members=None, operation_id=None
+    ):
+        """Adds samples or explicit references to a saved subset.
+
+        Existing members are deduplicated; overlapping segments remain
+        distinct. Patches and evaluation patches must use the same conversion
+        pipeline, including stages before conversion. Apply new filters after
+        conversion to select additional members. Frame and clip collections
+        must match the subset's source-reference domain.
+
+        Inputs are captured in client memory; use bounded batches for large
+        selections.
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+            samples (None): samples, IDs, or a collection, as in
+                :meth:`create_subset`
+            members (None): explicit member dictionaries, mutually exclusive
+                with ``samples``
+            operation_id (None): an optional retry key of 1-128 characters.
+                Reuse with the same captured members to retrieve the same
+                receipt for up to seven days. Changed inputs are rejected
+
+        Returns:
+            a receipt dict with ``added``, ``duplicates``, and
+            ``provenanceUpdated`` counts
+        """
+        return fosub.add_members(
+            self,
+            subset_id,
+            samples=samples,
+            members=members,
+            operation_id=operation_id,
+        )
+
+    def remove_subset_members(self, subset_id, members):
+        """Removes exact saved references, leaving source samples untouched.
+
+        Removing a whole episode does not remove its saved segments.
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+            members: member dictionaries from :meth:`get_subset_members`
+
+        Returns:
+            a receipt dict with ``removed`` and remaining ``counts``
+        """
+        return fosub.remove_members(self, subset_id, members)
+
+    def delete_subset(self, subset_id):
+        """Deletes a saved subset, leaving source samples and labels untouched.
+
+        Args:
+            subset_id: the subset ID, scoped to this dataset
+        """
+        fosub.delete_subset(self, subset_id)
+
+    @property
     def has_saved_views(self):
         """Whether this dataset has any saved views."""
         return bool(self.list_saved_views())

@@ -24,8 +24,9 @@ import re
 from uuid import uuid4
 
 from bson import BSON, ObjectId
+from bson.errors import InvalidDocument
 from pymongo import InsertOne, ReplaceOne, UpdateOne
-from pymongo.errors import BulkWriteError, DuplicateKeyError
+from pymongo.errors import BulkWriteError, DuplicateKeyError, OperationFailure
 
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
@@ -42,29 +43,36 @@ _JOURNAL_BYTES = 8 * 1024 * 1024
 
 
 def create_subset(
-    dataset, name, description=None, view=None, preferred_group_slice=None
+    dataset,
+    name,
+    description=None,
+    view=None,
+    preferred_group_slice=None,
+    provenance=None,
+    lineage=None,
 ):
-    """Creates a named subset without copying any media or annotations."""
+    """Creates a named subset without copying any media or annotations.
+
+    ``provenance`` and ``lineage`` are optional JSON dictionaries describing
+    how this subset was produced and its upstream inputs. Each may contain at
+    most 64 KiB of BSON. They are descriptive metadata, not live references;
+    deleting an upstream subset does not change them or this subset's members.
+    """
     fosc.check_access(dataset, "edit")
-    if not isinstance(name, str) or not name.strip() or len(name) > 200:
-        raise ValueError("A subset name must contain 1–200 characters")
-    if description is not None and (
-        not isinstance(description, str) or len(description) > 1000
-    ):
-        raise ValueError(
-            "A subset description must be text of at most 1000 characters"
-        )
+    info = _validate_subset_info({"name": name, "description": description})
     doc = {
         "_id": ObjectId(),
         "_dataset_id": dataset._doc.id,
-        "name": name.strip(),
-        "description": (description or "").strip() or None,
+        **info,
         "created_at": datetime.now(timezone.utc),
         "created_by": fosc.get_actor(),
         "member_count": 0,
         "member_counts": {"fullEpisodes": 0, "segments": 0},
         "member_version": 0,
     }
+    for field, value in (("provenance", provenance), ("lineage", lineage)):
+        if value is not None:
+            doc[field] = _subset_metadata(field, value)
     prefix, _ = split_subset_view(view)
     if preferred_group_slice is not None and not prefix:
         if not isinstance(preferred_group_slice, str) or (
@@ -98,13 +106,186 @@ def create_subset(
     return _summary(doc)
 
 
-def list_subsets(dataset):
-    """Lists only the current dataset's subsets, including empty subsets."""
-    return browse_subsets(dataset)["subsets"]
+def _validate_subset_info(info):
+    """Validates and normalizes only the editable subset metadata."""
+    if not isinstance(info, dict):
+        raise ValueError("Subset info must be a dict")
+    invalid_fields = set(info) - {"name", "description"}
+    if invalid_fields:
+        raise ValueError("Cannot edit fields %s" % invalid_fields)
+    info = dict(info)
+    if "name" in info:
+        name = info["name"]
+        if not isinstance(name, str) or not name.strip() or len(name) > 200:
+            raise ValueError("A subset name must contain 1–200 characters")
+        info["name"] = name.strip()
+    if "description" in info:
+        description = info["description"]
+        if description is not None and (
+            not isinstance(description, str) or len(description) > 1000
+        ):
+            raise ValueError(
+                "A subset description must be text of at most 1000 characters"
+            )
+        info["description"] = (description or "").strip() or None
+    return info
+
+
+def _subset_metadata(field, value):
+    if not isinstance(value, dict):
+        raise ValueError("Subset %s must be a JSON dictionary" % field)
+    try:
+        serialized = json.dumps(value, allow_nan=False)
+        encoded = BSON.encode({field: value})
+        value = json.loads(serialized)
+    except (InvalidDocument, TypeError, ValueError, OverflowError) as error:
+        raise ValueError(
+            "Subset %s must be a JSON dictionary with BSON-compatible values"
+            % field
+        ) from error
+    if len(encoded) > 64 * 1024:
+        raise ValueError("Subset %s must not exceed 64 KiB" % field)
+    return value
+
+
+def save_subset(
+    dataset,
+    name,
+    samples=None,
+    description=None,
+    members=None,
+    provenance=None,
+    lineage=None,
+    view=None,
+):
+    """Captures SDK samples or explicit members in a new saved subset."""
+    fosc.check_access(dataset, "edit")
+    if samples is not None and members is not None:
+        raise ValueError("Provide either samples or members, not both")
+    if view is not None:
+        if samples is not None or members is None:
+            raise ValueError(
+                "A view requires explicit members without samples"
+            )
+        if not isinstance(view, fov.DatasetView):
+            raise ValueError("The subset view must be a DatasetView")
+        view, _ = _sample_members(dataset, view)
+        captured = members
+    else:
+        view, captured = _sample_members(dataset, samples)
+    members = list(members if members is not None else captured)
+    subset = create_subset(
+        dataset,
+        name,
+        description=description,
+        view=view._serialize(),
+        preferred_group_slice=(
+            view.group_slice if view.media_type == "group" else None
+        ),
+        provenance=provenance,
+        lineage=lineage,
+    )
+    try:
+        if members:
+            add_members(dataset, subset["id"], members=members)
+        return subset_summary(dataset, subset["id"])
+    except Exception:
+        # The caller has not received the ID yet; don't leave a partial subset
+        # behind when validation or the initial membership write fails.
+        delete_subset(dataset, subset["id"])
+        raise
+
+
+def add_members(
+    dataset, subset_id, samples=None, members=None, operation_id=None
+):
+    """Adds SDK samples or explicit references using the shared retry journal."""
+    fosc.check_access(dataset, "edit")
+    if (samples is None) == (members is None):
+        raise ValueError("Provide either samples or members")
+    if samples is not None:
+        view, members = _sample_members(dataset, samples)
+        if subset_view_key(view._serialize(), dataset) != get_subset(
+            dataset, subset_id
+        ).get("view_key"):
+            raise ValueError("Open this subset in its matching entity view")
+    if operation_id is None:
+        operation_id = str(uuid4())
+    prepare_add(dataset, subset_id, operation_id, members, preview=False)
+    return apply_add(dataset, operation_id)
+
+
+def _sample_members(dataset, samples):
+    import fiftyone.core.collections as foc
+    import fiftyone.core.dataset as fod
+
+    if dataset._is_generated:
+        raise ValueError("Create subsets on the source dataset")
+    if isinstance(samples, foc.SampleCollection):
+        if samples._root_dataset._doc.id != dataset._doc.id:
+            raise ValueError("Samples must belong to this dataset")
+        view = samples.view()
+        captured = view.flatten() if view._is_dynamic_groups else view
+        if captured.media_type == "group":
+            captured = captured.select_group_slices(_allow_mixed=True)
+        return view, fosr.iter_members(captured)
+    ids = fod._get_sample_ids(samples) if samples is not None else []
+    return dataset.view(), (
+        {"episodeId": sample_id, "kind": "episode"} for sample_id in ids
+    )
+
+
+def has_subsets(dataset):
+    """Checks whether the dataset owns any subsets without loading metadata."""
+    return (
+        foo.get_db_conn().subsets.find_one(
+            {"_dataset_id": dataset._doc.id}, {"_id": 1}
+        )
+        is not None
+    )
+
+
+def has_subset(dataset, subset_id):
+    """Checks one dataset-scoped ID without resolving names or members."""
+    if not ObjectId.is_valid(subset_id):
+        return False
+    return (
+        foo.get_db_conn().subsets.find_one(
+            {"_id": ObjectId(subset_id), "_dataset_id": dataset._doc.id},
+            {"_id": 1},
+        )
+        is not None
+    )
+
+
+def list_subsets(dataset, info=True, name=None):
+    """Lists dataset-scoped metadata or IDs, optionally matching an exact name.
+
+    Internal callers receive metadata by default. The public Dataset API
+    defaults to IDs and passes its ``info`` preference explicitly.
+    """
+    query = {"_dataset_id": dataset._doc.id}
+    if name is not None:
+        if not isinstance(name, str):
+            raise ValueError("The subset name filter must be a string")
+        query["name"] = name
+    projection = {"member_pending": 0} if info else {"_id": 1}
+    cursor = (
+        _collection("subsets")
+        .find(query, projection)
+        .sort([("created_at", 1), ("_id", 1)])
+    )
+    return [_summary(doc) if info else str(doc["_id"]) for doc in cursor]
 
 
 def browse_subsets(
-    dataset, search=None, skip=0, limit=None, counts=False, view=None
+    dataset,
+    search=None,
+    skip=0,
+    limit=None,
+    counts=False,
+    view=None,
+    metadata=False,
 ):
     """Pages the current dataset's subsets, optionally matching a search.
 
@@ -113,13 +294,14 @@ def browse_subsets(
     picker knows whether search is worth offering. Supplying ``view`` limits
     results to compatible subsets; an empty view selects sample subsets.
     Omitting it lists every subset in the dataset.
+    Set ``metadata=True`` to include optional provenance and lineage.
     """
     collection = _collection("subsets")
     base, query = _subset_queries(dataset, search, view)
-    cursor = _subset_cursor(collection, query, skip, limit)
+    cursor = _subset_cursor(collection, query, skip, limit, metadata)
     subsets = []
     for doc in cursor:
-        summary = _summary(doc)
+        summary = _summary(doc, metadata=metadata)
         if counts:
             summary["counts"] = subset_counts(dataset, summary["id"])
         subsets.append(summary)
@@ -131,19 +313,19 @@ def browse_subsets(
 
 
 async def async_browse_subsets(
-    dataset, search=None, skip=0, limit=None, view=None
+    dataset, search=None, skip=0, limit=None, view=None, metadata=False
 ):
     """Pages saved subset metadata asynchronously, without live recounts."""
     collection = foo.get_async_db_conn()["subsets"]
     base, query = _subset_queries(dataset, search, view)
-    cursor = _subset_cursor(collection, query, skip, limit)
+    cursor = _subset_cursor(collection, query, skip, limit, metadata)
     docs, total, count = await asyncio.gather(
         cursor.to_list(length=None),
         collection.count_documents(query),
         collection.count_documents(base),
     )
     return {
-        "subsets": [_summary(doc) for doc in docs],
+        "subsets": [_summary(doc, metadata=metadata) for doc in docs],
         "total": total,
         "count": count,
     }
@@ -160,9 +342,12 @@ def _subset_queries(dataset, search, view):
     return base, query
 
 
-def _subset_cursor(collection, query, skip, limit):
+def _subset_cursor(collection, query, skip, limit, metadata):
+    projection = {"member_pending": 0}
+    if not metadata:
+        projection.update(provenance=0, lineage=0)
     cursor = (
-        collection.find(query, {"member_pending": 0})
+        collection.find(query, projection)
         .sort([("created_at", 1), ("_id", 1)])
         .skip(max(0, skip))
     )
@@ -177,6 +362,29 @@ def subset_summary(dataset, subset_id, counts=False):
     if counts:
         summary["counts"] = subset_counts(dataset, subset_id)
     return summary
+
+
+def update_subset_info(dataset, subset_id, info):
+    """Updates a subset's name/description without changing its attribution."""
+    fosc.check_access(dataset, "edit")
+    info = _validate_subset_info(info)
+    doc = get_subset(dataset, subset_id)
+    changes = {
+        key: value for key, value in info.items() if value != doc.get(key)
+    }
+    if changes:
+        changes.update(
+            last_modified_at=datetime.now(timezone.utc),
+            last_modified_by=fosc.get_actor(),
+        )
+        result = _collection("subsets").update_one(
+            {"_id": doc["_id"], "_dataset_id": dataset._doc.id},
+            {"$set": changes},
+        )
+        if not result.matched_count:
+            raise ValueError(
+                "This subset is not available in the current dataset"
+            )
 
 
 async def async_subset_summary(dataset, subset_id):
@@ -298,9 +506,15 @@ def subset_base_view(dataset, subset_id, stages=None):
     )
     if prefix and view._serialize() != doc.get("view"):
         # Refresh the collection hint after reopening a generated view.
-        _collection("subsets").update_one(
-            {"_id": doc["_id"]}, {"$set": {"view": view._serialize()}}
-        )
+        try:
+            _collection("subsets").update_one(
+                {"_id": doc["_id"]}, {"$set": {"view": view._serialize()}}
+            )
+        except (PermissionError, OperationFailure) as error:
+            if not _is_authorization_error(error):
+                raise
+            # The rebuilt view is usable without persisting its cache hint.
+            pass
     return view, rest
 
 
@@ -350,39 +564,67 @@ def load_materialized_view(source, subset_id, stage, reload=False):
                 generated = fovi.make_frames_dataset(
                     videos,
                     sample_frames="dynamic",
+                    name="subset-%s" % uuid4(),
                     _generated=True,
                     _subset_id=subset_id,
                 )
             else:
                 generated = focl.make_clips_dataset(
-                    videos, [], _generated=True, _subset_id=subset_id
+                    videos,
+                    [],
+                    name="subset-%s" % uuid4(),
+                    _generated=True,
+                    _subset_id=subset_id,
                 )
             caches = _collection("subset_materializations")
-            caches.insert_one(
-                {
-                    "_id": generated._doc.id,
-                    "_dataset_id": dataset._doc.id,
-                    "subset_id": subset_id,
-                    "name": generated.name,
-                }
-            )
-            published = _collection("subsets").update_one(
-                {
-                    "_id": doc["_id"],
-                    "_dataset_id": dataset._doc.id,
-                    "member_version": version,
-                    "materialization": previous,
-                },
-                {
-                    "$set": {
-                        "materialization": {
-                            "version": version,
-                            "name": generated.name,
-                            "dataset_id": generated._doc.id,
-                        }
+            inserted_cache = False
+            try:
+                caches.insert_one(
+                    {
+                        "_id": generated._doc.id,
+                        "_dataset_id": dataset._doc.id,
+                        "subset_id": subset_id,
+                        "name": generated.name,
                     }
-                },
-            )
+                )
+                inserted_cache = True
+                published = _collection("subsets").update_one(
+                    {
+                        "_id": doc["_id"],
+                        "_dataset_id": dataset._doc.id,
+                        "member_version": version,
+                        "materialization": previous,
+                    },
+                    {
+                        "$set": {
+                            "materialization": {
+                                "version": version,
+                                "name": generated.name,
+                                "dataset_id": generated._doc.id,
+                            }
+                        }
+                    },
+                )
+            except (PermissionError, OperationFailure) as error:
+                if not _is_authorization_error(error):
+                    raise
+                if inserted_cache:
+                    try:
+                        caches.delete_one(
+                            {
+                                "_id": generated._doc.id,
+                                "_dataset_id": dataset._doc.id,
+                            }
+                        )
+                    except (
+                        PermissionError,
+                        OperationFailure,
+                    ) as cleanup_error:
+                        if not _is_authorization_error(cleanup_error):
+                            raise
+                # Read-only clients retain an ordinary nonpersistent generated
+                # view. Publishing a shared cache is optional for these reads.
+                break
             if not published.matched_count:
                 generated_id = generated._doc.id
                 generated._delete()
@@ -392,10 +634,11 @@ def load_materialized_view(source, subset_id, stage, reload=False):
             # Earlier published views may still serve in-flight requests.
             # Retain them until the owner is deleted or normal SDK cleanup;
             # only an unpublished losing cache is safe to delete immediately.
-        stage._state = {"name": generated.name, "subset_version": version}
-        if kind == "frame":
-            return fovi.FramesView(videos, stage, generated)
-        return focl.ClipsView(videos, stage, generated)
+        break
+    stage._state = {"name": generated.name, "subset_version": version}
+    if kind == "frame":
+        return fovi.FramesView(videos, stage, generated)
+    return focl.ClipsView(videos, stage, generated)
 
 
 def write_clips_dataset(dataset, subset_id, clips_dataset):
@@ -1238,20 +1481,30 @@ def _flush_membership(db, doc):
     if not pending:
         return
     version = pending["version"]
-    _write_batch(
-        db.subset_members,
-        [
-            ReplaceOne(
-                {
-                    "_id": member["_id"],
-                    "_member_version": {"$lt": version},
-                },
-                member,
-                upsert=True,
-            )
-            for member in pending["members"]
-        ],
-    )
+    try:
+        _write_batch(
+            db.subset_members,
+            [
+                ReplaceOne(
+                    {
+                        "_id": member["_id"],
+                        "_member_version": {"$lt": version},
+                    },
+                    member,
+                    upsert=True,
+                )
+                for member in pending["members"]
+            ],
+        )
+    except PermissionError:
+        # A permissioned proxy can finish the stored journal during this read.
+        # Confirm it did so before ignoring the denied client-side repair.
+        refreshed = db.subsets.find_one(
+            {"_id": doc["_id"], "_dataset_id": doc["_dataset_id"]}
+        )
+        if refreshed is not None and not refreshed.get("member_pending"):
+            return
+        raise
     # Duplicate _ids mean another helper already applied this or a newer
     # version. Only this journal may be cleared, never a newer writer's.
     result = db.subsets.update_one(
@@ -1268,12 +1521,22 @@ def _flush_membership(db, doc):
         raise ValueError("This subset was deleted while changing members")
 
 
-def _summary(doc):
+def _summary(doc, metadata=True):
     """Formats saved metadata without I/O, shared by sync and async reads."""
-    return {
+    created_at = doc.get("created_at")
+    if created_at is not None:
+        # Mongo stores UTC milliseconds and may return a naive datetime.
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = created_at.astimezone(timezone.utc).isoformat(
+            timespec="milliseconds"
+        )
+    summary = {
         "id": str(doc["_id"]),
         "name": doc["name"],
         "description": doc.get("description"),
+        "created_by": doc.get("created_by"),
+        "created_at": created_at,
         "view": doc.get("view"),
         "preferredGroupSlice": doc.get("preferred_group_slice"),
         "memberCount": doc["member_count"],
@@ -1281,6 +1544,11 @@ def _summary(doc):
         "counts": None,
         "kinds": _member_kinds(doc),
     }
+    if metadata:
+        summary.update(
+            provenance=doc.get("provenance"), lineage=doc.get("lineage")
+        )
+    return summary
 
 
 def _member_kinds(doc):
@@ -1326,8 +1594,22 @@ def _collection(name):
     return db[name]
 
 
+def _is_authorization_error(error):
+    return isinstance(error, PermissionError) or (
+        isinstance(error, OperationFailure) and error.code == 13
+    )
+
+
 @lru_cache(maxsize=32)
 def _ensure_indexes(client, database, name):
+    try:
+        _create_indexes(client, database, name)
+    except (PermissionError, OperationFailure) as error:
+        if not _is_authorization_error(error):
+            raise
+
+
+def _create_indexes(client, database, name):
     collection = client[database][name]
     collection.create_index("_dataset_id")
     if name in ("subset_operations", "subset_candidates"):

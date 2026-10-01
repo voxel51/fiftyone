@@ -187,6 +187,10 @@ export interface SavedSubset {
   readonly id: string;
   readonly name: string;
   readonly description?: string | null;
+  /** Original creator ID when supplied by the host's request context. */
+  readonly created_by?: string | null;
+  /** Creation time in UTC ISO 8601 format. */
+  readonly created_at?: string | null;
   /** An opening preference; membership can include any slice. */
   readonly preferredGroupSlice?: string | null;
   /** Saved identities, including unavailable references; independent of views. */

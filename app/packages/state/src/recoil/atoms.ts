@@ -289,6 +289,13 @@ export function clearExtendedSelectionMirror(): void {
   currentOverrideStage = null;
 }
 
+/** Sets what `read` hands back to a published override stage, so the stage
+ * survives the next update. */
+export function writeExtendedSelectionMirror(overrideStage: unknown): void {
+  currentSelection = { selection: null };
+  currentOverrideStage = overrideStage;
+}
+
 export const extendedSelection = graphQLSyncFragmentAtom<
   datasetFragment$key,
   {

@@ -15,9 +15,23 @@ import {
 } from "../gridTileRegistry";
 import SelectionCard from "./SelectionCard";
 
-vi.mock("@fiftyone/state", () => ({
-  getSampleSrc: (path: string) => `media://${path}`,
+const mediaOptions = vi.hoisted(() => ({
+  field: "filepath",
+  fallback: false,
 }));
+vi.mock("@fiftyone/state", async () => {
+  const { resolveMediaFieldLooker } =
+    await import("@fiftyone/state/src/hooks/media-field-lookers");
+  const { getNormalizedUrls } = await import("@fiftyone/state/src/utils");
+  return {
+    getSampleSrc: (path: string) =>
+      path.startsWith("https://") ? path : `media://${path}`,
+    useSelectedMediaFieldGrid: () => mediaOptions.field,
+    useLookerOptions: () => ({ mediaFallback: mediaOptions.fallback }),
+    resolveMediaFieldLooker,
+    getNormalizedUrls,
+  };
+});
 vi.mock("./RendererPreview", () => ({
   default: ({ node }: { node: { id: string } }) => (
     <div data-grid-tile="" data-node-id={node.id} />
@@ -69,7 +83,20 @@ function Card(props: {
 }) {
   return (
     <SelectionCard
-      group={props.group}
+      group={{
+        ...props.group,
+        node: props.group.node ?? {
+          id: props.group.episodeId,
+          sample: {
+            _id: props.group.episodeId,
+            filepath: props.group.filepath,
+            _media_type: props.group.filepath?.endsWith(".mp4")
+              ? "video"
+              : "image",
+          },
+          urls: [{ field: "filepath", url: props.group.filepath ?? null }],
+        },
+      }}
       candidate={props.candidate}
       locate={props.locate}
       mediaType="video"
@@ -82,12 +109,103 @@ function Card(props: {
 afterEach(cleanup);
 
 beforeEach(() => {
+  mediaOptions.field = "filepath";
+  mediaOptions.fallback = false;
   handlers.open.mockClear();
   handlers.capture.mockClear();
   handlers.remove.mockClear();
 });
 
 describe("SelectionCard", () => {
+  it.each([
+    ["image", "gs://bucket/image.jpg", "img"],
+    ["video", "s3://bucket/video.mp4", "video"],
+  ])(
+    "waits for resolved %s media and recovers when its URL changes",
+    (mediaType, filepath, tag) => {
+      const group = { ...full, filepath, previewStart: 2.5 };
+      const props = {
+        mediaType,
+        unit: {
+          one: "sample",
+          many: "samples",
+          temporal: mediaType === "video",
+        },
+        ...handlers,
+      };
+      const view = render(<SelectionCard group={group} {...props} />);
+      expect(screen.getByRole("article").querySelector("img,video")).toBeNull();
+
+      const resolved = (signature: string) => ({
+        ...group,
+        node: {
+          id: group.episodeId,
+          sample: { _id: group.episodeId, filepath, _media_type: mediaType },
+          urls: [
+            {
+              field: "filepath",
+              url: `https://media.example/asset?signature=${signature}`,
+            },
+          ],
+        },
+      });
+      view.rerender(<SelectionCard group={resolved("first")} {...props} />);
+      const media = screen.getByRole("article").querySelector(tag)!;
+      expect(media.getAttribute("src")).toBe(
+        "https://media.example/asset?signature=first",
+      );
+      if (tag === "video") {
+        fireEvent.loadedMetadata(media);
+        expect((media as HTMLVideoElement).currentTime).toBe(2.5);
+      }
+      fireEvent.error(media);
+      expect(screen.getByRole("article").querySelector(tag)).toBeNull();
+      view.rerender(<SelectionCard group={resolved("renewed")} {...props} />);
+      expect(
+        screen.getByRole("article").querySelector(tag)?.getAttribute("src"),
+      ).toBe("https://media.example/asset?signature=renewed");
+    },
+  );
+
+  it("uses the selected thumbnail field and the grid's missing-media fallback", () => {
+    const group = {
+      ...full,
+      node: {
+        id: "episode",
+        sample: {
+          _id: "episode",
+          filepath: full.filepath,
+          _media_type: "video",
+        },
+        urls: [
+          {
+            field: "filepath",
+            url: "https://media.example/clip.mp4?signature=video",
+          },
+          {
+            field: "poster",
+            url: "https://media.example/poster.jpg?signature=image",
+          },
+          { field: "missing", url: null },
+        ],
+      },
+    };
+    mediaOptions.field = "poster";
+    const view = render(<Card group={group} />);
+    expect(screen.getByRole("article").querySelector("video")).toBeNull();
+    expect(
+      screen.getByRole("article").querySelector("img")?.getAttribute("src"),
+    ).toBe("https://media.example/poster.jpg?signature=image");
+    mediaOptions.field = "missing";
+    view.rerender(<Card group={group} />);
+    expect(screen.getByRole("article").querySelector("img,video")).toBeNull();
+    mediaOptions.fallback = true;
+    view.rerender(<Card group={group} />);
+    expect(
+      screen.getByRole("article").querySelector("video")?.getAttribute("src"),
+    ).toBe("https://media.example/clip.mp4?signature=video");
+  });
+
   it.each([
     ["3d", "/scene.fo3d"],
     ["point-cloud", "/cloud.pcd"],
@@ -204,7 +322,9 @@ describe("SelectionCard", () => {
     expect(screen.queryByText("drive.mp4")).toBeNull();
     expect(screen.queryByText("Matches changed")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open drive.mp4" }));
-    expect(handlers.open).toHaveBeenCalledWith(captured);
+    expect(handlers.open).toHaveBeenCalledWith(
+      expect.objectContaining(captured),
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "Remove drive.mp4 from selection" }),
     );

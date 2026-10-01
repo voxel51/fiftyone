@@ -95,17 +95,6 @@ function useNearViewport(ref: RefObject<Element>) {
   return near;
 }
 
-const PLAYABLE = /\.(mp4|m4v|webm|mov|ogv|ogg|mkv|avi)(\?.*)?$/i;
-const IMAGE = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif)(\?.*)?$/i;
-
-/** Grouped datasets mix media per slice, so the file itself decides. */
-function previewKind(mediaType: string, filepath: string | undefined) {
-  if (!filepath) return "none" as const;
-  if (mediaType === "image" || IMAGE.test(filepath)) return "image" as const;
-  if (PLAYABLE.test(filepath)) return "video" as const;
-  return "none" as const;
-}
-
 /**
  * Points the grid at this card's tile while the pointer or focus rests on
  * the card, and lets go when the card leaves the strip mid-hover.
@@ -150,7 +139,24 @@ export default function SelectionCard({
     if (mirrored)
       root.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [mirrored]);
-  const [mediaFailed, setMediaFailed] = useState(false);
+  const mediaField = fos.useSelectedMediaFieldGrid();
+  const { mediaFallback } = fos.useLookerOptions(false);
+  const urls = fos.getNormalizedUrls(group.node?.urls ?? []);
+  const preview = group.node
+    ? fos.resolveMediaFieldLooker({
+        mediaField,
+        sample: group.node.sample,
+        urls,
+      })
+    : null;
+  const mediaPath = preview?.hasSelectedMediaPath
+    ? preview.mediaFieldPath
+    : mediaFallback
+      ? urls.filepath
+      : undefined;
+  const src = mediaPath ? fos.getSampleSrc(mediaPath) : undefined;
+  // A new URL (including a renewed signature) can recover a failed preview.
+  const [failedSrc, setFailedSrc] = useState<string>();
   const [locating, setLocating] = useState(false);
   // A miss is remembered against the match it was reported for, so fresh
   // results re-enable the control without an effect.
@@ -172,9 +178,9 @@ export default function SelectionCard({
     isDirect3dSamplePath(group.filepath);
   const width = multimodal ? MULTIMODAL_CARD_WIDTH : cardWidth(aspect);
   const temporal = unit.temporal;
-  const kind = mediaFailed ? "none" : previewKind(mediaType, group.filepath);
+  const kind = src && src !== failedSrc ? preview?.nativeLookerType : null;
   const rendered = (multimodal || threeD) && Boolean(group.node);
-  const hasPreview = rendered || kind !== "none";
+  const hasPreview = rendered || Boolean(kind);
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
   const title = titleProp ?? episodeTitle(group, unit);
@@ -245,14 +251,14 @@ export default function SelectionCard({
                 <LookerPreview node={group.node} width={width} />
               )}
             </Suspense>
-          ) : near && kind === "video" && group.filepath ? (
+          ) : near && kind === "video" && src ? (
             <video
               className={styles.media}
-              src={fos.getSampleSrc(group.filepath)}
+              src={src}
               muted
               playsInline
               preload="metadata"
-              onError={() => setMediaFailed(true)}
+              onError={() => setFailedSrc(src)}
               onLoadedMetadata={(event) => {
                 const { videoWidth, videoHeight } = event.currentTarget;
                 if (videoWidth && videoHeight)
@@ -260,7 +266,7 @@ export default function SelectionCard({
                 event.currentTarget.currentTime = group.previewStart ?? 0;
               }}
             />
-          ) : near && kind === "image" && group.filepath ? (
+          ) : near && kind === "image" && src ? (
             <div
               className={crop ? styles.crop : styles.imageFrame}
               style={
@@ -286,10 +292,10 @@ export default function SelectionCard({
                       }
                     : undefined
                 }
-                src={fos.getSampleSrc(group.filepath)}
+                src={src}
                 alt=""
                 loading="lazy"
-                onError={() => setMediaFailed(true)}
+                onError={() => setFailedSrc(src)}
                 onLoad={(event) => {
                   const { naturalWidth, naturalHeight } = event.currentTarget;
                   if (naturalWidth && naturalHeight)

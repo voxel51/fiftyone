@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { PromptableSimilarityIndex } from "@fiftyone/state";
+import type { PromptableSimilarityIndex, SearchSources } from "@fiftyone/state";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const HINT = "Ranked over the whole index.";
 
 vi.mock("@fiftyone/state", () => ({
-  useTextSearchExtensions: () =>
+  useTextSearchProviders: () =>
     new Map([["multimodal", { method: "multimodal", resultsHint: HINT }]]),
 }));
 
@@ -19,15 +19,17 @@ const openWith = (
   selectedKey: string,
   {
     promptKeys = [
-      { key: "emb_sim", patchesField: null, extension: "multimodal" },
+      { key: "emb_sim", patchesField: null, provider: "multimodal" },
       { key: "clip_sim", patchesField: null },
     ],
+    indexSlices = undefined,
     sources = null,
     selectedSources = null,
     onChangeSources = noop,
   }: {
     promptKeys?: PromptableSimilarityIndex[];
-    sources?: typeof STREAMS | null;
+    indexSlices?: ReadonlyMap<string, readonly string[]>;
+    sources?: SearchSources | null;
     selectedSources?: string[] | null;
     onChangeSources?: (values: string[]) => void;
   } = {},
@@ -36,6 +38,7 @@ const openWith = (
     <SearchSettingsPopover
       trigger={<button>settings</button>}
       promptKeys={promptKeys}
+      indexSlices={indexSlices}
       selectedKey={selectedKey}
       onSelectKey={noop}
       k={25}
@@ -52,7 +55,7 @@ const openWith = (
 describe("SearchSettingsPopover", () => {
   afterEach(cleanup);
 
-  it("shows the selected index's extension hint between the Results label and its input, and none for other indexes", () => {
+  it("shows the selected index's provider hint between the Results label and its input, and none for other indexes", () => {
     openWith("emb_sim");
     const hint = screen.getByText(HINT);
     expect(
@@ -82,14 +85,14 @@ describe("SearchSettingsPopover", () => {
   it("offers the Similarity Search panel only while the dataset has an index the server sorts", () => {
     const panelHandOff = () =>
       document.querySelector('[data-cy="search-settings-open-panel"]');
-    // The selected index is extension-searched; another index is not
+    // The selected index is provider-searched; another index is not
     openWith("emb_sim", { sources: STREAMS });
     expect(panelHandOff()).toBeTruthy();
 
     cleanup();
     openWith("emb_sim", {
       promptKeys: [
-        { key: "emb_sim", patchesField: null, extension: "multimodal" },
+        { key: "emb_sim", patchesField: null, provider: "multimodal" },
       ],
     });
     expect(panelHandOff()).toBeNull();
@@ -102,6 +105,18 @@ describe("SearchSettingsPopover", () => {
     cleanup();
     openWith("emb_sim", { sources: STREAMS, selectedSources: ["/cam_left"] });
     expect(screen.getByRole("button", { name: "1 of 2" })).toBeTruthy();
+  });
+
+  it("shows unavailable sources disabled, with the reason", () => {
+    const reason = "This index does not support filtering by slice.";
+    openWith("clip_sim", {
+      sources: { ...STREAMS, unavailableReason: reason },
+    });
+    expect(
+      (screen.getByRole("button", { name: "All" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.getByText(reason)).toBeTruthy();
   });
 
   it("checks every source again when the last one is unchecked", () => {
@@ -117,5 +132,21 @@ describe("SearchSettingsPopover", () => {
       "/cam_left",
       "/cam_right",
     ]);
+  });
+
+  it("notes the slices an index covers beside its name, in the picker and in its option", () => {
+    const notes = () =>
+      [
+        ...document.querySelectorAll(
+          '[data-cy="search-settings-index-slices"]',
+        ),
+      ].map((note) => note.textContent);
+    openWith("clip_sim", {
+      indexSlices: new Map([["clip_sim", ["left", "right"]]]),
+    });
+    expect(notes()).toStrictEqual(["left, right"]);
+
+    fireEvent.click(screen.getByRole("button", { name: /clip_sim/ }));
+    expect(notes()).toStrictEqual(["left, right", "left, right"]);
   });
 });

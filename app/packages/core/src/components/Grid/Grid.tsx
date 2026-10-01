@@ -39,6 +39,7 @@ import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 import SelectionTray from "./Selection/SelectionTray";
 import { useSavedSegmentTileDecorator } from "./Selection/savedSegmentTileDecorator";
+import { useGroupMatchTileDecorator } from "./GroupMatchPills";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
@@ -55,6 +56,7 @@ function Grid() {
       !selection.conversion,
     ),
   );
+  useGroupMatchTileDecorator();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);

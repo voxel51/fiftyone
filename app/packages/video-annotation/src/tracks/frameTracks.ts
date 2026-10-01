@@ -743,6 +743,25 @@ export const parseTimelineSubTrackId = (
 ): { parentId: string; attr: string } | null =>
   isTemporalTagTrackId(id) ? null : parseSubTrackId(id);
 
+/**
+ * The rows the timeline shows: a host's rows, then the sample's own less the
+ * sub-tracks of a collapsed parent. Host rows are never sub-tracks, whatever
+ * their ids look like, so they skip the parse: an id such as
+ * `embedding-window::video` would otherwise read as a child of a parent that
+ * does not exist, and never appear.
+ */
+export const visibleTimelineTracks = (
+  hostTracks: readonly Track[],
+  sampleTracks: readonly Track[],
+  expandedIds: ReadonlySet<string>,
+): Track[] => [
+  ...hostTracks,
+  ...sampleTracks.filter((track) => {
+    const sub = parseTimelineSubTrackId(track.id);
+    return !sub || expandedIds.has(sub.parentId);
+  }),
+];
+
 /** A contiguous run of one dynamic-attribute value across a track's frames. */
 export interface AttributeSegment {
   startSec: number;

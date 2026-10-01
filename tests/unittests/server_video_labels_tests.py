@@ -8,17 +8,24 @@ FiftyOne Server /video-labels route tests.
 
 import unittest
 
+from bson import ObjectId
 import numpy as np
 
 import fiftyone as fo
+from fiftyone import ViewField as F
+import fiftyone.core.frame_pipelines as fofp
+import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 from fiftyone.server.routes.video_labels import (
     aggregate_index,
     aggregate_window,
     build_instance_index,
+    index_post_pipeline,
     resolve_label_list_field,
+    resolve_singleton_address_id,
     run_length_encode,
     run_length_encode_values,
+    window_view,
 )
 
 from decorators import drop_async_dataset
@@ -351,6 +358,518 @@ class VideoLabelsAggregationTests(unittest.IsolatedAsyncioTestCase):
             resolve_label_list_field(dataset, "detections"), "detections"
         )
         self.assertIsNone(resolve_label_list_field(dataset, "frame_number"))
+
+
+# Frames 15-17 have no frame documents
+_MISSING_FRAMES = {15, 16, 17}
+
+
+def _add_window_videos(dataset, num_frames=60):
+    video = fo.Sample(filepath="video.mp4", weather="sunny")
+    for frame_number in range(1, num_frames + 1):
+        if frame_number in _MISSING_FRAMES:
+            continue
+
+        video[frame_number]["detections"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="car" if frame_number <= 30 else "person",
+                    confidence=frame_number / num_frames,
+                    tags=["keep"] if frame_number % 3 == 0 else [],
+                ),
+                fo.Detection(label="sign", confidence=0.5),
+            ]
+        )
+        video[frame_number]["other"] = fo.Classification(
+            label=str(frame_number % 4)
+        )
+
+    other = fo.Sample(filepath="other.mp4", weather="rainy")
+    other[1]["detections"] = fo.Detections(
+        detections=[fo.Detection(label="car")]
+    )
+    dataset.add_samples([video, other])
+
+    return video
+
+
+def _old_window_view(view, sample_id, start_frame, end_frame):
+    view = fov.make_optimized_select_view(view, sample_id, flatten=True)
+    return view.set_field(
+        "frames",
+        F("frames").filter(
+            (F("frame_number") >= start_frame)
+            & (F("frame_number") <= end_frame)
+        ),
+    )
+
+
+def _frame_lookups(view, support):
+    pipeline = view._pipeline(frames_only=True, support=support)
+    return [
+        stage["$lookup"]
+        for stage in pipeline
+        if "$lookup" in stage
+        and stage["$lookup"]["from"] == view._dataset._frame_collection_name
+    ]
+
+
+def _frame_docs_examined(view, support):
+    pipeline = view._pipeline(frames_only=True, support=support)
+    result = foo.get_db_conn().command(
+        {
+            "explain": {
+                "aggregate": view._dataset._sample_collection_name,
+                "pipeline": pipeline,
+                "cursor": {},
+            },
+            "verbosity": "executionStats",
+        }
+    )
+    return sum(
+        stage.get("totalDocsExamined", 0)
+        for stage in result["stages"]
+        if "$lookup" in stage
+    )
+
+
+class VideoLabelsWindowViewTests(unittest.IsolatedAsyncioTestCase):
+    async def _assert_window_matches_old_path(
+        self, view, sample_id, start_frame, end_frame, windowed=True
+    ):
+        fields = ["detections", "other"]
+
+        new_view, support = window_view(
+            view, sample_id, start_frame, end_frame
+        )
+        if windowed:
+            self.assertEqual(support, [start_frame, end_frame])
+        else:
+            self.assertIsNone(support)
+
+        old_view = _old_window_view(view, sample_id, start_frame, end_frame)
+
+        actual = await aggregate_window(new_view, fields, support)
+        with fofp._disabled():
+            expected = await aggregate_window(old_view, fields, None)
+        self.assertEqual(actual, expected)
+
+        return actual
+
+    @drop_async_dataset
+    async def test_window_stages_match_old_path(self, dataset):
+        video = _add_window_videos(dataset)
+        frames = video.frames
+        frame_ids = [frames[fn].id for fn in (11, 12, 40)]
+
+        views = [
+            dataset.filter_labels(
+                "frames.detections", F("label") == "car", only_matches=False
+            ),
+            dataset.filter_labels(
+                "frames.other", F("label") == "1", only_matches=False
+            ),
+            dataset.match_frames(F("frame_number") % 2 == 0),
+            dataset.select_frames(frame_ids),
+            dataset.exclude_frames(frame_ids),
+            dataset.select_fields("frames.detections"),
+            dataset.exclude_fields("frames.other"),
+            dataset.set_field(
+                "frames.detections.detections.label", F("label").upper()
+            ),
+            dataset.select_labels(
+                tags="keep", fields="frames.detections", omit_empty=False
+            ),
+            dataset.exclude_labels(
+                tags="keep", fields="frames.detections", omit_empty=False
+            ),
+            dataset.map_labels("frames.detections", {"car": "vehicle"}),
+            dataset.map_values(
+                "frames.detections.detections.label", {"sign": "car"}
+            ),
+            dataset.limit_labels("frames.detections", 1),
+            dataset.match(F("weather") == "sunny")
+            .sort_by("filepath")
+            .limit(5)
+            .filter_labels(
+                "frames.detections",
+                F("confidence") > 0.2,
+                only_matches=False,
+            ),
+        ]
+
+        for view in views:
+            actual = await self._assert_window_matches_old_path(
+                view, video.id, 10, 25
+            )
+            self.assertTrue(actual)
+            self.assertFalse(set(actual) & {str(fn) for fn in _MISSING_FRAMES})
+            self.assertTrue(all(10 <= int(fn) <= 25 for fn in actual))
+
+    @drop_async_dataset
+    async def test_window_omit_empty_outside_window(self, dataset):
+        video = _add_window_videos(dataset)
+
+        # Frames match only outside the window: the old path keeps the video
+        # but has no windowed frames, the new path drops the video
+        view = dataset.match_frames(F("frame_number") > 50)
+        actual = await self._assert_window_matches_old_path(
+            view, video.id, 10, 25
+        )
+        self.assertEqual(actual, {})
+
+    @drop_async_dataset
+    async def test_window_frame_match_falls_back(self, dataset):
+        video = _add_window_videos(dataset)
+
+        # The first view matches only outside the window, so the video is
+        # kept and its windowed frames carry empty detections
+        views = [
+            dataset.filter_labels("frames.detections", F("label") == "person"),
+            dataset.filter_labels(
+                "frames.detections",
+                F("label") == "person",
+                only_matches=False,
+                trajectories=True,
+            ),
+            dataset.select_labels(tags="keep", fields="frames.detections"),
+            dataset.set_field("frames", F("frames")[:5]),
+        ]
+
+        actual = [
+            await self._assert_window_matches_old_path(
+                view, video.id, 10, 25, windowed=False
+            )
+            for view in views
+        ]
+
+        self.assertTrue(actual[0])
+        self.assertTrue(
+            all(not d["detections"]["detections"] for d in actual[0].values())
+        )
+
+    @drop_async_dataset
+    async def test_window_clips_view(self, dataset):
+        _add_window_videos(dataset)
+
+        clips = dataset.to_clips(
+            F("detections.detections").filter(F("label") == "car").length() > 0
+        )
+        clip = clips.match(F("support")[0] > 17).first()
+        self.assertEqual(clip.support, [18, 30])
+
+        view = clips.filter_labels(
+            "frames.detections", F("label") == "car", only_matches=False
+        )
+        for v in (clips.view(), view):
+            actual = await self._assert_window_matches_old_path(
+                v, clip.id, 25, 40
+            )
+            self.assertEqual(set(actual), {str(fn) for fn in range(25, 31)})
+
+    @drop_async_dataset
+    async def test_window_group_video_slice(self, dataset):
+        dataset.add_group_field("group", default="video")
+        group = fo.Group()
+        video = fo.Sample(filepath="video.mp4", group=group.element("video"))
+        for frame_number in range(1, 31):
+            video[frame_number]["detections"] = fo.Detections(
+                detections=[
+                    fo.Detection(label="car" if frame_number % 2 else "sign")
+                ]
+            )
+        image = fo.Sample(filepath="image.png", group=group.element("image"))
+        dataset.add_samples([video, image])
+
+        view = dataset.filter_labels(
+            "frames.detections", F("label") == "car", only_matches=False
+        )
+        for v in (dataset.view(), view):
+            actual = await self._assert_window_matches_old_path(
+                v, video.id, 5, 12
+            )
+            self.assertEqual(set(actual), {str(fn) for fn in range(5, 13)})
+
+    @drop_async_dataset
+    async def test_window_lookup_is_bounded(self, dataset):
+        video = _add_window_videos(dataset)
+        view = dataset.filter_labels(
+            "frames.detections", F("label") == "car", only_matches=False
+        )
+
+        new_view, support = window_view(view, video.id, 10, 19)
+
+        [lookup] = _frame_lookups(new_view, support)
+        self.assertEqual(
+            lookup["pipeline"][0],
+            {"$match": {"frame_number": {"$gte": 10, "$lte": 19}}},
+        )
+
+        # Only the frame documents in the window are read; 15-17 are missing
+        self.assertEqual(_frame_docs_examined(new_view, support), 7)
+
+        with fofp._disabled():
+            [lookup] = _frame_lookups(new_view, support)
+            conditions = lookup["pipeline"][0]["$match"]["$expr"]["$and"]
+            self.assertIn({"$gte": ["$frame_number", 10]}, conditions)
+            self.assertIn({"$lte": ["$frame_number", 19]}, conditions)
+            self.assertEqual(_frame_docs_examined(new_view, support), 7)
+
+            old_view = _old_window_view(view, video.id, 10, 19)
+            self.assertEqual(
+                _frame_docs_examined(old_view, None),
+                60 - len(_MISSING_FRAMES),
+            )
+
+    @drop_async_dataset
+    async def test_frame_roles(self, dataset):
+        _add_window_videos(dataset)
+
+        cases = [
+            (dataset.match(F("weather") == "sunny"), "sample"),
+            (dataset.match(F("frames").length() > 5), None),
+            (dataset.sort_by("filepath"), "sample"),
+            (dataset.sort_by(F("frames").length()), None),
+            (dataset.limit(1), "sample"),
+            (dataset.select_fields("weather"), "sample"),
+            (dataset.select_fields("frames.detections"), "frame"),
+            (dataset.match_frames(F("frame_number") > 3), "frame"),
+            (
+                dataset.filter_labels(
+                    "frames.detections", F("label") == "car"
+                ),
+                "frame_match",
+            ),
+            (
+                dataset.filter_labels(
+                    "frames.detections",
+                    F("label") == "car",
+                    only_matches=False,
+                ),
+                "frame",
+            ),
+            (dataset.set_field("frames.other.label", "x"), "frame"),
+            (dataset.set_field("frames", F("frames")[:1]), None),
+            (dataset.mongo([{"$limit": 1}]), None),
+            (dataset.group_by("weather"), None),
+        ]
+
+        for view, role in cases:
+            self.assertEqual(view._get_frame_roles(), [role], view)
+
+
+def _add_dynamic_groups(dataset):
+    inst_a = fo.Instance()
+    inst_b = fo.Instance()
+    mask = np.ones((4, 4), dtype=bool)
+
+    samples = []
+    for scene, num_members in (("a", 9), ("b", 4)):
+        for order in range(num_members):
+            detections = [
+                fo.Detection(
+                    label="person",
+                    instance=inst_a,
+                    index=1,
+                    keyframe=order % 3 == 0,
+                    mask=mask,
+                    turn_signal="left" if order > 4 else "off",
+                )
+            ]
+            if order not in (3, 4):
+                detections.append(
+                    fo.Detection(label="car", instance=inst_b, mask=mask)
+                )
+            if order == 2:
+                detections.append(fo.Detection(label="sign", index=7))
+                detections.append(fo.Detection(label="bare"))
+
+            samples.append(
+                fo.Sample(
+                    filepath="%s-%d.png" % (scene, order),
+                    scene=scene,
+                    # stored out of order, so the group's order is not
+                    # insertion order
+                    order=(order * 5) % num_members,
+                    detections=fo.Detections(detections=detections),
+                    seg=(
+                        fo.Segmentation(mask=mask.astype(np.uint8))
+                        if order % 2
+                        else None
+                    ),
+                )
+            )
+
+    dataset.add_samples(samples)
+    return dataset.group_by("scene", order_by="order")
+
+
+def _old_dynamic_index(view, field, dynamic_attributes):
+    """The previous whole-group fold, ranking members by array index."""
+    dataset = view._dataset
+    fold = [
+        {"$project": {field: True}},
+        {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
+        {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
+        {
+            "$replaceRoot": {
+                "newRoot": {
+                    "$mergeObjects": [
+                        "$docs",
+                        {"frame_number": {"$add": ["$rank", 1]}},
+                    ]
+                }
+            }
+        },
+    ]
+    pipeline = view._pipeline(
+        post_pipeline=fold
+        + index_post_pipeline(
+            field,
+            resolve_label_list_field(dataset, field, True),
+            dynamic_attributes,
+            singleton_address_id=resolve_singleton_address_id(
+                dataset, field, True
+            ),
+        )
+    )
+    groups = list(foo.aggregate(dataset._sample_collection, pipeline))
+    return build_instance_index(groups, dynamic_attributes)
+
+
+def _member_entries_to_frames(entries, member_order, dynamic_attributes):
+    """What the client does with a dynamic group's member index."""
+    frame_of = {member: idx + 1 for idx, member in enumerate(member_order)}
+    instances = []
+    for entry in entries:
+        frames = [frame_of[m] for m in entry["members"] if m in frame_of]
+        segments = run_length_encode(frames)
+        if not segments:
+            continue
+
+        mapped = {
+            k: v
+            for k, v in entry.items()
+            if k not in ("members", "keyframeMembers", "attributeValues")
+        }
+        mapped["segments"] = segments
+        mapped["keyframes"] = sorted(
+            {frame_of[m] for m in entry["keyframeMembers"] if m in frame_of}
+        )
+        if dynamic_attributes:
+            mapped["attributeSegments"] = {}
+            for attr, pairs in entry["attributeValues"].items():
+                runs = run_length_encode_values(
+                    (frame_of[m], value) for m, value in pairs if m in frame_of
+                )
+                if runs:
+                    mapped["attributeSegments"][attr] = runs
+
+        instances.append(mapped)
+
+    return instances
+
+
+def _by_instance(instances):
+    return {entry["instanceId"]: entry for entry in instances}
+
+
+class VideoLabelsDynamicGroupIndexTests(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_member_index_matches_old_path(self, dataset):
+        grouped = _add_dynamic_groups(dataset)
+
+        for scene in ("a", "b"):
+            view = grouped.get_dynamic_group(scene)
+            member_order = [ObjectId(_id) for _id in view.values("id")]
+
+            for field, attrs in (
+                ("detections", []),
+                ("detections", ["turn_signal"]),
+                ("seg", []),
+            ):
+                result = await aggregate_index(
+                    view, [field], attrs, dynamic_group=True
+                )
+                actual = _member_entries_to_frames(
+                    result[field]["instances"], member_order, attrs
+                )
+                expected = _old_dynamic_index(view, field, attrs)
+
+                self.assertTrue(expected)
+                self.assertEqual(
+                    _by_instance(actual), _by_instance(expected), field
+                )
+
+    @drop_async_dataset
+    async def test_member_index_shape(self, dataset):
+        view = _add_dynamic_groups(dataset).get_dynamic_group("a")
+
+        post_pipeline = index_post_pipeline(
+            "detections", "detections", ["turn_signal"], dynamic_group=True
+        )
+        pipeline = view._pipeline(post_pipeline=post_pipeline)
+
+        self.assertNotIn(
+            {"$push": "$$ROOT"},
+            [
+                acc
+                for stage in pipeline
+                if "$group" in stage
+                for acc in stage["$group"].values()
+            ],
+        )
+        self.assertFalse(
+            any(
+                "$group" in stage and stage["$group"]["_id"] is None
+                for stage in pipeline
+            )
+        )
+        self.assertFalse(
+            any(
+                isinstance(stage.get("$unwind"), dict)
+                and "includeArrayIndex" in stage["$unwind"]
+                for stage in pipeline
+            )
+        )
+
+        # Only the label attributes the index reads reach the grouping
+        self.assertEqual(
+            post_pipeline[0],
+            {
+                "$project": {
+                    "detections.detections.%s" % attr: True
+                    for attr in (
+                        "_id",
+                        "index",
+                        "instance",
+                        "keyframe",
+                        "label",
+                        "turn_signal",
+                    )
+                }
+            },
+        )
+
+        docs = list(
+            foo.aggregate(
+                dataset._sample_collection,
+                view._pipeline(post_pipeline=post_pipeline[:-1]),
+            )
+        )
+        self.assertTrue(docs)
+        self.assertFalse(any("mask" in doc["labels"] for doc in docs))
+
+        result = await aggregate_index(
+            view, ["detections"], dynamic_group=True
+        )
+        [person] = [
+            e
+            for e in result["detections"]["instances"]
+            if e["classLabel"] == "person"
+        ]
+        self.assertEqual(len(person["members"]), 9)
+        self.assertNotIn("segments", person)
 
 
 if __name__ == "__main__":

@@ -7,14 +7,21 @@ export {
   type PromptableSimilarityIndex,
 } from "./similaritySearch/usePromptableSimilarityKeys";
 export {
-  registerTextSearchExtension,
-  useTextSearchExtensions,
+  groupMatchesBridge,
+  usePublishedGroupMatches,
+  type GroupMatches,
+} from "./similaritySearch/groupMatches";
+export {
+  registerTextSearchProvider,
+  useTextSearchProviders,
   type SearchSources,
-  type TextSearchExtension,
+  type TextSearchProvider,
   type TextSearchIndex,
   type TextSearchRequest,
   type TextSearchResult,
-} from "./similaritySearch/textSearchExtensions";
+  type TextSearchSuggestions,
+  type TextSearchSuggestionsProps,
+} from "./similaritySearch/textSearchProviders";
 export {
   useSetViewChangePending,
   useViewChangePending,

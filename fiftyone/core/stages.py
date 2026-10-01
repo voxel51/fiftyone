@@ -45,10 +45,16 @@ fob = fou.lazy_import("fiftyone.brain")
 focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
+fofp = fou.lazy_import("fiftyone.core.frame_pipelines")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.view")
 fovi = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
+
+# Values of ViewStage._frame_role()
+_SAMPLE_ROLE = "sample"
+_FRAME_ROLE = "frame"
+_FRAME_MATCH_ROLE = "frame_match"
 
 
 class ViewStage(object):
@@ -316,6 +322,31 @@ class ViewStage(object):
             True/False
         """
         return False
+
+    def _frame_role(self, sample_collection):
+        """How the stage reads the frames of video samples.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            one of
+
+            -   ``"sample"``: the stage reads and writes only sample-level
+                fields
+            -   ``"frame"``: the stage transforms each frame independently of
+                the other frames, and drops a sample only when it has no
+                frames left
+            -   ``"frame_match"``: like ``"frame"``, but the stage also drops
+                samples based on a predicate over their frames
+            -   ``None``: the stage may require the full frames array
+        """
+        if type(self) in _SAMPLE_ROLE_STAGES:
+            return _SAMPLE_ROLE
+
+        return None
 
     def _needs_group_slices(self, sample_collection):
         """Whether the stage requires group slice(s) to be attached.
@@ -1131,6 +1162,12 @@ class ExcludeFields(ViewStage):
 
         return [{"$project": {p: False for p in excluded_paths}}]
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -1479,6 +1516,9 @@ class ExcludeFrames(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
+
+    def _frame_role(self, _):
+        return _FRAME_ROLE
 
     def _needs_frames(self, _):
         return True
@@ -1845,6 +1885,15 @@ class ExcludeLabels(ViewStage):
             },
         ]
 
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if self._omit_empty:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -2056,6 +2105,12 @@ class Exists(ViewStage):
 
         return [{"$match": {"$expr": expr.to_mongo()}}]
 
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        return _FRAME_MATCH_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -2212,6 +2267,18 @@ class FilterField(ViewStage):
     def _get_new_field(self, sample_collection):
         new_field, _ = sample_collection._handle_frame_field(self._new_field)
         return new_field
+
+    def _frame_role(self, sample_collection):
+        if foe.is_frames_expr(self._get_mongo_filter()):
+            return None
+
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if self._only_matches:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -2808,6 +2875,22 @@ class FilterLabels(ViewStage):
 
         return new_field
 
+    def _frame_role(self, sample_collection):
+        if foe.is_frames_expr(self._get_mongo_filter()):
+            return None
+
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        # Trajectories are matched across all frames of a sample
+        if self._trajectories:
+            return None
+
+        if self._only_matches:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -3264,6 +3347,15 @@ class FilterKeypoints(ViewStage):
             return ".".join([new_field, field.split(".")[-1]])
 
         return new_field
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if self._only_matches:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4462,6 +4554,12 @@ class LimitLabels(ViewStage):
 
         return pipeline
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         return self._is_frame_field
 
@@ -4621,6 +4719,12 @@ class MapLabels(ViewStage):
         )
         return pipeline
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -4754,6 +4858,12 @@ class MapValues(ViewStage):
             self._field, expr
         )
         return pipeline
+
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -4934,6 +5044,22 @@ class SetField(ViewStage):
             )
 
         return self._pipeline
+
+    def _frame_role(self, sample_collection):
+        if foe.is_frames_expr(self._get_mongo_expr()):
+            return None
+
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+        if not is_frame_field:
+            return _SAMPLE_ROLE
+
+        # Setting the frames array itself is not a per-frame edit
+        if not field_name:
+            return None
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -5125,6 +5251,15 @@ class Match(ViewStage):
 
     def to_mongo(self, _):
         return [{"$match": self._get_mongo_expr()}]
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        if fofp.is_frame_match(self.to_mongo(sample_collection)):
+            return _FRAME_MATCH_ROLE
+
+        return None
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -5784,6 +5919,12 @@ class MatchFrames(ViewStage):
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
             )
+
+    def _frame_role(self, _):
+        if foe.is_frames_expr(self._get_mongo_expr()):
+            return None
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, _):
         return True
@@ -7012,6 +7153,12 @@ class SelectFields(ViewStage):
 
         return [{"$project": {f: True for f in selected_paths}}]
 
+    def _frame_role(self, sample_collection):
+        if self._needs_frames(sample_collection):
+            return _FRAME_ROLE
+
+        return _SAMPLE_ROLE
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -7165,6 +7312,9 @@ class SelectFrames(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
+
+    def _frame_role(self, _):
+        return _FRAME_ROLE
 
     def _needs_frames(self, _):
         return True
@@ -7560,6 +7710,16 @@ class SelectLabels(ViewStage):
                 "placeholder": "omit empty (default=True)",
             },
         ]
+
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        # Selecting explicit labels omits empty samples by their IDs
+        if self._omit_empty and self._labels is None:
+            return _FRAME_MATCH_ROLE
+
+        return _FRAME_ROLE
 
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
@@ -7971,6 +8131,12 @@ class SortBy(ViewStage):
 
         return pipeline
 
+    def _frame_role(self, sample_collection):
+        if not self._needs_frames(sample_collection):
+            return _SAMPLE_ROLE
+
+        return None
+
     def _needs_frames(self, sample_collection):
         if not sample_collection._contains_videos():
             return False
@@ -8150,7 +8316,9 @@ class SortBySimilarity(ViewStage):
             -   a prompt or iterable of prompts (if supported by the index)
 
         k (None): the number of matches to return. By default, the entire
-            collection is sorted
+            collection is sorted. Applied to a grouped collection, ``k``
+            limits the matched samples, so fewer than ``k`` groups are
+            selected when several matches belong to the same group
         reverse (False): whether to sort by least similarity (True) or greatest
             similarity (False). Some backends may not support least similarity
         dist_field (None): the name of a float field in which to store the
@@ -8160,6 +8328,11 @@ class SortBySimilarity(ViewStage):
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
             not specified, the dataset must have an applicable run, which will
             be used by default
+        group_slices (None): when applied to a grouped collection, the group
+            slices to search. By default, every slice the index covers is
+            searched. Applied to a grouped collection, the stage selects the
+            groups with a matching sample in any searched slice, in order of
+            their best match
     """
 
     def __init__(
@@ -8169,6 +8342,7 @@ class SortBySimilarity(ViewStage):
         reverse=False,
         dist_field=None,
         brain_key=None,
+        group_slices=None,
         _state=None,
     ):
         query, query_kwarg, is_prompt = _parse_similarity_query(query)
@@ -8180,8 +8354,12 @@ class SortBySimilarity(ViewStage):
         self._reverse = reverse
         self._dist_field = dist_field
         self._brain_key = brain_key
+        self._group_slices = (
+            list(group_slices) if group_slices is not None else None
+        )
         self._state = _state
         self._pipeline = None
+        self._group_matches = None
 
     @property
     def query(self):
@@ -8208,6 +8386,19 @@ class SortBySimilarity(ViewStage):
         """The brain key of the similarity index to use."""
         return self._brain_key
 
+    @property
+    def group_slices(self):
+        """The group slices to search in a grouped collection, or ``None``
+        to search every slice the index covers."""
+        return self._group_slices
+
+    @property
+    def group_matches(self):
+        """When applied to a grouped collection, a dict mapping each selected
+        group ID to the names of its slices that matched, best match first;
+        otherwise ``None``. Available after :meth:`validate`."""
+        return self._group_matches
+
     def to_mongo(self, _):
         if self._pipeline is None:
             raise ValueError(
@@ -8224,6 +8415,7 @@ class SortBySimilarity(ViewStage):
             ["reverse", self._reverse],
             ["dist_field", self._dist_field],
             ["brain_key", self._brain_key],
+            ["group_slices", self._group_slices],
             ["_state", self._state],
         ]
 
@@ -8265,6 +8457,12 @@ class SortBySimilarity(ViewStage):
                 "placeholder": "brain key",
                 "choices": _similarity_key_choices(),
             },
+            {
+                "name": "group_slices",
+                "type": "NoneType|list<str>",
+                "default": "None",
+                "placeholder": "group slices (default=None)",
+            },
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
@@ -8277,21 +8475,23 @@ class SortBySimilarity(ViewStage):
             "reverse": self._reverse,
             "dist_field": self._dist_field,
             "brain_key": self._brain_key,
+            "group_slices": self._group_slices,
         }
 
-        last_state = deepcopy(self._state)
-        if last_state is not None:
-            pipeline = last_state.pop("pipeline", None)
-        else:
-            pipeline = None
+        last_state = deepcopy(self._state) or {}
+        pipeline = last_state.pop("pipeline", None)
+        group_matches = last_state.pop("group_matches", None)
 
         if pipeline is None or state != last_state:
-            pipeline = self._make_pipeline(sample_collection)
+            pipeline, group_matches = self._make_pipeline(sample_collection)
 
         state["pipeline"] = pipeline
+        if group_matches is not None:
+            state["group_matches"] = group_matches
 
         self._state = state
         self._pipeline = pipeline
+        self._group_matches = group_matches
 
     def _make_pipeline(self, sample_collection):
         if self._brain_key is not None:
@@ -8309,18 +8509,55 @@ class SortBySimilarity(ViewStage):
                 "environment?" % brain_key
             )
 
+        if (
+            sample_collection.media_type == fom.GROUP
+            and results.config.patches_field is None
+        ):
+            return self._make_group_pipeline(sample_collection, results)
+
         with contextlib.ExitStack() as context:
             if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
                 context.enter_context(results)
 
-            return results.sort_by_similarity(
+            pipeline = results.sort_by_similarity(
                 self._query,
                 k=self._k,
                 reverse=self._reverse,
                 dist_field=self._dist_field,
                 _mongo=True,
             )
+
+        return pipeline, None
+
+    def _make_group_pipeline(self, sample_collection, results):
+        # Neighbors are found over the searched slices together, so a match
+        # in any slice selects its group, while the grouped collection goes
+        # on showing its active slice
+        samples = sample_collection.select_group_slices(
+            self._group_slices, _allow_mixed=True
+        )
+
+        with results.use_view(samples):
+            matches = results.sort_by_similarity(
+                self._query,
+                k=self._k,
+                reverse=self._reverse,
+                dist_field=self._dist_field,
+            )
+            group_path = sample_collection.group_field
+            group_ids, slice_names = matches.values(
+                [group_path + ".id", group_path + ".name"]
+            )
+
+        # Insertion order is the order of each group's best match
+        group_matches = {}
+        for group_id, slice_name in zip(group_ids, slice_names):
+            group_matches.setdefault(group_id, []).append(slice_name)
+
+        stage = SelectGroups(list(group_matches), ordered=True)
+        stage.validate(sample_collection)
+        return stage.to_mongo(sample_collection), group_matches
 
 
 def _parse_similarity_query(query):
@@ -9794,6 +10031,21 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     Select,
     SelectBy,
     SelectGroupSlices,
+    Skip,
+    Take,
+}
+
+# Registry of stages that never read or write frames
+_SAMPLE_ROLE_STAGES = {
+    Exclude,
+    ExcludeGroups,
+    ExcludeGroupSlices,
+    Limit,
+    MatchTags,
+    Select,
+    SelectGroups,
+    SelectGroupSlices,
+    Shuffle,
     Skip,
     Take,
 }

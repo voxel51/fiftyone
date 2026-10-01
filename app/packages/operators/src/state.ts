@@ -246,24 +246,36 @@ const useExecutionContext = (operatorName, hooks = {}) => {
 function useExecutionOptions(operatorURI, ctx, isRemote) {
   const [isLoading, setIsLoading] = useState(true);
   const [executionOptions, setExecutionOptions] = useState(null);
+  // Requests overlap, and only the newest may apply its answer. Numbered when
+  // asked for, not when run: each context builds a new debounce with its own
+  // timer, so an older call can run after a newer one
+  const latestFetch = useRef(0);
 
-  const fetch = useMemo(
-    () =>
-      debounce(async (ctxOverride = null) => {
-        if (!isRemote) {
-          setExecutionOptions({ allowImmediateExecution: true });
-          return;
-        }
-        if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+  const fetch = useMemo(() => {
+    const debounced = debounce(async (request: number, ctxOverride = null) => {
+      const superseded = () => request !== latestFetch.current;
+      if (superseded()) return;
+      if (!isRemote) {
+        setExecutionOptions({ allowImmediateExecution: true });
+        return;
+      }
+      if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+      try {
         const options = await resolveExecutionOptions(
           operatorURI,
           ctxOverride || ctx,
         );
+        if (superseded()) return;
         setExecutionOptions(options);
-        setIsLoading(false);
-      }),
-    [operatorURI, ctx, isRemote],
-  );
+      } catch (error) {
+        if (superseded()) return;
+        console.error("Failed to resolve execution options", error);
+      }
+      setIsLoading(false);
+    });
+    return (ctxOverride = null) =>
+      debounced(++latestFetch.current, ctxOverride);
+  }, [operatorURI, ctx, isRemote]);
 
   useEffect(() => {
     fetch();
@@ -532,13 +544,21 @@ export const useOperatorPrompt = () => {
   }, [resolvedParams, inertPaths]);
   const liteValuesRef = useRef({});
   const promptId = promptingOperator.id;
+  // The debounce does not wait for a resolve to finish, so resolves overlap;
+  // an older one answering last would settle the form on params it no longer
+  // holds, leaving it validating until the next edit. Numbered when asked for,
+  // not when run: a debounce replaced by a change to its deps still runs its
+  // trailing call later, with params older than its replacement's
+  const latestResolve = useRef(0);
 
   // the debounced resolver must keep its identity across renders so the
   // debounce window survives; deps are intentionally narrow
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const resolveInput = useCallback(
     debounce(
-      async (ctx) => {
+      async (ctx, request: number) => {
+        const superseded = () => request !== latestResolve.current;
+        if (superseded()) return;
         try {
           const liteValues = liteValuesRef.current;
           const optimizedCtx = optimizeCtx(ctx, liteValues);
@@ -547,6 +567,7 @@ export const useOperatorPrompt = () => {
           }
           const resolved =
             cachedResolvedInput || (await operator.resolveInput(optimizedCtx));
+          if (superseded()) return;
 
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -556,6 +577,7 @@ export const useOperatorPrompt = () => {
             setInputFields(null);
           }
         } catch (e) {
+          if (superseded()) return;
           resolveTypeError.current = e;
           setInputFields(null);
         }
@@ -568,7 +590,7 @@ export const useOperatorPrompt = () => {
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
-    resolveInput(ctx);
+    resolveInput(ctx, ++latestResolve.current);
   }, [ctx, hooks, resolveInput]);
 
   const validate = useCallback(

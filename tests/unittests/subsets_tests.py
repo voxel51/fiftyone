@@ -77,6 +77,56 @@ class SubsetTests(unittest.TestCase):
         )
         return preview, fosub.apply_add(self.dataset, operation)
 
+    def test_subset_metadata_round_trips_without_tracking_upstream_changes(
+        self,
+    ):
+        provenance = {
+            "agent": "curation-agent",
+            "run_id": "run-42",
+            "parameters": {"threshold": 0.8},
+        }
+        lineage = {"subset_ids": [self.subset]}
+        created = fosub.create_subset(
+            self.dataset, "Derived", provenance=provenance, lineage=lineage
+        )
+        provenance["parameters"]["threshold"] = 0
+        lineage["subset_ids"].clear()
+        fosub.delete_subset(self.dataset, self.subset)
+        saved = fosub.subset_summary(self.dataset, created["id"])
+        self.assertEqual(saved["provenance"], created["provenance"])
+        self.assertEqual(saved["provenance"]["parameters"]["threshold"], 0.8)
+        self.assertEqual(saved["lineage"]["subset_ids"], [self.subset])
+        self.assertEqual(fosub.list_subsets(self.dataset), [saved])
+        page = fosub.browse_subsets(self.dataset)["subsets"]
+        self.assertNotIn("provenance", page[0])
+        self.assertNotIn("lineage", page[0])
+        self.assertEqual(
+            fosub.browse_subsets(self.dataset, metadata=True)["subsets"],
+            [saved],
+        )
+
+    def test_subset_metadata_is_optional_and_validated_before_creation(self):
+        original = fosub.subset_summary(self.dataset, self.subset)
+        self.assertIsNone(original["provenance"])
+        self.assertIsNone(original["lineage"])
+        invalid = [
+            [],
+            "agent",
+            {"object": object()},
+            {"value": float("nan")},
+            {"value": 2**64},
+            {"nested": {1: "key"}},
+            {"too_large": "x" * (64 * 1024)},
+        ]
+        for field in ("provenance", "lineage"):
+            for value in invalid:
+                with self.subTest(field=field, value=type(value)):
+                    with self.assertRaisesRegex(ValueError, field):
+                        fosub.create_subset(
+                            self.dataset, "Invalid", **{field: value}
+                        )
+        self.assertEqual(fosub.list_subsets(self.dataset), [original])
+
     def test_additive_coexistence_exact_dedup_and_provenance(self):
         a = _segment(self.ids[0], 10, 20)
         self.add([a])
@@ -1039,11 +1089,17 @@ class AsyncSubsetReadsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_async_pagination_matches_sync_search_and_view_filters(self):
         for name in ("Day", "Night", "Night review"):
-            fosub.create_subset(self.dataset, name)
+            fosub.create_subset(
+                self.dataset,
+                name,
+                provenance={"agent": "test"},
+                lineage={"subset_ids": [self.subset]},
+            )
         queries = [
             {"limit": 2},
             {"skip": 2, "limit": 2},
             {"search": "review"},
+            {"search": "review", "metadata": True},
             {"search": "(", "view": []},
         ]
         expected = [fosub.browse_subsets(self.dataset, **q) for q in queries]

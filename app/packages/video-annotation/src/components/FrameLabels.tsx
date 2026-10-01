@@ -34,6 +34,7 @@ import {
   TemporalTagTimeline,
   TrackProvider,
   isTemporalTagTrackId,
+  type TemporalTagTimelineProps,
   type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
@@ -50,6 +51,7 @@ import {
   objectTrackPathOf,
   parseSubTrackId,
   parseTimelineSubTrackId,
+  visibleTimelineTracks,
   type PerInstanceLabel,
 } from "../tracks/frameTracks";
 import {
@@ -684,7 +686,7 @@ function useTrackDecorator({
   );
 }
 
-const NO_ADDITIONAL_TRACKS: Track[] = [];
+const NO_ADDITIONAL_TRACKS: readonly Track[] = [];
 const EMPTY_HOST_DECORATION = Object.freeze({});
 
 /**
@@ -708,8 +710,15 @@ const EMPTY_HOST_DECORATION = Object.freeze({});
  */
 export const FrameLabelsTracks: React.FC<{
   sample?: ModalSample;
-  /** Read-only host tracks, such as the saved ranges being browsed. */
-  additionalTracks?: Track[];
+  /**
+   * Read-only host rows shown before the sample's own, such as the saved
+   * ranges being browsed or an extension's rows. Never read as sub-tracks,
+   * whatever their ids look like. Must be a stable reference while unchanged:
+   * a new identity re-decorates every row.
+   */
+  additionalTracks?: readonly Track[];
+  /** Row behavior for `additionalTracks`; they are read-only without it. */
+  decorateAdditionalTrack?: TemporalTagTimelineProps["decorateTrack"];
   initialPinnedIds?: string[];
   /** Keep a scoped host's pins separate from the ordinary video preferences. */
   pinScopeKey?: string;
@@ -738,6 +747,11 @@ export const FrameLabelsTracks: React.FC<{
   mode?: "annotate" | "explore";
   /** Reports whether the frame tracks have resolved for the current sample. */
   onReadyChange?: (ready: boolean) => void;
+  /** Host content drawn over the ruler. */
+  rulerOverlay?: (labelWidth: number) => React.ReactNode;
+  /** Host content mounted inside this timeline's track provider, such as
+   * what pins the host's own rows. */
+  runtime?: React.ReactNode;
 }> = ({
   sample,
   maxSize,
@@ -747,8 +761,11 @@ export const FrameLabelsTracks: React.FC<{
   mode = "annotate",
   onReadyChange,
   additionalTracks = NO_ADDITIONAL_TRACKS,
+  decorateAdditionalTrack,
   initialPinnedIds,
   pinScopeKey,
+  rulerOverlay,
+  runtime,
 }) => {
   const { resolveObjectColor, resolveTemporalDetectionColor } =
     useTrackColorResolvers();
@@ -809,8 +826,8 @@ export const FrameLabelsTracks: React.FC<{
 
   // Object tracks (with their sub-tracks interleaved) followed by TD tracks.
   const resolvedTracks = useMemo(
-    () => [...additionalTracks, ...frameTracks, ...temporalDetectionTracks],
-    [additionalTracks, frameTracks, temporalDetectionTracks],
+    () => [...frameTracks, ...temporalDetectionTracks],
+    [frameTracks, temporalDetectionTracks],
   );
 
   // The last list that resolved, shown while the next one loads (see the
@@ -826,7 +843,7 @@ export const FrameLabelsTracks: React.FC<{
   // The sample's temporal tags follow, live: they do not come from the
   // frame-label stream, so a field toggle has nothing of theirs to wait for.
   const shownTracks = ready ? resolvedTracks : heldTracks;
-  const tracks = useMemo(
+  const sampleTracks = useMemo(
     () => [...shownTracks, ...temporalTagTracks],
     [shownTracks, temporalTagTracks],
   );
@@ -836,7 +853,7 @@ export const FrameLabelsTracks: React.FC<{
   // Parents carrying at least one sub-track — only these get an expand chevron.
   const expandableParentIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const track of tracks) {
+    for (const track of sampleTracks) {
       const sub = parseTimelineSubTrackId(track.id);
       if (sub) {
         ids.add(sub.parentId);
@@ -844,16 +861,16 @@ export const FrameLabelsTracks: React.FC<{
     }
 
     return ids;
-  }, [tracks]);
+  }, [sampleTracks]);
 
-  // Hide a collapsed parent's sub-track rows; everything else renders.
   const visibleTracks = useMemo(
     () =>
-      tracks.filter((track) => {
-        const sub = parseTimelineSubTrackId(track.id);
-        return !sub || expansion.expandedIds.has(sub.parentId);
-      }),
-    [tracks, expansion.expandedIds],
+      visibleTimelineTracks(
+        additionalTracks,
+        sampleTracks,
+        expansion.expandedIds,
+      ),
+    [additionalTracks, sampleTracks, expansion.expandedIds],
   );
 
   // Ready means frame tracks resolved, not `tracks.length`: TD and tag tracks
@@ -877,7 +894,7 @@ export const FrameLabelsTracks: React.FC<{
   // to go through the list rather than the DOM.
   const timelineScroller = useRef<TimelineTracksScroller | null>(null);
   useScrollTrackToAnchor(timelineScroller);
-  const decorateTrack = useTrackDecorator({
+  const decorateSampleTrack = useTrackDecorator({
     sample,
     objectTracks: frameTracks,
     expansion,
@@ -885,12 +902,18 @@ export const FrameLabelsTracks: React.FC<{
     readOnly: mode === "explore",
     ready,
   });
-  const decorateWithHostTracks = useCallback(
-    (track: Track) =>
-      additionalTracks.includes(track)
-        ? EMPTY_HOST_DECORATION
-        : decorateTrack(track),
-    [additionalTracks, decorateTrack],
+  const additionalTrackIds = useMemo(
+    () => new Set(additionalTracks.map(({ id }) => id)),
+    [additionalTracks],
+  );
+  const decorateTrack = useCallback<
+    NonNullable<TemporalTagTimelineProps["decorateTrack"]>
+  >(
+    (track, pinned) =>
+      additionalTrackIds.has(track.id)
+        ? (decorateAdditionalTrack?.(track, pinned) ?? EMPTY_HOST_DECORATION)
+        : decorateSampleTrack(track),
+    [decorateSampleTrack, decorateAdditionalTrack, additionalTrackIds],
   );
 
   return (
@@ -904,8 +927,9 @@ export const FrameLabelsTracks: React.FC<{
       initialPinnedIds={initialPins}
       persistKey={persistKey}
     >
+      {runtime}
       <TemporalTagTimeline
-        decorateTrack={decorateWithHostTracks}
+        decorateTrack={decorateTrack}
         scrollerRef={timelineScroller}
         extraActions={extraActions}
         trailingActions={trailingActions}
@@ -918,6 +942,7 @@ export const FrameLabelsTracks: React.FC<{
         tagEventMenuItems={tagEventMenuItems}
         onTagCreate={onTagCreate}
         onTagUpdate={onTagUpdate}
+        rulerOverlay={rulerOverlay}
       />
     </TrackProvider>
   );
