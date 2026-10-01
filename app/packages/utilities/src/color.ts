@@ -395,11 +395,11 @@ const toLegacySyntax = (computed: string): string => {
  * Resolves a CSS colour expression to the concrete `#rrggbb` / `rgb()` /
  * `rgba()` value it currently has.
  *
- * The App's theme values are Voodo CSS variables so they follow light/dark
- * automatically, but a few consumers cannot take a `var()` string: canvas
- * `fillStyle`, plotly layouts, three.js `Color`, MapLibre paint. Those read
- * the colour through this helper at the moment they need it instead of
- * caching a literal that would go stale when the theme flips. `color-mix()`
+ * Voodo's `cssVar.color.*` tokens are CSS variables so they follow
+ * light/dark automatically, but a few consumers cannot take a `var()`
+ * string: canvas `fillStyle`, plotly layouts, three.js `Color`, MapLibre
+ * paint. Those read the colour through this helper at the moment they need
+ * it instead of caching a literal that would go stale when the theme flips. `color-mix()`
  * expressions, which several Voodo tokens resolve to, are evaluated as well.
  *
  * Plain literals and non-colour var() references come back unchanged, as does
