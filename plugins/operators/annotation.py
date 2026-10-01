@@ -17,6 +17,7 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
@@ -357,8 +358,14 @@ class CreateAndActivateField(foo.Operator):
         attributes = label_schema_config.get("attributes", [])
 
         # A label type without a `label` class (e.g. Regression) has no
-        # classes to pick from, so its schema carries no component
-        if "label" not in label_cls._fields:
+        # classes to pick from, so its schema carries no component. A list
+        # type's classes live on its elements
+        element_cls = label_cls
+        if issubclass(label_cls, fol._HasLabelList):
+            list_field = label_cls._fields[label_cls._LABEL_LIST_FIELD]
+            element_cls = list_field.field.document_type
+
+        if "label" not in element_cls._fields:
             return {"type": field_type, "attributes": attributes}
 
         classes = label_schema_config.get("classes")
