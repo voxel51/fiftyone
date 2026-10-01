@@ -25,12 +25,16 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       return [{ kind: EntryKind.EMPTY_ANNOTATIONS }] as SidebarEntry[];
     }
 
-    return rows.map(({ id, path, frame }) => ({
-      kind: EntryKind.LABEL,
-      id,
-      path,
-      frame,
-    })) as SidebarEntry[];
+    const slots: Record<string, number> = {};
+    return rows.map(({ id, path, frame }) => {
+      let slot: number | undefined;
+      if (frame !== undefined) {
+        slot = slots[path] ?? 0;
+        slots[path] = slot + 1;
+      }
+
+      return { kind: EntryKind.LABEL, id, path, frame, slot };
+    }) as SidebarEntry[];
   }, [rows, expanded]);
 
   return [

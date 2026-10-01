@@ -200,6 +200,12 @@ export interface LabelEntry {
   path: string;
   /** Occurrence frame for video frame labels; absent for sample-level labels. */
   frame?: number;
+  /**
+   * Position among the field's rows at the playhead, set with `frame`. Frame
+   * rows key by it: an untracked frame label's id names one frame's
+   * occurrence, so keying by id would remount every row on each frame step.
+   */
+  slot?: number;
 }
 
 export interface LoadingEntry {
