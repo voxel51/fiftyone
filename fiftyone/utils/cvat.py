@@ -8374,16 +8374,6 @@ def _get_next_frame(next_frame_idx, frame_step):
     return next_frame_idx + frame_step
 
 
-def _flatten(values, depth):
-    if depth <= 0:
-        yield from values
-        return
-
-    for value in values:
-        if value is not None:
-            yield from _flatten(value, depth - 1)
-
-
 def convert_rotations_to_radians(sample_collection, field, degrees=True):
     """Converts the 2D ``rotation`` attribute of the
     :class:`fiftyone.core.labels.Detection` labels in the given field of the
@@ -8425,7 +8415,17 @@ def convert_rotations_to_radians(sample_collection, field, degrees=True):
     # rotation itself, which is a scalar (2D) or an ``[x, y, z]`` list (3D)
     depth = int(is_frame_field) + int(is_list)
 
+    # Rotations may be stored as a dynamic field (``label.rotation``) or in
+    # the deprecated ``attributes`` dict (``label.attributes["rotation"]``).
+    # Read both before writing either so a failure cannot leave the
+    # collection half-converted. ``values()`` yields ``None`` for a path that
+    # does not exist, so an absent legacy path is simply skipped below.
+    _, dict_path = sample_collection._get_label_field_path(
+        field, "attributes.rotation.value"
+    )
     values = sample_collection.values(path)
+    dict_values = sample_collection.values(dict_path)
+
     convert = math.radians if degrees else math.degrees
 
     num_converted = 0
@@ -8447,27 +8447,16 @@ def convert_rotations_to_radians(sample_collection, field, degrees=True):
         return value
 
     new_values = [_convert(v, 0) for v in values]
+    num_direct = num_converted
 
-    if num_converted > 0:
+    new_dict_values = [_convert(v, 0) for v in dict_values]
+    num_dict = num_converted - num_direct
+
+    if num_direct > 0:
         sample_collection.set_values(path, new_values)
 
-    # Rotations stored in the deprecated ``attributes`` dict
-    # (``label.attributes["rotation"].value``) are converted too
-    _, dict_path = sample_collection._get_label_field_path(
-        field, "attributes.rotation.value"
-    )
-    try:
-        dict_values = sample_collection.values(dict_path)
-    except Exception:
-        dict_values = None
-
-    if dict_values is not None and any(
-        v is not None for v in _flatten(dict_values, depth)
-    ):
-        before = num_converted
-        new_dict_values = [_convert(v, 0) for v in dict_values]
-        if num_converted > before:
-            sample_collection.set_values(dict_path, new_dict_values)
+    if num_dict > 0:
+        sample_collection.set_values(dict_path, new_dict_values)
 
     logger.info(
         "Converted %d rotation value(s) in field '%s' to %s",
