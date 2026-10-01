@@ -164,6 +164,23 @@ export class SidebarPom {
     return targetMode.click();
   }
 
+  private filterMode(path: string) {
+    return this.filter(path, "categorical").getByTestId("filter-mode-div");
+  }
+
+  /** The mode the filter of `path` applies its selected values in */
+  async filterModeText(path: string) {
+    return this.filterMode(path).textContent();
+  }
+
+  /** Apply the selected values of `path` in the mode `modeId` */
+  async selectFilterMode(path: string, modeId: string) {
+    await this.filterMode(path).click();
+    await this.filter(path, "categorical")
+      .getByTestId(`filter-option-${modeId}`)
+      .click();
+  }
+
   async resetAttribute(attribute: string) {
     const container = this.sidebar.getByTestId(
       `categorical-filter-${attribute}`,

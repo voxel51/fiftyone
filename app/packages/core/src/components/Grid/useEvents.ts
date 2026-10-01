@@ -16,6 +16,8 @@ import type { ScrollLocation } from "./useScrollLocation";
 /** e2e specs count grid teardowns to assert one remount per refresh */
 type GridE2EEvents = {
   "e2e:grid:unmount": { id: string; width: number | undefined };
+  /** the grid's first page is shown, as `tiles` tiles */
+  "e2e:grid:mount": { tiles: number };
 };
 
 export default ({
@@ -64,6 +66,9 @@ export default ({
       document.dispatchEvent(
         new CustomEvent("grid-mount", { detail: detail() }),
       );
+      getEventBus<GridE2EEvents>().dispatch("e2e:grid:mount", {
+        tiles: cache.shown.size,
+      });
     };
 
     const rejected = (event: Rejected) => {

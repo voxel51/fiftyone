@@ -31,7 +31,7 @@ import {
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, Overlay } from "../overlays/base";
+import { CONTAINS, Overlay, RegularLabel } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import { buildThumbnailSelectionDetail } from "../selection";
 import {
@@ -69,8 +69,10 @@ type LookerE2EEvents = {
     sampleFilepath: string;
     sampleId: string;
     thumbnail: boolean;
-    /** a worker job is still painting labels, so a later draw adds them */
+    /** a reload or worker job is still painting labels, so a later draw adds them */
     labelsPending: boolean;
+    /** the drawn overlays as sorted `field:label` pairs, comma-joined */
+    labels: string;
   };
 };
 
@@ -125,6 +127,7 @@ export abstract class AbstractLooker<
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
   private isSampleUpdating: boolean = false;
+  private isSampleReloadScheduled: boolean = false;
   private labelPaintingJobs = 0;
 
   protected readonly abortController: AbortController;
@@ -528,12 +531,20 @@ export abstract class AbstractLooker<
           sampleId: this.sample.id,
           thumbnail: this.state.config.thumbnail,
           labelsPending:
+            this.isSampleReloadScheduled ||
             this.isSampleUpdating ||
             this.labelPaintingJobs > 0 ||
             this.currentOverlays.some(
               (overlay) =>
                 overlay.label?._renderStatus === RENDER_STATUS_PENDING,
             ),
+          labels: this.currentOverlays
+            .map(
+              (overlay) =>
+                `${overlay.field}:${(overlay.label as RegularLabel)?.label}`,
+            )
+            .sort()
+            .join(","),
         });
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
@@ -682,7 +693,9 @@ export abstract class AbstractLooker<
     let timeoutId: ReturnType<typeof setTimeout>;
     return (sample: Sample) => {
       clearTimeout(timeoutId);
+      this.isSampleReloadScheduled = true;
       timeoutId = setTimeout(() => {
+        this.isSampleReloadScheduled = false;
         // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
         // this crashes the app. this is a bug and should be fixed
         if (!this.sample) {

@@ -14,6 +14,54 @@ import { UrlPom } from "../url";
 const TILE_SELECTOR = "[data-cy=looker], [data-cy=grid-custom-renderer]";
 const CUSTOM_RENDERER_TEST_ID = "grid-custom-renderer";
 const LANE_SHOWN = "e2e:multimodal:grid-lane-shown";
+const TILE_DRAWN = "e2e:looker:canvas-loaded";
+const TILES_UPDATED = "e2e:grid:tiles-updated";
+const GRID_UNMOUNT = "e2e:grid:unmount";
+const GRID_MOUNT = "e2e:grid:mount";
+const COUNT_SHOWN = "e2e:components:entry-count-shown";
+
+type TileDraw = {
+  sampleFilepath: string;
+  labelsPending: boolean;
+  labels: string;
+};
+
+/** Each tile's drawn labels (sorted `field:label` pairs), by file name */
+export type TileLabels = Record<string, string[]>;
+
+/**
+ * Track tiles' latest draws: settled once `tiles` tiles have drawn and none
+ * has a reload or label painting still to draw
+ */
+class TileDraws {
+  private readonly latest = new Map<string, TileDraw>();
+
+  add(detail: unknown) {
+    const draw = detail as TileDraw;
+    this.latest.set(draw.sampleFilepath.split("/").pop() ?? "", draw);
+  }
+
+  clear() {
+    this.latest.clear();
+  }
+
+  settled(tiles: number | null) {
+    return (
+      tiles !== null &&
+      this.latest.size === tiles &&
+      [...this.latest.values()].every((draw) => !draw.labelsPending)
+    );
+  }
+
+  labels(): TileLabels {
+    return Object.fromEntries(
+      [...this.latest].map(([file, { labels }]) => [
+        file,
+        labels ? labels.split(",") : [],
+      ]),
+    );
+  }
+}
 
 /** A lane showing exactly `marks` marks, all of them temporal tags */
 const isTemporalTagLane = (detail: unknown, marks: number) => {
@@ -279,6 +327,67 @@ export class GridPom {
       drawn.add((e.detail as { sampleId: string }).sampleId);
       return drawn.size === count;
     });
+  }
+
+  /**
+   * Run `action`, which changes the shown tiles' options in place, and resolve
+   * with each updated tile's labels once the grid's update pass is done and
+   * every updated tile's draws have settled
+   */
+  async afterTilesUpdated(action: () => Promise<unknown>): Promise<TileLabels> {
+    const draws = new TileDraws();
+    let tiles: number | null = null;
+    await this.eventUtils.after(
+      [TILES_UPDATED, TILE_DRAWN],
+      action,
+      ({ event, detail }) => {
+        if (event === TILES_UPDATED) {
+          tiles = (detail as { tiles: number }).tiles;
+        } else {
+          draws.add(detail);
+        }
+        return draws.settled(tiles);
+      },
+    );
+    return draws.labels();
+  }
+
+  /**
+   * Run `action`, which refreshes the grid, and resolve with each new tile's
+   * labels once the remounted grid's tiles have settled and its entry counts
+   * have loaded. Only events after the old grid unmounts count, so neither
+   * the old tiles' draws nor the old counts' renders can satisfy the wait.
+   */
+  async afterGridRefreshed(
+    action: () => Promise<unknown>,
+  ): Promise<TileLabels> {
+    const draws = new TileDraws();
+    let unmounted = false;
+    let tiles: number | null = null;
+    let counted = false;
+    await this.eventUtils.after(
+      [GRID_UNMOUNT, GRID_MOUNT, TILE_DRAWN, COUNT_SHOWN],
+      action,
+      ({ event, detail }) => {
+        if (event === GRID_UNMOUNT) {
+          unmounted = true;
+          tiles = null;
+          counted = false;
+          draws.clear();
+          return false;
+        }
+        if (!unmounted) return false;
+        if (event === GRID_MOUNT) {
+          tiles = (detail as { tiles: number }).tiles;
+        } else if (event === COUNT_SHOWN) {
+          counted ||= (detail as { signal: string }).signal === "grid-elements";
+        } else {
+          draws.add(detail);
+        }
+        return counted && draws.settled(tiles);
+      },
+    );
+    return draws.labels();
   }
 
   /**
