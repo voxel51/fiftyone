@@ -19,7 +19,9 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
+import type { AttributeConfig } from "../../SchemaManager/utils";
 import { isFieldReadOnly, labelSchemaData } from "../../state";
+import { resolveVisibleAttribute } from "../evaluateWhen";
 import { defaultField } from "./selectors";
 import type { CreateDeps, CreateOptions, LabelType } from "./types";
 
@@ -127,6 +129,54 @@ export function createNewLabel(
 }
 
 /**
+ * Schema defaults for a new label in `field`: the schema-level `label`
+ * default plus per-attribute defaults. Conditional (`when`) attributes only
+ * contribute the default of the entry that owns the slot for the new label's
+ * values (e.g. its class), so class-specific defaults land on the right class.
+ *
+ * Shared by the 2D create path ({@link buildNewLabelData}) and the 3D
+ * cuboid/polyline create paths, which build their label data separately.
+ */
+export function getNewLabelDefaults(
+  field: string,
+  labelValue?: string,
+): Record<string, unknown> {
+  const labelSchema = getDefaultStore().get(
+    labelSchemaData(field),
+  )?.label_schema;
+  const defaults: Record<string, unknown> = {};
+
+  if (labelSchema?.default !== undefined) {
+    defaults.label = labelSchema.default;
+  }
+
+  const attributes: AttributeConfig[] = Array.isArray(labelSchema?.attributes)
+    ? labelSchema.attributes
+    : [];
+
+  for (const attr of attributes) {
+    if (attr.name && !attr.when && attr.default !== undefined) {
+      defaults[attr.name] = attr.default;
+    }
+  }
+
+  // Resolve conditional owners against the values the label will be born
+  // with, so `when: { field: "label", ... }` sees the new label's class.
+  const values = { ...defaults, ...(labelValue && { label: labelValue }) };
+  const conditionalNames = new Set(
+    attributes.filter((a) => a.name && a.when).map((a) => a.name),
+  );
+  for (const name of conditionalNames) {
+    const owner = resolveVisibleAttribute(name, attributes, values);
+    if (owner?.default !== undefined) {
+      defaults[name] = owner.default;
+    }
+  }
+
+  return defaults;
+}
+
+/**
  * Build the initial label-data payload: schema-default → labelValue → first
  * class for `label`, per-attribute defaults, and polyline `points` seeded
  * from `origin`. Reused by selectors.ts when the user swaps a label's field.
@@ -139,22 +189,9 @@ export function buildNewLabelData(
   const labelId = options?.id ?? objectId();
   const store = getDefaultStore();
 
-  const fieldSchema = store.get(labelSchemaData(field));
-  const labelSchema = fieldSchema?.label_schema;
-  const defaults: Record<string, unknown> = {};
+  const labelSchema = store.get(labelSchemaData(field))?.label_schema;
   const labelValue = options?.labelValue || labelSchema?.classes?.[0];
-
-  if (labelSchema?.default !== undefined) {
-    defaults.label = labelSchema.default;
-  }
-
-  if (Array.isArray(labelSchema?.attributes)) {
-    for (const attr of labelSchema.attributes) {
-      if (attr.name && attr.default !== undefined) {
-        defaults[attr.name] = attr.default;
-      }
-    }
-  }
+  const defaults = getNewLabelDefaults(field, labelValue);
 
   const data = {
     _cls:

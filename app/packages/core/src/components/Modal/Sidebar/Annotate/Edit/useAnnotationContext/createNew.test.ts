@@ -34,7 +34,7 @@ vi.mock("@fiftyone/utilities", async (importOriginal) => {
   };
 });
 
-const { buildNewLabelData } = await import("./createNew");
+const { buildNewLabelData, getNewLabelDefaults } = await import("./createNew");
 
 const setSchema = (field: string, schema: unknown) => {
   schemaMap[field] = { label_schema: schema };
@@ -171,5 +171,89 @@ describe("buildNewLabelData", () => {
       }) as Record<string, unknown>;
       expect("points" in data).toBe(false);
     });
+  });
+});
+
+describe("getNewLabelDefaults", () => {
+  const classSpecificSchema = {
+    classes: ["car", "pedestrian"],
+    attributes: [
+      { name: "occluded", type: "bool", default: false },
+      {
+        name: "vehicle_type",
+        type: "str",
+        values: ["sedan", "suv"],
+        default: "sedan",
+        when: { operator: "equals", field: "label", value: "car" },
+      },
+      {
+        name: "posture",
+        type: "str",
+        values: ["standing", "walking"],
+        default: "walking",
+        when: { operator: "equals", field: "label", value: "pedestrian" },
+      },
+    ],
+  };
+
+  it("applies only the class-specific defaults for the new label's class", () => {
+    setSchema("foo", classSpecificSchema);
+    expect(getNewLabelDefaults("foo", "car")).toEqual({
+      occluded: false,
+      vehicle_type: "sedan",
+    });
+    expect(getNewLabelDefaults("foo", "pedestrian")).toEqual({
+      occluded: false,
+      posture: "walking",
+    });
+  });
+
+  it("picks the owning entry's default when entries share a name", () => {
+    setSchema("foo", {
+      attributes: [
+        {
+          name: "kind",
+          type: "str",
+          default: "dog",
+          when: { operator: "equals", field: "label", value: "mammal" },
+        },
+        {
+          name: "kind",
+          type: "str",
+          default: "snake",
+          when: { operator: "equals", field: "label", value: "reptile" },
+        },
+      ],
+    });
+    expect(getNewLabelDefaults("foo", "mammal")).toEqual({ kind: "dog" });
+  });
+
+  it("resolves conditions against other attributes' defaults", () => {
+    setSchema("foo", {
+      attributes: [
+        { name: "damaged", type: "bool", default: true },
+        {
+          name: "severity",
+          type: "str",
+          default: "minor",
+          when: { operator: "equals", field: "damaged", value: true },
+        },
+      ],
+    });
+    expect(getNewLabelDefaults("foo")).toEqual({
+      damaged: true,
+      severity: "minor",
+    });
+  });
+
+  it("buildNewLabelData seeds class-specific defaults for the first class", () => {
+    setSchema("foo", classSpecificSchema);
+    const data = buildNewLabelData("foo", "Detection") as Record<
+      string,
+      unknown
+    >;
+    expect(data.label).toBe("car");
+    expect(data.vehicle_type).toBe("sedan");
+    expect("posture" in data).toBe(false);
   });
 });
