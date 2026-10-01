@@ -24,7 +24,7 @@ const useStateUpdate: EventHandlerHook = ({
       // The schema lens is client state: a server-pushed view keeps the
       // silent ExcludeFields on the page query (see makeRoutes), as the
       // view setters do.
-      const { schemaExclusion } = router.get().state;
+      const { schemaExclusion } = router.location.state ?? {};
       if (schemaExclusion?.length) {
         state.schemaExclusion = schemaExclusion;
       }

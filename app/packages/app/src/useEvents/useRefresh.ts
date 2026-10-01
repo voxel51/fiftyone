@@ -19,7 +19,7 @@ const useRefresh: EventHandlerHook = ({ router, session }) => {
       const state = processState(session.current, payload.state);
       // Keep the schema lens's silent ExcludeFields across a server
       // refresh (see makeRoutes).
-      const { schemaExclusion } = router.get().state;
+      const { schemaExclusion } = router.location.state ?? {};
       if (schemaExclusion?.length) {
         state.schemaExclusion = schemaExclusion;
       }
