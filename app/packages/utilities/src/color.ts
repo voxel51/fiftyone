@@ -307,7 +307,7 @@ export const interpolateColorsRgb = (
 // variables and `color-mix()`. Any other var() (a font family, a spacing) is
 // not a colour and would come back as the probe's fallback colour if it were
 // assigned to `color`, so it passes through untouched.
-const NEEDS_CSS = /var\(--(?:color|fo-palette)[\w-]*\)|color-mix\(/;
+const NEEDS_CSS = /var\(--(?:color|fo-palette)[\w-]*\s*[,)]|color-mix\(/;
 
 let probe: HTMLElement | null | undefined;
 
