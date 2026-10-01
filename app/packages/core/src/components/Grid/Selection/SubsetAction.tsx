@@ -266,7 +266,7 @@ export function SubsetPanel({
   const captureError = groupScope.error ?? scopeError;
   const scopeStatus = scope ? null : captureError ? (
     <span className={styles.inlineAlert} role="alert">
-      <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+      <Text variant={TextVariant.Sm} color={TextColor.Failure}>
         {captureError}
       </Text>
       <Button

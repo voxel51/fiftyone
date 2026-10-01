@@ -97,12 +97,12 @@ export function SettingsMenu({
                   <Icon
                     name={IconName.Check}
                     size={Size.Sm}
-                    color={TextColor.Fg}
+                    color={TextColor.Foreground}
                   />
                 )}
               </span>
               <span className="emb-settings-option">
-                <Text variant={TextVariant.Md} color={TextColor.Fg}>
+                <Text variant={TextVariant.Md} color={TextColor.Foreground}>
                   {CONTINUOUS_RAMPS[id].label}
                 </Text>
                 <span

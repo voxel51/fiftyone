@@ -23,7 +23,7 @@ export const Default: Story = {
           position: "relative",
           width: 600,
           height: 80,
-          background: "var(--color-content-bg-card-1)",
+          background: "var(--color-content-bg-card)",
           border: "1px solid var(--color-content-border-default)",
         }}
       >
