@@ -25,48 +25,29 @@
  * (stale-selection guarded).
  */
 
-import { Code, scrollable, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import { useOperatorAvailability } from "@fiftyone/operators";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
-  Anchor,
   Button,
   Input,
-  Icon,
-  IconName,
-  Pill,
-  RichList,
   Size,
   Spinner,
   ToggleSwitch,
-  Text,
-  TextColor,
-  TextVariant,
-  Tooltip,
   Variant,
-  Select,
-  AddIcon,
-  ContentCopyIcon,
-  DeleteIcon,
-  Dropdown,
-  DropdownAnchor,
-  EditIcon,
-  MenuIconTextItem,
 } from "@voxel51/voodo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAtom, useSetAtom } from "jotai";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addToActiveSchemas,
   currentField,
-  fieldAttributeCount,
-  fieldType,
   removeFromActiveSchemas,
 } from "../state";
 import { useSchemaManager } from "../useSchemaManager";
-import { isSystemReadOnlyField, TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
+import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
+import FieldSections from "./FieldSections";
 import {
   useActiveFieldsList,
-  useFullSchemaEditor,
   useLabelSchemasData,
   useNewFieldMode,
   useSchemaEditorGUIJSONToggle,
@@ -74,87 +55,21 @@ import {
   useSelectedHiddenFields,
   useSelectionCleanup,
 } from "./hooks";
-import SecondaryText from "./SecondaryText";
-import SelectAllCheckbox from "./SelectAllCheckbox";
-import { useShiftRangeSelection } from "./useShiftRangeSelection";
+import OverviewJSON from "./OverviewJSON";
+import { useOverviewRows, type RowData } from "./overviewRows";
+import { makeStyles } from "./overviewStyles";
+import SchemaPickerBar, { type NamingMode } from "./SchemaPickerBar";
+import { useFieldRowItem } from "./useFieldRowItem";
 import {
-  CollapsibleHeader,
-  ContentArea,
-  GUISectionHeader,
-  SelectableList,
-} from "./styled";
-import {
-  docFieldTier,
   loadedSchemaDoc,
-  PROTECTED_PATHS,
   selectedSchemaDocId,
   LIST_LABEL_SCHEMA_DOCS_OPERATOR,
   useSchemaDocs,
   withoutFieldTier,
   type SchemaDocContentEntry,
   type SchemaDocSummary,
-  type SchemaDocTier,
 } from "./useSchemaDocs";
-
-function makeStyles(theme: ReturnType<typeof useTheme>) {
-  const onSurface = theme.text.primary;
-  const onSurfaceMuted = theme.text.secondary;
-
-  return {
-    bar: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: 12,
-    },
-    fieldName: {
-      fontSize: 13,
-      color: onSurface,
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap" as const,
-    },
-    emptyText: {
-      fontSize: 12,
-      color: onSurfaceMuted,
-      padding: "4px 2px 8px",
-    },
-    errorText: {
-      fontSize: 12,
-      color: theme.error.main,
-      padding: "2px 2px 6px",
-    },
-  };
-}
-
-interface RowData {
-  path: string;
-  tier: SchemaDocTier;
-  /** Scanned — has a configured label schema (content). */
-  setUp: boolean;
-  system: boolean;
-  unsupported: boolean;
-}
-
-const SectionTitle = ({ children }: { children: string }) => (
-  <Text
-    variant={TextVariant.Lg}
-    style={{ fontWeight: 500 }}
-    color={TextColor.Secondary}
-  >
-    {children}
-  </Text>
-);
-
-const InfoTip = ({ text }: { text: string }) => (
-  <Tooltip content={<Text>{text}</Text>} anchor={Anchor.Top} portal>
-    <Icon name={IconName.Info} size={Size.Md} />
-  </Tooltip>
-);
-
-// voodo's Select shows nothing for an empty id; the dataset default
-// rides this sentinel and maps back to "no doc".
-const DEFAULT_SCHEMA_OPTION = "__default__";
+import { useShiftRangeSelection } from "./useShiftRangeSelection";
 
 const SchemaOverview = () => {
   useSelectionCleanup();
@@ -187,9 +102,7 @@ const SchemaOverview = () => {
   const [docs, setDocs] = useState<SchemaDocSummary[]>([]);
   const [search, setSearch] = useState("");
   const [hiddenExpanded, setHiddenExpanded] = useState(true);
-  const [naming, setNaming] = useState<null | "create" | "rename" | "delete">(
-    null,
-  );
+  const [naming, setNaming] = useState<NamingMode>(null);
   const [nameValue, setNameValue] = useState("");
   // The doc a rename targets — set explicitly after Duplicate, since the
   // duplicate's body may still be loading when the user submits.
@@ -246,76 +159,13 @@ const SchemaOverview = () => {
 
   // ---- Rows ----
 
-  const rowPaths = useMemo(() => {
-    const paths = new Set<string>(Object.keys(datasetSchemas ?? {}));
-    if (docMode && doc) {
-      for (const p of Object.keys(doc.label_schema)) paths.add(p);
-      for (const p of Object.keys(doc.visibility.fields ?? {})) paths.add(p);
-    }
-    return [...paths].sort();
-  }, [datasetSchemas, doc, docMode]);
-
-  const activeSet = useMemo(() => new Set(activeFields), [activeFields]);
-
-  const rows = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    const out: RowData[] = [];
-    for (const path of rowPaths) {
-      if (needle && !path.toLowerCase().includes(needle)) continue;
-      const meta = datasetSchemas?.[path] as
-        | { label_schema?: unknown; unsupported?: boolean }
-        | undefined;
-      const system = isSystemReadOnlyField(path);
-      const unsupported = Boolean(meta?.unsupported);
-      if (docMode && doc) {
-        out.push({
-          path,
-          tier: docFieldTier(doc, path) as SchemaDocTier,
-          setUp: path in doc.label_schema,
-          system,
-          unsupported,
-        });
-      } else {
-        // Dataset default: a scanned field is annotate+explore, an
-        // unscanned one explore-only; nothing is ever hidden.
-        const setUp = Boolean(meta?.label_schema);
-        out.push({
-          path,
-          tier: setUp ? "annotate" : "explore",
-          setUp,
-          system,
-          unsupported,
-        });
-      }
-    }
-    return out;
-  }, [rowPaths, search, datasetSchemas, docMode, doc]);
-
-  const sections = useMemo(() => {
-    const order = new Map(activeFields.map((p, i) => [p, i]));
-    const byStoredOrder = (a: RowData, b: RowData) =>
-      (order.get(a.path) ?? 1e9) - (order.get(b.path) ?? 1e9) ||
-      a.path.localeCompare(b.path);
-    const visible = rows.filter((r) => r.tier !== "hidden");
-    // Selectable (hideable) rows first; every un-selectable row — the
-    // protected paths that can be set up but never hidden, then system
-    // fields — sits together at the bottom of Active.
-    const hideable = (r: RowData) =>
-      !r.system && !r.unsupported && !PROTECTED_PATHS.has(r.path);
-    return {
-      scanned: visible
-        .filter((r) => r.setUp && hideable(r))
-        .sort(byStoredOrder),
-      unscanned: visible.filter((r) => !r.setUp && hideable(r)),
-      unhideable: visible
-        .filter(
-          (r) => !r.system && !r.unsupported && PROTECTED_PATHS.has(r.path),
-        )
-        .sort(byStoredOrder),
-      system: visible.filter((r) => r.system || r.unsupported),
-      hidden: rows.filter((r) => r.tier === "hidden"),
-    };
-  }, [rows, activeFields]);
+  const { sections, activeSet, rowTypes, rowAttrCounts } = useOverviewRows({
+    datasetSchemas: datasetSchemas as Record<string, unknown> | null,
+    doc,
+    docMode,
+    search,
+    activeFields,
+  });
 
   // Dataset default: "scanned ⇒ annotate" — a set-up field that is
   // still deactivated (a legacy explore-only demotion) is activated so
@@ -346,29 +196,6 @@ const SchemaOverview = () => {
     removeActive,
     activateSchemas,
   ]);
-
-  // Batched per-row display metadata (doc-aware via the envelope
-  // overlay in `effectiveLabelSchemasData`).
-  const rowTypes = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(rowPaths.map((p) => [p, get(fieldType(p))])),
-        ),
-      [rowPaths],
-    ),
-  );
-  const rowAttrCounts = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(
-            rowPaths.map((p) => [p, get(fieldAttributeCount(p))]),
-          ),
-        ),
-      [rowPaths],
-    ),
-  );
 
   // ---- Actions ----
 
@@ -497,82 +324,14 @@ const SchemaOverview = () => {
 
   // ---- Render ----
 
-  const buildItem = useCallback(
-    (row: RowData, draggable: boolean) => {
-      const type = rowTypes[row.path];
-      const attrCount = rowAttrCounts[row.path];
-      const actionable = !row.system && !row.unsupported;
-      const canOpen = row.setUp && actionable;
-      const hidden = row.tier === "hidden";
-      // Checkboxes drive the footer's Active ↔ Hidden move; only custom
-      // schemas hide, and protected fields can never be hidden.
-      const canSelect =
-        docMode && actionable && (hidden || !PROTECTED_PATHS.has(row.path));
-      return {
-        id: row.path,
-        data: {
-          canSelect,
-          canDrag: draggable,
-          "data-cy": `field-row-${row.path}`,
-          primaryContent: (
-            <span style={styles.fieldName} title={row.path}>
-              {row.path}
-            </span>
-          ),
-          secondaryContent: (
-            <SecondaryText
-              fieldType={type ? String(type) : ""}
-              attrCount={attrCount}
-              isSystemReadOnly={row.system}
-            />
-          ),
-          actions: (
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
-            >
-              {row.unsupported ? <Pill size={Size.Md}>Unsupported</Pill> : null}
-              {row.system ? <Pill size={Size.Md}>System</Pill> : null}
-              {canOpen ? (
-                <Tooltip
-                  content={<Text>Configure label schema</Text>}
-                  anchor={Anchor.Bottom}
-                  portal
-                >
-                  <Button
-                    variant={Variant.Icon}
-                    borderless
-                    data-cy="edit"
-                    onClick={() => setCurrentField(row.path)}
-                  >
-                    <Icon name={IconName.Edit} size={Size.Md} />
-                  </Button>
-                </Tooltip>
-              ) : null}
-              {actionable && !hidden && !row.setUp ? (
-                <Tooltip
-                  content={
-                    <Text>Scan the field to set it up for annotation</Text>
-                  }
-                  anchor={Anchor.Bottom}
-                  portal
-                >
-                  <Button
-                    data-cy="scan"
-                    size={Size.Sm}
-                    variant={Variant.Secondary}
-                    onClick={() => setUpField(row)}
-                  >
-                    Setup
-                  </Button>
-                </Tooltip>
-              ) : null}
-            </span>
-          ),
-        } as ListItemProps,
-      };
-    },
-    [rowTypes, rowAttrCounts, docMode, styles, setCurrentField, setUpField],
-  );
+  const buildItem = useFieldRowItem({
+    rowTypes,
+    rowAttrCounts,
+    docMode,
+    styles,
+    setCurrentField,
+    setUpField,
+  });
 
   // Drag-reorder of set-up fields (dataset default, unfiltered view):
   // the stored order drives the Annotate sidebar.
@@ -640,136 +399,22 @@ const SchemaOverview = () => {
   return (
     <div>
       <div style={styles.bar}>
-        {naming === "delete" ? (
-          // Deleting is one click away in the menu and has no undo; stages
-          // referencing the doc fall back to the default schema.
-          <>
-            <Text data-cy="schema-delete-confirm">
-              Delete schema &ldquo;{doc?.name}&rdquo;? Workflow stages that
-              reference it fall back to the default schema.
-            </Text>
-            <Button
-              size={Size.Sm}
-              variant={Variant.Danger}
-              data-cy="schema-delete-confirm-button"
-              onClick={() => deleteSchema()}
-            >
-              Delete
-            </Button>
-            <Button
-              size={Size.Sm}
-              variant={Variant.Secondary}
-              onClick={cancelNaming}
-            >
-              Cancel
-            </Button>
-          </>
-        ) : naming ? (
-          <>
-            <Input
-              size={Size.Sm}
-              autoFocus
-              data-cy="schema-name-input"
-              placeholder={
-                naming === "create" ? "New schema name…" : "Rename schema…"
-              }
-              value={nameValue}
-              onChange={(e) => setNameValue(e.target.value)}
-              onFocus={(e) => e.target.select()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitName();
-                if (e.key === "Escape") cancelNaming();
-              }}
-              style={{ minWidth: 220 }}
-            />
-            <Button
-              size={Size.Sm}
-              variant={Variant.Primary}
-              onClick={submitName}
-            >
-              Save
-            </Button>
-            <Button
-              size={Size.Sm}
-              variant={Variant.Secondary}
-              onClick={cancelNaming}
-            >
-              Cancel
-            </Button>
-          </>
-        ) : docsAvailable ? (
-          <>
-            <Select
-              exclusive
-              portal
-              data-cy="schema-select"
-              aria-label="Schema"
-              value={selectedId ?? DEFAULT_SCHEMA_OPTION}
-              options={[
-                {
-                  id: DEFAULT_SCHEMA_OPTION,
-                  data: { label: "Default schema (all fields)" },
-                },
-                ...docs.map((d) => ({ id: d.id, data: { label: d.name } })),
-              ]}
-              onChange={(id) => {
-                if (typeof id === "string") {
-                  selectSchema(id === DEFAULT_SCHEMA_OPTION ? "" : id);
-                }
-              }}
-              style={{ width: 260 }}
-            />
-            <Dropdown
-              anchor={DropdownAnchor.BottomEnd}
-              trigger={
-                <Button
-                  variant={Variant.Icon}
-                  borderless
-                  aria-label="Schema actions"
-                  data-cy="schema-actions-menu"
-                >
-                  <Icon name={IconName.MoreHorizontal} size={Size.Md} />
-                </Button>
-              }
-            >
-              <MenuIconTextItem
-                data-cy="schema-action-new"
-                icon={<AddIcon size={Size.Sm} />}
-                text="New schema"
-                onClick={() => {
-                  setNameValue("");
-                  setNaming("create");
-                }}
-              />
-              {docMode ? (
-                <MenuIconTextItem
-                  data-cy="schema-action-rename"
-                  icon={<EditIcon size={Size.Sm} />}
-                  text="Rename"
-                  onClick={() => {
-                    setNameValue(doc?.name ?? "");
-                    setNaming("rename");
-                  }}
-                />
-              ) : null}
-              <MenuIconTextItem
-                data-cy="schema-action-duplicate"
-                icon={<ContentCopyIcon size={Size.Sm} />}
-                text="Duplicate"
-                onClick={() => duplicateSchema()}
-              />
-              {docMode ? (
-                <MenuIconTextItem
-                  data-cy="schema-action-delete"
-                  icon={<DeleteIcon size={Size.Sm} />}
-                  text="Delete schema"
-                  destructive
-                  onClick={() => setNaming("delete")}
-                />
-              ) : null}
-            </Dropdown>
-          </>
-        ) : null}
+        <SchemaPickerBar
+          naming={naming}
+          nameValue={nameValue}
+          docName={doc?.name}
+          docMode={docMode}
+          docsAvailable={docsAvailable}
+          docs={docs}
+          selectedId={selectedId}
+          setNameValue={setNameValue}
+          setNaming={setNaming}
+          submitName={submitName}
+          cancelNaming={cancelNaming}
+          selectSchema={selectSchema}
+          duplicateSchema={duplicateSchema}
+          deleteSchema={deleteSchema}
+        />
         <div style={{ flex: 1 }} />
         <ToggleSwitch
           size={Size.Md}
@@ -819,152 +464,33 @@ const SchemaOverview = () => {
               <Spinner size={Size.Lg} />
             </div>
           ) : (
-            <>
-              <GUISectionHeader>
-                {docMode ? (
-                  <SelectAllCheckbox
-                    ids={[...scannedItems, ...restItems]
-                      .filter((i) => i.data.canSelect)
-                      .map((i) => i.id)}
-                    selected={selectedActive}
-                    onChange={setActiveSelection}
-                    label="Select all active fields"
-                    data-cy="select-all-active-fields"
-                  />
-                ) : null}
-                <SectionTitle>Active fields</SectionTitle>
-                <InfoTip text="Fields available in the Explore and Annotate sidebars. Set-up fields are annotatable; unscanned fields are explore-only until you set them up." />
-                <Pill size={Size.Md}>{activeCount}</Pill>
-              </GUISectionHeader>
-              {activeCount ? (
-                <div onMouseDownCapture={activeRange.onMouseDownCapture}>
-                  {scannedItems.length ? (
-                    <SelectableList>
-                      <RichList
-                        data-cy="active-fields"
-                        listItems={scannedItems}
-                        draggable={canReorder}
-                        onOrderChange={handleOrderChange}
-                        onSelected={onActiveSelected}
-                        selected={selectedActiveList}
-                      />
-                    </SelectableList>
-                  ) : null}
-                  {restItems.length ? (
-                    // Same spacing between the two lists as between
-                    // their rows, so the section reads as one list.
-                    <SelectableList
-                      style={{
-                        marginTop: scannedItems.length ? "1rem" : 0,
-                      }}
-                    >
-                      <RichList
-                        data-cy="inactive-fields"
-                        listItems={restItems}
-                        draggable={false}
-                        onSelected={onActiveSelected}
-                        selected={selectedActiveList}
-                      />
-                    </SelectableList>
-                  ) : null}
-                </div>
-              ) : (
-                <div style={styles.emptyText}>No active fields.</div>
-              )}
-
-              <>
-                <GUISectionHeader>
-                  {docMode ? (
-                    <SelectAllCheckbox
-                      ids={hiddenItems
-                        .filter((i) => i.data.canSelect)
-                        .map((i) => i.id)}
-                      selected={selectedHidden}
-                      onChange={setHiddenSelection}
-                      label="Select all hidden fields"
-                      data-cy="select-all-hidden-fields"
-                    />
-                  ) : null}
-                  <CollapsibleHeader
-                    onClick={() => setHiddenExpanded((v) => !v)}
-                    style={{ padding: 0, flex: "none" }}
-                    data-cy="schema-group-Hidden"
-                  >
-                    <SectionTitle>Hidden fields</SectionTitle>
-                    <Icon
-                      name={
-                        hiddenExpanded
-                          ? IconName.ChevronTop
-                          : IconName.ChevronBottom
-                      }
-                      size={Size.Md}
-                    />
-                  </CollapsibleHeader>
-                  <InfoTip text="Hidden fields never reach anyone viewing through this schema — not the grid, the sidebars, or the sample data." />
-                  <Pill size={Size.Md}>{sections.hidden.length}</Pill>
-                </GUISectionHeader>
-                {hiddenExpanded ? (
-                  hiddenItems.length ? (
-                    <SelectableList
-                      onMouseDownCapture={hiddenRange.onMouseDownCapture}
-                    >
-                      <RichList
-                        data-cy="hidden-fields"
-                        listItems={hiddenItems}
-                        draggable={false}
-                        onSelected={onHiddenSelected}
-                        selected={selectedHiddenList}
-                      />
-                    </SelectableList>
-                  ) : (
-                    <div style={styles.emptyText}>
-                      {docMode
-                        ? "No hidden fields. Select active fields and move them here to hide them in this schema."
-                        : "The default schema shows every field. To hide fields, create a custom schema and edit it there."}
-                    </div>
-                  )
-                ) : null}
-              </>
-            </>
+            <FieldSections
+              docMode={docMode}
+              styles={styles}
+              scannedItems={scannedItems}
+              restItems={restItems}
+              hiddenItems={hiddenItems}
+              activeCount={activeCount}
+              hiddenCount={sections.hidden.length}
+              canReorder={canReorder}
+              handleOrderChange={handleOrderChange}
+              selectedActive={selectedActive}
+              selectedHidden={selectedHidden}
+              selectedActiveList={selectedActiveList}
+              selectedHiddenList={selectedHiddenList}
+              setActiveSelection={setActiveSelection}
+              setHiddenSelection={setHiddenSelection}
+              onActiveSelected={onActiveSelected}
+              onHiddenSelected={onHiddenSelected}
+              activeRange={activeRange}
+              hiddenRange={hiddenRange}
+              hiddenExpanded={hiddenExpanded}
+              setHiddenExpanded={setHiddenExpanded}
+            />
           )}
         </>
       )}
     </div>
-  );
-};
-
-/**
- * JSON view: the selected DOC's stored shape (label_schema +
- * visibility) in custom-schema mode; the dataset envelope otherwise.
- * Read-only.
- */
-const OverviewJSON = () => {
-  const { currentJson } = useFullSchemaEditor();
-  const managerDoc = useAtomValue(loadedSchemaDoc);
-  const docJson = managerDoc
-    ? JSON.stringify(
-        {
-          name: managerDoc.name,
-          label_schema: managerDoc.label_schema,
-          visibility: managerDoc.visibility,
-        },
-        null,
-        2,
-      )
-    : null;
-
-  // Explicit height: the Code editor sizes to its container, and an
-  // auto-height container collapses it to nothing.
-  return (
-    <ContentArea className={scrollable} style={{ height: "60vh" }}>
-      <Code
-        value={docJson ?? currentJson}
-        language="json"
-        height="100%"
-        width="100%"
-        readOnly
-      />
-    </ContentArea>
   );
 };
 
