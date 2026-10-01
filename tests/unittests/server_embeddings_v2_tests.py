@@ -98,6 +98,41 @@ def _make_patches_run():
     return dataset, points
 
 
+def _make_grouped_run():
+    """A grouped dataset whose run covers only its non-default slice.
+
+    Mirrors ``quickstart-groups``: an image default slice and a point cloud
+    slice. Each group's two samples carry opposite ``cluster`` values, so a
+    point matched against its default-slice sibling gets the wrong answer.
+    """
+    dataset = fo.Dataset()
+    dataset.add_group_field("group", default="CAM_FRONT")
+
+    samples = []
+    for i in range(6):
+        group = fo.Group()
+        for slice_name, ext, cluster in (
+            ("CAM_FRONT", "png", f"c{i % 2}"),
+            ("LIDAR_TOP", "pcd", f"c{(i + 1) % 2}"),
+        ):
+            samples.append(
+                fo.Sample(
+                    filepath=f"/tmp/{slice_name}{i}.{ext}",
+                    group=group.element(slice_name),
+                    cluster=cluster,
+                    ground_truth=fo.Detections(
+                        detections=[fo.Detection(label=cluster)]
+                    ),
+                )
+            )
+
+    dataset.add_samples(samples)
+    lidar = dataset.select_group_slices("LIDAR_TOP")
+    points = np.random.default_rng(51).normal(size=(len(lidar), 2))
+    fob.compute_visualization(lidar, points=points, brain_key="viz_lidar")
+    return dataset, lidar
+
+
 class ServerEmbeddingsV2Tests(unittest.TestCase):
     @drop_datasets
     def test_run_info(self):
@@ -407,6 +442,82 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         run_ids = np.array([str(_id) for _id in results.sample_ids])
         self.assertEqual(set(run_ids[visible]), view_ids)
         self.assertEqual(set(run_ids[match]), set(selection))
+
+    @drop_datasets
+    def test_color_grouped_non_default_slice(self):
+        # A grouped dataset's values cover only its default slice. A run
+        # on another slice must still resolve every point's value
+        dataset, lidar = _make_grouped_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_lidar"}
+
+        _, n, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "cluster"})
+        )
+        self.assertEqual(n, len(lidar))
+        self.assertEqual(sum(c["count"] for c in meta["classes"]), n)
+
+        indices = np.frombuffer(column, dtype="<u2")
+        labels = [meta["classes"][i]["label"] for i in indices]
+        self.assertEqual(labels, lidar.values("cluster"))
+
+    @drop_datasets
+    def test_color_grouped_non_default_slice_patches(self):
+        dataset, lidar = _make_grouped_run()
+        points = np.zeros((lidar.count("ground_truth.detections"), 2))
+        fob.compute_visualization(
+            lidar,
+            patches_field="ground_truth",
+            points=points,
+            brain_key="viz_lidar_patches",
+        )
+        base = {"datasetName": dataset.name, "brainKey": "viz_lidar_patches"}
+
+        _, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(
+                None, {**base, "field": "ground_truth.detections.label"}
+            )
+        )
+        indices = np.frombuffer(column, dtype="<u2")
+        labels = [meta["classes"][i]["label"] for i in indices]
+        self.assertEqual(
+            labels,
+            lidar.values("ground_truth.detections.label", unwind=True),
+        )
+
+    @drop_datasets
+    def test_masks_grouped_non_default_slice(self):
+        # Filters on a grouped view match its default slice only. Each
+        # point must be matched against its own sample, not its sibling,
+        # which carries the opposite cluster
+        dataset, lidar = _make_grouped_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_lidar"}
+        filters = {
+            "cluster": {
+                "values": ["c0"],
+                "exclude": False,
+                "isMatching": False,
+            }
+        }
+        expected = np.array(lidar.values("cluster")) == "c0"
+
+        # The App sends no slices
+        _, _, n, flags, payload = _parse(
+            v2.EmbeddingsV2Masks._post_sync(None, {**base, "filters": filters})
+        )
+        self.assertEqual(flags, v2.FLAG_ALL_VISIBLE)
+        visible, match = _unpack_masks(payload, n)
+        self.assertTrue(visible.all())
+        np.testing.assert_array_equal(match, expected)
+
+        # View stages that already flatten the slice give the same answer
+        _, _, n, _, payload = _parse(
+            v2.EmbeddingsV2Masks._post_sync(
+                None,
+                {**base, "view": lidar._serialize(), "filters": filters},
+            )
+        )
+        _, match = _unpack_masks(payload, n)
+        np.testing.assert_array_equal(match, expected)
 
     @drop_datasets
     def test_lasso_polygon(self):

@@ -640,13 +640,19 @@ def _color_data(dataset, results, field_path):
     patches_field = results.config.patches_field
     is_patches = patches_field is not None
 
+    # A grouped dataset's values cover only its default slice, but a run
+    # can be computed on any slice
+    samples = dataset
+    if dataset.media_type == fom.GROUP:
+        samples = dataset.select_group_slices(_allow_mixed=True)
+
     ids = results.label_ids if is_patches else results.sample_ids
-    values = dataset._get_values_by_id(
+    values = samples._get_values_by_id(
         field_path, _as_list(ids), link_field=patches_field
     )
 
     exact = True
-    field = dataset.get_field(field_path)
+    field = samples.get_field(field_path)
     if isinstance(field, fof.ListField):
         field = field.field
 
@@ -696,12 +702,8 @@ def _match_mask(
 
     matched_ids = None
     if filters or extended_stages:
-        extended_view = fosv.get_view(
-            dataset_name,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended_stages,
-            sample_filter=get_sample_filter(slices),
+        extended_view = _match_view(
+            dataset_name, stages, filters, slices, extended_stages
         )
         is_patches_view = extended_view._is_patches
 
@@ -730,6 +732,35 @@ def _match_mask(
     return np.fromiter(
         (str(_id) in matched_ids for _id in _as_list(ids)), bool, count=n
     )
+
+
+def _match_view(dataset_name, stages, filters, slices, extended_stages):
+    """The filtered/extended view that run points are matched against.
+
+    A grouped view evaluates filters against its default slice only, but a
+    run can be computed on any slice. When the view is still grouped, it is
+    rebuilt flattened across its slices so each point is matched against
+    its own sample. The flattening must precede the filters: a flat
+    ``select_group_slices()`` emits unfiltered samples.
+    """
+
+    def build(sample_filter):
+        return fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            # get_view() pops SortBy out of the extended stages
+            extended_stages=(
+                dict(extended_stages) if extended_stages else None
+            ),
+            sample_filter=sample_filter,
+        )
+
+    view = build(get_sample_filter(slices))
+    if view.media_type != fom.GROUP:
+        return view
+
+    return build(get_sample_filter(view.group_slices))
 
 
 def _hover_media(sample):
