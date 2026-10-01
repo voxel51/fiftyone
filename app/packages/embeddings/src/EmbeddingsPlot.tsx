@@ -1,4 +1,4 @@
-import { Loading, useTheme } from "@fiftyone/components";
+import { Loading, useAppliedThemeMode, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
@@ -18,6 +18,9 @@ export function EmbeddingsPlot({
   plotSelection,
 }) {
   const theme = useTheme();
+  // Re-render once the `.dark` class has flipped so the resolved legend
+  // colours below follow the theme rather than lagging one toggle behind
+  useAppliedThemeMode();
   const getColor = useRecoilValue(fos.colorMap);
   const fields = useRecoilValue(fos.colorScheme).fields;
   const colorscheme = useRecoilValue(fos.colorScheme);

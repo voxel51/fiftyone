@@ -39,7 +39,7 @@ const PerfContainer = styled.div`
   position: fixed;
   bottom: 0;
   right: 2em;
-  background: ${cssVar.color.tooltip.bg};
+  background: ${cssVar.color.bg["card-elevated"]};
   opacity: 0.6;
   border-radius: 8px;
   padding: 16px 24px 12px 24px;

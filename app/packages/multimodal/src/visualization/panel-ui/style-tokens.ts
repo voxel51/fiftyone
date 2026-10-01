@@ -14,14 +14,17 @@ export const VISUALIZATION_PANEL_BACKGROUND_COLOR = cssVar.color.bg.popover;
 export const VISUALIZATION_STATUS_TEXT_COLOR = cssVar.color.text.secondary;
 
 /**
- * Foreground color for compact visualization HUD text.
- */
-export const VISUALIZATION_HUD_TEXT_COLOR = cssVar.color.text.primary;
-
-/**
- * Background for compact visualization HUD overlays.
+ * Background for compact visualization HUD overlays. `tooltip.bg` is dark in
+ * both themes (the HUDs float over media and 3D scenes), so the text that
+ * sits on it must be `tooltip.text`, not a theme-following text token.
  */
 export const VISUALIZATION_HUD_BACKGROUND_COLOR = cssVar.color.tooltip.bg;
+
+/**
+ * Foreground color for compact visualization HUD text. Fixed light, to pair
+ * with the fixed-dark `VISUALIZATION_HUD_BACKGROUND_COLOR`.
+ */
+export const VISUALIZATION_HUD_TEXT_COLOR = cssVar.color.tooltip.text;
 
 /**
  * Subtle border color for compact visualization HUD overlays.

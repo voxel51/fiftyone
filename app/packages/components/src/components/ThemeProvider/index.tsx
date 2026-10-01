@@ -2,7 +2,10 @@ import * as fos from "@fiftyone/state";
 import {
   type CssVarsThemeOptions,
   Experimental_CssVarsProvider as CssVarsProvider,
+  darken,
+  emphasize,
   experimental_extendTheme as extendMuiTheme,
+  lighten,
 } from "@mui/material/styles";
 import { cssVar } from "@voxel51/voodo";
 import { colors } from "@voxel51/voodo/tokens";
@@ -64,7 +67,56 @@ const palette = (mode: Mode) => {
     dangerPressed: channel(t.interactive["danger-pressed"]),
     onFill: "255 255 255",
   };
+  // `extendTheme` derives these by lightening/darkening `primary.main`,
+  // `secondary.main`, `error.light` and `background.default`. Its helpers
+  // return a `var()` input unchanged, which would leave an error Alert's text
+  // the same colour as its background and a LinearProgress track identical
+  // to its bar. The same formulas MUI uses, applied to the token's hex value.
+  // info/success/warning are MUI's own literal palettes and derive fine.
+  const brandHex = colors.common.brand.primary;
+  const secondaryHex = t.text.secondary;
+  const errorHex = t.interactive["danger-default"];
+  const errorLightHex = t.interactive["danger-hover"];
+  const surfaceHex = t.bg.background;
+  const isLight = mode === "light";
+  const derived = {
+    Alert: {
+      errorColor: isLight
+        ? darken(errorLightHex, 0.6)
+        : lighten(errorLightHex, 0.6),
+      errorStandardBg: isLight
+        ? lighten(errorLightHex, 0.9)
+        : darken(errorLightHex, 0.9),
+      errorFilledColor: ON_FILL,
+    },
+    LinearProgress: {
+      primaryBg: lighten(brandHex, 0.62),
+      secondaryBg: lighten(secondaryHex, 0.62),
+      errorBg: lighten(errorHex, 0.62),
+    },
+    Slider: {
+      primaryTrack: lighten(brandHex, 0.62),
+      secondaryTrack: lighten(secondaryHex, 0.62),
+      errorTrack: lighten(errorHex, 0.62),
+    },
+    Switch: {
+      primaryDisabledColor: lighten(brandHex, 0.62),
+      secondaryDisabledColor: lighten(secondaryHex, 0.62),
+      errorDisabledColor: lighten(errorHex, 0.62),
+    },
+    SnackbarContent: {
+      bg: emphasize(surfaceHex, 0.8),
+      color: c.text.inverse,
+    },
+    SpeedDialAction: {
+      fabHoverBg: emphasize(surfaceHex, 0.15),
+    },
+    TableCell: {
+      border: c.border.default,
+    },
+  };
   return {
+    ...derived,
     themeMode: mode,
     action: {
       active: c.icon.default,

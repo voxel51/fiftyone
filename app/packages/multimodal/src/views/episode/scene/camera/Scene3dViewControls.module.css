@@ -6,7 +6,7 @@
 
 .button {
   align-items: center;
-  background: var(--color-content-tooltip-bg);
+  background: var(--color-content-bg-card);
   border: 1px solid var(--color-content-border-subtle);
   border-radius: 4px;
   color: var(--color-content-text-primary);

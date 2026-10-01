@@ -9,6 +9,7 @@
 import { useEffect, useRef } from "react";
 import "./panel.css";
 import { cssVar } from "@voxel51/voodo";
+import { useAppliedThemeMode } from "@fiftyone/components";
 import { resolveCssColor } from "@fiftyone/utilities";
 
 // Scatter-class colors and cluster layout for the synthetic scene. Chart
@@ -43,6 +44,9 @@ const makeRand = (seed: number) => {
 
 export function TeaserCloud() {
   const hostRef = useRef<HTMLDivElement>(null);
+  // The `viz-chart` hues differ per theme and are baked into the point
+  // colours below, so the cloud is rebuilt once the `.dark` class has flipped
+  const themeMode = useAppliedThemeMode();
 
   useEffect(() => {
     const host = hostRef.current;
@@ -150,7 +154,8 @@ export function TeaserCloud() {
       disposed = true;
       cleanup?.();
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the rebuild signal
+  }, [themeMode]);
 
   return <div ref={hostRef} className="emb-teaser" aria-hidden />;
 }

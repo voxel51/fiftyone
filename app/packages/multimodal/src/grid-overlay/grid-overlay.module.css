@@ -37,7 +37,7 @@
   font-size: 9px;
   line-height: 12px;
   white-space: nowrap;
-  color: var(--color-content-text-primary);
+  color: var(--color-content-tooltip-text);
 }
 
 .chip {
@@ -57,7 +57,7 @@
 
 .overflow {
   flex: 0 0 auto;
-  color: var(--color-content-text-secondary);
+  color: color-mix(in srgb, var(--color-content-tooltip-text) 60%, transparent);
 }
 
 /*
@@ -95,7 +95,7 @@
   border-radius: 3px;
   background: color-mix(
     in srgb,
-    var(--color-content-text-primary) 13%,
+    var(--color-content-tooltip-text) 13%,
     transparent
   );
 }
@@ -115,7 +115,7 @@
   top: -2px;
   bottom: -2px;
   width: 1px;
-  background: var(--color-content-text-primary);
+  background: var(--color-content-tooltip-text);
   pointer-events: none;
 }
 
@@ -132,7 +132,7 @@
   width: 1px;
   background: color-mix(
     in srgb,
-    var(--color-content-text-primary) 38%,
+    var(--color-content-tooltip-text) 38%,
     transparent
   );
   pointer-events: none;

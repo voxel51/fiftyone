@@ -34,13 +34,17 @@ const TipsHeader = styled.div`
   margin-bottom: 8px;
 `;
 
+// Dark glass in both themes, so the copy on it is fixed-light tooltip ink.
+const ON_SCRIM = cssVar.color.tooltip.text;
+const ON_SCRIM_MUTED = `color-mix(in srgb, ${ON_SCRIM} 70%, transparent)`;
+
 const TipsTitle = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 14px;
   font-weight: 600;
-  color: ${cssVar.color.text.primary};
+  color: ${ON_SCRIM};
 `;
 
 const TipsContent = styled.div`
@@ -55,7 +59,7 @@ const TipsList = styled.ul`
 
 const TipsListItem = styled.li`
   margin-bottom: 4px;
-  color: ${cssVar.color.text.secondary};
+  color: ${ON_SCRIM_MUTED};
   list-style-type: none;
 `;
 
@@ -72,7 +76,7 @@ const KeyboardShortcut = styled.span`
 `;
 
 const HighlightText = styled.span`
-  color: ${cssVar.color.text.primary};
+  color: ${ON_SCRIM};
   font-weight: 500;
 `;
 
@@ -211,7 +215,7 @@ export const AnnotationTips = ({
   return (
     <TipsContainer
       $border={theme.primary.main}
-      $text={cssVar.color.text.primary}
+      $text={ON_SCRIM}
       $isMultiviewOn={isMultiviewOn}
     >
       <TipsHeader>

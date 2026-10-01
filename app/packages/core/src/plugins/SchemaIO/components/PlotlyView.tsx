@@ -1,4 +1,7 @@
-import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import {
+  useAppliedThemeMode,
+  useTheme,
+} from "@fiftyone/components/src/components/ThemeProvider";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
@@ -40,6 +43,9 @@ export default function PlotlyView(props: ViewPropsType) {
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
+  // The mode whose variables are actually applied; `theme` alone changes
+  // before the `.dark` class flips, so resolving on it reads stale colours
+  const themeMode = useAppliedThemeMode();
   const panelId = usePanelId();
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
@@ -195,7 +201,8 @@ export default function PlotlyView(props: ViewPropsType) {
         font: { color: text.secondary },
       },
     };
-  }, [theme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the re-resolve signal
+  }, [theme, themeMode]);
 
   const configDefaults = useMemo(() => {
     return {
@@ -216,7 +223,8 @@ export default function PlotlyView(props: ViewPropsType) {
     return resolveCssColorsDeep(
       mergeData(data || schema?.view?.data, dataDefaults),
     );
-  }, [data, dataDefaults, schema?.view?.data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the re-resolve signal
+  }, [data, dataDefaults, schema?.view?.data, themeMode]);
 
   useEffect(() => {
     setTimeout(() => {
