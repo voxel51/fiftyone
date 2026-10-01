@@ -4197,6 +4197,78 @@ class SpectralWasteSegmentationDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class DreamTacDataset(FiftyOneDataset):
+    """Contact-rich Franka manipulation with vision-based tactile
+    fingertips, as native ``.mcap`` episodes.
+
+    A Franka Emika Panda works through contact-rich tabletop tasks while
+    four cameras record on one 20 fps clock: a third-person view, a wrist
+    view, and two Xense Photon vision-based tactile sensors on the gripper
+    fingertips. Each fingertip is a gel pad printed with a marker grid that
+    deforms where the object presses, so the moment of contact is visible
+    rather than inferred from a force reading.
+
+    The 703 trajectories span 12 tasks, from picking up a baguette or a USB
+    plug to wiping a whiteboard and cutting a banana. Each episode also
+    carries the end-effector pose, the gripper opening and the task
+    instruction.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("dreamtac")
+
+        # The trajectories that moved the furthest
+        view = dataset.sort_by("end_effector_path_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        2.36 GB
+    """
+
+    _REPO_ID = "Voxel51/DreamTac"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "65a1113f55a12271cd53bd10f745238ff4dedb0d"
+
+    @property
+    def name(self):
+        return "dreamtac"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "tactile", "manipulation", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -4208,6 +4280,7 @@ AVAILABLE_DATASETS = {
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
     "construction-site-traversability": ConstructionSiteTraversabilityDataset,
+    "dreamtac": DreamTacDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
