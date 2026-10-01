@@ -262,7 +262,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
           per clip: the provider above is keyed on the MODE, so two clips of
           one video (same fps) share a store. */}
       <ClipSupportRange
-        key={sample.sample.id}
+        key={sample.sample._id}
         support={support}
         frameRate={frameRate}
       >

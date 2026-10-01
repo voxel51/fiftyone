@@ -320,7 +320,9 @@ export class SegmentationOverlay
       // An 8-bit table covers every target the mask could hold, so it
       // outlives the frame; a 16-bit one is built for the targets present.
       const reusableLut =
-        samePalette && decoded.indices instanceof Uint8Array
+        samePalette &&
+        decoded.indices instanceof Uint8Array &&
+        previous.indices instanceof Uint8Array
           ? previous.lut
           : undefined;
 
