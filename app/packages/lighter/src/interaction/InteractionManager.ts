@@ -1553,6 +1553,7 @@ export class InteractionManager {
 
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
+      handler.onHoverMove?.(point, event);
       this.canvas.style.cursor =
         handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
         this.canvas.style.cursor;

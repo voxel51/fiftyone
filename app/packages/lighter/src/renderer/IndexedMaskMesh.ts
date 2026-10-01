@@ -232,6 +232,11 @@ export class IndexedMaskMesh extends PIXI.Mesh<
   }
 
   override destroy(options?: PIXI.DestroyOptions): void {
+    // `Mesh.destroy` only drops its references to the geometry and shader;
+    // both are owned here, so release them, keeping the program that
+    // `GlProgram.from` shares across instances.
+    const geometry = this.geometry;
+    const shader = this.shader;
     this.#indexSource?.destroy();
     this.#lutSource?.destroy();
     this.#indexSource = undefined;
@@ -239,5 +244,7 @@ export class IndexedMaskMesh extends PIXI.Mesh<
     this.#indices = undefined;
     this.#lut = undefined;
     super.destroy(options);
+    geometry?.destroy(true);
+    shader?.destroy(false);
   }
 }
