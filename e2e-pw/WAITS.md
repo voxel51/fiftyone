@@ -3,6 +3,32 @@
 Every wait names the app event its action causes, then reads the result once.
 CI enforces this with `scripts/check-e2e-waits.py`.
 
+## Why not Playwright's auto-waiting
+
+Playwright's default is to retry: web-first assertions and actionability checks
+poll the page until it looks right or a timeout expires. That passes whenever
+the App ends up in the expected state, however it got there, and fails with
+only a timeout when it doesn't.
+
+- **Retries hide bugs.** A save that repeats forever, a mask that paints only
+  after a second reload, or a video that starts behind a dialog all eventually
+  look right to a poll. A cause-wait followed by one exact read fails on them.
+- **Failures should name their cause.** A timed-out poll says the page never
+  matched. A hung event wait says which event never arrived and which events
+  arrived instead, which points at the code that didn't run.
+- **Timing should not matter.** A polled test passes or fails depending on how
+  fast the machine is. A wait on the event an action causes behaves the same on
+  a laptop and on a loaded CI runner, so a result reproduces.
+- **Specs are written by coding agents.** An agent can't tell a slow page from
+  a broken one by watching it, and given retries and timeouts it tunes them
+  until the test passes. A strict, checkable pattern — name the cause, read
+  once — is a guardrail it can follow and CI can enforce.
+
+The App dispatches an `e2e:` event wherever a spec needs to know a state has
+rendered. That instrumentation is the usual argument for polling, but an agent
+writes the component and its spec together, so the event costs a line in the
+same change. The events also document what each piece of UI considers done.
+
 ## The rule
 
 1. **Cause-wait.** Arm a listener for the event, run the action that causes it,
