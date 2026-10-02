@@ -53,14 +53,29 @@ const GroupsCount = () => {
     fos.count({ path: "_", extended: false, modal: false }),
   );
 
+  const elementsLabel = elementTotal === 1 ? element.singular : element.plural;
+  const groupsLabel = `${total === 1 ? "group" : "groups"}${
+    groupSlice ? " with slice" : ""
+  }`;
+
   return (
     <RightDiv data-cy="entry-counts" data-count-kind="groups">
       <div>
-        (<PathEntryCounts modal={false} path={""} signal="grid-elements" />{" "}
-        {elementTotal === 1 ? element.singular : element.plural}){" "}
-        <PathEntryCounts modal={false} path={"_"} signal="grid-groups" />{" "}
-        {total === 1 ? "group" : "groups"}
-        {groupSlice && " with slice"}
+        (
+        <PathEntryCounts
+          modal={false}
+          path={""}
+          signal="grid-elements"
+          label={elementsLabel}
+        />{" "}
+        {elementsLabel}){" "}
+        <PathEntryCounts
+          modal={false}
+          path={"_"}
+          signal="grid-groups"
+          label={groupsLabel}
+        />{" "}
+        {groupsLabel}
       </div>
     </RightDiv>
   );
@@ -96,15 +111,25 @@ const Count = () => {
     };
   }
 
+  const label = `${
+    isDynamicGroupViewStageActive &&
+    !["sample", "group"].includes(element.singular)
+      ? `group${total === 1 ? "" : "s"} of `
+      : ""
+  }${total === 1 ? element.singular : element.plural}${
+    !queryPerformance && slice ? " with slice" : ""
+  }`;
+
   return (
     <RightDiv data-cy="entry-counts" data-count-kind="elements">
       <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} signal="grid-elements" />{" "}
-        {isDynamicGroupViewStageActive &&
-          !["sample", "group"].includes(element.singular) &&
-          `group${total === 1 ? "" : "s"} of `}
-        {total === 1 ? element.singular : element.plural}
-        {!queryPerformance && slice && " with slice"}
+        <PathEntryCounts
+          modal={false}
+          path={""}
+          signal="grid-elements"
+          label={label}
+        />{" "}
+        {label}
       </div>
     </RightDiv>
   );

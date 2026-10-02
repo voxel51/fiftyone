@@ -87,7 +87,7 @@ test.describe.serial("quickstart-groups", () => {
 
   test.describe("modal", () => {
     test.beforeEach(async ({ modal, grid }) => {
-      await modal.afterSampleLoaded(() => grid.openFirstSample());
+      await modal.afterGroupSampleLoaded(() => grid.openFirstSample());
     });
 
     test('changes slice to "pcd" when 3D viewer is clicked', async ({

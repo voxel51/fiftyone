@@ -8,6 +8,8 @@ interface PathEntryCountsProps {
   modal: boolean;
   /** An e2e name to signal the loaded counts under */
   signal?: string;
+  /** What the counts are shown with, for the signal */
+  label?: string;
 }
 
 const showEntryCounts = selectorFamily<
@@ -35,6 +37,7 @@ export const PathEntryCounts = ({
   modal,
   path,
   signal,
+  label,
 }: PathEntryCountsProps) => {
   const getAtom = useCallback(
     (extended: boolean) => {
@@ -58,6 +61,7 @@ export const PathEntryCounts = ({
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}
       signal={signal}
+      label={label}
     />
   ) : null;
 };

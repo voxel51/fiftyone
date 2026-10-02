@@ -305,10 +305,14 @@ test.describe("MCAP playback", () => {
     await episode.setSamplingRate(2);
 
     // the rear camera shows the same pre-start message from the beginning
-    await episode.seekToUtcTime("2024-01-01 00:09:59.500", 500, () =>
-      episode.seekToFraction(
-        fractionOfLongRecording(long.rearFirstSecond - 0.5),
-      ),
+    await episode.seekToUtcTime(
+      "2024-01-01 00:09:59.500",
+      500,
+      () =>
+        episode.seekToFraction(
+          fractionOfLongRecording(long.rearFirstSecond - 0.5),
+        ),
+      [episode.tileEmptyAt("camera/rear", long.rearFirstSecond - 0.5)],
     );
     await episode.expectTileEmpty("camera/rear", "Starts at 10:00.00");
 
@@ -343,7 +347,7 @@ test.describe("MCAP playback", () => {
         episode.scrubToFraction(
           fractionOfLongRecording(long.rearLastSecond + 0.5),
         ),
-      [episode.tileEmpty("No data at this time")],
+      [episode.tileEmptyAt("camera/rear", long.rearLastSecond + 0.5)],
     );
     await episode.expectTileEmpty("camera/rear", "No data at this time");
   });

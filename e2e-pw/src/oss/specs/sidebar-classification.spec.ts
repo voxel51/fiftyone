@@ -72,7 +72,9 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await eventUtils.after("animation-onRest", () =>
       sidebar.clickFieldDropdown("ground_truth"),
     );
-    await sidebar.applyLabelFromList(["frog"], "show-samples-with-label");
+    await grid.afterEntryCounts(() =>
+      sidebar.applyLabelFromList(["frog"], "show-samples-with-label"),
+    );
 
     await grid.afterEntryCounts(() =>
       grid.afterTilesDrawn(3, () =>

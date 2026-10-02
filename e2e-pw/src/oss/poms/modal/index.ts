@@ -18,6 +18,7 @@ import { ModalVideoControlsPom } from "./video-controls";
 
 const SAMPLE_LOADED = "e2e:looker:canvas-loaded";
 const SAMPLE_ERROR = "e2e:looker:error-shown";
+const SCENE_READY = "e2e:looker3d:scene-ready";
 
 export class ModalPom {
   readonly assert: ModalAsserter;
@@ -165,6 +166,29 @@ export class ModalPom {
       allowErrorInfo ? [SAMPLE_LOADED, SAMPLE_ERROR] : SAMPLE_LOADED,
       action,
       (e) => !(e.detail as { thumbnail: boolean }).thumbnail,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once a group sample's 2D looker has drawn and
+   * its 3D slice's scene is ready; both draw on their own after the modal opens
+   */
+  afterGroupSampleLoaded<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.afterAll(
+      [
+        {
+          events: [SAMPLE_LOADED],
+          predicate: (e) => {
+            const detail = e.detail as {
+              thumbnail: boolean;
+              sampleFilepath?: string;
+            };
+            return !detail.thumbnail && detail.sampleFilepath !== undefined;
+          },
+        },
+        { events: [SCENE_READY], predicate: () => true },
+      ],
+      action,
     );
   }
 

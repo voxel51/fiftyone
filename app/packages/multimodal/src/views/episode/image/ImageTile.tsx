@@ -1109,7 +1109,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           {unsupportedVideoCodecMessage(refusedCodec)}
         </div>
       ) : (
-        <TileEmptyState streams={stream ? [stream] : []} />
+        <TileEmptyState
+          streams={stream ? [stream] : []}
+          title={images.find((s) => s.id === stream)?.label ?? ""}
+        />
       )}
     </>
   );

@@ -77,10 +77,19 @@ export class ColorModalPom {
       await this.getFieldSelector("button-add a new pair").click();
     }
 
+    await this.setPairValue(value, index);
+    await this.setPairColor(color, index);
+  }
+
+  /** Enter the value of pair `index`, which applies it */
+  async setPairValue(value: string, index: number) {
     await this.getFieldSelector(`input-value-${index}`).focus();
     await this.getFieldSelector(`input-value-${index}`).fill(value);
     await this.page.keyboard.press("Enter");
+  }
 
+  /** Enter the color of pair `index`, which applies it */
+  async setPairColor(color: string, index: number) {
     await this.getFieldSelector(`input-color-${index}`).focus();
     await this.getFieldSelector(`input-color-${index}`).clear();
     await this.getFieldSelector(`input-color-${index}`).fill(color);

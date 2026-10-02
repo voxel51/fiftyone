@@ -68,7 +68,9 @@ test.describe.serial("sidebar-filter-visibility", () => {
 
       // selecting a value filters in the default mode, selecting labels
       expect(
-        await grid.afterGridRefreshed(() => sidebar.applyFilter("bottle")),
+        await grid.afterEntryCounts(() =>
+          grid.afterGridRefreshed(() => sidebar.applyFilter("bottle")),
+        ),
       ).toEqual({ "3.png": gt(...BOTTLES) });
       await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
       await grid.assert.isTileCountEqualTo(1);
@@ -117,8 +119,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
     eventUtils,
   }) => {
     expect(
-      await grid.afterGridRefreshed(() =>
-        sidebar.selectFilterMode(LABEL_PATH, "exclude-detections-with-label"),
+      await grid.afterEntryCounts(() =>
+        grid.afterGridRefreshed(() =>
+          sidebar.selectFilterMode(LABEL_PATH, "exclude-detections-with-label"),
+        ),
       ),
     ).toEqual({
       ...GROUND_TRUTH,
@@ -156,6 +160,7 @@ test.describe.serial("sidebar-filter-visibility", () => {
         sidebar.selectFilterMode(LABEL_PATH, "show-samples-with-label"),
       ),
     ).toEqual({ "3.png": GROUND_TRUTH["3.png"] });
+    // the bottle filter already showed these counts, so they do not signal
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
     await grid.assert.isTileCountEqualTo(1);
 
@@ -181,8 +186,10 @@ test.describe.serial("sidebar-filter-visibility", () => {
       Object.entries(GROUND_TRUTH).filter(([file]) => file !== "3.png"),
     );
     expect(
-      await grid.afterGridRefreshed(() =>
-        sidebar.selectFilterMode(LABEL_PATH, "omit-samples-with-label"),
+      await grid.afterEntryCounts(() =>
+        grid.afterGridRefreshed(() =>
+          sidebar.selectFilterMode(LABEL_PATH, "omit-samples-with-label"),
+        ),
       ),
     ).toEqual(withoutBottles);
     await grid.assert.isEntryCountTextEqualTo("4 of 5 samples");

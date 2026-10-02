@@ -88,7 +88,7 @@ test.describe("view bar keyboard", () => {
     await page.keyboard.type("2");
     // Enter commits AND applies the stage; the keyboard lands in the next
     // insert slot's typeahead, where the second stage begins
-    await grid.run(() => skip.finish());
+    await grid.afterEntryCounts(() => grid.run(() => skip.finish()));
     await viewBar.assert.insertTypeaheadIsFocused();
     const limit = await viewBar.typeStage("Limit");
     await limit.assert.isOpen();

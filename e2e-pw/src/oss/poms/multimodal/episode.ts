@@ -195,12 +195,14 @@ export class EpisodePom {
     });
   }
 
-  /** A tile's empty state shows `message` */
-  tileEmpty(message: string | RegExp): EventCondition {
-    return shown("tile-empty", (d) =>
-      typeof message === "string"
-        ? d.message === message
-        : message.test(String(d.message)),
+  /**
+   * The image tile titled `title` has settled an empty state for the playhead
+   * at `second` into the episode
+   */
+  tileEmptyAt(title: string, second: number): EventCondition {
+    return shown(
+      "tile-empty",
+      (d) => d.title === title && d.playheadMs === Math.round(second * 1000),
     );
   }
 

@@ -283,8 +283,14 @@ export class GridPom {
    * `received` after it.
    */
   private async armGridRefresh(): Promise<ArmedEvent> {
-    const unmount = await this.eventUtils.arm("e2e:grid:unmount");
-    const mount = await this.eventUtils.arm("grid-mount");
+    // only the mount that follows the teardown counts; the old grid's own
+    // mount can still be on its way when the action starts
+    let unmounted = false;
+    const unmount = await this.eventUtils.arm("e2e:grid:unmount", () => {
+      unmounted = true;
+      return true;
+    });
+    const mount = await this.eventUtils.arm("grid-mount", () => unmounted);
     return new ArmedEvent(
       Promise.all([unmount.received, mount.received]).then(
         (): void => undefined,
@@ -355,9 +361,9 @@ export class GridPom {
 
   /**
    * Run `action`, which refreshes the grid, and resolve with each new tile's
-   * labels once the remounted grid's tiles have settled and its entry counts
-   * have loaded. Only events after the old grid unmounts count, so neither
-   * the old tiles' draws nor the old counts' renders can satisfy the wait.
+   * labels once the remounted grid's tiles have settled. Only draws after the
+   * old grid unmounts count, so the old tiles' draws cannot satisfy the wait.
+   * Entry counts that change go through {@link afterEntryCounts}
    */
   async afterGridRefreshed(
     action: () => Promise<unknown>,
@@ -365,27 +371,23 @@ export class GridPom {
     const draws = new TileDraws();
     let unmounted = false;
     let tiles: number | null = null;
-    let counted = false;
     await this.eventUtils.after(
-      [GRID_UNMOUNT, GRID_MOUNT, TILE_DRAWN, COUNT_SHOWN],
+      [GRID_UNMOUNT, GRID_MOUNT, TILE_DRAWN],
       action,
       ({ event, detail }) => {
         if (event === GRID_UNMOUNT) {
           unmounted = true;
           tiles = null;
-          counted = false;
           draws.clear();
           return false;
         }
         if (!unmounted) return false;
         if (event === GRID_MOUNT) {
           tiles = (detail as { tiles: number }).tiles;
-        } else if (event === COUNT_SHOWN) {
-          counted ||= (detail as { signal: string }).signal === "grid-elements";
         } else {
           draws.add(detail);
         }
-        return counted && draws.settled(tiles);
+        return draws.settled(tiles);
       },
     );
     return draws.labels();
@@ -462,8 +464,9 @@ export class GridPom {
   }
 
   /**
-   * Run `action` and resolve once the entry counts it reloads have rendered
-   * loaded: the element count, and with `groups` the group count too
+   * Run `action` and resolve once the entry counts it changes have rendered
+   * loaded: the element count, and with `groups` the group count too. The
+   * counts signal only when their text changes, so `action` must change it
    */
   async afterEntryCounts<T>(
     action: () => Promise<T>,
@@ -472,14 +475,10 @@ export class GridPom {
     const pending = new Set(
       kind === "groups" ? ["grid-elements", "grid-groups"] : ["grid-elements"],
     );
-    return this.eventUtils.after(
-      "e2e:components:entry-count-shown",
-      action,
-      (e) => {
-        pending.delete((e.detail as { signal: string }).signal);
-        return pending.size === 0;
-      },
-    );
+    return this.eventUtils.after(COUNT_SHOWN, action, (e) => {
+      pending.delete((e.detail as { signal: string }).signal);
+      return pending.size === 0;
+    });
   }
 
   async run<T>(wrap: () => Promise<T>): Promise<T> {

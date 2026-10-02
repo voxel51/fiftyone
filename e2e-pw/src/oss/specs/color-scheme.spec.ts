@@ -5,7 +5,10 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createQuickstartDataset } from "./quickstart-data";
+import {
+  QUICKSTART_GROUND_TRUTH,
+  createQuickstartDataset,
+} from "./quickstart-data";
 
 const test = base.extend<{
   sidebar: SidebarPom;
@@ -72,26 +75,22 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     colorModal,
     page,
     grid,
-    eventUtils,
     sidebar,
   }) => {
-    // turn on the sample tag bubble
-    await sidebar.clickFieldCheckbox("tags");
-    // mount eventListener
-    await eventUtils.after("e2e:looker:tags-rendered", async () => {
-      // open color modal and modify color in sample tags field and ground_truth
-      await gridActionsRow.toggleColorSettings();
+    // each change redraws every tile's tags; waiting out each one leaves the
+    // custom color's redraw as the only one the last wait can see
+    const tiles = QUICKSTART_GROUND_TRUTH.map((_, i) => `${i}.png`);
+    const afterTags = (action: () => Promise<void>) =>
+      grid.afterTagsRenderedNamed(tiles, action);
 
-      await colorModal.selectActiveField("sample tags");
-      await colorModal.changeColorMode("value");
-
-      await colorModal.useCustomValueColors();
-      await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-      await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-      await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-
-      await colorModal.closeColorModal();
-    });
+    await afterTags(() => sidebar.clickFieldCheckbox("tags"));
+    await gridActionsRow.toggleColorSettings();
+    await colorModal.selectActiveField("sample tags");
+    await afterTags(() => colorModal.changeColorMode("value"));
+    await afterTags(() => colorModal.useCustomValueColors());
+    await afterTags(() => colorModal.setPairValue("validation", 0));
+    await afterTags(() => colorModal.setPairColor("#9ACD32", 0)); // yellow green
+    await colorModal.closeColorModal();
     const tagBubble = page.getByTestId("tag-validation").first();
 
     // verify validation tag has yellow green as background color

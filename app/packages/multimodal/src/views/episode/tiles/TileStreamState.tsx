@@ -126,7 +126,9 @@ export const TileStreamNoticeStrip: React.FC<{
  */
 export const TileEmptyState: React.FC<{
   streams: readonly string[];
-}> = ({ streams }) => {
+  /** The tile's title, for the e2e signal */
+  title?: string;
+}> = ({ streams, title = "" }) => {
   const stableStreams = useStableStreams(streams);
 
   if (stableStreams.length === 0) {
@@ -134,7 +136,11 @@ export const TileEmptyState: React.FC<{
       <div className={styles.loading} data-testid="episode-tile-empty-state">
         <ShownSignal
           event="e2e:multimodal:tile-empty"
-          detail={{ message: "No source available" }}
+          detail={{
+            message: "No source available",
+            title,
+            playheadMs: null,
+          }}
         />
         <span className={clsx(styles.emptyText, styles.emptyTextError)}>
           No source available
@@ -143,17 +149,19 @@ export const TileEmptyState: React.FC<{
     );
   }
 
-  return <TileEmptyStateForStreams streams={stableStreams} />;
+  return <TileEmptyStateForStreams streams={stableStreams} title={title} />;
 };
 
 const TileEmptyStateForStreams: React.FC<{
   streams: readonly string[];
-}> = ({ streams }) => {
+  title: string;
+}> = ({ streams, title }) => {
   const statuses = useStreamStatuses(streams);
   const startTimes = useStreamStartTimes(streams);
   const store = usePlaybackStore();
+  const playheadSec = getPlayhead(store);
   const model = buildTileEmptyStateModel({
-    playheadSec: getPlayhead(store),
+    playheadSec,
     startTimes,
     statuses,
   });
@@ -181,7 +189,11 @@ const TileEmptyStateForStreams: React.FC<{
       {model.kind === "loading" ? null : (
         <ShownSignal
           event="e2e:multimodal:tile-empty"
-          detail={{ message: model.message }}
+          detail={{
+            message: model.message,
+            title,
+            playheadMs: Math.round(playheadSec * 1000),
+          }}
         />
       )}
       {model.kind === "failed" ? (
