@@ -3813,6 +3813,77 @@ class BoilingBenchMultimodalDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class DSECSampleDataset(FiftyOneDataset):
+    """A sample of the DSEC stereo event camera driving dataset, as native
+    ``.mcap`` episodes.
+
+    A car carries a stereo pair of Prophesee event cameras at 640x480 and a
+    stereo pair of global-shutter color cameras at 1440x1080 through Zurich,
+    Thun and Interlaken, with disparity ground truth derived from LiDAR for
+    both pairs and, on some sequences, optical flow ground truth for the
+    event cameras. Each episode carries every event of both event cameras
+    as point clouds, one per 1/30 s window, beside a render of each window,
+    with the rectified color images and the ground truth.
+
+    6 sequences across Zurich, Thun and Interlaken, 105 seconds of driving,
+    2,233,378,133 events and 2,112 image pairs.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("dsec-sample")
+
+        # The sequences with the busiest event streams
+        view = dataset.sort_by("peak_event_rate_mev_s", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        11.17 GB
+    """
+
+    _REPO_ID = "Voxel51/DSEC-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "9bf0c9bfc72e9451a869923fabbe4f6c67a85e57"
+
+    @property
+    def name(self):
+        return "dsec-sample"
+
+    @property
+    def license(self):
+        return "CC-BY-SA-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "event-camera", "stereo", "driving")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class HiltiSLAMChallenge2021Dataset(FiftyOneDataset):
     """The Hilti SLAM Challenge 2021 recordings, as native ``.mcap``
     episodes.
@@ -4281,6 +4352,7 @@ AVAILABLE_DATASETS = {
     "coco-2017": COCO2017Dataset,
     "construction-site-traversability": ConstructionSiteTraversabilityDataset,
     "dreamtac": DreamTacDataset,
+    "dsec-sample": DSECSampleDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
