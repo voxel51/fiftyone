@@ -76,6 +76,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: ColoRadar Sample
+    :description: Seven handheld sequences in native MCAP format pairing a cascaded imaging radar and a single-chip radar with a 64-beam LiDAR and an inertial unit, from hallways and a lab to an underground mine.
+    :link: datasets/coloradar_sample.html
+    :image: ../_images/coloradar-sample.png
+    :tags: multimodal,mcap,radar,lidar,robotics
+
+.. customcarditem::
     :header: Egocentric EMG-Force
     :description: Eight first-person household task recordings in native MCAP format, pairing RGB-D video with eight-channel wrist EMG, hand skeletons, per-finger contact force and 122 English-labelled subtasks.
     :link: datasets/egocentric_emg_force.html
