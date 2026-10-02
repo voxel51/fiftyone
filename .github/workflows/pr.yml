@@ -71,7 +71,6 @@ jobs:
               - '**/*.py'
               - 'pyproject.toml'
               - '.pre-commit-config.yaml'
-              - 'tools/async_blocking_baseline.txt'
 
       - name: Gate CI by base branch
         id: gate

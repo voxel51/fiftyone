@@ -1,3 +1,0 @@
-# Blocking calls inside async functions that predate
-# tools/check_async_blocking.py. Fix them, don't add to them.
-# <file>::<async function>::<call>::<expression> <count>

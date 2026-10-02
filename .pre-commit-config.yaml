@@ -27,7 +27,7 @@ repos:
       - id: async-blocking
         name: async-blocking
         language: system
-        files: ^(fiftyone/server/.*\.py|tools/(check_async_blocking\.py|async_blocking_baseline\.txt))$
+        files: ^(fiftyone/server/.*\.py|tools/check_async_blocking\.py)$
         entry: python tools/check_async_blocking.py
         pass_filenames: false
   - repo: local
