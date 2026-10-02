@@ -30,7 +30,8 @@ supported language is:
     of expression instances, and the builtins listed in
     :data:`ALLOWED_BUILTINS`
 
-Anything else raises a :class:`CustomCodeError`.
+Anything else raises a :class:`CustomCodeError`, as do values and evaluations
+that exceed the size bounds below.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -40,6 +41,7 @@ Anything else raises a :class:`CustomCodeError`.
 import ast
 import inspect
 import operator
+import re
 
 from fiftyone.core.expressions import ViewExpression, ViewField
 
@@ -77,6 +79,15 @@ ALLOWED_BUILTINS = {
 # Size bounds on the values that arithmetic in custom code may produce
 MAX_INT_BITS = 100000
 MAX_SEQUENCE_LENGTH = 100000
+
+# Bound on the total number of elements, counted recursively, of any value
+MAX_VALUE_SIZE = 1000000
+
+# Bound on the total size of the values that custom code operates on
+MAX_EVALUATION_COST = 10000000
+
+# Bound on the length of custom code, in characters
+MAX_CODE_LENGTH = 1000000
 
 _BIN_OPS = {
     ast.Add: operator.add,
@@ -126,6 +137,13 @@ _STATIC_METHODS = {
     and isinstance(inspect.getattr_static(cls, name), staticmethod)
 }
 
+# Builtins that iterate over their positional arguments
+_ITERATING_BUILTINS = {all, any, dict, list, max, min, set, sorted, sum, tuple}
+
+_PERCENT_SPEC = re.compile(
+    r"%(?:\([^)]*\))?[#0\- +]*(\*|\d*)(?:\.(\*|\d*))?[hlL]?(.?)", re.S
+)
+
 
 class CustomCodeError(ValueError):
     """Raised when custom code uses syntax outside the supported language."""
@@ -146,6 +164,12 @@ def run_custom_code(code):
     if not isinstance(code, str):
         raise CustomCodeError(
             "Custom code must be a string, not %s" % type(code).__name__
+        )
+
+    if len(code) > MAX_CODE_LENGTH:
+        raise CustomCodeError(
+            "Custom code is too long (%d characters; the maximum is %d)"
+            % (len(code), MAX_CODE_LENGTH)
         )
 
     tree = ast.parse(code, filename="<string>", mode="exec")
@@ -192,17 +216,79 @@ def _is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _children(value):
+    if isinstance(value, ViewExpression):
+        return (value._expr,)
+
+    if isinstance(value, dict):
+        return tuple(value.keys()) + tuple(value.values())
+
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return tuple(value)
+
+    if isinstance(value, slice):
+        return (value.start, value.stop, value.step)
+
+    return ()
+
+
+def _has_children(value):
+    if isinstance(value, (ViewExpression, slice)):
+        return True
+
+    if isinstance(value, (dict, list, tuple, set, frozenset)):
+        return len(value) > 0
+
+    return False
+
+
+def _check_width(width):
+    if isinstance(width, int) and abs(width) > MAX_SEQUENCE_LENGTH:
+        raise CustomCodeError("Sequence result too long in custom code")
+
+
+def _check_format_spec(spec):
+    for digits in re.findall(r"\d+", spec):
+        _check_width(int(digits))
+
+
+def _check_percent_format(fmt, args):
+    if isinstance(fmt, bytes):
+        fmt = fmt.decode("latin-1")
+
+    values = list(args) if isinstance(args, tuple) else [args]
+    idx = 0
+    for match in _PERCENT_SPEC.finditer(fmt):
+        width, precision, conversion = match.groups()
+        if conversion == "%":
+            continue
+
+        for part in (width, precision):
+            if part == "*":
+                if idx < len(values):
+                    _check_width(values[idx])
+
+                idx += 1
+            elif part:
+                _check_width(int(part))
+
+        idx += 1
+
+
 def _apply_binop(node, op, left, right):
-    if _is_int(left) and _is_int(right) and abs(left) > 1:
-        if isinstance(node, ast.Pow) and right > 0:
+    if isinstance(left, int) and isinstance(right, int) and right > 0:
+        if isinstance(node, ast.Pow) and abs(left) > 1:
             bits = abs(left).bit_length() * right
-        elif isinstance(node, ast.LShift) and right > 0:
+        elif isinstance(node, ast.LShift) and left != 0:
             bits = abs(left).bit_length() + right
         else:
             bits = 0
 
         if bits > MAX_INT_BITS:
             raise CustomCodeError("Integer result too large in custom code")
+
+    if isinstance(node, ast.Mod) and isinstance(left, (str, bytes)):
+        _check_percent_format(left, right)
 
     if isinstance(node, ast.Mult):
         for seq, count in ((left, right), (right, left)):
@@ -229,6 +315,76 @@ def _apply_binop(node, op, left, right):
 class _Evaluator(object):
     def __init__(self):
         self.names = {}
+        self._sizes = {}
+        self._cost = 0
+
+    # Resource accounting
+
+    def _size(self, value):
+        """The number of elements in the value, counted recursively, so that
+        an object referenced twice counts twice.
+        """
+        if value is None or isinstance(value, (bool, int, float, complex)):
+            return 1
+
+        if isinstance(value, (str, bytes)):
+            return max(len(value), 1)
+
+        # Values are never mutated once created, so sizes are memoized by id.
+        # Each entry keeps its value alive so that the id is not reused
+        stack = [value]
+        visiting = set()
+        while stack:
+            top = stack[-1]
+            if self._known_size(top) is not None:
+                stack.pop()
+                continue
+
+            children = _children(top)
+            pending = [c for c in children if self._known_size(c) is None]
+            if pending:
+                if id(top) in visiting:
+                    raise CustomCodeError("Recursive value in custom code")
+
+                visiting.add(id(top))
+                stack.extend(pending)
+                continue
+
+            stack.pop()
+            size = 1 + sum(self._known_size(c) for c in children)
+            self._sizes[id(top)] = (top, size)
+
+        return self._known_size(value)
+
+    def _known_size(self, value):
+        if value is None or isinstance(
+            value, (bool, int, float, complex, str, bytes)
+        ):
+            return self._size(value)
+
+        entry = self._sizes.get(id(value), None)
+        if entry is not None:
+            return entry[1]
+
+        return None if _has_children(value) else 1
+
+    def _check_size(self, value):
+        if self._size(value) > MAX_VALUE_SIZE:
+            raise CustomCodeError("Value too large in custom code")
+
+        return value
+
+    def _charge(self, *values):
+        self._add_cost(sum(self._size(v) for v in values))
+
+    def _add_cost(self, cost):
+        self._cost += cost
+        if self._cost > MAX_EVALUATION_COST:
+            raise CustomCodeError("Custom code is too expensive to evaluate")
+
+    def _check_iterable(self, node, value):
+        if _is_expression_object(value):
+            raise _unsupported(node, "iteration over %s" % _describe(value))
 
     # Statements
 
@@ -267,7 +423,9 @@ class _Evaluator(object):
 
         left = self._load(node.target)
         right = self.eval(node.value)
-        self.names[node.target.id] = _apply_binop(node.op, op, left, right)
+        result = _apply_binop(node.op, op, left, right)
+        self._charge(left, right, result)
+        self.names[node.target.id] = self._check_size(result)
 
     def _run_Expr(self, node):
         self.eval(node.value)
@@ -284,6 +442,8 @@ class _Evaluator(object):
             if any(isinstance(elt, ast.Starred) for elt in target.elts):
                 raise _unsupported(target, "starred assignment")
 
+            self._check_iterable(target, value)
+            self._charge(value)
             values = list(value)
             if len(values) != len(target.elts):
                 raise ValueError(
@@ -305,7 +465,7 @@ class _Evaluator(object):
         if method is None:
             raise _unsupported(node)
 
-        return method(node)
+        return self._check_size(method(node))
 
     def _load(self, node):
         name = node.id
@@ -324,10 +484,13 @@ class _Evaluator(object):
         return self._load(node)
 
     def _eval_JoinedStr(self, node):
-        return "".join(str(self.eval(value)) for value in node.values)
+        result = "".join(str(self.eval(value)) for value in node.values)
+        self._charge(result)
+        return result
 
     def _eval_FormattedValue(self, node):
         value = self.eval(node.value)
+        self._charge(value)
         if node.conversion == ord("s"):
             value = str(value)
         elif node.conversion == ord("r"):
@@ -336,36 +499,50 @@ class _Evaluator(object):
             value = ascii(value)
 
         spec = self.eval(node.format_spec) if node.format_spec else ""
+        _check_format_spec(spec)
         return format(value, spec)
 
     def _eval_elts(self, elts):
         values = []
         for elt in elts:
             if isinstance(elt, ast.Starred):
-                values.extend(self.eval(elt.value))
+                value = self.eval(elt.value)
+                self._check_iterable(elt, value)
+                self._charge(value)
+                values.extend(value)
             else:
                 values.append(self.eval(elt))
 
         return values
 
     def _eval_List(self, node):
-        return self._eval_elts(node.elts)
+        return self._charged(self._eval_elts(node.elts))
 
     def _eval_Tuple(self, node):
-        return tuple(self._eval_elts(node.elts))
+        return self._charged(tuple(self._eval_elts(node.elts)))
 
     def _eval_Set(self, node):
-        return set(self._eval_elts(node.elts))
+        values = self._charged(self._eval_elts(node.elts))
+        return self._charged(set(values))
+
+    def _charged(self, value):
+        self._charge(value)
+        return self._check_size(value)
 
     def _eval_Dict(self, node):
         result = {}
         for key, value in zip(node.keys, node.values):
             if key is None:
-                result.update(self.eval(value))
+                value = self.eval(value)
+                self._check_iterable(node, value)
+                self._charge(value)
+                result.update(value)
             else:
-                result[self.eval(key)] = self.eval(value)
+                key = self.eval(key)
+                self._charge(key)
+                result[key] = self.eval(value)
 
-        return result
+        return self._charged(result)
 
     def _eval_BinOp(self, node):
         op = _BIN_OPS.get(type(node.op), None)
@@ -374,7 +551,9 @@ class _Evaluator(object):
 
         left = self.eval(node.left)
         right = self.eval(node.right)
-        return _apply_binop(node.op, op, left, right)
+        result = _apply_binop(node.op, op, left, right)
+        self._charge(left, right, result)
+        return result
 
     def _eval_UnaryOp(self, node):
         op = _UNARY_OPS[type(node.op)]
@@ -400,6 +579,7 @@ class _Evaluator(object):
             zip(node.ops, node.comparators)
         ):
             right = self.eval(comparator)
+            self._charge(left, right)
             result = _COMPARE_OPS[type(op)](left, right)
             if idx < last and not result:
                 return result
@@ -415,7 +595,9 @@ class _Evaluator(object):
         return self.eval(node.orelse)
 
     def _eval_Subscript(self, node):
-        return self.eval(node.value)[self.eval(node.slice)]
+        result = self.eval(node.value)[self.eval(node.slice)]
+        self._charge(result)
+        return result
 
     def _eval_Slice(self, node):
         lower = self.eval(node.lower) if node.lower is not None else None
@@ -428,7 +610,7 @@ class _Evaluator(object):
             raise _unsupported(node, "attribute '%s'" % node.attr)
 
         value = self.eval(node.value)
-        if not _is_expression_object(value):
+        if not _is_expression_object(value) or node.attr not in dir(value):
             raise _unsupported(
                 node,
                 "attribute '%s' of %s" % (node.attr, type(value).__name__),
@@ -445,8 +627,65 @@ class _Evaluator(object):
         kwargs = {}
         for keyword in node.keywords:
             if keyword.arg is None:
-                kwargs.update(self.eval(keyword.value))
+                value = self.eval(keyword.value)
+                self._check_iterable(keyword, value)
+                kwargs.update(value)
             else:
                 kwargs[keyword.arg] = self.eval(keyword.value)
 
-        return func(*args, **kwargs)
+        for value in args + list(kwargs.values()):
+            if callable(value) and not _is_allowed_callable(value):
+                raise _unsupported(node, "argument %s" % _describe(value))
+
+        if func in _ITERATING_BUILTINS:
+            for value in args:
+                self._check_iterable(node, value)
+
+        if func is sum:
+            # Summing sequences copies the running total at each step
+            start = args[1] if len(args) > 1 else kwargs.get("start", 0)
+            if args and isinstance(start, (list, tuple)):
+                self._add_cost(_len(args[0]) * self._size(args[0]))
+
+        if func is round:
+            args, kwargs = _bound_round_args(args, kwargs)
+
+        self._charge(*args, *kwargs.values())
+        result = func(*args, **kwargs)
+        self._charge(result)
+        return result
+
+
+def _describe(value):
+    if isinstance(value, type):
+        return value.__name__
+
+    return type(value).__name__
+
+
+def _len(value):
+    try:
+        return len(value)
+    except TypeError:
+        return 0
+
+
+def _bound_round_args(args, kwargs):
+    # ``round(x, ndigits)`` computes ``10 ** -ndigits`` for an integer ``x``,
+    # but every ``ndigits`` below ``-(x.bit_length() + 1)`` rounds to 0
+    if len(args) > 1:
+        number, ndigits = args[0], args[1]
+    else:
+        number, ndigits = (args[0] if args else None), kwargs.get("ndigits")
+
+    if not (isinstance(number, int) and isinstance(ndigits, int)):
+        return args, kwargs
+
+    bounded = max(ndigits, -(abs(number).bit_length() + 1))
+    if bounded == ndigits:
+        return args, kwargs
+
+    if len(args) > 1:
+        return [number, bounded] + list(args[2:]), kwargs
+
+    return args, dict(kwargs, ndigits=bounded)

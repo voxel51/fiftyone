@@ -175,6 +175,26 @@ OTHER_EXAMPLES = [
         "set": {1, 2},
     }
     """,
+    # Formatting, rounding, sorting keys and sequence sums
+    """
+    from fiftyone import ViewField as F
+
+    pct = "%5.2f|%-6s|%*d|%%" % (3.14159, "x", 4, 7)
+    named = "%(a)03d" % {"a": 5}
+    spec = f"{0.5:>10.3f}|{'a':*^9}|{12:08,d}"
+    rounded = (round(1234, -2), round(5, -50), round(-15, ndigits=-1))
+    rounded += (round(2.675, 2), round(True, -3), round(7, 3))
+    keyed = sorted(["ccc", "a", "bb"], key=len)
+    biggest = max(["ccc", "a", "bb"], key=len)
+    flat = sum([[1], [2, 3]], [])
+    shifted = (True << 3, 1 << 64, 0 << 10**9, (-1) ** 10**9, 1 ** 10**9)
+    chained = F("a") + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+    subsets = {
+        "values": [pct, named, spec, rounded, keyed, biggest, flat, shifted],
+        "deep": dict(type="field", expr=chained > 0),
+        "called": dict(type="field", expr=F("a")("b") > 0),
+    }
+    """,
     # A list rather than a dict
     """
     from fiftyone import ViewField as F
@@ -238,6 +258,28 @@ def test_returns_assigned_names():
     assert names["b"] == 2
 
 
+def test_expression_size_is_bounded():
+    code = "from fiftyone import ViewField as F\ne = F('a')\n"
+    code += "e = e + e\n" * 40
+
+    with pytest.raises(CustomCodeError):
+        run_custom_code(code)
+
+
+def test_round_to_large_negative_digits():
+    names = run_custom_code(
+        "x = round(5, -10 ** 9)\ny = round(-7, ndigits=-10 ** 9)"
+    )
+
+    assert names["x"] == 0
+    assert names["y"] == 0
+
+
+def test_code_length_is_bounded():
+    with pytest.raises(CustomCodeError):
+        run_custom_code("x = 1\n" * 1000000)
+
+
 def test_non_string_code_is_an_error():
     subsets, error = get_subsets_from_custom_code(None, None)
 
@@ -297,6 +339,27 @@ UNSUPPORTED_EXAMPLES = [
     "x = [0] * 1000000",
     "x = 10 ** 10000\nx = x * x * x * x",
     "x = [0] * 1000\nx = x + x\nx = x * 100",
+    "x = 1 << 10 ** 10",
+    "x = True << 10 ** 10",
+    "x = '%*d' % (10 ** 9, 1)",
+    "x = '%999999999d' % 1",
+    "x = b'%.999999999f' % 1.0",
+    "x = f'{1:999999999}'",
+    "x = f'{1.0:.999999999f}'",
+    "x = [0] * 1000\n" + "x = [x, x]\n" * 40,
+    "x = [[0] * 1000] * 1000\ny = sum(x, [])",
+    "x = [0] * 100000\n" + "y = x == x\n" * 200,
+    "x = 'a' * 1000000",
+    # Values that are not expressions or allowed callables
+    "from fiftyone import ViewField as F\nx = F.mro()",
+    "from fiftyone import ViewExpression as E\nx = sorted([1], key=E.to_mongo)",
+    # Iteration over expressions
+    "from fiftyone import ViewField as F\nx = list(F('a'))",
+    "from fiftyone import ViewField as F\nx = [*F('a')]",
+    "from fiftyone import ViewField as F\na, b = F('a')",
+    "from fiftyone import ViewField as F\nx = {**F('a')}",
+    "from fiftyone import ViewField as F\nx = dict(**F('a'))",
+    "from fiftyone import ViewField as F\nx = sorted(F('a'))",
 ]
 
 
