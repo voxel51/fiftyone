@@ -23,7 +23,7 @@ import {
   vi,
 } from "vitest";
 import {
-  resolveModalMediaSrc,
+  resolveModalMediaSrcs,
   retainModalSample,
   warmModalSample,
 } from "./modalPrefetch";
@@ -34,46 +34,55 @@ type Response = mainSampleQuery["response"];
 const response = (sample: unknown): Response =>
   ({ sample }) as unknown as Response;
 
-describe("resolveModalMediaSrc", () => {
+describe("resolveModalMediaSrcs", () => {
   const urls = [
     { field: "filepath", url: "https://cdn.test/full.jpg" },
     { field: "thumbnail", url: "https://cdn.test/thumb.jpg" },
   ];
 
-  it("resolves the requested media field for an image sample", () => {
+  it("resolves the selected media field, plus urls[0] for the Lighter renderer", () => {
     expect(
-      resolveModalMediaSrc(
+      resolveModalMediaSrcs(
         response({ __typename: "ImageSample", urls }),
         "thumbnail",
       ),
-    ).toBe("https://cdn.test/thumb.jpg");
+    ).toEqual(["https://cdn.test/thumb.jpg", "https://cdn.test/full.jpg"]);
+  });
+
+  it("resolves one URL when the selected field is the first one", () => {
+    expect(
+      resolveModalMediaSrcs(
+        response({ __typename: "ImageSample", urls }),
+        "filepath",
+      ),
+    ).toEqual(["https://cdn.test/full.jpg"]);
   });
 
   it("falls back to filepath when the media field is absent", () => {
     expect(
-      resolveModalMediaSrc(
+      resolveModalMediaSrcs(
         response({ __typename: "ImageSample", urls }),
         "missing",
       ),
-    ).toBe("https://cdn.test/full.jpg");
+    ).toEqual(["https://cdn.test/full.jpg"]);
   });
 
-  it("returns null when an image sample has no usable url", () => {
+  it("returns nothing when an image sample has no usable url", () => {
     expect(
-      resolveModalMediaSrc(
+      resolveModalMediaSrcs(
         response({ __typename: "ImageSample", urls: [] }),
         "x",
       ),
-    ).toBeNull();
+    ).toEqual([]);
     expect(
-      resolveModalMediaSrc(
+      resolveModalMediaSrcs(
         response({ __typename: "ImageSample", urls: null }),
         "x",
       ),
-    ).toBeNull();
+    ).toEqual([]);
   });
 
-  it("returns null for non-image media", () => {
+  it("returns nothing for non-image media", () => {
     for (const __typename of [
       "VideoSample",
       "ThreeDSample",
@@ -82,13 +91,13 @@ describe("resolveModalMediaSrc", () => {
       "%other",
     ]) {
       expect(
-        resolveModalMediaSrc(response({ __typename, urls }), "thumbnail"),
-      ).toBeNull();
+        resolveModalMediaSrcs(response({ __typename, urls }), "thumbnail"),
+      ).toEqual([]);
     }
   });
 
-  it("returns null for a missing sample", () => {
-    expect(resolveModalMediaSrc(response(null), "thumbnail")).toBeNull();
+  it("returns nothing for a missing sample", () => {
+    expect(resolveModalMediaSrcs(response(null), "thumbnail")).toEqual([]);
   });
 });
 
@@ -113,6 +122,8 @@ describe("warmModalSample", () => {
   // Every src a warmed <img> is pointed at; jsdom never loads them.
   const imageSrcs: string[] = [];
   let typename: string;
+  // Media fields beyond filepath, for samples with alternate media.
+  let extraUrls: { field: string; url: string }[] = [];
 
   const sampleDoc = (id: string) => ({
     sample: {
@@ -122,7 +133,10 @@ describe("warmModalSample", () => {
       frameRate: 30,
       frameNumber: 1,
       sample: { _id: id },
-      urls: [{ field: "filepath", url: `https://cdn.test/${id}.jpg?sig=a` }],
+      urls: [
+        { field: "filepath", url: `https://cdn.test/${id}.jpg?sig=a` },
+        ...extraUrls,
+      ],
     },
   });
 
@@ -134,6 +148,7 @@ describe("warmModalSample", () => {
   beforeEach(() => {
     imageSrcs.length = 0;
     typename = "ImageSample";
+    extraUrls = [];
     vi.stubGlobal(
       "Image",
       class {
@@ -180,6 +195,24 @@ describe("warmModalSample", () => {
     await flushRelayGc();
     expect(statusOf(environment, "s1")).toBe("missing");
     expect(imageSrcs.at(-1)).toBe("");
+  });
+
+  it("warms both the selected field and urls[0] when they differ, and drops both", async () => {
+    extraUrls = [{ field: "thumbnail", url: "https://cdn.test/s1-thumb.jpg" }];
+    const warmed = warmModalSample(
+      environment,
+      variablesFor("s1"),
+      "thumbnail",
+    );
+    await vi.waitFor(() =>
+      expect(imageSrcs).toEqual([
+        "https://cdn.test/s1-thumb.jpg",
+        "https://cdn.test/s1.jpg?sig=a",
+      ]),
+    );
+
+    warmed.release();
+    expect(imageSrcs.slice(2)).toEqual(["", ""]);
   });
 
   it("warms the data but no image for non-image samples", async () => {
