@@ -75,8 +75,9 @@ const LensTrigger = styled(DropdownTrigger)`
     border-radius: 4px;
     padding: 0.25rem 0.5rem;
     min-width: 0;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
+    /* the sidebar's own text size (its root is 14px) */
+    font-size: 1rem;
+    line-height: 1.5rem;
   }
 `;
 
