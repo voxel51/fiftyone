@@ -286,6 +286,13 @@
     :tags: multimodal,mcap,drone,slam,ground-truth
 
 .. customcarditem::
+    :header: TUM RGB-D
+    :description: The TUM RGB-D SLAM benchmark in native MCAP format, pairing a Kinect's color and depth at 30 Hz with its accelerometer and motion-capture ground truth on one clock.
+    :link: datasets/tum_rgbd.html
+    :image: ../_images/tum-rgbd.png
+    :tags: multimodal,mcap,rgbd,slam,robotics
+
+.. customcarditem::
     :header: UCF101
     :description: Action recognition dataset with 13,320 realistic YouTube videos across 101 action categories. Features diverse camera motion, lighting, and viewpoints - challenging for video understanding.
     :link: datasets/ucf101.html
