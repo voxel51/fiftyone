@@ -467,8 +467,16 @@ def _frame_lookups(view, support):
 
 
 def _frame_docs_examined(view, support):
+    """Frame documents the view's ``$lookup`` reads, or ``None`` on MongoDB 6,
+    whose explain reports zero examined documents for a ``$lookup``
+    sub-pipeline whatever it reads.
+    """
+    conn = foo.get_db_conn()
+    if int(conn.client.server_info()["version"].split(".")[0]) < 7:
+        return None
+
     pipeline = view._pipeline(frames_only=True, support=support)
-    result = foo.get_db_conn().command(
+    result = conn.command(
         {
             "explain": {
                 "aggregate": view._dataset._sample_collection_name,
@@ -486,6 +494,11 @@ def _frame_docs_examined(view, support):
 
 
 class VideoLabelsWindowViewTests(unittest.IsolatedAsyncioTestCase):
+    def _assert_docs_examined(self, view, support, expected):
+        examined = _frame_docs_examined(view, support)
+        if examined is not None:
+            self.assertEqual(examined, expected)
+
     async def _assert_window_matches_old_path(
         self, view, sample_id, start_frame, end_frame, windowed=True
     ):
@@ -658,19 +671,18 @@ class VideoLabelsWindowViewTests(unittest.IsolatedAsyncioTestCase):
         )
 
         # Only the frame documents in the window are read; 15-17 are missing
-        self.assertEqual(_frame_docs_examined(new_view, support), 7)
+        self._assert_docs_examined(new_view, support, 7)
 
         with fofp._disabled():
             [lookup] = _frame_lookups(new_view, support)
             conditions = lookup["pipeline"][0]["$match"]["$expr"]["$and"]
             self.assertIn({"$gte": ["$frame_number", 10]}, conditions)
             self.assertIn({"$lte": ["$frame_number", 19]}, conditions)
-            self.assertEqual(_frame_docs_examined(new_view, support), 7)
+            self._assert_docs_examined(new_view, support, 7)
 
             old_view = _old_window_view(view, video.id, 10, 19)
-            self.assertEqual(
-                _frame_docs_examined(old_view, None),
-                60 - len(_MISSING_FRAMES),
+            self._assert_docs_examined(
+                old_view, None, 60 - len(_MISSING_FRAMES)
             )
 
     @drop_async_dataset
