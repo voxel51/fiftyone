@@ -1742,7 +1742,7 @@ def _patch_runs(dataset_name, runs_field, run_cls, run_str, dry_run=False):
         runs_dict.update(missing_runs)
         made_changes = True
 
-    if made_changes:
+    if made_changes and not dry_run:
         conn.datasets.update_one(
             {"name": dataset_name},
             {"$set": {runs_field: runs_dict}},
