@@ -39,8 +39,9 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
   grid, modal, sidebar.
 - Do not use assertion logic directly in POMs, instead use composition to
   create POMs that contain the assertion class.
-- Refrain from using `page.waitForTimeout()`. There is almost always a better
-  alternative, like using custom events.
+- Wait the way `WAITS.md` describes: every wait names the `e2e:` event its
+  action causes, then reads the result once. No polls, timeouts, retrying
+  assertions or DOM waits; CI's `e2e-waits` job fails on them.
 - Keep individual tests small. These specs also run in fiftyone-teams CI at
   roughly 2–4x the duration (slower server boot, page loads, and screenshot
   stabilization), so a test that takes more than ~60 seconds here is a timeout
@@ -77,7 +78,10 @@ class MyPOM {
     readonly semanticLocator2: Locator;
     readonly assert: MyPOMAsserter;
 
-    constructor(private readonly page) {
+    constructor(
+        private readonly page: Page,
+        private readonly eventUtils: EventUtils,
+    ) {
         this.semanticLocator1 = this.page.locator("...");
         this.semanticLocator2 = this.page.locator("...");
         this.assert = new MyPOMAsserter(this);
@@ -98,18 +102,22 @@ class MyPOM {
     }
 
     /**
-     * All actions should be verbs or prefixed with a verb.
+     * All actions should be verbs or prefixed with a verb, and resolve on the
+     * `e2e:` event they cause.
      */
     async doSomeAction() {
-        await this.someElement.click();
+        await this.eventUtils.after("e2e:my-component:shown", () =>
+            this.someElement.click(),
+        );
     }
 }
 
 class MyPOMAsserter {
     constructor(private readonly myPOM: MyPOM) {}
 
-    async isFooVisible() {
-        await expect(this.myPOM.someElement).toBeVisible();
+    /** One exact read, after the action that changed it resolved */
+    async hasFooText(text: string) {
+        expect(await this.myPOM.someElement.textContent()).toBe(text);
     }
 }
 ```
