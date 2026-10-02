@@ -133,15 +133,20 @@ class MyPOMAsserter {
    baseline, harvest the render from a CI run of your PR:
 
 ```
-# download the merged report from the failing run
-gh run download <run-id> -n playwright-report-merged -D /tmp/report
+# download the failing run's blob reports and merge them to JSON
+gh run download <run-id> -p 'e2e-blob-shard-*' -D /tmp/blobs
+mkdir -p /tmp/all && find /tmp/blobs -name '*.zip' -exec cp {} /tmp/all/ \;
+PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/merged.json \
+  npx playwright merge-reports --reporter json /tmp/all
 
-# each failed screenshot's trace zip (in /tmp/report/data/) lists
-# attachments mapping <name>-{expected,actual,diff}.png to sha-named
-# files in the same directory; commit the *actual* over the baseline:
-cp /tmp/report/data/<actual-sha>.png \
+# each failed test's first attempt attaches <name>-actual.png with a local
+# path; commit it over the baseline:
+cp <attachment path> \
   src/oss/specs/<spec>.spec.ts-snapshots/<name>-chromium-linux.png
 ```
+
+A test stops at its first mismatched screenshot but writes every missing one,
+so delete a spec's stale linux baselines to collect them all in one round.
 
 Only accept an actual after reviewing the diff — a dimension change or a
 highlighted UI element is a behavioral difference, not render noise.
@@ -218,12 +223,12 @@ await DatasetFactory.createDataset({
 });
 ```
 
-Verify persistence the way a user would see it: await the edit's sample-save
-response, then assert from a fresh browser context on what the app renders.
-Group slices may be `image`, `3d` or `video` (with per-slice media options);
-video slices take `withFrameData` and `sampleFrames` too. Recipes shared by a
-spec family (the video-annotation and 3D seeds) live beside the specs in
-`src/oss/specs/annotate-*/`.
+Verify persistence the way a user would see it: wrap the edit in
+`modal.sidebar.annotate.afterSave(...)`, then assert from a fresh browser
+context on what the app renders. Group slices may be `image`, `3d` or `video`
+(with per-slice media options); video slices take `withFrameData` and
+`sampleFrames` too. Recipes shared by a spec family (the video-annotation and
+3D seeds) live beside the specs in `src/oss/specs/annotate-*/`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy

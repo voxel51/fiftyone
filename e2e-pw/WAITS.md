@@ -87,6 +87,28 @@ POMs wrap these. For example, `modal.afterSampleLoaded(action)`,
 `grid.afterTilesDrawn(n, action)` and `episode.afterReady(file, action)`. Reuse
 them before adding new ones.
 
+## Timing
+
+Speed is tested on purpose, not through waits. When a spec should hold the App
+to a time budget, measure it after the cause-wait resolves, as its own
+assertion:
+
+```ts
+// counters install before navigating, and record from document start
+const opened = await eventUtils.initCounter("e2e:modal:opened");
+const drawn = await eventUtils.initCounter("e2e:looker:canvas-loaded");
+// ...navigate, then:
+await modal.afterSampleLoaded(() => grid.openFirstSample());
+const [open] = await opened.timeline();
+const draw = (await drawn.timeline()).at(-1);
+expect(draw.t - open.t).toBeLessThan(MODAL_DRAW_BUDGET_MS);
+```
+
+`initCounter` records each event's `performance.now()` at dispatch. The budget
+is the claim the spec makes, so name it and explain where it comes from. A
+timing assertion never decides when a spec proceeds, and a wait never carries a
+timeout.
+
 ## Screenshots
 
 - Only canvases. Check DOM with exact reads.
