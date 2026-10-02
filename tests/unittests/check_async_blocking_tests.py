@@ -24,7 +24,7 @@ _spec.loader.exec_module(cab)
 def _calls(source):
     return [
         (function, call)
-        for function, call, _, _ in cab.find_blocking_calls(
+        for function, call, _ in cab.find_blocking_calls(
             textwrap.dedent(source)
         )
     ]
@@ -108,6 +108,14 @@ class CheckAsyncBlockingTests(unittest.TestCase):
         self.assertEqual(
             _calls(source), [("post", "load_dataset"), ("post", "first")]
         )
+
+    def test_flags_blocking_receivers_of_awaited_chains(self):
+        source = """
+            async def get(request):
+                await dataset.first().to_dict_async()
+                docs = await collection.find({}).sort("a").to_list(None)
+        """
+        self.assertEqual(_calls(source), [("get", "first")])
 
     def test_flags_nested_function_defaults_and_decorators(self):
         source = """
@@ -203,6 +211,70 @@ class CheckAsyncBlockingTests(unittest.TestCase):
                 helper(None)
         """
         self.assertEqual(_calls(source), [("post", "helper")])
+
+    def test_flags_querying_a_held_view(self):
+        source = """
+            async def post(request):
+                view = await fosv.get_view("d", stages=[])
+                view = view.match({})
+                n = len(view)
+                if view:
+                    pass
+                for sample in view:
+                    pass
+                ids = [s.id for s in view]
+                found = "a" in view
+                first = view["a"]
+                result = view.aggregate([])
+                count = view.count()
+                await view._async_aggregate([])
+        """
+        self.assertEqual(
+            [c for _, c in _calls(source)],
+            [
+                "len(view)",
+                "truth-testing view",
+                "iterating view",
+                "iterating view",
+                "membership in view",
+                "indexing view",
+                "view.aggregate",
+                "view.count",
+            ],
+        )
+
+    def test_view_tracking_ignores_other_values(self):
+        source = """
+            async def get(request):
+                m = re.match("a", "b")
+                if m:
+                    pass
+                rows = await collection.find({}).to_list(None)
+                return len(rows), [r for r in rows], rows[0]
+        """
+        self.assertEqual(_calls(source), [])
+
+    def test_a_reassigned_name_stops_being_a_view(self):
+        source = """
+            async def get(request):
+                view = fo.load_dataset("d")
+                view = view.values("id")
+                return len(view)
+        """
+        self.assertEqual(
+            [c for _, c in _calls(source)], ["load_dataset", "view.values"]
+        )
+
+    def test_helpers_that_query_a_view_block(self):
+        source = """
+            def size(name):
+                dataset = get_dataset(name)
+                return dataset.count()
+
+            async def get(request):
+                size("d")
+        """
+        self.assertEqual(_calls(source), [("get", "size")])
 
     def test_ignores_names_builtins_share(self):
         source = """

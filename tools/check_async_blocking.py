@@ -8,15 +8,17 @@ request waits until it returns. Such work belongs in ``run_sync_task`` or an
 awaited async API.
 
 A call counts when it reaches a known blocking API directly or through a sync
-function in the same module. It is allowed when it is awaited (or drives an
+function in the same module. So does querying a dataset or view the function
+holds (iterating it, ``len()``, truth-testing, ``in``, indexing, or an
+aggregation method such as ``count()``): a variable is a dataset or view when
+it's assigned from ``get_view()``, ``load_dataset()`` and the like, or from a
+view method called on one. It is allowed when it is awaited (or drives an
 ``async for``), or when it sits inside a nested function or lambda, which is
-how work is handed to ``run_sync_task``. Existing
-violations are listed in the baseline so only new ones fail; fix one and
-rerun with ``--update-baseline`` to drop it.
+how work is handed to ``run_sync_task``.
 
 Usage::
 
-    python tools/check_async_blocking.py [--update-baseline] [paths ...]
+    python tools/check_async_blocking.py [paths ...]
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -25,13 +27,11 @@ Usage::
 
 import argparse
 import ast
-import collections
 import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_PATHS = [ROOT / "fiftyone" / "server"]
-BASELINE = ROOT / "tools" / "async_blocking_baseline.txt"
 
 # Method names that block when called on a pymongo collection or a FiftyOne
 # dataset, view or sample. Generic names that builtins share (``values``,
@@ -115,6 +115,72 @@ def _call_name(call, helpers=frozenset(), cls=None, local=frozenset()):
 
 _SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
+# Calls that can only return a dataset or view.
+VIEW_ROOTS = {
+    "get_dataset",
+    "get_view",
+    "load_dataset",
+    "load_saved_view",
+    "make_optimized_select_view",
+}
+
+# View methods that return another view. Only followed from something
+# already known to be a view: on anything else (``re.match()``) they mean
+# something else.
+VIEW_METHODS = {
+    "add_stage",
+    "exclude",
+    "exclude_fields",
+    "exclude_labels",
+    "filter_field",
+    "filter_labels",
+    "flatten",
+    "group_by",
+    "limit",
+    "match",
+    "match_tags",
+    "select",
+    "select_by",
+    "select_fields",
+    "select_group_slices",
+    "select_labels",
+    "shuffle",
+    "skip",
+    "sort_by",
+    "take",
+    "to_clips",
+    "to_frames",
+    "to_patches",
+    "view",
+}
+
+# Methods that query the database when called on a dataset or view. Generic
+# names: only flagged on a known dataset or view.
+VIEW_BLOCKING_METHODS = {
+    "aggregate",
+    "bounds",
+    "count",
+    "count_label_tags",
+    "count_sample_tags",
+    "count_values",
+    "distinct",
+    "head",
+    "histogram_values",
+    "mean",
+    "one",
+    "std",
+    "sum",
+    "tail",
+    "values",
+}
+
+# Methods that only build a cursor; awaiting the chain they start
+# (`await collection.find({}).to_list(None)`) runs the query asynchronously.
+_CURSOR_METHODS = {"aggregate", "find"}
+
+# Builtins that iterate or measure their argument.
+_CONSUMING_BUILTINS = {"bool", "len", "list", "set", "sorted", "tuple"}
+
 
 def _definition_time_nodes(node):
     """What Python evaluates when it defines a function or lambda: decorators
@@ -193,6 +259,119 @@ def _own_calls(func):
                 pending.append(nested[name])
 
 
+def _unawait(node):
+    while isinstance(node, ast.Await):
+        node = node.value
+
+    return node
+
+
+def _view_assignments(func):
+    """For each name ``func`` assigns, ``[(lineno, is_view), ...]`` in source
+    order: whether that assignment bound a dataset or view.
+    """
+    assigns = sorted(
+        (
+            node
+            for node in _walk_own(_body(func))
+            if isinstance(node, ast.Assign)
+        ),
+        key=lambda node: (node.lineno, node.col_offset),
+    )
+    history = {}
+    views = set()
+    for node in assigns:
+        value = _unawait(node.value)
+        f = value.func if isinstance(value, ast.Call) else None
+        name = f.id if isinstance(f, ast.Name) else getattr(f, "attr", None)
+        is_view = name in VIEW_ROOTS or (
+            isinstance(f, ast.Attribute)
+            and f.attr in VIEW_METHODS
+            and isinstance(f.value, ast.Name)
+            and f.value.id in views
+        )
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                history.setdefault(target.id, []).append(
+                    (node.lineno, is_view)
+                )
+                if is_view:
+                    views.add(target.id)
+                else:
+                    views.discard(target.id)
+
+    return history
+
+
+def _view_uses(func, exempt=frozenset()):
+    """``(description, lineno)`` for each place ``func``'s own body queries a
+    dataset or view it holds: iterating, measuring, truth-testing, indexing,
+    membership tests and aggregation methods. ``exempt`` holds the ids of
+    awaited calls.
+    """
+    history = _view_assignments(func)
+    if not any(
+        is_view for entries in history.values() for _, is_view in entries
+    ):
+        return []
+
+    def held(node):
+        # a view if the last assignment on an earlier line bound one; the
+        # right-hand side of `view = view.values()` still sees the view
+        if not isinstance(node, ast.Name) or node.id not in history:
+            return False
+
+        before = [v for line, v in history[node.id] if line < node.lineno]
+        return bool(before) and before[-1]
+
+    uses = []
+    for node in _walk_own(_body(func)):
+        if isinstance(node, (ast.For, ast.comprehension)) and held(node.iter):
+            uses.append((f"iterating {node.iter.id}", node.iter.lineno))
+        elif isinstance(node, ast.Call) and id(node) not in exempt:
+            f = node.func
+            if (
+                isinstance(f, ast.Name)
+                and f.id in _CONSUMING_BUILTINS
+                and node.args
+                and held(node.args[0])
+            ):
+                uses.append((f"{f.id}({node.args[0].id})", node.lineno))
+            elif (
+                isinstance(f, ast.Attribute)
+                and held(f.value)
+                and f.attr in VIEW_BLOCKING_METHODS
+            ):
+                uses.append((f"{f.value.id}.{f.attr}", node.lineno))
+        elif isinstance(node, (ast.If, ast.While, ast.IfExp, ast.Assert)):
+            if held(node.test):
+                uses.append((f"truth-testing {node.test.id}", node.lineno))
+        elif isinstance(node, ast.BoolOp):
+            uses += [
+                (f"truth-testing {v.id}", v.lineno)
+                for v in node.values
+                if held(v)
+            ]
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            if held(node.operand):
+                uses.append((f"truth-testing {node.operand.id}", node.lineno))
+        elif isinstance(node, ast.Compare):
+            if any(isinstance(op, (ast.In, ast.NotIn)) for op in node.ops):
+                uses += [
+                    (f"membership in {c.id}", node.lineno)
+                    for c in node.comparators
+                    if held(c)
+                ]
+        elif (
+            isinstance(node, ast.Subscript)
+            and isinstance(node.ctx, ast.Load)
+            and held(node.value)
+        ):
+            uses.append((f"indexing {node.value.id}", node.lineno))
+
+    return sorted(uses, key=lambda use: use[1])
+
+
 class _Visitor(ast.NodeVisitor):
     """Collects blocking calls made directly inside ``async def`` bodies."""
 
@@ -220,6 +399,9 @@ class _Visitor(ast.NodeVisitor):
             self.visit(child)
         self._async.pop()
 
+        for description, lineno in _view_uses(node, self._exempt):
+            self.findings.append((node.name, description, lineno))
+
     def _visit_sync_scope(self, node):
         # defaults and decorators run where the function is defined; the body
         # runs wherever it is called, which for run_sync_task is off the loop
@@ -236,8 +418,25 @@ class _Visitor(ast.NodeVisitor):
     visit_Lambda = _visit_sync_scope
 
     def visit_Await(self, node):
-        if isinstance(node.value, ast.Call):
-            self._exempt.add(id(node.value))
+        call = node.value
+        if isinstance(call, ast.Call):
+            self._exempt.add(id(call))
+
+            # an awaited chain started by a cursor builder runs async; other
+            # receivers and every argument still run on the loop
+            receiver = call.func
+            while isinstance(receiver, ast.Attribute):
+                receiver = receiver.value
+                if not isinstance(receiver, ast.Call):
+                    break
+
+                if (
+                    isinstance(receiver.func, ast.Attribute)
+                    and receiver.func.attr in _CURSOR_METHODS
+                ):
+                    self._exempt.add(id(receiver))
+
+                receiver = receiver.func
 
         self.generic_visit(node)
 
@@ -254,9 +453,7 @@ class _Visitor(ast.NodeVisitor):
             cls = self._classes[-1] if self._classes else None
             name = _call_name(node, self._helpers, cls, local)
             if name:
-                self.findings.append(
-                    (function, name, node.lineno, ast.unparse(node))
-                )
+                self.findings.append((function, name, node.lineno))
 
         self.generic_visit(node)
 
@@ -284,7 +481,7 @@ def _blocking_helpers(tree):
                 continue
 
             found, local = frozenset(helpers), _local_names(node)
-            if any(
+            if _view_uses(node) or any(
                 _call_name(call, found, key[0], local)
                 for call in _own_calls(node)
             ):
@@ -295,7 +492,7 @@ def _blocking_helpers(tree):
 
 
 def find_blocking_calls(source, filename="<string>"):
-    """Returns ``(function, call, lineno, expression)`` for each blocking call
+    """Returns ``(function, call, lineno)`` for each blocking call
     made directly inside an ``async def`` in ``source``, including calls to
     sync functions in the same module that block.
     """
@@ -306,79 +503,32 @@ def find_blocking_calls(source, filename="<string>"):
 
 
 def _scan(paths):
-    # keyed by the call's source text as well as its name, so replacing one
-    # baselined call with a different one is still a new call
-    found = collections.Counter()
-    where = collections.defaultdict(list)
+    findings = []
     for root in paths:
         files = [root] if root.is_file() else sorted(root.rglob("*.py"))
         for path in files:
             rel = path.resolve().relative_to(ROOT).as_posix()
             source = path.read_text(encoding="utf-8")
-            for function, call, lineno, expr in find_blocking_calls(
-                source, rel
-            ):
-                key = f"{rel}::{function}::{call}::{' '.join(expr.split())}"
-                found[key] += 1
-                where[key].append(lineno)
+            for function, call, lineno in find_blocking_calls(source, rel):
+                findings.append((rel, lineno, function, call))
 
-    return found, where
-
-
-def _read_baseline():
-    counts = collections.Counter()
-    if not BASELINE.exists():
-        return counts
-
-    for line in BASELINE.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-
-        key, _, count = line.rpartition(" ")
-        counts[key] = int(count)
-
-    return counts
-
-
-def _write_baseline(found):
-    lines = [
-        "# Blocking calls inside async functions that predate",
-        "# tools/check_async_blocking.py. Fix them, don't add to them.",
-        "# <file>::<async function>::<call>::<expression> <count>",
-    ]
-    lines += [f"{key} {found[key]}" for key in sorted(found)]
-    BASELINE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return findings
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("paths", nargs="*", type=pathlib.Path)
-    parser.add_argument("--update-baseline", action="store_true")
     args = parser.parse_args(argv)
 
-    found, where = _scan(args.paths or DEFAULT_PATHS)
+    findings = _scan(args.paths or DEFAULT_PATHS)
 
-    if args.update_baseline:
-        _write_baseline(found)
-        print(f"Wrote {len(found)} entries to {BASELINE.relative_to(ROOT)}")
-        return 0
-
-    baseline = _read_baseline()
-    new = {
-        key: found[key] - baseline[key]
-        for key in found
-        if found[key] > baseline[key]
-    }
-
-    if not new:
+    if not findings:
         return 0
 
     print("Blocking calls inside async functions hold the event loop:\n")
-    for key in sorted(new):
-        path, function, call, _ = key.split("::", 3)
-        lines = ", ".join(str(n) for n in where[key])
-        print(f"  {path}:{lines}  {call}() in async {function}()")
+    for path, lineno, function, call in sorted(findings):
+        what = call if " " in call or "(" in call else f"{call}()"
+        print(f"  {path}:{lineno}  {what} in async {function}()")
 
     print(
         "\nAwait an async API, or move the work into a sync function and "

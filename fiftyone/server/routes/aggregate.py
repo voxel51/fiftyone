@@ -10,6 +10,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
+from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
@@ -33,7 +34,10 @@ class Aggregate(HTTPEndpoint):
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
-        aggregate_result = view.aggregate(
-            [foa.Aggregation._from_dict(agg) for agg in aggregations]
+        # the full aggregate (big results included) is sync; keep it off the
+        # event loop
+        aggregate_result = await run_sync_task(
+            view.aggregate,
+            [foa.Aggregation._from_dict(agg) for agg in aggregations],
         )
         return {"aggregate": aggregate_result}
