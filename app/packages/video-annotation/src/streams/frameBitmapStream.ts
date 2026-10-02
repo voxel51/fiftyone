@@ -271,6 +271,10 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
   prefetch(range: [number, number]): void {
     const [startSec, endSec] = range;
     const startFrame = this.timeToFrame(startSec);
+    // the engine prefetches where it is about to commit; a jump commits only
+    // once its frames are ready, so the budget must rank from here already or
+    // it evicts those frames as it decodes them
+    this.frameCache.setPlayhead(startFrame);
     const window = this.frameCache.aheadFrames();
     const endFrame = Math.min(
       this.timeToFrame(endSec),

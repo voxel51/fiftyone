@@ -753,6 +753,9 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   prefetch(range: [number, number]): void {
     const [startSec, endSec] = range;
     const startFrame = this.timeToFrame(startSec);
+    // rank the budget from where the engine is about to commit, not where it
+    // last did: a jump's frames would otherwise be evicted as they land
+    this.frameCache.setPlayhead(startFrame);
     const endFrame = Math.min(
       this.timeToFrame(endSec),
       startFrame + this.frameCache.aheadFrames() - 1,

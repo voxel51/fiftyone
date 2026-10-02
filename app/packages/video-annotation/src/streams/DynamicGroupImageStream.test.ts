@@ -202,6 +202,34 @@ describe("DynamicGroupImageStream decode-ahead budget", () => {
     stream.destroy();
   });
 
+  it("keeps frames decoded for a jump while the playhead hasn't moved yet", () => {
+    // 100x100 frames are 40_000 bytes: this budget holds four
+    const stream = makeStream(160_000);
+    const worker = FakeWorker.instances[0];
+    const landChunk = (n: number) => {
+      const { reqId, request } = fetchChunks(worker)[n];
+      for (
+        let f = request!.frameNumber;
+        f < request!.frameNumber + request!.numFrames;
+        f++
+      ) {
+        landFrame(worker, reqId!, f, 100);
+      }
+    };
+
+    // fill the cache around the start
+    stream.prefetch([0, 3 / 30]);
+    landChunk(0);
+
+    // jump to frame 90; nothing commits until it is ready
+    stream.prefetch([89 / 30, 92 / 30]);
+    landChunk(1);
+
+    expect(stream.bufferState(89 / 30)).toBe("ready");
+
+    stream.destroy();
+  });
+
   it("keeps the full chunk when frames are small next to the budget", () => {
     const stream = makeStream(1e9);
     const worker = FakeWorker.instances[0];
