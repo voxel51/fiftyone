@@ -51,15 +51,17 @@ already exists, so reaching for MUI adds migration debt for no gain.
 | `Typography`                                                                 | `Text`, `Heading`                                          |
 | `Box`, `Stack`, `Grid`                                                       | `Stack`                                                    |
 | `Button`                                                                     | `Button`, `RichButton`                                     |
-| `IconButton`                                                                 | `Clickable`                                                |
+| `IconButton`                                                                 | `IconAction`, `Clickable`                                  |
 | `Tooltip`                                                                    | `Tooltip`                                                  |
 | `TextField`, `OutlinedInput`                                                 | `Input` or `TextArea`, in `FormField` for label/error      |
-| `Select`, `Autocomplete`                                                     | `Select`, `Dropdown`                                       |
-| `Menu`, `MenuList`, `MenuItem`, `Popover`                                    | `ContextMenu`, `Dropdown`                                  |
+| `Select`, `Autocomplete`                                                     | `Select`, `Combobox`, `Dropdown`                           |
+| `Menu`, `MenuList`, `MenuItem`                                               | `ContextMenu`, `Dropdown`                                  |
+| `Popover`                                                                    | `Popover`                                                  |
 | `Table`, `TableBody`, `TableCell`, `TableContainer`, `TableHead`, `TableRow` | `Table`, `TableBody`, `TableCell`, `TableHead`, `TableRow` |
 | `Card`, `CardContent`, `CardHeader`, `Paper`                                 | `Card`                                                     |
 | `Chip`                                                                       | `Pill`, `TextBadge`                                        |
-| `CircularProgress`, `LinearProgress`, `Skeleton`                             | `Spinner`                                                  |
+| `CircularProgress`, `Skeleton`                                               | `Spinner`, `LoadingDots`                                   |
+| `LinearProgress`                                                             | `Progress`                                                 |
 | `Checkbox`                                                                   | `Checkbox`                                                 |
 | `Radio`, `RadioGroup`                                                        | `Radio`, `RadioGroup`                                      |
 | `Switch`                                                                     | `Toggle`, `ToggleSwitch`                                   |
@@ -71,7 +73,7 @@ already exists, so reaching for MUI adds migration debt for no gain.
 | `Snackbar`                                                                   | `Toast`, `ActivityToast`                                   |
 | `ImageList`, `ImageListItem`                                                 | `ImageList`                                                |
 | `ToggleButton`, `ToggleButtonGroup`                                          | `RichButtonGroup`, `Toggle`                                |
-| any `@mui/icons-material` icon                                               | `Icon` with `IconName`                                     |
+| any `@mui/icons-material` icon                                               | the per-icon component (`<CaretDownIcon />`)               |
 
 Watch for same-name collisions: `Stack`, `Button`, and `Tooltip` exist in both
 libraries. Check which one your import resolves to.
