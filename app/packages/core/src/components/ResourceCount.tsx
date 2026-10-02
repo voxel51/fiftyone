@@ -67,6 +67,7 @@ const GroupsCount = () => {
           path={""}
           signal="grid-elements"
           label={elementsLabel}
+          slice={groupSlice ?? ""}
         />{" "}
         {elementsLabel}){" "}
         <PathEntryCounts
@@ -74,6 +75,7 @@ const GroupsCount = () => {
           path={"_"}
           signal="grid-groups"
           label={groupsLabel}
+          slice={groupSlice ?? ""}
         />{" "}
         {groupsLabel}
       </div>
@@ -128,6 +130,7 @@ const Count = () => {
           path={""}
           signal="grid-elements"
           label={label}
+          slice={slice ?? ""}
         />{" "}
         {label}
       </div>

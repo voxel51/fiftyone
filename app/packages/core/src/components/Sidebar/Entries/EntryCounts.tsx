@@ -10,6 +10,8 @@ interface PathEntryCountsProps {
   signal?: string;
   /** What the counts are shown with, for the signal */
   label?: string;
+  /** The group slice the counts are for, for the signal */
+  slice?: string;
 }
 
 const showEntryCounts = selectorFamily<
@@ -38,6 +40,7 @@ export const PathEntryCounts = ({
   path,
   signal,
   label,
+  slice,
 }: PathEntryCountsProps) => {
   const getAtom = useCallback(
     (extended: boolean) => {
@@ -62,6 +65,7 @@ export const PathEntryCounts = ({
       subcountAtom={getAtom(true)}
       signal={signal}
       label={label}
+      slice={slice}
     />
   ) : null;
 };

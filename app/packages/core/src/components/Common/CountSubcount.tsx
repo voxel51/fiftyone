@@ -15,30 +15,34 @@ type EntryCountsE2EEvents = {
     count: number | null;
     subcount: number | null;
     label: string;
+    /** The group slice the counts are for */
+    slice: string;
   };
 };
 
 /**
  * Signal, as `signal`, that loaded counts have rendered: on mount and when
- * the counts or the label shown with them change
+ * the counts, the label shown with them or the slice they count change
  */
 const CountShownSignal = ({
   signal,
   count,
   subcount,
   label,
+  slice,
 }: {
   signal: string;
   count: number | null;
   subcount: number | null;
   label: string;
+  slice: string;
 }) => {
   useEffect(() => {
     getEventBus<EntryCountsE2EEvents>().dispatch(
       "e2e:components:entry-count-shown",
-      { signal, count, subcount, label },
+      { signal, count, subcount, label, slice },
     );
-  }, [signal, count, subcount, label]);
+  }, [signal, count, subcount, label, slice]);
   return null;
 };
 
@@ -47,11 +51,13 @@ const EntryCounts = ({
   subcountAtom = CONST_SELECTOR,
   signal,
   label = "",
+  slice = "",
 }: {
   countAtom?: RecoilValue<number | null>;
   subcountAtom?: RecoilValue<number | null>;
   signal?: string;
   label?: string;
+  slice?: string;
 }) => {
   const [count, subcount] = [
     useRecoilValue(countAtom),
@@ -63,6 +69,7 @@ const EntryCounts = ({
       count={count}
       subcount={subcount ?? null}
       label={label}
+      slice={slice}
     />
   ) : null;
   if (countAtom !== CONST_SELECTOR && typeof count !== "number") {
@@ -108,11 +115,13 @@ const EntryCountsContainer = ({
   subcountAtom = CONST_SELECTOR,
   signal,
   label,
+  slice,
 }: {
   countAtom?: RecoilValue<number | null>;
   subcountAtom?: RecoilValue<number | null>;
   signal?: string;
   label?: string;
+  slice?: string;
 }) => {
   // only subcounts have a timeout
   const subResult = useRecoilValueLoadable(subcountAtom);
@@ -130,6 +139,7 @@ const EntryCountsContainer = ({
       subcountAtom={subcountAtom}
       signal={signal}
       label={label}
+      slice={slice}
     />
   );
 };
@@ -139,6 +149,7 @@ export const SuspenseEntryCounts = ({
   subcountAtom,
   signal,
   label,
+  slice,
 }: {
   countAtom?: RecoilValue<number>;
   subcountAtom?: RecoilValue<number>;
@@ -146,6 +157,8 @@ export const SuspenseEntryCounts = ({
   signal?: string;
   /** What the counts are shown with, for the signal */
   label?: string;
+  /** The group slice the counts are for, for the signal */
+  slice?: string;
 }) => {
   return (
     <Suspense fallback={<EntryCounts />}>
@@ -155,6 +168,7 @@ export const SuspenseEntryCounts = ({
           subcountAtom={subcountAtom}
           signal={signal}
           label={label}
+          slice={slice}
         />
       </Suspense>
     </Suspense>

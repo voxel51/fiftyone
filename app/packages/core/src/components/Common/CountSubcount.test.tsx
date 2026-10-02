@@ -25,7 +25,7 @@ const Setter = () => {
   return null;
 };
 
-const counts = (label: string) => (
+const counts = (label: string, slice = "") => (
   <RecoilRoot>
     <Setter />
     <SuspenseEntryCounts
@@ -33,13 +33,14 @@ const counts = (label: string) => (
       subcountAtom={subcountAtom}
       signal="grid-elements"
       label={label}
+      slice={slice}
     />
   </RecoilRoot>
 );
 
-const shown = (count: number, subcount: number, label: string) => [
+const shown = (count: number, subcount: number, label: string, slice = "") => [
   "e2e:components:entry-count-shown",
-  { signal: "grid-elements", count, subcount, label },
+  { signal: "grid-elements", count, subcount, label, slice },
 ];
 
 describe("SuspenseEntryCounts", () => {
@@ -48,7 +49,7 @@ describe("SuspenseEntryCounts", () => {
     cleanup();
   });
 
-  it("signals only when the shown counts or their label change", () => {
+  it("signals only when the shown counts, their label or slice change", () => {
     const { rerender } = render(counts("groups with slice"));
     expect(dispatch.mock.calls).toEqual([shown(5, 5, "groups with slice")]);
 
@@ -60,6 +61,11 @@ describe("SuspenseEntryCounts", () => {
     expect(dispatch.mock.calls.slice(1)).toEqual([
       shown(5, 5, "patches"),
       shown(5, 3, "patches"),
+    ]);
+
+    rerender(counts("patches", "right"));
+    expect(dispatch.mock.calls.slice(3)).toEqual([
+      shown(5, 3, "patches", "right"),
     ]);
   });
 });
