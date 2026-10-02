@@ -23,7 +23,7 @@ import {
 
 /**
  * Layout menu for the group sample view: the built-in kinds not already on
- * the canvas, then a "Panels" submenu listing plugin panels grouped by
+ * the canvas, then a "Plugins" submenu listing plugin panels grouped by
  * category as the grid "+" menu does. Built-in group content is a singleton
  * per kind (two media tiles would mount two lookers on the same sample);
  * panels follow their own `allowDuplicates` option.
@@ -82,7 +82,7 @@ export const GroupAddTileMenu = () => {
         );
       })}
       {categories.length > 0 && (
-        <MenuSubmenuItem icon={IconName.Puzzle} text="Panels">
+        <MenuSubmenuItem icon={IconName.Puzzle} text="Plugins">
           {categories.map(({ category, label, panels: categoryPanels }) => (
             <div key={category} data-cy={`group-tile-panels-${category}`}>
               <MenuSectionTitle>{label}</MenuSectionTitle>

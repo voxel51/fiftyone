@@ -1,4 +1,4 @@
-import { ErrorBoundary } from "@fiftyone/components";
+import { ErrorBoundary, Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -18,7 +18,12 @@ const ContentColumn = styled.div`
   overflow: hidden;
 `;
 
-export const ModalSample = React.memo(() => {
+// Deliberately not `React.memo`: when this mounts while the modal sample is
+// still loading, the Suspense boundary below never retries once the sample
+// resolves if its parent is a memo component (React 18.2), and the sample
+// view stays on the fallback forever. It only ever mounted warm under the
+// Spaces tab strip, which is why this never showed before.
+export const ModalSample = () => {
   const isGroup = useRecoilValue(fos.isGroup);
   const is3DMediaType = useRecoilValue(fos.is3DDataset);
   const setIsTooltipLocked = useSetRecoilState(fos.isTooltipLocked);
@@ -36,7 +41,7 @@ export const ModalSample = React.memo(() => {
   return (
     <ContentColumn data-cy="sample-canvas">
       <ErrorBoundary onReset={() => {}}>
-        <Suspense>
+        <Suspense fallback={<Loading>Pixelating...</Loading>}>
           {isGroup ? (
             <Group />
           ) : (
@@ -46,7 +51,7 @@ export const ModalSample = React.memo(() => {
       </ErrorBoundary>
     </ContentColumn>
   );
-});
+};
 
 /** Routes a resolved non-group modal sample to its 2D or 3D surface. */
 export const NonGroupModalSample = ({
