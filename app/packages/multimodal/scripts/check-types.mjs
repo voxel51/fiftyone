@@ -38,14 +38,32 @@ try {
   }
 }
 
-const localDiagnostics = output
-  .split("\n")
+const lines = output.split("\n");
+// A tsc crash (e.g. out of memory) exits non-zero without a diagnostic list,
+// and would otherwise read as "only outside diagnostics"
+const unrecognized = lines.filter(
+  (line) =>
+    line.trim() &&
+    !/^\s/.test(line) &&
+    !/^(.+\(\d+,\d+\): )?error TS\d+:/.test(line),
+);
+
+if (unrecognized.length) {
+  console.error("TypeScript did not complete for packages/multimodal:");
+  console.error(output);
+  process.exit(1);
+}
+
+const localDiagnostics = lines
   // Workspace source dependencies still surface in this package check, so only
   // fail diagnostics owned by the multimodal package boundary.
   .filter((line) => localDiagnosticPattern.test(line));
+// Config-level failures (broken tsconfig, bad flags) carry no file prefix
+// and must not read as success
+const globalDiagnostics = lines.filter((line) => /^error TS\d+:/.test(line));
 
-if (localDiagnostics.length) {
-  console.error(localDiagnostics.join("\n"));
+if (localDiagnostics.length || globalDiagnostics.length) {
+  console.error([...globalDiagnostics, ...localDiagnostics].join("\n"));
   process.exit(1);
 }
 
