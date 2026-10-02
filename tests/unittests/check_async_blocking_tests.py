@@ -24,7 +24,7 @@ _spec.loader.exec_module(cab)
 def _calls(source):
     return [
         (function, call)
-        for function, call, _ in cab.find_blocking_calls(
+        for function, call, _, _ in cab.find_blocking_calls(
             textwrap.dedent(source)
         )
     ]
@@ -97,6 +97,63 @@ class CheckAsyncBlockingTests(unittest.TestCase):
         self.assertEqual(
             _calls(source), [("patch", "finish"), ("patch", "_load")]
         )
+
+    def test_flags_eager_arguments_of_awaited_calls(self):
+        source = """
+            async def post(request):
+                await run_sync_task(fo.load_dataset("d"))
+                async for doc in stream(dataset.first()):
+                    pass
+        """
+        self.assertEqual(
+            _calls(source), [("post", "load_dataset"), ("post", "first")]
+        )
+
+    def test_flags_nested_function_defaults_and_decorators(self):
+        source = """
+            async def post(request):
+                @cache(dataset.reload())
+                def work(value=sample.save()):
+                    sample.save()
+
+                await run_sync_task(lambda value=dataset.first(): value)
+        """
+        self.assertEqual(
+            _calls(source),
+            [("post", "reload"), ("post", "save"), ("post", "first")],
+        )
+
+    def test_resolves_helpers_within_their_class(self):
+        source = """
+            class A:
+                def _load(self):
+                    return fo.load_dataset("d")
+
+                async def get(self, request):
+                    self._load()
+
+            class B:
+                def _load(self):
+                    return None
+
+                async def get(self, request):
+                    self._load()
+        """
+        self.assertEqual(_calls(source), [("get", "_load")])
+
+    def test_ignores_helpers_that_only_define_blocking_work(self):
+        source = """
+            def make_saver(sample):
+                def save():
+                    sample.save()
+
+                return save
+
+            async def post(request):
+                saver = make_saver(None)
+                await run_sync_task(saver)
+        """
+        self.assertEqual(_calls(source), [])
 
     def test_ignores_names_builtins_share(self):
         source = """

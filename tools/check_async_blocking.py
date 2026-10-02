@@ -74,13 +74,15 @@ BLOCKING_QUALIFIED = {
 }
 
 
-def _call_name(call, helpers=frozenset()):
+def _call_name(call, helpers=frozenset(), cls=None):
     """The blocking API (or blocking same-module helper) ``call`` reaches, or
-    ``None``.
+    ``None``. ``helpers`` holds ``(class, name)`` pairs, ``class`` being
+    ``None`` for module-level functions; ``cls`` is the class ``call`` is made
+    in, which is what ``self.x()`` resolves against.
     """
     func = call.func
     if isinstance(func, ast.Name):
-        if func.id in BLOCKING_FUNCTIONS or func.id in helpers:
+        if func.id in BLOCKING_FUNCTIONS or (None, func.id) in helpers:
             return func.id
 
         return None
@@ -92,14 +94,42 @@ def _call_name(call, helpers=frozenset()):
         if (func.value.id, func.attr) in BLOCKING_QUALIFIED:
             return f"{func.value.id}.{func.attr}"
 
-        # self._helper(...) / cls._helper(...)
-        if func.value.id in ("self", "cls") and func.attr in helpers:
+        if func.value.id in ("self", "cls") and (cls, func.attr) in helpers:
             return func.attr
 
     if func.attr in BLOCKING_METHODS or func.attr in BLOCKING_FUNCTIONS:
         return func.attr
 
     return None
+
+
+def _definition_time_nodes(node):
+    """What Python evaluates when it defines a function or lambda: decorators
+    and argument defaults, not the body.
+    """
+    nodes = list(getattr(node, "decorator_list", []))
+    nodes += node.args.defaults
+    nodes += [d for d in node.args.kw_defaults if d is not None]
+    return nodes
+
+
+def _own_calls(node):
+    """Calls ``node``'s body executes itself: nested function and lambda
+    bodies run only when something calls them.
+    """
+    stack = list(ast.iter_child_nodes(node))
+    while stack:
+        child = stack.pop()
+        if isinstance(
+            child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+        ):
+            stack.extend(_definition_time_nodes(child))
+            continue
+
+        if isinstance(child, ast.Call):
+            yield child
+
+        stack.extend(ast.iter_child_nodes(child))
 
 
 class _Visitor(ast.NodeVisitor):
@@ -109,79 +139,100 @@ class _Visitor(ast.NodeVisitor):
         self.findings = []
         self._helpers = helpers
         self._async = []
-        self._awaited = 0
+        self._classes = []
+        # calls that are themselves awaited (or drive an `async for`); their
+        # arguments and receivers are still evaluated on the loop
+        self._exempt = set()
+
+    def visit_ClassDef(self, node):
+        self._classes.append(node.name)
+        self.generic_visit(node)
+        self._classes.pop()
 
     def visit_AsyncFunctionDef(self, node):
+        for child in _definition_time_nodes(node):
+            self.visit(child)
+
         self._async.append(node.name)
-        saved, self._awaited = self._awaited, 0
         for child in node.body:
             self.visit(child)
-        self._awaited = saved
         self._async.pop()
 
     def _visit_sync_scope(self, node):
-        # a nested sync function or lambda runs wherever it is called; handed
-        # to run_sync_task, that is off the loop
+        # defaults and decorators run where the function is defined; the body
+        # runs wherever it is called, which for run_sync_task is off the loop
+        for child in _definition_time_nodes(node):
+            self.visit(child)
+
         saved = self._async
         self._async = []
-        self.generic_visit(node)
+        body = node.body if isinstance(node.body, list) else [node.body]
+        for child in body:
+            self.visit(child)
         self._async = saved
 
     visit_FunctionDef = _visit_sync_scope
     visit_Lambda = _visit_sync_scope
 
     def visit_Await(self, node):
-        self._awaited += 1
+        if isinstance(node.value, ast.Call):
+            self._exempt.add(id(node.value))
+
         self.generic_visit(node)
-        self._awaited -= 1
 
     def visit_AsyncFor(self, node):
         # `async for x in cursor` drives an async iterator
-        self._awaited += 1
-        self.visit(node.iter)
-        self._awaited -= 1
-        self.visit(node.target)
-        for child in node.body + node.orelse:
-            self.visit(child)
+        if isinstance(node.iter, ast.Call):
+            self._exempt.add(id(node.iter))
+
+        self.generic_visit(node)
 
     def visit_Call(self, node):
-        if self._async and not self._awaited:
-            name = _call_name(node, self._helpers)
+        if self._async and id(node) not in self._exempt:
+            cls = self._classes[-1] if self._classes else None
+            name = _call_name(node, self._helpers, cls)
             if name:
-                self.findings.append((self._async[-1], name, node.lineno))
+                self.findings.append(
+                    (self._async[-1], name, node.lineno, ast.unparse(node))
+                )
 
         self.generic_visit(node)
 
 
 def _blocking_helpers(tree):
-    """Names of sync functions and methods in ``tree`` that make a blocking
-    call, directly or through another such function.
+    """``(class, name)`` of the sync functions and methods in ``tree`` that
+    make a blocking call, directly or through another such function;
+    ``class`` is ``None`` for a module-level function.
     """
-    bodies = {
-        node.name: node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef)
-    }
+    bodies = {}
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            bodies[(None, node.name)] = node
+        elif isinstance(node, ast.ClassDef):
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef):
+                    bodies[(node.name, item.name)] = item
+
     helpers = set()
     changed = True
     while changed:
         changed = False
-        for name, node in bodies.items():
-            if name in helpers:
+        for key, node in bodies.items():
+            if key in helpers:
                 continue
 
-            calls = (n for n in ast.walk(node) if isinstance(n, ast.Call))
-            if any(_call_name(call, frozenset(helpers)) for call in calls):
-                helpers.add(name)
+            found = frozenset(helpers)
+            if any(_call_name(c, found, key[0]) for c in _own_calls(node)):
+                helpers.add(key)
                 changed = True
 
     return frozenset(helpers)
 
 
 def find_blocking_calls(source, filename="<string>"):
-    """Returns ``(function, call, lineno)`` for each blocking call made
-    directly inside an ``async def`` in ``source``, including calls to sync
-    functions in the same module that block.
+    """Returns ``(function, call, lineno, expression)`` for each blocking call
+    made directly inside an ``async def`` in ``source``, including calls to
+    sync functions in the same module that block.
     """
     tree = ast.parse(source, filename=filename)
     visitor = _Visitor(_blocking_helpers(tree))
@@ -190,6 +241,8 @@ def find_blocking_calls(source, filename="<string>"):
 
 
 def _scan(paths):
+    # keyed by the call's source text as well as its name, so replacing one
+    # baselined call with a different one is still a new call
     found = collections.Counter()
     where = collections.defaultdict(list)
     for root in paths:
@@ -197,8 +250,10 @@ def _scan(paths):
         for path in files:
             rel = path.resolve().relative_to(ROOT).as_posix()
             source = path.read_text(encoding="utf-8")
-            for function, call, lineno in find_blocking_calls(source, rel):
-                key = f"{rel}::{function}::{call}"
+            for function, call, lineno, expr in find_blocking_calls(
+                source, rel
+            ):
+                key = f"{rel}::{function}::{call}::{' '.join(expr.split())}"
                 found[key] += 1
                 where[key].append(lineno)
 
@@ -225,7 +280,7 @@ def _write_baseline(found):
     lines = [
         "# Blocking calls inside async functions that predate",
         "# tools/check_async_blocking.py. Fix them, don't add to them.",
-        "# <file>::<async function>::<call> <count>",
+        "# <file>::<async function>::<call>::<expression> <count>",
     ]
     lines += [f"{key} {found[key]}" for key in sorted(found)]
     BASELINE.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -256,7 +311,7 @@ def main(argv=None):
 
     print("Blocking calls inside async functions hold the event loop:\n")
     for key in sorted(new):
-        path, function, call = key.split("::")
+        path, function, call, _ = key.split("::", 3)
         lines = ", ".join(str(n) for n in where[key])
         print(f"  {path}:{lines}  {call}() in async {function}()")
 
