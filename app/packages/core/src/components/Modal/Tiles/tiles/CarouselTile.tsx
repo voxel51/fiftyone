@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { GroupCarouselStrip } from "../../Group/GroupCarousel";
 import { GroupSuspense } from "../../Group/GroupSuspense";
-import { fill } from "../GroupTilingHost.module.css";
+import { fill } from "../SampleTilingHost.module.css";
 
 /** Filmstrip of the current group's slices, filling its tile. */
 export const CarouselTile = () => {
