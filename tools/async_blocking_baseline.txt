@@ -1,0 +1,12 @@
+# Blocking calls inside async functions that predate
+# tools/check_async_blocking.py. Fix them, don't add to them.
+# <file>::<async function>::<call> <count>
+fiftyone/server/mutation.py::create_saved_view::load_dataset 1
+fiftyone/server/mutation.py::delete_saved_view::load_dataset 1
+fiftyone/server/mutation.py::set_dataset::load_dataset 1
+fiftyone/server/mutation.py::set_sidebar_groups::save 1
+fiftyone/server/mutation.py::set_view::load_dataset 1
+fiftyone/server/routes/groups.py::get::get_group 1
+fiftyone/server/routes/sample.py::patch::first 1
+fiftyone/server/routes/sample.py::patch::save_sample 2
+fiftyone/server/routes/sample.py::post::save_sample 1

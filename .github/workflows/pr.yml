@@ -71,6 +71,7 @@ jobs:
               - '**/*.py'
               - 'pyproject.toml'
               - '.pre-commit-config.yaml'
+              - 'tools/async_blocking_baseline.txt'
 
       - name: Gate CI by base branch
         id: gate
@@ -140,6 +141,10 @@ jobs:
         run: |
           pip install pre-commit
           pre-commit run black --all-files --show-diff-on-failure
+      - name: Check for blocking calls in async server code
+        # a sync DB call or sample save inside an async route holds the event
+        # loop and stalls every other request; see the script's docstring
+        run: python tools/check_async_blocking.py
 
   test:
     needs: modified-files
