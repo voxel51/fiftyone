@@ -219,6 +219,8 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "manylinux1_i686"
         elif is_platform("Linux", "aarch64"):
             self.plat_name = "manylinux2014_aarch64"
+        elif is_platform("Linux", "riscv64"):
+            self.plat_name = "manylinux_2_39_riscv64"
         elif is_platform("Linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
         elif is_platform("Darwin", "arm64"):
@@ -233,7 +235,17 @@ class CustomBdistWheel(bdist_wheel):
     def get_tag(self):
         impl = "py3"
         abi_tag = "none"
-        return impl, abi_tag, self.plat_name
+        # same normalization as bdist_wheel.get_tag() does in current lastest
+        # version (84.0.0) as of today (Octobre 2026), so that platforms not
+        # handled above (e.g. "linux-riscv64") still yield a valid wheel tag see
+        # https://github.com/pypa/setuptools/blob/72e919a8b10aaafc041205d4e3ae0e6a2e1e5f87/setuptools/command/bdist_wheel.py#L346
+        plat_name = (
+            self.plat_name.lower()
+            .replace("-", "_")
+            .replace(".", "_")
+            .replace(" ", "_")
+        )
+        return impl, abi_tag, plat_name
 
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
