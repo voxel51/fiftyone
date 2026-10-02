@@ -90,6 +90,13 @@
     :tags: multimodal,mcap,robotics,lidar,depth,gnss
 
 .. customcarditem::
+    :header: DSEC Sample
+    :description: Six driving sequences in native MCAP format pairing a stereo pair of event cameras, carrying every event, with a stereo pair of color cameras and LiDAR-derived disparity and optical flow ground truth.
+    :link: datasets/dsec_sample.html
+    :image: ../_images/dsec-sample.png
+    :tags: multimodal,mcap,event-camera,stereo,driving
+
+.. customcarditem::
     :header: DreamTac
     :description: 703 contact-rich Franka manipulation trajectories in native MCAP format, pairing third-person and wrist cameras with two vision-based tactile fingertips on one clock.
     :link: datasets/dreamtac.html
