@@ -96,7 +96,9 @@ class Mutation(SetColorScheme):
     ) -> bool:
         state = get_state()
         state.dataset = (
-            fod.load_dataset(name, reload=True) if name is not None else None
+            await fou.run_sync_task(_load_dataset, name)
+            if name is not None
+            else None
         )
 
         state.color_scheme = build_color_scheme(
@@ -170,7 +172,7 @@ class Mutation(SetColorScheme):
             )
             for group in sidebar_groups
         ]
-        view._dataset.save()
+        await fou.run_sync_task(view._dataset.save)
 
         state.view = view
         await dispatch_event(subscription, fose.StateUpdate(state=state))
@@ -283,16 +285,14 @@ class Mutation(SetColorScheme):
             return None
 
         result_view = None
-        ds = fod.load_dataset(dataset_name, reload=True)
+        ds = await fou.run_sync_task(_load_dataset, dataset_name)
         state.dataset = ds
 
         # Create the view using the saved view doc if loading a saved view
         if saved_view_slug is not None:
-            try:
-                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
-                result_view = ds.load_saved_view(doc.name)
-            except:
-                pass
+            result_view = await fou.run_sync_task(
+                _load_saved_view_by_slug, ds, saved_view_slug
+            )
 
         # Otherwise, build the view using the params
         if result_view is None:
@@ -355,7 +355,7 @@ class Mutation(SetColorScheme):
         dataset = state.dataset
         use_state = dataset is not None
         if dataset is None:
-            dataset = fod.load_dataset(dataset_name, reload=True)
+            dataset = await fou.run_sync_task(_load_dataset, dataset_name)
 
         if dataset is None:
             raise ValueError(
@@ -374,21 +374,20 @@ class Mutation(SetColorScheme):
 
         result_view = _build_result_view(dataset_view, form)
 
-        dataset.save_view(
-            view_name, result_view, description=description, color=color
+        saved_view, loaded_view = await fou.run_sync_task(
+            _save_view,
+            dataset,
+            view_name,
+            result_view,
+            description,
+            color,
+            use_state,
         )
         if use_state:
-            state.view = dataset.load_saved_view(view_name)
+            state.view = loaded_view
             await dispatch_event(subscription, fose.StateUpdate(state=state))
 
-        return next(
-            (
-                SavedView.from_doc(view_doc)
-                for view_doc in dataset._doc.get_saved_views()
-                if view_doc.name == view_name
-            ),
-            None,
-        )
+        return saved_view
 
     @gql.mutation
     async def delete_saved_view(
@@ -405,17 +404,13 @@ class Mutation(SetColorScheme):
                 view_name,
             )
 
-        dataset = fod.load_dataset(dataset_name, reload=True)
+        dataset = await fou.run_sync_task(_load_dataset, dataset_name)
         if not dataset:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
-        if dataset.has_saved_view(view_name):
-            deleted_view_id = dataset._delete_saved_view(view_name)
-        else:
-            raise ValueError(
-                "Attempting to delete non-existent saved view: %s",
-                view_name,
-            )
+        deleted_view_id = await fou.run_sync_task(
+            _delete_saved_view, dataset, view_name
+        )
 
         # If the current view is deleted, set the view state to the full
         # dataset view
@@ -432,7 +427,7 @@ class Mutation(SetColorScheme):
         return deleted_view_id
 
     @gql.mutation
-    def update_saved_view(
+    async def update_saved_view(
         self,
         view_name: str,
         subscription: t.Optional[str],
@@ -451,36 +446,18 @@ class Mutation(SetColorScheme):
             dataset_name: name of the dataset to which the saved view belongs
         """
         state = get_state()
-        if state is None or state.dataset is None:
-            dataset = fod.load_dataset(dataset_name, reload=True)
-        else:
-            dataset = state.dataset
-
-        updated_info = asdict(updated_info)
-
-        if dataset.has_saved_view(view_name):
-            dataset.update_saved_view_info(view_name, updated_info)
-        else:
-            raise ValueError(
-                "Attempting to update fields on non-existent saved view: "
-                "%s",
-                view_name,
-            )
-
-        current_name = (
-            updated_info["name"]
-            if "name" in updated_info and updated_info["name"] is not None
-            else view_name
+        dataset = (
+            state.dataset
+            if state is not None and state.dataset is not None
+            else None
         )
-        # Return updated saved_view, which may not be the currently loaded
-        # view in state.view
-        return next(
-            (
-                SavedView.from_doc(view_doc)
-                for view_doc in dataset._doc.get_saved_views()
-                if view_doc.name == current_name
-            ),
-            None,
+
+        return await fou.run_sync_task(
+            _update_saved_view,
+            dataset,
+            dataset_name,
+            view_name,
+            asdict(updated_info),
         )
 
     @gql.mutation
@@ -496,37 +473,104 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
-    def search_select_fields(
+    async def search_select_fields(
         self, dataset_name: str, meta_filter: t.Optional[JSON]
     ) -> t.List[str]:
         if not meta_filter:
             return []
 
-        state = get_state()
-        dataset = state.dataset
-        if dataset is None:
-            dataset = fod.load_dataset(dataset_name, reload=True)
+        return await fou.run_sync_task(
+            _search_select_fields,
+            get_state().dataset,
+            dataset_name,
+            meta_filter,
+        )
 
+
+def _search_select_fields(dataset, dataset_name, meta_filter):
+    if dataset is None:
+        dataset = _load_dataset(dataset_name)
+
+    try:
+        view = dataset.select_fields(meta_filter=meta_filter)
+    except Exception:
         try:
-            view = dataset.select_fields(meta_filter=meta_filter)
+            view = dataset.select_fields(meta_filter)
         except Exception:
-            try:
-                view = dataset.select_fields(meta_filter)
-            except Exception:
-                view = dataset
+            view = dataset
 
+    res = []
+    try:
+        is_video = dataset.media_type == "video"
+        for stage in view._stages:
+            res += [
+                st for st in stage.get_selected_fields(view, frames=is_video)
+            ]
+    except Exception:
         res = []
-        try:
-            is_video = dataset.media_type == "video"
-            for stage in view._stages:
-                res += [
-                    st
-                    for st in stage.get_selected_fields(view, frames=is_video)
-                ]
-        except Exception:
-            res = []
 
-        return res
+    return res
+
+
+def _load_dataset(name):
+    return fod.load_dataset(name, reload=True)
+
+
+def _load_saved_view_by_slug(dataset, slug):
+    try:
+        doc = dataset._get_saved_view_doc(slug, slug=True)
+        return dataset.load_saved_view(doc.name)
+    except Exception:
+        return None
+
+
+def _saved_view(dataset, name):
+    return next(
+        (
+            SavedView.from_doc(view_doc)
+            for view_doc in dataset._doc.get_saved_views()
+            if view_doc.name == name
+        ),
+        None,
+    )
+
+
+def _save_view(dataset, name, view, description, color, load):
+    dataset.save_view(name, view, description=description, color=color)
+    loaded = dataset.load_saved_view(name) if load else None
+    return _saved_view(dataset, name), loaded
+
+
+def _delete_saved_view(dataset, name):
+    if not dataset.has_saved_view(name):
+        raise ValueError(
+            "Attempting to delete non-existent saved view: %s",
+            name,
+        )
+
+    return dataset._delete_saved_view(name)
+
+
+def _update_saved_view(dataset, dataset_name, view_name, updated_info):
+    if dataset is None:
+        dataset = _load_dataset(dataset_name)
+
+    if dataset.has_saved_view(view_name):
+        dataset.update_saved_view_info(view_name, updated_info)
+    else:
+        raise ValueError(
+            "Attempting to update fields on non-existent saved view: %s",
+            view_name,
+        )
+
+    current_name = (
+        updated_info["name"]
+        if "name" in updated_info and updated_info["name"] is not None
+        else view_name
+    )
+    # Return updated saved_view, which may not be the currently loaded view
+    # in state.view
+    return _saved_view(dataset, current_name)
 
 
 def _build_result_view(view, form):

@@ -15,6 +15,7 @@ from starlette.requests import Request
 
 import fiftyone as fo
 import fiftyone.core.media as fom
+from fiftyone.core.utils import run_sync_task
 import fiftyone.core.odm.utils as fou
 from fiftyone.server import utils
 
@@ -272,7 +273,9 @@ class Groups(HTTPEndpoint):
             request.query_params.get("resolve_urls", "false").lower() == "true"
         )
 
-        group = get_group(dataset_id, group_id, slice_name)
+        group = await run_sync_task(
+            get_group, dataset_id, group_id, slice_name
+        )
 
         # Filter by media type if requested
         if media_types:
