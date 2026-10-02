@@ -9,13 +9,14 @@ FiftyOne builtin plugins.
 from fiftyone.operators.store import ExecutionStore
 from bson import ObjectId
 
+from .custom_code import run_custom_code
+
 STORE_NAME = "model_evaluation_panel_builtin"
 
 
 def get_subsets_from_custom_code(ctx, custom_code):
     try:
-        local_vars = {}
-        exec(custom_code, {"ctx": ctx}, local_vars)
+        local_vars = run_custom_code(custom_code)
         data = local_vars.get("subsets", {})
         if len(data) == 0:
             return None, "No subsets found in the custom code."
