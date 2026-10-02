@@ -43,9 +43,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.annotate3d.waitForSurface();
+  await modal.annotate3d.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
@@ -154,18 +154,13 @@ test.describe.serial("3d polyline annotation", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.annotate3d.selectLabel("lane");
 
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "barrier"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "barrier");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
-    await saved;
 
     // the polyline stays a single label whose class is now persisted "barrier"
     await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
@@ -193,18 +188,13 @@ test.describe.serial("3d polyline annotation", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     await modal.annotate3d.selectLabel("lane");
 
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.deleteSelected(),
     );
-    await modal.annotate3d.deleteSelected();
     await modal.annotate3d.assert.labelCount(0);
-    await saved;
 
     await expectPersistedLabels(browser, fiftyoneLoader, []);
   });
@@ -217,38 +207,26 @@ test.describe.serial("3d polyline annotation", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
-    const awaitSave = () =>
-      page.waitForResponse(
-        (r) =>
-          /\/sample\//.test(r.url()) &&
-          ["POST", "PATCH", "PUT"].includes(r.request().method()),
-      );
-
     await modal.annotate3d.selectLabel("lane");
 
     // edit class lane -> barrier and let it autosave
-    let saved = awaitSave();
-    await modal.sidebar.edit.selectFieldChoice("label", "barrier");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "barrier"),
+    );
     await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
 
     // after the autosave the stack survives: undo reverts the class and
     // re-persists "lane"
-    saved = awaitSave();
     await modal.sidebar.edit.assert.undoIsEnabled(true);
-    await modal.sidebar.edit.undo();
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
-    await saved;
     await expectPersistedLabels(browser, fiftyoneLoader, ["lane"]);
 
     // redo re-applies the class and re-persists "barrier"
-    saved = awaitSave();
     await modal.sidebar.edit.assert.redoIsEnabled(true);
-    await modal.sidebar.edit.redo();
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
-    await saved;
     await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
   });
 });
@@ -294,7 +272,6 @@ test.describe.serial("3d polyline creation", () => {
     browser,
     fiftyoneLoader,
     modal,
-    page,
   }) => {
     // enter polyline mode (arms the toolbar + active polyline field), look
     // straight down the Z axis so the clicks land deterministically on the z=0
@@ -316,7 +293,7 @@ test.describe.serial("3d polyline creation", () => {
       [0.6, 0.4],
       [0.6, 0.6],
     ]);
-    await expect(labelInput).toBeVisible();
+    expect(await labelInput.isVisible()).toBe(true);
 
     // the freshly-drawn polyline is auto-selected with its edit form open
     // (which replaces the label list); verify creation through the form, then
@@ -324,14 +301,10 @@ test.describe.serial("3d polyline creation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
     // the draw's own autosave must land first, or it satisfies the waiter below
     await modal.sidebar.annotate.waitForSavesSettled();
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "barrier"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "barrier");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
-    await saved;
 
     // the drawn polyline persists as a single label carrying the class and a
     // non-empty points3d geometry

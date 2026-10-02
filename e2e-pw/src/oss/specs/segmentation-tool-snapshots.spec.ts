@@ -9,10 +9,10 @@
  * baselines: a selected mask draws a dashed outline, which would otherwise
  * pin whichever tool happens to deselect on its own.
  *
- * Determinism comes from the fixed class "cat" (label colors hash the string),
- * moving the mouse off-canvas before snapshotting, finalizing the AI keypoint
- * session so its ripple isn't captured, and pre-seeding the merge test's two
- * masks, with baselines captured on the CI platform (linux/Chromium).
+ * Determinism comes from the factory's one-color scheme, moving the mouse
+ * off-canvas before snapshotting, finalizing the AI keypoint session so its
+ * ripple isn't captured, and pre-seeding the merge test's two masks, with
+ * baselines captured on the CI platform (linux/Chromium).
  */
 
 import { test as base } from "src/oss/fixtures";
@@ -101,9 +101,7 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id: SAMPLE_ID }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   await modal.sidebar.annotate.segmentationMode();
   await modal.sidebar.annotate.assert.segmentationModeIsActive();
 };
@@ -150,7 +148,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await deselectForSnapshot(modal);
     await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("seg-pen-rectangle.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot("seg-pen-rectangle.png");
 
     await assertOnlyLabelHasMask(modal);
   });
@@ -174,7 +172,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await deselectForSnapshot(modal);
     await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("seg-brush-stroke.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot("seg-brush-stroke.png");
   });
 
   test("ai", async ({
@@ -195,10 +193,10 @@ test.describe.serial("segmentation tool snapshots", () => {
     // One positive point near the center; mock worker returns a
     // deterministic 8x8 all-foreground mask at bbox {0.4, 0.4, 0.2, 0.2}.
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so arm the autosave response that will carry it
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.click(0.5, 0.5);
-    await saved;
+    // the label exists, so wait on the save that carries it
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.click(0.5, 0.5),
+    );
 
     // Right-click to finalize the AI session: destroys the keypoint
     // overlay (and its ripple animation), leaving only the mask render.
@@ -210,7 +208,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     await deselectForSnapshot(modal);
     await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("seg-ai-mask.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot("seg-ai-mask.png");
 
     await assertOnlyLabelHasMask(modal);
   });
@@ -244,7 +242,7 @@ test.describe.serial("segmentation tool snapshots", () => {
       await deselectForSnapshot(modal);
       await modal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
 
-      await modal.sampleCanvas.assert.hasScreenshot("seg-merge-union.png");
+      await modal.sampleCanvas.assert.hasMediaScreenshot("seg-merge-union.png");
 
       // Sanity check: the merge persisted the pair as a single masked detection.
       const context = await browser.newContext();
@@ -254,6 +252,9 @@ test.describe.serial("segmentation tool snapshots", () => {
         await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
         await freshModal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
         await assertOnlyLabelHasMask(freshModal);
+        await freshModal.sampleCanvas.assert.hasMediaScreenshot(
+          "seg-merge-persisted.png",
+        );
       } finally {
         await context.close();
       }

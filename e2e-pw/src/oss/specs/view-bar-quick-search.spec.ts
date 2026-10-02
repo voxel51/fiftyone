@@ -12,8 +12,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 // exercises the whole path for real: operator, brain backend, applied view.
 //
 const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
-  viewBar: async ({ page }, use) => {
-    await use(new ViewBarPom(page));
+  viewBar: async ({ page, eventUtils }, use) => {
+    await use(new ViewBarPom(page, eventUtils));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -57,7 +57,9 @@ test.describe("view bar quick search", () => {
     await input.click();
     await input.fill(query);
     // The search applies its own result view; the grid reload is the proof
-    await grid.run(() => page.keyboard.press("Enter"));
+    await grid.afterEntryCounts(() =>
+      grid.run(() => page.keyboard.press("Enter")),
+    );
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     // A static run applies its results as a Select over the ranked ids;
@@ -74,7 +76,7 @@ test.describe("view bar quick search", () => {
   test("opening the stages row focuses the typeahead and its stage list", async ({
     viewBar,
   }) => {
-    await viewBar.stagesToggle.click();
+    await viewBar.openStages();
 
     // The empty row pins its slot open as the typeahead, focused and with
     // the stage list already dropped — typing can start immediately

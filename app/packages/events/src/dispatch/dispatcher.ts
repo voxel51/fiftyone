@@ -1,3 +1,4 @@
+import { isE2E } from "@fiftyone/utilities";
 import type { EventGroup, EventHandler } from "../types";
 
 type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
@@ -7,6 +8,27 @@ type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
  */
 type HandlerMap<T extends EventGroup> = {
   [E in keyof T]?: EventHandler<T[E]>[];
+};
+
+type EventTap = (event: string, data: unknown) => void;
+
+/**
+ * Events named `e2e:*` are signals for browser automation (e2e specs); the
+ * bus drops them everywhere else, so call sites dispatch them unconditionally
+ */
+export const E2E_EVENT_PREFIX = "e2e:";
+
+const taps = new Set<EventTap>();
+
+/**
+ * Observe every dispatch on every channel, including events with no handlers.
+ * Returns a function that removes the tap.
+ */
+export const tapAllEvents = (tap: EventTap): (() => void) => {
+  taps.add(tap);
+  return () => {
+    taps.delete(tap);
+  };
 };
 
 /**
@@ -216,7 +238,17 @@ export class EventDispatcher<T extends EventGroup> {
     event: E,
     ...args: DispatchData<T[E]>
   ): void {
+    if (String(event).startsWith(E2E_EVENT_PREFIX) && !isE2E()) {
+      return;
+    }
     const data = args[0] as T[E];
+    for (const tap of taps) {
+      try {
+        tap(event as string, data);
+      } catch (error) {
+        console.error(`error handling event '${String(event)}' in tap`, error);
+      }
+    }
     if (!this.handlers[event]?.length) {
       return;
     }

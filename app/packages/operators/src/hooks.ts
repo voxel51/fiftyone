@@ -3,10 +3,12 @@ import * as fos from "@fiftyone/state";
 import { debounce, isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
+import { QueueItemStatus, RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
+  getInvocationRequestQueue,
+  type InvocationRequestQueue,
   resolveOperatorURI,
   resolveLocalPlacements,
   type RawContext,
@@ -171,6 +173,31 @@ export function useActivePanelEventsCount(id: string) {
   );
 
   return { count, increment, decrement };
+}
+
+/**
+ * The number of queued invocation requests not yet finished, including the
+ * operators a panel event triggers after its own result
+ */
+export function useInFlightInvocationsCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const queue = getInvocationRequestQueue();
+    const subscriber = (updated: InvocationRequestQueue) =>
+      setCount(
+        updated.queue.filter(
+          ({ status }) =>
+            status === QueueItemStatus.Pending ||
+            status === QueueItemStatus.Executing,
+        ).length,
+      );
+    queue.subscribe(subscriber);
+    subscriber(queue);
+    return () => queue.unsubscribe(subscriber);
+  }, []);
+
+  return count;
 }
 
 /** Reactively returns the first registered operator URI from a list. */

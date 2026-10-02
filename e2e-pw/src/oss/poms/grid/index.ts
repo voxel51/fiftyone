@@ -1,5 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { Duration } from "src/oss/utils";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import { ArmedEvent, EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
@@ -13,6 +13,61 @@ import { UrlPom } from "../url";
  */
 const TILE_SELECTOR = "[data-cy=looker], [data-cy=grid-custom-renderer]";
 const CUSTOM_RENDERER_TEST_ID = "grid-custom-renderer";
+const LANE_SHOWN = "e2e:multimodal:grid-lane-shown";
+const TILE_DRAWN = "e2e:looker:canvas-loaded";
+const TILES_UPDATED = "e2e:grid:tiles-updated";
+const GRID_UNMOUNT = "e2e:grid:unmount";
+const GRID_MOUNT = "e2e:grid:mount";
+const COUNT_SHOWN = "e2e:components:entry-count-shown";
+
+type TileDraw = {
+  sampleFilepath: string;
+  labelsPending: boolean;
+  labels: string;
+};
+
+/** Each tile's drawn labels (sorted `field:label` pairs), by file name */
+export type TileLabels = Record<string, string[]>;
+
+/**
+ * Track tiles' latest draws: settled once `tiles` tiles have drawn and none
+ * has a reload or label painting still to draw
+ */
+class TileDraws {
+  private readonly latest = new Map<string, TileDraw>();
+
+  add(detail: unknown) {
+    const draw = detail as TileDraw;
+    this.latest.set(draw.sampleFilepath.split("/").pop() ?? "", draw);
+  }
+
+  clear() {
+    this.latest.clear();
+  }
+
+  settled(tiles: number | null) {
+    return (
+      tiles !== null &&
+      this.latest.size === tiles &&
+      [...this.latest.values()].every((draw) => !draw.labelsPending)
+    );
+  }
+
+  labels(): TileLabels {
+    return Object.fromEntries(
+      [...this.latest].map(([file, { labels }]) => [
+        file,
+        labels ? labels.split(",") : [],
+      ]),
+    );
+  }
+}
+
+/** A lane showing exactly `marks` marks, all of them temporal tags */
+const isTemporalTagLane = (detail: unknown, marks: number) => {
+  const lane = detail as { marks: number; sources: string };
+  return lane.marks === marks && lane.sources === "fiftyone:temporal-tags";
+};
 
 export class GridPom {
   readonly assert: GridAsserter;
@@ -65,9 +120,7 @@ export class GridPom {
     if (await this.isCustomRendererTile(tile)) {
       // the selection checkbox is revealed in the tile's top selection region
       await tile.hover({ position: { x: 10, y: 5 } });
-      const checkbox = tile.locator("[data-fo-selection-checkbox]");
-      await expect(checkbox).toBeVisible();
-      await checkbox.click();
+      await tile.locator("[data-fo-selection-checkbox]").click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
@@ -85,11 +138,9 @@ export class GridPom {
     await tile.hover({
       position: { x: box.width / 2, y: Math.min(20, box.height / 8) },
     });
-    const button = this.page.getByRole("button", {
-      name: `Add to ${bucketName}`,
-    });
-    await expect(button).toBeVisible();
-    await button.click();
+    await this.page
+      .getByRole("button", { name: `Add to ${bucketName}` })
+      .click();
   }
 
   async openNthSample(n: number) {
@@ -131,6 +182,34 @@ export class GridPom {
   }
 
   /**
+   * Run `action` and resolve once a tile's interval lane draws `marks`
+   * temporal-tag marks because of it
+   */
+  async afterTemporalTagMarks<T>(
+    marks: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after(LANE_SHOWN, action, (e) =>
+      isTemporalTagLane(e.detail, marks),
+    );
+  }
+
+  /**
+   * Resolve once a tile's interval lane has drawn `marks` temporal-tag marks,
+   * which it does on its own as the page loads
+   */
+  async untilTemporalTagMarks(marks: number) {
+    await this.eventUtils.untilState(
+      LANE_SHOWN,
+      async () =>
+        (await this.eventUtils.recorded(LANE_SHOWN)).some((detail) =>
+          isTemporalTagLane(detail, marks),
+        ),
+      (e) => isTemporalTagLane(e.detail, marks),
+    );
+  }
+
+  /**
    * The first mark's position on its lane, as the percentages the lane lays it
    * out with — the tag's own time over the lane's time axis.
    */
@@ -149,37 +228,38 @@ export class GridPom {
   }
 
   async scrollBottom() {
-    const forwardSectionDiv = this.getForwardSection().locator("div").last();
-    await forwardSectionDiv.waitFor({ state: "visible" });
-    return forwardSectionDiv.scrollIntoViewIfNeeded({
-      timeout: Duration.Seconds(20),
-    });
+    return this.getForwardSection()
+      .locator("div")
+      .last()
+      .scrollIntoViewIfNeeded();
   }
 
   async scrollTop() {
-    const backwardSectionDiv = this.getBackwardSection().locator("div").first();
-    await backwardSectionDiv.waitFor({ state: "visible" });
-    return backwardSectionDiv.scrollIntoViewIfNeeded({
-      timeout: Duration.Seconds(20),
-    });
+    return this.getBackwardSection()
+      .locator("div")
+      .first()
+      .scrollIntoViewIfNeeded();
+  }
+
+  /** Reload the page, resolving once the reloaded grid has a tile ready */
+  async reload() {
+    await this.eventUtils.afterNavigation(
+      [
+        "e2e:looker:canvas-loaded",
+        "e2e:looker:error-shown",
+        "e2e:grid:custom-renderer-mounted",
+      ],
+      () => this.page.reload(),
+    );
   }
 
   async selectSlice(slice: string) {
-    if (await this.page.getByTestId("modal").isVisible()) {
-      // Defensive, no-op-ish cleanup to dismiss any open thing before interacting with the grid slice selector.
-      await this.page.click("body", { position: { x: 0, y: 0 } });
-    }
+    if ((await this.sliceSelector.activeSlice()) === slice) return;
 
-    await this.sliceSelector.selectSlice(slice);
-  }
-
-  /**
-   * @deprecated Use `armGridRefresh` instead.
-   */
-  async waitForGridToLoad() {
-    return this.page.waitForSelector(TILE_SELECTOR, {
-      timeout: 2000,
-    });
+    // a slice change remounts the grid and recounts its entries
+    await this.afterEntryCounts(() =>
+      this.run(() => this.sliceSelector.selectSlice(slice)),
+    );
   }
 
   /**
@@ -193,7 +273,7 @@ export class GridPom {
   async armLifecycleCounters() {
     return {
       mounts: await this.eventUtils.initCounter("grid-mount"),
-      unmounts: await this.eventUtils.initCounter("grid-unmount"),
+      unmounts: await this.eventUtils.initCounter("e2e:grid:unmount"),
     };
   }
 
@@ -202,34 +282,239 @@ export class GridPom {
    * arming BEFORE the action that refreshes the grid, then await the handle's
    * `received` after it.
    */
-  async armGridRefresh(): Promise<ArmedEvent> {
-    const unmount = await this.eventUtils.arm("grid-unmount");
-    const mount = await this.eventUtils.arm("grid-mount");
+  private async armGridRefresh(): Promise<ArmedEvent> {
+    // only the mount that follows the teardown counts; the old grid's own
+    // mount can still be on its way when the action starts
+    let unmounted = false;
+    const unmount = await this.eventUtils.arm("e2e:grid:unmount", () => {
+      unmounted = true;
+      return true;
+    });
+    const mount = await this.eventUtils.arm("grid-mount", () => unmounted);
     return new ArmedEvent(
       Promise.all([unmount.received, mount.received]).then(
         (): void => undefined,
       ),
+      async () => {
+        await Promise.all([unmount.dispose(), mount.dispose()]);
+      },
     );
+  }
+
+  /**
+   * Resolve once the tile of `fileName` has drawn, which it does on its own
+   * after the page loads. `fileName` must back only one tile, since any tile
+   * of it resolves the wait
+   */
+  async untilTileDrawn(fileName: string) {
+    const isTile = (detail: unknown) =>
+      String(
+        (detail as { sampleFilepath?: string } | undefined)?.sampleFilepath,
+      ).endsWith(`/${fileName}`);
+    await this.eventUtils.untilState(
+      "e2e:looker:canvas-loaded",
+      async () =>
+        (await this.eventUtils.recorded("e2e:looker:canvas-loaded")).some(
+          isTile,
+        ),
+      (e) => isTile(e.detail),
+    );
+  }
+
+  /**
+   * Run `action` and resolve once `count` distinct tiles have drawn their
+   * canvas because of it
+   */
+  async afterTilesDrawn<T>(
+    count: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const drawn = new Set<string>();
+    return this.eventUtils.after("e2e:looker:canvas-loaded", action, (e) => {
+      drawn.add((e.detail as { sampleId: string }).sampleId);
+      return drawn.size === count;
+    });
+  }
+
+  /**
+   * Run `action`, which changes the shown tiles' options in place, and resolve
+   * with each updated tile's labels once the grid's update pass is done and
+   * every updated tile's draws have settled
+   */
+  async afterTilesUpdated(action: () => Promise<unknown>): Promise<TileLabels> {
+    const draws = new TileDraws();
+    let tiles: number | null = null;
+    await this.eventUtils.after(
+      [TILES_UPDATED, TILE_DRAWN],
+      action,
+      ({ event, detail }) => {
+        if (event === TILES_UPDATED) {
+          tiles = (detail as { tiles: number }).tiles;
+        } else {
+          draws.add(detail);
+        }
+        return draws.settled(tiles);
+      },
+    );
+    return draws.labels();
+  }
+
+  /**
+   * Run `action`, which refreshes the grid, and resolve with each new tile's
+   * labels once the remounted grid's tiles have settled. Only draws after the
+   * old grid unmounts count, so the old tiles' draws cannot satisfy the wait.
+   * Entry counts that change go through {@link afterEntryCounts}
+   */
+  async afterGridRefreshed(
+    action: () => Promise<unknown>,
+  ): Promise<TileLabels> {
+    const draws = new TileDraws();
+    let unmounted = false;
+    let tiles: number | null = null;
+    await this.eventUtils.after(
+      [GRID_UNMOUNT, GRID_MOUNT, TILE_DRAWN],
+      action,
+      ({ event, detail }) => {
+        if (event === GRID_UNMOUNT) {
+          unmounted = true;
+          tiles = null;
+          draws.clear();
+          return false;
+        }
+        if (!unmounted) return false;
+        if (event === GRID_MOUNT) {
+          tiles = (detail as { tiles: number }).tiles;
+        } else {
+          draws.add(detail);
+        }
+        return draws.settled(tiles);
+      },
+    );
+    return draws.labels();
+  }
+
+  /**
+   * Run `action` and resolve once `count` custom-renderer tiles have mounted
+   * because of it; they mount after the grid does
+   */
+  async afterRendererTilesMounted<T>(
+    count: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    let mounted = 0;
+    return this.eventUtils.after(
+      "e2e:grid:custom-renderer-mounted",
+      action,
+      () => ++mounted === count,
+    );
+  }
+
+  /** How many tile tag renders the document has recorded so far */
+  async tagsRenderedMark(): Promise<number> {
+    return (await this.eventUtils.recorded("e2e:looker:tags-rendered")).length;
+  }
+
+  /**
+   * Resolve once the tile of `filepath` has rendered its tags after `mark`
+   * (from {@link tagsRenderedMark}); tiles render as they scroll into view
+   */
+  async untilTagsRenderedSince(mark: number, filepath: string) {
+    const isTile = (detail: unknown) =>
+      (detail as { sampleFilepath?: string } | undefined)?.sampleFilepath ===
+      filepath;
+    await this.eventUtils.untilState(
+      "e2e:looker:tags-rendered",
+      async () =>
+        (await this.eventUtils.recorded("e2e:looker:tags-rendered"))
+          .slice(mark)
+          .some(isTile),
+      (e) => isTile(e.detail),
+    );
+  }
+
+  /**
+   * {@link afterTagsRendered} for tiles addressed by file name rather than
+   * full filepath
+   */
+  async afterTagsRenderedNamed<T>(
+    fileNames: string[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const pending = new Set(fileNames);
+    return this.eventUtils.after("e2e:looker:tags-rendered", action, (e) => {
+      const { sampleFilepath } = e.detail as { sampleFilepath: string };
+      pending.delete(sampleFilepath.split("/").pop() ?? "");
+      return pending.size === 0;
+    });
+  }
+
+  /**
+   * Run `action` and resolve once the tiles of every one of `filepaths` have
+   * redrawn their tag bubbles because of it
+   */
+  async afterTagsRendered<T>(
+    filepaths: string[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const pending = new Set(filepaths);
+    return this.eventUtils.after("e2e:looker:tags-rendered", action, (e) => {
+      pending.delete((e.detail as { sampleFilepath: string }).sampleFilepath);
+      return pending.size === 0;
+    });
+  }
+
+  /**
+   * Run `action` and resolve once the entry counts it changes have rendered
+   * loaded: the element count, and with `groups` the group count too. The
+   * counts signal only when their text changes, so `action` must change it
+   */
+  async afterEntryCounts<T>(
+    action: () => Promise<T>,
+    kind: "groups" | "elements" = "elements",
+  ): Promise<T> {
+    const pending = new Set(
+      kind === "groups" ? ["grid-elements", "grid-groups"] : ["grid-elements"],
+    );
+    return this.eventUtils.after(COUNT_SHOWN, action, (e) => {
+      pending.delete((e.detail as { signal: string }).signal);
+      return pending.size === 0;
+    });
   }
 
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
-    const result = await wrap();
-    await refresh.received;
-    return result;
+    try {
+      const result = await wrap();
+      await refresh.received;
+      return result;
+    } finally {
+      await refresh.dispose();
+    }
   }
 }
 
 class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
+  /**
+   * One capture of `target` (the forward section by default); draw it first
+   * with {@link GridPom.afterTilesDrawn}
+   */
+  async hasScreenshot(
+    name: string,
+    options: { target?: Locator; mask?: Locator[] } = {},
+  ) {
+    const target = options.target ?? this.gridPom.getForwardSection();
+    await expectScreenshot(target, name, { mask: options.mask });
+  }
+
   async isTileCountEqualTo(n: number) {
-    await expect(this.gridPom.locator.locator(TILE_SELECTOR)).toHaveCount(n);
+    expect(await this.gridPom.locator.locator(TILE_SELECTOR).count()).toBe(n);
   }
 
   async isNthSampleSelected(n: number) {
     const checkbox = await this.gridPom.getNthCheckbox(n);
-    await expect(checkbox).toBeChecked();
+    expect(await checkbox.isChecked()).toBe(true);
   }
 
   async nthSampleHasTagValue(
@@ -238,39 +523,39 @@ class GridAsserter {
     expectedTagValue: string,
   ) {
     const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
-    await expect(tagElement).toHaveText(expectedTagValue);
+    expect(await tagElement.textContent()).toBe(expectedTagValue);
   }
 
   async nthSampleHasNoTag(n: number, tagName: string) {
     const tagElement = this.gridPom.getNthTile(n).getByTestId(`tag-${tagName}`);
-    await expect(tagElement).toBeHidden();
+    expect(await tagElement.isVisible()).toBe(false);
   }
 
   async isSelectionCountEqualTo(n: number) {
     const tray = this.gridPom.page.getByRole("region", { name: "Selection" });
 
     if (n === 0) {
-      await expect(tray).toContainText("Act on all samples in the grid");
+      expect(await tray.textContent()).toContain(
+        "Act on all samples in the grid",
+      );
       return;
     }
 
-    await expect(tray).toContainText(
+    expect(await tray.textContent()).toMatch(
       new RegExp(
         `${n.toLocaleString()}\\s*sample${n === 1 ? "" : "s"} selected`,
       ),
     );
   }
 
+  /**
+   * One read of the entry counts; the loader and {@link GridPom.run} wait for
+   * them to load, other causes go through {@link GridPom.afterEntryCounts}
+   */
   async isEntryCountTextEqualTo(text: string) {
-    const entryCounts = this.gridPom.page.getByTestId("entry-counts");
-    const normalize = (value: string | null) =>
-      (value ?? "").replace(/\s+/g, " ").trim();
-
-    await expect(entryCounts).toBeVisible({ timeout: Duration.Seconds(20) });
-    await expect
-      .poll(async () => normalize(await entryCounts.textContent()), {
-        timeout: Duration.Seconds(20),
-      })
-      .toBe(normalize(text));
+    const counts = await this.gridPom.page
+      .getByTestId("entry-counts")
+      .textContent();
+    expect(counts?.replace(/\s+/g, " ").trim()).toBe(text);
   }
 }

@@ -82,17 +82,16 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+    readyEvent: "e2e:video-annotation:tracks-rendered",
   });
-  await modal.assert.isOpen();
-  await modal.waitForSampleLoadDomAttribute();
   const va = modal.videoAnnotate;
 
   // both fields are active by default: one row each
   await va.assert.objectTrackCount(2);
-  await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
-    "data-timeline-loaded",
-    "true",
-  );
+  expect(
+    await page.locator(TIMELINE_ROOT).getAttribute("data-timeline-loaded"),
+  ).toBe("true");
 
   // rows only render in the drawer body, so open it — this is also the layout
   // the close-and-reopen was visible in
@@ -120,12 +119,13 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 
   // turn the polylines field off: the stream rebuilds, the polyline row goes,
   // the detection row stays put in the same drawer
-  await modal.sidebar.toggleLabelCheckbox("frames.polylines");
-  await va.assert.objectTrackCount(1);
-  await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
-    "data-timeline-loaded",
-    "true",
+  await va.afterTracksChange(() =>
+    modal.sidebar.toggleLabelCheckbox("frames.polylines"),
   );
+  await va.assert.objectTrackCount(1);
+  expect(
+    await page.locator(TIMELINE_ROOT).getAttribute("data-timeline-loaded"),
+  ).toBe("true");
 
   let after = await attached();
   expect(after.root, "timeline root was replaced").toBe(true);
@@ -138,12 +138,13 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
 
   // and back on: the stream rebuilds again, still without a remount, and the
   // detection row that was held is the very same node
-  await modal.sidebar.toggleLabelCheckbox("frames.polylines");
-  await va.assert.objectTrackCount(2);
-  await expect(page.locator(TIMELINE_ROOT)).toHaveAttribute(
-    "data-timeline-loaded",
-    "true",
+  await va.afterTracksChange(() =>
+    modal.sidebar.toggleLabelCheckbox("frames.polylines"),
   );
+  await va.assert.objectTrackCount(2);
+  expect(
+    await page.locator(TIMELINE_ROOT).getAttribute("data-timeline-loaded"),
+  ).toBe("true");
 
   after = await attached();
   expect(after.root, "timeline root was replaced").toBe(true);

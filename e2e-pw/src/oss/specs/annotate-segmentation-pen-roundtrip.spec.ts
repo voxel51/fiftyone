@@ -72,9 +72,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     modal,
   }) => {
     // ── 1. Enter annotate → segmentation mode → pick Pen ─────────────────────
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
@@ -107,9 +105,7 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.edit.assert.isOpen();
     await modal.sampleCanvas.rightClick(0.5, 0.5);
     await modal.sidebar.edit.assert.isClosed();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     await modal.sidebar.annotate.waitForSavesSettled();
 
@@ -117,26 +113,31 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);
     await modal.sidebar.annotate.assert.selectIsActive();
 
-    // ── 4. A fresh browser context must list the detection with its mask ────
+    // ── 4. A fresh browser context must list both detections with masks ─────
     const context = await browser.newContext();
     try {
       const freshPage = await context.newPage();
       await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
         searchParams: new URLSearchParams({ id: sampleId }),
+        modalSample: "loaded",
       });
       const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-      await fresh.waitForSampleLoadDomAttribute();
-      await fresh.sidebar.switchMode("annotate");
+      await fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      );
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      // both polygons were committed as their own detections
+      expect(await rows.count()).toBe(2);
 
-      // Pen polygon covered ~20% × 20% of the image; a non-empty rendered mask
-      // catches "the field saved but the mask is empty".
+      // both masks render on the fresh canvas as drawn, captured before any
+      // row is selected since the rows' order isn't fixed
+      await fresh.sampleCanvas.assert.hasMediaScreenshot(
+        "seg-pen-persisted.png",
+      );
+
+      // and a persisted row carries its mask
       await rows.first().click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
     } finally {
       await context.close();
     }

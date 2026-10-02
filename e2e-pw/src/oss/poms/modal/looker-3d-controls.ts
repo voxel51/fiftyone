@@ -2,7 +2,7 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 import { ModalLevaPom } from "./leva";
 
-const SUCCESS_MSG = "All assets loaded successfully!";
+const SLICE_SELECTOR = "e2e:looker3d:slice-selector";
 
 export class Looker3DControlsPom {
   readonly page: Page;
@@ -34,21 +34,12 @@ export class Looker3DControlsPom {
       .click();
   }
 
-  async waitForAllAssetsLoaded() {
-    await this.page.waitForFunction(
-      (SUCCESS_MSG_INJECTED) => {
-        const logs = document.querySelector(
-          "[data-cy=looker3d-logs-action-bar]",
-        );
-        return logs?.textContent === SUCCESS_MSG_INJECTED;
-      },
-      SUCCESS_MSG,
-      { timeout: 10000 },
-    );
-    // takes a bit of time for 3d assets to mount after load
-    // todo: figure out if we can emit event on canvas paint
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await this.page.waitForTimeout(150);
+  /**
+   * Run `action` and resolve once the scene it (re)mounts has loaded every
+   * asset and rendered with its settled camera
+   */
+  async afterAllAssetsLoaded<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.afterSceneReady(action);
   }
 
   /**
@@ -56,24 +47,30 @@ export class Looker3DControlsPom {
    * camera, so a following canvas click raycasts against the top view.
    */
   async setTopView() {
-    const settled = await this.modal.eventUtils.arm(
-      "looker3d-camera-look-at-settled",
+    await this.modal.eventUtils.after("looker3d-camera-look-at-settled", () =>
+      this.locator.getByTestId("looker-3d-set-top-view").click(),
     );
-    await this.locator.getByTestId("looker-3d-set-top-view").click();
-    await settled.received;
   }
 
+  /** Move to the ego view; resolves once a frame has rendered the new camera. */
   async setEgoView() {
-    await this.locator.getByTestId("looker-3d-set-ego-view").click();
+    await this.modal.eventUtils.after("looker3d-camera-look-at-settled", () =>
+      this.locator.getByTestId("looker-3d-set-ego-view").click(),
+    );
   }
 
   async toggleGridHelper() {
-    await this.locator.getByTestId("looker-3d-toggle-grid-helper").click();
+    const toggle = this.locator.getByTestId("looker-3d-toggle-grid-helper");
+    const on = (await toggle.getAttribute("aria-pressed")) === "true";
+    await this.modal.eventUtils.after(
+      "e2e:looker3d:grid-toggled",
+      () => toggle.click(),
+      (e) => (e.detail as { on: boolean }).on !== on,
+    );
   }
 
   async openSliceSelector() {
-    await this.sliceSelector.click();
-    await this.sliceSelectorCheckboxes.waitFor({ state: "visible" });
+    await this.afterSliceSelector(true, () => this.sliceSelector.click());
   }
 
   async closeSliceSelector() {
@@ -81,8 +78,15 @@ export class Looker3DControlsPom {
       return;
     }
 
-    await this.modal.clickOnLooker3d();
-    await expect(this.sliceSelectorCheckboxes).toHaveCount(0);
+    await this.afterSliceSelector(false, () => this.modal.clickOnLooker3d());
+  }
+
+  private afterSliceSelector<T>(open: boolean, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      SLICE_SELECTOR,
+      action,
+      (e) => (e.detail as { open: boolean }).open === open,
+    );
   }
 
   getSliceCheckbox(slice: string) {
@@ -94,13 +98,15 @@ class Looker3DControlsAsserter {
   constructor(private readonly looker3dControlsPom: Looker3DControlsPom) {}
 
   async verifySliceSelectorLabel(expectedLabel: string) {
-    await expect(this.looker3dControlsPom.sliceSelector).toContainText(
-      expectedLabel,
-    );
+    expect(
+      await this.looker3dControlsPom.sliceSelector.textContent(),
+    ).toContain(expectedLabel);
   }
 
   async verifySliceSelectorHidden() {
-    await expect(this.looker3dControlsPom.sliceSelector).toBeHidden();
+    expect(await this.looker3dControlsPom.sliceSelector.isVisible()).toBe(
+      false,
+    );
   }
 
   async verifySliceChecked(slice: string, checked = true) {
@@ -108,11 +114,6 @@ class Looker3DControlsAsserter {
       .getSliceCheckbox(slice)
       .locator('input[type="checkbox"]');
 
-    if (checked) {
-      await expect(checkbox).toBeChecked();
-      return;
-    }
-
-    await expect(checkbox).not.toBeChecked();
+    expect(await checkbox.isChecked()).toBe(checked);
   }
 }

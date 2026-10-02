@@ -146,12 +146,14 @@ test(`dynamic groups of groups works`, async ({
       searchParams: new URLSearchParams({ view: "groups" }),
     },
   );
-  const gridRefreshPromiseSetRenderFramesAsVideo = await grid.armGridRefresh();
-  await grid.actionsRow.toggleDisplayOptions();
-  await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-  await gridRefreshPromiseSetRenderFramesAsVideo.received;
+  await grid.run(async () => {
+    await grid.actionsRow.toggleDisplayOptions();
+    await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
+  });
 
   await grid.assert.isTileCountEqualTo(2);
+  // rendering frames as video leaves the counts as loaded, so they do not
+  // signal
   await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
 
   await grid.assert.nthSampleHasTagValue(0, "scene_key", "1");
@@ -159,8 +161,7 @@ test(`dynamic groups of groups works`, async ({
   await grid.assert.nthSampleHasTagValue(0, "order_key", "1");
   await grid.assert.nthSampleHasTagValue(1, "order_key", "1");
 
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
 
   await modal.sidebar.assert.verifySidebarEntryTexts({
     scene_key: "1",
@@ -170,16 +171,18 @@ test(`dynamic groups of groups works`, async ({
   await modal.imavid.setLooping(false);
   await modal.imavid.toggleSettings();
 
-  await modal.imavid.togglePlay();
-  await modal.imavid.waitUntilFrameTextIs("2 / 2", true);
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+  // the last frame's draw moves the sidebar to its sample
+  await modal.eventUtils.after(
+    "e2e:modal:sidebar-entry",
+    () => modal.imavid.togglePlay(),
+    (e) => (e.detail as { path: string }).path === "order_key",
+  );
+  await modal.sidebar.assert.verifySidebarEntryTexts({
     scene_key: "1",
     order_key: "2",
   });
-  await modal.navigateNextSample();
 
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    scene_key: "2",
-    order_key: "1",
-  });
+  const next = { scene_key: "2", order_key: "1" };
+  await modal.sidebar.afterEntries(next, () => modal.navigateNextSample());
+  await modal.sidebar.assert.verifySidebarEntryTexts(next);
 });

@@ -1,10 +1,22 @@
 import * as fos from "@fiftyone/state";
-import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
+import {
+  is3d,
+  isDirect3dSamplePath,
+  isE2E,
+  setContains3d,
+} from "@fiftyone/utilities";
+import { addAfterEffect } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
 import { useWorkingLabel } from "./annotation/store/working";
-import { CAMERA_LOOK_AT_SETTLED_EVENT, SCENE_READY_EVENT } from "./constants";
+import {
+  CAMERA_LOOK_AT_SETTLED_EVENT,
+  DRAFT_VERTICES_EVENT,
+  FRAME_RENDERED_EVENT,
+  type Looker3dE2EEvents,
+  SCENE_READY_EVENT,
+} from "./constants";
 import { LoadingDots } from "@fiftyone/components";
 import { Container, LoadingCover } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
@@ -26,6 +38,7 @@ import {
   useFo3dSceneReady,
 } from "./state/accessors";
 import { isPolyline3dOverlay } from "./types";
+import { getEventBus } from "@fiftyone/events";
 
 /**
  * This component renders all supported 3D contexts through the FO3D pipeline,
@@ -80,6 +93,12 @@ export const Looker3d = () => {
       : undefined;
 
   useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(DRAFT_VERTICES_EVENT, {
+      count: draftVertexCount,
+    });
+  }, [draftVertexCount]);
+
+  useEffect(() => {
     return () => {
       setFo3dHasBackground(false);
     };
@@ -120,6 +139,13 @@ export const Looker3d = () => {
     return () =>
       document.removeEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
   }, [looker3dSceneKey]);
+
+  useEffect(() => {
+    if (!isE2E()) return undefined;
+    return addAfterEffect(() =>
+      getEventBus<Looker3dE2EEvents>().dispatch(FRAME_RENDERED_EVENT),
+    );
+  }, []);
 
   useHotkey(
     "KeyG",
@@ -224,11 +250,9 @@ export const Looker3d = () => {
   const revealed = sceneReady && cameraSettledKey === looker3dSceneKey;
   useEffect(() => {
     if (revealed) {
-      document.dispatchEvent(
-        new CustomEvent(SCENE_READY_EVENT, {
-          detail: { sceneKey: looker3dSceneKey },
-        }),
-      );
+      getEventBus<Looker3dE2EEvents>().dispatch(SCENE_READY_EVENT, {
+        sceneKey: looker3dSceneKey,
+      });
     }
   }, [revealed, looker3dSceneKey]);
 

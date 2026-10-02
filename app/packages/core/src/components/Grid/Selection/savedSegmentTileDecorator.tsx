@@ -7,6 +7,7 @@ import {
   unregisterTileDecorator,
   type TileDecoratorSample,
 } from "../tileDecorators";
+import { useSelectionShownSignal } from "./e2eSignals";
 import { plural } from "./format";
 import { trayTheme } from "./theme";
 import styles from "./SelectionTray.module.css";
@@ -17,16 +18,28 @@ function SavedSegmentTile({ sample }: { sample: TileDecoratorSample }) {
   const { active, members, loading, error, filtered } = useScopedSegments(
     sample._id ?? sample.id ?? "",
   );
-  if (!active) return null;
   const sources = [
     ...new Set(members.map(({ range }) => savedSegmentSource(range).label)),
   ];
+  const title = `${plural(members.length, filtered ? "matching segment" : "saved segment")}${sources.length ? ` — ${sources.join("; ")}` : ""}`;
+  useSelectionShownSignal(
+    "e2e:selection:saved-segments-shown",
+    active && !error
+      ? {
+          sampleId: sample._id ?? sample.id ?? "",
+          count: members.length,
+          loading,
+          title,
+        }
+      : null,
+  );
+  if (!active) return null;
   return (
     <div
       className={styles.savedSegments}
       style={trayTheme}
       data-cy="saved-segment-tile"
-      title={`${plural(members.length, filtered ? "matching segment" : "saved segment")}${sources.length ? ` — ${sources.join("; ")}` : ""}`}
+      title={title}
     >
       <Text
         variant={TextVariant.Xs}

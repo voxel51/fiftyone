@@ -17,20 +17,28 @@ export class HistogramPom {
     this.selector = new SelectorPom(this.locator, eventUtils, "histograms");
   }
 
-  async selectField(field: string) {
-    const promise = await this.eventUtils.arm(`histogram-${field}`);
-    await this.selector.selectResult(field);
-    await promise.received;
+  /** Select `field`; resolves with its drawn bars (see {@link afterLoad}) */
+  selectField(field: string): Promise<string> {
+    return this.afterLoad(() => this.selector.selectResult(field), field);
   }
 
-  // arm BEFORE the action that reloads the histogram (mode switch, panel
-  // foreground); the app fires histograms-loaded on every completed draw.
-  // Pass a path to ignore sibling histograms' draws.
-  async armLoad(path?: string) {
-    return this.eventUtils.arm(
-      "histograms-loaded",
-      (e) => !path || (e.detail as { path?: string })?.path === path,
-    );
+  /**
+   * Run the action that (re)draws a histogram (opening the panel, a mode
+   * switch, a field choice) and resolve with its bars as `key:count` in axis
+   * order; pass a path to ignore sibling histograms' draws
+   */
+  async afterLoad(
+    action: () => Promise<unknown>,
+    path?: string,
+  ): Promise<string> {
+    let bars = "";
+    await this.eventUtils.after("e2e:histograms:loaded", action, (e) => {
+      const detail = e.detail as { path?: string; bars?: string };
+      if (path && detail?.path !== path) return false;
+      bars = detail?.bars ?? "";
+      return true;
+    });
+    return bars;
   }
 }
 
@@ -38,7 +46,7 @@ class HistogramAsserter {
   constructor(private readonly histogramPom: HistogramPom) {}
 
   async isLoaded() {
-    await expect(this.histogramPom.locator).toBeVisible();
+    expect(await this.histogramPom.locator.isVisible()).toBe(true);
   }
 
   async verifyField(field: string) {

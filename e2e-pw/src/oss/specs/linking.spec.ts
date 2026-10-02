@@ -48,9 +48,8 @@ test.describe.serial("modal linking", () => {
   test(`sample linking`, async ({ page, fiftyoneLoader, modal }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded-or-error",
     });
-
-    await modal.waitForSampleLoadDomAttribute(true);
 
     await modal.assert.isOpen();
     await modal.sidebar.assert.verifySidebarEntryText("id", id);
@@ -59,9 +58,8 @@ test.describe.serial("modal linking", () => {
   test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
       searchParams: new URLSearchParams({ groupId: id }),
+      modalSample: "loaded-or-error",
     });
-
-    await modal.waitForSampleLoadDomAttribute(true);
 
     await modal.assert.isOpen();
     await modal.sidebar.assert.verifySidebarEntryText("group.id", id);

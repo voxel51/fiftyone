@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { GridPom } from "../grid";
 
 const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];
@@ -42,7 +43,11 @@ export class FieldVisibilityPom {
   readonly sidebarLocator: Locator;
   readonly containerLocator: Locator;
 
-  constructor(page: Page, gridPom: GridPom) {
+  constructor(
+    page: Page,
+    gridPom: GridPom,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.gridPom = gridPom;
 
@@ -61,7 +66,7 @@ export class FieldVisibilityPom {
   }
 
   get fieldVisibilityToggleTooltip() {
-    return this.page.getByText("Change field visibility");
+    return this.page.getByTestId("tooltip-Change field visibility");
   }
 
   get clearBtn() {
@@ -172,7 +177,14 @@ export class FieldVisibilityPom {
   }
 
   async openFieldVisibilityModal() {
-    await this.fieldVisibilityBtn.click();
+    await this.eventUtils.after("e2e:schema:field-visibility-opened", () =>
+      this.fieldVisibilityBtn.click(),
+    );
+  }
+
+  /** Hover the field visibility icon; its tooltip opens after a delay */
+  async hoverIcon() {
+    await this.fieldVisibilityBtn.hover();
   }
 
   async hideFields(paths: string[]) {
@@ -182,24 +194,28 @@ export class FieldVisibilityPom {
       await this.page
         .getByTestId(`schema-selection-${paths[i]}`)
         .getByRole("checkbox", { checked: true })
-        .click({ timeout: 1000 });
+        .click();
     }
 
     await this.submitFieldVisibilityChanges();
   }
 
   async submitFieldVisibilityChanges() {
-    const gridRefresh = await this.gridPom.armGridRefresh();
-    await this.applyBtn.click();
-    await gridRefresh.received;
+    await this.gridPom.run(async () => {
+      await this.applyBtn.click();
+    });
   }
 
   async clearFieldVisibilityChanges() {
-    await this.clearBtn.click();
+    await this.gridPom.run(async () => {
+      await this.clearBtn.click();
+    });
   }
 
   async clickReset() {
-    return await this.resetBtn.click();
+    await this.gridPom.run(async () => {
+      await this.resetBtn.click();
+    });
   }
 
   async openTab(tabName: TabType) {
@@ -215,9 +231,11 @@ export class FieldVisibilityPom {
 class FieldVisibilityAsserter {
   constructor(private readonly fv: FieldVisibilityPom) {}
 
+  /** The hover's tooltip; the read waits for it to open */
   async fieldVisibilityIconHasTooltip() {
-    await this.fv.fieldVisibilityBtn.hover();
-    await expect(this.fv.fieldVisibilityToggleTooltip).toBeVisible();
+    expect(await this.fv.fieldVisibilityToggleTooltip.textContent()).toBe(
+      "Change field visibility",
+    );
   }
 
   async assertAllFieldsSelected(selectionFields: string[] = allParentPaths) {
@@ -244,19 +262,19 @@ class FieldVisibilityAsserter {
 
   async assertMetadataInVisible(path: string = "ground_truth") {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
-    await expect(fieldInfoContainer).toBeHidden();
+    expect(await fieldInfoContainer.isVisible()).toBe(false);
   }
 
   async assertMetadataVisible(path: string = "ground_truth") {
     const fieldInfoContainer = this.fv.getFieldInfoContainer(path);
-    await expect(fieldInfoContainer).toBeVisible();
-    await expect(
-      fieldInfoContainer.getByText(`${path} description`),
-    ).toBeVisible();
+    expect(await fieldInfoContainer.isVisible()).toBe(true);
+    expect(
+      await fieldInfoContainer.getByText(`${path} description`).isVisible(),
+    ).toBe(true);
   }
 
   async assertFilterRuleExamplesVisible() {
-    await expect(this.fv.filterRuleContainer).toBeVisible();
+    expect(await this.fv.filterRuleContainer.isVisible()).toBe(true);
   }
 
   async assertDefaultParentPathsSelected() {

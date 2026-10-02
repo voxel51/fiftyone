@@ -90,6 +90,13 @@
     :tags: multimodal,mcap,robotics,lidar,depth,gnss
 
 .. customcarditem::
+    :header: DreamTac
+    :description: 703 contact-rich Franka manipulation trajectories in native MCAP format, pairing third-person and wrist cameras with two vision-based tactile fingertips on one clock.
+    :link: datasets/dreamtac.html
+    :image: ../_images/dreamtac.png
+    :tags: multimodal,mcap,tactile,manipulation,robotics
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html

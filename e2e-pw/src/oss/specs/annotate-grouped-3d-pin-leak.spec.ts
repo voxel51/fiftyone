@@ -124,28 +124,19 @@ test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => 
     // the default slice is the 3D mesh, so EnsureGroupSample pins the viewer and
     // selects the image slice; let that settle before entering Annotate so the
     // modal opens on the 2D surface (the leak precondition)
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.switchMode("annotate");
 
     // The image slice's sidebar must reflect ITS OWN two detections — never the
     // pinned 3D scene's cuboid. A leak would show count 1 with the "dog" cuboid.
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     await modal.annotate3d.assert.labelListed("dog", false);
     expect(await modal.annotate3d.listedLabels()).toEqual(["cat", "cat"]);
 
     // Explicitly selecting the image slice keeps it clean (no cuboid resurfaces).
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     await modal.annotate3d.assert.labelListed("dog", false);
   });
 
@@ -153,19 +144,15 @@ test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => 
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.switchMode("annotate");
 
     // Selecting the 3D mesh slice as the annotation target must list its cuboid.
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
     await modal.annotate3d.assert.labelListed("dog", true);
   });
 });

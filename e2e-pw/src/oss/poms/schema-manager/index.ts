@@ -54,7 +54,9 @@ export class SchemaManagerPom {
    * Close the modal
    */
   async close() {
-    await this.locator.getByTestId("close-schema-manager").click();
+    await this.eventUtils.after("e2e:schema-manager:closed", () =>
+      this.locator.getByTestId("close-schema-manager").click(),
+    );
   }
 
   /**
@@ -62,7 +64,9 @@ export class SchemaManagerPom {
    * schema manager modal to open
    */
   async open() {
-    await this.page.getByTestId("open-schema-manager").click();
+    await this.eventUtils.after("e2e:schema-manager:opened", () =>
+      this.page.getByTestId("open-schema-manager").click(),
+    );
   }
 
   /**
@@ -92,8 +96,8 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.assert.isHiddenFieldRow(field);
+    // the move is a round-trip; the row lands in its new section after it
+    await this.afterFieldIn("hidden", field, () => this.moveFields());
   }
 
   /**
@@ -106,8 +110,21 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.assert.isActiveFieldRow(field);
+    await this.afterFieldIn("active", field, () => this.moveFields());
+  }
+
+  /** Run `action` and resolve once `section` renders a row for `field` */
+  private afterFieldIn<T>(
+    section: "active" | "hidden",
+    field: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after("e2e:schema-manager:fields", action, (e) => {
+      const detail = e.detail as { section: string; paths: string };
+      return (
+        detail.section === section && detail.paths.split(",").includes(field)
+      );
+    });
   }
 }
 
@@ -126,7 +143,7 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.activeFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
@@ -138,39 +155,43 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.hiddenFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
    * Is schema manager modal closed
    */
   async isClosed() {
-    await expect(this.schemaManagerPom.locator).toBeHidden();
+    expect(await this.schemaManagerPom.locator.isVisible()).toBe(false);
   }
 
   /**
    * Is schema manager modal open
    */
   async isOpen() {
-    await expect(this.schemaManagerPom.locator).toBeVisible();
+    expect(await this.schemaManagerPom.locator.isVisible()).toBe(true);
   }
 
   /**
    * Is the "Add schema" button disabled
    */
   async isDisabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeDisabled();
+    expect(
+      await this.schemaManagerPom.page
+        .getByTestId("open-schema-manager")
+        .isDisabled(),
+    ).toBe(true);
   }
 
   /**
    * Is the "Add schema" button enabled
    */
   async isEnabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeEnabled();
+    expect(
+      await this.schemaManagerPom.page
+        .getByTestId("open-schema-manager")
+        .isEnabled(),
+    ).toBe(true);
   }
 
   /**

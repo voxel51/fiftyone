@@ -5,11 +5,13 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { QUICKSTART_GROUP_SLICES } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
 
-const FIRST_SAMPLE_FILENAME = "003037.png";
-const SECOND_SAMPLE_FILENAME = "007195.png";
+// the factory names group media `<slice>-<groupIndex>`
+const FIRST_SAMPLE_FILENAME = "left-0.png";
+const SECOND_SAMPLE_FILENAME = "left-1.png";
 
 const test = base.extend<{
   grid: GridPom;
@@ -24,8 +26,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  renderer3d: async ({ page }, use) => {
-    await use(new Renderer3dPom(page));
+  renderer3d: async ({ page, eventUtils }, use) => {
+    await use(new Renderer3dPom(page, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
@@ -39,11 +41,15 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-    max_samples: 12,
+  // 4 groups x 3 slices = 12 samples
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 4,
+    slices: QUICKSTART_GROUP_SLICES,
   });
 });
 
@@ -63,16 +69,17 @@ test.describe.serial("quickstart-groups", () => {
   }) => {
     await grid.assert.isTileCountEqualTo(4);
     const selectorSlice = page.getByTestId("selector-slice");
-    await expect(selectorSlice).toHaveValue("left");
+    expect(await selectorSlice.inputValue()).toBe("left");
   });
 
   test("entry counts works", async ({ grid }) => {
     expect(await grid.getEntryCountText()).toEqual("4 groups with slice");
 
     await grid.actionsRow.toggleDisplayOptions();
-    await grid.actionsRow.displayActions.setSidebarStatisticsMode("group");
-
-    // note: entry-counts might take a while to change, which is why we're asserting using polling
+    await grid.afterEntryCounts(
+      () => grid.actionsRow.displayActions.setSidebarStatisticsMode("group"),
+      "groups",
+    );
     await grid.assert.isEntryCountTextEqualTo(
       "(12 samples) 4 groups with slice",
     );
@@ -80,8 +87,7 @@ test.describe.serial("quickstart-groups", () => {
 
   test.describe("modal", () => {
     test.beforeEach(async ({ modal, grid }) => {
-      await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute();
+      await modal.afterGroupSampleLoaded(() => grid.openFirstSample());
     });
 
     test('changes slice to "pcd" when 3D viewer is clicked', async ({
@@ -119,7 +125,7 @@ test.describe.serial("quickstart-groups", () => {
 
     test("group media visibility toggle works", async ({ modal }) => {
       // make sure popout is right aligned to the toggle button
-      await modal.group.toggleMediaButton.click();
+      await modal.group.openMediaVisibility();
 
       // const popoutBoundingBox =
       //   await modal.group.groupMediaVisibilityPopout.boundingBox();
@@ -132,23 +138,23 @@ test.describe.serial("quickstart-groups", () => {
       //   0
       // );
 
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.looker3d.isVisible()).toBe(true);
       await modal.group.toggleMedia("3d");
-      await expect(modal.looker3d).toBeHidden();
+      expect(await modal.looker3d.isVisible()).toBe(false);
       await modal.group.toggleMedia("3d");
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.looker3d.isVisible()).toBe(true);
 
-      await expect(modal.groupLooker).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
       await modal.group.toggleMedia("viewer");
-      await expect(modal.groupLooker).toBeHidden();
+      expect(await modal.groupLooker.isVisible()).toBe(false);
       await modal.group.toggleMedia("viewer");
-      await expect(modal.groupLooker).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
 
-      await expect(modal.carousel).toBeVisible();
+      expect(await modal.carousel.isVisible()).toBe(true);
       await modal.group.toggleMedia("carousel");
-      await expect(modal.carousel).toBeHidden();
+      expect(await modal.carousel.isVisible()).toBe(false);
       await modal.group.toggleMedia("carousel");
-      await expect(modal.carousel).toBeVisible();
+      expect(await modal.carousel.isVisible()).toBe(true);
     });
 
     // Flaky: the pcd canvas intermittently renders zero pixels after the
@@ -161,24 +167,23 @@ test.describe.serial("quickstart-groups", () => {
       fiftyoneLoader,
     }) => {
       await modal.sidebar.switchMode("annotate");
-      await modal.sidebar.annotate.selectAnnotationSlice("pcd");
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(
+          () => modal.sidebar.annotate.selectAnnotationSlice("pcd"),
+          true,
+        ),
+      );
       await modal.assert.verifyHasNoViewerError();
       await renderer3d.assert.expectSomethingToRender();
 
       await modal.sidebar.switchMode("explore");
+      await modal.group.openMediaVisibility();
 
-      if (!(await modal.groupLooker.isVisible())) {
-        await modal.group.toggleMedia("viewer");
-      }
+      await modal.group.showMedia("viewer");
+      await modal.group.showMedia("3d");
 
-      if (!(await modal.looker3d.isVisible())) {
-        await modal.group.toggleMedia("3d");
-      }
-
-      await expect(modal.groupLooker).toBeVisible();
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      expect(await modal.looker3d.isVisible()).toBe(true);
       await modal.clickOnLooker();
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
 
@@ -188,16 +193,18 @@ test.describe.serial("quickstart-groups", () => {
       await page.reload();
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-      await grid.openFirstSample();
-      await modal.waitForSampleLoadDomAttribute(true);
+      await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
-      await expect(modal.groupLooker).toBeVisible();
-      await expect(modal.looker3d).toBeVisible();
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      expect(await modal.looker3d.isVisible()).toBe(true);
 
-      await modal.sidebar.switchMode("annotate");
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(
+          () => modal.sidebar.switchMode("annotate"),
+          true,
+        ),
+      );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("pcd");
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
       await modal.assert.verifyHasNoViewerError();
       await renderer3d.assert.expectSomethingToRender();
     });
@@ -209,20 +216,18 @@ test.describe.serial("quickstart-groups", () => {
     sidebar,
     eventUtils,
   }) => {
-    let entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await sidebar.toggleSidebarGroup("GROUP");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.toggleSidebarGroup("GROUP"),
+    );
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.clickFieldDropdown("group.name"),
+    );
 
-    entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("group.name");
-    await entryExpandPromise.received;
+    await grid.run(async () => {
+      await sidebar.applyFilter("left");
+    });
 
-    const promise = await grid.armGridRefresh();
-    await sidebar.applyFilter("left");
-    await promise.received;
-
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     await modal.navigateSlice("group.name", "right");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");

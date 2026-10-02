@@ -41,22 +41,14 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Drop focus so the "." / "," frame-step keybindings aren't typed into an input. */
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-
-/** Await the autosave round-trip for the edited sample. */
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
 
 const ATTR = "turn_signal";
 
@@ -75,15 +67,15 @@ const stepFrames = async (modal: ModalPom, page: Page, delta: number) => {
 };
 
 /** Commit a `turn_signal` choice at the current frame and await the save. */
-const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
-  const saved = savedResponse(page);
-  await modal.sidebar.edit.selectFieldChoice(ATTR, choice);
-  await saved;
+const setSignal = async (modal: ModalPom, choice: string) => {
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sidebar.edit.selectFieldChoice(ATTR, choice),
+  );
 };
 
 /** Assert the selected track's `turn_signal` value at the current frame. */
 const assertSignal = async (modal: ModalPom, expected: string) =>
-  expect.poll(() => modal.sidebar.edit.getFieldValue(ATTR)).toBe(expected);
+  modal.sidebar.edit.assert.verifyFieldValue(ATTR, expected);
 
 /**
  * Seed one tracked instance carrying `turn_signal`="off" on every frame. 20
@@ -159,14 +151,14 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // Expand: exactly the one declared-dynamic attribute's row appears.
     await va.toggleTrackExpansion(parentId);
-    await expect.poll(() => va.subTrackIds(parentId)).toEqual([subId]);
+    await va.assert.subTracks(parentId, [ATTR]);
 
     // Uniform "off" across the clip → a single value segment.
-    await expect(va.segmentBars(subId)).toHaveCount(1);
+    expect(await va.segmentBars(subId).count()).toBe(1);
 
     // Collapse: the sub-track row is hidden again.
     await va.toggleTrackExpansion(parentId);
-    await expect.poll(() => va.subTrackIds(parentId)).toHaveLength(0);
+    await va.assert.subTracks(parentId, []);
   });
 
   test("a mid-track edit splits the sub-track into two value segments", async ({
@@ -181,7 +173,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // Edit at frame 4 → "left": forward-fills 4..end, so "off" 1..3 / "left" 4..end.
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     const parentId = await va.firstObjectTrackId();
 
@@ -192,9 +184,13 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await va.toggleTrackExpansion(parentId);
 
     // Two value segments now, labelled by their values.
-    await expect(va.segmentBars(subId)).toHaveCount(2);
-    await expect(va.segmentBars(subId).nth(0)).toHaveAttribute("title", /off/);
-    await expect(va.segmentBars(subId).nth(1)).toHaveAttribute("title", /left/);
+    expect(await va.segmentBars(subId).count()).toBe(2);
+    expect(await va.segmentBars(subId).nth(0).getAttribute("title")).toMatch(
+      /off/,
+    );
+    expect(await va.segmentBars(subId).nth(1).getAttribute("title")).toMatch(
+      /left/,
+    );
   });
 
   test("undo collapses the two segments back to one", async ({
@@ -209,7 +205,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // Split into two segments (off 1..3 / left 4..end).
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     const parentId = await va.firstObjectTrackId();
 
@@ -218,12 +214,17 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     const subId = `${parentId}::${ATTR}`;
 
     await va.toggleTrackExpansion(parentId);
-    await expect(va.segmentBars(subId)).toHaveCount(2);
+    expect(await va.segmentBars(subId).count()).toBe(2);
 
     // The whole forward-fill is one undo unit → the row reverts to one segment.
-    await modal.sidebar.edit.undo();
-    await expect(va.segmentBars(subId)).toHaveCount(1);
-    await expect(va.segmentBars(subId).nth(0)).toHaveAttribute("title", /off/);
+    // Its rows stay the same, so wait on the rebuild of those same rows.
+    await va.afterTracksRendered(await va.trackIds(), () =>
+      modal.sidebar.edit.undo(),
+    );
+    expect(await va.segmentBars(subId).count()).toBe(1);
+    expect(await va.segmentBars(subId).nth(0).getAttribute("title")).toMatch(
+      /off/,
+    );
   });
 
   test("clicking a value segment seeks to its start", async ({
@@ -238,7 +239,7 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     // off 1..3 / left 4..end (the "left" segment starts at frame 4).
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     const parentId = await va.firstObjectTrackId();
 
@@ -280,7 +281,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     // Clicking the sub-track row selects the PARENT object track, opening its
     // editor — its `turn_signal` field becomes readable (frame 1 → "off").
     await va.clickTrack(subId);
-    await expect(modal.sidebar.edit.getFieldContainer(ATTR)).toBeVisible();
+    expect(await modal.sidebar.edit.getFieldContainer(ATTR).isVisible()).toBe(
+      true,
+    );
     await assertSignal(modal, "off");
   });
 });
@@ -356,8 +359,6 @@ test.describe.serial("video annotation multiple dynamic attributes", () => {
     await va.openTracksDrawer();
 
     await va.toggleTrackExpansion(parentId);
-    await expect
-      .poll(async () => (await va.subTrackIds(parentId)).sort())
-      .toEqual([`${parentId}::brake`, `${parentId}::${ATTR}`].sort());
+    await va.assert.subTracks(parentId, ["brake", ATTR]);
   });
 });
