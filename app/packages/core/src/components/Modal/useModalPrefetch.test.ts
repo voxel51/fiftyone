@@ -259,14 +259,14 @@ describe("useModalPrefetch", () => {
     expect(logged("hold")).toEqual(["s3"]);
     expect(logged("warm")).toEqual(["s4", "s5", "s2"]);
     expect(logged("release").sort()).toEqual(["s2", "s3", "s4", "s5"]);
-    // Nothing drops out of the store between the two generations.
-    const lastAcquire = fixture.log.findLastIndex(
-      (entry) => !entry.startsWith("release "),
-    );
-    const firstRelease = fixture.log.findIndex((entry) =>
+    // Nothing drops out of the store between the two generations: every
+    // release comes after the last hold or warm.
+    const releasesStart = fixture.log.findIndex((entry) =>
       entry.startsWith("release "),
     );
-    expect(lastAcquire).toBeLessThan(firstRelease);
+    const tail = fixture.log.slice(releasesStart);
+    expect(releasesStart).toBeGreaterThan(0);
+    expect(tail.every((entry) => entry.startsWith("release "))).toBe(true);
   });
 
   it("releases everything when the modal closes", async () => {
