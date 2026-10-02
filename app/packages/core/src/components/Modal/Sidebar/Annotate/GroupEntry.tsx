@@ -46,7 +46,7 @@ const GroupDiv = styled.div`
 
 const Round = styled.div`
   align-items: center;
-  border-radius: var(--radius-full);
+  border-radius: 9999px;
   display: flex;
   cursor: pointer;
   flex-direction: column;
