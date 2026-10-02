@@ -189,6 +189,12 @@ const Column: React.FC = () => {
   );
 };
 
+/**
+ * The filmstrip alone, filling its parent. The tiling host sizes it with a
+ * tile instead of the `Resizable` wrapper `GroupCarousel` adds.
+ */
+export const GroupCarouselStrip = Column;
+
 export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
   fullHeight,
 }) => {

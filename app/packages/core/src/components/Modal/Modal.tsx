@@ -10,7 +10,12 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { ErrorDisplayMarkup, HelpPanel, JSONPanel } from "@fiftyone/components";
+import {
+  ErrorDisplayMarkup,
+  HelpPanel,
+  JSONPanel,
+  Loading,
+} from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -40,6 +45,7 @@ import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
+import { GroupTilingHost, useGroupTilesActive } from "./Tiles";
 import { ModalStatusBar } from "./ModalStatusBar";
 import { Sidebar } from "./Sidebar";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
@@ -280,6 +286,7 @@ const Modal = () => {
 
   const showClassicSidebar = useShowClassicSidebar();
   const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
+  const groupTilesActive = useGroupTilesActive();
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -406,7 +413,13 @@ const Modal = () => {
             <ModalNavigation closePanels={closePanels} />
             <SegmentationToolbar />
             <SpacesContainer>
-              <ModalSpace />
+              {groupTilesActive ? (
+                <Suspense fallback={<Loading>Pixelating...</Loading>}>
+                  <GroupTilingHost />
+                </Suspense>
+              ) : (
+                <ModalSpace />
+              )}
               <ModalStatusBar />
             </SpacesContainer>
             {showClassicSidebar && <Sidebar />}

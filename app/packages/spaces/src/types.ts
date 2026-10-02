@@ -93,7 +93,15 @@ export type PanelIdToScopeType = {
 export type PanelRendererProps = {
   name: string;
   id: string;
+  /**
+   * Surface the panel is rendered on. Drives `PanelContext.scope` and the
+   * `panelIdToScopeAtom` entry the panel's state hooks key off. Defaults to
+   * `"grid"`.
+   */
+  scope?: PanelScope;
 };
+
+export type PanelScope = "grid" | "modal";
 
 export type PanelAreaProps = {
   id: PANEL_AREA;

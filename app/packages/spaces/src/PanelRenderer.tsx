@@ -4,7 +4,7 @@ import SpaceNode from "./SpaceNode";
 import { PanelRendererProps } from "./types";
 
 export default function PanelRenderer(props: PanelRendererProps) {
-  const { name, id } = props;
+  const { name, id, scope = "grid" } = props;
   const [node, setNode] = useState<SpaceNode | null>(null);
 
   useEffect(() => {
@@ -18,5 +18,11 @@ export default function PanelRenderer(props: PanelRendererProps) {
     return null;
   }
 
-  return <Panel node={node} isModalPanel={false} style={{ height: "100%" }} />;
+  return (
+    <Panel
+      node={node}
+      isModalPanel={scope === "modal"}
+      style={{ height: "100%" }}
+    />
+  );
 }
