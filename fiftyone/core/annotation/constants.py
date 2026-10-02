@@ -242,6 +242,9 @@ SPATIAL_LABEL_TYPES = (
     fol.Polyline,
     fol.Polylines,
 )
+# Label types the App can't annotate per-frame yet: a frame-level list of
+# classifications needs overlapping tracks, like temporal detections
+APP_UNSUPPORTED_FRAME_LABEL_TYPES = (fol.Classifications,)
 SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.FloatField,
     fof.IntField,

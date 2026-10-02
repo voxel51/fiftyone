@@ -104,6 +104,7 @@ const HiddenFieldsSection = () => {
     types: fieldTypes,
     attrCounts: fieldAttrCounts,
     hasSchemaStates: fieldHasSchemaStates,
+    unsupportedStates: fieldUnsupportedStates,
   } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
   const { selected, setSelected } = useSelectedHiddenFields();
@@ -114,7 +115,8 @@ const HiddenFieldsSection = () => {
       fields.map((path) => {
         const isSystemReadOnly = isSystemReadOnlyField(path);
         const hasSchema = fieldHasSchemaStates[path];
-        const canSelect = hasSchema && !isSystemReadOnly;
+        const canSelect =
+          hasSchema && !isSystemReadOnly && !fieldUnsupportedStates[path];
 
         return {
           id: path,
@@ -134,7 +136,13 @@ const HiddenFieldsSection = () => {
           } as ListItemProps,
         };
       }),
-    [fields, fieldTypes, fieldAttrCounts, fieldHasSchemaStates],
+    [
+      fields,
+      fieldTypes,
+      fieldAttrCounts,
+      fieldHasSchemaStates,
+      fieldUnsupportedStates,
+    ],
   );
 
   const handleSelected = useCallback(

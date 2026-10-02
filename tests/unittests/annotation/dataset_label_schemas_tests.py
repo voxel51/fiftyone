@@ -650,6 +650,33 @@ class FrameLabelSchemaTests(unittest.TestCase):
         self.assertIn("weather", valid)
 
     @drop_datasets
+    def test_frame_level_classifications_not_app_supported(self):
+        import fiftyone.core.annotation.utils as foau
+
+        dataset = _make_video_dataset()
+        dataset.add_frame_field(
+            "events", fo.EmbeddedDocumentField, fo.Classifications
+        )
+        dataset.add_frame_field(
+            "weather", fo.EmbeddedDocumentField, fo.Classification
+        )
+
+        valid = foau.list_valid_annotation_fields(
+            dataset, flatten=True, include_frames=True
+        )
+        supported = foau.list_valid_annotation_fields(
+            dataset,
+            require_app_support=True,
+            flatten=True,
+            include_frames=True,
+        )
+
+        # the SDK can still annotate it; the App can't yet
+        self.assertIn("frames.events", valid)
+        self.assertNotIn("frames.events", supported)
+        self.assertIn("frames.weather", supported)
+
+    @drop_datasets
     def test_backfill_instances_from_index(self):
         import fiftyone.core.annotation.utils as foau
 

@@ -41,6 +41,7 @@ import {
   fieldIsReadOnly,
   hiddenFieldAttrCounts,
   hiddenFieldHasSchemaStates,
+  hiddenFieldUnsupportedStates,
   hiddenFieldTypes,
   isNewFieldMode,
   jsonValidationErrors,
@@ -162,12 +163,14 @@ export const useHiddenFieldsWithMetadata = () => {
   const types = useAtomValue(hiddenFieldTypes);
   const attrCounts = useAtomValue(hiddenFieldAttrCounts);
   const hasSchemaStates = useAtomValue(hiddenFieldHasSchemaStates);
+  const unsupportedStates = useAtomValue(hiddenFieldUnsupportedStates);
 
   return {
     fields,
     types,
     attrCounts,
     hasSchemaStates,
+    unsupportedStates,
   };
 };
 

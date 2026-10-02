@@ -139,15 +139,15 @@ export class VideoLabelStore implements LabelStore {
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {
-    this.route(ref.path).updateLabel(ref, partial);
+    this.writable(ref.path)?.updateLabel(ref, partial);
   }
 
   replaceLabel(ref: LabelRef, value: Partial<LabelData>): void {
-    this.route(ref.path).replaceLabel(ref, value);
+    this.writable(ref.path)?.replaceLabel(ref, value);
   }
 
   deleteLabel(ref: LabelRef): void {
-    this.route(ref.path).deleteLabel(ref);
+    this.writable(ref.path)?.deleteLabel(ref);
   }
 
   // ---- observability (union both children's streams) ----
@@ -241,6 +241,22 @@ export class VideoLabelStore implements LabelStore {
   // ---- internals ----
 
   /** Frame paths are the FrameStore's configured paths; all else is sample-level. */
+  /**
+   * The store a write goes to, or `null` for a `frames.*` path the frame store
+   * doesn't hold (a frame-level type it can't edit yet): the sample store
+   * would address it without a frame number and the save would fail.
+   */
+  private writable(path: string): LabelStore | null {
+    const store = this.route(path);
+
+    if (store === this.sampleLevel && path.startsWith("frames.")) {
+      console.warn(`[VideoLabelStore] ${path} can't be edited in Annotate yet`);
+      return null;
+    }
+
+    return store;
+  }
+
   private route(path: string): LabelStore {
     return this.frames.getLabelType(path) !== LabelType.Unknown
       ? this.frames

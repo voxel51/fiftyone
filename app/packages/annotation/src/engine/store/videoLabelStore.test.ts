@@ -177,6 +177,21 @@ describe("VideoLabelStore routing", () => {
     ]);
   });
 
+  it("refuses writes to a frame path the FrameStore doesn't hold", () => {
+    const { store, sampleLevel } = make();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // a frame-level `Classifications` list: not registered with the FrameStore
+    const ref = { sample: SAMPLE, path: "frames.events", instanceId: "c1" };
+
+    store.updateLabel(ref, { label: "rain" });
+    store.replaceLabel(ref, { label: "rain" });
+    store.deleteLabel(ref);
+
+    expect(sampleLevel.calls).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(3);
+    warn.mockRestore();
+  });
+
   it("serves a registered per-frame value from the FrameStore", () => {
     const frames = new FrameStore(SAMPLE, {
       labelTypes: { [FRAME_PATH]: LabelType.Detections },

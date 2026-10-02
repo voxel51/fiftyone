@@ -203,7 +203,13 @@ class GetLabelSchemas(foo.Operator):
                 )
 
         return {
-            "active_label_schemas": ctx.dataset.active_label_schemas,
+            # an unsupported field may have been activated from the SDK; the
+            # App lists it with the other unsupported fields instead
+            "active_label_schemas": [
+                field
+                for field in ctx.dataset.active_label_schemas
+                if not result.get(field, {}).get("unsupported", False)
+            ],
             "label_schemas": result,
         }
 
