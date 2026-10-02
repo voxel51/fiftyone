@@ -78,16 +78,19 @@ test.describe.serial("selection", () => {
       // check modal
       await page.reload();
       const isPcd = extension === "pcd";
+      // the 3D viewer covers the sample checkbox until its scene settles
+      const settled = (action: () => Promise<void>) =>
+        isPcd ? modal.afterLooker3dSettled(action) : action();
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
       await grid.toggleSelectFirstSample();
       await grid.assert.isNthSampleSelected(0);
-      await grid.openNthSample(1);
+      await settled(() => grid.openNthSample(1));
       await modal.assert.verifySelectionCount(1);
       await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(2);
       await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(1);
-      await modal.navigatePreviousSample(true);
+      await settled(() => modal.navigatePreviousSample(true));
       await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(0);
 

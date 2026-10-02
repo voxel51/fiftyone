@@ -447,6 +447,18 @@ export class ModalPom {
     return this.eventUtils.after("e2e:looker3d:scene-ready", action);
   }
 
+  /**
+   * Run `action` and resolve once the 3D viewer's loading cover is gone
+   * because of it: its scene is ready, or its load error is shown
+   */
+  afterLooker3dSettled<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(
+      [SCENE_READY, SAMPLE_ERROR],
+      action,
+      (e) => !(e.detail as { thumbnail?: boolean }).thumbnail,
+    );
+  }
+
   private async isFullscreen() {
     return this.modalContent.evaluate(
       (element) =>
