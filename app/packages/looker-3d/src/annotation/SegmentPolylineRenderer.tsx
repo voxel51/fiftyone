@@ -24,6 +24,7 @@ import { isPolyline } from "../types";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
+  getDefaultAttributes,
   getDefaultLabel,
   recordLastCreatedLabel,
 } from "./store/labelResolution";
@@ -128,6 +129,9 @@ export const SegmentPolylineRenderer = ({
             sampleId: currentSampleId,
             label: labelClass,
             misc: {
+              ...(currentActiveField
+                ? getDefaultAttributes(currentActiveField, labelClass)
+                : {}),
               closed: shouldClose,
             },
           };

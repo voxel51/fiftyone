@@ -8,7 +8,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
-import { VideoTimelineSurface } from "./VideoTimelineSurface";
+import { VideoLookerSurface } from "./VideoLookerSurface";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -119,12 +119,7 @@ const ModalLookerContent = React.memo(
       if (isAnnotate) {
         return <VideoAnnotationSurface sample={sample} />;
       }
-      return (
-        <VideoTimelineSurface
-          sample={sample}
-          videoPath={selectedMedia.selectedMediaPath}
-        />
-      );
+      return <VideoLookerSurface sample={sample} />;
     }
 
     if (isNative) {

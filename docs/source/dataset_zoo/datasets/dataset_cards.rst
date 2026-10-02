@@ -83,6 +83,20 @@
     :tags: multimodal,mcap,egocentric,emg,force
 
 .. customcarditem::
+    :header: Construction-Site Traversability
+    :description: Four closed-loop robot sessions across two active construction sites in native MCAP format, pairing colour and range cameras with a Livox LiDAR, two IMUs, LiDAR-inertial and wheel odometry and GNSS fixes.
+    :link: datasets/construction_site_traversability.html
+    :image: ../_images/construction-site-traversability.png
+    :tags: multimodal,mcap,robotics,lidar,depth,gnss
+
+.. customcarditem::
+    :header: DreamTac
+    :description: 703 contact-rich Franka manipulation trajectories in native MCAP format, pairing third-person and wrist cameras with two vision-based tactile fingertips on one clock.
+    :link: datasets/dreamtac.html
+    :image: ../_images/dreamtac.png
+    :tags: multimodal,mcap,tactile,manipulation,robotics
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html
@@ -256,6 +270,13 @@
     :link: datasets/sama_coco.html
     :image: ../_images/sama-coco-validation.png
     :tags: image,detection,segmentation
+
+.. customcarditem::
+    :header: TaF Tactile-Force
+    :description: 3,594 contact-rich probing episodes in native MCAP format, pairing a tactile image with a 12x12 pressure map and a six-axis force/torque wrench on one clock.
+    :link: datasets/taf_tactile_force.html
+    :image: ../_images/taf-tactile-force.png
+    :tags: multimodal,mcap,tactile,force-torque
 
 .. customcarditem::
     :header: TII-RATM Drone Racing

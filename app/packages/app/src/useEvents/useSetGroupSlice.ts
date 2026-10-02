@@ -9,7 +9,7 @@ import type { EventHandlerHook } from "./registerEvent";
 const useSetGroupSlice: EventHandlerHook = ({ router, session }) => {
   return useCallback(
     ({ slice }) => {
-      const search = new URLSearchParams(router.history.location.search);
+      const search = new URLSearchParams(router.location.search);
       slice ? search.set("slice", slice) : search.delete("slice");
 
       const string = `?${search.toString()}`;

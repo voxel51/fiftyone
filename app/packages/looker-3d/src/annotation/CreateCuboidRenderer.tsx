@@ -23,6 +23,7 @@ import { getCuboidCreationPreview } from "./cuboid-creation-preview";
 import { fitCuboidHeightToPoints } from "./fit-cuboid-to-points";
 import { useCuboidOperations } from "./store/operations";
 import {
+  getDefaultAttributes,
   getDefaultLabel,
   recordLastCreatedLabel,
 } from "./store/labelResolution";
@@ -192,6 +193,7 @@ export const CreateCuboidRenderer = ({
         );
 
         const labelClass = getDefaultLabel(currentActiveField, workingDoc);
+        const attributes = getDefaultAttributes(currentActiveField, labelClass);
 
         const worldTransformData: CuboidTransformData = {
           location: roundTuple(fittedCuboid.location),
@@ -205,13 +207,19 @@ export const CreateCuboidRenderer = ({
           ? transformCuboidToNativeFrame(worldTransformData, nativeToWorld)
           : worldTransformData;
 
-        createCuboid(labelId, transformData, currentActiveField, labelClass);
+        createCuboid(
+          labelId,
+          transformData,
+          currentActiveField,
+          labelClass,
+          attributes,
+        );
 
         recordLastCreatedLabel(currentActiveField, labelClass);
 
         // Select the freshly created cuboid, drop into edit mode so the user can
         // fine-tune it, and exit create mode. Press "C" to start another.
-        setEditingToNewCuboid(labelId, transformData, labelClass);
+        setEditingToNewCuboid(labelId, transformData, labelClass, attributes);
 
         // selection flows through the engine anchor: use3dInteractionAdapter
         // attaches the transform controls + scene selection from one source

@@ -31,7 +31,7 @@ string literals:
 
     import { Text, TextVariant, TextColor, Icon, IconName, Size } from "@voxel51/voodo";
 
-    <Text variant={TextVariant.Md} color={TextColor.Fg}>{label}</Text>
+    <Text variant={TextVariant.Md} color={TextColor.Foreground}>{label}</Text>
     <Icon name={IconName.CaretDown} size={Size.Sm} color={TextColor.Secondary} />
 
 Do not hardcode `var(--...)` strings for VOODO tokens.

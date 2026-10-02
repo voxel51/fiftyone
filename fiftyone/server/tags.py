@@ -8,7 +8,9 @@ FiftyOne Server tags and tagging
 
 import typing as t
 
+import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.labels as fol
 import fiftyone.core.view as fov
 from fiftyone.core.utils import run_sync_task
 
@@ -54,3 +56,18 @@ async def get_tag_view(
         return view
 
     return await run_sync_task(run, view)
+
+
+def build_label_tag_aggregations(sample_collection: foc.SampleCollection):
+    """Builds counts and tag histograms for all labels in a collection."""
+    counts = []
+    tags = []
+    for path, field in foc._iter_label_fields(sample_collection):
+        label_type = field.document_type
+        if issubclass(label_type, fol._HasLabelList):
+            path += "." + label_type._LABEL_LIST_FIELD
+
+        counts.append(foa.Count(path))
+        tags.append(foa.CountValues(path + ".tags"))
+
+    return counts, tags

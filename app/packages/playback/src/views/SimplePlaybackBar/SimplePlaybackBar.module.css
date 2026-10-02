@@ -3,7 +3,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 10px;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
   border-top: 1px solid var(--color-content-border-default);
   user-select: none;
 }
@@ -48,5 +48,5 @@
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  box-shadow: 0 0 0 2px var(--color-content-bg-card-1);
+  box-shadow: 0 0 0 2px var(--color-content-bg-card);
 }

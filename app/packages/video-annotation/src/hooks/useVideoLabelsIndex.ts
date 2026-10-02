@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getVideoLabelsIndex } from "../../../core/src/client/videoLabelsClient";
 import type { IndexInstance } from "../tracks/frameTracks";
 import type { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
@@ -11,6 +11,18 @@ interface VideoLabelsIndexState {
 }
 
 const EMPTY: VideoLabelsIndexState = { indexByPath: {}, loaded: false };
+
+/**
+ * The stored answer, tagged with the inputs it answers for. State outlives the
+ * inputs it was fetched for by a render: when the stream is swapped or torn
+ * down, the first render sees the NEW stream (or none) beside the OLD state,
+ * and reporting that state's `loaded` for it would let a consumer read "settled,
+ * and empty" during the swap. The tag lets the read below say "not yet" instead.
+ */
+interface StoredIndexState extends VideoLabelsIndexState {
+  stream: VideoFrameLabelsStream | null;
+  key: string;
+}
 
 const FRAMES_PREFIX = "frames.";
 
@@ -28,18 +40,23 @@ export function useVideoLabelsIndex(
   fields: string[],
   dynamicAttributes: string[] = [],
 ): VideoLabelsIndexState {
-  const [state, setState] = useState<VideoLabelsIndexState>(EMPTY);
-  const fieldsKey = fields.join(",");
-  const dynamicKey = dynamicAttributes.join(",");
+  // Serialized, not joined: a field name may itself contain a delimiter, and a
+  // colliding key would let a previous answer pass as the current one.
+  const key = JSON.stringify([fields, dynamicAttributes]);
+  const [state, setState] = useState<StoredIndexState>({
+    ...EMPTY,
+    stream: null,
+    key,
+  });
 
   useEffect(() => {
     if (!stream || fields.length === 0) {
-      setState(EMPTY);
+      setState({ ...EMPTY, stream, key });
       return undefined;
     }
 
     let cancelled = false;
-    setState(EMPTY);
+    setState({ ...EMPTY, stream, key });
 
     const { sampleId, dataset, view, dynamicGroup } = stream.labelQuery();
 
@@ -61,21 +78,30 @@ export function useVideoLabelsIndex(
           indexByPath[path] = response[toPerFrameField(path)]?.instances ?? [];
         }
 
-        setState({ indexByPath, loaded: true });
+        setState({ indexByPath, loaded: true, stream, key });
       })
       .catch(() => {
         if (cancelled) {
           return;
         }
 
-        setState({ indexByPath: {}, loaded: true });
+        setState({ indexByPath: {}, loaded: true, stream, key });
       });
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fieldsKey/dynamicKey capture the arrays
-  }, [stream, fieldsKey, dynamicKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures the arrays
+  }, [stream, key]);
 
-  return state;
+  // Answer only for the CURRENT inputs — see `StoredIndexState`.
+  const current = state.stream === stream && state.key === key;
+
+  return useMemo(
+    () =>
+      current
+        ? { indexByPath: state.indexByPath, loaded: state.loaded }
+        : EMPTY,
+    [current, state.indexByPath, state.loaded],
+  );
 }

@@ -6,7 +6,7 @@
   width: 100%;
   height: 100%;
   min-height: 0;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
 }
 
 /* overflow: hidden clips the shared canvas, which can arrive oversized from
@@ -24,7 +24,7 @@
   position: absolute;
   inset: 0;
   z-index: 10;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -19,7 +19,7 @@ const useRefresh: EventHandlerHook = ({ router, session }) => {
       const state = processState(session.current, payload.state);
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
-        currentSearch: router.history.location.search,
+        currentSearch: router.location.search,
         nextDataset: (payload.state.dataset as string) || null,
         nextView: payload.state.saved_view_slug as string,
         extra: {

@@ -2,9 +2,11 @@ import type { ThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import type { Sample } from "@fiftyone/state";
 import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
+import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
+import type { GridSelectionClick } from "./useGridSelectionClick";
 
 export const addRange = (
   index: number,
@@ -90,13 +92,21 @@ export const removeRange = (
   return next;
 };
 
-export default (records: Records) => {
+export default (records: Records, selectBucket: GridSelectionClick) => {
+  const selection = useGridSelection();
   const ref =
     useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
   ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
       async (params: ThumbnailSelectionDetail<Sample>) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
+
+        if (selection.enabled) {
+          // The modifiers pick the bucket; Shift then ranges within it.
+          const bucket = selection.route(params).id;
+          await selectBucket(sampleId, bucket, shiftKey);
+          return;
+        }
 
         const current = new Map(await snapshot.getPromise(selectedSamples));
         const currentObjects = new Map(
@@ -147,7 +157,7 @@ export default (records: Records) => {
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
       },
-    [records],
+    [records, selection, selectBucket],
   );
   return ref;
 };

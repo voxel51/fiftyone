@@ -1,3 +1,4 @@
+import { getNewLabelDefaults } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext/createNew";
 import { labelSchemaData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import { getDefaultStore } from "jotai";
 import type { WorkingDoc } from "./types";
@@ -87,4 +88,21 @@ export function getDefaultLabel(field: string, workingDoc: WorkingDoc): string {
   }
 
   return "";
+}
+
+/**
+ * Schema attribute defaults for a new shape of class `labelClass` in `field`,
+ * including the class-specific (`when`) defaults that apply to that class.
+ * `label` itself is excluded: it is resolved by {@link getDefaultLabel}.
+ */
+export function getDefaultAttributes(
+  field: string,
+  labelClass: string,
+): Record<string, unknown> {
+  const { label: _label, ...attributes } = getNewLabelDefaults(
+    field,
+    labelClass,
+  );
+
+  return attributes;
 }

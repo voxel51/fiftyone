@@ -221,6 +221,127 @@ describe("LeRobotGridHoverVideo", () => {
     expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(2);
   });
 
+  it("reports waiting from hover playback until a frame is presented, and again when the video waits", () => {
+    const onBufferingChange = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        video={nativeVideo(0, 2)}
+      />,
+    );
+    const element = screen.getByTestId(
+      "lerobot-grid-hover-video",
+    ) as HTMLVideoElement;
+    expect(onBufferingChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.loadedMetadata(element);
+    presentFrame(0.1);
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.waiting(element);
+    expect(onBufferingChange).toHaveBeenLastCalledWith(true);
+
+    presentFrame(0.2);
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("stops reporting waiting when playback fails", () => {
+    const onBufferingChange = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+
+    fireEvent.error(screen.getByTestId("lerobot-grid-hover-video"));
+
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("fails, and stops reporting waiting, when the element refuses to play", async () => {
+    const refusal = new DOMException("not allowed", "NotAllowedError");
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(refusal);
+    const onBufferingChange = vi.fn();
+    const onError = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        onError={onError}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+
+    await act(async () => fireEvent.loadedMetadata(element));
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("not allowed"),
+      }),
+    );
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+    expect(element.style.visibility).not.toBe("visible");
+  });
+
+  it("asks again when a play request is interrupted", async () => {
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(
+      new DOMException("interrupted", "AbortError"),
+    );
+    const onError = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo onError={onError} video={nativeVideo(0, 1)} />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+
+    await act(async () => fireEvent.loadedMetadata(element));
+
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+    expect(onError).not.toHaveBeenCalled();
+    presentFrame(0.1);
+    expect(element.style.visibility).toBe("visible");
+  });
+
+  it("fails, releasing the media, when a play request is interrupted again", async () => {
+    const interrupted = new DOMException("interrupted", "AbortError");
+    vi.mocked(HTMLMediaElement.prototype.play)
+      .mockRejectedValueOnce(interrupted)
+      .mockRejectedValueOnce(interrupted);
+    const onBufferingChange = vi.fn();
+    const onError = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        onBufferingChange={onBufferingChange}
+        onError={onError}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+
+    await act(async () => fireEvent.loadedMetadata(element));
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onBufferingChange).toHaveBeenLastCalledWith(false);
+    expect(element.getAttribute("src")).toBeNull();
+  });
+
+  it("reports no waiting while only capturing a poster", () => {
+    const onBufferingChange = vi.fn();
+    render(
+      <TestLeRobotGridHoverVideo
+        capturePoster
+        onBufferingChange={onBufferingChange}
+        playing={false}
+        video={nativeVideo(0, 1)}
+      />,
+    );
+    const element = screen.getByTestId("lerobot-grid-hover-video");
+    fireEvent.loadedMetadata(element);
+    fireEvent.waiting(element);
+
+    expect(onBufferingChange).not.toHaveBeenCalledWith(true);
+  });
+
   it("keeps the media lifecycle stable across callback-only rerenders", () => {
     const rendered = render(
       <TestLeRobotGridHoverVideo video={nativeVideo(0, 1)} />,
@@ -278,6 +399,7 @@ function nativeVideo(
 function TestLeRobotGridHoverVideo({
   active = true,
   capturePoster = false,
+  onBufferingChange,
   onCanvasCommitted = () => undefined,
   onError = () => undefined,
   onSurfaceRetainedBytesChange = () => undefined,
@@ -289,6 +411,7 @@ function TestLeRobotGridHoverVideo({
     <LeRobotGridHoverVideo
       active={active}
       capturePoster={capturePoster}
+      onBufferingChange={onBufferingChange}
       onCanvasCommitted={onCanvasCommitted}
       onError={onError}
       onSurfaceRetainedBytesChange={onSurfaceRetainedBytesChange}

@@ -26,6 +26,7 @@ fop = lazy_import("fiftyone.core.plots.plotly")
 
 
 EventType = t.Union[
+    "AppCountUpdate",
     "CaptureNotebookCell",
     "CloseSession",
     "DeactivateNotebookCell",
@@ -102,6 +103,16 @@ class LabelData:
 class Screenshot:
     bytes: bytes
     max_width: int
+
+
+@dataclass
+class AppCountUpdate(Event):
+    """App count update event
+
+    Reports the number of App clients that are connected to the server.
+    """
+
+    count: int
 
 
 @dataclass

@@ -525,6 +525,7 @@ def make_frames_dataset(
     name=None,
     persistent=False,
     _generated=False,
+    _subset_id=None,
     **kwargs,
 ):
     """Creates a dataset that contains one sample per frame in the video
@@ -699,6 +700,14 @@ def make_frames_dataset(
     )
 
     _make_pretty_summary(dataset)
+
+    if _subset_id is not None:
+        from fiftyone.core.subsets import write_frames_dataset
+
+        write_frames_dataset(
+            sample_collection._root_dataset, _subset_id, dataset
+        )
+        return dataset
 
     # Initialize frames dataset
     sample_view, frames_to_sample = _init_frames(

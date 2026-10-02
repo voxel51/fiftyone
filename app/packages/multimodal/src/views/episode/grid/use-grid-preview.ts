@@ -68,6 +68,11 @@ export interface GridPreviewState extends GridPreviewSnapshot {
    */
   presentNativeTimeSeconds(mediaTimeSeconds: number): void;
   /**
+   * Reports whether a native-video surface is waiting on data. It drives the
+   * same delayed indicator the read loop does, so a short stall shows nothing.
+   */
+  reportNativeBuffering(waiting: boolean): void;
+  /**
    * Where a native-video surface has been asked to move to, on its own media
    * clock, or null when nothing has asked.
    *
@@ -313,6 +318,10 @@ export function useGridPreview({
     start: startBuffering,
     visible: isBuffering,
   } = useGridPreviewBufferingIndicator();
+  const reportNativeBuffering = useCallback(
+    (waiting: boolean) => (waiting ? startBuffering() : finishBuffering()),
+    [finishBuffering, startBuffering],
+  );
   const pause = useCallback(() => setPlaying(false), []);
   const play = useCallback(() => {
     if (enabled) {
@@ -722,6 +731,7 @@ export function useGridPreview({
     pause,
     play,
     presentNativeTimeSeconds,
+    reportNativeBuffering,
   };
 }
 

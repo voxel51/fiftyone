@@ -171,11 +171,13 @@ export function useCuboidOperations() {
       data: CuboidTransformData,
       path: string,
       labelClass = "",
+      attributes: Record<string, unknown> = {},
     ) => {
       if (!currentSampleId) return;
 
       const newLabel: ReconciledDetection3D = {
         data: {
+          ...attributes,
           _id: labelId,
           _cls: DETECTION,
           location: roundTuple(data.location),

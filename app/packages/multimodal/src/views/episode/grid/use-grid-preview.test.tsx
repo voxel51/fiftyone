@@ -544,6 +544,39 @@ describe("useGridPreview", () => {
     act(() => latestState.current?.pause());
   });
 
+  it("shows a native tile waiting on data only after the delay, and hides it once it resumes", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
+    const latestState = { current: null as GridPreviewState | null };
+    sessionHarness.session.read.mockResolvedValueOnce(
+      readyResult({ bytes: [1, 2, 3], nativeVideo: nativeVideo() }),
+    );
+    render(
+      <PreviewHarness
+        id="native-buffering"
+        onState={(state) => {
+          latestState.current = state;
+        }}
+        source={sourceForId("native-buffering")}
+      />,
+    );
+    await act(async () => undefined);
+    act(() => latestState.current?.play());
+
+    act(() => latestState.current?.reportNativeBuffering(true));
+    act(() => {
+      vi.advanceTimersByTime(GRID_BUFFERING_DELAY_MS - 1);
+    });
+    expect(latestState.current?.isBuffering).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(latestState.current?.isBuffering).toBe(true);
+
+    act(() => latestState.current?.reportNativeBuffering(false));
+    expect(latestState.current?.isBuffering).toBe(false);
+  });
+
   it("reports buffering only when a hover frame read stays pending", async () => {
     vi.useFakeTimers({ toFake: ["clearTimeout", "performance", "setTimeout"] });
     const latestState = { current: null as GridPreviewState | null };

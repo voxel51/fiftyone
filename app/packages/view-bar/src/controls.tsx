@@ -461,7 +461,7 @@ const ParamControl: React.FC<ParamInputProps> = ({
                   >
                     <Text
                       variant={TextVariant.Caption}
-                      color={TextColor.Destructive}
+                      color={TextColor.Failure}
                       className={styles.truncateBlock}
                     >
                       {error}
@@ -626,7 +626,7 @@ export const ParamInput: React.FC<
   const status = !NO_STATUS_LINE.has(props.kind) && (
     <Text
       variant={TextVariant.Caption}
-      color={TextColor.Destructive}
+      color={TextColor.Failure}
       className={styles.status}
     >
       {props.error ?? " "}

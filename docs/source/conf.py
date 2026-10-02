@@ -13,6 +13,8 @@ import os
 import re
 import sys
 
+from pygments.lexers.special import TextLexer
+
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("../extensions"))
 
@@ -138,6 +140,10 @@ nbsphinx_requirejs_path = ""
 
 # Don't execute notbooks during the build process
 nbsphinx_execute = "never"
+
+# Copy only the commands from blocks that show prompts, not their output
+copybutton_prompt_text = r"\$ |>>> |> "
+copybutton_prompt_is_regexp = True
 
 # Adds helpful external links to the built HTML
 ref = "main"
@@ -368,3 +374,7 @@ def setup(app):
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
     app.add_directive("customusecasecard", CustomUseCaseCardDirective)
     app.add_directive("customavailablein", CustomAvailableInDirective)
+
+    # Plain text that readers paste into an agent, so unlike ``text`` blocks
+    # it keeps its copy button
+    app.add_lexer("prompt", TextLexer)

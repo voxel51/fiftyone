@@ -1,0 +1,259 @@
+import { act, renderHook } from "@testing-library/react";
+import React, { useState } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+/** A promise the test settles by hand. */
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
+/** An operator's resolved inputs, as `resolveInput` answers them. */
+const inputs = (view: string) => ({
+  type: { properties: {} },
+  toProps: () => ({ view }),
+});
+
+const env = vi.hoisted(() => ({
+  /** When set, each debounced call waits here until the test runs it. */
+  heldCalls: null as null | (() => Promise<unknown>)[],
+  dynamic: true,
+  params: {} as Record<string, unknown>,
+  resolveInput: vi.fn(),
+  resolveExecutionOptions: vi.fn(),
+}));
+
+vi.mock("lodash", async (importOriginal) => {
+  const lodash = (await importOriginal<{ default: typeof import("lodash") }>())
+    .default;
+  const debounce = ((
+    fn: (...args: unknown[]) => unknown,
+    wait?: number,
+    options?: Parameters<typeof lodash.debounce>[2],
+  ) => {
+    const held = env.heldCalls;
+    if (!held) return lodash.debounce(fn, wait, options);
+    return (...args: unknown[]) => {
+      held.push(async () => fn(...args));
+    };
+  }) as typeof lodash.debounce;
+  return { ...lodash, debounce };
+});
+vi.mock("recoil", () => {
+  return {
+    atom: vi.fn(({ key }: { key: string }) => ({ key })),
+    selector: vi.fn(({ key }: { key: string }) => ({ key })),
+    selectorFamily: vi.fn(({ key }: { key: string }) => () => ({ key })),
+    useRecoilCallback: vi.fn(),
+    useRecoilState: ({ key }: { key: string }) =>
+      key === "promptingOperator"
+        ? [{ operatorName: "@test/op", id: "prompt", params: env.params }]
+        : [null, vi.fn()],
+    useRecoilTransaction_UNSTABLE: () => vi.fn(),
+    useRecoilValue: ({ key }: { key: string }) =>
+      key === "currentContextSelector" ? { params: env.params } : null,
+    useRecoilValueLoadable: () => ({ state: "hasValue", contents: null }),
+    useSetRecoilState: () => vi.fn(),
+  };
+});
+vi.mock("@fiftyone/analytics", () => ({ useAnalyticsInfo: () => [null] }));
+vi.mock("@fiftyone/components", () => ({
+  Markdown: ({ children }: { children: React.ReactNode }) =>
+    React.createElement("span", null, children),
+}));
+vi.mock("@fiftyone/state", () => ({
+  useBrowserStorage: (_key: string, defaultValue: unknown) =>
+    useState(defaultValue),
+  useNotification: () => vi.fn(),
+  getBrowserStorageEffectForKey: () => () => undefined,
+  modal: null,
+  datasetName: null,
+  view: null,
+  extendedStages: null,
+  filters: null,
+  selectedSamples: null,
+  selectedLabels: null,
+  viewName: null,
+  extendedSelection: null,
+  groupSlice: null,
+  queryPerformance: null,
+  sessionSpaces: null,
+  activeFields: () => null,
+  currentSampleId: null,
+  editingFieldAtom: null,
+}));
+vi.mock("./operators", () => ({
+  ExecutionContext: class {
+    constructor(readonly params: unknown) {}
+  },
+  OperatorResult: vi.fn(),
+  getLocalOrRemoteOperator: () => ({
+    isRemote: true,
+    operator: {
+      uri: "@test/op",
+      isRemote: true,
+      config: {
+        dynamic: env.dynamic,
+        resolveExecutionOptionsOnChange: true,
+      },
+      resolveInput: env.resolveInput,
+      useHooks: () => ({}),
+      needsUserInput: async () => true,
+      needsResolution: () => true,
+    },
+  }),
+  resolveExecutionOptions: env.resolveExecutionOptions,
+  resolveOperatorURI: (uri: string) => uri,
+}));
+vi.mock("./utils", () => ({
+  generateOperatorSessionId: () => "session",
+  optimizeCtx: (ctx: unknown) => ctx,
+  stringifyError: vi.fn(),
+  onEnter: (fn: unknown) => fn,
+}));
+vi.mock("./validation", () => ({
+  ValidationContext: class {
+    invalid = false;
+    toProps = () => ({ errors: [] });
+  },
+}));
+
+import { RESOLVE_TYPE_TTL } from "./constants";
+import { useOperatorPrompt } from "./state";
+
+describe("useOperatorPrompt", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    env.heldCalls = null;
+    env.dynamic = true;
+    env.params = { brain_key: "old" };
+    env.resolveInput.mockReset();
+    env.resolveExecutionOptions.mockReset();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  /** Renders the prompt, then edits its params while the first resolve is
+   * still in flight, so a second resolve is issued; answers each as told. */
+  const editDuringResolve = async () => {
+    const first = deferred<ReturnType<typeof inputs>>();
+    const second = deferred<ReturnType<typeof inputs>>();
+    env.resolveInput
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => undefined);
+    expect(env.resolveInput).toHaveBeenCalledTimes(1);
+
+    env.params = { brain_key: "new" };
+    prompt.rerender();
+    await act(async () => vi.advanceTimersByTime(RESOLVE_TYPE_TTL));
+    expect(env.resolveInput).toHaveBeenCalledTimes(2);
+    return { prompt, first, second };
+  };
+
+  it("settles on the newest params when an older resolve answers last", async () => {
+    const { prompt, first, second } = await editDuringResolve();
+
+    await act(async () => second.resolve(inputs("new")));
+    await act(async () => first.resolve(inputs("old")));
+    await act(async () => vi.runOnlyPendingTimers());
+
+    expect(prompt.result.current.resolving).toBe(false);
+    expect(prompt.result.current.inputFields).toEqual({ view: "new" });
+  });
+
+  it("keeps the newest inputs when an older resolve fails last", async () => {
+    const { prompt, first, second } = await editDuringResolve();
+
+    await act(async () => second.resolve(inputs("new")));
+    await act(async () => first.reject(new Error("stale")));
+    await act(async () => vi.runOnlyPendingTimers());
+
+    expect(prompt.result.current.resolving).toBe(false);
+    expect(prompt.result.current.inputFields).toEqual({ view: "new" });
+  });
+
+  it("keeps the newest execution options when an older request answers last", async () => {
+    const requests: ReturnType<typeof deferred<unknown>>[] = [];
+    env.resolveExecutionOptions.mockImplementation(() => {
+      const request = deferred<unknown>();
+      requests.push(request);
+      return request.promise;
+    });
+    const { prompt, first, second } = await editDuringResolve();
+    await act(async () => vi.runOnlyPendingTimers());
+    expect(requests.length).toBeGreaterThanOrEqual(2);
+
+    const newest = requests[requests.length - 1];
+    await act(async () => newest.resolve({ allowDelegatedExecution: true }));
+    for (const older of requests.slice(0, -1)) {
+      await act(async () => older.resolve({ allowImmediateExecution: true }));
+    }
+    await act(async () => second.resolve(inputs("new")));
+    await act(async () => first.resolve(inputs("old")));
+
+    expect(prompt.result.current.execDetails.executionOptions).toEqual({
+      allowDelegatedExecution: true,
+    });
+  });
+
+  it("keeps the newest execution options when an older call runs last", async () => {
+    env.resolveInput.mockResolvedValue(inputs("form"));
+    env.resolveExecutionOptions.mockImplementation(
+      async (_uri: string, ctx: { label?: string }) => ({ from: ctx.label }),
+    );
+    const held: (() => Promise<unknown>)[] = [];
+    env.heldCalls = held;
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => undefined);
+    held.length = 0;
+
+    const { fetch } = prompt.result.current.execDetails;
+    fetch({ label: "older" });
+    fetch({ label: "newer" });
+    const [older, newer] = held;
+    await act(async () => {
+      await newer();
+      await older();
+    });
+
+    expect(prompt.result.current.execDetails.executionOptions).toEqual({
+      from: "newer",
+    });
+  });
+
+  it("stops loading execution options when the request fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    env.resolveExecutionOptions.mockRejectedValue(new Error("down"));
+    env.resolveInput.mockResolvedValue(inputs("form"));
+
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => vi.runOnlyPendingTimers());
+
+    expect(prompt.result.current.execDetails.isLoading).toBe(false);
+  });
+
+  it("settles on the newest params when a replaced resolver's trailing call runs last", async () => {
+    env.dynamic = false;
+    const first = deferred<ReturnType<typeof inputs>>();
+    env.resolveInput.mockReturnValue(first.promise);
+    const prompt = renderHook(() => useOperatorPrompt());
+    await act(async () => undefined);
+
+    env.params = { brain_key: "mid" };
+    prompt.rerender();
+    await act(async () => first.resolve(inputs("form")));
+    env.params = { brain_key: "new" };
+    prompt.rerender();
+    await act(async () => vi.advanceTimersByTime(RESOLVE_TYPE_TTL));
+    await act(async () => vi.runOnlyPendingTimers());
+
+    expect(prompt.result.current.resolving).toBe(false);
+  });
+});

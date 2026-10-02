@@ -5,7 +5,11 @@
 import os from "os";
 import path from "path";
 import { createImage, type ImageSpec } from "../media-factory/image";
-import { createMask } from "../media-factory/mask";
+import {
+  createMask,
+  createTargetMask,
+  createValueMap,
+} from "../media-factory/mask";
 import { createMcapFixture, type McapSpec } from "../media-factory/mcap";
 import {
   createPcd,
@@ -32,6 +36,8 @@ import type {
 export const makeHelpers = (): Helpers => ({
   createId,
   mask: createMask,
+  targetMask: createTargetMask,
+  valueMap: createValueMap,
   label: makeLabelBuilders(),
 });
 

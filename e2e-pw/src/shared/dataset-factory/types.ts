@@ -78,6 +78,18 @@ export interface Helpers {
    */
   mask: (width: number, height: number) => JSONObject;
 
+  /**
+   * A uint8 mask of the given size with every pixel set to `target`, for a
+   * Segmentation's `mask`.
+   */
+  targetMask: (width: number, height: number, target: number) => JSONObject;
+
+  /**
+   * A float32 map of the given size with every pixel set to `value`, for a
+   * Heatmap's `map`.
+   */
+  valueMap: (width: number, height: number, value: number) => JSONObject;
+
   /** Label document builders; see {@link LabelBuilders}. */
   label: LabelBuilders;
 }
@@ -91,11 +103,13 @@ export type Label =
   | "Classifications"
   | "Detection"
   | "Detections"
+  | "Heatmap"
   | "Instance"
   | "Keypoint"
   | "Keypoints"
   | "Polyline"
   | "Polylines"
+  | "Segmentation"
   | "TemporalDetection"
   | "TemporalDetections";
 
