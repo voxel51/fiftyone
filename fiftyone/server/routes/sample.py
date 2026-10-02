@@ -19,6 +19,7 @@ from starlette.requests import Request
 
 import fiftyone as fo
 import fiftyone.core.frame as fof
+from fiftyone.core.utils import run_sync_task
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
 from fiftyone.server.utils.datasets import (
@@ -472,10 +473,29 @@ class Sample(HTTPEndpoint):
                 status_code=400, detail="Invalid If-Match header"
             )
 
-        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
-
         content_type = request.headers.get("Content-Type", "")
         ctype = content_type.split(";", 1)[0].strip().lower()
+
+        # loading, patching and saving the sample are blocking database work
+        return await run_sync_task(
+            self._apply_patch,
+            dataset_id,
+            sample_id,
+            if_last_modified_at,
+            ctype,
+            data,
+        )
+
+    def _apply_patch(
+        self,
+        dataset_id: str,
+        sample_id: str,
+        if_last_modified_at: datetime.datetime,
+        ctype: str,
+        data: Any,
+    ) -> JSONResponse:
+        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
+
         if ctype == "application/json":
             self._handle_patch(sample, data)
         elif ctype == "application/json-patch+json":
@@ -592,6 +612,30 @@ class SampleField(HTTPEndpoint):
             None if generated_dataset_name else if_last_modified_at
         )
 
+        # loading, patching and saving the sample are blocking database work
+        return await run_sync_task(
+            self._apply_patch,
+            dataset_id,
+            sample_id,
+            path,
+            field_id,
+            data,
+            source_if_match,
+            generated_dataset_name,
+            generated_sample_id,
+        )
+
+    def _apply_patch(
+        self,
+        dataset_id: str,
+        sample_id: str,
+        path: str,
+        field_id: str,
+        data: List[dict],
+        source_if_match: Optional[datetime.datetime],
+        generated_dataset_name: Optional[str],
+        generated_sample_id: Optional[str],
+    ) -> JSONResponse:
         # Load the source sample
         logger.debug(
             "Loading source sample %s from dataset %s", sample_id, dataset_id
@@ -717,6 +761,24 @@ class CommitMask(HTTPEndpoint):
                 detail="Both 'field' and 'detection_id' are required",
             )
 
+        # loading the sample, writing the mask and saving are blocking work
+        return await run_sync_task(
+            self._commit,
+            dataset_id,
+            sample_id,
+            if_last_modified_at,
+            field,
+            detection_id,
+        )
+
+    def _commit(
+        self,
+        dataset_id: str,
+        sample_id: str,
+        if_last_modified_at: Optional[datetime.datetime],
+        field: str,
+        detection_id: str,
+    ) -> JSONResponse:
         sample = get_sample(dataset_id, sample_id, if_last_modified_at)
 
         try:

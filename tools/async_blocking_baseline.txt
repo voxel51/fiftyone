@@ -1,13 +1,3 @@
 # Blocking calls inside async functions that predate
 # tools/check_async_blocking.py. Fix them, don't add to them.
 # <file>::<async function>::<call>::<expression> <count>
-fiftyone/server/mutation.py::create_saved_view::load_dataset::fod.load_dataset(dataset_name, reload=True) 1
-fiftyone/server/mutation.py::delete_saved_view::load_dataset::fod.load_dataset(dataset_name, reload=True) 1
-fiftyone/server/mutation.py::set_dataset::load_dataset::fod.load_dataset(name, reload=True) 1
-fiftyone/server/mutation.py::set_sidebar_groups::save::view._dataset.save() 1
-fiftyone/server/mutation.py::set_view::load_dataset::fod.load_dataset(dataset_name, reload=True) 1
-fiftyone/server/routes/groups.py::get::get_group::get_group(dataset_id, group_id, slice_name) 1
-fiftyone/server/routes/sample.py::patch::first::sample.frames.first() 1
-fiftyone/server/routes/sample.py::patch::save_sample::save_sample(sample, if_last_modified_at) 1
-fiftyone/server/routes/sample.py::patch::save_sample::save_sample(sample, source_if_match) 1
-fiftyone/server/routes/sample.py::post::save_sample::save_sample(sample, if_last_modified_at) 1
