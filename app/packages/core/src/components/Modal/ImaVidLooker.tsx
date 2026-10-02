@@ -1,9 +1,6 @@
 import { ImaVidLooker } from "@fiftyone/looker";
 import type { FoTimelineConfig } from "@fiftyone/playback";
 import {
-  PLAYHEAD_STATE_BUFFERING,
-  PLAYHEAD_STATE_PAUSED,
-  PLAYHEAD_STATE_PLAYING,
   useCreateTimeline,
   useDefaultTimelineNameImperative,
   useTimeline,
@@ -29,6 +26,7 @@ import {
   useLookerOptionsUpdate,
   useModalContext,
 } from "./hooks";
+import { loadImaVidRange } from "./imaVidLoadRange";
 import { dispatchLookerAttached } from "./lookerAttached";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
@@ -159,66 +157,11 @@ export const ImaVidLookerReact = React.memo(
     const ref = useRef<HTMLDivElement>(null);
 
     const loadRange = React.useCallback(
-      async (range: Readonly<BufferRange>) => {
-        const storeBufferManager =
-          imaVidLookerRef.current.frameStoreController.storeBufferManager;
-        const fetchBufferManager =
-          imaVidLookerRef.current.frameStoreController.fetchBufferManager;
-
-        if (storeBufferManager.containsRange(range)) {
-          return;
-        }
-
-        const unprocessedStoreBufferRange =
-          storeBufferManager.getUnprocessedBufferRange(range);
-        const unprocessedBufferRange =
-          fetchBufferManager.getUnprocessedBufferRange(
-            unprocessedStoreBufferRange,
-          );
-
-        if (!unprocessedBufferRange) {
-          return;
-        }
-
-        // if looker is playing, don't change playhead to buffering status
-        // we indicate buffering status in status bar
-        if (getPlayHeadState() !== PLAYHEAD_STATE_PLAYING) {
-          setPlayHeadState(PLAYHEAD_STATE_BUFFERING);
-        }
-
-        imaVidLookerRef.current.frameStoreController.enqueueFetch(
-          unprocessedBufferRange,
-        );
-
-        imaVidLookerRef.current.frameStoreController.resumeFetch();
-
-        return new Promise<void>((resolve) => {
-          const fetchMoreListener = (e: CustomEvent) => {
-            if (
-              e.detail.id === imaVidLookerRef.current.frameStoreController.key
-            ) {
-              if (storeBufferManager.containsRange(unprocessedBufferRange)) {
-                // if we were buffering, set playhead state to playing
-                if (getPlayHeadState() === PLAYHEAD_STATE_BUFFERING) {
-                  setPlayHeadState(PLAYHEAD_STATE_PAUSED);
-                }
-
-                resolve();
-
-                window.removeEventListener(
-                  "fetchMore",
-                  fetchMoreListener as EventListener,
-                );
-              }
-            }
-          };
-
-          window.addEventListener(
-            "fetchMore",
-            fetchMoreListener as EventListener,
-          );
-        });
-      },
+      (range: Readonly<BufferRange>) =>
+        loadImaVidRange(imaVidLookerRef.current.frameStoreController, range, {
+          get: getPlayHeadState,
+          set: setPlayHeadState,
+        }),
       [],
     );
 
