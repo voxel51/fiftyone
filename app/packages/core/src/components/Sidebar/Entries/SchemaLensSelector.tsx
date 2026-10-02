@@ -61,6 +61,25 @@ export const ALL_FIELDS_LENS = "__all__";
  * and does not export its option component, so the same tokens are
  * applied here (the variables come from voodo's stylesheet).
  */
+/**
+ * voodo 2.1's Button treats a borderless trigger whose label is not a
+ * plain string child as icon-only: square aspect, full rounding and icon
+ * padding. This trigger wraps its label (ellipsis span, optional
+ * spinner), so it rendered as a 137px square and pushed the sidebar
+ * apart. Until voodo counts a wrapped label as text, restore the pill
+ * shape here; sized to sit with the sidebar rows.
+ */
+const LensTrigger = styled(DropdownTrigger)`
+  && {
+    aspect-ratio: auto;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    min-width: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+`;
+
 const LensItem = styled(MenuCheckItem)`
   flex-direction: row-reverse;
   justify-content: space-between;
@@ -255,7 +274,7 @@ const SchemaLensSelector = ({
       anchor={DropdownAnchor.BottomStart}
       disabled={busy}
       trigger={
-        <DropdownTrigger
+        <LensTrigger
           borderless
           data-cy="schema-lens-select"
           aria-label="View the dataset through a label schema"
@@ -283,7 +302,7 @@ const SchemaLensSelector = ({
           >
             {currentLabel}
           </span>
-        </DropdownTrigger>
+        </LensTrigger>
       }
     >
       <LensItem
