@@ -1,0 +1,19 @@
+name: "@voxel51/label-schemas"
+description: |
+  Named label schemas: the documents the Schema Manager authors and the
+  App's schema lens reads to hide fields and attributes.
+tags:
+  - annotation
+  - schemas
+version: 0.1.0
+fiftyone:
+  version: "*"
+operators:
+  # Every operator register() serves must be listed here: deployments
+  # that allowlist builtin operators enumerate this list.
+  - list_label_schema_docs
+  - get_label_schema_doc
+  - create_label_schema_doc
+  - update_label_schema_doc
+  - delete_label_schema_doc
+  - propagate_label_schema_field
