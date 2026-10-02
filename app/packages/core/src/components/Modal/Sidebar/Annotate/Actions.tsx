@@ -221,9 +221,18 @@ const Classification = () => {
 };
 
 const Regression = () => {
-  const { regressionModeActive, disabled, tooltip, activateRegressionMode } =
-    useRegressionMode();
+  const {
+    available,
+    regressionModeActive,
+    disabled,
+    tooltip,
+    activateRegressionMode,
+  } = useRegressionMode();
   const deactivateAll = useDeactivateAll();
+
+  if (!available) {
+    return null;
+  }
 
   return (
     <Tooltip anchor={Anchor.Top} content={<Text>{tooltip}</Text>} portal>

@@ -60,6 +60,9 @@ export const useRegressionMode = () => {
 
   return useMemo(
     () => ({
+      // shown only once the schema has a regression field: a rarely used type
+      // shouldn't take a toolbar slot from the common ones
+      available: allFields.length > 0,
       regressionModeActive,
       disabled,
       tooltip,
@@ -68,6 +71,7 @@ export const useRegressionMode = () => {
       toggleRegressionMode,
     }),
     [
+      allFields.length,
       regressionModeActive,
       disabled,
       tooltip,
