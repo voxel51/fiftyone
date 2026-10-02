@@ -155,6 +155,55 @@ class CheckAsyncBlockingTests(unittest.TestCase):
         """
         self.assertEqual(_calls(source), [])
 
+    def test_local_bindings_shadow_module_helpers(self):
+        source = """
+            def save_sample(sample):
+                sample.save()
+
+            async def patch(request, save_sample=None):
+                save_sample(None)
+
+            async def post(request):
+                save_sample = lambda sample: None
+                save_sample(None)
+        """
+        self.assertEqual(_calls(source), [])
+
+    def test_follows_class_qualified_helpers(self):
+        source = """
+            class Route:
+                @staticmethod
+                def _load():
+                    return fo.load_dataset("d")
+
+                async def get(self, request):
+                    Route._load()
+        """
+        self.assertEqual(_calls(source), [("get", "_load")])
+
+    def test_ignores_a_helpers_own_defaults(self):
+        source = """
+            def helper(dataset=fo.load_dataset("d")):
+                return dataset
+
+            async def get(request):
+                helper()
+        """
+        self.assertEqual(_calls(source), [])
+
+    def test_follows_nested_functions_a_helper_calls(self):
+        source = """
+            def helper(sample):
+                def save():
+                    sample.save()
+
+                save()
+
+            async def post(request):
+                helper(None)
+        """
+        self.assertEqual(_calls(source), [("post", "helper")])
+
     def test_ignores_names_builtins_share(self):
         source = """
             async def get(request):
