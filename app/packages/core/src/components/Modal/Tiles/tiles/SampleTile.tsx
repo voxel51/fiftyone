@@ -1,13 +1,7 @@
-import { Loading } from "@fiftyone/components";
-import { Suspense } from "react";
-import Group from "../../Group";
+import { ModalSample } from "../../ModalSamplePlugin";
 
 /**
- * The whole existing group tree in one tile. Used for dynamic groups, whose
- * paginator / carousel / nested-group layout stays exactly as it is today.
+ * The whole existing sample view in one tile: 2D/3D samples, dynamic groups
+ * with their paginator and view modes, and groups in annotate mode.
  */
-export const SampleTile = () => (
-  <Suspense fallback={<Loading>Pixelating...</Loading>}>
-    <Group />
-  </Suspense>
-);
+export const SampleTile = () => <ModalSample />;

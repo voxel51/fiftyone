@@ -16,8 +16,11 @@ import {
 
 /** What the current dataset/group makes available, read from app state. */
 export interface GroupTileFacts {
-  /** Dynamic group: the existing paginated tree is hosted as one tile. */
-  readonly dynamic: boolean;
+  /**
+   * The existing sample view is hosted as one tile: plain samples, dynamic
+   * groups (keeping their paginator and view modes) and annotate mode.
+   */
+  readonly sampleOnly: boolean;
   /** At least one slice is a 3D media type. */
   readonly has3dSlice: boolean;
   /** Every slice is 3D, so there is no 2D media to show. */
@@ -41,25 +44,26 @@ interface GroupTileDefinition {
 const CATALOG: Record<GroupTileType, GroupTileDefinition> = {
   [GROUP_TILE_TYPE.CAROUSEL]: {
     icon: IconName.GridView,
-    isAvailable: ({ dynamic, only3d }) => !dynamic && !only3d,
+    isAvailable: ({ sampleOnly, only3d }) => !sampleOnly && !only3d,
     Tile: CarouselTile,
     typeLabel: "Carousel",
   },
   [GROUP_TILE_TYPE.MEDIA]: {
     icon: IconName.ImageSearch,
-    isAvailable: ({ dynamic, mediaAvailable }) => !dynamic && mediaAvailable,
+    isAvailable: ({ sampleOnly, mediaAvailable }) =>
+      !sampleOnly && mediaAvailable,
     Tile: MediaTile,
     typeLabel: "Media",
   },
   [GROUP_TILE_TYPE.THREE_D]: {
     icon: IconName.Embeddings,
-    isAvailable: ({ dynamic, has3dSlice }) => !dynamic && has3dSlice,
+    isAvailable: ({ sampleOnly, has3dSlice }) => !sampleOnly && has3dSlice,
     Tile: ThreeDTile,
     typeLabel: "3D",
   },
   [GROUP_TILE_TYPE.SAMPLE]: {
     icon: IconName.Inspect,
-    isAvailable: ({ dynamic }) => dynamic,
+    isAvailable: ({ sampleOnly }) => sampleOnly,
     Tile: SampleTile,
     typeLabel: "Sample",
   },
@@ -98,8 +102,8 @@ export interface ResolvedGroupLayout {
 
 /**
  * The built-in arrangement, mirroring today's split view: carousel above
- * media on the left, 3D on the right when a 3D slice exists. Dynamic
- * groups are one sample tile. Kinds the user had hidden through the legacy
+ * media on the left, 3D on the right when a 3D slice exists. Sample-only
+ * hosts are one sample tile. Kinds the user had hidden through the legacy
  * visibility popout are left out, unless that would leave nothing.
  */
 export function defaultGroupLayout(facts: GroupTileFacts): ResolvedGroupLayout {

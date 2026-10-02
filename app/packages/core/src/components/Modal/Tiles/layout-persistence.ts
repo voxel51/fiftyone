@@ -23,11 +23,25 @@ interface Payload {
   readonly byDataset: Record<string, TimestampedEntry>;
 }
 
-export const GROUP_LAYOUT_STORAGE_KEY = "fiftyone.group.sample-layout.v1";
+export const GROUP_LAYOUT_STORAGE_KEY = "fiftyone.sample-view.layout.v1";
+/** Key the Spaces-based sample view persisted its tab strip under. */
+export const LEGACY_SAMPLE_PANELS_STORAGE_KEY = "fo-sample-modal-plugins";
 const STORAGE_VERSION = 1;
-// Cap the per-dataset table so heavy multi-dataset use can't grow the
-// payload unboundedly; least-recently-updated entries are evicted.
-const MAX_DATASET_ENTRIES = 20;
+// Cap the table (one entry per dataset and layout kind) so heavy
+// multi-dataset use can't grow the payload unboundedly; least-recently-
+// updated entries are evicted.
+const MAX_DATASET_ENTRIES = 40;
+
+/** Which arrangement a dataset entry holds: group content tiles, or one sample tile plus panels. */
+export type SampleLayoutKind = "group" | "sample";
+
+/** Table key for one dataset's arrangement of one kind. */
+export function layoutScopeKey(
+  datasetId: string,
+  kind: SampleLayoutKind,
+): string {
+  return `${datasetId}|${kind}`;
+}
 
 /** True when the value is a structurally valid mosaic tree of tile ids. */
 export function isValidMosaicLayout(node: unknown): node is MosaicNode<string> {

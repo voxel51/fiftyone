@@ -44,8 +44,8 @@ import {
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
-import { ModalSpace } from "./ModalSpace";
-import { GroupTilingHost, useGroupTilesActive } from "./Tiles";
+import { ModalSample } from "./ModalSamplePlugin";
+import { SampleTilingHost, useSampleTilesActive } from "./Tiles";
 import { ModalStatusBar } from "./ModalStatusBar";
 import { Sidebar } from "./Sidebar";
 import { SegmentationToolbar } from "./Sidebar/Annotate/Edit/SegmentationToolbar";
@@ -286,7 +286,7 @@ const Modal = () => {
 
   const showClassicSidebar = useShowClassicSidebar();
   const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
-  const groupTilesActive = useGroupTilesActive();
+  const sampleTilesActive = useSampleTilesActive();
 
   useKeyBindings(KnownContexts.Modal, [
     {
@@ -413,13 +413,11 @@ const Modal = () => {
             <ModalNavigation closePanels={closePanels} />
             <SegmentationToolbar />
             <SpacesContainer>
-              {groupTilesActive ? (
-                <Suspense fallback={<Loading>Pixelating...</Loading>}>
-                  <GroupTilingHost />
-                </Suspense>
-              ) : (
-                <ModalSpace />
-              )}
+              <Suspense fallback={<Loading>Pixelating...</Loading>}>
+                {/* the episode renderer brings its own tiling shell and
+                    header, so multimodal mounts the sample view directly */}
+                {sampleTilesActive ? <SampleTilingHost /> : <ModalSample />}
+              </Suspense>
               <ModalStatusBar />
             </SpacesContainer>
             {showClassicSidebar && <Sidebar />}

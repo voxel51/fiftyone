@@ -8,7 +8,12 @@ import {
   type GroupTileFacts,
   type ResolvedGroupLayout,
 } from "./group-tile-catalog";
-import { readGroupLayout } from "./layout-persistence";
+import {
+  layoutScopeKey,
+  readGroupLayout,
+  type SampleLayoutKind,
+} from "./layout-persistence";
+import { createPanelTile, panelNameFromTileType } from "./panel-tiles";
 import { isGroupTileType, tileTypeFromId } from "./tile-types";
 
 export interface GroupSampleLayout {
@@ -21,8 +26,10 @@ export interface GroupSampleLayout {
 
 /**
  * Rebuild tile entries from a persisted mosaic tree. Returns `null` when
- * any leaf names a kind this dataset doesn't offer (e.g. a 3D tile saved
- * before the 3D slice was removed) so the caller falls back to defaults.
+ * any leaf names a built-in kind this dataset doesn't offer (e.g. a 3D tile
+ * saved before the 3D slice was removed) so the caller falls back to
+ * defaults. Panel kinds always restore: plugins register after mount, and a
+ * panel that never shows up renders the Spaces "panel not found" state.
  */
 export function restoreGroupLayout(
   layout: MosaicNode<string>,
@@ -32,7 +39,14 @@ export function restoreGroupLayout(
   const tiles: Record<string, TilingTile> = {};
   for (const id of collectTileIds(layout)) {
     const type = tileTypeFromId(id);
-    if (!type || !isGroupTileType(type) || !available.has(type)) {
+    if (!type) return null;
+    const panelName = panelNameFromTileType(type);
+    if (panelName !== null) {
+      if (!panelName) return null;
+      tiles[id] = createPanelTile(panelName);
+      continue;
+    }
+    if (!isGroupTileType(type) || !available.has(type)) {
       return null;
     }
     tiles[id] = createGroupTile(type);
@@ -48,10 +62,13 @@ export function restoreGroupLayout(
 export function useGroupSampleLayout(
   facts: GroupTileFacts,
   datasetId: string | null | undefined,
+  kind: SampleLayoutKind,
 ): GroupSampleLayout {
   const [resolved] = useState<GroupSampleLayout>(() => {
     const defaults = defaultGroupLayout(facts);
-    const persisted = datasetId ? readGroupLayout(datasetId) : null;
+    const persisted = datasetId
+      ? readGroupLayout(layoutScopeKey(datasetId, kind))
+      : null;
     const restored =
       persisted?.layout != null
         ? restoreGroupLayout(persisted.layout, facts)

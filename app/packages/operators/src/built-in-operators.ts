@@ -1,14 +1,16 @@
 import {
   Layout,
   SpaceNode,
+  SpaceTree,
   useInitializePanel,
-  usePanelTitle,
   usePanels,
+  usePanelTitle,
   useSetPanelStateById,
   useSpaceNodes,
   useSpaces,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import * as types from "./types";
 
 import { useTrackEvent } from "@fiftyone/analytics";
@@ -51,8 +53,7 @@ import type {
   TrackEventParams,
 } from "./ts";
 
-const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID, PANEL_SURFACE } =
-  fos.constants;
+const { FIFTYONE_GRID_SPACES_ID, PANEL_SURFACE } = fos.constants;
 
 //
 // BUILT-IN OPERATORS
@@ -179,18 +180,16 @@ export class OpenPanel extends Operator {
     const availablePanels = usePanels();
     const gridSpaces = useSpaces(FIFTYONE_GRID_SPACES_ID).spaces;
     const isModalOpen = useRecoilValue(fos.isModalActive);
-    const modalSpaces = useSpaces(FIFTYONE_MODAL_SPACES_ID).spaces;
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const sampleViewPanels = useAtomValue(fos.sampleViewPanelsControllerAtom);
     const initializePanel = useInitializePanel();
 
     return {
       availablePanels,
       gridSpaces,
       isModalOpen,
-      modalSpaces,
       openedGridPanels,
-      openedModalPanels,
+      sampleViewPanels,
       initializePanel,
     };
   }
@@ -211,9 +210,8 @@ export class OpenPanel extends Operator {
       availablePanels,
       gridSpaces,
       isModalOpen,
-      modalSpaces,
       openedGridPanels,
-      openedModalPanels,
+      sampleViewPanels,
       initializePanel,
     } = hooks;
     const {
@@ -225,12 +223,6 @@ export class OpenPanel extends Operator {
       name,
       state,
     } = params;
-    const openedPanels = isModalOpen ? openedModalPanels : openedGridPanels;
-    const spaces = isModalOpen ? modalSpaces : gridSpaces;
-    const targetSpace = this.findFirstPanelContainer(spaces.root);
-    if (!targetSpace) {
-      throw new Error("No panel container found");
-    }
     const panel = availablePanels.find((panel) => name === panel.name);
     if (!panel && !force) {
       throw new Error(`Panel with name ${name} does not exist`);
@@ -242,10 +234,36 @@ export class OpenPanel extends Operator {
         `Panel with name ${name} cannot be opened in a ${scope} surface`,
       );
     }
-    const openedPanel = openedPanels.find(({ type }) => type === name);
     const allowDuplicate = force
       ? Boolean(forceDuplicate)
       : panel?.panelOptions?.allowDuplicates;
+
+    if (isModalOpen) {
+      // The sample view hosts panels as tiles; the host decides placement,
+      // so `layout` has no meaning there.
+      if (!sampleViewPanels) {
+        throw new Error("The sample view is not hosting panels");
+      }
+      const alreadyOpen = sampleViewPanels
+        .list()
+        .some((tile) => tile.name === name);
+      const tileId = sampleViewPanels.open(name, {
+        allowDuplicate,
+        focus: isActive,
+        label: panel?.label,
+      });
+      if (!alreadyOpen || allowDuplicate) {
+        await initializePanel(tileId, scope, state, data);
+      }
+      return;
+    }
+
+    const spaces = gridSpaces;
+    const targetSpace = this.findFirstPanelContainer(spaces.root);
+    if (!targetSpace) {
+      throw new Error("No panel container found");
+    }
+    const openedPanel = openedGridPanels.find(({ type }) => type === name);
     if (openedPanel && !allowDuplicate) {
       if (isActive) spaces.setNodeActive(openedPanel);
       return;
@@ -293,6 +311,13 @@ class OpenAllPanels extends Operator {
   }
 }
 
+type ClosePanelHooks = {
+  isModalOpen: boolean;
+  openedPanels: SpaceNode[];
+  sampleViewPanels: fos.SampleViewPanelsController | null;
+  spaces: SpaceTree;
+};
+
 class ClosePanel extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
@@ -318,14 +343,29 @@ class ClosePanel extends Operator {
     });
     return new types.Property(inputs);
   }
-  useHooks(): object {
+  useHooks(): ClosePanelHooks {
     const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
     const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    return { openedPanels, spaces };
+    const isModalOpen = useRecoilValue(fos.isModalActive);
+    const sampleViewPanels = useAtomValue(fos.sampleViewPanelsControllerAtom);
+    return { isModalOpen, openedPanels, sampleViewPanels, spaces };
   }
-  async execute({ hooks, params }: ExecutionContext) {
-    const { openedPanels, spaces } = hooks;
+  async execute({
+    hooks,
+    params,
+  }: ExecutionContext<{ name?: string; id?: string }, ClosePanelHooks>) {
+    const { isModalOpen, openedPanels, sampleViewPanels, spaces } = hooks;
     const { name, id } = params;
+    if (isModalOpen && sampleViewPanels) {
+      if (!sampleViewPanels.close({ id, name })) {
+        console.error(
+          `Opened panel with ${id ? "id" : "name"} "${
+            id || name
+          }" cannot be found`,
+        );
+      }
+      return;
+    }
     const panel = openedPanels.find(
       (panel) => id === panel.id || name === panel.type,
     );

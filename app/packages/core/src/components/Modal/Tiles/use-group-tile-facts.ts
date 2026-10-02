@@ -5,7 +5,10 @@ import { GROUP_TILE_TYPE } from "./tile-types";
 
 /** Reads what the current dataset makes available as tiles. */
 export function useGroupTileFacts(): GroupTileFacts {
+  const isGroup = fos.useIsGroupDataset();
   const dynamic = fos.useIsDynamicGroup();
+  const annotate = fos.useModalMode() === fos.ModalMode.ANNOTATE;
+  const sampleOnly = !isGroup || dynamic || annotate;
   const only3d = fos.useOnly3d();
   const has3dSlice = fos.useHas3dSlice();
   const mediaTypes = fos.useGroupMediaTypesSet();
@@ -16,7 +19,7 @@ export function useGroupTileFacts(): GroupTileFacts {
 
   return useMemo(
     () => ({
-      dynamic,
+      sampleOnly,
       has3dSlice,
       only3d,
       mediaAvailable,
@@ -29,11 +32,11 @@ export function useGroupTileFacts(): GroupTileFacts {
     }),
     [
       carouselSeed,
-      dynamic,
       has3dSlice,
       mediaAvailable,
       mediaSeed,
       only3d,
+      sampleOnly,
       threeDSeed,
     ],
   );

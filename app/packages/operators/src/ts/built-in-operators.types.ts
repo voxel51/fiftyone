@@ -58,9 +58,9 @@ export type OpenPanelHooks = {
   availablePanels: AvailablePanelType;
   gridSpaces: SpaceTree;
   isModalOpen: boolean;
-  modalSpaces: SpaceTree;
   openedGridPanels: SpaceNode[];
-  openedModalPanels: SpaceNode[];
+  /** The sample view's tile host, while one is mounted. */
+  sampleViewPanels: fos.SampleViewPanelsController | null;
   initializePanel: InitializePanelType;
 };
 
@@ -85,9 +85,12 @@ export type ListPanelsParams = {
 export type ListOpenPanelsHooks = {
   isModalOpen: boolean;
   openedGridPanels: SpaceNode[];
-  openedModalPanels: SpaceNode[];
+  sampleViewPanels: fos.SampleViewPanelsController | null;
   panels: AvailablePanelType;
 };
+
+/** An open panel on either surface: a grid Spaces node or a sample-view tile. */
+export type OpenedPanelRef = { id: string; type: string };
 
 export type ListPanelItemType = {
   name: string;
@@ -101,7 +104,7 @@ export type ListOpenPanelsItemType = ListPanelItemType & {
 };
 
 export type GetPanelStateHooks = {
-  openedPanels: SpaceNode[];
+  openedPanels: OpenedPanelRef[];
   panelsState: PanelsStateObject;
 };
 
@@ -111,7 +114,7 @@ export type GetPanelStateParams = {
 };
 
 export type GetPanelDataHooks = {
-  openedPanels: SpaceNode[];
+  openedPanels: OpenedPanelRef[];
   panelsData: PanelsStateObject;
 };
 

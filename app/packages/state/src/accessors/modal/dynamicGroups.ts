@@ -8,7 +8,10 @@ import {
   isDynamicGroup,
   isNestedDynamicGroup,
   isNonNestedDynamicGroup,
+  shouldRenderImaVidLooker,
 } from "../../recoil/dynamicGroups";
+import { hasGroupSlices } from "../../recoil/groups";
+import { dynamicGroupsViewMode } from "../../recoil/options";
 import { isQueryPerformantDynamicGroup } from "../../recoil/queryPerformance";
 import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
 
@@ -68,3 +71,14 @@ export const useIsNonNestedDynamicGroup = (): boolean =>
 /** Whether the dynamic group is ordered with a fixed order-by key, so paging it is indexed. */
 export const useIsQueryPerformantDynamicGroup = (): boolean =>
   Boolean(useRecoilValue(isQueryPerformantDynamicGroup));
+
+/** Whether the dataset's groups carry named slices (nested dynamic groups). */
+export const useHasGroupSlices = (): boolean => useRecoilValue(hasGroupSlices);
+
+/** Whether the ordered dynamic group renders as the frame-sequence ("video") looker. */
+export const useShouldRenderImaVidLooker = (modal: boolean): boolean =>
+  useRecoilValue(shouldRenderImaVidLooker(modal));
+
+/** The dynamic-group view mode: `pagination`, `carousel` or `video`. */
+export const useDynamicGroupsViewMode = (modal: boolean): string =>
+  useRecoilValue(dynamicGroupsViewMode(modal));

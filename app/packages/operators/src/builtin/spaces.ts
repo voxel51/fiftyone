@@ -1,5 +1,11 @@
 import { usePanels, usePanelsState, useSpaceNodes } from "@fiftyone/spaces";
-import { constants, isModalActive } from "@fiftyone/state";
+import {
+  constants,
+  isModalActive,
+  sampleViewPanelsControllerAtom,
+  type SampleViewPanelsController,
+} from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
 import { Operator, OperatorConfig } from "../operators";
 import * as types from "../types";
@@ -15,9 +21,26 @@ import type {
   ListPanelItemType,
   ListPanelsHooks,
   ListPanelsParams,
+  OpenedPanelRef,
 } from "../ts";
 
-const { FIFTYONE_GRID_SPACES_ID, FIFTYONE_MODAL_SPACES_ID } = constants;
+const { FIFTYONE_GRID_SPACES_ID } = constants;
+
+/** Open panels on both surfaces, as `{ id, type }` refs. */
+function openedPanelRefs(
+  gridNodes: { id: string; type?: unknown; isPanel: () => boolean }[],
+  sampleViewPanels: SampleViewPanelsController | null,
+): OpenedPanelRef[] {
+  return [
+    ...gridNodes
+      .filter((node) => node.isPanel())
+      .map((node) => ({ id: node.id, type: String(node.type) })),
+    ...(sampleViewPanels?.list() ?? []).map((tile) => ({
+      id: tile.id,
+      type: tile.name,
+    })),
+  ];
+}
 
 export class ListPanels extends Operator {
   _builtIn = true;
@@ -84,26 +107,38 @@ export class ListOpenPanels extends Operator {
   useHooks(): ListOpenPanelsHooks {
     const isModalOpen = useRecoilValue(isModalActive);
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const sampleViewPanels = useAtomValue(sampleViewPanelsControllerAtom);
     const panels = usePanels();
 
-    return { isModalOpen, openedGridPanels, openedModalPanels, panels };
+    return { isModalOpen, openedGridPanels, sampleViewPanels, panels };
   }
 
   async execute(
     ctx: ExecutionContext<void, ListOpenPanelsHooks>,
   ): Promise<ListOpenPanelsItemType[]> {
     const { hooks } = ctx;
-    const { isModalOpen, openedGridPanels, openedModalPanels, panels } = hooks;
+    const { isModalOpen, openedGridPanels, sampleViewPanels, panels } = hooks;
 
     const panelsByName = panels.reduce((panelsMap, panel) => {
       panelsMap[panel.name] = panel;
       return panelsMap;
     }, {});
 
-    const openPanels = isModalOpen ? openedModalPanels : openedGridPanels;
+    if (isModalOpen) {
+      // Sample-view tiles have no pinned state; every tile can be closed.
+      return (sampleViewPanels?.list() ?? []).map((tile) => {
+        const panelInfo = panelsByName[tile.name];
+        return {
+          name: tile.name,
+          label: panelInfo?.label,
+          panelOptions: panelInfo?.panelOptions,
+          id: tile.id,
+          pinned: false,
+        };
+      });
+    }
 
-    return openPanels
+    return openedGridPanels
       .filter((panel) => panel.isPanel())
       .map((panel) => {
         const panelName = panel.type.toString();
@@ -141,10 +176,10 @@ export class GetPanelState extends Operator {
 
   useHooks(): GetPanelStateHooks {
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const sampleViewPanels = useAtomValue(sampleViewPanelsControllerAtom);
     const [panelsState] = usePanelsState();
 
-    const openedPanels = [...openedGridPanels, ...openedModalPanels];
+    const openedPanels = openedPanelRefs(openedGridPanels, sampleViewPanels);
 
     return { openedPanels, panelsState };
   }
@@ -192,10 +227,10 @@ export class GetPanelData extends Operator {
 
   useHooks(): GetPanelDataHooks {
     const openedGridPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-    const openedModalPanels = useSpaceNodes(FIFTYONE_MODAL_SPACES_ID);
+    const sampleViewPanels = useAtomValue(sampleViewPanelsControllerAtom);
     const [panelsData] = usePanelsState(true);
 
-    const openedPanels = [...openedGridPanels, ...openedModalPanels];
+    const openedPanels = openedPanelRefs(openedGridPanels, sampleViewPanels);
 
     return { openedPanels, panelsData };
   }

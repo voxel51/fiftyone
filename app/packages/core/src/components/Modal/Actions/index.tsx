@@ -111,8 +111,8 @@ export default () => {
         <ColorScheme modal />
         {mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
         <Options modal />
-        {/* on the tiling host, which content shows is decided by which
-            tiles are open, so the popout would fight the layout */}
+        {/* for a regular group in explore mode, which content shows is
+            decided by which tiles are open, so the popout would fight it */}
         {isGroup && !groupTilesOwnVisibility && <GroupVisibility />}
         <BrowseOperations modal />
         <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />

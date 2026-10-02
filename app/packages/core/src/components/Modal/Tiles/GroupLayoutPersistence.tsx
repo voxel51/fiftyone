@@ -1,12 +1,18 @@
 import { useTiling } from "@fiftyone/tiling";
 import { useEffect, useRef } from "react";
-import { writeGroupLayout } from "./layout-persistence";
+import {
+  layoutScopeKey,
+  writeGroupLayout,
+  type SampleLayoutKind,
+} from "./layout-persistence";
 
 /** Writes the tile arrangement back to storage whenever it changes. */
 export const GroupLayoutPersistence = ({
   datasetId,
+  kind,
 }: {
   datasetId: string;
+  kind: SampleLayoutKind;
 }) => {
   const { layout, expandedTileId } = useTiling();
   // The mount value is what we just restored (or the defaults); only
@@ -20,9 +26,9 @@ export const GroupLayoutPersistence = ({
     }
     writeGroupLayout(
       { layout, expandedTileId: expandedTileId ?? undefined },
-      datasetId,
+      layoutScopeKey(datasetId, kind),
     );
-  }, [datasetId, expandedTileId, layout]);
+  }, [datasetId, expandedTileId, kind, layout]);
 
   return null;
 };
