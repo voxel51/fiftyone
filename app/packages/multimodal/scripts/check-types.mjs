@@ -26,6 +26,11 @@ try {
     {
       cwd: appRoot,
       encoding: "utf8",
+      // The default heap (~2GB on CI runners) runs out before tsc finishes
+      env: {
+        ...process.env,
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --max-old-space-size=4096`,
+      },
       stdio: ["ignore", "pipe", "pipe"],
     }
   );
