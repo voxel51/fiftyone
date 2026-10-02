@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 import * as THREE from "three";
 import {
@@ -200,8 +201,8 @@ const AnnotationOrientationGizmoSvg = ({
       <circle
         cx={GIZMO_CENTER}
         cy={GIZMO_CENTER}
-        fill="rgba(255, 255, 255, 0.08)"
         r="4"
+        style={{ fill: cssVar.color.interactive["secondary-default"] }}
       />
       {axes.map((axis) => (
         <g

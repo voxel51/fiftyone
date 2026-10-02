@@ -1,3 +1,4 @@
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 
 export const ActionItem = styled.div`
@@ -26,7 +27,7 @@ export const ActionBarContainer = styled.div`
   align-items: center;
   display: flex;
 
-  color: #eee;
+  color: ${cssVar.color.text.primary};
 
   -webkit-transition: opacity 0.5s;
   -moz-transition: opacity 0.5s;
@@ -61,7 +62,7 @@ export const ActionPopOverDiv = styled.div`
   bottom: 2.5rem;
   background-color: var(--fo-palette-background-level2);
   border: 1px solid var(--fo-palette-primary-plainBorder);
-  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-custom-shadow);
   border-radius: 3px;
   color: var(--fo-palette-text-secondary);
   overflow: hidden;

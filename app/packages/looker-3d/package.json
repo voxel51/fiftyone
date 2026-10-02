@@ -20,6 +20,7 @@
         "@react-three/drei": "^9.122.0",
         "@react-three/fiber": "catalog:",
         "@sparkjsdev/spark": "2.1.0",
+        "@voxel51/voodo": "catalog:",
         "chroma-js": "^3.1.2",
         "leva": "^0.9.36",
         "lodash": "catalog:",

@@ -62,7 +62,11 @@
   bottom: 0;
   width: 6px;
   transform: translateX(-50%);
-  background: rgba(255, 200, 0, 0.85);
+  background: color-mix(
+    in srgb,
+    var(--color-semantic-warning) 85%,
+    transparent
+  );
   cursor: ew-resize;
   z-index: 3;
 }

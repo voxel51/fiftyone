@@ -63,7 +63,7 @@ const ComponentTypeButton = ({
               ? `1px solid ${theme.voxel[500]}`
               : `1px solid ${theme.primary.softBorder}`,
             backgroundColor: isSelected
-              ? `${theme.voxel[500]}1A`
+              ? `color-mix(in srgb, ${theme.voxel[500]} 10%, transparent)`
               : "transparent",
             cursor: disabled ? "not-allowed" : "pointer",
           }}

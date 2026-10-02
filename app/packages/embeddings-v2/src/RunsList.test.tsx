@@ -10,6 +10,8 @@ import RunsList from "./RunsList";
 // component (same pattern as TabIndicator.test)
 vi.mock("@fiftyone/components", () => ({
   PanelCTA: ({ label }: { label: ReactNode }) => <div>{label}</div>,
+  // TeaserCloud subscribes to the applied theme; no provider in tests
+  useAppliedThemeMode: () => null,
 }));
 
 const run = (

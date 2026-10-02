@@ -149,16 +149,16 @@ input[type="range"].lookerSeekBar::-moz-range-track {
   width: 100%;
   background: linear-gradient(
     to right,
-    hsl(210, 11%, 11%) 0%,
-    hsl(210, 11%, 11%) var(--start, 0%),
+    var(--color-content-bg-background) 0%,
+    var(--color-content-bg-background) var(--start, 0%),
     var(--fo-palette-primary-plainColor) var(--start, 0%),
     var(--fo-palette-primary-plainColor) var(--progress, 0%),
     var(--fo-palette-secondary-main) var(--progress, 0%),
     var(--fo-palette-secondary-main) var(--buffer-progress, 0%),
     var(--fo-palette-neutral-softBorder) var(--buffer-progress, 0%),
     var(--fo-palette-neutral-softBorder) var(--end, 0%),
-    hsl(210, 11%, 11%) var(--end, 100%),
-    hsl(210, 11%, 11%) 100%
+    var(--color-content-bg-background) var(--end, 100%),
+    var(--color-content-bg-background) 100%
   );
   overflow: hidden;
 }

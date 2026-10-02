@@ -303,6 +303,158 @@ export const interpolateColorsRgb = (
   ];
 };
 
+// Only colour tokens are evaluated: the App's own `--color-*` / `--fo-palette-*`
+// variables and `color-mix()`. Any other var() (a font family, a spacing) is
+// not a colour and would come back as the probe's fallback colour if it were
+// assigned to `color`, so it passes through untouched.
+const NEEDS_CSS = /var\(--(?:color|fo-palette)[\w-]*\s*[,)]|color-mix\(/;
+
+let probe: HTMLElement | null | undefined;
+
+const probeElement = (): HTMLElement | null => {
+  if (probe === undefined) {
+    if (typeof document === "undefined") {
+      probe = null;
+    } else {
+      probe = document.createElement("span");
+      probe.style.display = "none";
+      document.documentElement.appendChild(probe);
+    }
+  }
+  return probe;
+};
+
+let pixelContext: CanvasRenderingContext2D | null | undefined;
+
+const pixelCanvas = (): CanvasRenderingContext2D | null => {
+  if (pixelContext === undefined) {
+    if (typeof document === "undefined") {
+      pixelContext = null;
+    } else {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      pixelContext = canvas.getContext("2d", { willReadFrequently: true });
+    }
+  }
+  return pixelContext;
+};
+
+// `color(srgb r g b)` / `color(srgb r g b / a)`, channels as 0-1 floats or
+// `none`, alpha as a float or percentage.
+const COLOR_SRGB =
+  /^color\(srgb\s+(none|[\d.]+)\s+(none|[\d.]+)\s+(none|[\d.]+)(?:\s*\/\s*(none|[\d.]+%?))?\s*\)$/;
+
+const channel255 = (v: string): number =>
+  v === "none" ? 0 : Math.round(Math.min(1, Math.max(0, Number(v))) * 255);
+
+const alpha1 = (v: string | undefined): number => {
+  if (v === undefined) return 1;
+  if (v === "none") return 0;
+  const n = v.endsWith("%") ? Number(v.slice(0, -1)) / 100 : Number(v);
+  return Math.min(1, Math.max(0, n));
+};
+
+const rgbString = (r: number, g: number, b: number, a: number): string =>
+  a >= 1
+    ? `rgb(${r}, ${g}, ${b})`
+    : `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(4))})`;
+
+/**
+ * Chromium serialises the computed value of a `color-mix()` as
+ * `color(srgb r g b / a)` (and keeps that syntax on a canvas `fillStyle`
+ * round-trip), which plotly's tinycolor mis-parses and three.js `Color` /
+ * MapLibre reject outright. That form is parsed exactly; anything else the
+ * browser understands but these consumers do not is read back from a 1x1
+ * canvas pixel instead.
+ */
+const toLegacySyntax = (computed: string): string => {
+  if (computed.startsWith("rgb") || computed.startsWith("#")) {
+    return computed;
+  }
+  const m = COLOR_SRGB.exec(computed);
+  if (m) {
+    return rgbString(
+      channel255(m[1]),
+      channel255(m[2]),
+      channel255(m[3]),
+      alpha1(m[4]),
+    );
+  }
+  const ctx = pixelCanvas();
+  if (!ctx) {
+    return computed;
+  }
+  ctx.clearRect(0, 0, 1, 1);
+  ctx.fillStyle = computed;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+  return rgbString(r, g, b, a / 255);
+};
+
+/**
+ * Resolves a CSS colour expression to the concrete `#rrggbb` / `rgb()` /
+ * `rgba()` value it currently has.
+ *
+ * Voodo's `cssVar.color.*` tokens are CSS variables so they follow
+ * light/dark automatically, but a few consumers cannot take a `var()`
+ * string: canvas `fillStyle`, plotly layouts, three.js `Color`, MapLibre
+ * paint. Those read the colour through this helper at the moment they need
+ * it instead of caching a literal that would go stale when the theme flips. `color-mix()`
+ * expressions, which several Voodo tokens resolve to, are evaluated as well.
+ *
+ * Plain literals and non-colour var() references come back unchanged, as does
+ * everything when there is no document (workers, node tests) or the
+ * expression is invalid.
+ */
+export const resolveCssColor = (color: string): string => {
+  if (!NEEDS_CSS.test(color)) {
+    return color;
+  }
+  const el = probeElement();
+  if (!el) {
+    return color;
+  }
+  el.style.color = "";
+  el.style.color = color;
+  if (!el.style.color) {
+    return color;
+  }
+  const computed = getComputedStyle(el).color;
+  return computed ? toLegacySyntax(computed) : color;
+};
+
+/**
+ * `resolveCssColor` applied to every string inside a plain object or array,
+ * for configuration handed whole to a parser (a plotly layout or trace list,
+ * a MapLibre paint object). Untouched branches keep their identity, so a
+ * memoised input stays cheap to diff.
+ */
+export const resolveCssColorsDeep = <T>(value: T): T => {
+  if (typeof value === "string") {
+    return resolveCssColor(value) as T;
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((item) => {
+      const resolved = resolveCssColorsDeep(item);
+      changed ||= resolved !== item;
+      return resolved;
+    });
+    return (changed ? next : value) as T;
+  }
+  if (value && typeof value === "object" && value.constructor === Object) {
+    let changed = false;
+    const next: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      const resolved = resolveCssColorsDeep(v);
+      changed ||= resolved !== v;
+      next[k] = resolved;
+    }
+    return (changed ? next : value) as T;
+  }
+  return value;
+};
+
 /**
  * The App's default color pool, from the Voodo design system.
  *

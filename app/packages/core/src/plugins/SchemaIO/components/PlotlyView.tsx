@@ -1,4 +1,7 @@
-import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import {
+  useAppliedThemeMode,
+  useTheme,
+} from "@fiftyone/components/src/components/ThemeProvider";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { Box } from "@mui/material";
@@ -9,6 +12,7 @@ const Plot = lazy(() => import("react-plotly.js"));
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
+import { resolveCssColor, resolveCssColorsDeep } from "@fiftyone/utilities";
 
 type TraceWithIds = {
   name?: string;
@@ -39,6 +43,9 @@ export default function PlotlyView(props: ViewPropsType) {
   const { view = {} } = schema;
   const { config = {}, layout = {} } = view;
   const theme = useTheme();
+  // The mode whose variables are actually applied; `theme` alone changes
+  // before the `.dark` class flips, so resolving on it reads stale colours
+  const themeMode = useAppliedThemeMode();
   const panelId = usePanelId();
   let range = [0, 0];
   const triggerPanelEvent = usePanelEvent();
@@ -142,32 +149,40 @@ export default function PlotlyView(props: ViewPropsType) {
     return {};
   }, []);
   const layoutDefaults = useMemo(() => {
+    // plotly parses colours itself; the theme values are literals, and
+    // resolving is a no-op for those, but it keeps any token safe
+    const text = {
+      secondary: resolveCssColor(theme.text.secondary),
+      tertiary: resolveCssColor(theme.text.tertiary),
+    };
+    const grid = resolveCssColor(theme.primary.softBorder);
+    const surface = resolveCssColor(theme.background.mediaSpace);
     return {
       font: {
         family: "var(--fo-fontFamily-body)",
         size: 14,
-        color: theme.text.secondary,
+        color: text.secondary,
       },
       showlegend: false,
       xaxis: {
         showgrid: true,
         zeroline: true,
         visible: true,
-        zerolinecolor: theme.text.tertiary,
-        color: theme.text.secondary,
-        gridcolor: theme.primary.softBorder,
+        zerolinecolor: text.tertiary,
+        color: text.secondary,
+        gridcolor: grid,
         automargin: true, // Enable automatic margin adjustment
-        title: { font: { size: 14, color: theme.text.tertiary } },
+        title: { font: { size: 14, color: text.tertiary } },
       },
       yaxis: {
         showgrid: true,
         zeroline: true,
         visible: true,
-        zerolinecolor: theme.text.tertiary,
-        color: theme.text.secondary,
-        gridcolor: theme.primary.softBorder,
+        zerolinecolor: text.tertiary,
+        color: text.secondary,
+        gridcolor: grid,
         automargin: true, // Enable automatic margin adjustment
-        title: { font: { size: 14, color: theme.text.tertiary } },
+        title: { font: { size: 14, color: text.tertiary } },
       },
       autosize: true,
       margin: {
@@ -177,16 +192,17 @@ export default function PlotlyView(props: ViewPropsType) {
         r: 8, // Keep right margin
         pad: 0,
       },
-      paper_bgcolor: theme.background.mediaSpace,
-      plot_bgcolor: theme.background.mediaSpace,
+      paper_bgcolor: surface,
+      plot_bgcolor: surface,
       legend: {
         x: 1,
         y: 1,
-        bgcolor: theme.background.mediaSpace,
-        font: { color: theme.text.secondary },
+        bgcolor: surface,
+        font: { color: text.secondary },
       },
     };
-  }, [theme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the re-resolve signal
+  }, [theme, themeMode]);
 
   const configDefaults = useMemo(() => {
     return {
@@ -203,8 +219,12 @@ export default function PlotlyView(props: ViewPropsType) {
     return merge({}, configDefaults, config);
   }, [configDefaults, config]);
   const mergedData = useMemo(() => {
-    return mergeData(data || schema?.view?.data, dataDefaults);
-  }, [data, dataDefaults, schema?.view?.data]);
+    // plotly parses colours; resolve any Voodo token an operator passed
+    return resolveCssColorsDeep(
+      mergeData(data || schema?.view?.data, dataDefaults),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the re-resolve signal
+  }, [data, dataDefaults, schema?.view?.data, themeMode]);
 
   useEffect(() => {
     setTimeout(() => {

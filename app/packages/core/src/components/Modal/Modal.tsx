@@ -63,7 +63,7 @@ const ModalWrapper = styled.div`
   align-items: center;
   display: flex;
   justify-content: center;
-  background-color: ${({ theme }) => theme.neutral.softBg};
+  background-color: ${({ theme }) => theme.background.modalBackdrop};
 `;
 
 const ModalContainer = styled.div`

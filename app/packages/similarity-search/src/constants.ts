@@ -1,5 +1,6 @@
 import { TextColor } from "@voxel51/voodo";
 import { DateFilterPreset, OwnerFilter, RunStatus } from "./types";
+import { cssVar } from "@voxel51/voodo";
 
 export const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
 export const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
@@ -36,7 +37,7 @@ export const STATUS_LABELS: Record<RunStatus, string> = {
 // Run list styles
 export const POINTER_STYLE = { cursor: "pointer" } as const;
 export const HIGHLIGHT_STYLE = {
-  boxShadow: "0 0 8px 2px rgba(255, 109, 4, 0.4)",
+  boxShadow: `0 0 8px 2px color-mix(in srgb, ${cssVar.color.brand.primary} 40%, transparent)`,
   borderRadius: 6,
 } as const;
 

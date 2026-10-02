@@ -1,4 +1,5 @@
 import { styled, Table } from "@mui/material";
+import { cssVar } from "@voxel51/voodo";
 
 export const EvaluationTable = styled(Table)(({ theme }) => ({
   ".MuiTableCell-root": {
@@ -60,7 +61,7 @@ export const scenarioCardStyles = {
   card: {
     p: 2,
     height: "100%",
-    background: "#262626",
+    background: cssVar.color.bg["card-nested"],
     borderRadius: "4px",
     display: "flex",
     flexDirection: "column",
@@ -83,7 +84,7 @@ export const scenarioCardStyles = {
     fontFamily: "Palanquin",
     fontWeight: 700,
     lineHeight: "20px",
-    color: "#FFC59B",
+    color: cssVar.color.brand.accent,
   },
   emptyState: {
     minHeight: 433,
@@ -114,12 +115,12 @@ export const scenarioCardStyles = {
     fontFamily: "Palanquin",
     fontWeight: 400,
     lineHeight: "19px",
-    color: "#CCCCCC",
+    color: cssVar.color.text.secondary,
   },
   createButton: {
     px: 2,
     py: "6px",
-    background: "#FF6D04",
+    background: cssVar.color.interactive["primary-default"],
     borderRadius: "4px",
     fontSize: 13,
     fontFamily: "Palanquin",
@@ -128,7 +129,7 @@ export const scenarioCardStyles = {
     color: "white",
     textTransform: "none",
     "&:hover": {
-      background: "#FF6D04",
+      background: cssVar.color.interactive["primary-hover"],
     },
   },
 };

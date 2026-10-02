@@ -8,15 +8,20 @@
  */
 import { useEffect, useRef } from "react";
 import "./panel.css";
+import { cssVar } from "@voxel51/voodo";
+import { useAppliedThemeMode } from "@fiftyone/components";
+import { resolveCssColor } from "@fiftyone/utilities";
 
-// Scatter-class colors and cluster layout for the synthetic scene
-const PALETTE = [
-  "#FF6D04",
-  "#86B5F6",
-  "#7AB87C",
-  "#CBA6FF",
-  "#FCCB58",
-  "#FF6767",
+// Scatter-class colors and cluster layout for the synthetic scene. Chart
+// hues, since these points are drawn on the UI rather than over media;
+// resolved when the scene is built because three.js needs concrete colors.
+const PALETTE_TOKENS = [
+  cssVar.color.brand.primary,
+  cssVar.color["viz-chart"].blue,
+  cssVar.color["viz-chart"].green,
+  cssVar.color["viz-chart"].purple,
+  cssVar.color["viz-chart"].yellow,
+  cssVar.color["viz-chart"].red,
 ];
 const CENTERS: Array<[number, number, number]> = [
   [-6, 3, -2],
@@ -39,6 +44,9 @@ const makeRand = (seed: number) => {
 
 export function TeaserCloud() {
   const hostRef = useRef<HTMLDivElement>(null);
+  // The `viz-chart` hues differ per theme and are baked into the point
+  // colours below, so the cloud is rebuilt once the `.dark` class has flipped
+  const themeMode = useAppliedThemeMode();
 
   useEffect(() => {
     const host = hostRef.current;
@@ -66,6 +74,7 @@ export function TeaserCloud() {
       // ~420 points across 6 clusters; ~12% receive another cluster's
       // color, mimicking the class overlap of real prediction data
       const rand = makeRand(987654321);
+      const PALETTE = PALETTE_TOKENS.map(resolveCssColor);
       const positions: number[] = [];
       const colorChannels: number[] = [];
       const color = new THREE.Color();
@@ -145,7 +154,8 @@ export function TeaserCloud() {
       disposed = true;
       cleanup?.();
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the rebuild signal
+  }, [themeMode]);
 
   return <div ref={hostRef} className="emb-teaser" aria-hidden />;
 }

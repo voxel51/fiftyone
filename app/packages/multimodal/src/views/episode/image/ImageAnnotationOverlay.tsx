@@ -1,5 +1,6 @@
 import type { CSSProperties, RefObject } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { cssVar } from "@voxel51/voodo";
 
 import {
   imageDisplayRect,
@@ -319,7 +320,7 @@ const headingStyle: CSSProperties = {
 };
 
 const colorBadgeStyle: CSSProperties = {
-  border: "1px solid rgba(255, 255, 255, 0.35)",
+  border: `1px solid ${cssVar.color.border.default}`,
   borderRadius: "50%",
   height: 8,
   width: 8,
@@ -332,7 +333,7 @@ const detailStyle: CSSProperties = {
 };
 
 const detailLabelStyle: CSSProperties = {
-  color: "#94a3b8",
+  color: cssVar.color.text.secondary,
 };
 
 const detailValueStyle: CSSProperties = {
