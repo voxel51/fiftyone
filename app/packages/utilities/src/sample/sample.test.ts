@@ -1257,6 +1257,27 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
     return patch;
   };
 
+  it("stops re-emitting a delete once the server's copy has the field null", () => {
+    // the autosave refresh loads the server's copy BEFORE reconciling, which
+    // skips the fold; the server clears a removed field to null
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.deleteLabel("classification");
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch).toEqual([{ op: "remove", path: "/classification" }]);
+
+    s.setData({ classification: null });
+    s.reconcilePersisted(patch);
+
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
   it("stops re-emitting a persisted single-label delete", () => {
     const s = new Sample({
       schema,
