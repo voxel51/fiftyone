@@ -129,9 +129,18 @@ async def dummy_coroutine_fn(duration):
     return "Success"
 
 
-@coroutine_timeout(seconds=0.2)
-async def timeout_dummy_coroutine_fn(duration):
-    return await dummy_coroutine_fn(duration)
+# The two cases below need their margins in opposite directions, so each gets
+# its own timeout. A single timeout has to sit close to the work in both
+# directions, which lets scheduling jitter decide the outcome. Each still
+# does enough work to hold the deadline to its stated scale.
+@coroutine_timeout(seconds=30)
+async def within_timeout_coroutine_fn():
+    return await dummy_coroutine_fn(0.1)
+
+
+@coroutine_timeout(seconds=0.01)
+async def exceeds_timeout_coroutine_fn():
+    return await dummy_coroutine_fn(1)
 
 
 def non_coroutine_fn():
@@ -140,12 +149,15 @@ def non_coroutine_fn():
 
 class TestCoroutineTimeoutDecorator(unittest.TestCase):
     def test_successful_execution(self):
-        result = asyncio.run(timeout_dummy_coroutine_fn(0.1))
+        result = asyncio.run(within_timeout_coroutine_fn())
+
         self.assertEqual(result, "Success")
 
     def test_timeout_exception(self):
+        # The deadline cancels the coroutine, so this returns in about the
+        # 10ms of the timeout rather than the 1s it would sleep for
         with self.assertRaises(TimeoutError):
-            asyncio.run(timeout_dummy_coroutine_fn(0.3))
+            asyncio.run(exceeds_timeout_coroutine_fn())
 
     def test_non_coroutine_function(self):
         decorated_function = coroutine_timeout(0.2)(non_coroutine_fn)
