@@ -15,7 +15,7 @@ from importlib.metadata import metadata
 
 from fiftyone._voodoo_palette import BRAND_PRIMARY, COLOR_POOL
 
-CLIENT_TYPE = "fiftyone"
+CLIENT_TYPE = "fiftyone-teams"
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
