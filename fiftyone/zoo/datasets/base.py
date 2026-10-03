@@ -3582,6 +3582,77 @@ class TIIRATMDroneRacingDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class TUMRGBDDataset(FiftyOneDataset):
+    """The TUM RGB-D SLAM benchmark, as native ``.mcap`` episodes.
+
+    A Microsoft Kinect records color and depth at 640x480 and 30 Hz while an
+    eight-camera motion-capture system tracks it at 100 Hz, handheld, on a
+    Pioneer robot, and over scenes built to test structure against texture,
+    moving people and object reconstruction. Each episode carries the color
+    images, the depth images as the benchmark ships them, the ground-truth
+    pose and the Kinect's intrinsics, and on the freiburg1 and freiburg2
+    sequences the Kinect's accelerometer.
+
+    47 sequences in six categories, 48 minutes 12 seconds of recording, 81,413
+    color frames and 80,683 depth frames.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("tum-rgbd")
+
+        # The sequences with people moving through the scene
+        view = dataset.match(F("category") == "Dynamic Objects")
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        8.12 GB
+    """
+
+    _REPO_ID = "Voxel51/TUM-RGBD"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "0156e3273c18d1b7d30a82b63813ec5a0936e9f7"
+
+    @property
+    def name(self):
+        return "tum-rgbd"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "rgbd", "slam", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class EgocentricEMGForceDataset(FiftyOneDataset):
     """First-person household task recordings pairing RGB-D video with wrist
     EMG and per-finger contact force, as native ``.mcap`` episodes.
@@ -4309,6 +4380,7 @@ AVAILABLE_DATASETS = {
     "spectralwaste-segmentation": SpectralWasteSegmentationDataset,
     "taf-tactile-force": TaFTactileForceDataset,
     "tii-ratm-drone-racing": TIIRATMDroneRacingDataset,
+    "tum-rgbd": TUMRGBDDataset,
     "ucf101": UCF101Dataset,
 }
 
