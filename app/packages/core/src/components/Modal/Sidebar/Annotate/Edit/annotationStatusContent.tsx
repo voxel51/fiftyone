@@ -134,6 +134,60 @@ export const polylineProgressStatus = (): StatusContent => ({
   help: <StatusHelp title="Polyline" entries={POLYLINE_PROGRESS_HELP} />,
 });
 
+const KEYPOINT_GUIDED_HELP: StatusHelpEntry[] = [
+  { gesture: "Click", description: "Place the highlighted skeleton node" },
+  {
+    gesture: "Skip (sidebar row)",
+    description: "Leave the node unplaced and move to the next",
+  },
+  {
+    gesture: "Right click",
+    description: "Stop placing; again to leave keypoint mode",
+  },
+];
+
+/** Guided skeleton placement: the live target + progress, gestures in help. */
+export const keypointGuidedStatus = (
+  nodeName: string,
+  placedCount: number,
+  nodeCount: number,
+): StatusContent => ({
+  status: (
+    <StatusText color={TextColor.Fg}>
+      {`Place: ${nodeName} · ${placedCount}/${nodeCount} placed`}
+    </StatusText>
+  ),
+  help: <StatusHelp title="Keypoint" entries={KEYPOINT_GUIDED_HELP} />,
+});
+
+const KEYPOINT_RESOLVED_HELP: StatusHelpEntry[] = [
+  { gesture: "Drag a point", description: "Adjust its position" },
+  { gesture: "Click a point", description: "Edit its attributes" },
+  {
+    gesture: "Right click",
+    description: "Stop editing this keypoint",
+  },
+];
+
+export const keypointResolvedStatus = (): StatusContent => ({
+  status: <StatusText>All nodes resolved</StatusText>,
+  help: <StatusHelp title="Keypoint" entries={KEYPOINT_RESOLVED_HELP} />,
+});
+
+const KEYPOINT_FREEFORM_HELP: StatusHelpEntry[] = [
+  { gesture: "Click", description: "Add a point" },
+  { gesture: "Double click", description: "Finish the keypoint" },
+  { gesture: "Alt + click", description: "Delete the point you clicked" },
+  {
+    gesture: "Right click",
+    description: "Stop placing; again to leave keypoint mode",
+  },
+];
+
+export const keypointFreeformStatus = (): StatusContent => ({
+  help: <StatusHelp title="Keypoint" entries={KEYPOINT_FREEFORM_HELP} />,
+});
+
 const MERGE_HELP: StatusHelpEntry[] = [
   {
     gesture: "First click",

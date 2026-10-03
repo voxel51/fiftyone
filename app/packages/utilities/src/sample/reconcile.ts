@@ -86,7 +86,16 @@ export const reconcilePersisted = (
       const { path, rest } = located;
       const source = next ?? snapshot.transientData;
       const current = getAtPath(source[path], rest);
-      if (!equalsNormalized(current, target.value)) {
+      // the compared values are bare (no wrapping object), so the segment
+      // leaf — the server-owned field's name — seeds the key context for
+      // the gated non-finite string collapse
+      if (
+        !equalsNormalized(
+          current,
+          target.value,
+          target.segments[target.segments.length - 1],
+        )
+      ) {
         // Re-edited since the patch was built — keep the newer value.
         continue;
       }
@@ -290,11 +299,13 @@ const releaseUneditedLabelFields = (
 
         // value-CAS: only release a field unchanged from its T0 baseline. A
         // field changed in the patch's in-flight window (or absent at T0) is a
-        // live edit — keep it.
+        // live edit — keep it. The values are bare, so `field` seeds the key
+        // context for the gated non-finite string collapse.
         if (
           !equalsNormalized(
             (element as Record<string, unknown>)[field],
             baselineElement?.[field],
+            field,
           )
         ) {
           continue;

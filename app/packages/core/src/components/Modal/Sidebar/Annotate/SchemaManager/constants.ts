@@ -54,6 +54,7 @@ export const LABEL_TYPE_OPTIONS = [
   { id: "detections", data: { label: "Detections" } },
   { id: "classification", data: { label: "Classification" } },
   { id: "polylines", data: { label: "Polylines" } },
+  { id: "keypoints", data: { label: "Keypoints" } },
 ];
 
 // Label type options for 3D datasets
@@ -121,6 +122,16 @@ export const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
   { name: "index", type: "int", component: "text" },
 ];
 
+// Keypoint's `confidence` is a list parallel to `points`, one value per
+// point, so it is point-scoped and declares its element type. The base
+// label-level `confidence` would not validate against the list field.
+export const DEFAULT_KEYPOINT_ATTRIBUTES: AttributeConfig[] = [
+  { name: "id", type: "id", component: "text", read_only: true },
+  { name: "tags", type: "list<str>", component: "text" },
+  { name: "confidence", type: "float", component: "text", scope: "point" },
+  { name: "index", type: "int", component: "text" },
+];
+
 // Get default attributes for a label type based on media type
 export const getDefaultAttributesForType = (
   labelType: string,
@@ -133,6 +144,8 @@ export const getDefaultAttributesForType = (
         : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "keypoints":
+      return DEFAULT_KEYPOINT_ATTRIBUTES;
     case "temporaldetections":
       // `support` is edited via the timeline drag handles, not as a
       // primitive sidebar component. Keep it off the schema's editable
@@ -247,6 +260,10 @@ export const BOOL_DEFAULT_OPTIONS = [
 
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
+
+// Element types a point-scoped keypoint attribute may declare (its storage is
+// a list of the element type, parallel to `points`)
+export const POINT_SCOPE_TYPES = ["bool", "float", "int", "str"];
 
 // Primitive field types - full Python class names from @fiftyone/utilities
 // Used to check if a field is a primitive type (not a label type like Detection)

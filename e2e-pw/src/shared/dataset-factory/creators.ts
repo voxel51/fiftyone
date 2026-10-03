@@ -78,6 +78,7 @@ const createImageDataset = async ({
   savedViews,
   staticTransforms,
   schema = {},
+  skeletons,
   withSampleData = () => ({}),
 }: ImageDatasetOptions) => {
   const helpers = makeHelpers();
@@ -108,6 +109,7 @@ const createImageDataset = async ({
       data: { index, ...withSampleData({ _id, filepath, index }, helpers) },
     })),
     schema: { index: "IntField", ...schema },
+    skeletons,
     labelSchemas,
     promptableIndexes,
     savedViews,
@@ -154,6 +156,7 @@ const createGroupDataset = async ({
   staticTransforms,
   sceneOptions = { meshes: [{ color: [96, 208, 255] }] },
   schema,
+  skeletons,
   slices = DEFAULT_GROUP_SLICES,
   videoOptions,
   withFrameData,
@@ -218,6 +221,7 @@ const createGroupDataset = async ({
     ),
     sampleFrames,
     schema,
+    skeletons,
     labelSchemas,
     promptableIndexes,
     savedViews,
@@ -250,6 +254,7 @@ const createVideoDataset = async ({
   savedViews,
   staticTransforms,
   schema,
+  skeletons,
   videoOptions,
   withFrameData,
   withSampleData = () => ({}),
@@ -272,6 +277,7 @@ const createVideoDataset = async ({
     ),
     sampleFrames,
     schema,
+    skeletons,
     labelSchemas,
     promptableIndexes,
     savedViews,
@@ -305,6 +311,7 @@ const create3dDataset = async ({
   staticTransforms,
   sceneOptions,
   schema,
+  skeletons,
   withSampleData = () => ({}),
 }: Dataset3dOptions) => {
   const helpers = makeHelpers();
@@ -321,6 +328,7 @@ const create3dDataset = async ({
       data: withSampleData({ _id, filepath, index }, helpers),
     })),
     schema,
+    skeletons,
     labelSchemas,
     promptableIndexes,
     savedViews,
@@ -344,6 +352,7 @@ const createMultimodalDataset = async ({
   savedViews,
   staticTransforms,
   schema,
+  skeletons,
   withSampleData = () => ({}),
 }: MultimodalDatasetOptions) => {
   const helpers = makeHelpers();
@@ -360,6 +369,7 @@ const createMultimodalDataset = async ({
       data: withSampleData({ _id, filepath, index }, helpers),
     })),
     schema,
+    skeletons,
     labelSchemas,
     promptableIndexes,
     savedViews,

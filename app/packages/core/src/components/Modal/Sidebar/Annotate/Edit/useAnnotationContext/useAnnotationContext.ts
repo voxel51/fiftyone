@@ -4,7 +4,7 @@ import {
   useAnnotationEngine,
 } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
-import type { AnnotationLabel } from "@fiftyone/state";
+import { useGetKeypointSkeleton, type AnnotationLabel } from "@fiftyone/state";
 import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
@@ -65,6 +65,7 @@ export const useAnnotationContext = (): AnnotationContext => {
   const { scene, addOverlay, overlayFactory } = useLighter();
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
+  const getSkeleton = useGetKeypointSkeleton();
 
   const label = useAtomValue(current);
   const data = useAtomValue(currentData);
@@ -304,7 +305,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       const built = createNewLabel(
         createType,
         { ...overrides, field: resolvedField, labelValue: resolvedLabelValue },
-        { scene, addOverlay, overlayFactory, engine, sample },
+        { scene, addOverlay, overlayFactory, engine, sample, getSkeleton },
       );
 
       if (built) {
@@ -325,6 +326,7 @@ export const useAnnotationContext = (): AnnotationContext => {
       computeFieldFor,
       computeLabelFor,
       engine,
+      getSkeleton,
       overlayFactory,
       sample,
       scene,

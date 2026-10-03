@@ -417,6 +417,7 @@ const NewFieldSchema = () => {
               />
               <AttributesSection
                 attributes={attributes}
+                allowPointScope={labelType === "keypoints"}
                 onAddAttribute={handleAddAttribute}
                 onEditAttribute={handleEditAttribute}
                 onDeleteAttribute={handleDeleteAttribute}

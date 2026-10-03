@@ -105,6 +105,8 @@ export type Label =
   | "Detections"
   | "Heatmap"
   | "Instance"
+  | "Keypoint"
+  | "Keypoints"
   | "Polyline"
   | "Polylines"
   | "Segmentation"
@@ -153,6 +155,15 @@ export type JSONObject = { [key: string]: JSONValue };
  * An annotation label schema, as accepted by `dataset.update_label_schema`.
  */
 export type LabelSchema = JSONObject;
+
+/** Keyword arguments of `fo.KeypointSkeleton`. */
+export interface KeypointSkeleton {
+  /** The node names, in point order. */
+  labels: string[];
+
+  /** `[from, to]` node index pairs. */
+  edges: number[][];
+}
 
 /** Keyword arguments of `fiftyone.core.camera.StaticTransform`. */
 export interface StaticTransform {
@@ -229,6 +240,18 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
    * }
    */
   schema?: Schema;
+
+  /**
+   * Keypoint skeletons keyed by field name, set as `dataset.skeletons`. A
+   * frame field is keyed by its bare name (`keypoints`, not
+   * `frames.keypoints`), which is how FiftyOne stores it.
+   *
+   * @example
+   * skeletons: {
+   *   keypoints: { labels: ["head", "tail"], edges: [[0, 1]] },
+   * }
+   */
+  skeletons?: { [field: string]: KeypointSkeleton };
 
   /**
    * Annotation label schemas keyed by field path. Each is applied with

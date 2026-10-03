@@ -804,7 +804,9 @@ const HIDDEN_LABELS = {
   Classification: ["logits"],
   Detection: ["bounding_box", "mask"],
   Heatmap: ["map"],
-  Keypoint: ["points", "occluded", "confidence"],
+  // `visible`/`confidence` are per-point parallel lists — meaningless as a
+  // label-level summary ("2, 1, 2, and 2"); the per-point hover shows them
+  Keypoint: ["points", "occluded", "confidence", "visible"],
   Polyline: ["points"],
   Regression: [],
   Segmentation: ["mask"],

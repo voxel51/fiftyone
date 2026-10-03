@@ -118,7 +118,13 @@ export const buildAnnotationLabel = (
 
     return {
       type: "Keypoint",
-      data: label,
+      data: {
+        ...label,
+        // Live geometry, as with Polyline above; `label.points` is a
+        // creation-time snapshot. Holes (skipped/occluded nodes) come back
+        // as [NaN, NaN] pairs, which the extended-JSON write path encodes.
+        points: overlay.getRelativePoints(),
+      } as KeypointLabel,
       path: overlay.field,
     };
   }

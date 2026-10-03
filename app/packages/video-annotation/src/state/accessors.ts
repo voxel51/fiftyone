@@ -29,6 +29,7 @@ import {
   CLASSIFICATIONS_FIELD,
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
+  KEYPOINT,
   LabelType,
   POLYLINE,
   type Stage,
@@ -140,14 +141,18 @@ export const useLabelSchemasLoaded = (): boolean =>
 export const useFrameLabelFields = (): Record<string, LabelType> => {
   const detectionFields = useAnnotationFields(DETECTION).fields;
   const polylineFields = useAnnotationFields(POLYLINE).fields;
+  const keypointFields = useAnnotationFields(KEYPOINT).fields;
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   // Keyed on content, not array identity: a new `labelTypes` identity tears
   // down the engine's FrameStore, which reseeds from the stale `/frames` cache
   // and drops every occurrence persisted this session.
-  const contentKey = `${detectionFields.join(
-    ",",
-  )}|${polylineFields.join(",")}|${isImageDynamicGroupVideo}`;
+  const contentKey = [
+    detectionFields.join(","),
+    polylineFields.join(","),
+    keypointFields.join(","),
+    isImageDynamicGroupVideo,
+  ].join("|");
 
   // `useMemoOne`, not `useMemo`: React may forget a memo, and a new object
   // here destroys the FrameStore
@@ -166,6 +171,12 @@ export const useFrameLabelFields = (): Record<string, LabelType> => {
     for (const field of polylineFields) {
       if (owns(field)) {
         fields[field] = LabelType.Polylines;
+      }
+    }
+
+    for (const field of keypointFields) {
+      if (owns(field)) {
+        fields[field] = LabelType.Keypoints;
       }
     }
 

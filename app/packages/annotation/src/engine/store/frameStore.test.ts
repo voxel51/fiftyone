@@ -389,6 +389,53 @@ describe("FrameStore persistence: id-aligned /frames/<n>/<field> deltas", () => 
 });
 
 describe("FrameStore setData: re-baseline + GC", () => {
+  // Regression (2026-09-23): propagation filled frames from a helper that set
+  // `index: undefined` on labels without one. JSON drops the member, so the
+  // echo never carried it and the frame never compared equal; the NaN holes,
+  // which a patch compare re-emits because NaN !== NaN, then made every
+  // autosave tick re-send the same patch.
+  it("a member set to undefined does not keep a keypoint frame dirty", () => {
+    const KP = "frames.keypoints";
+    const kp = (extra: Partial<LabelData> = {}): LabelData => ({
+      _id: "doc-1",
+      _cls: "Keypoint",
+      instance: { _id: "A", _cls: "Instance" },
+      label: "person",
+      points: [
+        [0.1, 0.2],
+        [NaN, NaN],
+      ],
+      ...extra,
+    });
+    const store = new FrameStore(SAMPLE, {
+      labelTypes: { [KP]: LabelType.Keypoints },
+      data: { 1: { [KP]: [kp({ label: "x" })] } },
+    });
+
+    store.updateLabel(
+      { sample: SAMPLE, path: KP, instanceId: "A", frame: 1 },
+      kp({ index: undefined }),
+    );
+    expect(store.isDirty()).toBe(true);
+
+    // the echo: JSON dropped the undefined member; holes read back as "nan"
+    store.setData({
+      1: {
+        [KP]: [
+          kp({
+            points: [
+              [0.1, 0.2],
+              ["nan", "nan"],
+            ],
+          }),
+        ],
+      },
+    });
+
+    expect(store.isDirty()).toBe(false);
+    expect(store.getJsonPatch()).toEqual([]);
+  });
+
   it("a successful save echo clears the dirty frame", () => {
     const store = makeStore({
       1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },

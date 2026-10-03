@@ -24,6 +24,8 @@ interface AttributeCardProps {
   /** When true, name and type are rendered as read-only text */
   isEditing?: boolean;
   readOnly?: boolean;
+  /** Keypoint fields only: offer the per-point scope toggle */
+  allowPointScope?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export const createAttributeCardItem = ({
   canDrag = false,
   isEditing = false,
   readOnly = false,
+  allowPointScope = false,
 }: AttributeCardProps): {
   id: string;
   data: ListItemProps;
@@ -66,6 +69,7 @@ export const createAttributeCardItem = ({
         onFormStateChange={onFormStateChange}
         nameError={nameError}
         isEditing={isEditing}
+        allowPointScope={allowPointScope}
       />
     ),
   },

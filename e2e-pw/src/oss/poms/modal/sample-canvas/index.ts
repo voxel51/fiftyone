@@ -93,6 +93,21 @@ export class SampleCanvasPom {
   }
 
   /**
+   * Place an armed skeleton keypoint's target node by clicking at (x, y),
+   * resolving once the placement lands. Guided placement moves the node's
+   * `[NaN, NaN]` hole to the click, so it fires `lighter:keypoint-point-moved`
+   * (free-form placement adds a point instead).
+   *
+   * @param x The x coordinate between [0, 1]
+   * @param y The y coordinate between [0, 1]
+   */
+  async placeKeypointNode(x: number, y: number) {
+    await this.eventUtils.after("lighter:keypoint-point-moved", () =>
+      this.click(x, y),
+    );
+  }
+
+  /**
    * Click a part of the canvas with nothing drawn on it. In segmentation mode
    * with the Select tool this is the deselect gesture.
    */

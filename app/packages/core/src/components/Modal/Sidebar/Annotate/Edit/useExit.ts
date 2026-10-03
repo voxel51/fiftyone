@@ -1,5 +1,9 @@
 import { useAnnotationEngine } from "@fiftyone/annotation";
-import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
+import {
+  DetectionOverlay,
+  KeypointOverlay,
+  useLighter,
+} from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
@@ -21,6 +25,20 @@ const hasDrawnContent = (
   label: AnnotationLabel,
   overlay?: AnnotationLabel["overlay"],
 ): boolean => {
+  if (label.type === KEYPOINT) {
+    // A placed node is content: each placement already committed (per-point
+    // commits), so exit keeps whatever was placed. Skeleton holes ([NaN,
+    // NaN]) don't count, and neither does the auto-assigned class — an
+    // eager all-holes draft is the "clicked create but didn't draw" dummy.
+    const points =
+      overlay instanceof KeypointOverlay
+        ? overlay.getRelativePoints()
+        : ((label.data.points as [number, number][] | undefined) ?? []);
+    return points.some(
+      (p) => Number.isFinite(p?.[0]) && Number.isFinite(p?.[1]),
+    );
+  }
+
   // A picked class is content on its own and also covers shapes we don't
   // introspect here (e.g. 3D detections).
   if (label.data.label) {
@@ -40,7 +58,6 @@ const hasDrawnContent = (
         hasValidBounds(label.data.bounding_box)
       );
     case POLYLINE:
-    case KEYPOINT:
       return (label.data.points?.length ?? 0) > 0;
     default:
       return false;

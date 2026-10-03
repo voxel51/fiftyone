@@ -269,6 +269,64 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * A row of the keypoint node checklist (`KeypointDetails`), by skeleton node
+   * index. Carries `data-cy-status` (placed | target | skipped | pending) and
+   * `data-cy-selected`.
+   */
+  keypointNodeRow(index: number) {
+    return this.locator.getByTestId(`keypoint-node-${index}`);
+  }
+
+  /** The "N of M placed" summary line above the keypoint node checklist. */
+  get keypointPlacedSummary() {
+    return this.locator.getByTestId("keypoint-placed-summary");
+  }
+
+  /** A node row's Place button (offered while the row is not an armed target). */
+  keypointPlaceButton(index: number) {
+    return this.locator.getByTestId(`keypoint-place-node-${index}`);
+  }
+
+  /** The target row's Skip button (offered while placement is armed). */
+  get keypointSkipButton() {
+    return this.locator.getByTestId("keypoint-skip-node");
+  }
+
+  /** Click a node row's Place button (arms placement, force-targets the node). */
+  async placeKeypointNode(index: number) {
+    await this.keypointPlaceButton(index).click();
+  }
+
+  /** Click a node row's Clear button (the node becomes a [NaN, NaN] hole). */
+  async clearKeypointNode(index: number) {
+    await this.locator.getByTestId(`keypoint-clear-node-${index}`).click();
+  }
+
+  /** Click the target row's Skip button (guided placement passes the node). */
+  async skipKeypointNode() {
+    await this.keypointSkipButton.click();
+  }
+
+  /** The pinned per-node inspector below the checklist. */
+  get keypointNodeInspector() {
+    return this.locator.getByTestId("keypoint-node-inspector");
+  }
+
+  /**
+   * The inspector's toggle for a point-scoped bool attribute.
+   *
+   * @param attribute The attribute name (e.g. "occluded")
+   */
+  keypointPointAttributeToggle(attribute: string) {
+    return this.locator.getByTestId(`keypoint-${attribute}-toggle`);
+  }
+
+  /** The edit form's title ("Edit Keypoint", "Edit Detection", …). */
+  get title() {
+    return this.locator.getByTestId("annotate-edit-title");
+  }
+
+  /**
    * The segmentation toolbar's Brush tool button. The toolbar (an on-canvas
    * `ActionToolbar`) renders only while segmentation mode is active and exposes
    * its tools via `aria-label`, so the Brush button's presence is a stable
@@ -310,6 +368,65 @@ class ModalAnnotateEditAsserter {
    */
   async isClosed() {
     await expect(this.modalAnnotateEdit.backButton).toBeHidden();
+  }
+
+  /**
+   * Verify which label type the edit form is editing.
+   *
+   * @param type The label type as titled (e.g. "Keypoint")
+   */
+  async editsLabelType(type: string) {
+    await expect(this.modalAnnotateEdit.title).toHaveText(`Edit ${type}`);
+  }
+
+  /**
+   * Verify a keypoint checklist row's status.
+   *
+   * @param index The skeleton node index
+   * @param status The expected status
+   */
+  async keypointNodeStatus(
+    index: number,
+    status: "placed" | "target" | "skipped" | "pending",
+  ) {
+    await expect(this.modalAnnotateEdit.keypointNodeRow(index)).toHaveAttribute(
+      "data-cy-status",
+      status,
+    );
+  }
+
+  /**
+   * Verify the "N of M placed" summary above the keypoint checklist.
+   *
+   * @param text The full summary text (e.g. "3 of 4 placed · 1 skipped")
+   */
+  async keypointPlacedSummary(text: string) {
+    await expect(this.modalAnnotateEdit.keypointPlacedSummary).toHaveText(text);
+  }
+
+  /**
+   * Verify a point-scoped bool attribute's toggle in the node inspector.
+   *
+   * @param attribute The attribute name
+   * @param checked Whether the toggle should read on
+   */
+  async keypointPointAttributeChecked(attribute: string, checked: boolean) {
+    const toggle =
+      this.modalAnnotateEdit.keypointPointAttributeToggle(attribute);
+    if (checked) {
+      await expect(toggle).toBeChecked();
+    } else {
+      await expect(toggle).not.toBeChecked();
+    }
+  }
+
+  /**
+   * Verify the edited label's field (the field-move dropdown's text).
+   *
+   * @param field The expected field name
+   */
+  async currentField(field: string) {
+    await expect(this.modalAnnotateEdit.fieldSelect).toHaveText(field);
   }
 
   /**

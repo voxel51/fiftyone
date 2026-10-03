@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+export { useForwardSceneEventsForTest } from "./useForwardSceneEventsForTest";
 export { useLighter } from "./useLighter";
 export * from "./useLighterEventBus";
 export * from "./useLighterEventHandler";
