@@ -14,6 +14,7 @@ import { useFilteredRuns } from "./useFilteredRuns";
 import { useMultiSelect } from "./useMultiSelect";
 import { useCloneConfig } from "./useCloneConfig";
 import useTriggers, { TriggerOptions } from "./useTriggers";
+import { annotateBrainKeys } from "../utils";
 
 // ─── Derived State ──────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
       string
     >) ?? {};
 
-  // Detect patches view and filter brain keys accordingly
+  // Detect patches view, which decides which brain keys are usable
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const viewStages = useRecoilValue(fos.view);
 
@@ -62,33 +63,11 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     )?.[1] as string | undefined;
   }, [isPatchesView, viewStages]);
 
-  // All brain keys are shown in the UI; ones that can't be used in the
-  // current view (patch index in a sample view, and vice versa) are
-  // annotated as incompatible so components can gray them out with an
-  // explanatory tooltip instead of hiding them.
-  const brainKeys = useMemo((): AnnotatedBrainKeyConfig[] => {
-    const annotated = allBrainKeys.map((bk): AnnotatedBrainKeyConfig => {
-      const compatible = isPatchesView
-        ? bk.patches_field === patchesField
-        : !bk.patches_field;
-      if (compatible) {
-        return { ...bk, compatible: true };
-      }
-      return {
-        ...bk,
-        compatible: false,
-        incompatibleReason: bk.patches_field
-          ? "Cannot use a patch index in the current view"
-          : "Cannot use a dataset index in the current view",
-      };
-    });
-    // Usable indexes first; disabled ones sink to the bottom of the
-    // index page list and the new-search dropdown
-    return [
-      ...annotated.filter((bk) => bk.compatible),
-      ...annotated.filter((bk) => !bk.compatible),
-    ];
-  }, [allBrainKeys, isPatchesView, patchesField]);
+  const brainKeys = useMemo(
+    (): AnnotatedBrainKeyConfig[] =>
+      annotateBrainKeys(allBrainKeys, isPatchesView, patchesField),
+    [allBrainKeys, isPatchesView, patchesField],
+  );
 
   // Filter runs to only those whose brain_key is usable in this view
   const effectiveBrainKeySet = useMemo(

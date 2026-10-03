@@ -7,6 +7,7 @@ import {
   matchesText,
   matchesDate,
   canSubmitSearch,
+  annotateBrainKeys,
 } from "../utils";
 import { SimilarityRun, QueryType, RunStatus } from "../types";
 import { DAY_MS } from "../constants";
@@ -226,5 +227,28 @@ describe("canSubmitSearch", () => {
 
   it("returns true for image query with samples", () => {
     expect(canSubmitSearch("clip", QueryType.Image, "", 3)).toBe(true);
+  });
+});
+
+describe("annotateBrainKeys", () => {
+  const key = (k: string) => ({
+    key: k,
+    supports_prompts: true,
+    supports_least_similarity: false,
+  });
+
+  it("lists a server-marked unavailable index last, disabled, with its reason", () => {
+    const [first, second] = annotateBrainKeys(
+      [{ ...key("a"), unavailable_reason: "why" }, key("b")],
+      false,
+      undefined,
+    );
+
+    expect(first).toMatchObject({ key: "b", compatible: true });
+    expect(second).toMatchObject({
+      key: "a",
+      compatible: false,
+      incompatibleReason: "why",
+    });
   });
 });

@@ -32,12 +32,15 @@ export type BrainKeyConfig = {
   embeddings_field?: string;
   metric?: string;
   identifiers?: { label: string; value: string }[];
+  /** Set by the server when this panel cannot search with the index: the
+   * reason, shown to the user. The index is listed, but never selectable. */
+  unavailable_reason?: string;
 };
 
 /**
- * A brain key annotated with whether it can be used in the current
- * view. Incompatible keys are still shown in the UI (grayed out) with
- * `incompatibleReason` as hover text.
+ * A brain key annotated with whether this panel can search with it in the
+ * current view. Incompatible keys are still shown in the UI (grayed out)
+ * with `incompatibleReason` shown beneath them.
  */
 export type AnnotatedBrainKeyConfig = BrainKeyConfig & {
   compatible: boolean;

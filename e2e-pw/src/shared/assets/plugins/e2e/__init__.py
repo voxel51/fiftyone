@@ -94,8 +94,10 @@ class E2EProgress(foo.Operator):
                 "results": {"percent_complete": i / MAX},
             }
             yield ctx.trigger("show_output", show_output_params)
-            # simulate computation
-            await asyncio.sleep(0.5)
+            # Each step must stay on screen longer than Playwright's maximum
+            # assertion polling interval (1 second), or prompt.spec.ts can
+            # poll past "Loading 1 of 2" without ever seeing it
+            await asyncio.sleep(1.5)
 
 
 class E2ECounterPythonPanel(foo.Panel):
