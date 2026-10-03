@@ -222,6 +222,67 @@ def _scope(*, ctx=None, dataset_id=None) -> ObjectId:
     return resolve_dataset_id(ctx=ctx, dataset_id=dataset_id)
 
 
+def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> None:
+    """Declares the label attributes ``label_schema`` defines on the
+    dataset's field schema (``declare_label_schema_attributes``), so the
+    App's sidebar, filters and aggregations see them. Best-effort: a
+    failure is logged and never fails the schema write."""
+    if not label_schema:
+        return
+
+    try:
+        import fiftyone.core.annotation as foa
+        import fiftyone.core.odm as foo
+
+        dataset = getattr(ctx, "dataset", None)
+        if dataset is None:
+            scope = _scope(ctx=ctx, dataset_id=dataset_id)
+            dataset = foo.load_dataset(id=scope)
+
+        foa.declare_label_schema_attributes(dataset, label_schema)
+    except Exception:  # pylint: disable=broad-except
+        logger.warning(
+            "Failed to declare label schema attributes", exc_info=True
+        )
+
+
+def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
+    """Declares the label attributes defined by the dataset's own label
+    schemas and by every schema doc of the dataset on its field schema
+    (see :func:`_declare_attributes`). Idempotent and cheap once nothing
+    is missing; covers schemas saved before declaration happened on
+    write. Best-effort, like :func:`_declare_attributes`."""
+    try:
+        import fiftyone.core.odm as foo
+
+        dataset = getattr(ctx, "dataset", None)
+        if dataset is None:
+            dataset = foo.load_dataset(
+                id=_scope(ctx=ctx, dataset_id=dataset_id)
+            )
+
+        content = {}
+        stored = _stored_label_schemas(dataset)
+        for path, label_schema in stored.items():
+            content.setdefault(path, []).append(label_schema)
+
+        query = {"dataset_id": dataset._doc.id}
+        for doc in _coll().find(query, {"label_schema": 1}):
+            for path, label_schema in (doc.get("label_schema") or {}).items():
+                content.setdefault(path, []).append(label_schema)
+    except Exception:  # pylint: disable=broad-except
+        logger.warning(
+            "Failed to collect label schema attributes", exc_info=True
+        )
+        return
+
+    for path, label_schemas in content.items():
+        for label_schema in label_schemas:
+            _declare_attributes(
+                {path: label_schema}, ctx=ctx, dataset_id=dataset_id
+            )
+
+
 def _now_ms() -> int:
     return int(time.time() * 1000)
 
@@ -437,6 +498,7 @@ def create(
         raise ValueError(
             f"A schema named {name!r} already exists on this dataset"
         )
+    _declare_attributes(label_schema, ctx=ctx, dataset_id=dataset_id)
     return _public(doc)
 
 
@@ -527,6 +589,10 @@ def update(
             "This schema was changed by someone else since it was loaded; "
             "reload it and apply your change again"
         )
+    if "label_schema" in updates and result.matched_count:
+        _declare_attributes(
+            updates["label_schema"], ctx=ctx, dataset_id=dataset_id
+        )
     return _public(coll.find_one(query))
 
 
@@ -583,6 +649,8 @@ def propagate_field(
         )
     if ops:
         coll.bulk_write(ops, ordered=False)
+    if entry is not None:
+        _declare_attributes({path: entry}, ctx=ctx, dataset_id=dataset_id)
     return len(ops)
 
 

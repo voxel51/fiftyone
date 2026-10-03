@@ -310,3 +310,101 @@ def _is_supported_primitive(field):
             return True
 
     return False
+
+
+def declare_label_schema_attributes(sample_collection, label_schemas):
+    """Declares on the dataset's field schema the label attributes that the
+    given label schemas define but the dataset has not declared.
+
+    A label schema may define attributes that the dataset's field schema
+    does not know about (``allow_new_attrs``), and annotating them stores
+    values without declaring the fields. Everything in the App that reads
+    the field schema, such as the sidebar, its filters and aggregations,
+    then never sees those attributes. Declaring them fixes that.
+
+    Attributes that already hold values are declared with the type of their
+    values (attributes whose values have mixed types are skipped).
+    Attributes without values are declared with their label schema type.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_schemas: a dict mapping field paths to label schemas
+
+    Returns:
+        the list of paths that were declared
+    """
+    dataset = sample_collection._dataset
+    frames_prefix = dataset._FRAMES_PREFIX
+    declared = []
+
+    for path, label_schema in (label_schemas or {}).items():
+        if not isinstance(label_schema, dict):
+            continue
+
+        attributes = [
+            attr
+            for attr in label_schema.get(foac.ATTRIBUTES) or []
+            if isinstance(attr, dict)
+            and attr.get(foac.NAME)
+            and attr.get(foac.TYPE) in foac.TYPE_TO_FIELD
+        ]
+        if not attributes:
+            continue
+
+        field = dataset.get_field(path)
+        if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
+            field.document_type, fol.Label
+        ):
+            continue
+
+        list_field = getattr(field.document_type, "_LABEL_LIST_FIELD", None)
+        base = "%s.%s" % (path, list_field) if list_field else path
+        missing = [
+            attr
+            for attr in attributes
+            if dataset.get_field("%s.%s" % (base, attr[foac.NAME])) is None
+        ]
+        if not missing:
+            continue
+
+        is_frame_field = path.startswith(frames_prefix)
+        if is_frame_field:
+            rel_path = path[len(frames_prefix) :]
+            rel_base = base[len(frames_prefix) :]
+            dynamic = dataset.get_dynamic_frame_field_schema(fields=rel_path)
+            add_field = dataset.add_frame_field
+            add_dynamic = dataset.add_dynamic_frame_fields
+        else:
+            rel_base = base
+            dynamic = dataset.get_dynamic_field_schema(fields=path)
+            add_field = dataset.add_sample_field
+            add_dynamic = dataset.add_dynamic_sample_fields
+
+        dynamic = dynamic or {}
+        from_values = {}
+        for attr in missing:
+            name = attr[foac.NAME]
+            rel_path = "%s.%s" % (rel_base, name)
+            if rel_path in dynamic:
+                # mixed types are reported as a list of fields: skip them
+                if isinstance(dynamic[rel_path], fof.Field):
+                    from_values[rel_path] = dynamic[rel_path]
+                continue
+
+            attr_type = attr[foac.TYPE]
+            ftype = foac.TYPE_TO_FIELD[attr_type]
+            if attr_type in (foac.FLOAT_LIST, foac.INT_LIST, foac.STR_LIST):
+                add_field(rel_path, fof.ListField, subfield=ftype)
+            else:
+                add_field(rel_path, ftype)
+
+            declared.append("%s.%s" % (base, name))
+
+        if from_values:
+            add_dynamic(fields=from_values)
+            declared.extend(
+                frames_prefix + p if is_frame_field else p for p in from_values
+            )
+
+    return declared

@@ -46,6 +46,12 @@ class ListLabelSchemaDocsOperator(Operator):
     def execute(self, ctx: ExecutionContext):
         if not can_read(ctx):
             return {"ok": False, "error": "forbidden"}
+
+        # Schemas saved before their attributes were declared on write:
+        # the Explore schema row and the Schema Manager both list docs on
+        # open, so declare any that are still missing here
+        docs.declare_schema_attributes(ctx=ctx)
+
         return {"ok": True, "schemas": docs.list_(ctx=ctx)}
 
 
