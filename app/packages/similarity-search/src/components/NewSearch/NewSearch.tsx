@@ -17,7 +17,6 @@ import {
   TextColor,
   TextVariant,
   Toggle,
-  Tooltip,
   Orientation,
   Spacing,
   Variant,
@@ -71,8 +70,8 @@ export default function NewSearch({
   const form = useNewSearchForm(brainKeys, cloneConfig, onSubmitted);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // All indexes are listed; ones that can't be used in the current view
-  // are grayed out with a tooltip and rejected by handleBrainKeyChange
+  // All indexes are listed; ones this panel can't search with are grayed
+  // out with the reason and rejected by handleBrainKeyChange
   const brainKeyOptions = useMemo(
     () =>
       brainKeys.map((bk) => {
@@ -83,11 +82,16 @@ export default function NewSearch({
           data: {
             label,
             content: bk.compatible ? undefined : (
-              <Tooltip content={bk.incompatibleReason}>
-                <span style={{ opacity: 0.5, cursor: "not-allowed" }}>
-                  {label}
-                </span>
-              </Tooltip>
+              <Stack
+                orientation={Orientation.Column}
+                spacing={Spacing.Xs}
+                style={{ opacity: 0.5, cursor: "not-allowed" }}
+              >
+                <span>{label}</span>
+                <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                  {bk.incompatibleReason}
+                </Text>
+              </Stack>
             ),
           },
         };
