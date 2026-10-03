@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { frameAt, resolveAtTime } from "./utils";
+import { frameAt, resolveAtTime, videoSeekTime } from "./utils";
 
 const NEAREST = { type: "nearest" as const, thresholdSeconds: 0.1 };
 const NEAREST_PREVIOUS = {
@@ -135,5 +135,31 @@ describe("frameAt", () => {
     expect(frameAt(-1, 30, 100)).toBe(1);
     expect(frameAt(1000, 30, 100)).toBe(100);
     expect(frameAt(1, 30, 100)).toBe(31);
+  });
+});
+
+describe("videoSeekTime", () => {
+  const step = 1 / 15;
+
+  it("seeks to the middle of the frame a boundary time starts", () => {
+    expect(videoSeekTime(0, step)).toBeCloseTo(0.5 * step, 12);
+    expect(videoSeekTime(31 * step, step)).toBeCloseTo(31.5 * step, 12);
+    expect(videoSeekTime(61 * step, step)).toBeCloseTo(61.5 * step, 12);
+  });
+
+  it("keeps every frame step strictly inside its frame", () => {
+    for (let k = 0; k < 93; k++) {
+      const seek = videoSeekTime(k * step, step);
+      expect(seek).toBeGreaterThan(k * step);
+      expect(seek).toBeLessThan((k + 1) * step);
+    }
+  });
+
+  it("maps a mid-frame time to the same frame", () => {
+    expect(videoSeekTime(31.9 * step, step)).toBeCloseTo(31.5 * step, 12);
+  });
+
+  it("returns the time unchanged without a step", () => {
+    expect(videoSeekTime(1.25, 0)).toBe(1.25);
   });
 });
