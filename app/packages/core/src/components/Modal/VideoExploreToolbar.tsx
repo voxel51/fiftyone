@@ -12,6 +12,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import React, { useCallback } from "react";
+import { useClipSupport } from "./ClipSupport";
 
 // Button's string `leadingIcon` is wrapped in a component type created on
 // every render, so React remounts the SVG each render and a click that starts
@@ -20,15 +21,18 @@ import React, { useCallback } from "react";
 const FitIcon: React.FC = () => <Icon name={IconName.Fullscreen} />;
 const JsonIcon: React.FC = () => <Icon name={IconName.JSON} />;
 const HelpIcon: React.FC = () => <Icon name={IconName.Info} />;
+const LockedIcon: React.FC = () => <Icon name={IconName.Lock} />;
+const UnlockedIcon: React.FC = () => <Icon name={IconName.Unlock} />;
 
 /**
  * What this surface actually binds. Deliberately not the looker's
  * `VIDEO_SHORTCUTS`: none of those are registered here, and listing them
  * would advertise keys that do nothing. Grows as bindings are ported.
  *
- * The keyboard entries mirror two registration sites, so they have to be kept
- * in step by hand: `TimelineControls` registers space / `.` / `,` into the
- * modal context, and `useVideoExploreKeybindings` registers the zoom pair.
+ * The keyboard entries mirror three registration sites, so they have to be
+ * kept in step by hand: `TimelineControls` registers space / `.` / `,` into
+ * the modal context, `useVideoExploreKeybindings` registers the zoom pair, and
+ * `ClipSupportRange` registers the support lock.
  * Both are covered by tests that assert the bindings match the characters a
  * layout actually produces — this list is the only place a user can discover
  * them.
@@ -90,6 +94,12 @@ const HELP_ITEMS = [
     shortcut: "Click readout",
     title: "Time / frame",
     detail: "Switch the readout between timecode and frame number",
+  },
+  {
+    shortcut: "l",
+    title: "Support lock",
+    detail:
+      "In a clips view, confine playback to the clip's frames or release it",
   },
 ];
 
@@ -159,8 +169,24 @@ export const VideoExploreToolbar: React.FC = () => {
 
   const handleHelp = useCallback(() => helpPanel.open(HELP_ITEMS), [helpPanel]);
 
+  // The looker's support lock: only a `to_clips()` sample has a range to lock
+  // to, so the button is absent everywhere else rather than disabled.
+  const { support, locked, toggleLock } = useClipSupport();
+
   return (
     <>
+      {support && (
+        <Action
+          label={
+            locked
+              ? `Locked to clip frames ${support[0]}–${support[1]} (l)`
+              : `Lock to clip frames ${support[0]}–${support[1]} (l)`
+          }
+          icon={locked ? LockedIcon : UnlockedIcon}
+          testId="video-explore-support-lock"
+          onClick={toggleLock}
+        />
+      )}
       <Action
         label="Fit to content"
         icon={FitIcon}

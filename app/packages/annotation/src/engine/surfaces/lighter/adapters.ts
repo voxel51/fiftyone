@@ -32,7 +32,13 @@ import type { AdapterMap, LabelKindAdapter } from "../../bridge/types";
  * mechanically enforces `overlay.id === instanceId`).
  */
 export interface LighterDescriptor {
-  factoryKey: "detection" | "classification" | "polyline" | "keypoint";
+  factoryKey:
+    | "detection"
+    | "classification"
+    | "polyline"
+    | "keypoint"
+    | "segmentation"
+    | "heatmap";
   options: { id: string; field: string; label: LabelData } & Record<
     string,
     unknown
@@ -56,6 +62,19 @@ export type LighterAdapter = LabelKindAdapter<BaseOverlay, LighterDescriptor>;
 export interface LighterAdapterDeps {
   /** Resolves the keypoint skeleton for a label path (e.g. `frames.keypoints`). */
   getSkeleton?: (field: string) => KeypointSkeleton | null;
+  /**
+   * Turns a label's raw media sub-field value (a `mask_path` / `map_path`)
+   * into a fetchable URL. Threaded into the overlays that load their own
+   * pixels, rather than gating the mount on a decode: a full-media mask is
+   * one handle reused across a clip, so a gated mount would tear it down and
+   * rebuild it on every frame.
+   */
+  resolveMediaUrl?: (args: {
+    path: string;
+    instanceId: string;
+    subField: string;
+    raw: string;
+  }) => string | undefined;
 }
 
 const toRect = (boundingBox: number[]) => ({
@@ -199,6 +218,78 @@ export const makeKeypointAdapter = (
 /** Skeleton-less keypoint adapter — points only. */
 export const keypointAdapter: LighterAdapter = makeKeypointAdapter();
 
+/**
+ * A segmentation paints from an inline `mask`, or from a `mask_path` it loads
+ * itself — but only where a resolver was supplied to turn that path into a
+ * fetchable URL. Without one the overlay can never decode the path, so the
+ * label stays unmounted rather than mounting an overlay that warns once and
+ * paints nothing for the life of the clip.
+ */
+export const makeSegmentationAdapter = (
+  deps: LighterAdapterDeps = {},
+): LighterAdapter => ({
+  renders: (label) =>
+    Boolean(label.mask) || Boolean(deps.resolveMediaUrl && label.mask_path),
+
+  buildHandle: (ref, label) => ({
+    factoryKey: "segmentation",
+    options: {
+      id: ref.instanceId,
+      field: ref.path,
+      label,
+      resolveUrl: (raw: string) =>
+        deps.resolveMediaUrl?.({
+          path: ref.path,
+          instanceId: ref.instanceId,
+          subField: "mask_path",
+          raw,
+        }),
+    },
+  }),
+
+  updateHandle: (overlay, label) => {
+    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+  },
+
+  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+});
+
+/** Resolver-free segmentation adapter — inline masks only. */
+export const segmentationAdapter: LighterAdapter = makeSegmentationAdapter();
+
+/** As segmentation, for `map` / `map_path`. */
+export const makeHeatmapAdapter = (
+  deps: LighterAdapterDeps = {},
+): LighterAdapter => ({
+  renders: (label) =>
+    Boolean(label.map) || Boolean(deps.resolveMediaUrl && label.map_path),
+
+  buildHandle: (ref, label) => ({
+    factoryKey: "heatmap",
+    options: {
+      id: ref.instanceId,
+      field: ref.path,
+      label,
+      resolveUrl: (raw: string) =>
+        deps.resolveMediaUrl?.({
+          path: ref.path,
+          instanceId: ref.instanceId,
+          subField: "map_path",
+          raw,
+        }),
+    },
+  }),
+
+  updateHandle: (overlay, label) => {
+    overlay.applyLabel(label as Parameters<BaseOverlay["applyLabel"]>[0]);
+  },
+
+  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+});
+
+/** Resolver-free heatmap adapter — inline maps only. */
+export const heatmapAdapter: LighterAdapter = makeHeatmapAdapter();
+
 export const polylineAdapter: LighterAdapter = {
   // 2D vertices are what this surface draws — Polyline3D (shared `_cls`,
   // `points3d` only) fails the requirement
@@ -246,6 +337,8 @@ export const makeLighterAdapters = (
   [LabelType.Keypoints]: makeKeypointAdapter(deps),
   [LabelType.Polyline]: polylineAdapter,
   [LabelType.Polylines]: polylineAdapter,
+  [LabelType.Segmentation]: makeSegmentationAdapter(deps),
+  [LabelType.Heatmap]: makeHeatmapAdapter(deps),
 });
 
 /** The dependency-free map — keypoints render unconnected. */

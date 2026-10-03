@@ -27,7 +27,10 @@ export {
   MAIN_TILE_ID,
   VIDEO_STREAM_ID,
 } from "./src/utils/ids";
-export { getModalSampleFrameRate } from "./src/utils/modalSample";
+export {
+  getModalSampleFrameRate,
+  getModalSampleSupport,
+} from "./src/utils/modalSample";
 export { resolveFrameCount } from "./src/utils/frameCount";
 export { resolveTemporalDetectionSupport } from "./src/tracks/trackExtentEdit";
 export { useTimelineMaxSize } from "./src/hooks/useTimelineMaxSize";
