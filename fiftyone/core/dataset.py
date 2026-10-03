@@ -12058,6 +12058,10 @@ def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
         elem_path = elem_field
         field_path = field
 
+    # a null label list is treated as an empty list
+    existing_elems = {"$ifNull": ["$" + elem_path, []]}
+    new_elems = {"$ifNull": ["$$new." + elem_path, []]}
+
     if overwrite:
         root_path = "$$new." + field_path
         elements = {
@@ -12066,7 +12070,7 @@ def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
                     "vars": {
                         "new_ids": {
                             "$map": {
-                                "input": "$$new." + elem_path,
+                                "input": new_elems,
                                 "as": "this",
                                 "in": "$$this._id",
                             },
@@ -12074,10 +12078,8 @@ def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
                     },
                     "in": {
                         "$reduce": {
-                            "input": {"$reverseArray": "$" + elem_path},
-                            "initialValue": {
-                                "$reverseArray": "$$new." + elem_path
-                            },
+                            "input": {"$reverseArray": existing_elems},
+                            "initialValue": {"$reverseArray": new_elems},
                             "in": {
                                 "$cond": {
                                     "if": {
@@ -12106,7 +12108,7 @@ def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
                 "vars": {
                     "existing_ids": {
                         "$map": {
-                            "input": "$" + elem_path,
+                            "input": existing_elems,
                             "as": "this",
                             "in": "$$this._id",
                         },
@@ -12114,8 +12116,8 @@ def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
                 },
                 "in": {
                     "$reduce": {
-                        "input": "$$new." + elem_path,
-                        "initialValue": "$" + elem_path,
+                        "input": new_elems,
+                        "initialValue": existing_elems,
                         "in": {
                             "$cond": {
                                 "if": {
