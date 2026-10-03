@@ -188,6 +188,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: NTNU Underwater Multi-Camera
+    :description: 8 piloted underwater robot runs in native MCAP format, from the Trondheim Fjord and a lab pool, pairing five cameras with a 200 Hz inertial unit, depth, a rangefinder and a reference trajectory on one clock.
+    :link: datasets/ntnu_underwater_multicam.html
+    :image: ../_images/ntnu-underwater-multicam.png
+    :tags: multimodal,mcap,underwater,robotics,slam
+
+.. customcarditem::
     :header: Open Images V6
     :description: Massive dataset with ~9M images, 2M annotated. Features classification, detection, segmentation, and relationship annotations across 600 object classes.
     :link: datasets/open_images_v6.html
