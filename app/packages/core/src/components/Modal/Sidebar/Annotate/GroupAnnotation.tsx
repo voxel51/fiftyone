@@ -81,19 +81,22 @@ export default function GroupAnnotation({
     [slices],
   );
 
+  const selectable = useMemo(
+    () =>
+      slices
+        .filter(({ isMissing, isSupported }) => !isMissing && isSupported)
+        .map((s) => s.name),
+    [slices],
+  );
+
   const useSearch = useCallback(
     (search: string) => {
-      const values = slices
-        .filter(
-          ({ name, isMissing, isSupported }) =>
-            !isMissing &&
-            isSupported &&
-            name.toLowerCase().includes(search.toLowerCase()),
-        )
-        .map((s) => s.name);
+      const values = selectable.filter((name) =>
+        name.toLowerCase().includes(search.toLowerCase()),
+      );
       return { values, total: values.length };
     },
-    [slices],
+    [selectable],
   );
 
   const onSelect = useCallback(
@@ -132,7 +135,10 @@ export default function GroupAnnotation({
   }
 
   return (
-    <Container data-cy="annotation-slice-selector">
+    <Container
+      data-cy="annotation-slice-selector"
+      data-cy-selectable-slices={selectable.join(" ")}
+    >
       <Selector
         inputStyle={{ height: 28, width: "100%" }}
         containerStyle={{ flex: 1 }}

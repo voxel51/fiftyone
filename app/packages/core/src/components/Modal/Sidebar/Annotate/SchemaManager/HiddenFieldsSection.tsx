@@ -32,6 +32,7 @@ import {
   useSetCurrentField,
 } from "./hooks";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
+import { useFieldsShownSignal } from "./e2eSignals";
 
 /**
  * Actions component for hidden field rows
@@ -106,6 +107,7 @@ const HiddenFieldsSection = () => {
     hasSchemaStates: fieldHasSchemaStates,
   } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
+  useFieldsShownSignal("hidden", expanded ? fields : []);
   const { selected, setSelected } = useSelectedHiddenFields();
   const { setSelected: setActiveSelected } = useSelectedActiveFields();
 

@@ -94,10 +94,12 @@ test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
     searchParams: new URLSearchParams({ view: "groups" }),
   });
 
-  const gridRefreshPromiseSetRenderFramesAsVideo = await grid.armGridRefresh();
-  await grid.actionsRow.toggleDisplayOptions();
-  await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
-  await gridRefreshPromiseSetRenderFramesAsVideo.received;
+  await grid.afterEntryCounts(() =>
+    grid.run(async () => {
+      await grid.actionsRow.toggleDisplayOptions();
+      await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
+    }),
+  );
 
   await grid.assert.isEntryCountTextEqualTo("2 groups");
   await grid.assert.isTileCountEqualTo(2);
@@ -108,12 +110,11 @@ test.skip("check modal playback and tagging behavior", async ({
   modal,
   grid,
 }) => {
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+  await modal.imavid.afterFrameText("1 / 150", () =>
+    modal.afterSampleLoaded(() => grid.openFirstSample()),
+  );
 
-  await modal.imavid.waitUntilFrameTextIs("1 / 150");
-
-  await modal.imavid.playUntilFrames("13 / 150");
+  const tagged = await modal.imavid.playUntilFrames("13 / 150");
 
   // verify it's the "13th" (todo: 3rd) frame that's rendered
   // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
@@ -121,22 +122,28 @@ test.skip("check modal playback and tagging behavior", async ({
   //   mask: [modal.imavid.controls],
   //   animations: "allow",
   // });
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    frame_number: "13",
+  await modal.sidebar.assert.verifySidebarEntryTexts({
+    frame_number: String(tagged),
     video_id: "1",
   });
 
   // tag current frame and ensure sidebar updates
   const currentSampleTagCount = await modal.sidebar.getSampleTagCount();
+  const tags = String(currentSampleTagCount + 1);
   await modal.tagger.toggleOpen();
   await modal.tagger.switchTagMode("sample");
-  await modal.tagger.addSampleTag("tag-1-13");
+  await modal.sidebar.afterEntries({ tags }, () =>
+    modal.tagger.addSampleTag("tag-1-13"),
+  );
   await modal.sidebar.assert.verifySampleTagCount(currentSampleTagCount + 1);
 
   // skip a couple of frames and see that sample tag count is zero
-  await modal.imavid.playUntilFrames("20 / 150");
-  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-    frame_number: "20",
+  let untagged = 0;
+  await modal.sidebar.afterEntries({ tags: "0" }, async () => {
+    untagged = await modal.imavid.playUntilFrames("20 / 150");
+  });
+  await modal.sidebar.assert.verifySidebarEntryTexts({
+    frame_number: String(untagged),
     video_id: "1",
   });
   await modal.sidebar.assert.verifySampleTagCount(0);

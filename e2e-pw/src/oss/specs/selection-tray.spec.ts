@@ -35,8 +35,10 @@ if fo.dataset_exists("${datasetName}"):
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
-  viewBar: async ({ page }, use) => use(new ViewBarPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
+  viewBar: async ({ page, eventUtils }, use) =>
+    use(new ViewBarPom(page, eventUtils)),
   sidebar: async ({ page }, use) => use(new SidebarPom(page)),
 });
 
@@ -60,28 +62,36 @@ test("selection follows the grid and modal, and clear can be undone", async ({
   });
   try {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await tray.untilTray((shown) => !shown.explicit);
     await tray.assert.targetsAllResults();
 
-    await grid.toggleSelectNthSample(0);
-    await grid.toggleSelectNthSample(2);
+    await tray.afterSelected(2, async () => {
+      await grid.toggleSelectNthSample(0);
+      await grid.toggleSelectNthSample(2);
+    });
     await tray.assert.selectedSamples(2);
     await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
-    await grid.openNthSample(1);
-    await modal.toggleSelection();
+    await modal.afterSampleLoaded(() => grid.openNthSample(1));
+    await tray.afterSelected(3, () => modal.toggleSelection());
     await modal.assert.verifySelectionCount(3);
     await modal.close();
     await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
 
-    await tray.clear();
+    await tray.afterResults(() => tray.clear());
     await tray.assert.targetsAllResults();
-    await tray.undo();
+    await tray.afterSelected(3, () => tray.undo());
     await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
 
-    await fiftyoneLoader.selectDatasetFromSelector(page, otherName);
+    await grid.afterEntryCounts(() =>
+      tray.afterResults(
+        () => fiftyoneLoader.selectDatasetFromSelector(page, otherName),
+        1,
+      ),
+    );
     await grid.assert.isEntryCountTextEqualTo("1 sample");
     await tray.assert.targetsAllResults();
-    await expect(tray.cards).toHaveCount(0);
+    await tray.assert.noCards();
   } finally {
     await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
@@ -103,16 +113,14 @@ test("all current results include offscreen samples in a saved subset", async ({
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   const editor = await viewBar.addStage("Limit");
   await editor.fill("limit", "60");
-  await grid.run(() => editor.commit("limit"));
+  await tray.afterResults(() => grid.run(() => editor.commit("limit")), 60);
   await grid.assert.isEntryCountTextEqualTo("60 samples");
-  await expect
-    .poll(() => grid.locator.getByTestId("looker").count())
-    .toBeLessThan(60);
+  expect(await grid.locator.getByTestId("looker").count()).toBeLessThan(60);
   await tray.assert.targetsAllResults();
 
   const name = "First sixty";
   await tray.createSubset(name);
-  await tray.openCreatedSubset();
+  await grid.run(() => tray.openCreatedSubset(name, "60 samples"));
   await tray.assert.subsetScope(name, 60);
   await grid.assert.isEntryCountTextEqualTo("60 samples");
 
@@ -125,16 +133,16 @@ test("all current results include offscreen samples in a saved subset", async ({
   try {
     const freshPage = await context.newPage();
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshTray = new SelectionTrayPom(freshPage);
-    await freshTray.chooseSubset(name);
+    const freshEvents = new EventUtils(freshPage);
+    const freshGrid = new GridPom(freshPage, freshEvents);
+    const freshTray = new SelectionTrayPom(freshPage, freshEvents);
+    await freshGrid.run(() =>
+      freshTray.chooseSubset(name, undefined, "60 samples"),
+    );
     await freshTray.assert.subsetScope(name, 60);
-    await expect(freshPage.getByTestId("entry-counts")).toContainText(
-      "60 samples",
-    );
-    await freshTray.chooseAllSamples();
-    await expect(freshPage.getByTestId("entry-counts")).toContainText(
-      "80 samples",
-    );
+    await freshGrid.assert.isEntryCountTextEqualTo("60 samples");
+    await freshGrid.run(() => freshTray.chooseAllSamples());
+    await freshGrid.assert.isEntryCountTextEqualTo("80 samples");
   } finally {
     await context.close();
   }
@@ -150,18 +158,24 @@ test("captured samples remain action targets outside the current results", async
   viewBar,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(2);
+  await tray.afterSelected(2, async () => {
+    await grid.toggleSelectNthSample(0);
+    await grid.toggleSelectNthSample(2);
+  });
   await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
   const editor = await viewBar.addStage("Skip");
   await editor.fill("skip", "1");
-  await grid.run(() => editor.commit("skip"));
+  await tray.afterTray(
+    (shown) => shown.explicit && shown.outside === 1,
+    () => grid.run(() => editor.commit("skip")),
+  );
   await grid.assert.isEntryCountTextEqualTo("7 samples");
   await tray.assert.outsideResults(1);
   await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
-  await tray.tagSamples("captured");
+  // tagging refreshes the grid
+  await grid.run(() => tray.tagSamples("captured"));
   await grid.run(() => viewBar.removeStage(0));
   await grid.assert.isEntryCountTextEqualTo("8 samples");
   const context = await browser.newContext();
@@ -171,16 +185,14 @@ test("captured samples remain action targets outside the current results", async
     const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
     const freshSidebar = new SidebarPom(freshPage);
     await freshGrid.assert.isEntryCountTextEqualTo("8 samples");
-    await freshSidebar.clickFieldCheckbox("tags");
-    await expect(
-      freshGrid.getNthTile(0).getByTestId("tag-tags-captured"),
-    ).toBeVisible();
-    await expect(
-      freshGrid.getNthTile(1).getByTestId("tag-tags-captured"),
-    ).toHaveCount(0);
-    await expect(
-      freshGrid.getNthTile(2).getByTestId("tag-tags-captured"),
-    ).toBeVisible();
+    await freshGrid.afterTagsRenderedNamed(["0.png", "1.png", "2.png"], () =>
+      freshSidebar.clickFieldCheckbox("tags"),
+    );
+    const captured = (n: number) =>
+      freshGrid.getNthTile(n).getByTestId("tag-tags-captured");
+    expect(await captured(0).isVisible()).toBe(true);
+    expect(await captured(1).count()).toBe(0);
+    expect(await captured(2).isVisible()).toBe(true);
   } finally {
     await context.close();
   }
@@ -193,45 +205,59 @@ test("a saved subset can gain and lose members and be deleted", async ({
   page,
   tray,
 }) => {
+  const name = "Review set (v2)";
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(2);
-  await tray.createSubset("Review set (v2)");
-  await tray.openCreatedSubset();
-  await tray.assert.subsetScope("Review set (v2)", 2);
+  await tray.afterSelected(2, async () => {
+    await grid.toggleSelectNthSample(0);
+    await grid.toggleSelectNthSample(2);
+  });
+  await tray.createSubset(name);
+  await grid.run(() => tray.openCreatedSubset(name, "2 samples"));
+  await tray.assert.subsetScope(name, 2);
   await grid.assert.isEntryCountTextEqualTo("2 samples");
 
-  await grid.toggleSelectNthSample(0);
-  await tray.removeSelectedFromSubset();
-  await tray.assert.subsetScope("Review set (v2)", 1);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
+  await grid.run(() =>
+    tray.afterScope({ label: name, count: "1 sample" }, () =>
+      tray.removeSelectedFromSubset(),
+    ),
+  );
+  await tray.assert.subsetScope(name, 1);
   await grid.assert.isEntryCountTextEqualTo("1 sample");
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.assert.cardsHaveNames(["2.png"]);
 
-  await tray.chooseAllSamples();
+  await grid.run(() => tray.afterResults(() => tray.chooseAllSamples(), 8));
   await grid.assert.isEntryCountTextEqualTo("8 samples");
   await tray.assert.targetsAllResults();
-  await expect(tray.cards).toHaveCount(0);
-  await grid.toggleSelectNthSample(4);
-  await tray.addToSubset("Review set (v2)");
-  await tray.openCreatedSubset();
-  await tray.assert.subsetScope("Review set (v2)", 2);
+  await tray.assert.noCards();
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(4));
+  await tray.addToSubset(name);
+  await grid.run(() => tray.openCreatedSubset(name, "2 samples"));
+  await tray.assert.subsetScope(name, 2);
   await grid.assert.isEntryCountTextEqualTo("2 samples");
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(1);
+  await tray.afterSelected(2, async () => {
+    await grid.toggleSelectNthSample(0);
+    await grid.toggleSelectNthSample(1);
+  });
   await tray.assert.cardsHaveNames(["2.png", "4.png"]);
 
-  await tray.deleteSubset("Review set (v2)");
+  await grid.run(() =>
+    tray.afterResults(
+      () =>
+        tray.afterScope({ label: "All samples" }, () =>
+          tray.deleteSubset(name),
+        ),
+      8,
+    ),
+  );
   await tray.assert.targetsAllResults();
   await grid.assert.isEntryCountTextEqualTo("8 samples");
-  await tray.openScope();
-  await expect(
-    page.getByRole("group", { name: "Subsets" }),
-  ).not.toHaveAttribute("aria-busy", "true");
-  await expect(page.getByText("No saved subsets yet")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Review set (v2)" }),
-  ).toHaveCount(0);
+  await tray.openScope(0);
+  const subsets = page.getByRole("group", { name: "Subsets" });
+  expect(await subsets.getAttribute("aria-busy")).toBeNull();
+  expect(await page.getByText("No saved subsets yet").isVisible()).toBe(true);
+  expect(await page.getByRole("button", { name }).count()).toBe(0);
 });
 
 test("buckets keep separate targets through tagging, clear, and undo", async ({
@@ -243,20 +269,24 @@ test("buckets keep separate targets through tagging, clear, and undo", async ({
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSelected(1, () => grid.toggleSelectNthSample(0));
   await tray.addBucket();
-  await grid.addNthSampleToBucket(2, "Bucket 2");
-  await expect(tray.bucketCard("Bucket 1", "0.png")).toBeVisible();
-  await expect(tray.bucketCard("Bucket 2", "2.png")).toBeVisible();
+  await tray.afterBuckets("1,1", () =>
+    grid.addNthSampleToBucket(2, "Bucket 2"),
+  );
+  const shown = async (bucket: string, fileName: string) =>
+    expect(await tray.bucketCard(bucket, fileName).isVisible()).toBe(true);
+  await shown("Bucket 1", "0.png");
+  await shown("Bucket 2", "2.png");
 
   await tray.targetBucket("Bucket 2");
-  await tray.tagSamples("second-bucket");
-  await tray.clearBucket("Bucket 1");
-  await expect(tray.bucket("Bucket 1").getByRole("article")).toHaveCount(0);
-  await expect(tray.bucketCard("Bucket 2", "2.png")).toBeVisible();
-  await tray.undo();
-  await expect(tray.bucketCard("Bucket 1", "0.png")).toBeVisible();
-  await expect(tray.bucketCard("Bucket 2", "2.png")).toBeVisible();
+  await grid.run(() => tray.tagSamples("second-bucket"));
+  await tray.afterBuckets("0,1", () => tray.clearBucket("Bucket 1"));
+  expect(await tray.bucket("Bucket 1").getByRole("article").count()).toBe(0);
+  await shown("Bucket 2", "2.png");
+  await tray.afterBuckets("1,1", () => tray.undo());
+  await shown("Bucket 1", "0.png");
+  await shown("Bucket 2", "2.png");
 
   const context = await browser.newContext();
   try {
@@ -264,13 +294,13 @@ test("buckets keep separate targets through tagging, clear, and undo", async ({
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
     const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
     const sidebar = new SidebarPom(freshPage);
-    await sidebar.clickFieldCheckbox("tags");
-    await expect(
-      freshGrid.getNthTile(0).getByTestId("tag-tags-second-bucket"),
-    ).toHaveCount(0);
-    await expect(
-      freshGrid.getNthTile(2).getByTestId("tag-tags-second-bucket"),
-    ).toBeVisible();
+    await freshGrid.afterTagsRenderedNamed(["0.png", "2.png"], () =>
+      sidebar.clickFieldCheckbox("tags"),
+    );
+    const tagged = (n: number) =>
+      freshGrid.getNthTile(n).getByTestId("tag-tags-second-bucket");
+    expect(await tagged(0).count()).toBe(0);
+    expect(await tagged(2).isVisible()).toBe(true);
   } finally {
     await context.close();
   }

@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import {
   useDuration,
@@ -18,7 +19,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { TIMELINE_TRACK_ROW_HEIGHT } from "../../lib/constants";
 import styles from "./TimelineTrack.module.css";
@@ -209,6 +210,46 @@ const DEPTH_INDENT_PX = 14;
 /** Base left padding of the label column (matches the CSS). */
 const LABEL_BASE_PADDING_PX = 10;
 
+/** e2e specs wait on a lane's context menu showing its items */
+type LaneMenuE2EEvents = {
+  "e2e:playback:lane-menu-opened": undefined;
+};
+
+/** e2e specs wait on a track row showing its label, pin, and event spans */
+type TrackE2EEvents = {
+  "e2e:playback:track-shown": {
+    id: string;
+    label: string;
+    pinned: boolean;
+    pinnable: boolean;
+    /** `start-end` (or `start`) per event in seconds to 2 places, comma separated */
+    spans: string;
+    /** The events' own labels, newline separated */
+    eventLabels: string;
+  };
+};
+
+const useTrackShownSignal = (
+  shown: boolean,
+  detail: TrackE2EEvents["e2e:playback:track-shown"],
+) => {
+  const key = shown ? JSON.stringify(detail) : null;
+  useEffect(() => {
+    if (key === null) return;
+    getEventBus<TrackE2EEvents>().dispatch(
+      "e2e:playback:track-shown",
+      JSON.parse(key),
+    );
+  }, [key]);
+};
+
+const LaneMenuOpenedSignal = () => {
+  useEffect(() => {
+    getEventBus<LaneMenuE2EEvents>().dispatch("e2e:playback:lane-menu-opened");
+  }, []);
+  return null;
+};
+
 /**
  * Content of the lane's single, delegated context menu. `event` is the
  * right-clicked event (`null` closes to nothing). One shared menu serves the
@@ -229,6 +270,7 @@ const LaneEventMenu: React.FC<{
 
   return (
     <>
+      <LaneMenuOpenedSignal />
       <MenuTextItem onClick={() => seek(event.startSec)}>
         Move to start
       </MenuTextItem>
@@ -348,6 +390,23 @@ const TimelineTrack: React.FC<TimelineTrackProps> = ({
   const labelText = label ?? id;
 
   const viewDuration = viewEnd - viewStart;
+  useTrackShownSignal(viewDuration > 0, {
+    id,
+    label: labelText,
+    pinned,
+    pinnable: Boolean(onPinClick) && !isChild,
+    spans: events
+      .map(normalizeEvent)
+      .map(({ startSec, endSec }) =>
+        endSec === undefined
+          ? startSec.toFixed(2)
+          : `${startSec.toFixed(2)}-${endSec.toFixed(2)}`,
+      )
+      .join(","),
+    eventLabels: events
+      .map((event) => normalizeEvent(event).label ?? "")
+      .join("\n"),
+  });
   // Degenerate view (zero/negative width) — would produce NaN/Infinity
   // CSS values and break layout for every bar/marker below.
   if (viewDuration <= 0) return null;

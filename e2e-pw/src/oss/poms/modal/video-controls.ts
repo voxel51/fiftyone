@@ -1,14 +1,9 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { escapeRegExp } from "src/oss/utils";
 import { ModalPom } from ".";
 
-/**
- * Playback has to actually reach the target, so these waits get the long
- * timeout rather than the default assertion one.
- */
-const READOUT_TIMEOUT = 30_000;
-
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** The readout's text, with the padding spaces it renders collapsed */
+const readout = (text: string) => text.replace(/\s+/g, " ").trim();
 
 /**
  * Video playback controls in the modal.
@@ -69,35 +64,37 @@ export class ModalVideoControlsPom {
    * have moved should not have to care which.
    */
   async playUntilAdvanced() {
-    // Anchor on a real reading first. If the readout is absent or mid-swap,
-    // `start` is null/empty and the "has changed" assertion below is satisfied
-    // by the first non-empty value — the helper would return without playback
-    // having advanced at all, and its callers would pass vacuously.
-    await expect(this.time).not.toHaveText("", { timeout: READOUT_TIMEOUT });
-    const start = await this.time.textContent();
-    if (!start) {
-      throw new Error(
-        "timeline readout is empty; cannot detect playback advancing",
-      );
-    }
-
-    await this.togglePlay();
-    await expect(this.time).not.toHaveText(start, {
-      timeout: READOUT_TIMEOUT,
-    });
+    // the readout always renders a reading, so any other one has advanced
+    const start = readout((await this.time.textContent()) ?? "");
+    await this.afterReadout(
+      (text) => text !== start,
+      () => this.togglePlay(),
+    );
     await this.togglePlay();
   }
 
   /** Play until the readout reads `text`, then pause. */
   private async playUntilReadout(text: string, matchBeginning: boolean) {
-    await this.togglePlay();
-
-    await expect(this.time).toHaveText(
-      matchBeginning ? new RegExp(`^${escapeRegExp(text)}`) : text,
-      { timeout: READOUT_TIMEOUT },
+    const pattern = new RegExp(
+      `^${escapeRegExp(text)}${matchBeginning ? "" : "$"}`,
     );
-
+    await this.afterReadout(
+      (shown) => pattern.test(shown),
+      () => this.togglePlay(),
+    );
     await this.togglePlay();
+  }
+
+  /** Run `action` and resolve once the playhead readout satisfies `shows` */
+  private afterReadout<T>(
+    shows: (text: string) => boolean,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:playback:playhead-time",
+      action,
+      (e) => shows(readout((e.detail as { label: string }).label)),
+    );
   }
 
   async playUntilDuration(durationText: string) {

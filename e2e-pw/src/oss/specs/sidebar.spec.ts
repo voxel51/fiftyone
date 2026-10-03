@@ -1,9 +1,35 @@
-import { test as base, expect } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
+import { expect, test as base } from "src/oss/fixtures";
+import { GridPom, TileLabels } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
+import { createQuickstartDataset } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+
+const LABEL_PATH = "ground_truth.detections.label";
+
+const gt = (...labels: string[]) =>
+  labels.map((label) => `ground_truth:${label}`).sort();
+
+const BOTTLES = ["bottle", "bottle", "bottle"];
+const CUPS = ["cup", "cup"];
+const TABLE_SETTING = [
+  "chair",
+  "dining table",
+  "fork",
+  "fork",
+  "knife",
+  "knife",
+];
+
+const GROUND_TRUTH: TileLabels = {
+  "0.png": gt("bird", "bird", "bird"),
+  "1.png": gt("horse", "person"),
+  "2.png": gt("carrot", "cat"),
+  "3.png": gt(...BOTTLES, ...CUPS, ...TABLE_SETTING),
+  "4.png": gt("cake", "surfboard", "surfboard"),
+};
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
@@ -18,65 +44,73 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
-  });
+  await createQuickstartDataset(datasetFactory, datasetName);
 });
 
 test.describe.serial("sidebar-filter-visibility", () => {
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    // always fold tags and metaData groups
-    await page.click('[title="TAGS"]');
-    await page.click('[title="METADATA"]');
-  });
+  test.beforeEach(
+    async ({ page, fiftyoneLoader, grid, sidebar, eventUtils }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await page.click('[title="TAGS"]');
+      await page.click('[title="METADATA"]');
+
+      expect(
+        await grid.afterTilesUpdated(() =>
+          sidebar.clickFieldCheckbox("predictions"),
+        ),
+      ).toEqual(GROUND_TRUTH);
+
+      await eventUtils.after("animation-onRest", () =>
+        sidebar.clickFieldDropdown("ground_truth"),
+      );
+
+      // selecting a value filters in the default mode, selecting labels
+      expect(
+        await grid.afterEntryCounts(() =>
+          grid.afterGridRefreshed(() => sidebar.applyFilter("bottle")),
+        ),
+      ).toEqual({ "3.png": gt(...BOTTLES) });
+      await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
+      await grid.assert.isTileCountEqualTo(1);
+      expect(await sidebar.filterModeText(LABEL_PATH)).toBe(
+        "Select detections with label",
+      );
+    },
+  );
+
+  const toVisibilityMode = async (
+    sidebar: SidebarPom,
+    eventUtils: EventUtils,
+  ) => {
+    await eventUtils.after("e2e:sidebar:mode-shown", () =>
+      sidebar.toggleSidebarMode(),
+    );
+    expect(await sidebar.getActiveMode()).toBe("VISIBILITY");
+  };
 
   test("In grid, select a label filter works", async ({
     grid,
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth (on by default), hide predictions
-    await sidebar.clickFieldCheckbox("predictions");
+    await toVisibilityMode(sidebar, eventUtils);
 
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-    // select bottle in ground_truth.detections.label
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
-    await sidebar.applyLabelFromList(
-      ["bottle"],
-      "select-detections-with-label",
-    );
+    // selecting a value shows only the selected values' labels
+    expect(
+      await grid.afterTilesUpdated(() => sidebar.applyFilter("cat")),
+    ).toEqual({ "3.png": [] });
+    expect(await sidebar.filterModeText(LABEL_PATH)).toBe("Show label");
+    expect(
+      await grid.afterTilesUpdated(() => sidebar.applyFilter("person")),
+    ).toEqual({ "3.png": [] });
 
-    // verify the number of samples in the result
-    await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "select-bottle.png",
-      { animations: "allow" },
-    );
-
-    // go to visibility mode
-    await sidebar.toggleSidebarMode();
-
-    // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cat"], "show-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "select-bottle-show-cat.png",
-      { animations: "allow" },
-    );
-
-    // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(["person"], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "select-bottle-hide-person-cat.png",
-      { animations: "allow" },
-    );
+    expect(
+      await grid.afterTilesUpdated(() =>
+        sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
+      ),
+    ).toEqual({ "3.png": gt(...BOTTLES) });
   });
 
   test("In grid, exclude a label filter works", async ({
@@ -84,45 +118,36 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth (on by default), hide predictions
-    await sidebar.clickFieldCheckbox("predictions");
-
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
-    await sidebar.applyLabelFromList(
-      ["bottle"],
-      "exclude-detections-with-label",
-    );
-
-    // verify the number of samples in the result
+    expect(
+      await grid.afterEntryCounts(() =>
+        grid.afterGridRefreshed(() =>
+          sidebar.selectFilterMode(LABEL_PATH, "exclude-detections-with-label"),
+        ),
+      ),
+    ).toEqual({
+      ...GROUND_TRUTH,
+      "3.png": gt(...CUPS, ...TABLE_SETTING),
+    });
     await grid.assert.isEntryCountTextEqualTo("5 samples");
-    await grid.waitForGridToLoad();
     await grid.assert.isTileCountEqualTo(5);
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle.png",
-      { animations: "allow" },
-    );
 
-    // Test with visibility mode:
-    await sidebar.toggleSidebarMode();
+    await toVisibilityMode(sidebar, eventUtils);
 
-    // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cup"], "show-label");
+    expect(
+      await grid.afterTilesUpdated(() => sidebar.applyFilter("cup")),
+    ).toEqual({
+      "0.png": [],
+      "1.png": [],
+      "2.png": [],
+      "3.png": gt(...CUPS),
+      "4.png": [],
+    });
 
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle-show-cup.png",
-      { animations: "allow" },
-    );
-
-    // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png",
-      { animations: "allow" },
-    );
+    expect(
+      await grid.afterTilesUpdated(() =>
+        sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
+      ),
+    ).toEqual({ ...GROUND_TRUTH, "3.png": gt(...TABLE_SETTING) });
   });
 
   test("In grid, show samples with a label filter works", async ({
@@ -130,42 +155,26 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth (on by default), hide predictions
-    await sidebar.clickFieldCheckbox("predictions");
-
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
-
-    const gridRefreshPromise = await grid.armGridRefresh();
-    await sidebar.applyLabelFromList(["bottle"], "show-samples-with-label");
-
-    // verify the number of samples in the result
+    expect(
+      await grid.afterGridRefreshed(() =>
+        sidebar.selectFilterMode(LABEL_PATH, "show-samples-with-label"),
+      ),
+    ).toEqual({ "3.png": GROUND_TRUTH["3.png"] });
+    // the bottle filter already showed these counts, so they do not signal
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
-    await gridRefreshPromise.received;
+    await grid.assert.isTileCountEqualTo(1);
 
-    await expect(grid.getForwardSection()).toHaveScreenshot("show-bottle.png", {
-      animations: "allow",
-    });
+    await toVisibilityMode(sidebar, eventUtils);
 
-    // Test with visibility mode:
-    await sidebar.toggleSidebarMode();
+    expect(
+      await grid.afterTilesUpdated(() => sidebar.applyFilter("cup")),
+    ).toEqual({ "3.png": gt(...CUPS) });
 
-    // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["cup"], "show-label");
-
-    await expect
-      .soft(await grid.getForwardSection())
-      .toHaveScreenshot("show-bottle-show-cup.png", { animations: "allow" });
-
-    // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-bottle-hide-cup.png",
-      { animations: "allow" },
-    );
+    expect(
+      await grid.afterTilesUpdated(() =>
+        sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
+      ),
+    ).toEqual({ "3.png": gt(...BOTTLES, ...TABLE_SETTING) });
   });
 
   test("In grid, omit samples with a label filter works", async ({
@@ -173,41 +182,34 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth (on by default), hide predictions
-    await sidebar.clickFieldCheckbox("predictions");
-
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-
-    await sidebar.clickFieldDropdown("ground_truth");
-    await entryExpandPromise.received;
-    await sidebar.applyLabelFromList(["bottle"], "omit-samples-with-label");
-
-    // verify the number of samples in the result
+    const withoutBottles = Object.fromEntries(
+      Object.entries(GROUND_TRUTH).filter(([file]) => file !== "3.png"),
+    );
+    expect(
+      await grid.afterEntryCounts(() =>
+        grid.afterGridRefreshed(() =>
+          sidebar.selectFilterMode(LABEL_PATH, "omit-samples-with-label"),
+        ),
+      ),
+    ).toEqual(withoutBottles);
     await grid.assert.isEntryCountTextEqualTo("4 of 5 samples");
-    await grid.waitForGridToLoad();
+    await grid.assert.isTileCountEqualTo(4);
 
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-bottle.png",
-      { animations: "allow" },
-    );
+    await toVisibilityMode(sidebar, eventUtils);
 
-    // Test the visibility mode:
-    await sidebar.toggleSidebarMode();
+    expect(
+      await grid.afterTilesUpdated(() => sidebar.applyFilter("horse")),
+    ).toEqual({
+      "0.png": [],
+      "1.png": gt("horse"),
+      "2.png": [],
+      "4.png": [],
+    });
 
-    // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(["horse"], "show-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-bottle-show-horse.png",
-      { animations: "allow" },
-    );
-
-    // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList([], "hide-label");
-
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "hide-bottle-hide-horse.png",
-      { animations: "allow" },
-    );
+    expect(
+      await grid.afterTilesUpdated(() =>
+        sidebar.selectFilterMode(LABEL_PATH, "hide-label"),
+      ),
+    ).toEqual({ ...withoutBottles, "1.png": gt("person") });
   });
 });

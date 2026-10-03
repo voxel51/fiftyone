@@ -5,6 +5,10 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import {
+  QUICKSTART_GROUND_TRUTH,
+  createQuickstartDataset,
+} from "./quickstart-data";
 
 const test = base.extend<{
   sidebar: SidebarPom;
@@ -40,27 +44,12 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {
-    max_samples: 5,
-  });
+  await createQuickstartDataset(datasetFactory, quickstartColorByField);
 
   await fiftyoneLoader.executePythonCode(`
       import fiftyone as fo
-      import random
-      quickstart_color_by_field = fo.load_dataset("${quickstartColorByField}")      
-
-      n = len(quickstart_color_by_field)
-      labels = ["foo", "bar", "spam", "eggs"]
-      collaborators = ["alice", "bob", "charlie", "peter", "susan"]
-
-      # Add label attributes of each primitive type
-      patches = quickstart_color_by_field.to_patches("ground_truth")
-      p = len(patches)
-
-      quickstart_color_by_field.add_sample_field("ground_truth.detections.str_field", fo.StringField)
-      patches.set_values("ground_truth.str_field", [labels[index % 4] for index in range(p)])
 
       dummy_color_by_instance = fo.Dataset("${dummyDatasetColorByInstance}")
       dummy_color_by_instance.persistent = True
@@ -86,31 +75,23 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
     colorModal,
     page,
     grid,
-    eventUtils,
     sidebar,
   }) => {
-    // turn on the sample tag bubble
-    await sidebar.clickFieldCheckbox("tags");
-    // mount eventListener
-    const gridRefreshedEventPromise = await eventUtils.arm("re-render-tag");
-    // open color modal and modify color in sample tags field and ground_truth
+    // each change redraws every tile's tags; waiting out each one leaves the
+    // custom color's redraw as the only one the last wait can see
+    const tiles = QUICKSTART_GROUND_TRUTH.map((_, i) => `${i}.png`);
+    const afterTags = (action: () => Promise<void>) =>
+      grid.afterTagsRenderedNamed(tiles, action);
+
+    await afterTags(() => sidebar.clickFieldCheckbox("tags"));
     await gridActionsRow.toggleColorSettings();
-
     await colorModal.selectActiveField("sample tags");
-    await colorModal.changeColorMode("value");
-
-    await page
-      .getByTitle(`Use custom colors for specific field values`)
-      .first()
-      .click({ force: true });
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-
+    await afterTags(() => colorModal.changeColorMode("value"));
+    await afterTags(() => colorModal.useCustomValueColors());
+    await afterTags(() => colorModal.setPairValue("validation", 0));
+    await afterTags(() => colorModal.setPairColor("#9ACD32", 0)); // yellow green
     await colorModal.closeColorModal();
     const tagBubble = page.getByTestId("tag-validation").first();
-
-    await gridRefreshedEventPromise.received;
 
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
@@ -119,12 +100,12 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
 
     // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
     // we're asserting that when dataset is switched, session color settings are reset to default from app config
-    const gridRefreshPromise = await grid.armGridRefresh();
-    await fiftyoneLoader.selectDatasetFromSelector(
-      page,
-      dummyDatasetColorByInstance,
-    );
-    await gridRefreshPromise.received;
+    await grid.run(async () => {
+      await fiftyoneLoader.selectDatasetFromSelector(
+        page,
+        dummyDatasetColorByInstance,
+      );
+    });
 
     // open color modal
     await gridActionsRow.toggleColorSettings();

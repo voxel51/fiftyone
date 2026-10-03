@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -65,7 +65,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
 test.describe.serial("groups video labels", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 1 });
   });
 
   test("correct thumbnails for both slices", async ({ grid }) => {
@@ -73,25 +73,17 @@ test.describe.serial("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
-
-    // const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-    //   return new Promise<void>((resolve) => {
-    //     document.addEventListener("canvas-loaded", (e: CustomEvent) => {
-    //       if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
-    //         resolve();
-    //       }
-    //     });
-    //   });
-    // }, testVideoPath2);
+    await grid.assert.hasScreenshot("slice-v1.png", {
+      target: grid.getNthLooker(0),
+    });
 
     // compare screenshot for another slice (v2)
-    const gridRefresPromise = await grid.armGridRefresh();
-    await grid.sliceSelector.selectSlice("v2");
-    await gridRefresPromise.received;
-    // await v2SampleLoadedPromise;
-
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
+    await grid.afterTilesDrawn(1, () =>
+      grid.run(() => grid.sliceSelector.selectSlice("v2")),
+    );
+    await grid.assert.hasScreenshot("slice-v2.png", {
+      target: grid.getNthLooker(0),
+    });
   });
 
   test("video plays with correct label for each slice", async ({
@@ -103,13 +95,12 @@ test.describe.serial("groups video labels", () => {
     // one selected: re-picking the slice already on screen refreshes nothing,
     // and the armed refresh would never arrive.
     if ((await grid.sliceSelector.activeSlice()) !== "v1") {
-      const gridRefresPromise = await grid.armGridRefresh();
-      await grid.sliceSelector.selectSlice("v1");
-      await gridRefresPromise.received;
+      await grid.run(async () => {
+        await grid.sliceSelector.selectSlice("v1");
+      });
     }
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
@@ -137,17 +128,14 @@ test.describe.serial("groups video labels", () => {
 
     await checkVideo("v1");
 
-    const sampleLoadEventPromiseForv2 = await eventUtils.arm(
-      "canvas-loaded",
+    // change slice and repeat
+    await eventUtils.after(
+      "e2e:looker:canvas-loaded",
+      () => modal.group.selectNthItemFromCarousel(1),
       (e) =>
         (e.detail as { sampleFilepath?: string })?.sampleFilepath ===
         testVideoPath2,
     );
-
-    // change slice and repeat
-    await modal.group.selectNthItemFromCarousel(1);
-
-    await sampleLoadEventPromiseForv2.received;
 
     await checkVideo("v2");
   });

@@ -71,10 +71,12 @@ const openSample = async (
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  // the draw handler reinstalls as overlays mount, so draw after Lighter's
+  // first render
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 };
 
 /**
@@ -89,10 +91,11 @@ const reopenSample = async (
   modal: ModalPom,
   id: string,
 ) => {
+  // the modal reopens in annotate mode, so Lighter reveals as the page loads
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    readyEvent: "e2e:modal:lighter-revealed",
   });
-  await modal.waitForLighterReady();
   await modal.assert.isOpen();
 };
 

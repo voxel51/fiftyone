@@ -10,14 +10,14 @@ const test = base.extend<{
   url: UrlPom;
   viewBar: ViewBarPom;
 }>({
-  operatorsBrowser: async ({ page }, use) => {
-    await use(new OperatorsBrowserPom(page));
+  operatorsBrowser: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsBrowserPom(page, eventUtils));
   },
   url: async ({ page, eventUtils }, use) => {
     await use(new UrlPom(page, eventUtils));
   },
-  viewBar: async ({ page }, use) => {
-    await use(new ViewBarPom(page));
+  viewBar: async ({ page, eventUtils }, use) => {
+    await use(new ViewBarPom(page, eventUtils));
   },
 });
 
@@ -63,7 +63,9 @@ test("Built-in operators: set view", async ({
 }) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
-  await url.pageChange(() => operatorsBrowser.choose("E2E: Set view"));
   // A view set by an operator opens the stages row on its own
+  await viewBar.afterStagesShown(() =>
+    url.pageChange(() => operatorsBrowser.choose("E2E: Set view")),
+  );
   await viewBar.assert.hasViewStage("Limit3");
 });

@@ -977,13 +977,26 @@ export const sidebarGroup = selectorFamily<
   },
 });
 
-export const sidebarPaths = selector({
-  key: "sidebarPaths",
-  get: ({ get }) => {
-    const groups = get(sidebarGroupsDefinition(false));
-    return groups.flatMap(({ paths }) => paths);
-  },
-});
+export const sidebarPaths = (() => {
+  // groups also hold each group's expanded state; returning the same array
+  // when only that changes keeps the grid's looker options unchanged
+  let current: string[] = [];
+  return selector({
+    key: "sidebarPaths",
+    get: ({ get }) => {
+      const paths = get(sidebarGroupsDefinition(false)).flatMap(
+        ({ paths }) => paths,
+      );
+      if (
+        paths.length !== current.length ||
+        paths.some((path, i) => path !== current[i])
+      ) {
+        current = paths;
+      }
+      return current;
+    },
+  });
+})();
 
 export const sidebarGroupNames = selectorFamily<string[], boolean>({
   key: "sidebarGroupNames",

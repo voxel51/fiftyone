@@ -1,5 +1,6 @@
+import { getEventBus } from "@fiftyone/events";
 import { useAtomValue } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
 import { DetectionOverlay } from "@fiftyone/lighter";
@@ -188,10 +189,21 @@ const LabelHamburgerMenu = () => {
   );
 };
 
+/** e2e specs wait on the edit form's header naming the label it edits */
+type EditHeaderE2EEvents = {
+  "e2e:annotate:edit-header": { type: string | null };
+};
+
 const Header = () => {
   const annotationContext = useAnnotationContext();
   const { selected } = annotationContext;
   const type = selected?.type ?? null;
+
+  useEffect(() => {
+    getEventBus<EditHeaderE2EEvents>().dispatch("e2e:annotate:edit-header", {
+      type,
+    });
+  }, [type]);
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(selected?.overlay ?? undefined);
 

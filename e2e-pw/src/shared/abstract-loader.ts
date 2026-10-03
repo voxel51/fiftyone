@@ -3,40 +3,30 @@ import { PythonRunner } from "./python-runner/python-runner";
 
 export type WaitUntilGridVisibleOptions = {
   /**
-   * Whether the dataset is empty.
-   */
-  isEmptyDataset?: boolean;
-
-  /**
    * Search parameters to include
    */
   searchParams?: URLSearchParams;
 
   /**
-   * Optional selector that indicates the dataset is ready for interaction.
+   * An `e2e:` event that marks the page ready instead of a grid tile, e.g.
+   * the modal a deep link opens
    */
-  readySelector?: string;
+  readyEvent?: string;
 
   /**
-   * Whether to wait for the grid to be visible.
+   * The number of distinct grid lookers that must have drawn (by default,
+   * one tile of any kind ready)
    */
-  withGrid?: boolean;
+  tiles?: number;
+
+  /**
+   * Also wait for the modal a deep link opens to draw its sample, or to
+   * draw it or show its load error
+   */
+  modalSample?: "loaded" | "loaded-or-error";
 };
 export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;
-
-  /**
-   * This method is used to load a dataset from the FiftyOne Zoo.
-   *
-   * @param name name of the dataset to load from the zoo
-   * @param id name of the dataset to be created
-   * @param kwargs optional arguments to be passed to the dataset loader
-   */
-  abstract loadZooDataset(
-    zooDatasetName: string,
-    id: string,
-    kwargs?: Record<string, string | number | boolean>,
-  ): Promise<void>;
 
   /**
    * This method is used to load datasets that are assumed to be already available in the test hosts.

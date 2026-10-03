@@ -1,6 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Box3, Group } from "three";
 
+/** userData key of the placeholder a scene node renders while its asset loads */
+export const FO3D_ASSET_LOADING = "fo3dAssetLoading";
+
 const DEFAULT_STABLE_SAMPLES = 3;
 const DEFAULT_EPSILON = 1e-4;
 // 10 second hard timeout
@@ -67,6 +70,13 @@ export function useFo3dBounds(
   const computeOnce = useCallback(() => {
     const obj = objectRef.current;
     if (!obj) return null;
+
+    // a box measured while an asset is still loading would leave it out
+    let loading = false;
+    obj.traverse((child) => {
+      if (child.userData[FO3D_ASSET_LOADING]) loading = true;
+    });
+    if (loading) return null;
 
     // ensure transforms are up to date before measuring
     obj.updateWorldMatrix(true, true);

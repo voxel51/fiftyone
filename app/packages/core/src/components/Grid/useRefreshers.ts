@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useGridSelectionRequest } from "@fiftyone/state/src/selection";
@@ -7,6 +8,11 @@ import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 import { useGridJumpRevision } from "./useScrollLocation";
+
+/** e2e specs wait on the grid rebuild a requested refresh causes */
+type GridResetE2EEvents = {
+  "e2e:grid:reset": { refresher: number };
+};
 
 export default function useRefreshers() {
   // Keyed on the boundary the grid's pages are requested with; an extension's
@@ -83,6 +89,10 @@ export default function useRefreshers() {
     pageReset;
     return uuid();
   }, [layoutReset, pageReset]);
+
+  useEffect(() => {
+    getEventBus<GridResetE2EEvents>().dispatch("e2e:grid:reset", { refresher });
+  }, [reset, refresher]);
 
   useEffect(() => {
     const unsubscribe = subscribe(({ event }, { reset }) => {

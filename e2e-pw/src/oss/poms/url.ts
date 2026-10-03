@@ -36,7 +36,7 @@ export class UrlPom {
   }
 
   pageChange<T>(wrap: () => Promise<T>): Promise<T> {
-    return this.eventUtils.after("page-change", wrap);
+    return this.eventUtils.after("e2e:app:page-change", wrap);
   }
 
   async back() {

@@ -35,6 +35,7 @@ import {
 import SecondaryText from "./SecondaryText";
 import { fieldIsReadOnly } from "./state";
 import { GUISectionHeader } from "./styled";
+import { useFieldsShownSignal } from "./e2eSignals";
 
 /**
  * Edit action button for field rows
@@ -72,6 +73,7 @@ const ActiveFieldsSection = () => {
   }, [setNewFieldMode]);
 
   const { fields, setFields } = useActiveFieldsList();
+  useFieldsShownSignal("active", fields);
   const { selected, setSelected } = useSelectedActiveFields();
   const { setSelected: setHiddenSelected } = useSelectedHiddenFields();
 

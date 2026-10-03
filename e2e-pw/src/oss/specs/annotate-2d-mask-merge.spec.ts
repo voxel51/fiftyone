@@ -71,8 +71,8 @@ test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
   });
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sidebar.switchMode("annotate");
 });
@@ -87,9 +87,9 @@ const inFreshContext = async (
   try {
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.sidebar.switchMode("annotate");
     await verify(freshModal);
   } finally {
@@ -108,7 +108,7 @@ test.describe.serial("2D annotation mask merge", () => {
     // Enter segmentation mode on the target, then activate the Merge tool.
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
-    await expect(modal.sidebar.edit.mergeTool).toBeEnabled();
+    expect(await modal.sidebar.edit.mergeTool.isEnabled()).toBe(true);
     await modal.sidebar.edit.mergeTool.click();
 
     // First click sets the target (cat mask); the second merges the source
@@ -123,9 +123,7 @@ test.describe.serial("2D annotation mask merge", () => {
 
     // The source detection is absorbed + deleted → one label remains, persisted.
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-      await expect
-        .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
-        .toBe(1);
+      await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
     });
   });
 
@@ -153,9 +151,7 @@ test.describe.serial("2D annotation mask merge", () => {
     await modal.sidebar.annotate.waitForSavesSettled();
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
-      await expect
-        .poll(() => freshModal.sidebar.annotate.getActiveLabelsCount())
-        .toBe(2);
+      await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     });
   });
 });

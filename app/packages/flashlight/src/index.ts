@@ -22,6 +22,12 @@ export type { Render, Response } from "./state";
 import styles from "./styles.module.css";
 import tile from "./tile";
 import { argMin, getDims } from "./util";
+import { getEventBus } from "@fiftyone/events";
+
+/** e2e specs wait on a settled render of a grid or carousel */
+type FlashlightE2EEvents = {
+  "e2e:flashlight:rendered": { horizontal: boolean; pending: boolean };
+};
 
 export type FlashlightOptions = Partial<Options>;
 
@@ -156,11 +162,6 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(this.config);
 
     this.showPixels();
-    this.element.dispatchEvent(
-      new CustomEvent("flashlight-refreshing", {
-        bubbles: true,
-      }),
-    );
 
     const { width, height } = getDims(
       this.config.horizontal,
@@ -176,17 +177,11 @@ export default class Flashlight<K> {
     return Boolean(this.element.parentElement);
   }
   private showPixels() {
-    this.container.dispatchEvent(
-      new CustomEvent("flashlight-show-loading-pixels", { bubbles: true }),
-    );
     this.config.showPixels &&
       this.container.classList.add(styles.flashlightPixels);
   }
 
   private hidePixels() {
-    this.container.dispatchEvent(
-      new CustomEvent("flashlight-hide-loading-pixels", { bubbles: true }),
-    );
     this.container.classList.remove(styles.flashlightPixels);
   }
 
@@ -530,6 +525,13 @@ export default class Flashlight<K> {
 
     if (this.state.lastSection === this.state.sections.length - 1) {
       this.requestMore();
+    }
+
+    if (!zooming) {
+      getEventBus<FlashlightE2EEvents>().dispatch("e2e:flashlight:rendered", {
+        horizontal: this.config.horizontal,
+        pending: this.loading,
+      });
     }
   }
 

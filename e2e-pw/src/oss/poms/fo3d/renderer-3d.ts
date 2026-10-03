@@ -1,6 +1,7 @@
 import { Jimp } from "jimp";
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
+import { EventUtils } from "src/shared/event-utils";
 
 export type CameraPosition = [number, number, number];
 const DEFAULT_MIN_RENDERED_PIXELS = 150;
@@ -48,9 +49,11 @@ export class Renderer3dPom {
   readonly statusBar: Locator;
   readonly statusBarToggle: Locator;
   readonly statusBarClose: Locator;
-  readonly statusBarCameraPosition: Locator;
 
-  constructor(private readonly page: Page) {
+  constructor(
+    private readonly page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.assert = new Renderer3dAsserter(this);
     this.asset3dPanel = new Asset3dPanelPom(this.page);
     this.modalLookerContainer = this.page.getByTestId("modal-looker-container");
@@ -63,40 +66,22 @@ export class Renderer3dPom {
     this.statusBarClose = this.modalLookerContainer.getByTestId(
       "looker3d-statusbar-close",
     );
-    this.statusBarCameraPosition = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-camera-position",
-    );
   }
 
-  async openStatusBar() {
-    if (await this.statusBar.isVisible()) {
-      return;
-    }
-
-    await this.statusBarToggle.waitFor({ state: "visible" });
-    await this.statusBarToggle.click();
-    await this.statusBar.waitFor({ state: "visible" });
-  }
-
-  async closeStatusBar() {
-    if (!(await this.statusBar.isVisible())) {
-      return;
-    }
-
-    await this.statusBarClose.click();
-    await this.statusBar.waitFor({ state: "hidden" });
-  }
-
+  /** The live camera position, read off the camera (the status bar lags it). */
   async getCameraPosition(): Promise<CameraPosition> {
-    await this.openStatusBar();
-    await this.statusBarCameraPosition.waitFor({ state: "visible" });
-
-    const text = await this.statusBarCameraPosition.textContent();
-    if (!text) {
-      throw new Error("Camera position text is empty");
+    const position = await this.page.evaluate(
+      () => window.__FO_PLAYWRIGHT_LOOKER3D_CAMERA?.() ?? null,
+    );
+    if (!position) {
+      throw new Error("no live 3D camera on the page");
     }
+    return position as CameraPosition;
+  }
 
-    return this.parseCameraPosition(text);
+  /** Resolve on the next camera save, which the scene makes on its own. */
+  async nextCameraSave(): Promise<void> {
+    await this.eventUtils.next("e2e:looker3d:camera-saved");
   }
 
   async getSavedCameraState(
@@ -114,34 +99,6 @@ export class Renderer3dPom {
     ) as Promise<SavedCameraState | null>;
   }
 
-  async waitForSavedCameraState(
-    datasetName: string,
-    timeout = 10000,
-  ): Promise<SavedCameraState> {
-    await this.page.waitForFunction(
-      ({ name, validatorBody }) => {
-        const validateSavedCameraState = new Function("raw", validatorBody);
-
-        return Boolean(
-          validateSavedCameraState(
-            localStorage.getItem(`${name}-fo3d-camera-position`),
-          ),
-        );
-      },
-      { name: datasetName, validatorBody: SAVED_CAMERA_STATE_VALIDATOR_BODY },
-      { timeout },
-    );
-
-    const savedState = await this.getSavedCameraState(datasetName);
-    if (!savedState) {
-      throw new Error(
-        `Saved camera state for dataset "${datasetName}" was not found`,
-      );
-    }
-
-    return savedState;
-  }
-
   async clearSavedCameraState(datasetName: string): Promise<void> {
     await this.page.evaluate((name) => {
       localStorage.removeItem(`${name}-fo3d-camera-position`);
@@ -149,8 +106,6 @@ export class Renderer3dPom {
   }
 
   async dragCameraBy(deltaX: number, deltaY: number): Promise<void> {
-    await this.looker3d.waitFor({ state: "visible" });
-
     const box = await this.looker3d.boundingBox();
     if (!box) {
       throw new Error("Unable to find looker3d bounds for camera drag");
@@ -197,22 +152,6 @@ export class Renderer3dPom {
 
     return renderedPixelCount;
   }
-
-  private parseCameraPosition(text: string): CameraPosition {
-    const match = text.match(
-      /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
-    );
-
-    if (!match) {
-      throw new Error(`Unable to parse camera position from "${text}"`);
-    }
-
-    return [
-      Number.parseFloat(match[1]),
-      Number.parseFloat(match[2]),
-      Number.parseFloat(match[3]),
-    ];
-  }
 }
 
 class Renderer3dAsserter {
@@ -221,12 +160,13 @@ class Renderer3dAsserter {
   async expectSomethingToRender(
     minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS,
   ) {
-    await expect(this.renderer3dPom.looker3d).toBeVisible();
-
-    await expect
-      .poll(async () => this.renderer3dPom.countRenderedPixels(), {
-        timeout: 5000,
-      })
-      .toBeGreaterThan(minRenderedPixels);
+    // scene-ready = assets loaded, camera settled, revealed — the frame is
+    // painted, so one pixel count is enough
+    expect(
+      await this.renderer3dPom.looker3d.getAttribute("data-scene-ready"),
+    ).toBe("true");
+    expect(await this.renderer3dPom.countRenderedPixels()).toBeGreaterThan(
+      minRenderedPixels,
+    );
   }
 }
