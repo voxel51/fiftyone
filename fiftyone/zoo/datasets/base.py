@@ -4121,6 +4121,78 @@ class TaFTactileForceDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class HapTileDataset(FiftyOneDataset):
+    """Teleoperated contact-rich manipulation with vision-based tactile
+    fingertips and the operator's haptic feedback, as native ``.mcap``
+    episodes.
+
+    A UR5e arm with a Robotiq 2F-85 gripper works through contact-rich
+    tabletop tasks under teleoperation. Each gripper finger carries a
+    vision-based tactile sensor that films a gel pad printed with a marker
+    grid, so the contact shows as the markers moving. Two RGB-D cameras
+    watch the scene, one facing the table and one on the wrist, and the
+    haptic feedback the operator felt is recorded alongside the robot state
+    and the language instruction.
+
+    The 1,699 episodes span 38 tasks, from inserting a peg and folding a
+    T-shirt to pouring from a bottle and wiping a whiteboard.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("haptile")
+
+        # The firmest contacts on the right fingertip
+        view = dataset.sort_by("peak_marker_motion_right", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        6.32 GB
+    """
+
+    _REPO_ID = "Voxel51/HapTile"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "1f6e16517f3625ffb0f2424c5d726045ebf64c12"
+
+    @property
+    def name(self):
+        return "haptile"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "tactile", "haptics", "manipulation")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class SpectralWasteSegmentationDataset(FiftyOneDataset):
     """The labeled split of SpectralWaste, as a grouped RGB and
     hyperspectral dataset.
@@ -4283,6 +4355,7 @@ AVAILABLE_DATASETS = {
     "dreamtac": DreamTacDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
+    "haptile": HapTileDataset,
     "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
     "hilti-trimble-slam-challenge-2026": HiltiTrimbleSLAMChallenge2026Dataset,
     "hmdb51": HMDB51Dataset,
