@@ -1959,7 +1959,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=field,
         )
         self._doc.set_stored_label_schema(field, copy.deepcopy(label_schema))
-        self.save()
 
         # Attributes the schema adds must exist on the field schema too, or
         # the App's sidebar, filters and aggregations never see them
@@ -1971,6 +1970,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field,
                 exc_info=True,
             )
+
+        self.save()
 
     def delete_label_schemas(self, fields=None):
         """Deletes one or more
