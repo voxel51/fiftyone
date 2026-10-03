@@ -729,4 +729,11 @@ class VideoAnnotateAsserter {
       .poll(async () => (await this.va.canvasOverlayFields()).includes(field))
       .toBe(rendered);
   }
+
+  /** Assert the canvas renders label overlays for exactly `fields`. */
+  async canvasRendersFields(fields: string[]) {
+    // the media overlay has no field
+    const rendered = (await this.va.canvasOverlayFields()).filter(Boolean);
+    expect(rendered.sort()).toEqual([...fields].sort());
+  }
 }
