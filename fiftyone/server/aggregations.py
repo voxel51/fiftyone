@@ -21,11 +21,13 @@ from fiftyone.core.utils import datetime_to_timestamp, run_sync_task
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
+from fiftyone.server.data import Info
 from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
+import fiftyone.server.hooks as fosh
 import fiftyone.server.view as fosv
 
 
@@ -118,6 +120,7 @@ AggregateResult = t.Union[
 
 async def aggregate_resolver(
     form: AggregationForm,
+    info: Info = None,
 ) -> t.List[
     t.Annotated[
         t.Union[
@@ -138,6 +141,7 @@ async def aggregate_resolver(
     if not form.paths:
         return []
 
+    await fosh.on_graphql_request(info, form.dataset)
     view = await _load_view(form, form.slices)
 
     slice_view = None

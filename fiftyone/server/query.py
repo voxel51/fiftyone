@@ -37,6 +37,7 @@ import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
+import fiftyone.server.hooks as fosh
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
@@ -542,10 +543,12 @@ class Query(fosa.AggregateQuery):
         hint: t.Optional[str] = None,
         max_query_time: t.Optional[int] = None,
         dynamic_group: t.Optional[BSON] = None,
+        info: Info = None,
     ) -> t.Annotated[
         t.Union[Connection[SampleItem, str], QueryTimeout],
         gql.union("PaginateSamplesResponse"),
     ]:
+        await fosh.on_graphql_request(info, dataset)
         try:
             return await paginate_samples(
                 dataset,
@@ -572,7 +575,9 @@ class Query(fosa.AggregateQuery):
         view: BSONArray,
         filter: SampleFilter,
         filters: t.Optional[JSON] = None,
+        info: Info = None,
     ) -> t.Optional[SampleItem]:
+        await fosh.on_graphql_request(info, dataset)
         samples = await paginate_samples(
             dataset,
             view,

@@ -17,6 +17,7 @@ import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as fou
 from fiftyone.server import utils
+import fiftyone.server.hooks as fosh
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +269,8 @@ class Groups(HTTPEndpoint):
             else None
         )
 
+        await fosh.get().on_request(request, request.query_params)
+
         resolve_urls = (
             request.query_params.get("resolve_urls", "false").lower() == "true"
         )
@@ -296,7 +299,9 @@ class Groups(HTTPEndpoint):
         # Serialize samples
         serialized_group = {}
         for slice_name_key, sample in group.items():
-            serialized_sample = utils.json.serialize(sample)
+            serialized_sample = fosh.get().transform_sample_dict(
+                sample, utils.json.serialize(sample)
+            )
             serialized_group[slice_name_key] = serialized_sample
 
         # Always filter fields to ensure id is present and
