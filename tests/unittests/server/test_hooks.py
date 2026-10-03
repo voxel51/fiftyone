@@ -303,3 +303,21 @@ class TestSampleWrites:
         assert raised.value.status_code == 403
         sample.reload()
         assert sample.secret == "s"
+
+
+class TestDatasetSerialization:
+    @pytest.mark.asyncio
+    async def test_field_lists_follow_transform_view(self, dataset):
+        import fiftyone.server.query as fosq
+
+        fosh.register(_RecordingHooks(hidden_field="secret"))
+        try:
+            data = await fosq.serialize_dataset(
+                dataset_name=dataset.name, serialized_view=[], dicts=False
+            )
+        finally:
+            fosh.register(None)
+
+        paths = [field.path for field in data.sample_fields]
+        assert "visible" in paths
+        assert "secret" not in paths

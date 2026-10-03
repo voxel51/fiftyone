@@ -432,6 +432,7 @@ class Dataset:
         saved_view_slug: t.Optional[str] = gql.UNSET,
         view: t.Optional[BSONArray] = None,
     ) -> t.Optional["Dataset"]:
+        await fosh.on_graphql_request(info, name)
         return await serialize_dataset(
             dataset_name=name,
             serialized_view=view,
@@ -749,6 +750,9 @@ async def serialize_dataset(
             data.media_type = view.media_type
 
             collection = view
+
+        # the field lists reflect what the request's views can return
+        collection = fosh.get().transform_view(collection)
 
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)
