@@ -17,6 +17,12 @@ const useRefresh: EventHandlerHook = ({ router, session }) => {
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
       const state = processState(session.current, payload.state);
+      // Keep the schema lens's silent ExcludeFields across a server
+      // refresh (see makeRoutes).
+      const { schemaExclusion } = router.location.state ?? {};
+      if (schemaExclusion?.length) {
+        state.schemaExclusion = schemaExclusion;
+      }
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
         currentSearch: router.location.search,
