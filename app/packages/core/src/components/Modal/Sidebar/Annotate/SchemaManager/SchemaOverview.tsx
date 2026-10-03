@@ -56,7 +56,11 @@ import {
   useSelectionCleanup,
 } from "./hooks";
 import OverviewJSON from "./OverviewJSON";
-import { useOverviewRows, type RowData } from "./overviewRows";
+import {
+  useDatasetFieldTypes,
+  useOverviewRows,
+  type RowData,
+} from "./overviewRows";
 import { makeStyles } from "./overviewStyles";
 import SchemaPickerBar, { type NamingMode } from "./SchemaPickerBar";
 import { useFieldRowItem } from "./useFieldRowItem";
@@ -86,6 +90,7 @@ const SchemaOverview = () => {
   const { setIsNewField } = useNewFieldMode();
   const { tab, setTab } = useSchemaEditorGUIJSONToggle();
   const datasetSchemas = useLabelSchemasData();
+  const datasetFields = useDatasetFieldTypes();
   const { fields: activeFields, setFields: setActiveFieldsOrder } =
     useActiveFieldsList();
 
@@ -161,6 +166,7 @@ const SchemaOverview = () => {
 
   const { sections, activeSet, rowTypes, rowAttrCounts } = useOverviewRows({
     datasetSchemas: datasetSchemas as Record<string, unknown> | null,
+    datasetFields,
     doc,
     docMode,
     search,

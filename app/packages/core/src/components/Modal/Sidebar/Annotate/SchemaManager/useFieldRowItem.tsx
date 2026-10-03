@@ -44,9 +44,10 @@ export const useFieldRowItem = ({
       const canOpen = row.setUp && actionable;
       const hidden = row.tier === "hidden";
       // Checkboxes drive the footer's Active ↔ Hidden move; only custom
-      // schemas hide, and protected fields can never be hidden.
+      // schemas hide, and protected fields can never be hidden. Fields
+      // that cannot be annotated can still be hidden.
       const canSelect =
-        docMode && actionable && (hidden || !PROTECTED_PATHS.has(row.path));
+        docMode && !row.system && (hidden || !PROTECTED_PATHS.has(row.path));
       return {
         id: row.path,
         data: {

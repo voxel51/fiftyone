@@ -4,8 +4,11 @@
  * dataset schema, the selected doc and the search filter.
  */
 
+import * as fos from "@fiftyone/state";
+import type { StrictField } from "@fiftyone/utilities";
 import { atom, useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { fieldAttributeCount, fieldType } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 import {
@@ -31,32 +34,74 @@ export interface OverviewSections {
   unscanned: RowData[];
   /** Protected paths: annotatable via setup, never hideable. */
   unhideable: RowData[];
-  /** System / unsupported fields: never annotatable. */
+  /** System fields: never annotatable, never hideable. */
   system: RowData[];
   hidden: RowData[];
 }
 
+/**
+ * The display type of a field the annotation schemas do not cover, e.g.
+ * ``GeoLocation`` or ``Dict``.
+ */
+const datasetFieldType = (field: StrictField) => {
+  const cls = field.embeddedDocType || field.ftype || "";
+  return (
+    cls
+      .split(".")
+      .pop()
+      ?.replace(/Field$/, "") ?? ""
+  );
+};
+
+/**
+ * The dataset's top-level fields (``frames.``-prefixed frame fields for
+ * video), mapped to their display types — the same fields a schema can
+ * hide server-side, including those that cannot be annotated.
+ */
+export const useDatasetFieldTypes = (): Record<string, string> => {
+  const sampleFields = useRecoilValue(fos.sampleFields);
+  const frameFields = useRecoilValue(fos.frameFields);
+  return useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const field of sampleFields ?? []) {
+      if (field.name !== "frames") out[field.name] = datasetFieldType(field);
+    }
+    for (const field of frameFields ?? []) {
+      out[`frames.${field.name}`] = datasetFieldType(field);
+    }
+    return out;
+  }, [sampleFields, frameFields]);
+};
+
 export const useOverviewRows = ({
   datasetSchemas,
+  datasetFields = {},
   doc,
   docMode,
   search,
   activeFields,
 }: {
   datasetSchemas: Record<string, unknown> | null;
+  /** All top-level dataset fields, see :func:`useDatasetFieldTypes`. */
+  datasetFields?: Record<string, string>;
   doc: SchemaDoc | null;
   docMode: boolean;
   search: string;
   activeFields: string[];
 }) => {
   const rowPaths = useMemo(() => {
-    const paths = new Set<string>(Object.keys(datasetSchemas ?? {}));
+    // Fields that cannot be annotated (e.g. GeoLocation) have no
+    // annotation schema, but a schema can still hide them
+    const paths = new Set<string>([
+      ...Object.keys(datasetSchemas ?? {}),
+      ...Object.keys(datasetFields),
+    ]);
     if (docMode && doc) {
       for (const p of Object.keys(doc.label_schema)) paths.add(p);
       for (const p of Object.keys(doc.visibility.fields ?? {})) paths.add(p);
     }
     return [...paths].sort();
-  }, [datasetSchemas, doc, docMode]);
+  }, [datasetSchemas, datasetFields, doc, docMode]);
 
   const activeSet = useMemo(() => new Set(activeFields), [activeFields]);
 
@@ -69,7 +114,9 @@ export const useOverviewRows = ({
         | { label_schema?: unknown; unsupported?: boolean }
         | undefined;
       const system = isSystemReadOnlyField(path);
-      const unsupported = Boolean(meta?.unsupported);
+      // A dataset field without an annotation schema cannot be annotated
+      const unsupported =
+        Boolean(meta?.unsupported) || (!meta && path in datasetFields);
       if (docMode && doc) {
         out.push({
           path,
@@ -92,7 +139,7 @@ export const useOverviewRows = ({
       }
     }
     return out;
-  }, [rowPaths, search, datasetSchemas, docMode, doc]);
+  }, [rowPaths, search, datasetSchemas, datasetFields, docMode, doc]);
 
   const sections = useMemo(() => {
     const order = new Map(activeFields.map((p, i) => [p, i]));
@@ -100,22 +147,24 @@ export const useOverviewRows = ({
       (order.get(a.path) ?? 1e9) - (order.get(b.path) ?? 1e9) ||
       a.path.localeCompare(b.path);
     const visible = rows.filter((r) => r.tier !== "hidden");
-    // Selectable (hideable) rows first; every un-selectable row — the
-    // protected paths that can be set up but never hidden, then system
-    // fields — sits together at the bottom of Active.
-    const hideable = (r: RowData) =>
-      !r.system && !r.unsupported && !PROTECTED_PATHS.has(r.path);
+    // Selectable (hideable) rows first, unsupported ones (hideable but
+    // never annotatable) last among them; every un-selectable row — the
+    // protected paths that can never be hidden, then system fields —
+    // sits together at the bottom of Active.
+    const hideable = (r: RowData) => !r.system && !PROTECTED_PATHS.has(r.path);
+    const unsupportedLast = (a: RowData, b: RowData) =>
+      Number(a.unsupported) - Number(b.unsupported);
     return {
       scanned: visible
         .filter((r) => r.setUp && hideable(r))
         .sort(byStoredOrder),
-      unscanned: visible.filter((r) => !r.setUp && hideable(r)),
+      unscanned: visible
+        .filter((r) => !r.setUp && hideable(r))
+        .sort(unsupportedLast),
       unhideable: visible
-        .filter(
-          (r) => !r.system && !r.unsupported && PROTECTED_PATHS.has(r.path),
-        )
+        .filter((r) => !r.system && PROTECTED_PATHS.has(r.path))
         .sort(byStoredOrder),
-      system: visible.filter((r) => r.system || r.unsupported),
+      system: visible.filter((r) => r.system),
       hidden: rows.filter((r) => r.tier === "hidden"),
     };
   }, [rows, activeFields]);
@@ -126,9 +175,11 @@ export const useOverviewRows = ({
     useMemo(
       () =>
         atom((get) =>
-          Object.fromEntries(rowPaths.map((p) => [p, get(fieldType(p))])),
+          Object.fromEntries(
+            rowPaths.map((p) => [p, get(fieldType(p)) ?? datasetFields[p]]),
+          ),
         ),
-      [rowPaths],
+      [rowPaths, datasetFields],
     ),
   );
   const rowAttrCounts = useAtomValue(
