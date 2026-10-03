@@ -211,7 +211,7 @@ class OpenLABELImageDatasetImporter(
 
     def setup(self):
         image_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True
+            self.data_path, ignore_exts=True, skip_exts=".json", recursive=True
         )
 
         file_ids = []
@@ -428,7 +428,7 @@ class OpenLABELVideoDatasetImporter(
 
     def setup(self):
         video_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True
+            self.data_path, ignore_exts=True, skip_exts=".json", recursive=True
         )
 
         file_ids = []
