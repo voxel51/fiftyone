@@ -6,10 +6,17 @@ import {
   renderHook,
   screen,
 } from "@testing-library/react";
+import {
+  atom,
+  createStore,
+  Provider as JotaiProvider,
+  useAtomValue,
+} from "jotai";
 import React, { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useTileDuplicator } from "./use-tile-state";
+import { useTileDuplicator, useTileTypes } from "./use-tile-state";
 import { useTileRegistry } from "./use-tile-registry";
+import { registeredTilesAtom } from "./atoms";
 import {
   TileIdScope,
   TileSettingsContent,
@@ -1094,6 +1101,115 @@ describe("spawn operations", () => {
       expect(newId).toBeNull();
       expect(result.current.layout).toBe("camera-1");
       expect(result.current.tiles["camera-1"]).toBeDefined();
+    });
+  });
+
+  describe("store binding", () => {
+    // An atom the surrounding app owns — the kind of thing a looker or a
+    // sidebar reads with a plain `useAtomValue`. The host writes it into
+    // its own store; a tile body must keep seeing that value, because
+    // tiling never mounts a Jotai <Provider> of its own.
+    const hostAtom = atom("unset");
+
+    function HostAtomProbe({ onValue }: { onValue: (v: string) => void }) {
+      const value = useAtomValue(hostAtom);
+      useEffect(() => {
+        onValue(value);
+      }, [onValue, value]);
+      return null;
+    }
+
+    it("tile bodies read the surrounding app's store, not a tiling one", () => {
+      const hostStore = createStore();
+      hostStore.set(hostAtom, "from-host");
+      const seen: string[] = [];
+      render(
+        <JotaiProvider store={hostStore}>
+          <TilingProvider>
+            <HostAtomProbe onValue={(v) => seen.push(v)} />
+          </TilingProvider>
+        </JotaiProvider>,
+      );
+      expect(seen).toEqual(["from-host"]);
+    });
+
+    it("keeps tiling atoms private per provider without touching the ambient store", () => {
+      const hostStore = createStore();
+      function Registrar({ type }: { type: string }) {
+        const { registerTile } = useTileRegistry();
+        useEffect(
+          () =>
+            registerTile({
+              type,
+              typeLabel: type,
+              icon: "grid_view" as never,
+              Tile: () => null,
+            }),
+          [registerTile, type],
+        );
+        return null;
+      }
+      function TypesProbe({ onTypes }: { onTypes: (t: string[]) => void }) {
+        const types = useTileTypes();
+        useEffect(() => {
+          onTypes(types.map((t) => t.type));
+        }, [onTypes, types]);
+        return null;
+      }
+      const a: string[][] = [];
+      const b: string[][] = [];
+      render(
+        <JotaiProvider store={hostStore}>
+          <TilingProvider>
+            <Registrar type="camera" />
+            <TypesProbe onTypes={(t) => a.push(t)} />
+          </TilingProvider>
+          <TilingProvider>
+            <Registrar type="lidar" />
+            <TypesProbe onTypes={(t) => b.push(t)} />
+          </TilingProvider>
+        </JotaiProvider>,
+      );
+      expect(a.at(-1)).toEqual(["camera"]);
+      expect(b.at(-1)).toEqual(["lidar"]);
+      expect(hostStore.get(registeredTilesAtom)).toEqual([]);
+    });
+
+    it("binds tiling atoms to its own store even when a tile body nests a Jotai Provider", () => {
+      // A tile body that mounts its own Jotai <Provider> must not hide the
+      // registry from tiling hooks rendered below it.
+      const innerStore = createStore();
+      function Registrar() {
+        const { registerTile } = useTileRegistry();
+        useEffect(
+          () =>
+            registerTile({
+              type: "camera",
+              typeLabel: "Camera",
+              icon: "grid_view" as never,
+              Tile: () => null,
+            }),
+          [registerTile],
+        );
+        return null;
+      }
+      function TypesProbe({ onTypes }: { onTypes: (n: number) => void }) {
+        const types = useTileTypes();
+        useEffect(() => {
+          onTypes(types.length);
+        }, [onTypes, types]);
+        return null;
+      }
+      const counts: number[] = [];
+      render(
+        <TilingProvider>
+          <Registrar />
+          <JotaiProvider store={innerStore}>
+            <TypesProbe onTypes={(n) => counts.push(n)} />
+          </JotaiProvider>
+        </TilingProvider>,
+      );
+      expect(counts.at(-1)).toBe(1);
     });
   });
 });

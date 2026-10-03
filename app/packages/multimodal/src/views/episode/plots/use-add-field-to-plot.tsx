@@ -14,6 +14,7 @@ import {
 } from "./plot-tile-state";
 import PlotTile from "./PlotTile";
 import { TILE_TYPE } from "../tiles/tile-types";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * Adds a raw-message numeric field to the first existing plot tile, or
@@ -23,10 +24,13 @@ export function useAddFieldToPlot(): (
   stream: string,
   fieldPath: string,
 ) => void {
+  const store = useEpisodeStore();
   const { addTile, focusedTileId, layout, setFocusedTileId, tiles } =
     useTiling();
-  const setResetZoomRevision = useSetAtom(plotTileResetZoomRevisionAtom);
-  const setPlotTileSeries = useSetAtom(plotTileSeriesAtom);
+  const setResetZoomRevision = useSetAtom(plotTileResetZoomRevisionAtom, {
+    store,
+  });
+  const setPlotTileSeries = useSetAtom(plotTileSeriesAtom, { store });
   const stateRef = useRef({ focusedTileId, layout, tiles });
   stateRef.current = { focusedTileId, layout, tiles };
 

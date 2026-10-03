@@ -28,6 +28,7 @@ import {
   type TimelineMode,
   type Track,
 } from "@fiftyone/playback";
+import { EpisodeStoreProvider } from "../../../extensions/host/episode-store";
 import { SceneInventoryProvider } from "../../../scene-inventory/react/index";
 import type { SceneSource } from "../../../scene-inventory/index";
 import { WebGpuViewStage } from "../../../visualization/webgpu/WebGpuViewStage";
@@ -306,54 +307,56 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
         persistKey={pinPersistKey}
       >
         <SceneInventoryProvider sources={sceneSources}>
-          <TilingProvider
-            initialTiles={initialTiles}
-            initialManualTileTitles={initialManualTileTitles}
-            autoLayoutStrategy={autoLayoutStrategy}
-            initialLayout={initialLayout}
-            initialExpandedTileId={initialExpandedTileId}
-            resetTiles={resetTiles}
-            resetManualTileTitles={resetManualTileTitles}
-            resetLayout={resetLayout}
-            resetLayoutStrategy={resetLayoutStrategy}
-          >
-            {children}
-            <TileMediaEpisodePublisher />
-            <Layout
-              fileName={fileName}
-              headerCaption={headerCaption}
-              headerActions={headerActions}
-              addTileMenu={addTileMenu}
-              timelineReadouts={timelineReadouts}
-              timelineExtraActions={timelineExtraActions}
-              timelineTrailingActions={timelineTrailingActions}
-              leftSidebar={leftSidebar}
-              rightSidebar={rightSidebar}
-              deselectFocusedTileOnRepeatSelect={
-                deselectFocusedTileOnRepeatSelect
-              }
-              defaultLeftOpen={defaultLeftOpen}
-              defaultRightOpen={defaultRightOpen}
-              onLeftOpenChange={onLeftOpenChange}
-              onRightOpenChange={onRightOpenChange}
-              mainOverlay={mainOverlay}
-              leftSidebarWidth={leftSidebarWidth}
-              onLeftSidebarWidthChange={onLeftSidebarWidthChange}
-              existingTags={existingTags}
-              onTagCreate={onTagCreate}
-              onTagUpdate={onTagUpdate}
-              onTagDelete={onTagDelete}
-              onTimelineDrawerOpenChange={onTimelineDrawerOpenChange}
-              timelineDrawerMaxSize={timelineDrawerMaxSize}
-              sharedImageWebGpuViews={sharedImageWebGpuViews}
-              className={className}
-              // Start with the tracks drawer collapsed. Pinned tracks remain
-              // visible below the ruler until the user expands the drawer.
-              timelineDrawerDefaultOpen={false}
-              decorateTrack={decorateTrack}
-              timelineRulerOverlay={timelineRulerOverlay}
-            />
-          </TilingProvider>
+          <EpisodeStoreProvider>
+            <TilingProvider
+              initialTiles={initialTiles}
+              initialManualTileTitles={initialManualTileTitles}
+              autoLayoutStrategy={autoLayoutStrategy}
+              initialLayout={initialLayout}
+              initialExpandedTileId={initialExpandedTileId}
+              resetTiles={resetTiles}
+              resetManualTileTitles={resetManualTileTitles}
+              resetLayout={resetLayout}
+              resetLayoutStrategy={resetLayoutStrategy}
+            >
+              {children}
+              <TileMediaEpisodePublisher />
+              <Layout
+                fileName={fileName}
+                headerCaption={headerCaption}
+                headerActions={headerActions}
+                addTileMenu={addTileMenu}
+                timelineReadouts={timelineReadouts}
+                timelineExtraActions={timelineExtraActions}
+                timelineTrailingActions={timelineTrailingActions}
+                leftSidebar={leftSidebar}
+                rightSidebar={rightSidebar}
+                deselectFocusedTileOnRepeatSelect={
+                  deselectFocusedTileOnRepeatSelect
+                }
+                defaultLeftOpen={defaultLeftOpen}
+                defaultRightOpen={defaultRightOpen}
+                onLeftOpenChange={onLeftOpenChange}
+                onRightOpenChange={onRightOpenChange}
+                mainOverlay={mainOverlay}
+                leftSidebarWidth={leftSidebarWidth}
+                onLeftSidebarWidthChange={onLeftSidebarWidthChange}
+                existingTags={existingTags}
+                onTagCreate={onTagCreate}
+                onTagUpdate={onTagUpdate}
+                onTagDelete={onTagDelete}
+                onTimelineDrawerOpenChange={onTimelineDrawerOpenChange}
+                timelineDrawerMaxSize={timelineDrawerMaxSize}
+                sharedImageWebGpuViews={sharedImageWebGpuViews}
+                className={className}
+                // Start with the tracks drawer collapsed. Pinned tracks remain
+                // visible below the ruler until the user expands the drawer.
+                timelineDrawerDefaultOpen={false}
+                decorateTrack={decorateTrack}
+                timelineRulerOverlay={timelineRulerOverlay}
+              />
+            </TilingProvider>
+          </EpisodeStoreProvider>
         </SceneInventoryProvider>
       </TrackProvider>
     </PlaybackProvider>

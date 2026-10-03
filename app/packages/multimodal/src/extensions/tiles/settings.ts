@@ -1,6 +1,7 @@
 import { useTileId } from "@fiftyone/tiling";
 import { atom, useAtom, type SetStateAction } from "jotai";
 import { useCallback } from "react";
+import { useEpisodeStore } from "../host/episode-store";
 
 /** Opaque extension settings indexed by their host-assigned tile id. */
 export type EpisodeTileExtensionSettingsByTile = Readonly<
@@ -18,8 +19,11 @@ export const episodeTileExtensionSettingsAtom =
 export function useEpisodeTileExtensionSettings<Value>(
   defaultValue: Value,
 ): readonly [Value, (value: SetStateAction<Value>) => void] {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const [byTile, setByTile] = useAtom(episodeTileExtensionSettingsAtom);
+  const [byTile, setByTile] = useAtom(episodeTileExtensionSettingsAtom, {
+    store,
+  });
   const value =
     tileId && Object.hasOwn(byTile, tileId)
       ? (byTile[tileId] as Value)

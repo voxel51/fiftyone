@@ -9,6 +9,7 @@ import { useSceneInventory } from "../../../scene-inventory/react";
 import { timelineSecondsForContentTimeNs } from "../playback/content-time-seek";
 import { useDataStream } from "../playback/data-stream-context";
 import { useOpenImageTile } from "./use-open-image-tile";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /**
  * Publishes the episode's media commands into
@@ -19,11 +20,12 @@ import { useOpenImageTile } from "./use-open-image-tile";
  * `PlaybackShell` inside its tiling scope.
  */
 export const TileMediaEpisodePublisher: React.FC = () => {
+  const store = useEpisodeStore();
   const { pause, seek } = usePlayback();
   const openImageTile = useOpenImageTile();
   const sources = useSceneInventory();
   const dataStream = useDataStream();
-  const setEpisode = useSetAtom(tileMediaEpisodeAtom);
+  const setEpisode = useSetAtom(tileMediaEpisodeAtom, { store });
 
   // The command closures read refs so the published object survives
   // per-frame churn in its inputs.

@@ -1,5 +1,5 @@
 import { collectTileIds, useTiling, type TilingTile } from "@fiftyone/tiling";
-import { useStore, type Atom, type PrimitiveAtom } from "jotai";
+import { type Atom, type PrimitiveAtom } from "jotai";
 import React, {
   useCallback,
   useEffect,
@@ -76,6 +76,10 @@ import {
   defaultTimelineSamplingRateHz,
   normalizeTimelineSamplingRateHz,
 } from "../playback/timeline-sampling";
+import {
+  type EpisodeStore,
+  useEpisodeStore,
+} from "../../../extensions/host/episode-store";
 
 export interface ModalLayout {
   initialTiles: Record<string, TilingTile>;
@@ -624,7 +628,7 @@ export function ModalLayoutPersistence({
   expandedTileIdRef.current = expandedTileId;
   const datasetIdRef = useRef(datasetId);
   datasetIdRef.current = datasetId;
-  const store = useStore();
+  const store = useEpisodeStore();
   const capture = useCallback(
     () =>
       serializePortableLayout(
@@ -1013,7 +1017,7 @@ type PersistedTileAtomField =
 
 /** Remove durable bindings only when their pane leaves the live layout. */
 function usePrunePersistedTileBindings(
-  store: ReturnType<typeof useStore>,
+  store: EpisodeStore,
   tiles: Readonly<Record<string, TilingTile>>,
   tileType: TileType,
   bindingsAtom: PrimitiveAtom<Readonly<Record<string, string>>>,
@@ -1056,7 +1060,7 @@ function useSeedPersistedTileAtom<TileValue>({
   readonly datasetIdRef: React.MutableRefObject<string | undefined>;
   readonly field: PersistedTileAtomField;
   readonly seededKeyRef: React.MutableRefObject<string | null>;
-  readonly store: ReturnType<typeof useStore>;
+  readonly store: EpisodeStore;
   readonly tilesRef: React.MutableRefObject<Record<string, TilingTile>>;
 }) {
   // This effect seeds one tile-scoped atom from persisted layout state.
@@ -1097,7 +1101,7 @@ function useDebouncedLayoutAtomMirror<Value>({
   readonly datasetIdRef: React.MutableRefObject<string | undefined>;
   readonly patchForValue: (value: Value) => Partial<PersistedModalLayout>;
   readonly seededKeyRef: React.MutableRefObject<string | null>;
-  readonly store: ReturnType<typeof useStore>;
+  readonly store: EpisodeStore;
 }) {
   // This effect mirrors atom changes to storage and flushes them on cleanup.
   useEffect(() => {
