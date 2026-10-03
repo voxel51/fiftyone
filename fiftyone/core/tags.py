@@ -25,11 +25,19 @@ import os
 from typing import Iterable
 
 from bson import ObjectId
-from pymongo import ASCENDING, InsertOne, ReturnDocument, UpdateMany, UpdateOne
+from pymongo import (
+    ASCENDING,
+    IndexModel,
+    InsertOne,
+    ReturnDocument,
+    UpdateMany,
+    UpdateOne,
+)
 from pymongo.errors import DuplicateKeyError
 
 import eta.core.utils as etau
 
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
@@ -54,6 +62,9 @@ TAGS_COLLECTION_NAME = "tags"
 TAGS_EXPORT_FILENAME = "tags.json"
 TAGS_EXPORT_KEY = "tags"
 
+# Must stay the unique index's keys after `_dataset_id` and `kind`, in that
+# order: reads pin those two, so the index returns this order without an
+# in-memory sort, and its uniqueness makes the order total.
 _TAG_SORT = [
     ("_sample_id", ASCENDING),
     ("index_type", ASCENDING),
@@ -61,7 +72,6 @@ _TAG_SORT = [
     ("start", ASCENDING),
     ("end", ASCENDING),
     ("tag", ASCENDING),
-    ("_id", ASCENDING),
 ]
 
 
@@ -247,12 +257,11 @@ class TemporalTags(object):
     """
 
     def __init__(self, sample_collection):
-        dataset, sample_collection, sample_ids = _resolve_sample_collection(
+        dataset, sample_collection = _resolve_sample_collection(
             sample_collection
         )
         self._dataset = dataset
         self._sample_collection = sample_collection
-        self._sample_ids = sample_ids
 
     def __str__(self):
         return "<%s: %s>" % (
@@ -264,17 +273,19 @@ class TemporalTags(object):
         return "<%s: %s>" % (self.__class__.__name__, len(self))
 
     def __bool__(self):
-        return len(self) > 0
+        collection = _get_collection()
+        projection = {"_id": False, "_dataset_id": True}
+        return any(
+            collection.find_one(query, projection) is not None
+            for query in self._scoped_queries(None)
+        )
 
     def __len__(self):
-        collection = _get_existing_collection()
-        if collection is None:
-            return 0
-
-        query = _build_query(
-            self._dataset._doc.id, None, sample_ids=self._sample_ids
+        return _count_scoped_tags(
+            _build_query(self._dataset._doc.id, None),
+            self._dataset,
+            self._sample_collection,
         )
-        return collection.count_documents(query)
 
     def __iter__(self):
         return self.keys()
@@ -343,15 +354,21 @@ class TemporalTags(object):
         Returns:
             an iterator over :class:`TemporalTag` instances
         """
-        query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
+        queries = self._scoped_queries(filter, ordered=True)
+        collection = _get_collection()
+        return (
+            _from_storage_doc(doc)
+            for query in queries
+            for doc in collection.find(query, hint=_read_hint(query)).sort(
+                _TAG_SORT
+            )
         )
-        collection = _get_existing_collection()
-        if collection is None:
-            return iter(())
 
-        docs = collection.find(query).sort(_TAG_SORT)
-        return (_from_storage_doc(doc) for doc in docs)
+    def _scoped_queries(self, filter, ordered=False):
+        query = _build_query(self._dataset._doc.id, filter)
+        return _scoped_queries(
+            query, self._dataset, self._sample_collection, ordered=ordered
+        )
 
     def add(self, tags: TemporalTag | Iterable[TemporalTag]):
         """Adds temporal tags to this collection.
@@ -417,17 +434,26 @@ class TemporalTags(object):
                     upsert=True,
                 )
 
-        collection = _get_or_create_collection()
+        collection = _get_collection()
         collection.bulk_write(list(ops_by_key.values()), ordered=False)
         _touch_parent_last_modified_at(self._dataset, sample_ids.values(), now)
 
-        persisted_docs = collection.find(
-            {
-                "_dataset_id": self._dataset._doc.id,
-                "$or": [_query_from_unique_key(key) for key in set(keys)],
-            }
-        )
-        docs_by_key = {_unique_key(doc): doc for doc in persisted_docs}
+        # Read back by sample rather than by one clause per tag: MongoDB plans
+        # an $or clause by clause, which grows far faster than the tag count
+        wanted = set(keys)
+        docs_by_key = {}
+        for batch in _iter_sample_id_batches(
+            sorted({key[0] for key in wanted})
+        ):
+            for doc in collection.find(
+                {
+                    "_dataset_id": self._dataset._doc.id,
+                    "_sample_id": {"$in": list(batch)},
+                }
+            ):
+                key = _unique_key(doc)
+                if key in wanted:
+                    docs_by_key[key] = doc
 
         return [_from_storage_doc(docs_by_key[key]) for key in keys]
 
@@ -454,21 +480,20 @@ class TemporalTags(object):
             the updated :class:`TemporalTag`
         """
         tag_id = _ensure_object_id(id, "id")
-        collection = _get_existing_collection()
-        if collection is None:
-            raise TemporalTagNotFoundError(
-                "Temporal tag not found: %s" % tag_id
-            )
-
+        collection = _get_collection()
         query = {
             "_dataset_id": self._dataset._doc.id,
             "_id": tag_id,
             "kind": TagKind.TEMPORAL.value,
         }
-        if self._sample_ids is not None:
-            query["_sample_id"] = _build_in_query(list(self._sample_ids))
+        existing_doc = None
+        for scoped_query in _scoped_queries(
+            query, self._dataset, self._sample_collection
+        ):
+            existing_doc = collection.find_one(scoped_query)
+            if existing_doc is not None:
+                break
 
-        existing_doc = collection.find_one(query)
         if existing_doc is None:
             raise TemporalTagNotFoundError(
                 "Temporal tag not found: %s" % tag_id
@@ -537,9 +562,7 @@ class TemporalTags(object):
         Returns:
             the number of deleted temporal tags
         """
-        query = _build_query(
-            self._dataset._doc.id, filter, sample_ids=self._sample_ids
-        )
+        query = _build_query(self._dataset._doc.id, filter)
         has_selector = filter is not None and not _is_empty_filter(filter)
 
         if ids is not None:
@@ -557,12 +580,15 @@ class TemporalTags(object):
                 "dataset"
             )
 
-        collection = _get_existing_collection()
-        if collection is None:
-            return 0
+        collection = _get_collection()
+        sample_ids = []
+        deleted_count = 0
+        for scoped_query in _scoped_queries(
+            query, self._dataset, self._sample_collection
+        ):
+            sample_ids.extend(_tagged_sample_ids(scoped_query))
+            deleted_count += collection.delete_many(scoped_query).deleted_count
 
-        sample_ids = collection.distinct("_sample_id", query)
-        deleted_count = collection.delete_many(query).deleted_count
         if deleted_count:
             _touch_parent_last_modified_at(
                 self._dataset, sample_ids, _utcnow()
@@ -596,39 +622,27 @@ class TemporalTags(object):
         Returns:
             a dict mapping tag values to counts
         """
-        match = {
-            "$match": _build_query(
-                self._dataset._doc.id,
-                filter,
-                sample_ids=self._sample_ids,
-            )
-        }
         if by_sample:
             # Two-stage group: first dedupe to one row per (tag, sample), then
             # count rows per tag. Avoids building a large per-tag array (which
             # could hit MongoDB's 16MB BSON / 100MB $addToSet limits on big
             # tag groups).
-            pipeline = [
-                match,
+            groups = [
                 {"$group": {"_id": {"tag": "$tag", "sample": "$_sample_id"}}},
                 {"$group": {"_id": "$_id.tag", "count": {"$sum": 1}}},
-                {"$sort": {"_id": 1}},
             ]
         else:
-            pipeline = [
-                match,
-                {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
-                {"$sort": {"_id": 1}},
-            ]
+            groups = [{"$group": {"_id": "$tag", "count": {"$sum": 1}}}]
 
-        collection = _get_existing_collection()
-        if collection is None:
-            return {}
+        # Scoped batches hold disjoint samples, so per-sample counts add up
+        collection = _get_collection()
+        counts = {}
+        for query in self._scoped_queries(filter):
+            for result in collection.aggregate([{"$match": query}] + groups):
+                tag = result["_id"]
+                counts[tag] = counts.get(tag, 0) + result["count"]
 
-        return {
-            result["_id"]: result["count"]
-            for result in collection.aggregate(pipeline)
-        }
+        return dict(sorted(counts.items()))
 
 
 def add_temporal_tags(dataset, tags: TemporalTag | Iterable[TemporalTag]):
@@ -668,6 +682,25 @@ def list_temporal_tags(
     """
 
     return list(TemporalTags(dataset).values(filter=filter))
+
+
+def list_temporal_tag_sample_ids(
+    dataset, filter: TemporalTagFilter | None = None
+) -> list[str]:
+    """Lists the IDs of the samples of a dataset that carry a matching
+    temporal tag.
+
+    Each sample is listed once, however many matching tags it carries.
+
+    Args:
+        dataset: a :class:`fiftyone.Dataset`
+        filter (None): an optional :class:`TemporalTagFilter`
+
+    Returns:
+        a list of sample IDs
+    """
+    _validate_dataset(dataset)
+    return _tagged_sample_ids(_build_query(dataset._doc.id, filter))
 
 
 def delete_temporal_tags(
@@ -776,10 +809,7 @@ def count_temporal_tags_per_sample(dataset) -> dict[str, dict[str, int]]:
         a dict mapping sample IDs to dicts mapping tag values to the number of
         intervals of that tag on the sample
     """
-    collection = _get_existing_collection()
-    if collection is None:
-        return {}
-
+    collection = _get_collection()
     pipeline = [
         {"$match": _build_query(dataset._doc.id, None)},
         {
@@ -799,20 +829,14 @@ def count_temporal_tags_per_sample(dataset) -> dict[str, dict[str, int]]:
 
 
 def delete_for_dataset_id(dataset_id) -> int:
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.delete_many(
         {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
     ).deleted_count
 
 
 def delete_for_sample_ids(dataset_id, sample_ids) -> int:
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     sample_ids = list(sample_ids)
     if not sample_ids:
         return 0
@@ -836,20 +860,14 @@ def delete_for_sample_ids(dataset_id, sample_ids) -> int:
 
 
 def count_for_dataset_id(dataset_id) -> int:
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.count_documents(
         {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
     )
 
 
 def get_orphan_dataset_ids(dataset_ids) -> list:
-    collection = _get_existing_collection()
-    if collection is None:
-        return []
-
+    collection = _get_collection()
     dataset_ids = set(dataset_ids)
     orphan_dataset_ids = [
         dataset_id
@@ -865,10 +883,7 @@ def count_for_dataset_ids(dataset_ids) -> int:
     if not dataset_ids:
         return 0
 
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.count_documents(
         {
             "_dataset_id": _build_in_query(dataset_ids),
@@ -882,10 +897,7 @@ def delete_for_dataset_ids(dataset_ids) -> int:
     if not dataset_ids:
         return 0
 
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
-
+    collection = _get_collection()
     return collection.delete_many(
         {
             "_dataset_id": _build_in_query(dataset_ids),
@@ -900,49 +912,44 @@ def clone_tags(
     if now is None:
         now = _utcnow()
 
-    collection = _get_existing_collection()
-    if collection is None:
-        return 0
+    collection = _get_collection()
+    queries = _scoped_queries(
+        _build_query(source_dataset._doc.id, None),
+        source_dataset,
+        sample_collection,
+    )
 
-    sample_ids = _get_sample_scope(source_dataset, sample_collection)
-    query = _build_query(source_dataset._doc.id, None, sample_ids=sample_ids)
+    num_inserted = 0
+    for query in queries:
+        ops = []
+        for doc in collection.find(query, {"_id": False}):
+            doc["_dataset_id"] = target_dataset._doc.id
+            _fill_missing_timestamps(doc, now)
+            ops.append(InsertOne(doc))
 
-    ops = []
-    for doc in collection.find(query, {"_id": False}):
-        doc["_dataset_id"] = target_dataset._doc.id
-        _fill_missing_timestamps(doc, now)
-        ops.append(InsertOne(doc))
+        if ops:
+            num_inserted += collection.bulk_write(
+                ops, ordered=False
+            ).inserted_count
 
-    if not ops:
-        return 0
-
-    return collection.bulk_write(ops, ordered=False).inserted_count
+    return num_inserted
 
 
 def export_tags(sample_collection, export_path, progress=None) -> int:
-    dataset, _, sample_ids = _resolve_sample_collection(sample_collection)
-    query = _build_query(dataset._doc.id, None, sample_ids=sample_ids)
-
-    collection = _get_existing_collection()
-    if collection is None:
-        _delete_temporal_tags_export(export_path)
-        return 0
-
-    num_docs = collection.count_documents(query)
+    dataset, sample_collection = _resolve_sample_collection(sample_collection)
+    query = _build_query(dataset._doc.id, None)
+    num_docs = _count_scoped_tags(query, dataset, sample_collection)
     if num_docs == 0:
         _delete_temporal_tags_export(export_path)
         return 0
 
-    docs = collection.find(query).sort(
-        [
-            ("_sample_id", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("tag", ASCENDING),
-            ("_id", ASCENDING),
-        ]
+    collection = _get_collection()
+    docs = (
+        doc
+        for scoped_query in _scoped_queries(
+            query, dataset, sample_collection, ordered=True
+        )
+        for doc in collection.find(scoped_query).sort(_TAG_SORT)
     )
 
     foo.export_collection(
@@ -987,12 +994,7 @@ def _resolve_sample_collection(sample_collection):
 
     _validate_dataset(dataset)
 
-    if isinstance(sample_collection, fov.DatasetView):
-        sample_ids = _get_sample_scope(dataset, sample_collection)
-    else:
-        sample_ids = None
-
-    return dataset, sample_collection, sample_ids
+    return dataset, sample_collection
 
 
 def _validate_dataset(dataset) -> None:
@@ -1025,11 +1027,92 @@ def _ensure_temporal_tag_list(tags) -> list[TemporalTag]:
     return tags
 
 
-def _get_sample_scope(dataset, sample_collection=None):
-    if sample_collection is None or sample_collection is dataset:
-        return None
+def _tagged_sample_ids(query) -> list[str]:
+    kwargs = {}
+    hint = _read_hint(query)
+    if hint is not None:
+        kwargs["hint"] = hint
 
-    return list(sample_collection.values("_id"))
+    return [
+        str(doc["_id"])
+        for doc in _get_collection().aggregate(
+            [{"$match": query}, {"$group": {"_id": "$_sample_id"}}], **kwargs
+        )
+    ]
+
+
+# A view's sample IDs per tag query. Each query is one round trip, so this is
+# as large as stays well under MongoDB's 16MB command limit: an ObjectId in an
+# `$in` array takes about 20 bytes, so 500,000 of them take about 10MB
+_MAX_SCOPE_IDS = 500000
+
+
+def _scoped_queries(query, dataset, sample_collection=None, ordered=False):
+    """Yields ``query`` restricted to the samples of ``sample_collection``.
+
+    A query that already names tags or samples is scoped by the few samples it
+    matches; any other is scoped by the view's own samples. Each query holds a
+    batch of sample IDs, so it stays under MongoDB's command size limit. With
+    ``ordered``, the batches are in ascending ID order, so their results, one
+    after another, are in ``_TAG_SORT`` order; otherwise the view's IDs are
+    streamed, and a caller that stops early reads no more of them.
+    """
+    if not isinstance(sample_collection, fov.DatasetView):
+        yield query
+        return
+
+    # A view without stages holds every sample of a non-grouped dataset
+    if not sample_collection._stages and dataset.media_type != fom.GROUP:
+        yield query
+        return
+
+    if "_id" in query or "_sample_id" in query:
+        # ObjectId hex strings all have the same length, so they sort as the
+        # IDs do
+        tagged_ids = sorted(_tagged_sample_ids(query))
+        batches = (
+            sample_collection.select(batch).values("_id")
+            for batch in _iter_sample_id_batches(tagged_ids)
+        )
+    elif ordered:
+        batches = fou.iter_batches(
+            sorted(
+                sample_collection.values("_id", _enforce_natural_order=False)
+            ),
+            _MAX_SCOPE_IDS,
+        )
+    else:
+        batches = fou.iter_batches(
+            sample_collection._iter_values(
+                "_id", _enforce_natural_order=False
+            ),
+            _MAX_SCOPE_IDS,
+        )
+
+    for sample_ids in batches:
+        if sample_ids:
+            yield {**query, "_sample_id": {"$in": list(sample_ids)}}
+
+
+def _iter_sample_id_batches(sample_ids):
+    batch_size = fou.recommend_batch_size_for_value(
+        ObjectId(), max_size=100000
+    )
+    return fou.iter_batches(sample_ids, batch_size)
+
+
+def _count_scoped_tags(query, dataset, sample_collection=None) -> int:
+    """Counts the tags matching ``query`` on the samples of
+    ``sample_collection``.
+    """
+    collection = _get_collection()
+    return sum(
+        result["count"]
+        for scoped_query in _scoped_queries(query, dataset, sample_collection)
+        for result in collection.aggregate(
+            [{"$match": scoped_query}, {"$count": "count"}]
+        )
+    )
 
 
 def _validate_sample_ids_exist(
@@ -1043,18 +1126,20 @@ def _validate_sample_ids_exist(
         sample_id_map[str(sample_id)] = sample_oid
         sample_oids.append(sample_oid)
 
-    if isinstance(sample_collection, fov.DatasetView):
-        found_values = sample_collection.values("_id")
-        if found_values is None:
-            found_values = []
-
-        found = set(found_values)
-    else:
-        found = set(
-            sample_collection._sample_collection.distinct(
-                "_id", {"_id": {"$in": sample_oids}}
+    found = set()
+    for batch in _iter_sample_id_batches(sample_oids):
+        if isinstance(sample_collection, fov.DatasetView):
+            found.update(
+                sample_collection.select(
+                    [str(sample_oid) for sample_oid in batch]
+                )._iter_values("_id")
             )
-        )
+        else:
+            found.update(
+                sample_collection._sample_collection.distinct(
+                    "_id", {"_id": {"$in": list(batch)}}
+                )
+            )
 
     missing = [
         str(sample_id) for sample_id in sample_oids if sample_id not in found
@@ -1216,13 +1301,8 @@ def _from_export_doc(doc) -> TemporalTag:
     )
 
 
-def _build_query(
-    dataset_id, filter: TemporalTagFilter | None, sample_ids=None
-):
+def _build_query(dataset_id, filter: TemporalTagFilter | None):
     query = {"_dataset_id": dataset_id, "kind": TagKind.TEMPORAL.value}
-
-    if sample_ids is not None:
-        query["_sample_id"] = _build_in_query(list(sample_ids))
 
     if filter is None:
         return query
@@ -1231,11 +1311,6 @@ def _build_query(
         filter_sample_ids = _ensure_object_id_list(
             filter.sample_ids, "sample_ids"
         )
-        if sample_ids is not None:
-            filter_sample_ids = _intersect_sample_ids(
-                filter_sample_ids, sample_ids
-            )
-
         query["_sample_id"] = _build_in_query(filter_sample_ids)
 
     if filter.tags is not None:
@@ -1266,13 +1341,6 @@ def _build_query(
         raise ValueError("Temporal tag filters must satisfy start < end")
 
     return query
-
-
-def _intersect_sample_ids(filter_sample_ids, sample_ids):
-    sample_ids = set(sample_ids)
-    return [
-        sample_id for sample_id in filter_sample_ids if sample_id in sample_ids
-    ]
 
 
 def _is_empty_filter(filter: TemporalTagFilter) -> bool:
@@ -1475,31 +1543,43 @@ def _unique_key(doc):
     )
 
 
-def _query_from_unique_key(key):
-    sample_id, kind, index_type, anchor, start, end, tag = key
-    return {
-        "_sample_id": sample_id,
-        "kind": kind,
-        "index_type": index_type,
-        "anchor": anchor,
-        "start": start,
-        "end": end,
-        "tag": tag,
-    }
+_INDEXED_COLLECTIONS = set()
 
 
-def _get_or_create_collection():
+def _get_collection():
     collection = foo.get_db_conn()[TAGS_COLLECTION_NAME]
-    _ensure_indexes(collection)
+
+    # Indexes are created once per process, on first use. The unique index is
+    # what keeps concurrent upserts from inserting the same tag twice, so a
+    # tags collection dropped while this process runs gets it back only on
+    # restart
+    key = (collection.database.name, collection.name)
+    if key not in _INDEXED_COLLECTIONS:
+        _ensure_indexes(collection)
+        _INDEXED_COLLECTIONS.add(key)
+
     return collection
 
 
-def _get_existing_collection():
-    db = foo.get_db_conn()
-    if TAGS_COLLECTION_NAME not in db.list_collection_names():
+def _read_hint(query):
+    """The index for a read filtered by tag or anchor.
+
+    The planner otherwise prefers the unique index whenever several values are
+    requested, because it returns the tag sort order, but it then reads every
+    tag of the dataset (or of the view's samples) to find the matches. The tag
+    index leads with the tag and then the sample, so it also serves a tag
+    filter within one sample or a view.
+    """
+    if "tag" in query:
+        return _TAG_INDEX
+
+    if "_sample_id" in query:
         return None
 
-    return db[TAGS_COLLECTION_NAME]
+    if "anchor" in query:
+        return _ANCHOR_INDEX
+
+    return None
 
 
 def _delete_temporal_tags_export(export_path) -> None:
@@ -1511,71 +1591,56 @@ def _utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+_TAG_INDEX = "temporal_tag_tag_sort"
+_ANCHOR_INDEX = "temporal_tag_anchor_sort"
+
+
 def _ensure_indexes(collection) -> None:
-    collection.create_index(
+    collection.create_indexes(
         [
-            ("_dataset_id", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("tag", ASCENDING),
-        ],
-        name="unique_temporal_tag",
-        unique=True,
-    )
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-        ],
-        name="temporal_tag_overlap",
-    )
-    # Viewer reads usually pin one sample and optionally add a time window,
-    # without necessarily knowing an index type or anchor up front.
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-            ("tag", ASCENDING),
-        ],
-        name="temporal_tag_sample_range",
-    )
-    # Search and track-population flows start from tag values, then need the
-    # matching sample IDs and ranges.
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("tag", ASCENDING),
-            ("_sample_id", ASCENDING),
-            ("start", ASCENDING),
-            ("end", ASCENDING),
-            ("index_type", ASCENDING),
-            ("anchor", ASCENDING),
-        ],
-        name="temporal_tag_tag_lookup",
-    )
-    collection.create_index(
-        [
-            ("_dataset_id", ASCENDING),
-            ("kind", ASCENDING),
-            ("anchor", ASCENDING),
-            ("tag", ASCENDING),
-        ],
-        name="temporal_tag_counts",
+            IndexModel(
+                [
+                    ("_dataset_id", ASCENDING),
+                    ("_sample_id", ASCENDING),
+                    ("kind", ASCENDING),
+                    ("index_type", ASCENDING),
+                    ("anchor", ASCENDING),
+                    ("start", ASCENDING),
+                    ("end", ASCENDING),
+                    ("tag", ASCENDING),
+                ],
+                name="unique_temporal_tag",
+                unique=True,
+            ),
+            # Tag and anchor reads: the value, then `_TAG_SORT` without it, so
+            # a single value streams in sort order and counts are covered
+            IndexModel(
+                [
+                    ("_dataset_id", ASCENDING),
+                    ("kind", ASCENDING),
+                    ("tag", ASCENDING),
+                    ("_sample_id", ASCENDING),
+                    ("index_type", ASCENDING),
+                    ("anchor", ASCENDING),
+                    ("start", ASCENDING),
+                    ("end", ASCENDING),
+                ],
+                name=_TAG_INDEX,
+            ),
+            IndexModel(
+                [
+                    ("_dataset_id", ASCENDING),
+                    ("kind", ASCENDING),
+                    ("anchor", ASCENDING),
+                    ("_sample_id", ASCENDING),
+                    ("index_type", ASCENDING),
+                    ("start", ASCENDING),
+                    ("end", ASCENDING),
+                    ("tag", ASCENDING),
+                ],
+                name=_ANCHOR_INDEX,
+            ),
+        ]
     )
 
 

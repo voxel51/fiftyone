@@ -1027,10 +1027,9 @@ def _match_temporal_tags(
     # select/exclude intersects, so out-of-view tag hits can't leak in. On a
     # grouped view that is the active slice's samples, as with every other
     # sidebar filter.
-    tags = fotags.list_temporal_tags(
+    sample_ids = fotags.list_temporal_tag_sample_ids(
         _root_dataset(view), fotags.TemporalTagFilter(tags=values)
     )
-    sample_ids = {str(tag.sample_id) for tag in tags}
 
     if exclude:
         # Excluding with no matches leaves the view untouched.
@@ -1052,12 +1051,15 @@ def count_temporal_tags(view: foc.SampleCollection) -> dict:
     if not per_sample:
         return {}
 
-    in_view = view.select(list(per_sample.keys())).values("id")
-
+    # Batched so that no select exceeds MongoDB's command size limit
+    batch_size = fou.recommend_batch_size_for_value(
+        ObjectId(), max_size=100000
+    )
     counts = {}
-    for sample_id in in_view:
-        for tag, count in per_sample[sample_id].items():
-            counts[tag] = counts.get(tag, 0) + count
+    for batch in fou.iter_batches(per_sample.keys(), batch_size):
+        for sample_id in view.select(batch)._iter_values("id"):
+            for tag, count in per_sample[sample_id].items():
+                counts[tag] = counts.get(tag, 0) + count
 
     return counts
 
