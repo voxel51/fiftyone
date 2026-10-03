@@ -42,7 +42,7 @@ class FakeWorker {
 const fetchChunks = (w: FakeWorker) =>
   w.posted.filter((m) => m.type === "fetchChunk");
 
-const makeStream = () =>
+const makeStream = (onUnplayable?: (reason: string) => void) =>
   new DynamicGroupImageStream({
     id: "test",
     sampleId: "s1",
@@ -51,6 +51,7 @@ const makeStream = () =>
     frameCount: 120,
     frameRate: 30,
     chunkSize: 4,
+    onUnplayable,
   });
 
 beforeEach(() => {
@@ -100,6 +101,58 @@ describe("DynamicGroupImageStream failed-frame handling", () => {
     // ...and re-prefetching the same range issues no further fetch.
     stream.prefetch([0, 0]);
     expect(fetchChunks(worker)).toHaveLength(MAX_FRAME_ATTEMPTS);
+
+    stream.destroy();
+  });
+
+  it("reports a source that never decodes a frame as unplayable, once", () => {
+    const onUnplayable = vi.fn();
+    const stream = makeStream(onUnplayable);
+    const worker = FakeWorker.instances[0];
+
+    for (let attempt = 1; attempt <= MAX_FRAME_ATTEMPTS; attempt++) {
+      stream.prefetch([0, 0]);
+      const { reqId } = fetchChunks(worker)[attempt - 1];
+      worker.emit({ type: "chunkFailed", reqId, error: "Failed to fetch" });
+    }
+
+    // the frames after the first turn terminal too, without a second report
+    for (let attempt = 1; attempt <= MAX_FRAME_ATTEMPTS; attempt++) {
+      stream.prefetch([4 / 30, 4 / 30]);
+      const { reqId } = fetchChunks(worker).at(-1)!;
+      worker.emit({ type: "chunkFailed", reqId, error: "Failed to fetch" });
+    }
+
+    expect(onUnplayable).toHaveBeenCalledTimes(1);
+    expect(onUnplayable).toHaveBeenCalledWith("Failed to fetch");
+
+    stream.destroy();
+  });
+
+  it("never reports a source that has decoded a frame", () => {
+    const onUnplayable = vi.fn();
+    const stream = makeStream(onUnplayable);
+    const worker = FakeWorker.instances[0];
+
+    stream.prefetch([0, 0]);
+    const first = fetchChunks(worker)[0];
+    worker.emit({
+      type: "frameReady",
+      reqId: first.reqId,
+      frameNumber: 1,
+      bitmap: { close: vi.fn() },
+      width: 4,
+      height: 4,
+      meta: {},
+    });
+
+    for (let attempt = 1; attempt <= MAX_FRAME_ATTEMPTS; attempt++) {
+      stream.prefetch([4 / 30, 4 / 30]);
+      const { reqId } = fetchChunks(worker).at(-1)!;
+      worker.emit({ type: "chunkFailed", reqId, error: "decode error" });
+    }
+
+    expect(onUnplayable).not.toHaveBeenCalled();
 
     stream.destroy();
   });

@@ -2,18 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useEffect, useState } from "react";
 import { useDatasetName, useModalSampleId } from "../state/accessors";
-import { probeNativeDecode } from "../streams/probeNativeDecode";
 import {
   type DecodeStrategy,
   resolveDecodeStrategy,
 } from "../utils/decodeStrategy";
-import { nativeDecodeCache } from "../utils/nativeDecodeCache";
 import {
-  looksDemuxable,
-  webCodecsAvailable,
-} from "../utils/nativeDecodeSupport";
+  type NativeDecodableState,
+  useNativeDecodable,
+} from "./useNativeDecodable";
 import { useSampledFramesProbe } from "./useSampledFramesProbe";
 
 /**
@@ -27,6 +24,10 @@ export interface DecodeResolution {
   strategy?: DecodeStrategy;
   /** Audio-track presence from the probe; undefined = unknown. */
   hasAudio?: boolean;
+  /** Why the strategy isn't `extract`, when it isn't (diagnostics). */
+  reason?: string;
+  /** Whether extracted frame images exist; undefined when not checked. */
+  hasFrames?: boolean;
 }
 
 export interface DecodeStrategyInput {
@@ -72,102 +73,27 @@ export function useDecodeStrategy(
     return { status: "resolving" };
   }
 
+  const strategy = resolveDecodeStrategy({
+    hasVideoSrc: Boolean(videoSrc),
+    nativeDecodable: native.decodable,
+    hasFrames: framesState === "sampled",
+  });
+
   return {
     status: "resolved",
-    strategy: resolveDecodeStrategy({
-      hasVideoSrc: Boolean(videoSrc),
-      nativeDecodable: native.decodable,
-      hasFrames: framesState === "sampled",
-    }),
+    strategy,
     hasAudio: native.hasAudio,
+    hasFrames: framesState === "sampled",
+    reason:
+      strategy === "extract" ? undefined : fallbackReason(native, strategy),
   };
 }
 
-interface NativeDecodableState {
-  checking: boolean;
-  decodable: boolean;
-  /** Audio-track presence from the probe; undefined = unknown. */
-  hasAudio?: boolean;
-}
-
-interface NativeDecodableInput {
-  videoSrc: string | null;
-  dataset: string | null;
-  sampleId: string | null;
-  enabled: boolean;
-}
-
-/**
- * Whether the source video is decodable via WebCodecs. Cheap sync gates first
- * (WebCodecs present, ISO-BMFF-looking container); then a cached per-sample
- * verdict; only on a cache miss do we run the (moov-only) worker probe and
- * memoize its result. A verdict is cached only when the probe demuxed a codec,
- * so a transient fetch failure isn't remembered as "not decodable".
- */
-function useNativeDecodable(input: NativeDecodableInput): NativeDecodableState {
-  const { videoSrc, dataset, sampleId, enabled } = input;
-  const [state, setState] = useState<NativeDecodableState>({
-    checking: false,
-    decodable: false,
-  });
-
-  useEffect(() => {
-    if (
-      !enabled ||
-      !videoSrc ||
-      !dataset ||
-      !sampleId ||
-      !webCodecsAvailable() ||
-      !looksDemuxable(videoSrc)
-    ) {
-      setState({ checking: false, decodable: false });
-      return undefined;
-    }
-
-    const cached = nativeDecodeCache.getSampleVerdict(dataset, sampleId);
-    if (cached) {
-      setState({
-        checking: false,
-        decodable: cached.decodable,
-        hasAudio: cached.hasAudio,
-      });
-      return undefined;
-    }
-
-    let cancelled = false;
-    const controller = new AbortController();
-    setState({ checking: true, decodable: false });
-
-    // No custom headers: the probe fetches `videoSrc` with `<video src>`
-    // semantics (cors, default credentials), matching how the decode worker and
-    // `framesWorker` fetch media — so probe reachability tracks the real fetch.
-    probeNativeDecode(videoSrc, { signal: controller.signal }).then(
-      (result) => {
-        if (cancelled) {
-          return;
-        }
-
-        if (result.codec) {
-          nativeDecodeCache.setSampleVerdict(dataset, sampleId, {
-            codec: result.codec,
-            decodable: result.decodable,
-            hasAudio: result.hasAudio,
-          });
-        }
-
-        setState({
-          checking: false,
-          decodable: result.decodable,
-          hasAudio: result.hasAudio,
-        });
-      },
-    );
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [enabled, videoSrc, dataset, sampleId]);
-
-  return state;
-}
+/** Why `extract`, and for `html` also `fetch`, didn't win. */
+const fallbackReason = (
+  native: NativeDecodableState,
+  strategy: DecodeStrategy,
+): string =>
+  [native.reason, strategy === "html" && "no extracted frame images"]
+    .filter(Boolean)
+    .join("; ");
