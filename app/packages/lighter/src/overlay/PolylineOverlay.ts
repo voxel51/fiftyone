@@ -9,6 +9,10 @@ import {
   PREVIEW_LINE_OPACITY,
 } from "../constants";
 import { CONTAINS } from "../core/Scene2D";
+import {
+  clipPolylineToFrame,
+  type FrameClipResult,
+} from "../utils/clipToFrame";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
 import {
@@ -159,21 +163,18 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
-  override applyLabel(label: PolylineLabel): void {
-    // Apply polyline-specific state (`closed`/`filled`/points) before the base
-    // label set so the overlay's derived getters are current.
+  protected override applyPoints(label: KeypointLabel): void {
+    const { closed, filled, points } = label as unknown as PolylineLabel;
     const { flatPoints, connections, segmentBoundaries } =
-      flattenPolylinePoints(label.points ?? []);
+      flattenPolylinePoints(points ?? []);
 
     this.segmentBoundaries = segmentBoundaries;
-    this.polylineClosed = label.closed ?? false;
-    this.polylineFilled = label.filled ?? false;
+    this.polylineClosed = closed ?? false;
+    this.polylineFilled = filled ?? false;
 
     this.setRelativePoints(flatPoints);
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
-
-    super.applyLabel(label as unknown as KeypointLabel);
   }
 
   override getSelectionPriority(): number {
@@ -207,6 +208,31 @@ export class PolylineOverlay extends KeypointOverlay {
       prev = end;
     }
     return segments;
+  }
+
+  /**
+   * Clips each shape to the media frame, splitting open shapes that leave and
+   * re-enter it.
+   */
+  override clipToFrame(): FrameClipResult {
+    const shapes = this.getNestedPoints();
+    const clipped = clipPolylineToFrame(shapes, this.polylineClosed);
+
+    if (clipped.every((shape) => shape.length === 0)) {
+      return "empty";
+    }
+
+    if (JSON.stringify(clipped) === JSON.stringify(shapes)) {
+      return "unchanged";
+    }
+
+    this.applyLabel({
+      ...(this.label as unknown as PolylineLabel),
+      points: clipped,
+      closed: this.polylineClosed,
+      filled: this.polylineFilled,
+    } as unknown as KeypointLabel);
+    return "clipped";
   }
 
   getClosed(): boolean {

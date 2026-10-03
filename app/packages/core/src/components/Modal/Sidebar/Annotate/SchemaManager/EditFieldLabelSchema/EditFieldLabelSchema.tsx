@@ -23,6 +23,7 @@ import { useIsLargeDataset } from "../hooks";
 import { EditContainer, SchemaSection } from "../styled";
 
 import ApplyOntologySection from "./ApplyOntologySection";
+import ClipToFrameSection from "./ClipToFrameSection";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
@@ -69,6 +70,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           values.
         </Text>
       </div>
+
+      <ClipToFrameSection field={field} />
 
       <ApplyOntologySection field={field} />
 

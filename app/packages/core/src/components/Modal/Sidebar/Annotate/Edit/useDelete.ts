@@ -1,11 +1,8 @@
 import {
   getFieldSchema,
-  useActiveAnnotationSampleId,
-  useAnnotationEngine,
   useDeleteAnnotation,
   useDeleteTrack,
 } from "@fiftyone/annotation";
-import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
@@ -18,6 +15,7 @@ import {
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { useAnnotationContext } from "./useAnnotationContext";
+import useDiscardDraft from "./useDiscardDraft";
 import useExit from "./useExit";
 
 interface KeypointVertexSelection {
@@ -47,17 +45,14 @@ const isVertexSubSelected = (overlay: unknown): boolean => {
 };
 
 export default function useDelete() {
-  const { scene, removeOverlay } = useLighter();
   const { selected } = useAnnotationContext();
   const label = selected?.label;
   // engine identity from the anchor — carries the track instanceId + frame +
   // `frames.<field>` path a video frame label needs; null for sample-level
   const ref = selected?.ref ?? undefined;
   const selectedOverlay = selected?.overlay;
-  const engine = useAnnotationEngine();
   const deleteAnnotation = useDeleteAnnotation();
   const deleteTrack = useDeleteTrack();
-  const sample = useActiveAnnotationSampleId();
   // The combined sample + frame schema: a video frame label's path is
   // `frames.<field>`, and the frame fields live in the FRAME space — absent from
   // the SAMPLE schema, so the guard below would reject every persisted frame
@@ -66,6 +61,7 @@ export default function useDelete() {
   const schema = useRecoilValue(fos.fullSchema);
 
   const exit = useExit();
+  const discardDraft = useDiscardDraft();
   const setNotification = fos.useNotification();
   const isGenerated = useRecoilValue(isGeneratedView);
 
@@ -86,26 +82,7 @@ export default function useDelete() {
     }
 
     if (label.isNew) {
-      // a label still being drawn lives in interactive mode — leave it and
-      // tear down its in-progress overlay
-      if (scene && !scene.isDestroyed && scene.renderLoopActive) {
-        scene?.exitInteractiveMode();
-        removeOverlay(label?.data._id, true);
-      }
-
-      // also drop it from the engine: `isNew` is form-side bookkeeping, but a
-      // drawn label is already engine-committed, so the engine-derived sidebar
-      // only removes the row (and autosave only persists the delete + Ctrl-Z
-      // only restores it) once the engine is told. A no-op if never committed.
-      engine.deleteLabel(
-        ref ?? {
-          sample,
-          path: label.path,
-          instanceId: label.data._id,
-        },
-      );
-
-      exit();
+      discardDraft();
       return;
     }
 
@@ -143,13 +120,10 @@ export default function useDelete() {
   }, [
     deleteAnnotation,
     deleteTrack,
-    engine,
+    discardDraft,
     exit,
     label,
     ref,
-    removeOverlay,
-    sample,
-    scene,
     schema,
     selectedOverlay,
     setNotification,

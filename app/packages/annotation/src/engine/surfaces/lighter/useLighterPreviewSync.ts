@@ -11,9 +11,10 @@ import {
 /**
  * Mirror live label-patch previews onto this scene's overlays, render-only. A
  * surface (e.g. the sidebar form) publishes a patch during a continuous gesture;
- * we apply it to the matching overlay without committing — `applyLabel` touches
- * only overlay render state, so the dispatch guard holds. The committed value
- * re-baselines via the normal reproject.
+ * we merge it over the committed label and apply it to the matching overlay
+ * without committing — `applyLabel` touches only overlay render state, so the
+ * dispatch guard holds. The committed value re-baselines via the normal
+ * reproject.
  */
 export const useLighterPreviewSync = (
   engine: AnnotationEngine,
@@ -45,8 +46,12 @@ export const useLighterPreviewSync = (
           return;
         }
 
+        // the overlay's own label goes stale after a canvas gesture commits
+        // (the commit is not echoed back onto it), so merge over the engine's
+        const committed = engine.getLabel(identity.ref) ?? overlay.label;
+
         overlay.applyLabel({
-          ...(overlay.label as Record<string, unknown>),
+          ...(committed as Record<string, unknown>),
           ...patch,
         } as Parameters<typeof overlay.applyLabel>[0]);
       },

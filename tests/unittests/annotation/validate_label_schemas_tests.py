@@ -1073,6 +1073,93 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
 
 
+class ClipToFrameValidationTests(unittest.TestCase):
+    @drop_datasets
+    def test_clip_to_frame_accepted_on_spatial_label_fields(self):
+        dataset = _make_clip_to_frame_test_dataset()
+        for field, _type in (
+            ("detection", "detection"),
+            ("detections", "detections"),
+            ("keypoint", "keypoint"),
+            ("keypoints", "keypoints"),
+            ("polyline", "polyline"),
+            ("polylines", "polylines"),
+        ):
+            for value in (True, False):
+                validate_label_schemas(
+                    dataset,
+                    {"type": _type, "clip_to_frame": value},
+                    fields=field,
+                )
+
+    @drop_datasets
+    def test_clip_to_frame_rejects_non_bool(self):
+        dataset = _make_clip_to_frame_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "detections", "clip_to_frame": "yes"},
+                fields="detections",
+            )
+
+    @drop_datasets
+    def test_clip_to_frame_rejected_on_non_spatial_label_field(self):
+        dataset = _make_clip_to_frame_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "classification", "clip_to_frame": True},
+                fields="classification",
+            )
+
+    @drop_datasets
+    def test_clip_to_frame_rejected_on_3d_collection(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="scene.fo3d",
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "detections", "clip_to_frame": True},
+                fields="detections",
+            )
+
+    @drop_datasets
+    def test_clip_to_frame_rejected_on_3d_only_group(self):
+        dataset = _make_group_dataset(["left.fo3d"])
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "detections", "clip_to_frame": True},
+                fields="detections",
+            )
+
+    @drop_datasets
+    def test_clip_to_frame_accepted_on_group_with_2d_media(self):
+        dataset = _make_group_dataset(["left.png", "right.fo3d"])
+        validate_label_schemas(
+            dataset,
+            {"type": "detections", "clip_to_frame": True},
+            fields="detections",
+        )
+
+    @drop_datasets
+    def test_clip_to_frame_rejected_on_primitive_field(self):
+        dataset = _make_clip_to_frame_test_dataset()
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {"type": "str", "component": "text", "clip_to_frame": True},
+                fields="str_field",
+            )
+
+
 class TaxonomySettingValidationTests(unittest.TestCase):
     """Tests for the ``taxonomy`` setting on str / list<str> dropdown
     attributes in :func:`validate_label_schemas`."""
@@ -1299,6 +1386,45 @@ def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
         )
     )
     dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset
+
+
+def _make_clip_to_frame_test_dataset():
+    dataset = fo.Dataset()
+    dataset.add_sample(
+        fo.Sample(
+            filepath="image.png",
+            classification=fo.Classification(label="one"),
+            detection=fo.Detection(label="one"),
+            detections=fo.Detections(detections=[fo.Detection(label="one")]),
+            keypoint=fo.Keypoint(label="one"),
+            keypoints=fo.Keypoints(keypoints=[fo.Keypoint(label="one")]),
+            polyline=fo.Polyline(label="one"),
+            polylines=fo.Polylines(polylines=[fo.Polyline(label="one")]),
+        )
+    )
+    dataset.add_sample_field("str_field", fo.StringField)
+
+    return dataset
+
+
+def _make_group_dataset(filepaths):
+    dataset = fo.Dataset()
+    dataset.add_group_field("group", default="left")
+    group = fo.Group()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath=filepath,
+                group=group.element(slice_name),
+                detections=fo.Detections(
+                    detections=[fo.Detection(label="one")]
+                ),
+            )
+            for slice_name, filepath in zip(("left", "right"), filepaths)
+        ]
+    )
 
     return dataset
 

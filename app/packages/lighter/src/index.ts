@@ -133,6 +133,7 @@ export { decodeMaskPath } from "./utils/maskPathDecoding";
 export { MaskBitmapCache, maskBitmapCache } from "./utils/maskBitmapCache";
 export type { MaskSource } from "./utils/maskBitmapCache";
 export { maskSourceOf } from "./utils/maskSource";
+export type { FrameClipResult } from "./utils/clipToFrame";
 
 // Constants
 export { DEFAULT_ZOOM_PAD } from "./constants";

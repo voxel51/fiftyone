@@ -247,15 +247,19 @@ export const useDynamicGroupValue = (): string | null => {
   return useIsImageDynamicGroupVideo() ? (value ?? null) : null;
 };
 
+/** Tears down the label being drawn; shared with the sidebar's delete. */
+export { default as useDiscardDraft } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDiscardDraft";
+
 /**
- * Dynamic-attribute names for a label field path. Re-exported from core so the
- * read hits the same `labelSchemaData` atom instance core writes (a direct
+ * Label schema reads (dynamic-attribute names, frame clipping). Re-exported
+ * from core so the read hits the same `labelSchemaData` atom instance core writes (a direct
  * cross-package atom import would resolve to a different, never-written family).
  */
 export {
   useDynamicAttributeNames,
   useDynamicAttributeNamesGetter,
   labelSchemaData,
+  useShouldClipToFrame,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /** The dataset's display time zone. */

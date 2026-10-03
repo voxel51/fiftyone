@@ -3,10 +3,19 @@
  */
 
 import {
+  useIs3dOnlyDataset,
   useNotification,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import { getFetchFunction } from "@fiftyone/utilities";
+import {
+  DETECTION,
+  DETECTIONS,
+  getFetchFunction,
+  KEYPOINT,
+  KEYPOINTS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -14,6 +23,7 @@ import {
   activeLabelSchemas,
   addToActiveSchemas,
   currentField,
+  fieldType,
   labelSchemaData,
   removeFromActiveSchemas,
 } from "../../state";
@@ -150,6 +160,32 @@ export const useReadOnly = (field: string) => {
         ...(current as object),
         read_only: !(current as { read_only?: boolean })?.read_only,
       });
+    },
+  };
+};
+
+const CLIP_TO_FRAME_TYPES = new Set([
+  DETECTION,
+  DETECTIONS,
+  KEYPOINT,
+  KEYPOINTS,
+  POLYLINE,
+  POLYLINES,
+]);
+
+export const useClipToFrame = (field: string) => {
+  const type = useAtomValue(fieldType(field));
+  // 3D scenes have no frame to clip to
+  const is3dOnly = useIs3dOnlyDataset();
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  const clipToFrame =
+    (current as FieldSchema | undefined)?.clip_to_frame !== false;
+
+  return {
+    canClipToFrame: !is3dOnly && !!type && CLIP_TO_FRAME_TYPES.has(type),
+    clipToFrame,
+    toggleClipToFrame: () => {
+      setCurrent({ ...(current as object), clip_to_frame: !clipToFrame });
     },
   };
 };
