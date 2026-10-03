@@ -23,6 +23,8 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
+from decorators import drop_datasets
+
 
 class ColorSchemeTests(unittest.TestCase):
     def test_color_scheme_serialization(self):
@@ -595,3 +597,23 @@ class GetIndexedValuesTests(unittest.TestCase):
 
         finally:
             dataset.delete()
+
+
+class PatchRunsTests(unittest.TestCase):
+    @drop_datasets
+    def test_dry_run_does_not_write(self):
+        dataset = fo.Dataset()
+        conn = foo.get_db_conn()
+        # A key the dataset document names but the runs collection holds no
+        # document for, which a patch purges
+        conn.datasets.update_one(
+            {"name": dataset.name}, {"$set": {"runs.stray": ObjectId()}}
+        )
+
+        foo.patch_runs(dataset.name, dry_run=True)
+        doc = conn.datasets.find_one({"name": dataset.name})
+        self.assertIn("stray", doc["runs"])
+
+        foo.patch_runs(dataset.name)
+        doc = conn.datasets.find_one({"name": dataset.name})
+        self.assertNotIn("stray", doc["runs"])
