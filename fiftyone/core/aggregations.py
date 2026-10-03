@@ -24,11 +24,12 @@ from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 logger = logging.getLogger(__name__)
+
+IDENTITY_FN = lambda x: x
 
 
 class Aggregation(object):
@@ -127,6 +128,10 @@ class Aggregation(object):
         :meth:`to_mongo` method that specifies the field name to use in its
         ``$project`` stage.
         """
+        return False
+
+    @property
+    def _is_lazy(self):
         return False
 
     def to_mongo(self, sample_collection, context=None):
@@ -2859,6 +2864,10 @@ class Values(Aggregation):
             and "[]" not in self._field_name
         )
 
+    @property
+    def _is_lazy(self):
+        return self._lazy
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -2868,8 +2877,8 @@ class Values(Aggregation):
         return []
 
     def parse_result(self, d):
-        """Parses the output of :meth:`to_mongo` when the result is a dict or returns an expression
-        that can be evaluated lazily.
+        """Parses the output of :meth:`to_mongo` when the result is a dict or
+        returns an expression that can be evaluated lazily.
 
         Args:
             d: the result dict or None
@@ -2888,7 +2897,9 @@ class Values(Aggregation):
                     x, _g, level=_lv
                 )
             else:
-                return lambda x: x
+                # Return a known identity function to quickly and accurately
+                # determine if the output requires transforming
+                return IDENTITY_FN
 
         if self._big_result:
             values = [di[self._big_field] for di in d]
@@ -2975,7 +2986,6 @@ def _transform_values(values, fcn, level=1):
 
     if level < 1:
         return fcn(values)
-
     return [_transform_values(v, fcn, level=level - 1) for v in values]
 
 
@@ -3033,9 +3043,9 @@ def _parse_field_and_expr(
     optimize=False,
 ):
     # unwind can be {True, False, -1}
-    auto_unwind = unwind != False
+    auto_unwind = unwind is not False
     keep_top_level = unwind < 0
-    omit_terminal_lists = unwind == False
+    omit_terminal_lists = unwind is False
 
     if field_name is None and expr is None:
         raise ValueError(
