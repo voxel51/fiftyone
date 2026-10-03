@@ -213,14 +213,9 @@ export function buildNewLabelData(
   const defaults = getNewLabelDefaults(field, labelValue);
 
   const data = {
-    _cls:
-      type === CLASSIFICATION
-        ? "Classification"
-        : type === DETECTION
-          ? "Detection"
-          : type === POLYLINE
-            ? "Polyline"
-            : undefined,
+    // `_cls` is server-managed: omit it when unknown, since an explicit
+    // `undefined` overrides the server's value in the merge-then-diff.
+    ...(type && { _cls: type }),
     _id: labelId,
     ...defaults,
     ...(labelValue && { label: labelValue }),
