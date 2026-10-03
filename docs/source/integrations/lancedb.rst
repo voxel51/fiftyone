@@ -149,14 +149,26 @@ or by setting the `default_similarity_backend` parameter of your
 LanceDB config parameters
 -------------------------
 
-The LanceDB backend supports query parameters that can be used to customize
-your similarity queries. These parameters include:
+The LanceDB backend supports parameters that can be used to customize your
+similarity queries. These parameters include:
 
 *   **table_name** (*None*): the name of the LanceDB table to use. If none is
     provided, a new table will be created
 *   **metric** (*"cosine"*): the embedding distance metric to use when creating
     a new table. The supported values are ``("cosine", "euclidean")``
-*   **uri** (*"/tmp/lancedb"*): the database URI to use
+
+The remaining parameters say where the table lives rather than how it is
+queried, and the two behave differently when an index is loaded again later:
+
+*   **uri** (*None*): the database URI to use. This is recorded on the index,
+    so two indexes may keep their tables in different databases, and an index
+    opens the database it was built in whatever the process loading it is
+    configured with. An index that names no URI opens whichever database the
+    backend is configured with, falling back to ``/tmp/lancedb``
+*   **storage_options** (*None*): a dict of storage options for the object
+    store backing ``uri``, for example credentials for a cloud bucket. Unlike
+    ``uri`` this is **not** recorded on the index, since it carries
+    credentials, so it must be supplied again each time the index is loaded
 
 You can specify these parameters via any of the strategies described in the
 previous section. Here's an example of a :ref:`brain config <brain-config>`
@@ -187,7 +199,27 @@ a specific new index:
         brain_key="lancedb_index",
         table_name="your-table",
         metric="euclidean",
-        uri="/tmp/lancedb",
+    )
+
+.. note::
+
+    Passing ``uri`` here records that database on the index permanently. Omit
+    it if you want the index to follow the database your
+    :ref:`brain config <brain-config>` names, so that moving the database
+    later is a change to one setting rather than to every index.
+
+Because ``storage_options`` is not recorded, supply it again when you load an
+index whose database needs credentials:
+
+.. code:: python
+    :linenos:
+
+    lancedb_index = dataset.load_brain_results(
+        "lancedb_index",
+        storage_options={
+            "aws_access_key_id": ...,
+            "aws_secret_access_key": ...,
+        },
     )
 
 .. _lancedb-managing-brain-runs:
