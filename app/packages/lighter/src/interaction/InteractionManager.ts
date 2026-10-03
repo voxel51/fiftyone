@@ -1283,11 +1283,9 @@ export class InteractionManager {
    * Three-tier right-click behavior:
    *
    * 1. **Finalize active editing** (pen polygon, AI point selection) —
-   *    commit the in-progress work to the overlay, then fall through to
-   *    tier 2 so the committed label closes like any other. One right-click
-   *    always lands back on the label list with the mode still armed, so the
-   *    next click starts a NEW label — the same cadence as a brush stroke, a
-   *    drawn box, or a polyline.
+   *    commit the in-progress work to the overlay. A pen polygon keeps the
+   *    mask selected so several regions can be added/removed in a row; AI
+   *    point selection falls through to tier 2 and closes the label.
    * 2. **Stop editing the current label** (brush/eraser, bbox adjustments) —
    *    deselect the label but remain in the current mode.
    * 3. **Exit the current mode** (detection, segmentation) —
@@ -1329,9 +1327,8 @@ export class InteractionManager {
 
         if (interactiveHandler instanceof InteractivePenHandler) {
           // Replace the per-point undo entries with the single
-          // PaintStrokeCommand emitted by commitPenPolygon. The handler is
-          // left in place here; the tier 2 deselect below closes the edit and
-          // the pen tool's selection-driven lifecycle tears it down.
+          // PaintStrokeCommand emitted by commitPenPolygon. The handler stays
+          // installed so the user can keep drawing more polygons.
           interactiveHandler.pruneCommands();
 
           // The pen handler is already installed by commit time, so the
@@ -1365,9 +1362,10 @@ export class InteractionManager {
           });
         }
 
-        // Committed — fall through to tier 2 so the label deselects and the
-        // sidebar returns to the list. A second polygon on the SAME mask is
-        // still reachable by re-selecting the mask with the pen tool active.
+        // Committed — keep the mask selected so the next polygon adds to or
+        // removes from the SAME mask. A right-click with no polygon drawn
+        // falls through to tier 2 and closes the label.
+        return;
       }
 
       if (tool === SegmentationTool.AI && interactiveHandler) {
