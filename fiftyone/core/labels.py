@@ -435,6 +435,45 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
+class VQA(_HasID, Label):
+    """A visual question answering (VQA) label.
+
+    Args:
+        question (None): the question about the media
+        answer (None): the answer to the question
+        answers (None): a list of reference answers to the question, for
+            datasets that provide multiple ground truth answers
+        choices (None): a list of allowed answers to the question, for
+            multiple-choice datasets
+        question_type (None): the type of the question
+        answer_type (None): the type of the answer
+        question_id (None): an identifier for the question that can be used
+            to match corresponding labels across fields
+        confidence (None): a confidence in ``[0, 1]`` for the answer
+    """
+
+    question = fof.StringField()
+    answer = fof.StringField()
+    answers = fof.ListField(fof.StringField())
+    choices = fof.ListField(fof.StringField())
+    question_type = fof.StringField()
+    answer_type = fof.StringField()
+    question_id = fof.StringField()
+    confidence = fof.FloatField()
+
+
+class VQAs(_HasLabelList, Label):
+    """A list of VQA labels for a sample.
+
+    Args:
+        vqas (None): a list of :class:`VQA` instances
+    """
+
+    _LABEL_LIST_FIELD = "vqas"
+
+    vqas = fof.ListField(fof.EmbeddedDocumentField(VQA))
+
+
 class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
     """An object detection.
 
@@ -1594,6 +1633,7 @@ _LABEL_LIST_FIELDS = (
     Keypoints,
     Polylines,
     TemporalDetections,
+    VQAs,
 )
 
 _PATCHES_FIELDS = (
@@ -1620,6 +1660,7 @@ _SINGLE_LABEL_TO_LIST_MAP = {
     Keypoint: Keypoints,
     Polyline: Polylines,
     TemporalDetection: TemporalDetections,
+    VQA: VQAs,
 }
 
 _LABEL_LIST_TO_SINGLE_MAP = {
@@ -1628,6 +1669,7 @@ _LABEL_LIST_TO_SINGLE_MAP = {
     Keypoints: Keypoint,
     Polylines: Polyline,
     TemporalDetections: TemporalDetection,
+    VQAs: VQA,
 }
 
 
