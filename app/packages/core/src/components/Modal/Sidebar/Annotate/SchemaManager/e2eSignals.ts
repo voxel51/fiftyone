@@ -12,6 +12,7 @@ type SchemaManagerE2EEvents = {
     section: "active" | "hidden";
     paths: string;
   };
+  "e2e:schema-manager:schema-shown": { name: string | null };
 };
 
 export const useSchemaManagerOpenSignal = () =>
@@ -20,6 +21,22 @@ export const useSchemaManagerOpenSignal = () =>
     bus.dispatch("e2e:schema-manager:opened");
     return () => bus.dispatch("e2e:schema-manager:closed");
   }, []);
+
+/**
+ * The picker shows schema `name` (`null` for the dataset default);
+ * `undefined` while the name input or a delete confirmation replaces it
+ */
+export const useSchemaShownSignal = (name: string | null | undefined) =>
+  useEffect(() => {
+    if (name === undefined) {
+      return;
+    }
+
+    getEventBus<SchemaManagerE2EEvents>().dispatch(
+      "e2e:schema-manager:schema-shown",
+      { name },
+    );
+  }, [name]);
 
 export const useFieldsShownSignal = (
   section: "active" | "hidden",

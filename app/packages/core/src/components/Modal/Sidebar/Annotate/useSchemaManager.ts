@@ -49,6 +49,12 @@ export type FieldSchema = {
   attributes?: AttributeConfig[];
   applied_ontology?: string;
   applied_taxonomy?: string;
+  /**
+   * Client-side stamp from the active task's stage schema policy (see
+   * `effectiveLabelSchemasData`): the class ("label") input is locked
+   * by the stage's attribute policy. Never persisted.
+   */
+  label_read_only?: boolean;
 };
 
 /**
@@ -65,6 +71,12 @@ export type LabelSchemaMeta = {
   type: string;
   unsupported: boolean;
   label_schema?: FieldSchema;
+  /**
+   * Client-side stamp from the active task's stage schema policy (see
+   * `effectiveLabelSchemasData`): the field's bbox (box/polyline) is
+   * locked while attribute inputs stay live. Never persisted.
+   */
+  bbox_read_only?: boolean;
 };
 
 type EmptyBody = Record<string, never>;
@@ -302,6 +314,8 @@ export type Operator<T, R> = {
     request: T,
     options: { callback?: OperatorCallback<R> } & OperatorExecuteOptions,
   ) => void;
+  /** `useOperatorExecutor`'s resolution result ("SUCCESS" / "NOT_FOUND"). */
+  loadResult?: string;
 };
 
 /**
@@ -321,6 +335,14 @@ export const operatorAsPromise = <T, R>(
   options?: OperatorExecuteOptions,
 ): Promise<R> => {
   return new Promise((resolve, reject) => {
+    // An operator missing from the viewer's permitted registry (Teams
+    // per-operator permissions, plugin not loaded) must reject like any
+    // other failure. Calling `execute` on it never settles the promise
+    // and throws "not found or not accessible" during render instead.
+    if (operator.loadResult && operator.loadResult !== "SUCCESS") {
+      reject(new Error("Operator not available for this user"));
+      return;
+    }
     const operatorCallback: OperatorCallback<R> = (
       response: OperatorResponse<R>,
     ) => {

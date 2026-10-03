@@ -7,10 +7,11 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
-import GroupEntry from "./GroupEntry";
+import GroupEntry, { UNSCANNED_GROUP_NAME } from "./GroupEntry";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
+import UnscannedFieldEntry from "./UnscannedFieldEntry";
 import useEntries from "./useEntries";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 
@@ -60,7 +61,7 @@ export default function AnnotateSidebar() {
       </div>
       <Sidebar
         isDisabled={() => true}
-        render={(_key, _group, entry) => {
+        render={(_key, group, entry) => {
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }
@@ -99,6 +100,12 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.PATH) {
+            if (group === UNSCANNED_GROUP_NAME) {
+              return {
+                children: <UnscannedFieldEntry path={entry.path} />,
+                disabled: true,
+              };
+            }
             return {
               children: <PrimitiveEntry path={entry.path} />,
               disabled: false,
