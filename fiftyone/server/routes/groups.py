@@ -17,7 +17,6 @@ import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.odm.utils as fou
 from fiftyone.server import utils
-import fiftyone.server.hooks as fosh
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +267,8 @@ class Groups(HTTPEndpoint):
             if media_type_param
             else None
         )
+
+        import fiftyone.server.hooks as fosh
 
         await fosh.get().on_request(request, request.query_params)
 

@@ -8,11 +8,7 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import {
-  fieldVisibilityStage,
-  gridSortBy,
-  activeSchemaStageExclusions,
-} from "@fiftyone/state";
+import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -22,6 +18,7 @@ import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
 import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
+import { activeSchemaStageExclusions } from "./schemaSettings.atoms";
 import type { SelectionType } from "./types";
 import { State } from "./types";
 import { isPatchesView } from "./view";
