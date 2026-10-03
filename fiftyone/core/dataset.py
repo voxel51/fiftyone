@@ -1959,6 +1959,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=field,
         )
         self._doc.set_stored_label_schema(field, copy.deepcopy(label_schema))
+
+        # Attributes the schema adds must exist on the field schema too, or
+        # the App's sidebar, filters and aggregations never see them
+        try:
+            foa.declare_label_schema_attributes(self, {field: label_schema})
+        except Exception:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to declare label schema attributes of '%s'",
+                field,
+                exc_info=True,
+            )
+
         self.save()
 
     def delete_label_schemas(self, fields=None):

@@ -24,6 +24,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.hooks as fosh
 from fiftyone.server.scalars import BSONArray, JSON
 
 _LABEL_TAGS = "_label_tags"
@@ -177,7 +178,9 @@ def get_view(
                     view, fosg.ViewStage._from_dict(stage), selection_scope
                 )
         elif view_name is not None:
-            return dataset.load_saved_view(view_name)
+            return fosh.get().transform_view(
+                dataset.load_saved_view(view_name)
+            )
         elif stages and selection_scope and selection_scope.get("provider"):
             view = dataset.view()
             for stage in stages:
@@ -242,7 +245,7 @@ def get_view(
 
             view = constrain_view(view, selection_scope)
 
-        return view
+        return fosh.get().transform_view(view)
 
     if awaitable:
         return fou.run_sync_task(run, dataset, stages)
