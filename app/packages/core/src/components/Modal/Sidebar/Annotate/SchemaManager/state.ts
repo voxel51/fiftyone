@@ -165,26 +165,6 @@ export const hiddenFieldHasSchemaStates = atom((get) => {
 });
 
 // =============================================================================
-// Field editor: attribute visibility (Active ↔ Hidden)
-// =============================================================================
-
-/** Selected rows in the field editor's Active attributes section. */
-export const selectedActiveAttributes = atom(new Set<string>());
-
-/** Selected rows in the field editor's Hidden attributes section. */
-export const selectedHiddenAttributes = atom(new Set<string>());
-
-/**
- * Attribute visibility edits made in the open field editor (custom
- * schemas only), keyed by attribute name: `hidden` or `annotate`.
- * They persist to the doc's visibility with the editor's Save and are
- * dropped on Discard / close, like any other draft edit.
- */
-export const pendingAttributeTiers = atom<
-  Record<string, "annotate" | "hidden">
->({});
-
-// =============================================================================
 // JSON Editor State (Full Schema Editor)
 // =============================================================================
 

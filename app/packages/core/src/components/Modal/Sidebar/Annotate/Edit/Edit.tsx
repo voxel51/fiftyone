@@ -1,11 +1,9 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
-import { isFieldBboxLocked, labelSchemaData } from "../state";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
@@ -51,12 +49,6 @@ export default function Edit() {
   const type = selected?.type ?? null;
   const data = selected?.data;
   const isReadOnly = selected?.isFieldReadOnly ?? false;
-  // Stage-policy bbox lock: freezes the coordinate inputs
-  // (Position/Position3d) while the attribute form stays live —
-  // field-level read-only already implies it via `isFieldReadOnly`.
-  const isBboxLocked = isFieldBboxLocked(
-    useAtomValue(labelSchemaData(field ?? "")),
-  );
   const { isEditingMask } = useSegmentationMode();
   // `mask` and `mask_path` exist only on DetectionLabel; the union narrows
   // them out. Cast at the access site rather than type-guarding the whole
@@ -113,15 +105,15 @@ export default function Edit() {
         {!primitiveEditingActive && <Field />}
         {primitiveEditingActive && <PrimitiveWrapper />}
         {type === DETECTION && overlay && !is3dDetection && (
-          <Position readOnly={isBboxLocked || isMaskDetection} />
+          <Position readOnly={isReadOnly || isMaskDetection} />
         )}
         {type === DETECTION && overlay && is3dDetection && (
-          <Position3d readOnly={isBboxLocked} />
+          <Position3d readOnly={isReadOnly} />
         )}
         {type === POLYLINE && <PolylineDetails />}
         {type === KEYPOINT && <KeypointDetails />}
         {isTemporalDetection && (
-          <TemporalDetectionDetails readOnly={isBboxLocked} />
+          <TemporalDetectionDetails readOnly={isReadOnly} />
         )}
         {field && <AnnotationSchema readOnly={isReadOnly} />}
         {isMaskDetection && <MaskPreview />}

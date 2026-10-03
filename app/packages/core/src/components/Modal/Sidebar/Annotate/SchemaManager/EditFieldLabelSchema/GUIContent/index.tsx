@@ -27,8 +27,6 @@ import {
 } from "../../utils";
 import { useAppliedOntology } from "../useLabelSchema";
 import AttributesSection from "./AttributesSection";
-import { useMediaType } from "../../hooks";
-import { supportsDynamicAttributes } from "../../utils";
 import ClassesSection from "./ClassesSection";
 import PrimitiveFieldContent from "./PrimitiveFieldContent";
 
@@ -55,7 +53,6 @@ const GUIContent = ({
   onConfigChange,
 }: GUIContentProps) => {
   const fType = useFieldType(field);
-  const mediaType = useMediaType();
   const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
   const { appliedTaxonomy } = useAppliedOntology(field);
 
@@ -224,14 +221,6 @@ const GUIContent = ({
       )}
       <AttributesSection
         attributes={attributes}
-        field={field}
-        config={config}
-        onConfigChange={onConfigChange}
-        canAddAttributes={supportsDynamicAttributes(
-          mediaType,
-          field,
-          (config as { type?: string } | undefined)?.type,
-        )}
         onAddAttribute={handleAddAttribute}
         onEditAttribute={handleEditAttribute}
         onDeleteAttribute={handleDeleteAttribute}

@@ -17,7 +17,6 @@ import { exploreActiveFields } from "./Annotate/state";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
-import SchemaLensRow from "../../Sidebar/SchemaLensRow";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const Explore = () => {
@@ -62,7 +61,6 @@ const Sidebar = () => {
   return (
     <SidebarContainer modal={true}>
       {showAnnotationTab && <Mode />}
-      <SchemaLensRow />
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
       ) : (

@@ -21,7 +21,6 @@ import {
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
-import { activeSchemaExclusionStages } from "./schemaSettings.atoms";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
@@ -206,10 +205,7 @@ export const modalSample = graphQLSelector<
 
     return {
       dataset: get(datasetName),
-      // Hidden schema fields must not reach the modal payload: this
-      // query bypasses the page query's $extendedView, so the
-      // exclusion rides as an appended view stage instead.
-      view: [...get(view), ...get(activeSchemaExclusionStages)],
+      view: get(view),
       filter: {
         id: current.id,
         group: slice
@@ -262,7 +258,7 @@ export const groupSampleAtMainSlice = graphQLSelector<
 
     return {
       dataset: get(datasetName),
-      view: [...get(view), ...get(activeSchemaExclusionStages)],
+      view: get(view),
       filter: {
         id: current.id,
         group: slice ? { slice, slices: [slice], id: get(groupId) } : null,

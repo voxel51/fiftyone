@@ -25,7 +25,6 @@ export const InputDiv = styled.div`
   }
 `;
 
-/** Compact dropdown for the sidebar header row (mode + schema lens). */
 export const FilterInputDiv = styled.div`
   background: ${({ theme }) => theme.background.mediaSpace};
   box-sizing: border-box;
