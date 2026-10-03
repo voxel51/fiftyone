@@ -54,6 +54,14 @@ import {
 
 export const ALL_FIELDS_LENS = "__all__";
 
+/** The menu's loading state: a spinner alone, centered in the row. */
+const LoadingRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0;
+`;
+
 /**
  * A lens option styled like voodo's ``Select`` option (the design): the
  * selected row sits on the ``Selected`` surface with an accent check on
@@ -335,9 +343,13 @@ const SchemaLensSelector = ({
         </LensItem>
       ))}
       {!loaded ? (
-        <MenuTextItem disabled data-cy="schema-lens-loading">
-          <Spinner size={Size.Sm} /> Loading schemas…
-        </MenuTextItem>
+        <LoadingRow
+          data-cy="schema-lens-loading"
+          role="status"
+          aria-label="Loading schemas"
+        >
+          <Spinner size={Size.Sm} />
+        </LoadingRow>
       ) : !docs.length ? (
         <MenuTextItem disabled>No custom schemas</MenuTextItem>
       ) : null}
