@@ -44,11 +44,6 @@ vi.mock("./Modal/Sidebar/Annotate/useEnsureSchemasLoaded", () => ({
   useEnsureSchemasLoaded: mocks.ensureSchemasLoaded,
 }));
 
-// Reads Recoil's datasetName; the outlet renders without a RecoilRoot here.
-vi.mock("./Modal/Sidebar/Annotate/useSyncSchemaDataset", () => ({
-  useSyncSchemaDataset: vi.fn(),
-}));
-
 import SchemaManagerOutlet from "./SchemaManagerOutlet";
 
 describe("SchemaManagerOutlet operator readiness", () => {

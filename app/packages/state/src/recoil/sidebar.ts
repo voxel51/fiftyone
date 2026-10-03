@@ -909,7 +909,7 @@ export const collapsedPaths = selector<Set<string>>({
     paths = [
       ...paths,
       ...get(fieldPaths({ ftype: LIST_FIELD })).filter((path) =>
-        UNSUPPORTED_FILTER_TYPES.includes(get(field(path))?.subfield),
+        UNSUPPORTED_FILTER_TYPES.includes(get(field(path)).subfield),
       ),
     ];
 

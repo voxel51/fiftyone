@@ -32,17 +32,10 @@ import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { labelPathsSetExpanded } from "./labels";
-import {
-  activeSchemaAttrExclusions,
-  activeSchemaExclusions,
-} from "./schemaSettings.atoms";
-
 import { activeFieldsConfig } from "./selectors";
 import { sidebarPaths } from "./sidebar";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
-
-const LABEL_LIST_SEGMENTS = new Set(Object.values(LABEL_LIST));
 
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
@@ -107,49 +100,13 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
         return {};
       }
 
-      const schema = (
+      return (
         space === State.SPACE.FRAME
           ? get(atoms.frameFields)
           : get(atoms.sampleFields)
       ).reduce(schemaReduce, {});
-
-      // Workflow task schema policy: fields hidden by the active
-      // stage's overlay drop out of the client schema entirely, so the
-      // sidebar, filters, and looker never surface them. Server-side,
-      // the same paths ride `extendedStages` as an ExcludeFields (see
-      // `fieldExclusionStage`), so grid payloads are stripped too.
-      const excluded = get(activeSchemaExclusions);
-      if (excluded?.length) {
-        for (const path of excluded) {
-          if (space === State.SPACE.FRAME) {
-            if (path.startsWith("frames.")) {
-              deleteSchemaPath(schema, path.slice("frames.".length));
-            }
-          } else if (!path.startsWith("frames.")) {
-            deleteSchemaPath(schema, path);
-          }
-        }
-      }
-
-      return schema;
     },
 });
-
-/**
- * Removes a (possibly nested, dotted) path from a reduced schema, so a
- * nested exclusion such as "info.field" takes effect like the subtree
- * exclusion `fieldPaths` applies.
- */
-type NestedSchema = Record<string, { fields?: NestedSchema } | undefined>;
-const deleteSchemaPath = (schema: NestedSchema, path: string) => {
-  const parts = path.split(".");
-  let fields: NestedSchema | undefined = schema;
-  for (const part of parts.slice(0, -1)) {
-    fields = fields?.[part]?.fields;
-    if (!fields) return;
-  }
-  delete fields[parts[parts.length - 1]];
-};
 
 export const pathIsShown = selectorFamily<boolean, string>({
   key: "pathIsShown",
@@ -177,7 +134,7 @@ export const pathIsShown = selectorFamily<boolean, string>({
       }
 
       for (const key of keys) {
-        if (!schema || !(key in schema)) {
+        if (!(key in schema)) {
           return false;
         }
 
@@ -236,26 +193,14 @@ export const fieldPaths = selectorFamily<
       const sampleFields = get(atoms.flatSampleFields);
       const frameFields = get(atoms.flatFrameFields);
 
-      // Must agree with the task-exclusion filtering in `fieldSchema`:
-      // consumers deref enumerated paths via `field(path)`, which
-      // returns null for excluded paths (raw atoms only catch up after
-      // the server-filtered page query lands).
-      // The flat lists carry nested children ("gt.detections.label"),
-      // so a hidden field takes its subtree with it — `fieldSchema`
-      // deletes the parent, and `field(child)` would otherwise be null.
-      const excluded = [...(get(activeSchemaExclusions) ?? [])];
-      const isExcluded = (l: string) =>
-        excluded.some((e) => l === e || l.startsWith(`${e}.`));
-
       const sample = sampleFields
         .map(({ path }) => path)
-        .filter((l) => !l.startsWith("_") && !isExcluded(l))
+        .filter((l) => !l.startsWith("_"))
         .sort();
       const frame = frameFields
         .map(({ path }) => path)
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
-        .filter((l) => !isExcluded(l))
         .sort();
 
       const f = (paths) =>
@@ -281,21 +226,10 @@ export const fieldPaths = selectorFamily<
         return [];
       }
 
-      // Attribute-level schema-policy exclusions: hidden attributes
-      // drop out of nested enumeration (sidebar rows, filters). Keys
-      // are `<field_path>.<attr>`, so strip a trailing label-list
-      // segment ("detections" etc.) from the parent path first.
-      const excludedAttrs = new Set(get(activeSchemaAttrExclusions) ?? []);
-      const parts = path.split(".");
-      const attrOwner = LABEL_LIST_SEGMENTS.has(parts[parts.length - 1])
-        ? parts.slice(0, -1).join(".")
-        : path;
-
       return Object.entries(fieldValue.fields)
         .filter(
-          ([name, field]) =>
-            !excludedAttrs.has(`${attrOwner}.${name}`) &&
-            (!ftype || meetsFieldType(field, { ftype, embeddedDocType })),
+          ([_, field]) =>
+            !ftype || meetsFieldType(field, { ftype, embeddedDocType }),
         )
         .map(([name]) => name);
     },
@@ -318,14 +252,11 @@ export const fields = selectorFamily<
         throw new Error("invalid parameters");
       }
 
-      // A path can outrun the schema while a server-filtered page query
-      // is in flight; never hand consumers a null field.
       return [...get(fieldPaths(params))]
         .sort()
         .map((name) =>
           get(field(params.path ? [params.path, name].join(".") : name)),
-        )
-        .filter((f): f is Field => Boolean(f));
+        );
     },
 });
 
@@ -451,27 +382,16 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   get:
     ({ space }) =>
     ({ get }) => {
-      // Must agree with the task-exclusion filtering in `fieldSchema`:
-      // consumers deref each enumerated path via `field(path)`, which
-      // returns null for excluded paths.
-      const excluded = get(activeSchemaExclusions) ?? [];
-      const isExcluded = (path: string) =>
-        excluded.some((e) => path === e || path.startsWith(`${e}.`));
-      const drop = (paths: string[]) =>
-        excluded.length ? paths.filter((p) => !isExcluded(p)) : paths;
-
       if (space) {
-        return drop(
-          space === State.SPACE.FRAME
-            ? getLabelFields(get(atoms.frameFields), "frames.")
-            : getLabelFields(get(atoms.sampleFields)),
-        );
+        return space === State.SPACE.FRAME
+          ? getLabelFields(get(atoms.frameFields), "frames.")
+          : getLabelFields(get(atoms.sampleFields));
       }
 
-      return drop([
+      return [
         ...getLabelFields(get(atoms.sampleFields)),
         ...getLabelFields(get(atoms.frameFields), "frames."),
-      ]);
+      ];
     },
 });
 
@@ -485,20 +405,16 @@ export const labelPaths = selectorFamily<
     ({ get }) => {
       const fields = get(labelFields(params));
 
-      return fields.flatMap((path) => {
+      return fields.map((path) => {
         const labelField = get(field(path));
-        if (!labelField?.embeddedDocType) {
-          // Not in the (possibly exclusion-filtered) client schema.
-          return [];
-        }
         const typePath = labelField.embeddedDocType.split(".");
         const type = typePath[typePath.length - 1];
 
         if (expanded && type in LABEL_LIST) {
-          return [`${path}.${LABEL_LIST[type]}`];
+          return `${path}.${LABEL_LIST[type]}`;
         }
 
-        return [path];
+        return path;
       });
     },
 });
@@ -583,9 +499,6 @@ export const labelPath = selectorFamily<string, string>({
     (path) =>
     ({ get }) => {
       const labelField = get(field(path));
-      if (!labelField?.embeddedDocType) {
-        return path;
-      }
 
       const typePath = labelField.embeddedDocType.split(".");
       const type = typePath[typePath.length - 1];
@@ -785,9 +698,7 @@ export const fieldType = selectorFamily<
   get:
     ({ path, useListSubfield = true }) =>
     ({ get }) => {
-      // Null-safe: a stale path (e.g. a filter on a field excluded by
-      // a task schema policy) must not crash the selector graph.
-      const { ftype, subfield } = get(field(path)) ?? {};
+      const { ftype, subfield } = get(field(path));
       if (useListSubfield && ftype === LIST_FIELD) {
         return subfield;
       }

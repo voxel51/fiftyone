@@ -5,13 +5,11 @@ import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
 import { visibleLabelSchemas } from "./state";
 import { usePresentLabelRows } from "./usePresentLabelRows";
 import usePrimitiveEntries from "./usePrimitiveEntries";
-import useUnscannedEntries from "./useUnscannedEntries";
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const activeFields = useAtomValue(visibleLabelSchemas);
   const expanded = useAtomValue(labelsExpanded);
   const primitiveEntries = usePrimitiveEntries(activeFields || []);
-  const unscannedEntries = useUnscannedEntries();
   const rows = usePresentLabelRows();
 
   const entries = useMemo(() => {
@@ -40,7 +38,6 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       { kind: EntryKind.GROUP, name: LABELS_GROUP_NAME },
       ...entries,
       ...primitiveEntries,
-      ...unscannedEntries,
     ] as SidebarEntry[],
     () => {},
   ];

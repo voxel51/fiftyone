@@ -8,8 +8,8 @@ import {
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect } from "react";
 import {
-  effectiveLabelSchemasData,
-  isFieldBboxLocked,
+  isFieldReadOnly,
+  labelSchemasData,
   visibleLabelSchemas,
 } from "./state";
 
@@ -26,9 +26,7 @@ import {
 export const useSyncOverlayReadOnly = (sample: string): void => {
   const engine = useAnnotationEngine();
   const { scene } = useLighter();
-  // The effective map carries stage-policy read-only stamping, so a
-  // task's read_only fields lock their overlays like schema read-only.
-  const schemas = useAtomValue(effectiveLabelSchemasData);
+  const schemas = useAtomValue(labelSchemasData);
   const active = useAtomValue(visibleLabelSchemas);
 
   const apply = useCallback(() => {
@@ -37,9 +35,7 @@ export const useSyncOverlayReadOnly = (sample: string): void => {
     }
 
     for (const path of active) {
-      // Field read-only OR the stage policy's bbox knob — either
-      // locks dragging/resizing; the knob leaves attr inputs live.
-      const readOnly = isFieldBboxLocked(schemas[path]);
+      const readOnly = isFieldReadOnly(schemas[path]);
 
       for (const label of engine.listLabels({ sample, path })) {
         const overlay = scene.getOverlay(label._id);

@@ -1,10 +1,15 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { FilterList, VisibilityOff } from "@mui/icons-material";
+import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
@@ -14,24 +19,19 @@ const Text = styled.div`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-/**
- * The sidebar's mode row: the Filter / Visibility toggle on the left,
- * the query-performance bolt on the right. Field visibility is owned
- * by persisted label schemas now (the schema row above, and the Schema
- * Manager), so the per-session Field Visibility modal and its gear are
- * gone from here.
- */
-const Filter = (_props: { modal?: boolean }) => {
+const Filter = () => {
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode,
   );
 
+  const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const resetSelectedFieldStages = useResetRecoilState(
     fos.fieldVisibilityStage,
   );
 
   const {
+    resetTextFilter,
     resetExcludedPaths,
     affectedPathCount,
     mergedSchema,
@@ -132,6 +132,25 @@ const Filter = (_props: { modal?: boolean }) => {
           </Tooltip>
         )}
         {queryPerformance && <QueryPerformanceIcon />}
+        <Tooltip
+          text="Change field visibility"
+          placement="bottom-center"
+          data-cy="field-visibility-toggle-tooltip"
+        >
+          <Settings
+            data-cy="field-visibility-icon"
+            onClick={() => {
+              setSchemaModal({
+                open: true,
+              });
+              resetTextFilter();
+            }}
+            sx={{
+              color: theme.text.tertiary,
+              "&:hover": { color: theme.text.primary },
+            }}
+          />
+        </Tooltip>
       </Box>
     </FilterInputDiv>
   );
