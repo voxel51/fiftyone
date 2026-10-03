@@ -1,7 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { Duration } from "src/oss/utils";
+import { collapseWhitespace } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 import { ModalAnnotateEditPom } from "./annotate-edit";
 import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
+
+/** Dispatched as a sidebar entry shows its loaded value, with its text */
+const SIDEBAR_ENTRY = "e2e:modal:sidebar-entry";
 
 /**
  * The modal sidebar in 'Explore' mode
@@ -19,9 +23,12 @@ export class ModalSidebarPom {
    * @param page - The Playwright Page object used to locate elements within
    *  the modal sidebar
    */
-  constructor(page: Page) {
-    this.annotate = new ModalAnnotateSidebarPom(page);
-    this.edit = new ModalAnnotateEditPom(page);
+  constructor(
+    page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
+    this.annotate = new ModalAnnotateSidebarPom(page, eventUtils);
+    this.edit = new ModalAnnotateEditPom(page, eventUtils);
     this.page = page;
     this.assert = new ModalSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
@@ -159,17 +166,44 @@ export class ModalSidebarPom {
     return absPath;
   }
 
-  async hide() {
-    const toggle = this.page
-      .getByTestId("modal")
-      .getByTestId("action-toggle-sidebar");
-    await toggle.waitFor({ state: "visible" });
-
-    if (await this.locator.isVisible()) {
-      await toggle.click();
+  /**
+   * Run `action` and resolve once each of `entries` (key to text) shows its
+   * text. An entry already showing it counts: an unchanged value need not
+   * render again.
+   */
+  async afterEntries<T>(
+    entries: Record<string, string>,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const pending = new Map(Object.entries(entries));
+    for (const [key, text] of pending) {
+      const entry = this.getSidebarEntry(key);
+      if ((await entry.count()) > 0 && (await entry.textContent()) === text) {
+        pending.delete(key);
+      }
     }
+    if (pending.size === 0) return action();
 
-    await expect(this.locator).toBeHidden();
+    return this.eventUtils.after(SIDEBAR_ENTRY, action, (e) => {
+      const { path, text } = e.detail as { path: string; text: string };
+      if (pending.get(path) === text) pending.delete(path);
+      return pending.size === 0;
+    });
+  }
+
+  /**
+   * Run `action` and resolve once the entry `key` shows a value other than
+   * `current`, e.g. the sample id after a navigation
+   */
+  async afterEntryChanged<T>(
+    key: string,
+    current: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after(SIDEBAR_ENTRY, action, (e) => {
+      const { path, text } = e.detail as { path: string; text: string };
+      return path === key && text !== current;
+    });
   }
 
   /**
@@ -236,47 +270,6 @@ class ModalSidebarAsserter {
   }
 
   /**
-   * Waits until a sidebar entry's text content equals the expected value, with
-   * a 5-second timeout.
-   *
-   * @param key - The key identifier of the sidebar entry to watch
-   * @param value - The expected text content to wait for
-   * @returns A promise that resolves when the entry text matches the expected value
-   */
-  async waitUntilSidebarEntryTextEquals(key: string, value: string) {
-    return this.modalSidebarPom.page.waitForFunction(
-      ({ key_, value_ }: { key_: string; value_: string }) => {
-        // a not-yet-mounted entry is "not equal yet", not a crash
-        return (
-          document.querySelector(`[data-cy='sidebar-entry-${key_}']`)
-            ?.textContent === value_
-        );
-      },
-      { key_: key, value_: value },
-      { timeout: 5000 },
-    );
-  }
-
-  /**
-   * Waits until multiple sidebar entries each match their expected text values
-   * concurrently
-   *
-   * @param entries - A map of sidebar entry keys to their expected text
-   *  content values
-   * @returns A promise that resolves when all entries match their expected
-   *  values
-   */
-  async waitUntilSidebarEntryTextEqualsMultiple(entries: {
-    [key: string]: string;
-  }) {
-    await Promise.all(
-      Object.entries(entries).map(([key, value]) =>
-        this.waitUntilSidebarEntryTextEquals(key, value),
-      ),
-    );
-  }
-
-  /**
    * Asserts that multiple sidebar entries each match their expected text
    * content values
    *
@@ -299,35 +292,22 @@ class ModalSidebarAsserter {
    * @param count - The expected count value for the field
    */
   async verifySidebarFieldCount(field: string, count: string | number) {
-    await expect(
-      this.modalSidebarPom
-        .getSidebarField(field)
-        .getByTestId("entry-count-all"),
-    ).toHaveText(String(count));
+    expect(
+      collapseWhitespace(
+        await this.modalSidebarPom.getSidebarFieldCount(field),
+      ),
+    ).toBe(String(count));
   }
 
   /**
-   * Waits until the sample tag count in the sidebar equals the expected count,
-   * with a 1-second timeout
+   * Asserts the sample tag count; a tag applied through the tagger reloads
+   * it, so wait on {@link ModalSidebarPom.afterEntries} for `tags` first
    *
    * @param count - The expected number of sample tags
    */
   async verifySampleTagCount(count: number) {
-    await this.modalSidebarPom.page.waitForFunction(
-      (count_) => {
-        // a not-yet-mounted entry is "not equal yet", not a crash
-        return (
-          Number(
-            document.querySelector("#modal [data-cy='sidebar-entry-tags']")
-              ?.textContent,
-          ) === count_
-        );
-      },
-      count,
-      {
-        timeout: Duration.Seconds(1),
-      },
-    );
+    const entry = this.modalSidebarPom.getSidebarEntry("tags");
+    expect(await entry.textContent()).toBe(String(count));
   }
 
   /**
@@ -346,42 +326,23 @@ class ModalSidebarAsserter {
       const v = obj[k];
       const entry = locator.getByTestId(`key-value-${k}-${v}`);
 
-      await expect(entry.getByTestId(`key-${k}`)).toHaveText(k);
-      await expect(entry.getByTestId(`value-${v}`)).toHaveText(v);
+      expect(
+        collapseWhitespace(await entry.getByTestId(`key-${k}`).textContent()),
+      ).toBe(k);
+      expect(
+        collapseWhitespace(await entry.getByTestId(`value-${v}`).textContent()),
+      ).toBe(v);
     }
-  }
-
-  /**
-   * Waits until the label tag count in the sidebar equals the expected count,
-   * with a 1-second timeout.
-   *
-   * @param count - The expected number of label tags
-   */
-  async verifyLabelTagCount(count: number) {
-    await this.modalSidebarPom.page.waitForFunction(
-      (count_) => {
-        // a not-yet-mounted entry is "not equal yet", not a crash
-        return (
-          Number(
-            document.querySelector(
-              "#modal [data-cy='sidebar-field-container-_label_tags'] [data-cy='entry-count-all']",
-            )?.textContent,
-          ) === count_
-        );
-      },
-      count,
-      {
-        timeout: Duration.Seconds(1),
-      },
-    );
   }
 
   /**
    * Assert that annotation is disabled with a specific message
    */
   async hasDisabledMessage(messageSubstring: string) {
-    await expect(
-      this.modalSidebarPom.locator.getByText(messageSubstring),
-    ).toBeVisible();
+    expect(
+      await this.modalSidebarPom.locator
+        .getByText(messageSubstring)
+        .isVisible(),
+    ).toBe(true);
   }
 }

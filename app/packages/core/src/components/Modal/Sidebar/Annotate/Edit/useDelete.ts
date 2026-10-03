@@ -1,5 +1,6 @@
 import {
   getFieldSchema,
+  isSingletonAddressId,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
   useDeleteAnnotation,
@@ -124,10 +125,11 @@ export default function useDelete() {
 
       // A video frame label's anchor carries a `frame`; Delete removes the
       // whole track (every occurrence), matching the timeline's "Delete track".
-      // Image / sample-level labels (no `frame`) delete just their one entry.
-      // The engine's read-half does the rest: the bridge loop unmounts the
-      // overlay and the list mirror drops the row(s) on the delete tick.
-      if (ref?.frame != null) {
+      // Image / sample-level labels (no `frame`) and a singleton field's
+      // per-frame value delete just their one entry. The engine's read-half
+      // does the rest: the bridge loop unmounts the overlay and the list
+      // mirror drops the row(s) on the delete tick.
+      if (ref?.frame != null && !isSingletonAddressId(ref.instanceId)) {
         await deleteTrack(label, ref);
       } else {
         await deleteAnnotation(label, ref ? { ref } : undefined);

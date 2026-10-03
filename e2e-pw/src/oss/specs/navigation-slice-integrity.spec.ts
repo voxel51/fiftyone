@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -26,10 +26,7 @@ const TEMP_FILE_PATHS = groupSpecs.flatMap((spec) => [
 
 const ensureMain2dCanvasReadyForScreenshot = async (modal: ModalPom) => {
   await modal.assert.verifyPrimary2dRendererVisible();
-  await expect(modal.sampleCanvas.checkbox).toBeHidden();
-  await modal.sampleCanvas.tooltip.assert.isVisible(false);
-  await modal.sampleCanvas.toolbar.assert.isVisible(false);
-  await modal.sampleCanvas.moveMouseToViewportEdge();
+  await modal.sampleCanvas.prepareForScreenshot();
 };
 
 const test = base.extend<{
@@ -43,8 +40,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  renderer3d: async ({ page }, use) => {
-    await use(new Renderer3dPom(page));
+  renderer3d: async ({ page, eventUtils }, use) => {
+    await use(new Renderer3dPom(page, eventUtils));
   },
 });
 
@@ -181,9 +178,13 @@ test.describe.serial("navigation slice integrity", () => {
   }) => {
     const expectedFirstGroup = groupSpecs[0];
 
-    const assertMain2dAnd3dAreVisible = async () => {
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
+    /** Run `open`, then check both viewers show the group */
+    const assertMain2dAnd3dAreVisible = async (
+      open: () => Promise<unknown>,
+    ) => {
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(open, true),
+      );
       await modal.assert.verifyHasNoViewerError();
       await modal.assert.verifyPrimary2dRendererVisible();
       await modal.assert.verify3dRendererVisible();
@@ -193,16 +194,18 @@ test.describe.serial("navigation slice integrity", () => {
     await grid.sliceSelector.assert.verifyActiveSlice("img1");
     await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
 
-    await grid.openFirstSample();
-    await assertMain2dAnd3dAreVisible();
-    await modal.assert.verifyModalSamplePluginTitle("img1", {
-      pinned: true,
-    });
-    await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    const firstGroup = {
       "group.name": "img1",
       name: expectedFirstGroup.img1Name,
       scene: expectedFirstGroup.scene,
+    };
+    await modal.sidebar.afterEntries(firstGroup, () =>
+      assertMain2dAnd3dAreVisible(() => grid.openFirstSample()),
+    );
+    await modal.assert.verifyModalSamplePluginTitle("img1", {
+      pinned: true,
     });
+    await modal.sidebar.assert.verifySidebarEntryTexts(firstGroup);
     const expectedMain2dCanvas = modal.groupLooker.locator("canvas");
     await ensureMain2dCanvasReadyForScreenshot(modal);
     const expectedMain2dScreenshot = await expectedMain2dCanvas.screenshot();
@@ -212,8 +215,7 @@ test.describe.serial("navigation slice integrity", () => {
     await grid.sliceSelector.assert.verifyActiveSlice("3d");
     await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
 
-    await grid.openFirstSample();
-    await assertMain2dAnd3dAreVisible();
+    await assertMain2dAnd3dAreVisible(() => grid.openFirstSample());
     await compareLocatorScreenshotToBuffer(
       modal.groupLooker.locator("canvas"),
       expectedMain2dScreenshot,

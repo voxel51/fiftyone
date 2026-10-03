@@ -28,6 +28,8 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
+fofa = fou.lazy_import("fiftyone.core.frame_aggregations")
+
 logger = logging.getLogger(__name__)
 
 
@@ -212,6 +214,29 @@ class Aggregation(object):
             return foe.get_group_slices(self._expr)
 
         return None
+
+    def _to_frames_mongo(self, sample_collection, pipeline):
+        """Returns the pipeline of this aggregation on the frame documents of
+        the collection, if any.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
+            pipeline: the :meth:`to_mongo` pipeline of this aggregation
+
+        Returns:
+            a MongoDB aggregation pipeline on frame documents, or ``None`` if
+            the aggregation must run on sample documents
+        """
+        if (
+            self._has_big_result
+            or not self._needs_frames(sample_collection)
+            or self._needs_group_slices(sample_collection)
+        ):
+            return None
+
+        return fofa.to_frames_pipeline(pipeline)
 
     def _serialize(self, include_uuid=True):
         """Returns a JSON dict representation of the :class:`Aggregation`.

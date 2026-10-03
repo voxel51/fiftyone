@@ -119,18 +119,14 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Drop focus so the "." / "," frame-step keybindings aren't typed into an input. */
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-
-// canvas reads are only valid once the scene has applied the new frame
-const step = (modal: ModalPom, move: () => Promise<void>) =>
-  modal.eventUtils.after("video-annotation-frame-applied", move);
 
 const ofOverlay =
   (id: string) =>
@@ -147,13 +143,13 @@ const clickOverlay = (modal: ModalPom, id: string) =>
 
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await step(modal, () => modal.videoAnnotate.stepForward());
+    await modal.videoAnnotate.stepForward();
   }
 };
 
 const stepBack = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
-    await step(modal, () => modal.videoAnnotate.stepBack());
+    await modal.videoAnnotate.stepBack();
   }
 };
 
@@ -352,10 +348,12 @@ test.describe("polyline track deletion on video", () => {
     await clickOverlay(modal, id);
 
     // received only if the first press deleted the track
-    await modal.eventUtils.after(
-      "lighter:overlay-removed",
-      () => page.keyboard.press("Backspace"),
-      ofOverlay(id),
+    await modal.videoAnnotate.afterTracksChange(() =>
+      modal.eventUtils.after(
+        "lighter:overlay-removed",
+        () => page.keyboard.press("Backspace"),
+        ofOverlay(id),
+      ),
     );
     await modal.videoAnnotate.assert.objectTrackCount(1);
     // the delete flushes before the test ends

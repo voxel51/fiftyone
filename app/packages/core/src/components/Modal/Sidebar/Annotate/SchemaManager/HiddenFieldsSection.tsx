@@ -32,6 +32,7 @@ import {
   useSetCurrentField,
 } from "./hooks";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
+import { useFieldsShownSignal } from "./e2eSignals";
 
 /**
  * Actions component for hidden field rows
@@ -104,8 +105,10 @@ const HiddenFieldsSection = () => {
     types: fieldTypes,
     attrCounts: fieldAttrCounts,
     hasSchemaStates: fieldHasSchemaStates,
+    unsupportedStates: fieldUnsupportedStates,
   } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
+  useFieldsShownSignal("hidden", expanded ? fields : []);
   const { selected, setSelected } = useSelectedHiddenFields();
   const { setSelected: setActiveSelected } = useSelectedActiveFields();
 
@@ -114,7 +117,8 @@ const HiddenFieldsSection = () => {
       fields.map((path) => {
         const isSystemReadOnly = isSystemReadOnlyField(path);
         const hasSchema = fieldHasSchemaStates[path];
-        const canSelect = hasSchema && !isSystemReadOnly;
+        const canSelect =
+          hasSchema && !isSystemReadOnly && !fieldUnsupportedStates[path];
 
         return {
           id: path,
@@ -134,7 +138,13 @@ const HiddenFieldsSection = () => {
           } as ListItemProps,
         };
       }),
-    [fields, fieldTypes, fieldAttrCounts, fieldHasSchemaStates],
+    [
+      fields,
+      fieldTypes,
+      fieldAttrCounts,
+      fieldHasSchemaStates,
+      fieldUnsupportedStates,
+    ],
   );
 
   const handleSelected = useCallback(

@@ -15,6 +15,7 @@ import type { FrameBitmapStream } from "../streams/frameBitmapStream";
 import { DynamicGroupImageStream } from "../streams/DynamicGroupImageStream";
 import { NativeVideoFrameStream } from "../streams/NativeVideoFrameStream";
 import { usePublishDynamicGroupImageStream } from "../streams/dynamicGroupImageStreamHandle";
+import { useVideoFrameSource } from "../streams/videoFrameSource";
 
 /**
  * The two dynamic group tile bitmap sources. Which one is chosen is decided
@@ -100,6 +101,7 @@ interface DynamicGroupImageRegistrationProps {
 const DynamicGroupImageRegistration: React.FC<
   DynamicGroupImageRegistrationProps
 > = ({ children, ...props }) => {
+  const frameCache = useVideoFrameSource()?.cache;
   const streamRef = useRef<FrameBitmapStream | null>(null);
   if (streamRef.current === null) {
     streamRef.current =
@@ -110,6 +112,7 @@ const DynamicGroupImageRegistration: React.FC<
             frameCount: props.frameCount,
             frameRate: props.frameRate,
             videoSrc: props.videoSrc,
+            frameCache,
           })
         : new DynamicGroupImageStream({
             id: DYNAMIC_GROUP_STREAM_ID,
@@ -121,6 +124,7 @@ const DynamicGroupImageRegistration: React.FC<
             mediaField: props.mediaField,
             frameCount: props.frameCount,
             frameRate: props.frameRate,
+            frameCache,
           });
   }
 

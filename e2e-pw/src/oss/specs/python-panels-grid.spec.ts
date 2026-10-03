@@ -1,4 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
+import { PythonPanelPom } from "src/oss/poms/operators/python-panel";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -44,15 +45,20 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("Python Panels: Counter", async ({ panel }) => {
+test("Python Panels: Counter", async ({ eventUtils, panel }) => {
   const panelName = "e2e_counter_python_panel";
-  await panel.open(panelName);
+  const counter = new PythonPanelPom(eventUtils, panelName);
   const content = panel.getContent(panelName);
-  await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 0");
-  await content.getByRole("button", { name: "Increment" }).click();
-  await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 1");
-  await content.getByRole("button", { name: "Increment" }).click();
-  await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 2");
-  await content.getByRole("button", { name: "Decrement" }).click();
-  await expect(content.locator(".MuiAlert-standard")).toHaveText("Count: 1");
+  const count = content.locator(".MuiAlert-standard");
+  const click = (name: string) => () =>
+    content.getByRole("button", { name }).click();
+
+  await counter.afterRender(() => panel.open(panelName));
+  expect(await count.textContent()).toBe("Count: 0");
+  await counter.afterRender(click("Increment"));
+  expect(await count.textContent()).toBe("Count: 1");
+  await counter.afterRender(click("Increment"));
+  expect(await count.textContent()).toBe("Count: 2");
+  await counter.afterRender(click("Decrement"));
+  expect(await count.textContent()).toBe("Count: 1");
 });

@@ -35,18 +35,24 @@ export class PagePom {
     return this.page.getByTestId(`${pagename}-page`);
   }
 
+  /** Load the index page, or `dataset` from the selector, once rendered */
   async loadDataset(dataset?: string) {
     if (!dataset) {
-      await this.page.goto("/");
-    } else {
-      await this.datasetSelector.openResults();
-      await this.datasetSelector.selectResult(dataset);
+      await this.eventUtils.afterNavigation("e2e:app:page-change", () =>
+        this.page.goto("/"),
+      );
+      return;
     }
-    await this.page.waitForSelector(
-      `[data-cy=${dataset ? "dataset" : "index"}-page]`,
-      {
-        state: "visible",
-      },
+    await this.datasetSelector.openResults();
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.datasetSelector.selectResult(dataset),
+    );
+  }
+
+  /** Go back in history; resolves once the previous page has rendered */
+  async goBack() {
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.page.goBack(),
     );
   }
 }
@@ -67,7 +73,7 @@ class PageAsserter {
   }
 
   async verifyPage(pagename: string) {
-    await expect(this.pagePom.getPage(pagename)).toBeVisible();
+    expect(await this.pagePom.getPage(pagename).isVisible()).toBe(true);
   }
 
   async verifyPathname(pathname: string) {

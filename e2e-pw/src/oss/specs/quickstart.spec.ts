@@ -1,8 +1,9 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { createQuickstartDataset } from "./quickstart-data";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
@@ -22,24 +23,13 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset_name = "${datasetName}"
-    dataset = foz.load_zoo_dataset(
-      "quickstart", max_samples=5, dataset_name=dataset_name
-    )
-    dataset.persistent = True
-
-    patches = dataset.to_patches("predictions")
-    dataset.save_view("patches", patches)
-
-    grouped_patches = patches.group_by("predictions.label")
-    dataset.save_view("grouped-patches", grouped_patches)
-  `);
+  await createQuickstartDataset(datasetFactory, datasetName, {
+    patches: 'dataset.to_patches("predictions")',
+    "grouped-patches":
+      'dataset.to_patches("predictions").group_by("predictions.label")',
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -61,13 +51,12 @@ test.describe.serial("quickstart", () => {
 
     // test navigation
 
-    const expanded = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("id");
-    await expanded.received;
+    await eventUtils.after("animation-onRest", async () => {
+      await sidebar.clickFieldDropdown("id");
+    });
     await sidebar.asserter.assertFilterIsVisible("id", "categorical");
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     grid.url.assert.verifySampleId(
       await modal.sidebar.getSidebarEntryText("id"),
@@ -80,13 +69,15 @@ test.describe.serial("quickstart", () => {
     await sidebar.asserter.assertFilterIsVisible("id", "categorical");
   });
 
-  test("selection bookmark", async ({ page, grid }) => {
+  test("selection bookmark", async ({ grid }) => {
     await grid.toggleSelectFirstSample();
     await grid.actionsRow.assert.hasFiltersBookmark();
-    const gridRefresh = await grid.armGridRefresh();
-    await grid.actionsRow.bookmarkFilters();
-    await gridRefresh.received;
-    await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
+    await grid.afterEntryCounts(() =>
+      grid.run(async () => {
+        await grid.actionsRow.bookmarkFilters();
+      }),
+    );
+    await grid.assert.isEntryCountTextEqualTo("1 sample");
   });
 
   test("entry counts text when toPatches then groupedBy", async ({
@@ -97,13 +88,14 @@ test.describe.serial("quickstart", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "patches" }),
     });
-    await grid.assert.isEntryCountTextEqualTo("122 patches");
+    // one patch per prediction, one group per distinct prediction label
+    await grid.assert.isEntryCountTextEqualTo("16 patches");
 
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "grouped-patches" }),
     });
 
-    await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
+    await grid.assert.isEntryCountTextEqualTo("13 groups of patches");
   });
 
   test("sidebar persistence", async ({ grid, modal, sidebar }) => {

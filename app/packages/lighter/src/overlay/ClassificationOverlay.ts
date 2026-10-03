@@ -4,16 +4,17 @@
 
 import { Selectable } from "../selection/Selectable";
 import { BaseOverlay } from "./BaseOverlay";
+import { chipStackFor, drawLabelChip, leaveChipStack } from "./labelChip";
 
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Point, RawLookerLabel, RenderMeta } from "../types";
 
-import {
-  LABEL_ARCHETYPE_PRIORITY,
-  TAB_DASH_HOVERED,
-  TAB_DASH_SELECTED,
-  TAB_DASH_WIDTH,
-} from "../constants";
+import { LABEL_ARCHETYPE_PRIORITY } from "../constants";
+
+export type ClassificationLabel = NonNullable<RawLookerLabel> & {
+  label?: string;
+  confidence?: number;
+};
 
 /**
  * Options for creating a classification overlay.
@@ -25,64 +26,40 @@ export interface ClassificationOptions {
 }
 
 /**
- * Per-channel registry of active classification overlays.
- * Keyed by event channel so overlays from different scenes don't interfere.
+ * A `Classification` chip in the scene's shared top-left stack: the class
+ * name, then its confidence.
  */
-const channelRegistry = new Map<
-  string | undefined,
-  Map<string, ClassificationOverlay>
->();
-
-function getChannelMap(
-  channel: string | undefined,
-): Map<string, ClassificationOverlay> {
-  let map = channelRegistry.get(channel);
-  if (!map) {
-    map = new Map();
-    channelRegistry.set(channel, map);
-  }
-  return map;
-}
-
-/**
- * Classification overlay implementation with selection support.
- */
-export class ClassificationOverlay extends BaseOverlay implements Selectable {
+export class ClassificationOverlay
+  extends BaseOverlay<ClassificationLabel>
+  implements Selectable
+{
   private isSelectedState = false;
   private channel: string | undefined = undefined;
 
   constructor(options: ClassificationOptions) {
-    super(options.id, options.field, options.label);
+    super(options.id, options.field, options.label as ClassificationLabel);
   }
 
   setEventChannel(eventChannel: string | undefined): void {
     super.setEventChannel(eventChannel);
     this.channel = eventChannel;
 
-    getChannelMap(this.channel).set(this.id, this);
+    chipStackFor(this.channel).add(this);
   }
 
-  // The "stack index" is the order in which Classifications are drawn to the scene.
-  // They are displayed vertically in the upper-left of the scene and sorted alphabetically by label class.
-  private getStackIndex(): number {
-    const siblings = getChannelMap(this.channel);
-    const alphabetical = [...siblings.values()].sort((a, b) =>
-      (a.label?.label ?? "").localeCompare(b.label?.label ?? ""),
-    );
-
-    return alphabetical.indexOf(this);
+  /** The stack's sort key. */
+  get chipText(): string | undefined {
+    return this.label?.label || undefined;
   }
 
-  public get label(): RawLookerLabel {
+  public get label(): ClassificationLabel {
     return super.label;
   }
 
-  public set label(value: RawLookerLabel) {
+  public set label(value: ClassificationLabel) {
     super.label = value;
 
-    getChannelMap(this.channel).forEach((classificationOverlay) =>
-      classificationOverlay.markDirty(),
-    );
+    chipStackFor(this.channel).markAllDirty();
   }
 
   getCursor(_worldPoint: Point, _scale: number): string {
@@ -101,52 +78,14 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const style = this.getCurrentStyle();
     if (!style) return;
 
-    const { x, y } = renderMeta.canonicalMediaBounds;
-    const labelPosition = { x, y };
-
-    const hasLabel = !!this.label?.label;
-
-    const confidence =
-      this.label?.confidence && !isNaN(this.label.confidence)
-        ? this.label.confidence
-        : "";
-
-    const textToDraw = hasLabel
-      ? `${this.label?.label} ${confidence}`.trim()
-      : "select classification...";
-
-    const outlineDash = this.isSelected()
-      ? TAB_DASH_SELECTED
-      : TAB_DASH_HOVERED;
-
-    const dashline =
-      this.isSelected() || this.isHovered()
-        ? {
-            strokeStyle: "#FFFFFF",
-            lineWidth: TAB_DASH_WIDTH,
-            dashPattern: [outlineDash, outlineDash],
-          }
-        : undefined;
-
-    const backgroundColor = hasLabel
-      ? style.fillStyle || style.strokeStyle || "#000"
-      : "#808080";
-
-    this.textBounds = renderer.drawText(
-      textToDraw,
-      labelPosition,
-      {
-        fontColor: "#FFFFFF",
-        fontStyle: hasLabel ? "normal" : "italic",
-        backgroundColor,
-        anchor: { vertical: "top" },
-        offset: { bottom: this.getStackIndex() },
-        rounded: 4,
-        tab: "right",
-        dashline,
-      },
-      this.containerId,
-    );
+    drawLabelChip(renderer, this.containerId, style, renderMeta, {
+      text: this.chipText,
+      placeholder: "select classification...",
+      confidence: this.label?.confidence,
+      stackIndex: chipStackFor(this.channel).indexOf(this),
+      selected: this.isSelected(),
+      hovered: this.isHovered(),
+    });
 
     this.emitLoaded();
   }
@@ -159,7 +98,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   setSelected(selected: boolean): void {
     if (this.isSelectedState !== selected) {
       this.isSelectedState = selected;
-      this.markDirty(); // Trigger re-render to show/hide selection
+      this.markDirty();
     }
   }
 
@@ -187,13 +126,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   }
 
   destroy(): void {
-    const map = getChannelMap(this.channel);
-    map.delete(this.id);
-
-    if (map.size === 0) {
-      channelRegistry.delete(this.channel);
-    }
-
+    leaveChipStack(this.channel, this);
     super.destroy();
   }
 }

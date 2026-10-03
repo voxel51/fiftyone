@@ -104,9 +104,12 @@ class TestDynamicGroupFrames:
             view, ["detections"], dynamic_group=True
         )
 
+        # members map to frames by their rank in the group, as the client
+        # maps them through the group's member order
+        rank = {str(_id): i + 1 for i, _id in enumerate(view.values("_id"))}
         frames = sorted(
-            start
+            rank[str(member)]
             for instance in result["detections"]["instances"]
-            for start, _ in instance["segments"]
+            for member in instance["members"]
         )
         assert frames == [1, 2, 3]

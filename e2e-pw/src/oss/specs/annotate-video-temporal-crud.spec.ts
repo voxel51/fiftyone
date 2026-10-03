@@ -112,17 +112,10 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
-};
-
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT", "DELETE"].includes(r.request().method()),
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
   );
+};
 
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
@@ -155,12 +148,12 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     // has a visible target
     await va.pinTrack(newTrack as string);
 
-    const saved = savedResponse(page);
     await va.clickTrack(newTrack as string);
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await modal.sidebar.edit.selectFieldChoice("label", "depart");
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "depart"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "depart");
-    await saved;
 
     // the create + class survive a true round-trip
     const context = await browser.newContext();
@@ -195,11 +188,11 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     expect(expectedIds).toHaveLength(2);
 
     // delete it through the editor (engine delete -> id-aligned list diff)
-    const saved = savedResponse(page);
     await va.selectLabel("pass");
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await modal.sidebar.edit.deleteLabel();
-    await saved;
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
 
     await va.assert.temporalTrackCount(2);
     expect((await va.temporalTrackIds()).sort()).toEqual(expectedIds);

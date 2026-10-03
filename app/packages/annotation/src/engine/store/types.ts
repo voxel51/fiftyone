@@ -62,6 +62,22 @@ export const isWholeSampleReset = (change: LabelChange): boolean =>
  */
 export type PersistenceAdapter = (deltas: JSONDeltas) => Promise<boolean>;
 
+/** A track's frames and keyframes, ascending. */
+export interface TrackFrames {
+  frames: number[];
+  keyframes: number[];
+}
+
+/** Where a frame store's frames come from beyond what it holds. */
+export interface FrameSource {
+  /** A track's frames and keyframes per the server index; `null` without one
+   *  for `path`. */
+  indexedTrack(path: string, instanceId: string): TrackFrames | null;
+
+  /** Load `frames` and keep them until the returned release runs. */
+  hold(frames: readonly number[]): Promise<() => void>;
+}
+
 /**
  * The committed source of truth for one (sample, shape-region); transient wins
  * over source on read. `snapshot`/`restore` cover transient state and dirty
@@ -96,6 +112,11 @@ export interface LabelStore {
    *  per-store half of `engine.enumerateLabels` (hydration). */
   enumerateLabels(kinds: readonly LabelType[]): LabelRef[];
 
+  /** {@link enumerateLabels} at one frame: the frame's refs plus every
+   *  frame-less (sample-level) ref. Optional; the engine filters the full
+   *  enumeration for a store without it. */
+  enumerateLabelsAt?(kinds: readonly LabelType[], frame: number): LabelRef[];
+
   /** Frame numbers edited this session (the dirty overlay). Empty for stores
    *  that are not frame-indexed. The timeline merges these over the server
    *  index so in-session edits show without a whole-clip walk. */
@@ -108,6 +129,25 @@ export interface LabelStore {
    *  clears the dirty set — and naturally composes index (unloaded) ⊕ engine
    *  (loaded window) once the seed is windowed. */
   loadedFrames(): number[];
+
+  /** Frames written this session (edited, restored, or persisted), kept
+   *  after a save clears the dirty set: the frames where the store can
+   *  differ from the server index the timeline baselines from. Optional;
+   *  a store without it is read whole. */
+  editedFrames?(): number[];
+
+  /** Bumps whenever an {@link editedFrames} frame's content may have moved.
+   *  Optional, paired with {@link editedFrames}. */
+  editVersion?(): number;
+
+  /** The frames and keyframes a track occupies across the clip, including
+   *  frames the store doesn't hold. Optional; the engine scans
+   *  {@link loadedFrames} for a store without it. */
+  trackFrames?(path: string, instanceId: string): TrackFrames;
+
+  /** Load `frames` and keep them until the returned release runs. Optional;
+   *  a store without it holds every frame it has. */
+  holdFrames?(frames: readonly number[]): Promise<() => void>;
 
   // mutation (upsert by instanceId for list labels) — the store stamps
   // `_id = ref.instanceId`; callers never reconstruct arrays. `updateLabel`

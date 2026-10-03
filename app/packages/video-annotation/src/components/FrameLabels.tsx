@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
@@ -85,9 +86,14 @@ import {
   type TemporalDetectionLabelLike,
 } from "../tracks/temporalDetectionTracks";
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
+import { useVideoFrameSource } from "../streams/videoFrameSource";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
-const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
+/** e2e specs wait on the timeline rows an edit or sample change commits */
+type FrameLabelsE2EEvents = {
+  /** the visible rows' track ids, comma-separated */
+  "e2e:video-annotation:tracks-rendered": { ids: string };
+};
 
 /** Base linked-overlay decoration the interaction layer attaches per row. */
 type BaseTrackDecoration = ReturnType<
@@ -231,8 +237,8 @@ export const RegisterFrameLabels: React.FC<{
    * fields get fetched.
    *
    * Annotate reads the annotation schemas (`useFrameLabelFields`), which know
-   * only the types the editor can create — Detections and Polylines — and only
-   * the ones activated in the Schema Manager. Explore paints from the
+   * only the types the editor can create, and only the ones activated in the
+   * Schema Manager. Explore paints from the
    * sidebar's active paths instead, across every type the per-frame pipeline
    * can project. Fetching one set while registering and painting the other is
    * how `frames.keypoints` and `frames.classifications` ended up never
@@ -338,6 +344,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   ...props
 }) => {
   // Construct once per mount; the parent re-mounts on identity changes.
+  const frameCache = useVideoFrameSource()?.cache;
   const streamRef = useRef<VideoFrameLabelsStream | null>(null);
   if (streamRef.current === null) {
     streamRef.current = new VideoFrameLabelsStream({
@@ -350,6 +357,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
       frameRate: props.frameRate,
       frameField: props.frameField,
       frameFields: props.frameFields,
+      frameCache,
     });
   }
 
@@ -882,10 +890,9 @@ export const FrameLabelsTracks: React.FC<{
   // the timeline's rows commit before this parent effect runs
   useEffect(() => {
     if (ready) {
-      document.dispatchEvent(
-        new CustomEvent(TRACKS_RENDERED_EVENT, {
-          detail: { ids: visibleTracks.map(({ id }) => id) },
-        }),
+      getEventBus<FrameLabelsE2EEvents>().dispatch(
+        "e2e:video-annotation:tracks-rendered",
+        { ids: visibleTracks.map(({ id }) => id).join(",") },
       );
     }
   }, [ready, visibleTracks]);

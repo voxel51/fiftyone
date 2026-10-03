@@ -19,6 +19,12 @@ import {
 } from "../map/tile/tile-state";
 import { sanitizeTimelineSamplingRateHz } from "../playback/timeline-sampling";
 import { TILE_TYPE } from "../tiles/tile-types";
+import { getEventBus } from "@fiftyone/events";
+
+/** e2e specs wait on a specific layout field's save */
+type LayoutE2EEvents = {
+  "e2e:multimodal:layout-saved": { fields: string };
+};
 
 /**
  * Persistence for the episode modal's chrome: sidebar visibility, sidebar
@@ -667,11 +673,15 @@ export function writeModalLayout(
       ...current,
       ...patch,
     }));
-    return;
+  } else {
+    modalLayoutStore.updateFallback((current) =>
+      stripDatasetScopedLayoutFields({ ...current, ...patch }),
+    );
   }
-  modalLayoutStore.updateFallback((current) =>
-    stripDatasetScopedLayoutFields({ ...current, ...patch }),
-  );
+
+  getEventBus<LayoutE2EEvents>().dispatch("e2e:multimodal:layout-saved", {
+    fields: Object.keys(patch).join(","),
+  });
 }
 
 /** Reads durable 3D conventions for a media field or standalone source. */

@@ -5,9 +5,10 @@ import type { PerInstanceLabel } from "./frameTracks";
 type ColorContext = Parameters<typeof getLabelColorFromContext>[2];
 
 /**
- * An object track row's color. A `null` label is a Segmentation or Heatmap
- * row, which takes its field's color in every color-by mode: those overlays
- * paint per target or by colorscale, so the field color is what they share.
+ * An object track row's color. A `null` label is a singleton field's row,
+ * which takes its field's color in every color-by mode: a mask paints per
+ * target or by colorscale and a classification's value changes frame to
+ * frame, so the field color is what its frames share.
  */
 export const objectRowColor = (
   label: PerInstanceLabel | null,

@@ -24,18 +24,12 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * Wait until the 3D scene is interactable: the looker3d container is mounted
-   * and all scene assets have finished loading. Call this before any toolbar /
-   * canvas interaction.
+   * Run `action` (the switch to annotate, or an annotation slice pick) and
+   * resolve once the 3D scene it (re)mounts is interactable: all assets
+   * loaded and the camera settled. Toolbar and canvas interaction goes after.
    */
-  async waitForSurface() {
-    await expect(this.container).toBeVisible();
-    // arm first, then read the state once: a reveal that already happened
-    // shows in the attribute, one still to come fires the armed event
-    const ready = await this.modal.eventUtils.arm("looker3d-scene-ready");
-    if ((await this.container.getAttribute("data-scene-ready")) !== "true") {
-      await ready.received;
-    }
+  async afterSurface<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.afterSceneReady(action);
   }
 
   /**
@@ -155,6 +149,21 @@ export class ModalAnnotate3dPom {
   }
 
   /**
+   * Run `action` (a cuboid selection) and resolve once the annotation toolbar
+   * shows the transform group it arms
+   */
+  async afterTransformShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:annotation-toolbar",
+      action,
+      (e) => {
+        const detail = e.detail as { visible: boolean; transformMode: string };
+        return detail.visible && detail.transformMode !== "";
+      },
+    );
+  }
+
+  /**
    * The engine instanceId of a listed label (strips the `annotate-label-`
    * prefix from its `data-cy`).
    */
@@ -215,11 +224,13 @@ export class ModalAnnotate3dPom {
     for (const [index, point] of points.entries()) {
       const [x, y] = toScreen(point);
       await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-      await expect(this.container).toHaveAttribute(
-        "data-cy-draft-vertex-count",
-        String(index + 1),
+      await this.modal.eventUtils.after(
+        "e2e:looker3d:draft-vertices",
+        async () => {
+          await this.page.mouse.down();
+          await this.page.mouse.up();
+        },
+        (e) => (e.detail as { count: number }).count === index + 1,
       );
     }
 
@@ -237,33 +248,36 @@ class ModalAnnotate3dAsserter {
    * annotate mode (the cuboid/polyline/transform groups mount on demand).
    */
   async toolbarVisible(visible = true) {
-    const plane = this.pom.toolbarButton("toggle-annotation-plane");
-    return visible
-      ? await expect(plane).toBeVisible()
-      : await expect(plane).toBeHidden();
+    expect(
+      await this.pom.toolbarButton("toggle-annotation-plane").isVisible(),
+    ).toBe(visible);
   }
 
   /** Assert cuboid-draw mode is active (Create Cuboid button highlighted). */
   async createCuboidActive(active = true) {
-    await expect(this.pom.toolbarButton("create-cuboid")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("create-cuboid")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert polyline annotation mode is active (the sidebar 3D Polylines button). */
   async polylineModeActive(active = true) {
-    await expect(
-      this.pom.page.locator('[data-cy="polyline-mode-3d"]'),
-    ).toHaveAttribute("data-cy-active", String(active));
+    expect(
+      await this.pom.page
+        .locator('[data-cy="polyline-mode-3d"]')
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert the New Segment polyline action is active (segmentation armed). */
   async newSegmentActive(active = true) {
-    await expect(this.pom.toolbarButton("new-segment")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("new-segment")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /**
@@ -271,23 +285,24 @@ class ModalAnnotate3dAsserter {
    * gizmo mode is active.
    */
   async transformModeActive(mode: "translate" | "rotate" | "scale") {
-    await expect(this.pom.toolbarButton(mode)).toHaveAttribute(
-      "data-cy-active",
-      "true",
-    );
+    expect(
+      await this.pom.toolbarButton(mode).getAttribute("data-cy-active"),
+    ).toBe("true");
   }
 
   /** Assert a label (by class text) is / isn't listed in the sidebar. */
   async labelListed(labelText: string, listed = true) {
     const row = this.pom.labelRow(labelText);
-    return listed
-      ? await expect(row).toBeVisible()
-      : await expect(row).toHaveCount(0);
+    if (listed) {
+      expect(await row.isVisible()).toBe(true);
+    } else {
+      expect(await row.count()).toBe(0);
+    }
   }
 
   /** Assert the number of label rows currently listed. */
   async labelCount(expected: number) {
-    await expect(this.pom.labelRows).toHaveCount(expected);
+    expect(await this.pom.labelRows.count()).toBe(expected);
   }
 }
 

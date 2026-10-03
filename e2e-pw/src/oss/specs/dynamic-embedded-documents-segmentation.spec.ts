@@ -60,7 +60,7 @@ test.describe
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
     await modal.assert.verifyModalOpenedSuccessfully();
   });
 });

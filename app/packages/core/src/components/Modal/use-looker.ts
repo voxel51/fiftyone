@@ -12,6 +12,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
+import { dispatchLookerAttached } from "./lookerAttached";
 import useKeyEvents from "./use-key-events";
 import { shortcutToHelpItems } from "./utils";
 
@@ -84,13 +85,8 @@ function useLooker<L extends fos.Lookers>({
   }, []);
 
   useEffect(() => {
-    ref.current?.dispatchEvent(
-      new CustomEvent("looker-attached", { bubbles: true }),
-    );
-  }, []);
-
-  useEffect(() => {
     looker.attach(id);
+    dispatchLookerAttached();
   }, [looker, id]);
 
   useEffect(() => {

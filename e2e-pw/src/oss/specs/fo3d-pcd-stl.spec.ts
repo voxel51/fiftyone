@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -24,8 +24,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  modalSidebar: async ({ page }, use) => {
-    await use(new ModalSidebarPom(page));
+  modalSidebar: async ({ page, eventUtils }, use) => {
+    await use(new ModalSidebarPom(page, eventUtils));
   },
 });
 
@@ -92,21 +92,16 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 
 test.describe.serial("fo3d", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 2 });
   });
 
   test("scene is rendered correctly", async ({ modal, grid, modalSidebar }) => {
-    const mask = modal.looker3dScreenshotMasks;
+    await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
-    await expect(grid.getForwardSection()).toHaveScreenshot(
-      "orthographic-projection-grid-cuboids.png",
-      {
-        mask,
-        animations: "allow",
-      },
+    // each loaded asset adds its folders to the render preferences
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
     );
-
-    await grid.openFirstSample();
     await modal.modalContainer.hover();
 
     const leva = modal.looker3dControls.leva;

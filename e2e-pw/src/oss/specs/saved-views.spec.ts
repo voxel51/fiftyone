@@ -56,11 +56,6 @@ const testView2: SaveViewParams = {
 
 // todo: move it to the SavedViewsPom
 async function deleteSavedView(savedViews: SavedViewsPom, slug: string) {
-  const hasUnsaved = savedViews.canClearView();
-  if (!hasUnsaved) {
-    await savedViews.clearView();
-  }
-
   await savedViews.openSelect();
   const count = await savedViews.savedViewOptionCount(slug);
 
@@ -73,8 +68,8 @@ async function deleteSavedView(savedViews: SavedViewsPom, slug: string) {
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart-saved-views");
 
 const test = base.extend<{ savedViews: SavedViewsPom }>({
-  savedViews: async ({ page }, use) => {
-    await use(new SavedViewsPom(page));
+  savedViews: async ({ page, eventUtils }, use) => {
+    await use(new SavedViewsPom(page, eventUtils));
   },
 });
 
@@ -104,7 +99,7 @@ test.describe.serial("saved views", () => {
   });
 
   test("saved view basic operations", async ({ savedViews }) => {
-    await expect(savedViews.selector).toBeVisible();
+    expect(await savedViews.selector.isVisible()).toBe(true);
     await savedViews.openCreateModal();
 
     await savedViews.assert.verifyInputIsDefault();
@@ -112,8 +107,8 @@ test.describe.serial("saved views", () => {
     await savedViews.assert.verifyDeleteBtnHidden();
     await savedViews.nameInput().fill("test");
     await savedViews.descriptionInput().fill("test");
-    await savedViews.colorInput().click();
-    await savedViews.colorOption().click();
+    await savedViews.clickColor();
+    await savedViews.pickColor("Purple");
     await savedViews.assert.verifySaveBtnIsEnabled();
     await savedViews.assert.verifyCancelBtnClearsAll();
 
@@ -146,16 +141,14 @@ test.describe.serial("saved views", () => {
     await savedViews.assert.verifySaveViewFails();
   });
 
-  test.fixme("searching through saved views works", async ({ savedViews }) => {
+  test("searching through saved views works", async ({ savedViews }) => {
     await savedViews.saveView(testView1);
-    await savedViews.clearViewBtn.waitFor({ state: "visible" });
-    await savedViews.clearViewBtn.click();
-
-    await savedViews.saveView(testView2);
-    await savedViews.clearViewBtn.waitFor({ state: "visible" });
     await savedViews.clearView();
 
-    await savedViews.selector.click();
+    await savedViews.saveView(testView2);
+    await savedViews.clearView();
+
+    await savedViews.openSelect();
     await savedViews.assert.verifySearchExists();
 
     await savedViews.assert.verifySearch("test 2", ["test-2"], ["test-1"]);
@@ -164,12 +157,11 @@ test.describe.serial("saved views", () => {
 
     await savedViews.openSelect();
     await savedViews.deleteView("test-1");
-    await savedViews.selector.click();
+    await savedViews.openSelect();
     await savedViews.deleteView("test-2");
   });
 
-  // flaky: passed only on retry in CI
-  test.skip("deleting a saved view clears the URL view parameter and view selection", async ({
+  test("deleting a saved view clears the URL view parameter and view selection", async ({
     savedViews,
   }) => {
     await savedViews.saveView(testView);
@@ -186,8 +178,7 @@ test.describe.serial("saved views", () => {
     await savedViews.assert.verifyViewOptionHidden();
   });
 
-  // failing: fails in CI on the edit round-trip
-  test.skip("editing a saved view updates the view's name and description", async ({
+  test("editing a saved view updates the view's name and description", async ({
     savedViews,
   }) => {
     await savedViews.saveView(testView);
@@ -208,7 +199,6 @@ test.describe.serial("saved views", () => {
       updatedView2.color,
     );
 
-    await savedViews.openSelect();
     await savedViews.clickEdit(updatedView2.slug);
     await savedViews.assert.verifyDeleteBtn();
     await savedViews.assert.verifyInputUpdated(updatedView2);

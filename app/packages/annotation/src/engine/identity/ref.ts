@@ -34,6 +34,22 @@ export const addressIdOf = (label: LabelData): string => {
   return label._id;
 };
 
+/** `instanceId` prefix for a per-frame singleton field (`field:<path>`). */
+export const SINGLETON_ADDRESS_PREFIX = "field:";
+
+/**
+ * The `instanceId` of a per-frame singleton (Classification, Regression,
+ * Segmentation, Heatmap). Its document `_id` is minted per frame, so
+ * addressing by it would make every frame its own track; a field holds at most
+ * one per frame, so the FIELD is the identity, stable for the whole clip. The
+ * server's track index groups by the same id.
+ */
+export const singletonAddressId = (path: string): string =>
+  `${SINGLETON_ADDRESS_PREFIX}${path}`;
+
+export const isSingletonAddressId = (instanceId: string): boolean =>
+  instanceId.startsWith(SINGLETON_ADDRESS_PREFIX);
+
 /** The track `index` encoded in a `track-<index>` id, or `undefined`. */
 export const indexFromAddressId = (instanceId: string): number | undefined => {
   if (!instanceId.startsWith(TRACK_INDEX_PREFIX)) {

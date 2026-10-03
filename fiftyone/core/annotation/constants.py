@@ -198,7 +198,11 @@ SUPPORTED_DOC_TYPES = {
     fomm.ImageMetadata,
     fomm.SceneMetadata,
 }
-SUPPORTED_LABEL_TYPES = {fol.Classification, fol.Classifications}
+SUPPORTED_LABEL_TYPES = {
+    fol.Classification,
+    fol.Classifications,
+    fol.Regression,
+}
 SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
     fom.IMAGE: {
         fol.Detection,
@@ -238,6 +242,9 @@ SPATIAL_LABEL_TYPES = (
     fol.Polyline,
     fol.Polylines,
 )
+# Label types the App can't annotate per-frame yet: a frame-level list of
+# classifications needs overlapping tracks, like temporal detections
+APP_UNSUPPORTED_FRAME_LABEL_TYPES = (fol.Classifications,)
 SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.FloatField,
     fof.IntField,

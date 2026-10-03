@@ -1,15 +1,20 @@
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-import { Fragment, useCallback, useRef } from "react";
+import { Fragment, useCallback, useEffect, useRef } from "react";
 import { useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 
+/** e2e specs wait on the field visibility modal opening */
+type SchemaSettingsE2EEvents = {
+  "e2e:schema:field-visibility-opened": undefined;
+};
 const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -99,6 +104,14 @@ const SchemaSettings = () => {
   fos.useEventHandler(document, "keydown", keyboardHandler);
 
   const { open: isSettingsModalOpen } = settingModal || {};
+  useEffect(() => {
+    if (isSettingsModalOpen) {
+      getEventBus<SchemaSettingsE2EEvents>().dispatch(
+        "e2e:schema:field-visibility-opened",
+      );
+    }
+  }, [isSettingsModalOpen]);
+
   if (!isSettingsModalOpen) {
     return null;
   }

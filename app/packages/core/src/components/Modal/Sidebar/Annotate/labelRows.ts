@@ -16,6 +16,7 @@ export const SINGULAR: Partial<Record<EngineLabelType, LabelType>> = {
   [EngineLabelType.Keypoints]: "Keypoint",
   [EngineLabelType.Polyline]: "Polyline",
   [EngineLabelType.Polylines]: "Polyline",
+  [EngineLabelType.Regression]: "Regression",
 };
 
 export const byLabelName = (a: AnnotationLabel, b: AnnotationLabel) =>

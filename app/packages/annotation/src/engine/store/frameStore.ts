@@ -22,10 +22,13 @@
  * during a save survives as the next delta; a failed save touches nothing, so
  * the next `getJsonPatch` re-emits idempotently.
  *
- * Handles list-label frame fields (Detections/Keypoints/…). The server
- * echo/seed payload is the flat {@link FramesData} shape. Registered per-frame
- * primitive fields (`valuePaths`) ride alongside as a read-only source layer
- * seeded from the same frame documents.
+ * Handles list-label frame fields (Detections/Keypoints/…) and singleton
+ * fields (Classification/Regression/…), held as a zero-or-one list addressed
+ * by `singletonAddressId(path)`, with the document id kept as `_docId` (see
+ * `./singletons`). The server echo/seed payload is the flat
+ * {@link FramesData} shape. Registered per-frame primitive fields
+ * (`valuePaths`) ride alongside as a read-only source layer seeded from the
+ * same frame documents.
  */
 
 import type { JSONDeltas, LabelData, LabelType } from "@fiftyone/utilities";
@@ -34,22 +37,34 @@ import {
   equalsNormalized,
   idAlignedListDelta,
   isListLabelType,
+  isSingletonLabelType,
   LIST_LABEL_CHILD,
   objectId,
 } from "@fiftyone/utilities";
 
 import { toSchemaField } from "../identity/framePath";
-import { addressIdOf, indexFromAddressId } from "../identity/ref";
+import {
+  addressIdOf,
+  indexFromAddressId,
+  singletonAddressId,
+} from "../identity/ref";
 import type { LabelRef } from "../identity/ref";
 import type {
   ReconcileOpts,
   ChangeListener,
   DisplayListener,
+  FrameSource,
   LabelChange,
   LabelStore,
   StoreSnapshot,
+  TrackFrames,
 } from "./types";
 import { wholeSampleReset } from "./types";
+import {
+  fromSingletonWire,
+  singletonDelta,
+  toSingletonWire,
+} from "./singletons";
 
 /** One frame's labels, keyed by frame-agnostic field path → element list. */
 type FrameDoc = Map<string, LabelData[]>;
@@ -83,6 +98,11 @@ export interface FrameStoreOptions {
   values?: FrameValuesData;
   /** Start in the seed-in-flight state (see {@link LabelStore.isLoading}). */
   loading?: boolean;
+  /**
+   * Where frames the store doesn't hold come from. Without one the store
+   * answers only for the frames it holds.
+   */
+  frameSource?: FrameSource;
 }
 
 /**
@@ -116,6 +136,12 @@ export class FrameStore implements LabelStore {
   private readonly displayListeners = new Set<DisplayListener>();
   private readonly changeListeners = new Set<ChangeListener>();
   private loading = false;
+  /** Frames written this session; survives the save that clears `working`. */
+  private edited = new Set<number>();
+  /** Frames whose primitive values were written this session. */
+  private readonly valueEdited = new Set<number>();
+  private edits = 0;
+  private readonly frameSource?: FrameSource;
 
   constructor(sample: string, options: FrameStoreOptions) {
     this.sample = sample;
@@ -124,6 +150,7 @@ export class FrameStore implements LabelStore {
     this.source = this.parse(options.data ?? {});
     this.valueSource = this.parseValues(options.values ?? {});
     this.loading = options.loading ?? false;
+    this.frameSource = options.frameSource;
   }
 
   isLoading(): boolean {
@@ -217,6 +244,24 @@ export class FrameStore implements LabelStore {
     return refs;
   }
 
+  /** {@link enumerateLabels} restricted to one frame: that frame's labels only. */
+  enumerateLabelsAt(kinds: readonly LabelType[], frame: number): LabelRef[] {
+    const refs: LabelRef[] = [];
+
+    for (const path of Object.keys(this.labelTypes)) {
+      if (!kinds.includes(this.labelTypes[path])) {
+        continue;
+      }
+
+      for (const label of this.listAt(frame, path)) {
+        const instanceId = addressIdOf(label);
+        refs.push({ sample: this.sample, path, instanceId, frame });
+      }
+    }
+
+    return refs;
+  }
+
   dirtyFrames(): number[] {
     return [...this.working.keys()];
   }
@@ -225,10 +270,106 @@ export class FrameStore implements LabelStore {
     return this.frames();
   }
 
+  editedFrames(): number[] {
+    return [...this.edited];
+  }
+
+  editVersion(): number {
+    return this.edits;
+  }
+
+  /**
+   * The frames and keyframes a track occupies across the clip: the frame
+   * source's index for frames nobody wrote this session, the store's own
+   * frames for the rest. Without an index, only the frames the store holds.
+   */
+  trackFrames(path: string, instanceId: string): TrackFrames {
+    const indexed = this.frameSource?.indexedTrack(path, instanceId) ?? null;
+    const frames = new Set<number>();
+    const keyframes = new Set<number>();
+
+    if (indexed) {
+      for (const frame of indexed.frames) {
+        if (!this.edited.has(frame)) {
+          frames.add(frame);
+        }
+      }
+
+      for (const frame of indexed.keyframes) {
+        if (!this.edited.has(frame)) {
+          keyframes.add(frame);
+        }
+      }
+    }
+
+    for (const frame of indexed ? this.edited : this.frames()) {
+      const label = this.getLabel({
+        sample: this.sample,
+        path,
+        instanceId,
+        frame,
+      });
+
+      if (label) {
+        frames.add(frame);
+
+        if (label.keyframe) {
+          keyframes.add(frame);
+        }
+      }
+    }
+
+    const byFrame = (a: number, b: number) => a - b;
+
+    return {
+      frames: [...frames].sort(byFrame),
+      keyframes: [...keyframes].sort(byFrame),
+    };
+  }
+
+  /**
+   * Load `frames` from the frame source and keep them until the returned
+   * release runs, so an operation reads and writes whole frames.
+   */
+  holdFrames(frames: readonly number[]): Promise<() => void> {
+    return this.frameSource?.hold(frames) ?? Promise.resolve(() => {});
+  }
+
+  /**
+   * Drop server frames the frame source no longer keeps. Frames written this
+   * session stay: their edits, undo history and timeline overlay need them.
+   */
+  evict(frames: Iterable<number>): void {
+    for (const frame of frames) {
+      if (
+        this.edited.has(frame) ||
+        this.valueEdited.has(frame) ||
+        this.working.has(frame) ||
+        this.workingValues.has(frame)
+      ) {
+        continue;
+      }
+
+      this.source.delete(frame);
+      this.valueSource.delete(frame);
+    }
+  }
+
   // ---- mutation ----
 
   updateLabel(ref: LabelRef, partial: Partial<LabelData>): void {
+    const singleton = this.isSingleton(ref.path);
+
     this.writeFrame(ref, (existing) => {
+      if (existing && singleton) {
+        return {
+          ...existing,
+          ...partial,
+          _id: existing._id,
+          _docId: existing._docId,
+        };
+      }
+
       if (existing) {
         // merge; identity fields are the store's, never the partial's
         return {
@@ -244,6 +385,15 @@ export class FrameStore implements LabelStore {
   }
 
   replaceLabel(ref: LabelRef, value: Partial<LabelData>): void {
+    if (this.isSingleton(ref.path)) {
+      this.writeFrame(ref, (existing) => ({
+        ...value,
+        _id: singletonAddressId(ref.path),
+        _docId: value._docId ?? existing?._docId ?? objectId(),
+      }));
+      return;
+    }
+
     // exact value (undo/redo replays) but identity survives the round-trip
     this.writeFrame(ref, (existing) => ({
       ...value,
@@ -331,10 +481,14 @@ export class FrameStore implements LabelStore {
 
     for (const [frame, doc] of working) {
       this.working.set(frame, new Map(doc));
+      this.edited.add(frame);
     }
+
+    this.edits++;
 
     for (const [frame, edited] of workingValues) {
       this.workingValues.set(frame, new Map(edited));
+      this.valueEdited.add(frame);
     }
   }
 
@@ -349,19 +503,23 @@ export class FrameStore implements LabelStore {
       for (const path of Object.keys(this.labelTypes)) {
         const type = this.labelTypes[path];
         const child = LIST_LABEL_CHILD[type];
-
-        if (!isListLabelType(type) || !child) {
-          continue;
-        }
-
         const current = doc.get(path) ?? [];
         const baseline = source?.get(path) ?? [];
+        const container = `/frames/${frame}/${toSchemaField(path)}`;
 
         if (current === baseline) {
           continue;
         }
 
-        const container = `/frames/${frame}/${toSchemaField(path)}`;
+        if (isSingletonLabelType(type)) {
+          ops.push(...singletonDelta(current[0], baseline[0], container));
+          continue;
+        }
+
+        if (!isListLabelType(type) || !child) {
+          continue;
+        }
+
         ops.push(...idAlignedListDelta(current, baseline, container, child));
       }
     }
@@ -454,8 +612,13 @@ export class FrameStore implements LabelStore {
     for (const op of deltas) {
       const segments = op.path.split("/").filter(Boolean);
 
-      // /frames/<n>/<wireField>/<listChild>/...
-      if (segments[0] !== "frames" || segments.length < 4) {
+      // /frames/<n>/<wireField>/<listChild>/..., or a singleton's
+      // /frames/<n>/<wireField>[/...]
+      if (
+        segments[0] !== "frames" ||
+        segments.length < 3 ||
+        (segments.length === 3 && !this.isSingletonField(segments[2]))
+      ) {
         continue;
       }
 
@@ -489,7 +652,10 @@ export class FrameStore implements LabelStore {
 
     for (const [frame, frameOps] of byFrame) {
       this.source.set(frame, this.rebaseFrame(frame, frameOps));
+      this.edited.add(frame);
     }
+
+    this.edits++;
 
     for (const [frame, doc] of [...this.working]) {
       if (this.frameEquals(doc, this.source.get(frame))) {
@@ -620,6 +786,72 @@ export class FrameStore implements LabelStore {
       }
     }
 
+    this.bumpIfEdited(before.keys());
+    this.emit(this.diffDisplayed(before));
+  }
+
+  /**
+   * Merge a WINDOW of the `/frames` stream into the source, leaving every
+   * frame outside it untouched: the incremental counterpart to
+   * {@link setData}, so seeding a clip chunk by chunk is linear rather than
+   * re-reading the whole accumulated cache per chunk.
+   *
+   * Emission matches {@link setData}'s, restricted to the window's frames. A
+   * frame the window omits is not a removal; a frame it carries with an empty
+   * list for a path is.
+   */
+  mergeData(data: Record<string, unknown>, values?: FrameValuesData): void {
+    const next = this.parse(data as FramesData);
+    let valuesMoved = false;
+
+    if (values) {
+      for (const [frame, doc] of this.parseValues(values)) {
+        const prev = this.valueSource.get(frame);
+
+        if (!prev || !equalsNormalized([...prev], [...doc])) {
+          this.valueSource.set(frame, doc);
+          valuesMoved = true;
+        }
+      }
+
+      if (valuesMoved) {
+        this.gcValues();
+      }
+    }
+
+    const before = new Map<number, Map<string, Map<string, LabelData>>>();
+
+    for (const [frame, after] of next) {
+      const prev = this.source.get(frame);
+
+      if (prev === undefined || !this.frameEquals(prev, after)) {
+        before.set(frame, this.displayedById(frame));
+      }
+    }
+
+    if (before.size === 0) {
+      // nothing moved: a no-op display tick still walks every subscriber
+      if (valuesMoved) {
+        this.emit([]);
+      }
+      return;
+    }
+
+    for (const frame of before.keys()) {
+      this.source.set(frame, next.get(frame) as FrameDoc);
+    }
+
+    // GC only the window's frames; a working frame elsewhere cannot have
+    // changed dirtiness here
+    for (const frame of before.keys()) {
+      const doc = this.working.get(frame);
+
+      if (doc && this.frameEquals(doc, this.source.get(frame))) {
+        this.working.delete(frame);
+      }
+    }
+
+    this.bumpIfEdited(before.keys());
     this.emit(this.diffDisplayed(before));
   }
 
@@ -628,6 +860,8 @@ export class FrameStore implements LabelStore {
     this.working = new Map();
     this.valueSource = new Map();
     this.workingValues = new Map();
+    this.edited = new Set();
+    this.edits++;
     this.emit([wholeSampleReset(this.sample)]);
   }
 
@@ -691,6 +925,7 @@ export class FrameStore implements LabelStore {
     }
 
     edited.set(path, value);
+    this.valueEdited.add(frame);
 
     // a primitive is not a label, so there is no LabelChange to report; the
     // display tick is what re-reads the value
@@ -722,6 +957,16 @@ export class FrameStore implements LabelStore {
     }
   }
 
+  /** A re-seed that moved an edited frame changes what the timeline overlays. */
+  private bumpIfEdited(frames: Iterable<number>): void {
+    for (const frame of frames) {
+      if (this.edited.has(frame)) {
+        this.edits++;
+        return;
+      }
+    }
+  }
+
   /** Read-through resolution: the working overlay wins, else source, else []. */
   private listAt(frame: number, path: string): LabelData[] {
     return (this.working.get(frame) ?? this.source.get(frame))?.get(path) ?? [];
@@ -734,6 +979,9 @@ export class FrameStore implements LabelStore {
 
   /** Copy-on-write the frame into the working overlay (clone source on first touch). */
   private editableFrame(frame: number): FrameDoc {
+    this.edited.add(frame);
+    this.edits++;
+
     let doc = this.working.get(frame);
 
     if (!doc) {
@@ -763,6 +1011,15 @@ export class FrameStore implements LabelStore {
 
     const doc = this.editableFrame(ref.frame);
     const list = doc.get(ref.path) ?? [];
+
+    if (this.isSingleton(ref.path)) {
+      // a frame holds one value per singleton field, so a write replaces it
+      const instanceId = singletonAddressId(ref.path);
+      doc.set(ref.path, [produce(list[0])]);
+      this.emit([{ ref: { ...ref, instanceId }, kind: "update" }]);
+      return;
+    }
+
     const index = list.findIndex(
       (label) => addressIdOf(label) === ref.instanceId,
     );
@@ -780,6 +1037,14 @@ export class FrameStore implements LabelStore {
 
   /** A freshly born element: minted doc id, identity stamped from the track ref. */
   private born(ref: LabelRef, partial: Partial<LabelData>): LabelData {
+    if (this.isSingleton(ref.path)) {
+      return {
+        ...partial,
+        _id: singletonAddressId(ref.path),
+        _docId: partial._docId ?? objectId(),
+      };
+    }
+
     return {
       ...partial,
       ...identityFields(ref.instanceId),
@@ -797,13 +1062,18 @@ export class FrameStore implements LabelStore {
    */
   private rebaseFrame(frame: number, frameOps: JSONDeltas): FrameDoc {
     const source = this.source.get(frame);
-    const doc: Record<string, Record<string, LabelData[]>> = {};
+    const doc: Record<string, unknown> = {};
 
     for (const path of Object.keys(this.labelTypes)) {
       const child = LIST_LABEL_CHILD[this.labelTypes[path]];
+      const list = source?.get(path) ?? [];
 
-      if (child) {
-        doc[toSchemaField(path)] = { [child]: [...(source?.get(path) ?? [])] };
+      if (this.isSingleton(path)) {
+        if (list[0]) {
+          doc[toSchemaField(path)] = toSingletonWire(list[0]);
+        }
+      } else if (child) {
+        doc[toSchemaField(path)] = { [child]: [...list] };
       }
     }
 
@@ -812,19 +1082,37 @@ export class FrameStore implements LabelStore {
       path: `/${op.path.split("/").filter(Boolean).slice(2).join("/")}`,
     }));
 
-    const next = applyDeltas(doc, scoped);
+    const next = applyDeltas(doc, scoped) as Record<
+      string,
+      Record<string, unknown> | undefined
+    >;
 
     const rebased: FrameDoc = source ? new Map(source) : new Map();
 
     for (const path of Object.keys(this.labelTypes)) {
       const child = LIST_LABEL_CHILD[this.labelTypes[path]];
+      const value = next[toSchemaField(path)];
 
-      if (child) {
-        rebased.set(path, next[toSchemaField(path)]?.[child] ?? []);
+      if (this.isSingleton(path)) {
+        rebased.set(path, value ? [fromSingletonWire(value, path)] : []);
+      } else if (child) {
+        rebased.set(path, (value?.[child] as LabelData[] | undefined) ?? []);
       }
     }
 
     return rebased;
+  }
+
+  private isSingleton(path: string): boolean {
+    const type = this.labelTypes[path];
+    return type !== undefined && isSingletonLabelType(type);
+  }
+
+  /** Whether an in-frame-doc field (`cls`) is a registered singleton's. */
+  private isSingletonField(field: string): boolean {
+    return Object.keys(this.labelTypes).some(
+      (path) => toSchemaField(path) === field && this.isSingleton(path),
+    );
   }
 
   private frameEquals(doc: FrameDoc, source: FrameDoc | undefined): boolean {

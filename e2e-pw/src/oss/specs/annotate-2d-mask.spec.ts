@@ -120,9 +120,9 @@ const inFreshContext = async (
   try {
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.sidebar.switchMode("annotate");
 
     await verify(freshModal);
@@ -139,8 +139,8 @@ for (const cfg of KINDS) {
       await createMaskDataset(datasetFactory, cfg);
       await fiftyoneLoader.waitUntilGridVisible(page, cfg.datasetName, {
         searchParams: new URLSearchParams({ id }),
+        modalSample: "loaded",
       });
-      await modal.waitForSampleLoadDomAttribute();
       await modal.assert.isOpen();
       await modal.sidebar.switchMode("annotate");
     });
@@ -175,12 +175,9 @@ for (const cfg of KINDS) {
       page.on("response", countPatch);
 
       try {
-        const saved = page.waitForResponse(
-          (r) =>
-            /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+        await modal.sidebar.annotate.afterSave(() =>
+          modal.sidebar.edit.removeMask(),
         );
-        await modal.sidebar.edit.removeMask();
-        await saved;
 
         await modal.sidebar.edit.assert.hasMask(false);
         expect(patches).toBe(1);
@@ -202,17 +199,13 @@ for (const cfg of KINDS) {
       browser,
       fiftyoneLoader,
       modal,
-      page,
     }) => {
       await modal.sidebar.annotate.selectActiveLabel("cat", 0);
       await modal.sidebar.edit.assert.hasMask(true);
 
-      const saved = page.waitForResponse(
-        (r) =>
-          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+      await modal.sidebar.annotate.afterSave(() =>
+        modal.sidebar.edit.removeMask(),
       );
-      await modal.sidebar.edit.removeMask();
-      await saved;
       await modal.sidebar.edit.assert.hasMask(false);
 
       await inFreshContext(

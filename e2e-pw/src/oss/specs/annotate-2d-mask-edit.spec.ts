@@ -19,14 +19,6 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
 
-/** The rendered mask preview's covered fraction once the mask has decoded. */
-const maskCoverage = async (modal: ModalPom) => {
-  await expect
-    .poll(() => modal.sidebar.edit.maskPreviewCoverage())
-    .toBeGreaterThan(0);
-  return modal.sidebar.edit.maskPreviewCoverage();
-};
-
 /** Open the seeded detection's editor in a brand-new browser context. */
 const inFreshContext = async (
   browser: Browser,
@@ -39,11 +31,14 @@ const inFreshContext = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.assert.isOpen();
     await freshModal.sidebar.switchMode("annotate");
-    await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
+    // the seeded label is masked; its preview draws once the form opens
+    await freshModal.sidebar.edit.afterMaskPreview(() =>
+      freshModal.sidebar.annotate.selectActiveLabel("cat", 0),
+    );
     await verify(freshModal);
   } finally {
     await context.close();
@@ -98,8 +93,8 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
   });
@@ -122,9 +117,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
 
     // paint a stroke well outside the seeded bbox ([0.4,0.4]+0.2) so the mask
     // grows rather than re-covering already-set pixels.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5),
+    );
 
     // the persisted mask reaches past the seeded box: its bounding box widened
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
@@ -140,35 +135,37 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     fiftyoneLoader,
     modal,
   }) => {
-    await modal.sidebar.annotate.selectActiveLabel("cat", 0);
+    await modal.sidebar.edit.afterMaskPreview(() =>
+      modal.sidebar.annotate.selectActiveLabel("cat", 0),
+    );
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
     // seed mask is fully set within its bbox → coverage starts at 1.0.
-    const before = await maskCoverage(modal);
+    const before = await modal.sidebar.edit.maskPreviewCoverage();
     expect(before).toBeGreaterThan(0);
 
     await modal.sidebar.annotate.pickTool("Brush");
     await modal.sidebar.annotate.pickMaskMode("Remove");
 
     // erase across the seeded bbox center.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5),
+    );
 
     // coverage drops — raw pixel count is unreliable across the commit's mask
     // re-rasterization, the covered FRACTION is not.
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await maskCoverage(fresh)).toBeLessThan(before);
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBeLessThan(
+        before,
+      );
     });
 
     // the erase is one undoable engine unit — undo restores full coverage.
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await maskCoverage(fresh)).toBe(before);
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(before);
     });
   });
 });

@@ -6,7 +6,7 @@
  * select-only canvas click records no phantom undo entry (a value-equal commit
  * must not capture an op). Only an e2e exercises the real autosave round-trip.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -52,16 +52,14 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  // the loading cover takes pointer events until Lighter reveals the sample
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 });
 
 /** Read a numeric edit-form field value. */
-const fieldNum = async (modal: ModalPom, path: string) =>
-  Number(await modal.sidebar.edit.getFieldValue(path));
-
 test.describe.serial("annotate undo durability", () => {
   // NOTE: the phantom-undo test runs FIRST — it clicks the seeded box at its
   // canvas center, so it needs the box at its pristine [0.4,0.4,0.2,0.2] bounds.
@@ -81,35 +79,26 @@ test.describe.serial("annotate undo durability", () => {
     await modal.sampleCanvas.up();
 
     // confirm the click selected the box (the edit form opened)
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
     // selected but nothing edited → the select-click recorded no phantom entry
     await modal.sidebar.edit.assert.undoIsEnabled(false);
   });
 
-  test("the undo stack survives an autosave", async ({ modal, page }) => {
+  test("the undo stack survives an autosave", async ({ modal }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
-    const before = await fieldNum(modal, "position.x");
+    const before = await modal.sidebar.edit.getFieldValue("position.x");
 
     // edit a field; the engine commits + autosaves (PATCH dataset/.../sample/...)
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.123"),
     );
-    await modal.sidebar.edit.setFieldValue("position.x", "0.123");
-    await expect
-      .poll(() => fieldNum(modal, "position.x"))
-      .toBeCloseTo(0.123, 4);
-    await modal.sidebar.edit.assert.undoIsEnabled();
-    await saved;
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.123");
 
     // the persist echo (whole-sample reset) must NOT have wiped the stack:
     // undo is still enabled and still reverts the edit
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.edit.undo();
-    await expect
-      .poll(() => fieldNum(modal, "position.x"))
-      .toBeCloseTo(before, 4);
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", before);
   });
 });

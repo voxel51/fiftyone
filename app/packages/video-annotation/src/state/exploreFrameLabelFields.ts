@@ -70,11 +70,10 @@ export const toExploreFrameLabelFields = (
  * label type — the Explore analogue of `useFrameLabelFields`.
  *
  * That hook derives from the annotation schemas, which know only the types the
- * editor can create (Detections and Polylines) and only the fields activated
- * in the Schema Manager. Using it in Explore meant `frames.keypoints` and
- * `frames.classifications` never painted, and a field checked in the sidebar
- * but inactive in the Schema Manager never painted either — both of which the
- * video looker drew.
+ * editor can create and only the fields activated in the Schema Manager. Using
+ * it in Explore meant `frames.keypoints` and `frames.classifications` never
+ * painted, and a field checked in the sidebar but inactive in the Schema
+ * Manager never painted either — both of which the video looker drew.
  *
  * It also couples Explore to whether annotation is enabled at all: the modal
  * sidebar calls `useLoadSchemas()` whenever the annotation tab is available,
@@ -105,7 +104,8 @@ export const useExploreFrameLabelPaths = (): ReadonlySet<string> => {
 };
 
 /**
- * The SAMPLE-level classification fields Explore should paint.
+ * The SAMPLE-level classification fields Explore should paint. Regression
+ * fields ride along: they render as the same chip through the same adapter.
  *
  * A sample Classification is not `frames.*`, so {@link useExploreFrameLabelPaths}
  * — which exists to keep the per-frame namespace the `FrameStore` owns — can

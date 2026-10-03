@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DynamicGroupImageStream } from "./DynamicGroupImageStream";
+import { FrameCache } from "./frameCache";
 import { MAX_FRAME_ATTEMPTS } from "./frameBitmapStream";
 
 interface WorkerMessage {
@@ -42,7 +43,7 @@ class FakeWorker {
 const fetchChunks = (w: FakeWorker) =>
   w.posted.filter((m) => m.type === "fetchChunk");
 
-const makeStream = () =>
+const makeStream = (budgetBytes = 1e9) =>
   new DynamicGroupImageStream({
     id: "test",
     sampleId: "s1",
@@ -51,6 +52,24 @@ const makeStream = () =>
     frameCount: 120,
     frameRate: 30,
     chunkSize: 4,
+    frameCache: new FrameCache({ frameCount: 120, budgetBytes }),
+  });
+
+/** Land one decoded frame so the cache learns the frame size. */
+const landFrame = (
+  worker: FakeWorker,
+  reqId: number,
+  frameNumber: number,
+  size: number,
+) =>
+  worker.emit({
+    type: "frameReady",
+    reqId,
+    frameNumber,
+    bitmap: { close: vi.fn() },
+    width: size,
+    height: size,
+    meta: { src: "f.png" },
   });
 
 beforeEach(() => {
@@ -100,6 +119,129 @@ describe("DynamicGroupImageStream failed-frame handling", () => {
     // ...and re-prefetching the same range issues no further fetch.
     stream.prefetch([0, 0]);
     expect(fetchChunks(worker)).toHaveLength(MAX_FRAME_ATTEMPTS);
+
+    stream.destroy();
+  });
+});
+
+describe("DynamicGroupImageStream decode-ahead budget", () => {
+  it("requests a full chunk until the frame size is known", () => {
+    const stream = makeStream(160_000);
+    const worker = FakeWorker.instances[0];
+
+    stream.prefetch([0, 3]);
+    expect(fetchChunks(worker)[0].request!.numFrames).toBe(4);
+
+    stream.destroy();
+  });
+
+  it("stops decoding ahead of what the cache can hold", () => {
+    // A 100x100 frame is 40_000 bytes, so this budget holds four; half of that
+    // capacity is the forward budget, leaving room for frames behind.
+    const stream = makeStream(160_000);
+    const worker = FakeWorker.instances[0];
+
+    // The first chunk lands in full, so nothing ahead is still in flight.
+    stream.prefetch([0, 3]);
+    const first = fetchChunks(worker)[0];
+    for (let frame = 1; frame <= 4; frame++) {
+      landFrame(worker, first.reqId!, frame, 100);
+    }
+
+    // Playhead at frame 5, asking for three seconds: the budget allows two
+    // frames ahead, split across the chunks it keeps in flight, so the
+    // request is for far less than the configured chunk.
+    stream.prefetch([4 / 30, 3]);
+    const second = fetchChunks(worker)[1];
+    expect(second.request!.frameNumber).toBe(5);
+    expect(second.request!.numFrames).toBe(1);
+
+    stream.destroy();
+  });
+
+  it("refills the window a whole chunk at a time", () => {
+    // 100x100 frames are 40_000 bytes, so this budget's forward window is
+    // eight frames, split into chunks
+    const stream = makeStream(640_000);
+    const worker = FakeWorker.instances[0];
+
+    const landAll = () => {
+      for (const chunk of fetchChunks(worker)) {
+        const { frameNumber, numFrames } = chunk.request!;
+        for (let f = frameNumber; f < frameNumber + numFrames; f++) {
+          landFrame(worker, chunk.reqId!, f, 100);
+        }
+      }
+    };
+
+    // fill the window ahead of a playhead parked on frame 1
+    let issued = -1;
+    while (issued !== fetchChunks(worker).length) {
+      issued = fetchChunks(worker).length;
+      stream.prefetch([0, 3]);
+      landAll();
+    }
+    const chunk = fetchChunks(worker).at(-1)!.request!.numFrames;
+    const windowEnd = fetchChunks(worker).reduce(
+      (end, c) =>
+        Math.max(end, c.request!.frameNumber + c.request!.numFrames - 1),
+      0,
+    );
+    expect(chunk).toBeGreaterThan(1);
+
+    // one frame of advance opens one slot: no one-frame request
+    stream.prefetch([1 / 30, 3]);
+    expect(fetchChunks(worker)).toHaveLength(issued);
+
+    // a whole chunk's worth of open slots refills as one chunk
+    stream.prefetch([chunk / 30, 3]);
+    const refill = fetchChunks(worker)[issued];
+    expect(refill.request!.frameNumber).toBe(windowEnd + 1);
+    expect(refill.request!.numFrames).toBe(chunk);
+
+    stream.destroy();
+  });
+
+  it("keeps frames decoded for a jump while the playhead hasn't moved yet", () => {
+    // 100x100 frames are 40_000 bytes: this budget holds four
+    const stream = makeStream(160_000);
+    const worker = FakeWorker.instances[0];
+    const landChunk = (n: number) => {
+      const { reqId, request } = fetchChunks(worker)[n];
+      for (
+        let f = request!.frameNumber;
+        f < request!.frameNumber + request!.numFrames;
+        f++
+      ) {
+        landFrame(worker, reqId!, f, 100);
+      }
+    };
+
+    // fill the cache around the start
+    stream.prefetch([0, 3 / 30]);
+    landChunk(0);
+
+    // jump to frame 90; nothing commits until it is ready
+    stream.prefetch([89 / 30, 92 / 30]);
+    landChunk(1);
+
+    expect(stream.bufferState(89 / 30)).toBe("ready");
+
+    stream.destroy();
+  });
+
+  it("keeps the full chunk when frames are small next to the budget", () => {
+    const stream = makeStream(1e9);
+    const worker = FakeWorker.instances[0];
+
+    stream.prefetch([0, 3]);
+    const first = fetchChunks(worker)[0];
+    for (let frame = 1; frame <= 4; frame++) {
+      landFrame(worker, first.reqId!, frame, 100);
+    }
+
+    stream.prefetch([4 / 30, 3]);
+    expect(fetchChunks(worker)[1].request!.numFrames).toBe(4);
 
     stream.destroy();
   });

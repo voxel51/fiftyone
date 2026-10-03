@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -103,7 +103,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 3 });
 });
 
 test.describe.serial("detection-mask", () => {
@@ -111,17 +111,11 @@ test.describe.serial("detection-mask", () => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
     // bad sample, assert it loads in the modal fine, too
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     // close modal and assert grid screenshot (compares all detections)
     await modal.close();
 
-    await expect(grid.getForwardSection()).toHaveScreenshot(
-      "grid-detections.png",
-      {
-        animations: "allow",
-      },
-    );
+    await grid.assert.hasScreenshot("grid-detections.png");
   });
 });

@@ -205,8 +205,8 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
     },
     { auto: true, scope: "worker" },
   ],
-  explorer: async ({ page }, use) => {
-    const explorer = new McapExplorerPom(page);
+  explorer: async ({ eventUtils, page }, use) => {
+    const explorer = new McapExplorerPom(page, eventUtils);
     await use(explorer);
     await explorer.closeIfOpen();
   },
@@ -232,7 +232,6 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
           graphicsBackend === "webgl2"
             ? new URLSearchParams({ graphicsBackend })
             : undefined,
-        withGrid: true,
       });
       await use();
       await modal.close({ ignoreError: true });
@@ -276,16 +275,18 @@ export async function openMcapModal(
   await modal.enterFullscreen();
 }
 
+/**
+ * One read of `locator`'s dominant color. Pixels are meaningful once painted:
+ * wait on the episode image tile's `imageShown`, or on the looker's
+ * canvas-loaded, first.
+ */
 export async function expectDominantColor(
   locator: Locator,
   expected: readonly [number, number, number],
 ): Promise<void> {
-  await expect(locator).toBeVisible();
-  await expect
-    .poll(() => getLocatorDominantColorShare(locator, expected), {
-      timeout: 20_000,
-    })
-    .toBeGreaterThan(0.15);
+  expect(await getLocatorDominantColorShare(locator, expected)).toBeGreaterThan(
+    0.15,
+  );
 }
 
 export { expect } from "src/oss/fixtures";

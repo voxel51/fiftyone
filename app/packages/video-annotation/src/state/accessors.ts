@@ -24,13 +24,17 @@ import {
   view,
 } from "@fiftyone/state";
 import { isFrameScopedPath } from "./framePaths";
+import { toFrameLabelFields } from "./frameLabelFields";
 import {
+  CLASSIFICATION,
   CLASSIFICATION_FIELD,
   CLASSIFICATIONS_FIELD,
   DETECTION,
   EMBEDDED_DOCUMENT_FIELD,
   LabelType,
   POLYLINE,
+  REGRESSION,
+  REGRESSION_FIELD,
   type Stage,
   TEMPORAL_DETECTIONS_FIELD,
 } from "@fiftyone/utilities";
@@ -44,6 +48,7 @@ import {
 } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useAnnotationContext";
 import {
   activeLabelSchemas,
+  labelSchemasData,
   visibleLabelSchemas,
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 import { getModalSampleFrameRate } from "../utils/modalSample";
@@ -87,16 +92,20 @@ export const useTemporalDetectionFieldPaths = () =>
   );
 
 /**
- * Schema paths of the dataset's sample-level classification fields, single and
- * list alike. `space: SAMPLE` keeps `frames.*` out, since the composite store
- * routes each path to exactly one owner.
+ * Schema paths of the dataset's sample-level classification and regression
+ * fields, single and list alike. `space: SAMPLE` keeps `frames.*` out, since
+ * the composite store routes each path to exactly one owner.
  */
 export const useSampleClassificationFieldPaths = () =>
   useRecoilValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,
-      embeddedDocType: [CLASSIFICATION_FIELD, CLASSIFICATIONS_FIELD],
+      embeddedDocType: [
+        CLASSIFICATION_FIELD,
+        CLASSIFICATIONS_FIELD,
+        REGRESSION_FIELD,
+      ],
     }),
   );
 
@@ -132,45 +141,41 @@ export const useLabelSchemasLoaded = (): boolean =>
   useAtomValue(activeLabelSchemas) !== null;
 
 /**
- * Every schema-active per-frame label field mapped to its list label type;
- * the engine seed registers and renders exactly these. A real video owns its
- * `frames.*` fields, while an image dataset grouped into a video owns its
- * sample-level fields instead.
+ * Every schema-active per-frame label field mapped to its label type; the
+ * engine seed registers and renders exactly these (see
+ * {@link toFrameLabelFields}). A real video owns its `frames.*` fields, while
+ * an image dataset grouped into a video owns its sample-level fields instead.
  */
 export const useFrameLabelFields = (): Record<string, LabelType> => {
   const detectionFields = useAnnotationFields(DETECTION).fields;
   const polylineFields = useAnnotationFields(POLYLINE).fields;
+  const classificationFields = useAnnotationFields(CLASSIFICATION).fields;
+  const regressionFields = useAnnotationFields(REGRESSION).fields;
+  const schemas = useAtomValue(labelSchemasData);
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
-  // Keyed on content, not array identity: a new `labelTypes` identity tears
+  const fields = toFrameLabelFields(
+    [
+      ...detectionFields,
+      ...polylineFields,
+      ...classificationFields,
+      ...regressionFields,
+    ],
+    (path) => schemas?.[path]?.type,
+    isImageDynamicGroupVideo,
+  );
+
+  // Keyed on content, not object identity: a new `labelTypes` identity tears
   // down the engine's FrameStore, which reseeds from the stale `/frames` cache
   // and drops every occurrence persisted this session.
-  const contentKey = `${detectionFields.join(
-    ",",
-  )}|${polylineFields.join(",")}|${isImageDynamicGroupVideo}`;
+  const contentKey = Object.entries(fields)
+    .map(([path, type]) => `${path}:${type}`)
+    .sort()
+    .join(",");
 
   // `useMemoOne`, not `useMemo`: React may forget a memo, and a new object
   // here destroys the FrameStore
-  return useMemoOne(() => {
-    const fields: Record<string, LabelType> = {};
-
-    const owns = (field: string): boolean =>
-      isFrameScopedPath(field, isImageDynamicGroupVideo);
-
-    for (const field of detectionFields) {
-      if (owns(field)) {
-        fields[field] = LabelType.Detections;
-      }
-    }
-
-    for (const field of polylineFields) {
-      if (owns(field)) {
-        fields[field] = LabelType.Polylines;
-      }
-    }
-
-    return fields;
-  }, [contentKey]);
+  return useMemoOne(() => fields, [contentKey]);
 };
 
 /**

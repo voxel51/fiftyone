@@ -22,10 +22,7 @@ import {
   type FieldSchema,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
-import {
-  dispatchSchemaManagerEvent,
-  useSchemaManagerEventBus,
-} from "../events";
+import { useSchemaManagerEventBus } from "../events";
 import { currentLabelSchema } from "../state";
 import { type AttributeConfig, reconcileComponent } from "../utils";
 
@@ -254,7 +251,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       } catch (error) {
         console.error("Failed to save label schema:", error);
         setIsSaving(false);
-        dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+        dispatch("schema-manager:save-complete");
         return;
       }
 
@@ -262,7 +259,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       setSaved(resolved);
       setCurrent(resolved);
       setIsSaving(false);
-      dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+      dispatch("schema-manager:save-complete");
 
       // Determine activation change: first save auto-activates,
       // otherwise apply the visibility toggle for this field
@@ -314,7 +311,7 @@ const useScan = (field: string) => {
         }
       } finally {
         setIsScanning(false);
-        dispatchSchemaManagerEvent(dispatch, "schema-manager:scan-complete");
+        dispatch("schema-manager:scan-complete");
       }
     },
     cancelScan: () => {
@@ -359,10 +356,10 @@ const useValidate = (field: string) => {
         if (!result.errors?.length) {
           setCurrent(parsed);
           setIsValid(true);
-          dispatchSchemaManagerEvent(dispatch, "schema-manager:valid-json");
+          dispatch("schema-manager:valid-json");
         } else {
           setIsValid(false);
-          dispatchSchemaManagerEvent(dispatch, "schema-manager:invalid-json");
+          dispatch("schema-manager:invalid-json");
         }
       } catch (e) {
         if (e instanceof SyntaxError) {

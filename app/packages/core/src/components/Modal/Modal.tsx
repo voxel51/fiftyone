@@ -52,6 +52,7 @@ import {
   useTooltipEventHandler,
 } from "./hooks";
 import { modalContext } from "./modal-context";
+import { useModalLifecycleSignal } from "./modalLifecycle";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -125,6 +126,7 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 
 const Modal = () => {
   useAnnotationStatus();
+  useModalLifecycleSignal();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);

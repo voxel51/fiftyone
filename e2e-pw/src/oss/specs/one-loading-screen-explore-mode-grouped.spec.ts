@@ -60,23 +60,22 @@ test("does not show when opening or navigating the modal for a group dataset", a
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();
-  await modal.waitForSampleLoadDomAttribute();
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();
-  await modal.waitForSampleLoadDomAttribute();
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
-  await modal.clickOnLooker3d();
-  await modal.looker3dControls.waitForAllAssetsLoaded();
+  // the 3D slice becomes the modal's sample; its scene is already loaded
+  const imageId = await modal.sidebar.getSampleId();
+  await modal.sidebar.afterEntryChanged("id", imageId, () =>
+    modal.clickOnLooker3d(),
+  );
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
-  await modal.navigatePreviousSample();
-  await modal.waitForSampleLoadDomAttribute(true);
+  await modal.navigatePreviousSample(true);
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 });

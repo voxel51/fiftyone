@@ -5,6 +5,7 @@ import {
   useInteraction,
 } from "@fiftyone/annotation";
 import type { AnnotationLabel } from "@fiftyone/state";
+import { REGRESSION } from "@fiftyone/utilities";
 import { animated } from "@react-spring/web";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
@@ -53,6 +54,9 @@ const Line = styled.div<{ fill: string }>`
   background: ${({ fill }) => fill};
 `;
 
+const regressionText = (value: unknown) =>
+  typeof value === "number" ? `${value}` : undefined;
+
 const LabelEntry = ({
   id,
   path,
@@ -65,7 +69,7 @@ const LabelEntry = ({
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
   const type = useAtomValue(fieldType(path ?? ""));
-  const Icon = ICONS[type] ?? (() => null);
+  const Icon = ICONS[type?.toLowerCase() ?? ""] ?? (() => null);
 
   // read the label declaratively by ref — the engine is the source of truth.
   // `frame` is set for video frame labels (the playhead occurrence the row was
@@ -73,7 +77,10 @@ const LabelEntry = ({
   const data = useEngineSelector(engine, (e) =>
     sample ? e.getLabel({ sample, path, instanceId: id, frame }) : undefined,
   );
-  const labelText = data?.label as string | undefined;
+  const isRegression = type === REGRESSION;
+  const labelText = isRegression
+    ? regressionText(data?.value)
+    : (data?.label as string | undefined);
 
   // the sidebar reflects the selected slice; refs carry its id (from modal
   // state, so it's correct before the engine registers a store and stays
@@ -132,7 +139,7 @@ const LabelEntry = ({
               ...{ paddingLeft: "8px" },
             }}
           >
-            {labelText || "(no label)"}
+            {labelText || (isRegression ? "(no value)" : "(no label)")}
           </div>
         </Column>
 

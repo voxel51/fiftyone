@@ -92,9 +92,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
@@ -128,23 +128,16 @@ test.describe.serial("video per-frame detection drawing", () => {
 
     // draw a box in detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.55, 0.55);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.78, 0.78);
-    await modal.sampleCanvas.up();
+    await modal.videoAnnotate.drawBox([0.55, 0.55], [0.78, 0.78]);
 
     // the draw creates exactly one object track on the timeline
     await modal.videoAnnotate.assert.objectTrackCount(1);
 
     // the freshly-drawn box opens its edit form; assigning a class commits it
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the frame label survives a true round-trip
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {

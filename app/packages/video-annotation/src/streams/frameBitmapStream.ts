@@ -11,7 +11,8 @@ import {
   type PlaybackStore,
 } from "@fiftyone/playback";
 import { FrameBitmapCache } from "./frameBitmapCache";
-import { mergeRange, toSecondRanges } from "./fetchedRanges";
+import { FrameCache } from "./frameCache";
+import { mergeRange, removeFrame, toSecondRanges } from "./fetchedRanges";
 import type {
   ChunkDoneMessage,
   ChunkFailedMessage,
@@ -51,14 +52,24 @@ export interface FrameBitmapStreamOptions {
    */
   chunkSize?: number;
   /**
-   * Cap on cached pixel bytes.
-   *
-   * @default 1e9
+   * The surface's frame budget, shared with its label stream. A stream given
+   * none gets its own.
    */
-  maxBytes?: number;
+  frameCache?: FrameCache;
 }
 
+/** {@link FrameCache} part name for decoded bitmaps. */
+const BITMAP_PART = "bitmap";
+
 const DEFAULT_CHUNK_SIZE = 60;
+
+/**
+ * Chunks the decode-ahead window is split into. Fetching a chunk's bytes does
+ * not need the decoder, so several requests in flight keep the decoder fed
+ * while the next chunk is still arriving — which is the difference between
+ * smooth playback and stalling once the media is remote.
+ */
+const CHUNKS_IN_FLIGHT = 3;
 
 interface InflightEntry {
   promise: Promise<void>;
@@ -92,8 +103,16 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
   protected readonly frameCount: number;
   protected readonly frameRate: number;
   protected readonly chunkSize: number;
+  /**
+   * Decides which frames stay, and how far ahead of the playhead this stream
+   * works: a 1920x1200 frame is 9MB, so the budget holds a couple of seconds
+   * of it at 60fps, and fetching further ahead only evicts frames before they
+   * are drawn.
+   */
+  private readonly frameCache: FrameCache;
+  private readonly unregisterPart: () => void;
 
-  protected readonly cache: FrameBitmapCache<M>;
+  protected readonly cache = new FrameBitmapCache<M>();
   private readonly inflight = new Map<number, InflightEntry>();
   /** reqId → frame numbers that request asked for. */
   private readonly requestFrames = new Map<number, number[]>();
@@ -127,7 +146,16 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     this.frameCount = opts.frameCount;
     this.frameRate = opts.frameRate;
     this.chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_SIZE;
-    this.cache = new FrameBitmapCache<M>(opts.maxBytes);
+    this.frameCache =
+      opts.frameCache ?? new FrameCache({ frameCount: opts.frameCount });
+    const dropBitmap = (frame: number) => {
+      this.cache.delete(frame);
+      removeFrame(this.fetchedRanges, frame);
+    };
+    this.unregisterPart = this.frameCache.register(BITMAP_PART, {
+      evict: dropBitmap,
+      shed: dropBitmap,
+    });
 
     // `createWorker` is field-independent (just `new Worker(url)`), so it's
     // safe to call from the base constructor before subclass fields are set.
@@ -206,6 +234,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
 
     this.worker.removeEventListener("message", this.handleWorkerMessage);
     this.worker.terminate();
+    this.unregisterPart();
 
     // Settle anyone awaiting a frame that will never arrive.
     for (const entry of this.inflight.values()) {
@@ -242,7 +271,15 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
   prefetch(range: [number, number]): void {
     const [startSec, endSec] = range;
     const startFrame = this.timeToFrame(startSec);
-    const endFrame = this.timeToFrame(endSec);
+    // the engine prefetches where it is about to commit; a jump commits only
+    // once its frames are ready, so the budget must rank from here already or
+    // it evicts those frames as it decodes them
+    this.frameCache.setPlayhead(startFrame);
+    const window = this.frameCache.aheadFrames();
+    const endFrame = Math.min(
+      this.timeToFrame(endSec),
+      startFrame + window - 1,
+    );
 
     // First missing frame wins — the engine re-calls prefetch as the playhead
     // advances, so we don't fan out here.
@@ -251,7 +288,14 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
         continue;
       }
 
-      this.requestChunkStartingAt(f);
+      // Past the playhead, wait until a whole chunk fits: each one-frame
+      // advance opens one slot, and refilling it alone is a request per tick
+      const open = startFrame + window - f;
+      if (f > startFrame && open < this.chunkLengthAt(f)) {
+        return;
+      }
+
+      this.requestChunkStartingAt(f, open);
       return;
     }
   }
@@ -292,6 +336,7 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     // while the tile is still drawing it; unpin when we publish "no frame".
     if (next) {
       this.cache.pin(next.frameNumber);
+      this.frameCache.setPlayhead(next.frameNumber);
 
       // Advancing to a new committed frame — proactively pull the next chunk
       // into flight so it lands before the playhead reaches it (the engine
@@ -312,6 +357,23 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     return frameAt(time, this.frameRate, this.frameCount);
   }
 
+  /**
+   * Frames one chunk starting here claims: the lookahead split across the
+   * chunks in flight, so one is fetched while another decodes. `0` past the
+   * end of the clip.
+   */
+  private chunkLengthAt(startFrame: number): number {
+    const perChunk = Math.max(
+      1,
+      Math.floor(this.frameCache.aheadFrames() / CHUNKS_IN_FLIGHT),
+    );
+
+    return Math.max(
+      0,
+      Math.min(this.chunkSize, perChunk, this.frameCount - startFrame + 1),
+    );
+  }
+
   private ensureInit(): void {
     if (this.initialized) {
       return;
@@ -321,17 +383,17 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
     this.postInit(this.worker);
   }
 
-  private requestChunkStartingAt(startFrame: number): void {
+  private requestChunkStartingAt(
+    startFrame: number,
+    maxFrames: number = Number.POSITIVE_INFINITY,
+  ): void {
     if (this.destroyed) {
       return;
     }
 
     this.ensureInit();
 
-    const numFrames = Math.min(
-      this.chunkSize,
-      this.frameCount - startFrame + 1,
-    );
+    const numFrames = Math.min(this.chunkLengthAt(startFrame), maxFrames);
     if (numFrames <= 0) {
       return;
     }
@@ -392,6 +454,11 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
       height: msg.height,
       meta: this.toMeta(msg),
     });
+    this.frameCache.set(
+      BITMAP_PART,
+      msg.frameNumber,
+      msg.width * msg.height * 4,
+    );
 
     const entry = this.inflight.get(msg.frameNumber);
     if (entry) {

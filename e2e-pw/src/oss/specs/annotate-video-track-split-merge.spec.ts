@@ -100,9 +100,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
@@ -200,13 +200,6 @@ const expectSplitPersisted = async (
   }
 };
 
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
-
 test.describe.serial("video annotation track split / merge", () => {
   test("split at playhead (context menu) makes two tracks; undo restores one", async ({
     fiftyoneLoader,
@@ -234,7 +227,7 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
 
     // one undo unit: back to vehicle + person
-    await va.undo();
+    await va.afterTracksChange(() => va.undo());
     await va.assert.objectTrackCount(2);
     await va.assert.hasTrack(vehicleId);
   });
@@ -278,10 +271,8 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.clickTrack(before.target);
     await va.seekToRulerFraction(0.5);
 
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await va.clickSplitToolbarButton();
+    await modal.sidebar.annotate.afterSave(() => va.clickSplitToolbarButton());
     await va.assert.objectTrackCount(3);
-    await saved;
 
     // 2 s at 10 fps
     await inFreshContext(browser, fiftyoneLoader, (fresh) =>
@@ -372,10 +363,8 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.clickTrack(before.target);
     await va.seekToRulerFraction(0.5);
 
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await va.clickSplitToolbarButton();
+    await modal.sidebar.annotate.afterSave(() => va.clickSplitToolbarButton());
     await va.assert.objectTrackCount(3);
-    await saved;
 
     await inFreshContext(browser, fiftyoneLoader, (fresh) =>
       expectSplitPersisted(fresh, before, "frames.polylines", 20, 10),
@@ -406,10 +395,10 @@ test.describe.serial("video annotation track split / merge", () => {
 
     // merge one vehicle INTO the other; both span every frame, so target-wins
     // drops every source frame — one track remains, still "vehicle"
-    const saved = savedResponse(page);
-    await va.mergeTrackViaContextMenu(sourceId, "vehicle");
+    await modal.sidebar.annotate.afterSave(() =>
+      va.mergeTrackViaContextMenu(sourceId, "vehicle"),
+    );
     await va.assert.objectTrackCount(1);
-    await saved;
 
     await va.assert.labelListed("vehicle");
 
@@ -450,12 +439,12 @@ test.describe.serial("video annotation track split / merge", () => {
     // it did) but carries no merge target — the only other track is a different
     // class
     await va.trackBar(personId).click({ button: "right" });
-    await expect(
-      page.getByRole("menuitem", { name: "Delete track" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("menuitem", { name: /^Merge into / }),
-    ).toHaveCount(0);
+    expect(
+      await page.getByRole("menuitem", { name: "Delete track" }).isVisible(),
+    ).toBe(true);
+    expect(
+      await page.getByRole("menuitem", { name: /^Merge into / }).count(),
+    ).toBe(0);
 
     // both tracks survive — nothing merged
     await page.keyboard.press("Escape");

@@ -72,10 +72,9 @@ test.describe.serial("group carousel", () => {
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
       await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
-      await grid.openFirstSample();
+      await modal.afterCarouselRendered(() => grid.openFirstSample());
       await modal.sidebar.toggleSidebarGroup("GROUP");
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
-      await modal.waitForCarouselToLoad();
       await modal.scrollCarouselTo("19");
       await modal.navigateSlice("group.name", "19", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");

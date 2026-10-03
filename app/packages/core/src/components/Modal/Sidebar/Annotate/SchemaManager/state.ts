@@ -164,6 +164,18 @@ export const hiddenFieldHasSchemaStates = atom((get) => {
   return Object.fromEntries(fields.map((f) => [f, get(fieldHasSchema(f))]));
 });
 
+/**
+ * Whether each hidden field is a type the App can't annotate. Such a field can
+ * still carry a schema from before it was marked, so a schema alone doesn't
+ * make it selectable.
+ */
+export const hiddenFieldUnsupportedStates = atom((get) => {
+  const fields = get(sortedInactivePaths);
+  return Object.fromEntries(
+    fields.map((f) => [f, get(labelSchemaData(f))?.unsupported ?? false]),
+  );
+});
+
 // =============================================================================
 // JSON Editor State (Full Schema Editor)
 // =============================================================================

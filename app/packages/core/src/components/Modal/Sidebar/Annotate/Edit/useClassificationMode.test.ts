@@ -35,6 +35,17 @@ vi.mock("./useExit", () => ({
   default: () => () => {},
 }));
 
+vi.mock("../state", async () => {
+  const { atom } = await import("jotai");
+  return {
+    labelSchemasData: atom({
+      cls: { type: "classification" },
+      "frames.framecls": { type: "classification" },
+      "frames.frametags": { type: "classifications" },
+    }),
+  };
+});
+
 const { useClassificationMode } = await import("./useClassificationMode");
 
 beforeEach(() => {
@@ -44,20 +55,19 @@ beforeEach(() => {
 });
 
 describe("useClassificationMode video field filter", () => {
-  it("drops frames.* fields on video datasets", () => {
+  it("keeps frame-level Classification fields on video datasets", () => {
     refs.isVideo = true;
-    refs.fields = ["cls", "frames.framecls"];
+    refs.fields = ["frames.framecls"];
 
     const { result } = renderHook(() => useClassificationMode());
 
-    // disabled flips false only if some non-frames field survives
     expect(result.current.disabled).toBe(false);
     expect(result.current.tooltip).toBe("Create new classification");
   });
 
-  it("disables the button on video when only frame-level fields exist", () => {
+  it("drops frame-level Classifications lists on video datasets", () => {
     refs.isVideo = true;
-    refs.fields = ["frames.framecls"];
+    refs.fields = ["frames.frametags"];
 
     const { result } = renderHook(() => useClassificationMode());
 

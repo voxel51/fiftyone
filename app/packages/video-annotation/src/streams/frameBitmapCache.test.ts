@@ -17,53 +17,51 @@ function makeEntry(
   return { bitmap, width: size, height: size, meta: {}, close };
 }
 
-/** A 5x5 entry is 100 bytes; this budget holds two of them. */
-const TWO_FRAME_BUDGET = 250;
-
-describe("FrameBitmapCache eviction", () => {
-  it("closes non-pinned bitmaps when evicted under budget pressure", () => {
-    const cache = new FrameBitmapCache(TWO_FRAME_BUDGET);
+describe("FrameBitmapCache deletion", () => {
+  it("closes a deleted bitmap that isn't on screen", () => {
+    const cache = new FrameBitmapCache();
     const e1 = makeEntry();
-    const e2 = makeEntry();
-    const e3 = makeEntry();
 
     cache.set(1, e1);
-    cache.set(2, e2);
-    cache.set(3, e3); // evicts frame 1 (least-recently-used)
+    cache.delete(1);
 
     expect(e1.close).toHaveBeenCalledTimes(1);
     expect(cache.has(1)).toBe(false);
-    expect(e2.close).not.toHaveBeenCalled();
-    expect(e3.close).not.toHaveBeenCalled();
+  });
+
+  it("closes the bitmap an overwrite replaces", () => {
+    const cache = new FrameBitmapCache();
+    const e1 = makeEntry();
+
+    cache.set(1, e1);
+    cache.set(1, makeEntry());
+
+    expect(e1.close).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("FrameBitmapCache pinning", () => {
-  it("does not close the pinned frame when the LRU evicts it", () => {
-    const cache = new FrameBitmapCache(TWO_FRAME_BUDGET);
+  it("does not close the pinned frame when it is deleted", () => {
+    const cache = new FrameBitmapCache();
     const e1 = makeEntry();
-    const e2 = makeEntry();
-    const e3 = makeEntry();
 
     cache.set(1, e1);
     cache.pin(1); // frame 1 is on screen
-    cache.set(2, e2);
-    cache.set(3, e3); // would evict frame 1, but it's pinned
+    cache.delete(1);
 
-    // The LRU dropped it, but the bitmap stays alive and retrievable.
+    // Dropped from the map, but the bitmap stays alive and retrievable.
     expect(e1.close).not.toHaveBeenCalled();
     expect(cache.has(1)).toBe(true);
     expect(cache.get(1)).toBe(e1);
   });
 
-  it("closes the previously-pinned frame once it falls out of the LRU and is unpinned", () => {
-    const cache = new FrameBitmapCache(TWO_FRAME_BUDGET);
+  it("closes a deleted-while-pinned frame once it is unpinned", () => {
+    const cache = new FrameBitmapCache();
     const e1 = makeEntry();
 
     cache.set(1, e1);
     cache.pin(1);
-    cache.set(2, makeEntry());
-    cache.set(3, makeEntry()); // frame 1 evicted from LRU but pinned-alive
+    cache.delete(1);
 
     cache.unpin();
 
@@ -72,7 +70,7 @@ describe("FrameBitmapCache pinning", () => {
   });
 
   it("re-pinning the same frame is a no-op", () => {
-    const cache = new FrameBitmapCache(TWO_FRAME_BUDGET);
+    const cache = new FrameBitmapCache();
     const e1 = makeEntry();
 
     cache.set(1, e1);
@@ -84,30 +82,27 @@ describe("FrameBitmapCache pinning", () => {
   });
 
   it("does not close a still-cached frame when the pin moves off it", () => {
-    // Budget holds both frames, so moving the pin leaves frame 1 in the LRU;
-    // the cache still owns it and must not close it early.
-    const cache = new FrameBitmapCache(TWO_FRAME_BUDGET);
+    const cache = new FrameBitmapCache();
     const e1 = makeEntry();
-    const e2 = makeEntry();
 
     cache.set(1, e1);
     cache.pin(1);
-    cache.set(2, e2);
+    cache.set(2, makeEntry());
     cache.pin(2); // playhead advanced to frame 2
 
     expect(e1.close).not.toHaveBeenCalled();
     expect(cache.has(1)).toBe(true);
   });
 
-  it("closes an evicted-while-pinned frame on clear", () => {
-    const cache = new FrameBitmapCache(TWO_FRAME_BUDGET);
+  it("closes a deleted-while-pinned frame on clear", () => {
+    const cache = new FrameBitmapCache();
     const e1 = makeEntry();
     const e2 = makeEntry();
 
     cache.set(1, e1);
     cache.pin(1);
     cache.set(2, e2);
-    cache.set(3, makeEntry()); // frame 1 evicted from LRU, pinned-alive
+    cache.delete(1);
 
     cache.clear();
 

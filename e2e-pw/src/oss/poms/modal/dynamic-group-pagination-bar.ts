@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { collapseWhitespace } from "src/oss/utils";
 import { ModalPom } from ".";
 
 export class DynamicGroupPaginationPom {
@@ -15,9 +16,20 @@ export class DynamicGroupPaginationPom {
     this.assert = new DynamicGroupPaginationAsserter(this);
   }
 
+  /** Run `action` and resolve once the bar shows its pages because of it */
+  afterShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:modal:dynamic-group-pagination",
+      action,
+    );
+  }
+
+  /** Page to another group element, resolving once the sidebar shows it */
   async navigatePage(page: number) {
-    await this.getPageButton(page).click();
-    await this.modal.waitForCarouselToLoad();
+    const current = await this.modal.sidebar.getSampleId();
+    await this.modal.sidebar.afterEntryChanged("id", current, () =>
+      this.getPageButton(page).click(),
+    );
   }
 
   getPageButton(page: number) {
@@ -27,6 +39,12 @@ export class DynamicGroupPaginationPom {
   getTooltip(text: string) {
     return this.page.getByTestId(`tooltip-${text}`);
   }
+
+  /** Hover a page button; its `text` tooltip opens after a delay */
+  async hoverPage(page: number, text: string) {
+    await this.getPageButton(page).hover();
+    return this.getTooltip(text);
+  }
 }
 
 class DynamicGroupPaginationAsserter {
@@ -34,16 +52,13 @@ class DynamicGroupPaginationAsserter {
 
   async verifyPage(page: number) {
     const button = this.nestedGroupPom.getPageButton(page);
-    await expect(button).toBeVisible();
-    await expect(button).toHaveText(String(page));
+    expect(await button.isVisible()).toBe(true);
+    expect(collapseWhitespace(await button.textContent())).toBe(String(page));
   }
 
   async verifyTooltip(page: number, text: string) {
-    const button = this.nestedGroupPom.getPageButton(page);
-    await button.hover();
-    const tooltip = this.nestedGroupPom.getTooltip(text);
-    await expect(tooltip).toBeVisible();
-    await expect(tooltip).toHaveText(text);
+    const tooltip = await this.nestedGroupPom.hoverPage(page, text);
+    expect(collapseWhitespace(await tooltip.textContent())).toBe(text);
   }
 
   async verifyTooltips(pages: { [page: number]: string }) {

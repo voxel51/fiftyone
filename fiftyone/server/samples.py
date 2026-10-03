@@ -17,6 +17,7 @@ import typing as t
 
 from fiftyone.core.collections import SampleCollection
 from fiftyone.core.dataset import Dataset
+import fiftyone.core.frame_pipelines as fofp
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.selection as fosel
@@ -365,6 +366,10 @@ def _handle_frames(
 
 def _needs_full_lookup(view: SampleCollection):
     if isinstance(view, Dataset):
+        return False
+
+    # Frame-first pipelines limit frames after the view's frame stages
+    if fofp.make_pipeline(view) is not None:
         return False
 
     for stage in view._stages:

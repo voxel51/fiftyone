@@ -23,8 +23,9 @@ test.describe("MCAP persistence", () => {
       modal,
       page,
     }) => {
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(tinyA.fileName, () =>
+        openMcapModal(grid, modal, 0),
+      );
       await modal.episode.expectTileCount(2);
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
@@ -41,10 +42,20 @@ test.describe("MCAP persistence", () => {
         ["camera/front", "Logs / Diagnostics", "/pose"],
         ["points"],
       );
-      await modal.episode.fullscreenTile("Logs / Diagnostics");
-      await waitForCustomizedWorkspaceSave(page);
+      // the fullscreen tile is the last field this workspace saves
+      await modal.eventUtils.after(
+        "e2e:multimodal:layout-saved",
+        () => modal.episode.fullscreenTile("Logs / Diagnostics"),
+        (e) =>
+          (e.detail as { fields: string }).fields
+            .split(",")
+            .includes("expandedTileId"),
+      );
+      await expectCustomizedWorkspaceSaved(page);
 
-      await modal.episode.navigateDatasetSample("forward", tinyB.fileName);
+      await modal.episode.navigateDatasetSample("forward", tinyB.fileName, [
+        modal.episode.raw("/status"),
+      ]);
       await modal.episode.expectTileCount(2);
       await modal.episode.expectTileTitleCount("camera/rear", 1);
       await modal.episode.expectTileTitles(
@@ -55,21 +66,28 @@ test.describe("MCAP persistence", () => {
       await modal.episode.expectRawField("status_code", tinyB.statusCodes[0]);
       await modal.episode.expectNoViewerError();
 
-      await modal.episode.navigateDatasetSample("backward", tinyA.fileName);
+      await modal.episode.navigateDatasetSample("backward", tinyA.fileName, [
+        modal.episode.raw("/pose"),
+      ]);
       await expectRestoredWorkspace(modal);
 
       await modal.episode.fullscreenTile("Logs / Diagnostics");
       await modal.close();
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(
+        tinyA.fileName,
+        () => openMcapModal(grid, modal, 0),
+        [modal.episode.raw("/pose")],
+      );
       await expectRestoredWorkspace(modal);
 
       await modal.episode.fullscreenTile("Logs / Diagnostics");
       await modal.close();
-      await page.reload();
-      await expect(grid.locator).toBeVisible({ timeout: 30_000 });
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await grid.reload();
+      await modal.episode.afterReady(
+        tinyA.fileName,
+        () => openMcapModal(grid, modal, 0),
+        [modal.episode.raw("/pose")],
+      );
       await expectRestoredWorkspace(modal);
     });
   });
@@ -78,8 +96,9 @@ test.describe("MCAP persistence", () => {
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.episodeB);
-    await modal.episode.waitForReady(tinyB.fileName);
+    await modal.episode.afterReady(tinyB.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeB),
+    );
     await modal.episode.selectImageSource("camera/rear", "camera/side");
     await modal.episode.expectTileTitleCount("camera/side", 2);
     await modal.episode.expectTileTitles([], ["camera/rear"]);
@@ -95,8 +114,9 @@ test.describe("MCAP persistence", () => {
     await modal.episode.expectTileTitles([], ["camera/rear"]);
 
     await modal.close();
-    await openMcapModal(grid, modal, sampleIndex.episodeB);
-    await modal.episode.waitForReady(tinyB.fileName);
+    await modal.episode.afterReady(tinyB.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeB),
+    );
     await modal.episode.expectTileTitleCount("camera/side", 2);
     await modal.episode.expectTileTitles([], ["camera/rear"]);
   });
@@ -106,8 +126,9 @@ test.describe("MCAP persistence", () => {
     modal,
     page,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.cameraPoseStart);
-    await modal.episode.waitForReady(cameraPoseFileNames[0]);
+    await modal.episode.afterReady(cameraPoseFileNames[0], () =>
+      openMcapModal(grid, modal, sampleIndex.cameraPoseStart),
+    );
     const egoPose = await modal.episode.applyEgoView("points");
 
     for (const fileName of cameraPoseFileNames.slice(1)) {
@@ -116,23 +137,24 @@ test.describe("MCAP persistence", () => {
     }
 
     await modal.close();
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+    await modal.episode.afterReady(cameraPoseFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(cameraPoseFileNames[3]);
     await modal.episode.expectCameraPose("points", egoPose);
 
     await modal.close();
-    await page.reload();
-    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+    await grid.reload();
+    await modal.episode.afterReady(cameraPoseFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.cameraPoseStart + cameraPoseFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(cameraPoseFileNames[3]);
     await modal.episode.expectCameraPose("points", egoPose);
   });
 
@@ -141,8 +163,9 @@ test.describe("MCAP persistence", () => {
     modal,
     page,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.sidebarStart);
-    await modal.episode.waitForReady(sidebarFileNames[0]);
+    await modal.episode.afterReady(sidebarFileNames[0], () =>
+      openMcapModal(grid, modal, sampleIndex.sidebarStart),
+    );
     await setRepresentativeSidebarPreferences(modal);
 
     for (const fileName of sidebarFileNames.slice(1)) {
@@ -151,68 +174,65 @@ test.describe("MCAP persistence", () => {
     }
 
     await modal.close();
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+    await modal.episode.afterReady(sidebarFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(sidebarFileNames[3]);
     await expectRepresentativeSidebarPreferences(modal);
 
     await modal.close();
-    await page.reload();
-    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
-    await openMcapModal(
-      grid,
-      modal,
-      sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+    await grid.reload();
+    await modal.episode.afterReady(sidebarFileNames[3], () =>
+      openMcapModal(
+        grid,
+        modal,
+        sampleIndex.sidebarStart + sidebarFileNames.length - 1,
+      ),
     );
-    await modal.episode.waitForReady(sidebarFileNames[3]);
     await expectRepresentativeSidebarPreferences(modal);
   });
 });
 
-async function waitForCustomizedWorkspaceSave(page: Page): Promise<void> {
-  await expect
-    .poll(
-      () =>
-        page.evaluate((storageKey) => {
-          const raw = localStorage.getItem(storageKey);
-          if (!raw) return false;
-          const parsed = JSON.parse(raw) as {
-            byDataset?: Record<string, Record<string, unknown>>;
-          };
-          // Layouts are keyed by opaque dataset ID. A fresh Playwright context
-          // loads exactly one dataset before this assertion.
-          const entries = Object.values(parsed.byDataset ?? {});
-          if (entries.length !== 1) return false;
-          const [entry] = entries;
-          const collectTileIds = (node: unknown): string[] => {
-            if (typeof node === "string") return [node];
-            if (!node || typeof node !== "object") return [];
-            const branch = node as { first?: unknown; second?: unknown };
-            return [
-              ...collectTileIds(branch.first),
-              ...collectTileIds(branch.second),
-            ];
-          };
-          const tileTypes = collectTileIds(entry.layout)
-            .map((tileId) => tileId.split("-", 1)[0])
-            .sort();
-          const rawStreams =
-            entry.rawStreams && typeof entry.rawStreams === "object"
-              ? Object.values(entry.rawStreams)
-              : [];
-          return (
-            typeof entry.expandedTileId === "string" &&
-            entry.expandedTileId.startsWith("log-") &&
-            tileTypes.join(",") === "image,log,raw" &&
-            rawStreams.length === 1
-          );
-        }, EPISODE_LAYOUT_STORAGE_KEY),
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+async function expectCustomizedWorkspaceSaved(page: Page): Promise<void> {
+  expect(
+    await page.evaluate((storageKey) => {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as {
+        byDataset?: Record<string, Record<string, unknown>>;
+      };
+      // Layouts are keyed by opaque dataset ID. A fresh Playwright context
+      // loads exactly one dataset before this assertion.
+      const entries = Object.values(parsed.byDataset ?? {});
+      if (entries.length !== 1) return false;
+      const [entry] = entries;
+      const collectTileIds = (node: unknown): string[] => {
+        if (typeof node === "string") return [node];
+        if (!node || typeof node !== "object") return [];
+        const branch = node as { first?: unknown; second?: unknown };
+        return [
+          ...collectTileIds(branch.first),
+          ...collectTileIds(branch.second),
+        ];
+      };
+      const tileTypes = collectTileIds(entry.layout)
+        .map((tileId) => tileId.split("-", 1)[0])
+        .sort();
+      const rawStreams =
+        entry.rawStreams && typeof entry.rawStreams === "object"
+          ? Object.values(entry.rawStreams)
+          : [];
+      return (
+        typeof entry.expandedTileId === "string" &&
+        entry.expandedTileId.startsWith("log-") &&
+        tileTypes.join(",") === "image,log,raw" &&
+        rawStreams.length === 1
+      );
+    }, EPISODE_LAYOUT_STORAGE_KEY),
+  ).toBe(true);
 }
 
 async function setRepresentativeSidebarPreferences(

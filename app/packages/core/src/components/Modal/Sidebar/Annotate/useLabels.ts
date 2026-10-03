@@ -47,9 +47,9 @@ export const useAnnotationLabelsReady = (): boolean => {
 
 /**
  * The sidebar label list, derived from the annotation engine into the
- * transitional `labels` atom. Re-derives on every engine tick and on
- * `lighter:overlay-added`, since gated mask mounts insert without an engine
- * change.
+ * transitional `labels` atom. Re-derives on every engine tick, on a video's
+ * playhead frame change, and on `lighter:overlay-added`, since gated mask
+ * mounts insert without an engine change.
  */
 export default function useLabels() {
   const engine = useAnnotationEngine();
@@ -86,10 +86,18 @@ export default function useLabels() {
       setLoading(LabelsState.COMPLETE);
     }
 
-    return engine.subscribe(() => {
+    const unsubscribeDisplay = engine.subscribe(() => {
       reconcile();
       maybeEnterPatchLabel();
     });
+    // on a video the rows follow the playhead, which moves without an engine
+    // change
+    const unsubscribeFrame = engine.subscribeFrame?.(() => reconcile());
+
+    return () => {
+      unsubscribeDisplay();
+      unsubscribeFrame?.();
+    };
   }, [active, engine, maybeEnterPatchLabel, reconcile, sampleId, setLoading]);
 
   // gated mounts insert without an engine change

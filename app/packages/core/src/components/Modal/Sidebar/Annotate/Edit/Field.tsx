@@ -1,22 +1,33 @@
-import { useAnnotationEngine, type LabelRef } from "@fiftyone/annotation";
+import {
+  isFrameScopedPath,
+  type LabelRef,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
+import {
+  isPatchesView,
+  useIsImageDynamicGroupVideo,
+  useUnboundStateRef,
+} from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
+import { moveSingleLabel } from "./singleLabelFieldMove";
 import {
   type LabelType,
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
 import { buildNewLabelData } from "./useAnnotationContext/createNew";
+import { useFrameSingletonSlot } from "./useAnnotationContext/useFrameSingletonSlot";
 
 const createSchema = (
   choices: string[],
@@ -59,6 +70,9 @@ const Field = () => {
     [disabled, fields, isPatches],
   );
   const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  const slotOf = useFrameSingletonSlot(engine);
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -97,6 +111,27 @@ const Field = () => {
       const move = (from: string, to: string) => {
         if (!instanceId || !source) return;
 
+        const cls = (source as { _cls: LabelType })._cls;
+
+        // a single-label value on a frame field moves alone, not as a track
+        const single = moveSingleLabel({
+          engine,
+          sample,
+          from,
+          to,
+          docId: (source as { _docId?: string })._docId || instanceId,
+          slotOf,
+          isFrameField: (path) =>
+            isFrameScopedPath(path, isImageDynamicGroupVideo),
+          base: (path, id) =>
+            buildNewLabelData(path, cls, { id }) as Partial<LabelData>,
+        });
+
+        if (single !== "unhandled") {
+          if (single === "moved") setCurrentField(to);
+          return;
+        }
+
         const type = engine.getLabelType(from);
 
         // Snapshot each occurrence BEFORE the transaction (the deletes mutate
@@ -111,8 +146,6 @@ const Field = () => {
           .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
 
         if (occurrences.length === 0) return;
-
-        const cls = (source as { _cls: LabelType })._cls;
 
         engine.transaction(() => {
           for (const { ref } of occurrences) {
@@ -139,7 +172,16 @@ const Field = () => {
         () => move(oldField, newField),
         () => move(newField, oldField),
       );
-    }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
+    }, [
+      currentLabelRef,
+      engine,
+      isImageDynamicGroupVideo,
+      sample,
+      setCurrentField,
+      slotOf,
+      labelId,
+      currentFieldValue,
+    ]),
     () => true,
   );
 

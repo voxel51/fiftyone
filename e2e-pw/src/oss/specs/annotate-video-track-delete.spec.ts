@@ -80,9 +80,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 const stepForward = async (modal: ModalPom, n: number) => {
@@ -108,14 +108,10 @@ test.describe.serial("video annotation whole-track delete", () => {
     await va.pinTrack(trackId);
 
     // delete the whole track via the timeline context menu; autosave persists it
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      va.deleteTrackViaContextMenu(trackId),
     );
-    await va.deleteTrackViaContextMenu(trackId);
     await va.assert.objectTrackCount(0);
-    await saved;
 
     // gone from frame 1 and from a later frame (the WHOLE track, not one frame)
     await va.assert.labelListed("vehicle", false);
