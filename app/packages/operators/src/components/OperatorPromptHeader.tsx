@@ -3,8 +3,10 @@ import { BaseStylesProvider } from "../styled-components";
 
 export default function OperatorPromptHeader({
   title,
+  id,
 }: {
   title: ReactElement;
+  id?: string;
 }) {
-  return <BaseStylesProvider>{title}</BaseStylesProvider>;
+  return <BaseStylesProvider id={id}>{title}</BaseStylesProvider>;
 }

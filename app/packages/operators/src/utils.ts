@@ -71,9 +71,11 @@ export function getOperatorPromptConfigs(operatorPrompt: OperatorPromptType) {
     }
   }
 
+  const showActions = customPrompt?.show_actions !== false;
+
   if (operatorPrompt.showPrompt) {
-    onSubmit = operatorPrompt.onSubmit;
-    onCancel = operatorPrompt.cancel;
+    onSubmit = showActions ? operatorPrompt.onSubmit : undefined;
+    onCancel = showActions ? operatorPrompt.cancel : undefined;
   } else if (showResultOrError) {
     onCancel = operatorPrompt.close;
     cancelButtonText = "Close";
