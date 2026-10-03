@@ -11,6 +11,7 @@ import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
 import { useShowClassicSidebar } from "./hooks";
+import useModalPrefetch from "./useModalPrefetch";
 import {
   KnownCommands,
   KnownContexts,
@@ -76,6 +77,9 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
 
   const setModal = fos.useSetExpandedSample();
   const modal = useRecoilValue(fos.modalSelector);
+
+  // Warm adjacent samples (GraphQL + media) so next/previous is instant.
+  useModalPrefetch();
 
   const modalRef = useRef(modal);
 

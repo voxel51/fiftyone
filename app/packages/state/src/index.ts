@@ -4,6 +4,7 @@ export * from "./contextManager";
 export * from "./gridCustomRendererFailover";
 export * from "./hooks";
 export * from "./jotai";
+export * from "./modalPrefetch";
 export * from "./recoil";
 export * from "./session";
 export * from "./temporal-tags";

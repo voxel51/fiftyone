@@ -27,11 +27,14 @@ import {
   currentSampleId,
   fieldSchema,
   lookerOptions,
+  modalGroupSlice,
   modalSample,
+  modalSelector,
   selectedLabelMap,
   selectedMediaField,
 } from "../../recoil";
 import { GroupSampleNotFound } from "../../recoil/modal";
+import type { ModalSelector } from "../../session";
 
 /**
  * Hook which provides the modal's current active paths,
@@ -158,6 +161,14 @@ export const useModalSampleSchema = (): Schema =>
  */
 export const useSelectedMediaFieldModal = () =>
   useRecoilValue(selectedMediaField(true));
+
+/** The sample the modal is open on, or null when it is closed. */
+export const useModalSelector = (): ModalSelector | null =>
+  useRecoilValue(modalSelector);
+
+/** The group slice the modal displays, or null outside grouped datasets. */
+export const useModalGroupSlice = (): string | null =>
+  useRecoilValue(modalGroupSlice);
 
 /**
  * Get and set the preferred annotation slice for grouped datasets.

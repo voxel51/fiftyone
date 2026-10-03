@@ -113,6 +113,8 @@ export function useModalActive(): boolean {
 
 export type ModalNavigationPeek = {
   id: string;
+  /** The peeked sample's group id in a grouped dataset, else undefined. */
+  groupId?: string;
   /**
    * The paginated sample node for the peeked position ({ sample, urls, ... }),
    * as loaded by the grid. Typed loosely because the paginator's node type
@@ -169,6 +171,36 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
+/**
+ * Builds the variables for the {@link mainSample} query for a single sample.
+ *
+ * Shared by {@link modalSample} and modal prefetching so a prefetched
+ * neighbor lands under the exact same Relay store key the selector reads on
+ * navigation. If these diverged, `store-or-network` would silently miss and
+ * the prefetch would buy nothing.
+ */
+export const buildModalSampleVariables = (params: {
+  dataset: VariablesOf<mainSampleQuery>["dataset"];
+  view: VariablesOf<mainSampleQuery>["view"];
+  id: string;
+  slice: string | null;
+  sliceSelect: string | null;
+  groupId: string | null;
+}): VariablesOf<mainSampleQuery> => ({
+  dataset: params.dataset,
+  view: params.view,
+  filter: {
+    id: params.id,
+    group: params.slice
+      ? {
+          slice: params.slice,
+          slices: [params.sliceSelect],
+          id: params.groupId,
+        }
+      : null,
+  },
+});
+
 export const modalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
@@ -203,16 +235,14 @@ export const modalSample = graphQLSelector<
       return null;
     }
 
-    return {
+    return buildModalSampleVariables({
       dataset: get(datasetName),
       view: get(view),
-      filter: {
-        id: current.id,
-        group: slice
-          ? { slice, slices: [sliceSelect], id: get(groupId) }
-          : null,
-      },
-    };
+      id: current.id,
+      slice: slice || null,
+      sliceSelect,
+      groupId: slice ? get(groupId) : null,
+    });
   },
 });
 
