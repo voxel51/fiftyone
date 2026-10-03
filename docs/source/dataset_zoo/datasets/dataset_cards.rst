@@ -97,6 +97,13 @@
     :tags: multimodal,mcap,tactile,manipulation,robotics
 
 .. customcarditem::
+    :header: Edged-USLAM Event Camera
+    :description: 13 quadrotor flights in native MCAP format with a DAVIS346 event camera, carrying every event beside a render of it, the grayscale frames, an inertial unit and the Vicon pose on one clock.
+    :link: datasets/edged_uslam_event_camera.html
+    :image: ../_images/edged-uslam-event-camera.png
+    :tags: multimodal,mcap,event-camera,uav,robotics
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html
