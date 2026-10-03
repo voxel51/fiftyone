@@ -7,18 +7,19 @@ import { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../SchemaIO";
 import { TabsView } from "../../SchemaIO/components";
 import { log, operatorToIOSchema } from "../utils";
-import {
-  basic as basicSchema,
-  errors as inputErrors,
-  schema as inputSchema,
-  simpleSchema,
-} from "./input.json";
-import { data, schema as outputSchema } from "./output.json";
-import {
-  data as smartFormData,
-  schema as smartFormSchema,
-} from "./smart-form.json";
+import input from "./input.json";
+import output from "./output.json";
+import smartForm from "./smart-form.json";
 import Lab from "./Lab";
+
+const {
+  basic: basicSchema,
+  errors: inputErrors,
+  schema: inputSchema,
+  simpleSchema,
+} = input;
+const { data, schema: outputSchema } = output;
+const { data: smartFormData, schema: smartFormSchema } = smartForm;
 
 // Panel enabled only in development environment for testing and debugging SchemaIO
 if (import.meta.env?.MODE === "development") {
