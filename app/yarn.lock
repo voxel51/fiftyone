@@ -7418,9 +7418,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@voxel51/voodo@npm:2.1.0"
+"@voxel51/voodo@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@voxel51/voodo@npm:2.2.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7439,7 +7439,7 @@ __metadata:
     react-is: ^18.0.0
   bin:
     voodo: bin/voodo.mjs
-  checksum: 10/52c2f45405b0b86d68286acdac29a9de5966d77a77678d39f2368ac6411982c5b3562980826893fb531824ff5d2606005a7376e2197226a520d152ac07521d0a
+  checksum: 10/06664e91ca3b407b6dbb5f088d24a01f7e81f8ce0d69e317e5a7d261f5fd5f13c93ef29c73c8b7a9978c64acae4fa691027a67935b7ea62f386e629693b193f2
   languageName: node
   linkType: hard
 
