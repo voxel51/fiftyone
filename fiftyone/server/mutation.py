@@ -318,8 +318,12 @@ class Mutation(SetColorScheme):
             # type, e.g. "image", is needed
             is_in_conversion_stage = False
             if form.add_stages:
+                # Compared by name, without importing the stage's class
+                conversion_names = {
+                    etau.get_class_name(cls) for cls in _CONVERSION_STAGES
+                }
                 is_in_conversion_stage = any(
-                    etau.get_class(stage.get("_cls")) in _CONVERSION_STAGES
+                    stage.get("_cls") in conversion_names
                     for stage in form.add_stages
                 )
 

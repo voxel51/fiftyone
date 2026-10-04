@@ -90,6 +90,32 @@ _REQUIREMENT_ERROR_SUFFIX = (
 )
 
 
+def get_subclass(base_cls, cls_name):
+    """Returns the class with the given fully-qualified name among
+    ``base_cls`` and its subclasses that this process defines.
+
+    Unlike :func:`eta.core.utils.get_class`, nothing is imported, so a name
+    read from serialized data only ever selects a class of the expected kind.
+
+    Args:
+        base_cls: the base class
+        cls_name: a fully-qualified class name, such as
+            ``"fiftyone.core.stages.Match"``
+
+    Returns:
+        the class, or None if no such class is defined
+    """
+    classes = [base_cls]
+    while classes:
+        cls = classes.pop()
+        if etau.get_class_name(cls) == cls_name:
+            return cls
+
+        classes.extend(cls.__subclasses__())
+
+    return None
+
+
 def extract_kwargs_for_class(cls, kwargs):
     """Extracts keyword arguments for the given class's constructor from the
     given kwargs.
