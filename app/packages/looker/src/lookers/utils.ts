@@ -35,7 +35,8 @@ export const retrieveTransferables = <State extends BaseState>(
     if (buffer) {
       // check for detached buffer (happens if user is switching colors too fast)
       // note: ArrayBuffer.prototype.detached is a new browser API
-      if (typeof buffer.detached !== "undefined") {
+      // `in` narrows for the type checker; TS 4.9's lib predates `detached`
+      if ("detached" in buffer && typeof buffer.detached !== "undefined") {
         if (buffer.detached) {
           // most likely sample is already being processed, skip update
           return [];

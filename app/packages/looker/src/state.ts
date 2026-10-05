@@ -86,6 +86,7 @@ export type Sample = {
     width: number;
     height: number;
     mime_type?: string;
+    size_bytes?: number;
   };
   _id: string;
   id: string;
@@ -366,7 +367,7 @@ export interface BaseState {
   setZoom: boolean;
   hasDefaultZoom: boolean;
   SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number | AppError;
+  error: boolean | number | AppError | MediaError;
   destroyed: boolean;
   reloading: boolean;
 }

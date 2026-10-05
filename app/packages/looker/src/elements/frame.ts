@@ -38,6 +38,7 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 
 export class FrameElement extends BaseElement<FrameState, null> {
   imageSource: HTMLCanvasElement;
+  declare private src: string;
 
   createHTMLElement() {
     this.imageSource = document.createElement("canvas");

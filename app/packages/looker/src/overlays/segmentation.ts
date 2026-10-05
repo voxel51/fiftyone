@@ -23,6 +23,8 @@ import {
 
 interface SegmentationLabel extends BaseLabel {
   mask?: LabelMask;
+  /** On-disk mask, decoded into `mask` on demand. */
+  mask_path?: string;
 }
 
 interface SegmentationInfo extends BaseLabel {

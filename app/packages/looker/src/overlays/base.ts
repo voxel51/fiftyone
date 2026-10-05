@@ -75,7 +75,7 @@ export interface RegularLabel extends BaseLabel {
   confidence?: number | NONFINITE;
 }
 
-export const isShown = <State extends BaseState, Label extends RegularLabel>(
+export const isShown = <State extends BaseState, Label extends BaseLabel>(
   state: Readonly<State>,
   field: string,
   label: Label,

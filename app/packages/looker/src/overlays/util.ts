@@ -15,7 +15,6 @@ import type {
   BaseOptions,
   BaseState,
   Coloring,
-  Coordinates,
   CustomizeColor,
   LabelTagColor,
   MaskTargets,
@@ -23,7 +22,7 @@ import type {
 } from "../state";
 import type { RegularLabel } from "./base";
 
-export const t = (state: BaseState, x: number, y: number): Coordinates => {
+export const t = (state: BaseState, x: number, y: number): [number, number] => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
   return [ctlx + cw * x, ctly + ch * y];
 };

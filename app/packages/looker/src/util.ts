@@ -5,13 +5,13 @@ import { mergeWith } from "immutable";
 import mime from "mime";
 
 import {
-  BaseState,
   BoundingBox,
   BufferRange,
   Buffers,
   Coordinates,
   Dimensions,
   DispatchEvent,
+  Optional,
   Sample,
 } from "./state";
 
@@ -393,10 +393,10 @@ export const clampScale = (
   return Math.min(Math.max(scale, 0.1), 10);
 };
 
-export const mergeUpdates = <State extends BaseState>(
-  state: State,
-  updates: Partial<State>,
-): State => {
+export const mergeUpdates = <T extends object>(
+  state: T,
+  updates: Optional<T>,
+): T => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
       return n;
