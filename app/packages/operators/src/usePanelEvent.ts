@@ -5,10 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useActivePanelEventsCount } from "./hooks";
 import { OperatorResult, executeOperator } from "./operators";
 import { usePromptOperatorInput } from "./state";
-import { ExecutionCallback, ParamsType } from "./ts";
+import { ExecutionCallback, OperatorExecutorOptions, ParamsType } from "./ts";
 
 type HandlerOptions = {
-  params: { [name: string]: unknown };
+  params?: { [name: string]: unknown };
   operator: string;
   prompt?: boolean;
   // Optional: the panelId is passed as triggerEvent's first argument and read
@@ -107,14 +107,10 @@ export function handlePanelEvent(
     decrement(panelId);
     let errorMessage = "Failed to execute operation";
 
-    // Determine the error message, handling cases where result.error or result.errorMessage might be Error objects
+    // errorMessage is always a string; error may be an Error a local
+    // operator threw
     if (result.errorMessage) {
-      errorMessage =
-        typeof result.errorMessage === "string"
-          ? result.errorMessage
-          : result.errorMessage instanceof Error
-            ? result.errorMessage.message
-            : String(result.errorMessage);
+      errorMessage = result.errorMessage;
     } else if (result.error) {
       errorMessage =
         typeof result.error === "string"

@@ -127,7 +127,7 @@ const TopBarDiv = styled.div`
 export default function OperatorBrowser() {
   const theme = useTheme();
   const browser = useOperatorBrowser();
-  const queryInputRef = useRef();
+  const queryInputRef = useRef<HTMLInputElement>(null);
 
   const trackEvent = useTrackEvent();
 

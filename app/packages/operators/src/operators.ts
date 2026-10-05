@@ -2,7 +2,12 @@ import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 import SpaceNode from "@fiftyone/spaces/src/SpaceNode";
 import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
-import type { SelectionStyle, SelectionType, State } from "@fiftyone/state";
+import type {
+  LabelSelectionStyle,
+  SelectionStyle,
+  SelectionType,
+  State,
+} from "@fiftyone/state";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import { QueueItemStatus, RiskLevel } from "./constants";
@@ -85,12 +90,14 @@ class Panel {
 export type RawContext = {
   datasetName: string;
   extended: object;
-  view: string;
+  view: State.Stage[];
   filters: object;
   selectedSamples: Map<string, SelectionType>;
   sampleSelectionStyle: SelectionStyle;
+  labelSelectionStyle?: LabelSelectionStyle;
   selectedLabels: State.SelectedLabel[];
-  currentSample: string;
+  // added per execution; the global context has no current sample
+  currentSample?: string | null;
   viewName: string;
   delegationTarget?: string;
   requestDelegation?: boolean;
@@ -98,7 +105,11 @@ export type RawContext = {
   analyticsInfo?: AnalyticsInfo;
   extendedSelection: {
     selection: string[] | null;
-    scope: string;
+    scope?: string;
+    spatialSelection?: {
+      polygon: Array<Array<number>>;
+      field: string;
+    } | null;
   };
   groupSlice: string;
   queryPerformance?: boolean;
@@ -124,7 +135,7 @@ export class ExecutionContext {
   public get datasetName(): string {
     return this._currentContext.datasetName;
   }
-  public get view(): string {
+  public get view(): State.Stage[] {
     return this._currentContext.view;
   }
   public get extended(): object {
@@ -139,7 +150,7 @@ export class ExecutionContext {
   public get selectedLabels(): State.SelectedLabel[] {
     return this._currentContext.selectedLabels;
   }
-  public get currentSample(): string {
+  public get currentSample(): string | null | undefined {
     return this._currentContext.currentSample;
   }
   public get viewName(): string {
@@ -204,7 +215,8 @@ export class OperatorResult {
     public operator: Operator,
     public result: object = {},
     public executor: Executor = null,
-    public error: string,
+    // a server error string, or whatever a local operator threw
+    public error: unknown,
     public delegated: boolean = false,
     public errorMessage: string = null,
   ) {}

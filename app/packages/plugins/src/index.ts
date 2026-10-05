@@ -10,7 +10,10 @@ import { usingRegistry } from "./registry";
 import { pluginsLoaderAtom } from "./state";
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
-  const result = await getFetchFunction()("GET", "/plugins");
+  const result = await getFetchFunction()<unknown, { plugins?: object[] }>(
+    "GET",
+    "/plugins",
+  );
   if (result && result.plugins) {
     return result.plugins.map((p) => new PluginDefinition(p));
   }
