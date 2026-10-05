@@ -90,6 +90,12 @@ function toAPIFormat(state, panelsState = {}): APISpaceTree {
   return apiState;
 }
 
+/**
+ * Converts session spaces (API format) to the app format SpaceNode reads.
+ * App-format input passes through unchanged.
+ */
+export const sessionSpacesToAppFormat = (state) => toAppFormat(state);
+
 function toAppFormat(state) {
   if (Array.isArray(state)) return state.map(toAppFormat);
   if (state._cls) {
