@@ -29,10 +29,11 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 test.describe.serial("index page", () => {
   test("index page", async ({ pagePom, page }) => {
     await page.addInitScript(() => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore injecting IS_PLAYWRIGHT into window so that
-      // we can disable 1) analytics, and 2) QA performance toast banners
       window.IS_PLAYWRIGHT = true;
+      // a user who has dismissed the one-time Enterprise intro and the
+      // query performance toast
+      window.localStorage.setItem("fiftyone-enterprise-tooltip-seen", "true");
+      window.sessionStorage.setItem("hideQueryPerformanceToast", "true");
     });
 
     await pagePom.loadDataset();

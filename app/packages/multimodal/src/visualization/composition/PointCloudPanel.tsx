@@ -1,4 +1,3 @@
-import { isE2E } from "@fiftyone/utilities";
 import { Icon, IconName, Size } from "@voxel51/voodo";
 import { useThree } from "@react-three/fiber";
 import {
@@ -659,12 +658,10 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
       }
       surface={canvasSurface}
     >
-      {isE2E() ? (
-        <FrameRenderedSignal
-          detail={pointCloudFrameDetail(renderLayers, pointSize, canvasSurface)}
-          event="e2e:multimodal:point-cloud-frame-rendered"
-        />
-      ) : null}
+      <FrameRenderedSignal
+        detail={pointCloudFrameDetail(renderLayers, pointSize, canvasSurface)}
+        event="e2e:multimodal:point-cloud-frame-rendered"
+      />
       <PerspectiveCameraProjection
         onViewportAspectChange={onViewportAspectChange}
         projection={cameraProjection}

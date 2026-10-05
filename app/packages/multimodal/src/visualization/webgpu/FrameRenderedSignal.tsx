@@ -10,7 +10,7 @@ export type FrameRenderedDetail = Readonly<
 /**
  * Test signal for browser automation: after each frame its R3F root renders,
  * dispatches the `e2e:` bus event `event` with `detail` as committed for that
- * frame. Mount it only when `isE2E()`, since it adds per-frame work.
+ * frame. The bus drops the event outside automation.
  */
 export function FrameRenderedSignal({
   detail,

@@ -164,6 +164,8 @@ export class Scene2D {
   private interactionManager: InteractionManager;
   private overlays = new Map<string, BaseOverlay>();
   private overlayOrder: string[] = [];
+  // an overlay left the scene since the last frame, which paints nothing
+  private overlayRemoved = false;
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
   /** See {@link setReadOnly}. */
@@ -1343,6 +1345,7 @@ export class Scene2D {
         (overlayId) => overlayId !== id,
       );
       this.renderingState.clear(id);
+      this.overlayRemoved = true;
     }
 
     this.eventBus.dispatch("lighter:overlay-removed", { id, lifecycle });
@@ -1734,28 +1737,36 @@ export class Scene2D {
     // Execute before-render callbacks
     this.executeRenderCallbacks("before");
 
+    let changed = this.overlayRemoved;
+    this.overlayRemoved = false;
     for (const overlayId of this.overlayOrder) {
-      this.renderOverlay(overlayId);
+      changed = this.renderOverlay(overlayId) || changed;
     }
 
     // Execute after-render callbacks
     this.executeRenderCallbacks("after");
+
+    if (changed) {
+      this.eventBus.dispatch("lighter:overlays-painted", {});
+    }
   }
 
   /**
    * Renders a specific overlay if it's pending.
    * @param overlayId - The ID of the overlay to render.
+   * @returns Whether the overlay was (re)rendered.
    */
-  private renderOverlay(overlayId: string): void {
+  private renderOverlay(overlayId: string): boolean {
     const overlay = this.overlays.get(overlayId);
 
     if (!overlay) {
-      return;
+      return false;
     }
 
     const status = this.renderingState.getStatus(overlayId);
+    const rendered = this.shouldRenderOverlay(overlay, status);
 
-    if (overlay && this.shouldRenderOverlay(overlay, status)) {
+    if (rendered) {
       this.executeOverlayRender(overlayId, overlay);
     }
 
@@ -1764,6 +1775,8 @@ export class Scene2D {
     } else {
       this.config.renderer.hide(overlayId);
     }
+
+    return rendered;
   }
 
   /**

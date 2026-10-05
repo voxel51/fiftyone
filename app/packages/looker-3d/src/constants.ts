@@ -23,6 +23,8 @@ export const SCENE_READY_EVENT = "e2e:looker3d:scene-ready";
 export const CAMERA_SAVED_EVENT = "e2e:looker3d:camera-saved";
 /** Dispatched on the event bus after each rendered frame. */
 export const FRAME_RENDERED_EVENT = "e2e:looker3d:frame-rendered";
+/** Dispatched after a rendered frame shows the camera at a new position. */
+export const CAMERA_POSITION_EVENT = "e2e:looker3d:camera-position";
 /** The 2D looker's signals, dispatched as the 3D canvas mounts or an error shows */
 export const CANVAS_LOADED_EVENT = "e2e:looker:canvas-loaded";
 export const ERROR_SHOWN_EVENT = "e2e:looker:error-shown";
@@ -39,6 +41,7 @@ export const ANNOTATION_TOOLBAR_EVENT = "e2e:looker3d:annotation-toolbar";
 export type Looker3dE2EEvents = {
   [CAMERA_SAVED_EVENT]: undefined;
   [FRAME_RENDERED_EVENT]: undefined;
+  [CAMERA_POSITION_EVENT]: { x: number; y: number; z: number };
   [SCENE_READY_EVENT]: { sceneKey: string };
   [CANVAS_LOADED_EVENT]: { thumbnail: boolean };
   [ERROR_SHOWN_EVENT]: { thumbnail: boolean };

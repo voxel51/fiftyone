@@ -1,10 +1,5 @@
 import * as fos from "@fiftyone/state";
-import {
-  is3d,
-  isDirect3dSamplePath,
-  isE2E,
-  setContains3d,
-} from "@fiftyone/utilities";
+import { is3d, isDirect3dSamplePath, setContains3d } from "@fiftyone/utilities";
 import { addAfterEffect } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -140,12 +135,13 @@ export const Looker3d = () => {
       document.removeEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
   }, [looker3dSceneKey]);
 
-  useEffect(() => {
-    if (!isE2E()) return undefined;
-    return addAfterEffect(() =>
-      getEventBus<Looker3dE2EEvents>().dispatch(FRAME_RENDERED_EVENT),
-    );
-  }, []);
+  useEffect(
+    () =>
+      addAfterEffect(() =>
+        getEventBus<Looker3dE2EEvents>().dispatch(FRAME_RENDERED_EVENT),
+      ),
+    [],
+  );
 
   useHotkey(
     "KeyG",

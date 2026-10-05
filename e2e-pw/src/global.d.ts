@@ -13,8 +13,7 @@ interface Window {
 
   /** The CSS cursor under the pointer, updated on every pointer move. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;
-  __FO_PLAYWRIGHT_LOOKER3D_CAMERA?: () => number[] | null;
 
-  /** Disables analytics and QA performance toast banners during test runs. */
+  /** Hides the shared-session banner: the harness opens several clients. */
   IS_PLAYWRIGHT: boolean;
 }

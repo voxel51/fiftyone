@@ -4,6 +4,8 @@ import { ModalPom } from ".";
 
 /** Dispatched after the timeline commits a changed set of rows, with their ids */
 const TRACKS_RENDERED = "e2e:video-annotation:tracks-rendered";
+const OVERLAYS_SHOWN = "e2e:video-annotation:overlays-shown";
+const OVERLAY_SHOWN = "e2e:video-annotation:overlay-shown";
 
 const renderedIds = (e: { detail?: unknown }) =>
   (e.detail as { ids: string }).ids.split(",").filter(Boolean);
@@ -343,16 +345,12 @@ export class VideoAnnotatePom {
     fields: Record<string, boolean>,
     action: () => Promise<T>,
   ) {
-    return this.modal.eventUtils.after(
-      "e2e:video-annotation:overlays-stamped",
-      action,
-      (e) => {
-        const painted = (e.detail as { fields: string }).fields.split(" ");
-        return Object.entries(fields).every(
-          ([field, on]) => painted.includes(field) === on,
-        );
-      },
-    );
+    return this.modal.eventUtils.after(OVERLAYS_SHOWN, action, (e) => {
+      const painted = (e.detail as { fields: string }).fields.split(" ");
+      return Object.entries(fields).every(
+        ([field, on]) => painted.includes(field) === on,
+      );
+    });
   }
 
   /**
@@ -704,10 +702,20 @@ export class VideoAnnotatePom {
     );
   }
 
+  /** The overlay set the scene last painted; empty if it painted none */
+  async canvasOverlaysShown(): Promise<{ fields: string; ids: string }> {
+    const shown = (await this.modal.eventUtils.latest([OVERLAYS_SHOWN]))[
+      OVERLAYS_SHOWN
+    ];
+    return {
+      fields: String(shown?.fields ?? ""),
+      ids: String(shown?.ids ?? ""),
+    };
+  }
+
   /**
-   * The live geometry of the overlays the canvas is painting, as the OVERLAY
-   * holds it — deliberately not what the engine stores. Reads the
-   * `__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY` affordance; use it to catch a
+   * The geometry of the overlays the canvas last painted, as the OVERLAY
+   * holds it — deliberately not what the engine stores; use it to catch a
    * projection that updated the store but never reached the canvas.
    */
   async canvasOverlayGeometry(): Promise<
@@ -718,19 +726,27 @@ export class VideoAnnotatePom {
       points?: [number, number][];
     }>
   > {
-    return this.page.evaluate(
-      () =>
-        (
-          window as unknown as {
-            __FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?: () => Array<{
-              id: string;
-              field: string;
-              type: string;
-              points?: [number, number][];
-            }>;
-          }
-        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?.() ?? [],
-    );
+    const ids = (await this.canvasOverlaysShown()).ids
+      .split(" ")
+      .filter(Boolean);
+    const latest = new Map<string, Record<string, unknown>>();
+    for (const shown of await this.modal.eventUtils.recorded(OVERLAY_SHOWN)) {
+      latest.set(String(shown.id), shown);
+    }
+    return ids.map((id) => {
+      const shown = latest.get(id);
+      const points = String(shown?.points ?? "");
+      return {
+        id,
+        field: String(shown?.field ?? ""),
+        type: String(shown?.type ?? ""),
+        points: points
+          ? points
+              .split(";")
+              .map((xy) => xy.split(",").map(Number) as [number, number])
+          : undefined,
+      };
+    });
   }
 
   /** The vertices of the single polyline overlay on the canvas, if any. */
@@ -852,15 +868,9 @@ class VideoAnnotateAsserter {
     }
   }
 
-  /**
-   * Assert whether the canvas currently renders any overlay for `field`. The
-   * surface mirrors its PIXI overlays' fields onto `data-cy-scene-overlay-fields`
-   * (space separated), since the overlays themselves have no DOM.
-   */
+  /** Assert whether the canvas last painted any overlay for `field`. */
   async canvasRendersField(field: string, rendered = true) {
-    const fields = await this.va.surface.getAttribute(
-      "data-cy-scene-overlay-fields",
-    );
-    expect((fields ?? "").split(" ").includes(field)).toBe(rendered);
+    const { fields } = await this.va.canvasOverlaysShown();
+    expect(fields.split(" ").includes(field)).toBe(rendered);
   }
 }

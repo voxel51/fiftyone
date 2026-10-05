@@ -5,6 +5,7 @@ import { EventUtils } from "src/shared/event-utils";
 
 export type CameraPosition = [number, number, number];
 const DEFAULT_MIN_RENDERED_PIXELS = 150;
+const CAMERA_POSITION = "e2e:looker3d:camera-position";
 
 type SavedCameraState = {
   position: number[];
@@ -68,15 +69,15 @@ export class Renderer3dPom {
     );
   }
 
-  /** The live camera position, read off the camera (the status bar lags it). */
+  /** The camera position the canvas last rendered (the status bar lags it). */
   async getCameraPosition(): Promise<CameraPosition> {
-    const position = await this.page.evaluate(
-      () => window.__FO_PLAYWRIGHT_LOOKER3D_CAMERA?.() ?? null,
-    );
+    const position = (await this.eventUtils.latest([CAMERA_POSITION]))[
+      CAMERA_POSITION
+    ];
     if (!position) {
-      throw new Error("no live 3D camera on the page");
+      throw new Error("no 3D camera has rendered on the page");
     }
-    return position as CameraPosition;
+    return [position.x, position.y, position.z] as CameraPosition;
   }
 
   /** Resolve on the next camera save, which the scene makes on its own. */

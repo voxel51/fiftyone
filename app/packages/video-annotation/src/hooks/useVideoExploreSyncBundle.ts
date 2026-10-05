@@ -4,7 +4,7 @@
 
 import { useLighterSetupWithPixi } from "@fiftyone/lighter";
 import type { RefObject } from "react";
-import { useExposeSceneOverlayFieldsForTest } from "../sync/useExposeSceneOverlayFieldsForTest";
+import { useAnnounceSceneOverlays } from "../sync/useAnnounceSceneOverlays";
 import { useSyncMediaTransform } from "../sync/useSyncMediaTransform";
 import { useTemporalOverlaySync } from "../sync/useTemporalOverlaySync";
 import { useExploreTemporalDetectionFieldPaths } from "../state/exploreFrameLabelFields";
@@ -34,5 +34,5 @@ export function useVideoExploreSyncBundle<T extends HTMLElement>({
   const exploreTdPaths = useExploreTemporalDetectionFieldPaths();
   useTemporalOverlaySync(scene, canonicalMediaReady, exploreTdPaths);
   useSyncMediaTransform(scene, mediaRef);
-  useExposeSceneOverlayFieldsForTest(scene);
+  useAnnounceSceneOverlays(scene);
 }

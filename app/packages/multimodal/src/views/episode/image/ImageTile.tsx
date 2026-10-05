@@ -5,7 +5,6 @@ import {
   useTileId,
 } from "@fiftyone/tiling";
 import { useIsPlaying } from "@fiftyone/playback";
-import { isE2E } from "@fiftyone/utilities";
 import { useStore } from "jotai";
 import React, {
   useCallback,
@@ -952,23 +951,19 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     ],
   );
   const sceneChildren = useMemo(
-    () =>
-      isE2E() ? (
-        <>
-          <FrameRenderedSignal
-            detail={{
-              imageContentTimeNs:
-                committedImageContentTimeNs?.toString() ?? null,
-              pointSize: pointCloudProjection.pointSize,
-              projectedStreamCount: renderedProjectionLayers.length,
-            }}
-            event="e2e:multimodal:image-frame-rendered"
-          />
-          {panelSceneChildren}
-        </>
-      ) : (
-        panelSceneChildren
-      ),
+    () => (
+      <>
+        <FrameRenderedSignal
+          detail={{
+            imageContentTimeNs: committedImageContentTimeNs?.toString() ?? null,
+            pointSize: pointCloudProjection.pointSize,
+            projectedStreamCount: renderedProjectionLayers.length,
+          }}
+          event="e2e:multimodal:image-frame-rendered"
+        />
+        {panelSceneChildren}
+      </>
+    ),
     [
       committedImageContentTimeNs,
       panelSceneChildren,

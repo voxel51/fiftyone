@@ -64,6 +64,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
         window.name = `${window.name}__FO_PLAYWRIGHT_STORAGE_CLEARED__`;
       }
 
+      // a user who has dismissed the one-time Enterprise intro and the
+      // query performance toast
+      window.localStorage.setItem("fiftyone-enterprise-tooltip-seen", "true");
+      window.sessionStorage.setItem("hideQueryPerformanceToast", "true");
+
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
         // elementFromPoint may return null (e.g. pointer outside the

@@ -62,12 +62,11 @@ E2E_RULES = [
 APP_RULES = [
     # test signals are e2e: bus events, not DOM CustomEvents
     ("app-custom-event", re.compile(r"new CustomEvent\(")),
+    # app code never branches on automation: e2e: events are dispatched
+    # unconditionally and the bus drops them outside it
     (
-        "app-guarded-dispatch",
-        re.compile(
-            r"if\s*\(\s*!?\s*(?:isE2E\(\)|navigator\.webdriver)[^)]*\)\s*\{?[^}]{0,200}?\.dispatch\(",
-            re.S,
-        ),
+        "app-e2e-guard",
+        re.compile(r"\bisE2E\b|\bIS_PLAYWRIGHT\b|navigator\.webdriver"),
     ),
 ]
 
@@ -81,7 +80,12 @@ E2E_SKIP = re.compile(
 # app-custom-event entries must name the app code that listens (a test-only
 # CustomEvent is never allowed: it becomes an e2e: bus event).
 ALLOW = {
-    "app/packages/looker-3d/src/Looker3d.tsx:addAfterEffect": "the guard decides whether a per-frame after-effect is registered at all",
+    "app/packages/utilities/src/e2e.ts:isE2E": "defines isE2E() for the event bus below",
+    "app/packages/utilities/src/e2e.ts:navigator.webdriver": "defines isE2E() for the event bus below",
+    "app/packages/events/src/dispatch/dispatcher.ts:isE2E": "the bus itself: drops e2e: events outside automation",
+    "app/packages/events/src/dispatch/registry.ts:isE2E": "the bus itself: exposes __FO_EVENTS__ for the harness to tap only under automation",
+    "app/packages/app/src/components/SharedSessionBanner.tsx:IS_PLAYWRIGHT": "environment, like the polling and no-state exclusions beside it: the harness runs several clients against one server on purpose, which the banner would report",
+    "app/packages/app/src/vite-env.d.ts:IS_PLAYWRIGHT": "the type of the SharedSessionBanner flag above",
     "app/packages/core/src/components/Grid/GridCustomRendererItem.tsx:new CustomEvent(": "item events (refresh, selectthumbnail); Grid/useRenderer.ts listens via item.addEventListener",
     "app/packages/core/src/components/Grid/useEvents.ts:new CustomEvent(": "grid-mount; Grid/useResize.ts listens (document.addEventListener) to sync the grid width",
     "app/packages/core/src/components/Modal/TooltipInfo.tsx:new CustomEvent(": "fo-hide-label-change; TooltipInfo.tsx itself listens (window.addEventListener) to refresh hidden labels",
@@ -158,6 +162,7 @@ for name, items in by_rule.items():
 print(f"TOTAL {len(findings)}")
 if findings:
     print(
-        "Each wait should name the app event its action causes; see e2e-pw/CODING_STANDARDS.md"
+        "Each wait should name the app event its action causes, and app code"
+        " dispatches e2e: events without guards; see e2e-pw/CODING_STANDARDS.md"
     )
 sys.exit(1 if findings else 0)

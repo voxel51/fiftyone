@@ -13,7 +13,7 @@ const CANVAS_ONLY_STYLE = fs.readFileSync(
   "utf8",
 );
 
-/** Detail of the app's e2e-only `e2e:multimodal:point-cloud-frame-rendered` */
+/** Detail of the app's `e2e:multimodal:point-cloud-frame-rendered` */
 interface PointCloudFrameDetail {
   readonly contentTimesNs: string;
   readonly pointSize: number;
@@ -21,7 +21,7 @@ interface PointCloudFrameDetail {
   readonly surface: string | null;
 }
 
-/** Detail of the app's e2e-only `e2e:multimodal:image-frame-rendered` */
+/** Detail of the app's `e2e:multimodal:image-frame-rendered` */
 interface ImageFrameDetail {
   readonly imageContentTimeNs: string | null;
   readonly pointSize: number;

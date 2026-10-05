@@ -3,7 +3,6 @@
  */
 
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
-import { isE2E } from "@fiftyone/utilities";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
@@ -165,8 +164,7 @@ export class PixiRenderer2D implements Renderer2D {
     if (this.isRunning && this.tickHandler) this.tickHandler();
   };
 
-  // only for browser automation (e2e): runs after Pixi's own render at LOW,
-  // so the frame it announces is on screen
+  // runs after Pixi's own render at LOW, so the frame it announces is on screen
   private announcePaint = () => {
     this.eventBus.dispatch("e2e:lighter:frame-painted", {});
   };
@@ -180,13 +178,11 @@ export class PixiRenderer2D implements Renderer2D {
     this.tickHandler = onFrame;
 
     this.app.ticker.add(this.tick);
-    if (isE2E()) {
-      this.app.ticker.add(
-        this.announcePaint,
-        undefined,
-        PIXI.UPDATE_PRIORITY.UTILITY,
-      );
-    }
+    this.app.ticker.add(
+      this.announcePaint,
+      undefined,
+      PIXI.UPDATE_PRIORITY.UTILITY,
+    );
   }
 
   resetTickHandler(): void {
