@@ -53,7 +53,7 @@ export type MaskColorInput = {
 
 export interface LabelTagColor {
   fieldColor?: string;
-  valueColors?: {
+  valueColors?: readonly {
     value: string;
     color: string;
   }[];
@@ -187,7 +187,7 @@ export interface BaseOptions {
   customizeColorSetting: CustomizeColor[];
   // absent from the defaults until the app supplies them
   colorscale?: Colorscale;
-  labelTagColors?: CustomizeColor;
+  labelTagColors?: LabelTagColor;
   selectedLabels: string[];
   selectedLabelTypes: Record<string, string>;
   labelSelectionStyle: {
