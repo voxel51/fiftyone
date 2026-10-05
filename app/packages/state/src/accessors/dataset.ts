@@ -2,7 +2,7 @@ import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { selectedSamples } from "../recoil/atoms";
-import { groupSlice } from "../recoil/groups";
+import { groupSlice, hasGroupSlices } from "../recoil/groups";
 import {
   anyTagging,
   canTagSamplesOrLabels,
@@ -358,6 +358,9 @@ export function useLegacySelectedSamples() {
 export function useGridGroupSlice(): string | null {
   return useRecoilValue(groupSlice);
 }
+
+/** Whether the current dataset's samples are addressed by group slice. */
+export const useHasGroupSlices = (): boolean => useRecoilValue(hasGroupSlices);
 /** The grid's sidebar filters. */
 export const useFilters = (): State.Filters => useRecoilValue(filters);
 

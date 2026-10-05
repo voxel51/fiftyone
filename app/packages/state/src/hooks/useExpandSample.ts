@@ -43,6 +43,13 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           snapshot.getPromise(groupAtoms.groupField),
         ]);
 
+        // In a grouped dataset the modal addresses a sample by its group
+        // too; the group id rides on the sample under the group field.
+        const groupIdOf = (entry: { sample: Sample }) =>
+          hasGroupSlices
+            ? (get(entry.sample, groupField)._id as string)
+            : undefined;
+
         const iter = async (request: Promise<ID | undefined>) => {
           const id = await request;
           const sample = store.get(id);
@@ -51,12 +58,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             throw new Error("unable to paginate to next sample");
           }
 
-          let groupId: string;
-          if (hasGroupSlices) {
-            groupId = get(sample.sample, groupField)._id as string;
-          }
-
-          return { id: id.description, groupId };
+          return { id: id.description, groupId: groupIdOf(sample) };
         };
 
         const next = async (offset = 1) => {
@@ -97,7 +99,11 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             return null;
           }
 
-          return { id: id.description, sample: node };
+          return {
+            id: id.description,
+            groupId: groupIdOf(node),
+            sample: node,
+          };
         };
 
         const hasNext = Boolean(await cursor.next(1, true));
