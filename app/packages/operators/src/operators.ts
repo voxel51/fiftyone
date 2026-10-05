@@ -898,7 +898,7 @@ export async function executeOperatorWithContext(
   if (executor) executor.queueRequests();
 
   trackOperatorExecution(operatorURI, params, {
-    info: ctx._currentContext.info,
+    info: ctx._currentContext.analyticsInfo,
     delegated,
     isRemote,
     error,
