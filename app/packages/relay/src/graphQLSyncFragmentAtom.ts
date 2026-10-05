@@ -47,7 +47,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>,
 ) {
-  const value = atom({
+  const value = atom<K>({
     ...options,
     default: fragmentOptions.default,
     effects: [
