@@ -58,7 +58,12 @@ def make_pipeline(view, attach_frames=False, limit_frames=None, support=None):
     Returns:
         the pipeline, or ``None`` if the view requires a sample-first pipeline
     """
-    result = make_plan(view, support=support) if view._stages else None
+    # Stages that never attach frames compile the same sample-first, so skip
+    # compiling them twice
+    if not view._stages or not _needs_frames(view):
+        return None
+
+    result = make_plan(view, support=support)
     if result is None or not result[1]:
         return None
 
@@ -100,22 +105,33 @@ def make_plan(sample_collection, support=None):
 
     _view = sample_collection._base_view
     for stage in stages:
-        if (
-            stage.flattens_groups
-            or stage._needs_group_slices(_view)
-            or stage._frame_role(_view) is None
-        ):
+        if stage.flattens_groups or stage._needs_group_slices(_view):
+            return None
+
+        role = stage._frame_role(_view)
+        if role is None:
             return None
 
         # Mirrors where a sample-first pipeline first attaches frames
         attached = attached or stage._needs_frames(_view)
 
-        if not plan.add(stage.to_mongo(_view), attached):
+        if not plan.add(stage.to_mongo(_view), attached, role == "sample"):
             return None
 
         _view = _view._add_view_stage(stage, validate=False)
 
     return plan, attached
+
+
+def _needs_frames(view):
+    _view = view._base_view
+    for stage in view._stages:
+        if stage._needs_frames(_view):
+            return True
+
+        _view = _view._add_view_stage(stage, validate=False)
+
+    return False
 
 
 def is_frame_match(pipeline):
@@ -144,7 +160,7 @@ class _Plan(object):
         self._num_matches = 0
         self._lookups = []
 
-    def add(self, pipeline, attached):
+    def add(self, pipeline, attached, sample_only=False):
         for d in pipeline:
             if len(d) != 1:
                 return False
@@ -154,7 +170,9 @@ class _Plan(object):
             if op == "$project":
                 if not self._add_project(spec, attached):
                     return False
-            elif not foe.is_frames_expr(d):
+            elif sample_only or not foe.is_frames_expr(d):
+                # A sample-only stage may carry huge literals, like the IDs of
+                # select(), that aren't worth scanning for frame paths
                 self.sample_stages.append(d)
             elif not attached:
                 return False

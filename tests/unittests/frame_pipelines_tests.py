@@ -7,10 +7,12 @@ Frame-first pipeline tests.
 """
 
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 from fiftyone import ViewField as F, VALUE
 import fiftyone.core.frame_pipelines as fofp
+import fiftyone.core.stages as fos
 
 from decorators import drop_datasets
 
@@ -291,6 +293,29 @@ class FramePipelinesTests(unittest.TestCase):
             self.assertIn({"$limit": 1}, lookup["pipeline"])
 
         self.assertFalse(fofp._contains(pipeline, "$frames"))
+
+    @drop_datasets
+    def test_sample_stages_compile_once(self):
+        dataset = fo.Dataset()
+        video1, _, _ = _make_videos(dataset)
+        view = dataset.select([video1.id, dataset.last().id])
+        aggregations = [fo.CountValues(_LABEL), fo.CountValues("frames.flag")]
+
+        with mock.patch.object(
+            fos.Select, "to_mongo", autospec=True, wraps=fos.Select.to_mongo
+        ) as to_mongo:
+            view._pipeline()
+            self.assertEqual(to_mongo.call_count, 1)
+
+            # both aggregations run frame-first on one shared plan
+            to_mongo.reset_mock()
+            actual = view.aggregate(aggregations)
+            self.assertEqual(to_mongo.call_count, 1)
+
+        with fofp._disabled():
+            expected = view.aggregate(aggregations)
+
+        self.assertEqual(actual, expected)
 
 
 if __name__ == "__main__":

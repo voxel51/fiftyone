@@ -77,6 +77,42 @@ def to_frames_pipeline(pipeline):
     return frame_pipeline + rest
 
 
+def plan_aggregations(sample_collection, aggregations):
+    """Plans frame-first executions of the given aggregations of the same
+    collection, which share one plan of the collection's stages.
+
+    Args:
+        sample_collection: the
+            :class:`fiftyone.core.collections.SampleCollection` being
+            aggregated
+        aggregations: a dict mapping keys to
+            ``(aggregation, pipeline)`` tuples, where ``pipeline`` is the
+            aggregation's
+            :meth:`fiftyone.core.aggregations.Aggregation.to_mongo` pipeline
+
+    Returns:
+        a dict mapping the keys of aggregations that can run frame-first to
+        their :class:`AggregationPlan`
+    """
+    stages_plan = []
+
+    def get_stages_plan():
+        if not stages_plan:
+            stages_plan.append(fofp.make_plan(sample_collection))
+
+        return stages_plan[0]
+
+    plans = {}
+    for key, (aggregation, pipeline) in aggregations.items():
+        plan = _plan_aggregation(
+            sample_collection, aggregation, pipeline, get_stages_plan
+        )
+        if plan is not None:
+            plans[key] = plan
+
+    return plans
+
+
 def plan_aggregation(sample_collection, aggregation, pipeline):
     """Plans a frame-first execution of the given aggregation.
 
@@ -92,11 +128,22 @@ def plan_aggregation(sample_collection, aggregation, pipeline):
         an :class:`AggregationPlan`, or ``None`` if the aggregation requires
         a sample-first pipeline
     """
+    return _plan_aggregation(
+        sample_collection,
+        aggregation,
+        pipeline,
+        lambda: fofp.make_plan(sample_collection),
+    )
+
+
+def _plan_aggregation(
+    sample_collection, aggregation, pipeline, get_stages_plan
+):
     frame_pipeline = aggregation._to_frames_mongo(sample_collection, pipeline)
     if frame_pipeline is None:
         return None
 
-    result = fofp.make_plan(sample_collection)
+    result = get_stages_plan()
     if result is None:
         return None
 

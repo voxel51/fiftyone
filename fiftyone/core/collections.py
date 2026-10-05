@@ -11657,7 +11657,7 @@ class SampleCollection(object):
 
         # Build facet-able pipelines
         compiled_facet_aggs, facet_pipelines, _, plans = self._build_facets(
-            facet_aggs
+            facet_aggs, plan_frames=not _mongo
         )
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
@@ -11905,7 +11905,7 @@ class SampleCollection(object):
             group_slices=aggregation._needs_group_slices(self),
         )
 
-    def _build_facets(self, aggs_map):
+    def _build_facets(self, aggs_map, plan_frames=True):
         compiled = {}
         facetable = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
@@ -11948,21 +11948,36 @@ class SampleCollection(object):
                 idx, (_, aggregation) = next(iter(aggregations.items()))
                 compiled[idx] = aggregation
 
+        agg_pipelines = {
+            idx: aggregation.to_mongo(self)
+            for idx, aggregation in compiled.items()
+        }
+
+        if plan_frames:
+            plans = fofa.plan_aggregations(
+                self,
+                {
+                    idx: (aggregation, agg_pipelines[idx])
+                    for idx, aggregation in compiled.items()
+                },
+            )
+        else:
+            plans = {}
+
         pipelines = {}
         hints = []
-        plans = {}
         for idx, aggregation in compiled.items():
-            pipeline = aggregation.to_mongo(self)
-            pipelines[idx] = self._pipeline(
-                pipeline=pipeline,
-                attach_frames=aggregation._needs_frames(self),
-                group_slices=aggregation._needs_group_slices(self),
-            )
-            hints.append(getattr(aggregation, "_hint", None))
+            # A frame-first plan builds its own pipeline
+            if idx in plans:
+                pipelines[idx] = None
+            else:
+                pipelines[idx] = self._pipeline(
+                    pipeline=agg_pipelines[idx],
+                    attach_frames=aggregation._needs_frames(self),
+                    group_slices=aggregation._needs_group_slices(self),
+                )
 
-            plan = fofa.plan_aggregation(self, aggregation, pipeline)
-            if plan is not None:
-                plans[idx] = plan
+            hints.append(getattr(aggregation, "_hint", None))
 
         return compiled, pipelines, hints, plans
 
