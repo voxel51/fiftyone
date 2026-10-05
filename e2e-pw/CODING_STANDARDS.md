@@ -88,6 +88,27 @@ POMs wrap these. For example, `modal.afterSampleLoaded(action)`,
 `grid.afterTilesDrawn(n, action)` and `episode.afterReady(file, action)`. Reuse
 them before adding new ones.
 
+## POMs
+
+- Pages and shared components (grid, modal, sidebar) get a POM; specs compose
+  POMs instead of raw locators.
+- Assertions live in an asserter class the POM exposes as `pom.assert`, never
+  in the POM itself.
+- Static locators are `get` accessors; dynamic ones are `getX(param)` methods.
+- Actions are verbs and resolve on the `e2e:` event they cause.
+
+See the README's POM template.
+
+## Test size
+
+- Keep each test small, under about a minute locally. Downstream CI runs these
+  specs at two to four times the duration, so a long test is a timeout risk
+  there. Split large flows into focused tests.
+- Avoid `test.describe.serial` unless tests depend on each other's state. One
+  failure re-runs the whole file on every retry and marks healthy siblings as
+  retried. When tests mutate shared data, give each its own sample
+  (`numSamples` plus `indexToId` ids) instead.
+
 ## Timing
 
 Speed is tested on purpose, not through waits. When a spec should hold the App
@@ -119,6 +140,9 @@ timeout.
   data the spec builds.
 - Data shared by a spec family lives beside the specs, as in
   `detections-data.ts`.
+- Check persistence the way a user would: wrap the edit in
+  `modal.sidebar.annotate.afterSave(...)`, then read what the App renders in a
+  fresh browser context.
 
 ## Screenshots
 
@@ -136,6 +160,20 @@ that describe the drawing, or with window or DOM probes.
   one-color pool, and the App renders once its bundled fonts load.
 - Record macOS baselines with `--update-snapshots`; harvest Linux baselines
   from CI (see the README).
+- Accept a new baseline only after reviewing the diff. A size change or a
+  highlighted element is a behavior change, not render noise.
+
+## Canvases
+
+- Drive a canvas only through the `modal.sampleCanvas` pointer and keyboard
+  primitives (`move`, `down`, `up`, `click`). Never query canvas elements with
+  locators or accessibility queries; the canvas is opaque to the DOM.
+- Assert on a canvas with screenshots and cursor values only.
+- Park the pointer with `moveMouseToViewportEdge()` before a screenshot, so
+  hover states don't reach the baseline.
+- Keep `SampleCanvasPom` free of feature knowledge: no `clickDetectionHandle`
+  or `openQuickEdit`. The spec composes the primitives, so every media type
+  (image, video, 3D) is tested the same way.
 
 ## When a test hangs
 

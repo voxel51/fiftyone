@@ -33,28 +33,11 @@
 All specs live directly in `e2e-pw/src/oss/specs/` with no subdirectories and
 are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
 
-### Patterns
+### Rules
 
-- Use POMs where applicable, e.g. for pages, or for common components like
-  grid, modal, sidebar.
-- Do not use assertion logic directly in POMs, instead use composition to
-  create POMs that contain the assertion class.
-- Follow `CODING_STANDARDS.md`, which is binding: every wait names the `e2e:`
-  event its action causes, then reads the result once. No polls, timeouts,
-  retrying assertions or DOM waits; CI's `e2e-waits` job fails on them.
-- Keep individual tests small. These specs also run in fiftyone-teams CI at
-  roughly 2–4x the duration (slower server boot, page loads, and screenshot
-  stabilization), so a test that takes more than ~60 seconds here is a timeout
-  risk there. Split large flows into focused tests.
-- Avoid `test.describe.serial` unless tests genuinely depend on each other's
-  state. With serial mode, one failure re-runs the entire file on every retry
-  (re-paying web server boot and dataset creation) and healthy siblings get
-  reported as retried, which confuses flake triage. When tests mutate shared
-  data (e.g. annotation autosave), prefer giving each test its own sample
-  (`numSamples` plus `indexToId`-addressed ids) over serializing the file.
-- Check what a canvas draws with an exact canvas screenshot
-  (`expectScreenshot`), taken once after the step's cause-wait; see
-  `CODING_STANDARDS.md`.
+`CODING_STANDARDS.md` is binding for every spec, POM and App `e2e:` event:
+waits, POM structure, test size, datasets, canvas testing and screenshots. CI's
+`e2e-waits` job enforces its wait rules.
 
 #### Check for flakiness
 
@@ -69,7 +52,7 @@ You may either pass the name of the spec file or the test title.
 yarn check-flaky -r 10 -s "video plays with correct label for each slice"
 ```
 
-#### Template for POMs
+#### POM template
 
 ```typescript
 class MyPOM {
@@ -147,16 +130,12 @@ cp <attachment path> \
 A test stops at its first mismatched screenshot but writes every missing one,
 so delete a spec's stale linux baselines to collect them all in one round.
 
-Only accept an actual after reviewing the diff — a dimension change or a
-highlighted UI element is a behavioral difference, not render noise.
-
 #### Creating Datasets
 
-Always use `DatasetFactory.createDataset` when a test needs a FiftyOne dataset.
-It is discriminated on `mediaType` (`"image"` by default, or `"video"`, `"3d"`,
-`"group"`, `"multimodal"`), generates the media for that kind, inserts samples
-directly into the underlying MongoDB collection for performance, and applies
-any additional schema fields and saved views.
+`DatasetFactory.createDataset` is discriminated on `mediaType` (`"image"` by
+default, or `"video"`, `"3d"`, `"group"`, `"multimodal"`), generates the media
+for that kind, inserts samples directly into the underlying MongoDB collection
+for performance, and applies any additional schema fields and saved views.
 
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
@@ -222,12 +201,10 @@ await DatasetFactory.createDataset({
 });
 ```
 
-Verify persistence the way a user would see it: wrap the edit in
-`modal.sidebar.annotate.afterSave(...)`, then assert from a fresh browser
-context on what the app renders. Group slices may be `image`, `3d` or `video`
-(with per-slice media options); video slices take `withFrameData` and
-`sampleFrames` too. Recipes shared by a spec family (the video-annotation and
-3D seeds) live beside the specs in `src/oss/specs/annotate-*/`.
+Group slices may be `image`, `3d` or `video` (with per-slice media options);
+video slices take `withFrameData` and `sampleFrames` too. Recipes shared by a
+spec family (the video-annotation and 3D seeds) live beside the specs in
+`src/oss/specs/annotate-*/`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy
@@ -254,11 +231,7 @@ await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
 
 #### Canvas Testing
 
-Canvas interactions must be driven imperatively using the keyboard and mouse
-methods on the `SampleCanvas` POM, which is attached to the `ModalPom` as
-`modal.sampleCanvas`. Do not attempt to use Playwright locators or
-accessibility queries against canvas elements — the canvas is a black box from
-the DOM's perspective.
+The `SampleCanvas` POM is attached to the `ModalPom` as `modal.sampleCanvas`.
 
 ```ts
 // Move the pointer to a canvas-relative position (0–1 in both axes)
@@ -278,13 +251,7 @@ await modal.sampleCanvas.up();
 // Click or double-click at a position
 await modal.sampleCanvas.click(0.9, 0.9);
 await modal.sampleCanvas.dblclick(0.9, 0.9);
-```
 
-Since the canvas surface is opaque to the DOM, the only available signals for
-assertions are **screenshots** and **cursor values**. Use these to verify that
-an interaction had the expected effect.
-
-```ts
 // Assert the CSS cursor at the current pointer position
 await modal.sampleCanvas.assert.hasCursor("default");
 await modal.sampleCanvas.assert.hasCursor("nwse-resize");
@@ -297,28 +264,10 @@ import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
 await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER3D);
-```
 
-When writing canvas tests, move the pointer to the right edge of the viewport
-before taking a screenshot to avoid hover states contaminating the baseline.
-
-```ts
+// Park the pointer off the canvas before a screenshot
 await modal.sampleCanvas.moveMouseToViewportEdge();
 ```
-
-The `SampleCanvasPom` is intentionally kept free of semantic actions. Do not
-add methods that encode knowledge about specific features (e.g.
-`clickDetectionHandle` or `openQuickEdit`) — the sequence of keyboard and mouse
-actions capture the feature in the spec. The POM provides only primitive
-pointer and keyboard operations; the spec is where those primitives are
-composed into meaningful interactions.
-
-This keeps canvas testing uniform across media types. Whether a test is
-targeting an image, video, or 3D sample, the interactions are expressed the
-same way — `move`, `down`, `up`, `click`. Features may look different depending
-on the media type, but the testing approach is identical. Writing tests this
-way makes specs easier to read and collaborate on, since there is only one
-pattern to learn regardless of what is being tested.
 
 ### Known Issues
 
