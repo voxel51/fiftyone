@@ -7,7 +7,7 @@ import autoFocus from "../utils/auto-focus";
 type FileDropProps = {
   label?: string;
   caption?: string;
-  onChange: (files: Array<File>) => void;
+  onChange: (files: Array<File>, clear: () => void) => void;
   /** comma separated file types. i.e. .png,.jpg,.svg */
   types?: string;
   allowMultiple?: boolean;

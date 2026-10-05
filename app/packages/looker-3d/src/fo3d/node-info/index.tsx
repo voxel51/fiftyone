@@ -1,5 +1,5 @@
 import { useRecoilValue } from "recoil";
-import { PcdAsset } from "../../hooks";
+import { PcdAsset } from "../render-types";
 import { activeNodeAtom } from "../../state";
 import { MeshNodeInfo } from "./MeshNodeInfo";
 import { PcdNodeInfo } from "./PcdNodeInfo";

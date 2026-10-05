@@ -11,17 +11,13 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import { ReactElement } from "react";
-import {
-  StatusContent,
-  StatusHelp,
-  StatusHelpEntry,
-} from "../../../ModalStatusBar";
+import { StatusHelp, StatusHelpEntry } from "../../../ModalStatusBar";
 import {
   InferenceError,
   InferenceProgress,
   InferenceStatus,
 } from "@fiftyone/annotation/src/agents";
-import { ProviderErrorKind } from "@fiftyone/annotation";
+import { ProviderErrorKind, type StatusContent } from "@fiftyone/annotation";
 
 const StatusText = ({
   children,

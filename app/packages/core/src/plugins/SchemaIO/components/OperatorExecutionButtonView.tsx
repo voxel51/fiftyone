@@ -5,7 +5,7 @@ import { OperatorExecutionOption } from "@fiftyone/operators/src/state";
 import {
   ExecutionCallback,
   ExecutionErrorCallback,
-} from "@fiftyone/operators/src/types-internal";
+} from "@fiftyone/operators/src/ts/runtime.types";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";

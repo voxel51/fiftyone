@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { ButtonView, HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";
+import type { ViewPropsType } from "../utils/types";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
@@ -170,7 +171,7 @@ export type RadioGroupProps = {
   label?: string;
   description?: string;
   choices: Array<Choice>;
-  onChange: (path: string, value: string, schema: any) => void;
+  onChange: ViewPropsType["onChange"];
   schema: any; // todo
   path: string;
   data: unknown;

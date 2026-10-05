@@ -246,11 +246,13 @@ export class PolylineOverlay extends KeypointOverlay {
    * to target a specific segment.
    *
    * @param worldPoint Absolute (world-space) coordinates of the new point.
-   * @param variant Optional variant key used to determine render style.
-   * @param id Optional point id; one is generated when omitted.
+   * @param options Forwarded to {@link KeypointOverlay.addPoint}.
    * @returns The id of the new point.
    */
-  override addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  override addPoint(
+    worldPoint: Point,
+    options?: Parameters<KeypointOverlay["addPoint"]>[1],
+  ): string {
     // Bump boundaries BEFORE super, since `super.addPoint` synchronously
     // dispatches `lighter:keypoint-point-added`.
     if (this.segmentBoundaries.length === 0) {
@@ -259,7 +261,7 @@ export class PolylineOverlay extends KeypointOverlay {
       this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
     }
 
-    const newId = super.addPoint(worldPoint, variant, id);
+    const newId = super.addPoint(worldPoint, options);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 

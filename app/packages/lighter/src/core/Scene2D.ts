@@ -16,7 +16,7 @@ import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import {
-  TransformOptions,
+  TransformOverlayOptions,
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
@@ -1377,7 +1377,7 @@ export class Scene2D {
    */
   async transformOverlay(
     id: string,
-    options: TransformOptions,
+    options: TransformOverlayOptions,
   ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {

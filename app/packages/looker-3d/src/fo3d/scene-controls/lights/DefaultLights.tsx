@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { Vector3 } from "three";
-import type { FoScene } from "../../../hooks";
+import type { FoScene } from "../../render-types";
 import {
   getColorKey,
   getIntensityKey,
@@ -70,6 +70,7 @@ export const DefaultLights = () => {
         new Vector3(0, center.y - offset, 0), // front
       ];
     }
+    return undefined;
   }, [upVector, sceneBoundingBox]);
 
   const defaultLightsProps = useMemo(() => {
@@ -148,5 +149,5 @@ export const DefaultLights = () => {
     });
   }, [lightConfig, lightHelperConfig, defaultLightsProps]);
 
-  return lightElements;
+  return <>{lightElements}</>;
 };

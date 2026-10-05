@@ -90,7 +90,7 @@ export default function EmptySamples() {
       {!!showEmptyView && (
         <BaseContainer style={{ paddingBottom: "1rem" }}>
           <ActionContainer>
-            <Button aria-label="clear-filters" onClick={() => setView([], [])}>
+            <Button aria-label="clear-filters" onClick={() => setView([])}>
               <BaseContainer style={{ padding: "0.25rem" }}>
                 <BaseContainer>
                   <Typography variant="body1" component="span">

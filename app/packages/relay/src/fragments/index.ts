@@ -17,6 +17,10 @@ export { default as expressionCatalogFragment } from "./expressionCatalogFragmen
 export * from "./__generated__/stageDefinitionsFragment.graphql";
 export * from "./__generated__/viewFragment.graphql";
 export * from "./__generated__/viewSchemaFragment.graphql";
+
+// Generated artifacts redeclare shared GraphQL types; an ambiguous `export *`
+// drops the name, so pick one source explicitly.
+export type { ColorBy } from "./__generated__/colorSchemeFragment.graphql";
 export { default as colorSchemeFragment } from "./colorSchemeFragment";
 export { default as configFragment } from "./configFragment";
 export { default as datasetAppConfigFragment } from "./datasetAppConfigFragment";

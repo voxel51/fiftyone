@@ -9,7 +9,12 @@ import { zoomToContent } from "../zoom";
 
 export class FrameLooker extends AbstractLooker<FrameState> {
   getElements(config) {
-    return getFrameElements(config, this.updater, this.getDispatchEvent());
+    return getFrameElements({
+      abortController: this.abortController,
+      config,
+      dispatchEvent: this.getDispatchEvent(),
+      update: this.updater,
+    });
   }
 
   getInitialState(

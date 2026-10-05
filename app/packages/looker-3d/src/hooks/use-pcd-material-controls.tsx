@@ -28,7 +28,7 @@ import { getMinMaxForAttribute } from "../fo3d/point-cloud/use-pcd-material";
 import { customComponent } from "../fo3d/scene-controls/LevaCustomComponent";
 import { getGradientFromSchemeName } from "../renderables/pcd/shaders/gradientMap";
 import { isColormapModalOpenAtom } from "../state";
-import type { FoPointcloudMaterialProps } from "./use-fo3d";
+import type { FoPointcloudMaterialProps } from "../fo3d/render-types";
 
 const ColormapSource = {
   DEFAULT: "App Default",

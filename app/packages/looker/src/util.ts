@@ -18,10 +18,6 @@ import {
 import {
   AppError,
   GraphQLError,
-  MEDIA_TYPE_3D,
-  MEDIA_TYPE_GROUP,
-  MEDIA_TYPE_IMAGE,
-  MEDIA_TYPE_VIDEO,
   NetworkError,
   ServerError,
   getFetchParameters,

@@ -4,7 +4,7 @@
 
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import type { TransformOptions } from "../commands/TransformOverlayCommand";
+import type { TransformOverlayOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
 import { lighterSceneAtom, overlayFactory } from "../index";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -63,7 +63,7 @@ export const useLighter = () => {
   }, []);
 
   const transformOverlay = useCallback(
-    async (id: string, options: TransformOptions) => {
+    async (id: string, options: TransformOverlayOptions) => {
       if (sceneRef.current) {
         return await sceneRef.current.transformOverlay(id, options);
       }

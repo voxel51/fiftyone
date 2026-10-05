@@ -1,7 +1,7 @@
 import { partition } from "lodash";
 import { useMemo, useRef } from "react";
 import { Object3D } from "three";
-import type { FoScene } from "../../../hooks";
+import type { FoScene } from "../../render-types";
 import {
   getColorKey,
   getDecayKey,

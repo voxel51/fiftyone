@@ -169,8 +169,8 @@ export function withEvents<
 ): ElementConstructor<State, Element> {
   // @ts-ignore
   class WithElement<State> extends Base {
-    getEvents() {
-      const newEvents = super.getEvents();
+    getEvents(config) {
+      const newEvents = super.getEvents(config);
       const events = addEvents();
 
       Object.entries(events).forEach(([eventType, handler]) => {
