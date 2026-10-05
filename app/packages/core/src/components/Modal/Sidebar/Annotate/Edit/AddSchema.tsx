@@ -58,7 +58,7 @@ const AddSchema = ({ type }: { type: string }) => {
         color="primary"
         disabled={!canManage}
         onClick={() => {
-          setActiveTab("other");
+          setActiveTab("gui");
           clear();
           openSchemaManager();
         }}

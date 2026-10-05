@@ -32,7 +32,7 @@ const NoActiveSchema = () => {
       <Button
         size={Size.Md}
         variant={Variant.Primary}
-        onClick={() => setTab("other")}
+        onClick={() => setTab("gui")}
       >
         Select fields to import{" "}
         <Icon
