@@ -48,7 +48,7 @@ export const OperatorExecutionButton = ({
     horizontal: "left" | "right" | "center";
   };
   children: React.ReactNode;
-} & Omit<ButtonProps, "onClick" | "disabled" | "children">) => {
+} & Omit<ButtonProps, "onClick" | "onError" | "disabled" | "children">) => {
   return (
     <OperatorExecutionTrigger
       operatorUri={operatorUri}

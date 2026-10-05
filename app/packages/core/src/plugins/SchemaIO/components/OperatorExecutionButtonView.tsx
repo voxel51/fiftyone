@@ -141,7 +141,10 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
   );
 }
 
-function getButtonProps(props: ViewPropsType): ButtonProps {
+// onClick/onError belong to OperatorExecutionButton, not the MUI button
+function getButtonProps(
+  props: ViewPropsType,
+): Omit<ButtonProps, "onClick" | "onError"> {
   const { label, color, disabled } = props.schema.view as {
     label?: string;
     color?: string;
