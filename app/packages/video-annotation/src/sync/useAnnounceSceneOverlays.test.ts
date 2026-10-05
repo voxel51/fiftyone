@@ -99,6 +99,19 @@ describe("useAnnounceSceneOverlays", () => {
     ]);
   });
 
+  it("announces overlays the scene painted before it subscribed", () => {
+    const scene = {
+      getEventChannel: () => "scene-1",
+      getAllOverlays: () => [polyline],
+    } as never;
+    renderHook(() => useAnnounceSceneOverlays(scene));
+
+    expect(dispatch.mock.calls).toEqual([
+      [OVERLAY_SHOWN_EVENT, describeOverlay(polyline)],
+      [OVERLAYS_SHOWN_EVENT, describeSceneOverlays([polyline])],
+    ]);
+  });
+
   it("announces a new scene's overlays even when they match the last scene's", () => {
     const sceneOf = (channel: string) =>
       ({

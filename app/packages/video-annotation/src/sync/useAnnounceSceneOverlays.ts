@@ -8,7 +8,7 @@ import {
   UNDEFINED_LIGHTER_SCENE_ID,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 type Scene = ReturnType<typeof useLighterSetupWithPixi>["scene"];
 
@@ -62,7 +62,9 @@ export const describeOverlay = (overlay: BaseOverlay): OverlayShown => ({
 /**
  * After each frame that paints an overlay change, dispatches
  * {@link OVERLAYS_SHOWN_EVENT} when the scene's overlay set changed, and
- * {@link OVERLAY_SHOWN_EVENT} for each overlay whose drawn state changed.
+ * {@link OVERLAY_SHOWN_EVENT} for each overlay whose drawn state changed. A
+ * scene's overlays are also announced when this subscribes to it, since the
+ * scene may have painted them before.
  */
 export const useAnnounceSceneOverlays = (scene: Scene): void => {
   const on = useLighterEventHandler(
@@ -78,24 +80,24 @@ export const useAnnounceSceneOverlays = (scene: Scene): void => {
     shownOverlays.current = new Map();
   }
 
-  on(
-    "lighter:overlays-painted",
-    useCallback(() => {
-      if (!scene) return;
-      const bus = getEventBus<SceneOverlaysE2EEvents>();
-      const overlays = scene.getAllOverlays();
-      for (const overlay of overlays) {
-        const shown = describeOverlay(overlay);
-        const key = `${shown.field}|${shown.type}|${shown.points}`;
-        if (shownOverlays.current.get(shown.id) === key) continue;
-        shownOverlays.current.set(shown.id, key);
-        bus.dispatch(OVERLAY_SHOWN_EVENT, shown);
-      }
-      const set = describeSceneOverlays(overlays);
-      const setKey = `${set.fields}|${set.ids}`;
-      if (shownSet.current === setKey) return;
-      shownSet.current = setKey;
-      bus.dispatch(OVERLAYS_SHOWN_EVENT, set);
-    }, [scene]),
-  );
+  const announce = useCallback(() => {
+    if (!scene) return;
+    const bus = getEventBus<SceneOverlaysE2EEvents>();
+    const overlays = scene.getAllOverlays();
+    for (const overlay of overlays) {
+      const shown = describeOverlay(overlay);
+      const key = `${shown.field}|${shown.type}|${shown.points}`;
+      if (shownOverlays.current.get(shown.id) === key) continue;
+      shownOverlays.current.set(shown.id, key);
+      bus.dispatch(OVERLAY_SHOWN_EVENT, shown);
+    }
+    const set = describeSceneOverlays(overlays);
+    const setKey = `${set.fields}|${set.ids}`;
+    if (shownSet.current === setKey) return;
+    shownSet.current = setKey;
+    bus.dispatch(OVERLAYS_SHOWN_EVENT, set);
+  }, [scene]);
+
+  on("lighter:overlays-painted", announce);
+  useEffect(announce, [announce]);
 };

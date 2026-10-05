@@ -160,14 +160,18 @@ const stepBack = async (modal: ModalPom, n: number) => {
  * canvas accept an edit gesture.
  */
 const drawPolyline = async (modal: ModalPom): Promise<string> => {
-  const before = new Set(await polylineIds(modal));
+  // the surface reveals once its tracks resolve, and the draw resolves once the
+  // new track is on the timeline; a track's id is its overlay's id
+  const before = new Set(await modal.videoAnnotate.objectTrackIds());
 
   await modal.sidebar.annotate.polylineMode();
   await modal.videoAnnotate.drawPolyline(DRAWN);
   await modal.sampleCanvas.rightClick(0.9, 0.1);
   await modal.sidebar.annotate.polylineMode();
 
-  const drawnId = (await polylineIds(modal)).find((id) => !before.has(id));
+  const drawnId = (await modal.videoAnnotate.objectTrackIds()).find(
+    (id) => !before.has(id),
+  );
   expect(drawnId, "the drawn polyline should be a new overlay").toBeTruthy();
 
   return drawnId as string;
@@ -179,12 +183,6 @@ const drawPolyline = async (modal: ModalPom): Promise<string> => {
  * may rotate a closed ring), so an index-wise comparison would be meaningless;
  * the centroid moves with the shape either way.
  */
-/** Overlay ids of the polylines currently on the canvas. */
-const polylineIds = async (modal: ModalPom): Promise<string[]> =>
-  (await modal.videoAnnotate.canvasOverlayGeometry())
-    .filter((o) => o.type === "PolylineOverlay")
-    .map((o) => o.id);
-
 /**
  * Points of ONE overlay by id. The sample carries more than one polyline track,
  * so "the polyline on the canvas" is ambiguous — every read has to name the
