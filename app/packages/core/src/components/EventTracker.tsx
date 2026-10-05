@@ -25,17 +25,21 @@ const useTrackViewChanges = () => {
       )?.contents;
       const filters = snapshot.getLoadable(fos.filters)?.contents;
 
-      if (view !== changes.view) {
-        newChanges.view = getStageNames(view);
+      // compare the derived names: `changes` stores names, not raw state
+      const viewNames = getStageNames(view);
+      if (!sameNames(viewNames, changes.view)) {
+        newChanges.view = viewNames;
       }
-      if (extendedStages !== changes.extendedStages) {
-        newChanges.extendedStages = getExtendedStageNames(extendedStages);
+      const extendedStageNames = getExtendedStageNames(extendedStages);
+      if (!sameNames(extendedStageNames, changes.extendedStages)) {
+        newChanges.extendedStages = extendedStageNames;
       }
       if (count !== changes.count) {
         newChanges.count = count;
       }
-      if (filters !== changes.filters) {
-        newChanges.filters = getFilterNames(filters);
+      const filterNames = getFilterNames(filters);
+      if (!sameNames(filterNames, changes.filters)) {
+        newChanges.filters = filterNames;
       }
 
       if (Object.keys(newChanges).length > 0) {
@@ -63,6 +67,10 @@ const useTrackViewChanges = () => {
     }
   }, [changes]);
 };
+
+function sameNames(a: string[], b?: string[]) {
+  return !!b && a.length === b.length && a.every((name, i) => name === b[i]);
+}
 
 function getStageNames(stages: fos.State.Stage[]) {
   if (!stages) return [];
