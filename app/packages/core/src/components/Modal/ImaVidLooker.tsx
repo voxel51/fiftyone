@@ -31,7 +31,7 @@ import {
 } from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
-import { shortcutToHelpItems } from "./utils";
+import { type PanelsEventDetail, shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
   sample: fos.ModalSample;
@@ -119,12 +119,20 @@ export const ImaVidLookerReact = React.memo(
     const jsonPanel = fos.useJSONPanel();
     const helpPanel = fos.useHelpPanel();
 
-    useEventHandler(looker, "select", useOnSelectLabel());
-    useEventHandler(looker, "error", (event) => handleError(event.detail));
+    useEventHandler<CustomEvent<fos.SelectEvent["detail"]>>(
+      looker,
+      "select",
+      useOnSelectLabel(),
+    );
+    useEventHandler(looker, "error", (event: CustomEvent<Error>) =>
+      handleError(event.detail),
+    );
     useEventHandler(
       looker,
       "panels",
-      async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+      async ({
+        detail: { showJSON, showHelp, SHORTCUTS },
+      }: CustomEvent<PanelsEventDetail>) => {
         if (showJSON) {
           const imaVidFrameSample = (looker as ImaVidLooker).thisFrameSample;
           jsonPanel[showJSON](imaVidFrameSample);

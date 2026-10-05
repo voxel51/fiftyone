@@ -463,7 +463,9 @@ export const activeModalSidebarSample = selector({
   key: "activeModalSidebarSample",
   get: ({ get }) => {
     if (get(shouldRenderImaVidLooker(true))) {
-      const currentFrameNumber = get(imaVidLookerState("currentFrameNumber"));
+      const currentFrameNumber = get(
+        imaVidLookerState("currentFrameNumber"),
+      ) as number | null;
 
       if (!currentFrameNumber) {
         return get(activeModalSample);

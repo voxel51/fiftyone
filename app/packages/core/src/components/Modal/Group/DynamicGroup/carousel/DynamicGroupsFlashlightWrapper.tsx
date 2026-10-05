@@ -22,7 +22,7 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
  */
 const useLookerRender = (
   store: fos.LookerStore<fos.Lookers>,
-  createLooker: ReturnType<typeof fos.useCreateLooker>,
+  createLooker: ReturnType<typeof fos.useCreateLooker<fos.Lookers>>,
   selectSample: React.MutableRefObject<ReturnType<typeof fos.useSelectSample>>,
 ) =>
   useCallback(
@@ -118,13 +118,17 @@ const useCreateFlashlight = (
   const options = fos.useLookerOptions(true);
   const field = useRecoilValue(fos.dynamicGroupParameters);
   const setSample = useSetDynamicGroupSample();
-  const createLooker = fos.useCreateLooker(
+  const createLooker = fos.useCreateLooker<fos.Lookers>(
     true,
     true,
     {
       ...options,
-      thumbnailTitle: (sample) =>
-        field?.orderBy ? get(sample, field.orderBy) : null,
+      // the order-by value, shown as the thumbnail's title text
+      thumbnailTitle: (sample) => {
+        if (!field?.orderBy) return null;
+        const value: unknown = get(sample, field.orderBy);
+        return value as string;
+      },
     },
     highlight,
   );

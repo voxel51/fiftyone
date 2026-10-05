@@ -182,7 +182,7 @@ const InteractiveSidebar = ({
     [animate],
   );
 
-  useEventHandler(document.body, "mousemove", ({ clientY }) => {
+  useEventHandler(document.body, "mousemove", ({ clientY }: MouseEvent) => {
     if (!down.current) return;
 
     requestAnimationFrame(() => {

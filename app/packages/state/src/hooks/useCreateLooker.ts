@@ -19,6 +19,7 @@ import type {
   ImaVidConfig,
   ThreeDConfig,
   VideoConfig,
+  VideoSample,
 } from "@fiftyone/looker/src/state";
 
 // built up field by field for whichever looker class is chosen below
@@ -50,6 +51,18 @@ import * as viewAtoms from "../recoil/view";
 import { getNormalizedUrls } from "../utils";
 import { resolveMediaFieldLooker } from "./media-field-lookers";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
+
+/**
+ * What create() needs: the sample JSON and its media URLs. Modal samples and
+ * grid nodes carry these; frame number/rate and the grid symbol are optional.
+ */
+export type CreateLookerInput = {
+  sample: Sample;
+  urls: Parameters<typeof getNormalizedUrls>[0];
+  frameNumber?: number;
+  frameRate?: number;
+  symbol?: symbol;
+};
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -106,7 +119,13 @@ export default <T extends AbstractLooker<BaseState>>(
   const create = useRecoilCallback(
     ({ snapshot }) =>
       (
-        { frameNumber, frameRate, sample, urls: rawUrls, symbol },
+        {
+          frameNumber,
+          frameRate,
+          sample,
+          urls: rawUrls,
+          symbol,
+        }: CreateLookerInput,
         extra: Partial<
           Omit<Parameters<T["updateOptions"]>[0], "selected">
         > = {},
@@ -219,7 +238,9 @@ export default <T extends AbstractLooker<BaseState>>(
           const page = snapshot
             .getLoadable(
               dynamicGroupAtoms.dynamicGroupPageSelector({
-                value: sample._group,
+                // the dynamic-group selectors key on the raw group-by value
+                // (any JSON; the selectors type it as string)
+                value: sample._group as unknown as string,
                 modal: isModal,
               }),
             )
@@ -234,7 +255,7 @@ export default <T extends AbstractLooker<BaseState>>(
           const imavidKey = snapshot
             .getLoadable(
               dynamicGroupAtoms.imaVidStoreKey({
-                groupByFieldValue: sample._group,
+                groupByFieldValue: sample._group as unknown as string,
                 modal: isModal,
               }),
             )
@@ -278,7 +299,9 @@ export default <T extends AbstractLooker<BaseState>>(
         } = resolveSelectionIcon(selected, style, sample._id, isSelected);
 
         const looker = new create(
-          sample,
+          // `create` is a union of looker classes; only video lookers read
+          // frames, and the sample JSON carries them when present
+          sample as VideoSample,
           // each looker reads only its own config keys
           { ...config, symbol } as FrameConfig &
             VideoConfig &

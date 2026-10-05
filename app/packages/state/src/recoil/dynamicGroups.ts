@@ -100,7 +100,14 @@ export const dynamicGroupPageSelector = selectorFamily<
     },
 });
 
-export const imaVidLookerState = atomFamily<any, string>({
+/**
+ * Mirrors of the ImaVid looker's state: currentFrameNumber is a frame number
+ * (seeded with a random float to force a refresh), playing/seeking are flags.
+ */
+export const imaVidLookerState = atomFamily<
+  number | boolean | null,
+  "currentFrameNumber" | "playing" | "seeking"
+>({
   key: "imaVidLookerState",
   default: null,
   effects: (key) => [
@@ -121,7 +128,8 @@ export const imaVidLookerState = atomFamily<any, string>({
           .then((looker: ImaVidLooker) => {
             if (looker) {
               unsubscribe = looker.subscribeToState(key, (stateValue) => {
-                setSelf(stateValue);
+                // the looker state field named by `key`
+                setSelf(stateValue as number | boolean | null);
               });
             }
           })

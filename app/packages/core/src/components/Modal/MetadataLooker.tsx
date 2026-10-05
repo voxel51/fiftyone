@@ -4,7 +4,7 @@ import {
   getFileSize,
   getIcon,
 } from "@fiftyone/looker/src/elements/metadata/util";
-import { ModalSample, Sample } from "@fiftyone/state";
+import type { ModalSample } from "@fiftyone/state";
 import { JSONViewer } from "@fiftyone/components";
 import { formatLongDateTime, getMimeType } from "@fiftyone/utilities";
 
@@ -23,7 +23,7 @@ const LabeledMetadata = ({
   );
 };
 
-const SampleMetadata = ({ sample }: { sample: Sample }) => {
+const SampleMetadata = ({ sample }: { sample: ModalSample["sample"] }) => {
   return (
     <Box>
       <Stack direction="column" spacing={4}>

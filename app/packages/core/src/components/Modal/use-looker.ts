@@ -1,3 +1,4 @@
+import type { VideoSample } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { modalBridge, useSaveModalViewport } from "@fiftyone/state";
 import React, {
@@ -13,7 +14,7 @@ import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
-import { shortcutToHelpItems } from "./utils";
+import { type PanelsEventDetail, shortcutToHelpItems } from "./utils";
 
 const CLOSE = "close";
 
@@ -62,17 +63,26 @@ function useLooker<L extends fos.Lookers>({
     colorScheme;
     /** end refreshers */
 
-    !initialRef.current && looker.updateSample(sample.sample);
+    // L is a union of lookers; only video lookers read frames
+    !initialRef.current && looker.updateSample(sample.sample as VideoSample);
   }, [colorScheme, looker, sample]);
 
   const handleError = useErrorHandler();
   const updateLookerOptions = useLookerOptionsUpdate();
 
   fos.useEventHandler(looker, "clear", useClearSelectedLabels());
-  fos.useEventHandler(looker, "error", (event) => handleError(event.detail));
-  fos.useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
+  fos.useEventHandler(looker, "error", (event: CustomEvent<Error>) =>
+    handleError(event.detail),
+  );
+  fos.useEventHandler(looker, "options", (e: CustomEvent<object>) =>
+    updateLookerOptions(e.detail),
+  );
   fos.useEventHandler(looker, "reset", () => setReset((c) => !c));
-  fos.useEventHandler(looker, "select", fos.useOnSelectLabel());
+  fos.useEventHandler<CustomEvent<fos.SelectEvent["detail"]>>(
+    looker,
+    "select",
+    fos.useOnSelectLabel(),
+  );
   fos.useEventHandler(looker, "showOverlays", useShowOverlays());
 
   useEffect(() => {
@@ -105,7 +115,9 @@ function useLooker<L extends fos.Lookers>({
   fos.useEventHandler(
     looker,
     "panels",
-    async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+    async ({
+      detail: { showJSON, showHelp, SHORTCUTS },
+    }: CustomEvent<PanelsEventDetail>) => {
       if (showJSON) {
         jsonPanel[showJSON](sample);
       }

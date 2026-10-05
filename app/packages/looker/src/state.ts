@@ -108,6 +108,9 @@ export type Sample = {
     | "three_d"
     | "3d";
   last_modified_at?: { datetime: number };
+  created_at?: { datetime: number };
+  /** [first, last] frame of a clip sample */
+  support?: [number, number];
 } & GenericLabel;
 
 export interface LabelData {
@@ -229,7 +232,7 @@ export interface BaseOptions {
   showSkeletons: boolean;
   isPointcloudDataset: boolean;
   pointFilter: (path: string, point: Point) => boolean;
-  thumbnailTitle?: (sample: any) => string;
+  thumbnailTitle?: (sample: Sample) => string | null;
   mediaFallback: boolean;
   initialViewport?: ViewportState | null;
 }
@@ -454,7 +457,7 @@ export interface ThreeDState extends BaseState {
 export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
   label: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type NONFINITE = "-inf" | "inf" | "nan";

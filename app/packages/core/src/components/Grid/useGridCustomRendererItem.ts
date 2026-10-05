@@ -1,3 +1,4 @@
+import type { Sample } from "@fiftyone/looker";
 import { useTrackEvent } from "@fiftyone/analytics";
 import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import {
@@ -104,9 +105,13 @@ export function useGridCustomRendererItem(
       const looker = createDefaultLooker.current?.(
         {
           ...result,
+          // the renderer context types its sample loosely; it is the looker
+          // sample JSON
+          sample: result.sample as Sample,
           frameNumber: result.frameNumber,
           frameRate: result.frameRate,
-          symbol: id,
+          // spotlight ids are Symbols, typed structurally as { description }
+          symbol: id as unknown as symbol,
           urls: result.urls ?? {},
         },
         { fontSize },
