@@ -13,12 +13,12 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
   const metaStore = new Map<string, number>();
   const closeSpy = vi.fn();
 
-  const makeMockObjectStore = (backing: Map<string, any>) => () => ({
+  const makeMockObjectStore = (backing: Map<string, unknown>) => () => ({
     get: (key: string) => {
       const req = {
-        result: undefined as any,
-        onsuccess: null as any,
-        onerror: null as any,
+        result: undefined as unknown,
+        onsuccess: null as (() => void) | null,
+        onerror: null as (() => void) | null,
         error: failOn === "get" ? new Error("read failed") : null,
       };
       setTimeout(() => {
@@ -31,7 +31,7 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
       });
       return req;
     },
-    put: (value: any, key: string) => {
+    put: (value: unknown, key: string) => {
       if (failOn !== "put") backing.set(key, value);
     },
     delete: (key: string) => {
@@ -40,8 +40,8 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
     getAllKeys: () => {
       const req = {
         result: [] as string[],
-        onsuccess: null as any,
-        onerror: null as any,
+        onsuccess: null as (() => void) | null,
+        onerror: null as (() => void) | null,
       };
       setTimeout(() => {
         req.result = [...backing.keys()];
@@ -62,9 +62,9 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
       const shouldFailPut = failOn === "put" && mode === "readwrite";
       const tx = {
         objectStore: () => os,
-        onerror: null as any,
+        onerror: null as (() => void) | null,
         error: shouldFailPut ? new Error("write failed") : null,
-        set oncomplete(fn: any) {
+        set oncomplete(fn: (() => void) | null) {
           if (!shouldFailPut) setTimeout(() => fn?.());
         },
       };
@@ -80,9 +80,9 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
   const openSpy = vi.fn(() => {
     const req = {
       result: mockDB,
-      onupgradeneeded: null as any,
-      onsuccess: null as any,
-      onerror: null as any,
+      onupgradeneeded: null as (() => void) | null,
+      onsuccess: null as (() => void) | null,
+      onerror: null as (() => void) | null,
     };
     setTimeout(() => {
       req.onupgradeneeded?.();

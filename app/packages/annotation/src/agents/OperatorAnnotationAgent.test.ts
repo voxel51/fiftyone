@@ -38,7 +38,9 @@ describe("OperatorAnnotationAgent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch = vi.fn();
-    vi.mocked(getFetchFunction).mockReturnValue(mockFetch as any);
+    vi.mocked(getFetchFunction).mockReturnValue(
+      mockFetch as unknown as ReturnType<typeof getFetchFunction>,
+    );
     agent = new OperatorAnnotationAgent(OPERATOR_URI);
   });
 

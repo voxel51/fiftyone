@@ -177,7 +177,10 @@ describe("matchesText", () => {
   });
 
   it("skips query matching for non-string queries", () => {
-    const run = makeRun({ query: ["id1", "id2"] as any });
+    // query is typed as a string, but runs can carry id lists
+    const run = makeRun({
+      query: ["id1", "id2"] as unknown as SimilarityRun["query"],
+    });
     expect(matchesText(run, "id1")).toBe(false);
   });
 });

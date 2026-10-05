@@ -8,12 +8,14 @@ vi.mock("@fiftyone/utilities", () => ({
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
 
+type MockWorkerMessage = { type: string; id?: unknown };
+
 // Mock Worker
 class MockWorker {
-  onmessage: any = null;
-  onerror: any = null;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  onerror: ((event: unknown) => void) | null = null;
   terminate = vi.fn();
-  postMessage = vi.fn((msg: any) => {
+  postMessage = vi.fn((msg: MockWorkerMessage) => {
     if (msg.type === "loadModel") {
       setTimeout(() => {
         this.onmessage?.({
@@ -80,7 +82,9 @@ describe("BrowserAnnotationProvider", () => {
       pathPrefix: "",
     };
     const flat = { Auth: "x" };
-    vi.mocked(getFetchParameters).mockReturnValue(params as any);
+    vi.mocked(getFetchParameters).mockReturnValue(
+      params as unknown as ReturnType<typeof getFetchParameters>,
+    );
     vi.mocked(mergeHeaders).mockReturnValue(flat);
 
     const created: MockWorker[] = [];
@@ -117,10 +121,10 @@ describe("BrowserAnnotationProvider", () => {
 
   it("Calls onStatus with failure when worker loadModel rejects", async () => {
     class MockWorker {
-      onmessage: any = null;
-      onerror: any = null;
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
       terminate = vi.fn();
-      postMessage = vi.fn((msg: any) => {
+      postMessage = vi.fn((msg: MockWorkerMessage) => {
         setTimeout(() => {
           this.onmessage?.({
             data: {
@@ -209,10 +213,10 @@ describe("BrowserAnnotationProvider", () => {
 
   it("Forwards all worker notification types to callbacks", async () => {
     class MockWorker {
-      onmessage: any = null;
-      onerror: any = null;
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
       terminate = vi.fn();
-      postMessage = vi.fn((msg: any) => {
+      postMessage = vi.fn((msg: MockWorkerMessage) => {
         if (msg.type === "loadModel") {
           setTimeout(() => {
             this.onmessage?.({ data: { type: "status", result: "loading" } });
@@ -309,10 +313,10 @@ describe("BrowserAnnotationProvider", () => {
 
   it("Worker onerror rejects all pending promises and emits failure", async () => {
     class MockWorker {
-      onmessage: any = null;
-      onerror: any = null;
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
       terminate = vi.fn();
-      postMessage = vi.fn((msg: any) => {
+      postMessage = vi.fn((msg: MockWorkerMessage) => {
         if (msg.type === "loadModel") {
           setTimeout(() => {
             this.onmessage?.({

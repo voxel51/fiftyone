@@ -158,7 +158,7 @@ export type SimilaritySearchSchemaView = {
   component: "SimilaritySearchView";
   composite_view?: boolean;
 } & Partial<Record<SimilaritySearchEventName, string>> &
-  Record<string, any>;
+  Record<string, unknown>;
 
 /**
  * Props passed to the SimilaritySearchView component.
@@ -167,7 +167,7 @@ export type SimilaritySearchViewProps = {
   data?: SimilaritySearchPanelData;
   schema: {
     view: SimilaritySearchSchemaView;
-    [key: string]: any;
+    [key: string]: unknown;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 };

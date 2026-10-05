@@ -45,12 +45,18 @@ describe("useAnnotationController", () => {
     mockEventBus = { dispatch: vi.fn() };
 
     vi.mocked(useRegisteredAnnotationContextManager).mockReturnValue(
-      mockContextManager as any,
+      mockContextManager as unknown as ReturnType<
+        typeof useRegisteredAnnotationContextManager
+      >,
     );
     vi.mocked(useModalModeController).mockReturnValue(
-      mockModeController as any,
+      mockModeController as unknown as ReturnType<
+        typeof useModalModeController
+      >,
     );
-    vi.mocked(useAnnotationEventBus).mockReturnValue(mockEventBus as any);
+    vi.mocked(useAnnotationEventBus).mockReturnValue(
+      mockEventBus as unknown as ReturnType<typeof useAnnotationEventBus>,
+    );
   });
 
   describe("enterAnnotationMode", () => {

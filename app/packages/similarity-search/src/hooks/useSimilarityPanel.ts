@@ -53,8 +53,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
 
   const patchesField = useMemo(() => {
     if (!isPatchesView) return undefined;
-    const stage = (viewStages as any[])?.find(
-      (s: any) => s._cls === "fiftyone.core.stages.ToPatches",
+    const stage = viewStages?.find(
+      (s) => s._cls === "fiftyone.core.stages.ToPatches",
     );
     if (!stage) return undefined;
     return stage.kwargs?.find(
