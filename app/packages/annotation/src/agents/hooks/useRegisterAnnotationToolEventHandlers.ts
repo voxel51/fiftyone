@@ -3,6 +3,7 @@ import {
   useToolsContext,
   useToolsState,
 } from "./useToolsContext";
+import type { DetectionAnnotationLabel } from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useLighter } from "@fiftyone/lighter";
@@ -40,7 +41,8 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const { consumeSeedNew } = usePointSelectionSeed();
   const createDetection = useCallback(
-    () => createNew("Detection"),
+    // createNew returns the label type it was asked for
+    () => createNew("Detection") as DetectionAnnotationLabel | null,
     [createNew],
   );
   const applyInferenceResult = useApplyInferenceResult(createDetection);

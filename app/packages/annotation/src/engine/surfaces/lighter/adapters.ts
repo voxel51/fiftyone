@@ -16,7 +16,6 @@
 import type {
   BaseOverlay,
   DetectionOverlay,
-  DetectionOverlayOptions,
   KeypointLabel,
   PolylineOverlay,
 } from "@fiftyone/lighter";
@@ -85,7 +84,7 @@ export const detectionAdapter: LighterAdapter = {
     options: {
       id: ref.instanceId,
       field: ref.path,
-      label: label as unknown as DetectionOverlayOptions["label"],
+      label,
       relativeBounds: toRect(label.bounding_box as number[]),
       draggable: true,
       resizeable: true,

@@ -65,7 +65,7 @@ export interface AnnotationContextManager {
   exit: () => void;
 }
 
-const registeredManagerAtom = atom<AnnotationContextManager | null>(null);
+const registeredManagerAtom = atom(null as AnnotationContextManager | null);
 
 /**
  * Binding agent for the app layer's {@link AnnotationContextManager}
@@ -97,7 +97,7 @@ export const useRegisteredAnnotationContextManager =
  * A complete engine ref, captured at the dispatch site — consumers apply it
  * verbatim, never resolving identity from ambient state.
  */
-const entranceLabelAtom = atom<LabelRef | null>(null);
+const entranceLabelAtom = atom(null as LabelRef | null);
 
 export const useEntranceLabel = (): LabelRef | null =>
   useAtomValue(entranceLabelAtom);

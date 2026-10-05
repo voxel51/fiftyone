@@ -2,7 +2,7 @@ import { atom, useAtom } from "jotai";
 import { useMemo } from "react";
 import { AgentTaskType } from "../types";
 
-const activeTaskAtom = atom<AgentTaskType | null>(null);
+const activeTaskAtom = atom(null as AgentTaskType | null);
 
 /**
  * Read/write access to the active annotation task type.

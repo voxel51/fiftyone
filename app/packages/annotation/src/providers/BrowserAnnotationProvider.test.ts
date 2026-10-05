@@ -51,11 +51,11 @@ describe("BrowserAnnotationProvider", () => {
     vi.mocked(getFetchParameters).mockReturnValue(params);
     vi.mocked(mergeHeaders).mockReturnValue(params.headers);
 
-    let instance: any;
+    const created: MockWorker[] = [];
     class TrackedWorker extends MockWorker {
       constructor() {
         super();
-        instance = this;
+        created.push(this);
       }
     }
     vi.stubGlobal("Worker", TrackedWorker);
@@ -63,6 +63,7 @@ describe("BrowserAnnotationProvider", () => {
     const provider = new BrowserAnnotationProvider();
     await provider.initialize();
 
+    const [instance] = created;
     expect(instance.postMessage.mock.calls[0][0]).toEqual({
       type: "init",
       payload: params,
@@ -82,11 +83,11 @@ describe("BrowserAnnotationProvider", () => {
     vi.mocked(getFetchParameters).mockReturnValue(params as any);
     vi.mocked(mergeHeaders).mockReturnValue(flat);
 
-    let instance: any;
+    const created: MockWorker[] = [];
     class TrackedWorker extends MockWorker {
       constructor() {
         super();
-        instance = this;
+        created.push(this);
       }
     }
     vi.stubGlobal("Worker", TrackedWorker);
@@ -95,6 +96,7 @@ describe("BrowserAnnotationProvider", () => {
     await provider.initialize();
 
     expect(mergeHeaders).toHaveBeenCalledWith(headersInstance);
+    const [instance] = created;
     expect(instance.postMessage.mock.calls[0][0].payload.headers).toEqual(flat);
     expect(
       instance.postMessage.mock.calls[0][0].payload.headers,
