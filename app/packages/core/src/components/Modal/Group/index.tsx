@@ -6,6 +6,7 @@ import { Loading } from "@fiftyone/components";
 import { DynamicGroup } from "./DynamicGroup";
 import GroupSample3d from "./GroupSample3d";
 import { GroupView } from "./GroupView";
+import { AnnotateTimelineExtensions } from "../VideoTimelineExtensions";
 
 const AnnotateDynamicGroupVideo = () => {
   const modalSample = fos.useModalSample();
@@ -14,7 +15,12 @@ const AnnotateDynamicGroupVideo = () => {
     return <Loading>Pixelating...</Loading>;
   }
 
-  return <VideoAnnotationSurface sample={modalSample} />;
+  return (
+    <VideoAnnotationSurface
+      sample={modalSample}
+      Timeline={AnnotateTimelineExtensions}
+    />
+  );
 };
 
 const Group = () => {

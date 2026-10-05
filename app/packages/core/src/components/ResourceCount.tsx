@@ -53,14 +53,31 @@ const GroupsCount = () => {
     fos.count({ path: "_", extended: false, modal: false }),
   );
 
+  const elementsLabel = elementTotal === 1 ? element.singular : element.plural;
+  const groupsLabel = `${total === 1 ? "group" : "groups"}${
+    groupSlice ? " with slice" : ""
+  }`;
+
   return (
-    <RightDiv data-cy="entry-counts">
+    <RightDiv data-cy="entry-counts" data-count-kind="groups">
       <div>
-        (<PathEntryCounts modal={false} path={""} />{" "}
-        {elementTotal === 1 ? element.singular : element.plural}){" "}
-        <PathEntryCounts modal={false} path={"_"} />{" "}
-        {total === 1 ? "group" : "groups"}
-        {groupSlice && " with slice"}
+        (
+        <PathEntryCounts
+          modal={false}
+          path={""}
+          signal="grid-elements"
+          label={elementsLabel}
+          slice={groupSlice ?? ""}
+        />{" "}
+        {elementsLabel}){" "}
+        <PathEntryCounts
+          modal={false}
+          path={"_"}
+          signal="grid-groups"
+          label={groupsLabel}
+          slice={groupSlice ?? ""}
+        />{" "}
+        {groupsLabel}
       </div>
     </RightDiv>
   );
@@ -96,15 +113,26 @@ const Count = () => {
     };
   }
 
+  const label = `${
+    isDynamicGroupViewStageActive &&
+    !["sample", "group"].includes(element.singular)
+      ? `group${total === 1 ? "" : "s"} of `
+      : ""
+  }${total === 1 ? element.singular : element.plural}${
+    !queryPerformance && slice ? " with slice" : ""
+  }`;
+
   return (
-    <RightDiv data-cy="entry-counts">
+    <RightDiv data-cy="entry-counts" data-count-kind="elements">
       <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} />{" "}
-        {isDynamicGroupViewStageActive &&
-          !["sample", "group"].includes(element.singular) &&
-          `group${total === 1 ? "" : "s"} of `}
-        {total === 1 ? element.singular : element.plural}
-        {!queryPerformance && slice && " with slice"}
+        <PathEntryCounts
+          modal={false}
+          path={""}
+          signal="grid-elements"
+          label={label}
+          slice={slice ?? ""}
+        />{" "}
+        {label}
       </div>
     </RightDiv>
   );

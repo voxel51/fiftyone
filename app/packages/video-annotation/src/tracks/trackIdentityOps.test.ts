@@ -26,7 +26,7 @@ beforeEach(() => {
 });
 
 describe("track identity ops (split / merge)", () => {
-  it("splitTrack re-keys frames >= atFrame onto a fresh instance, one transaction", () => {
+  it("splitTrack re-keys frames >= atFrame onto a fresh instance, one transaction", async () => {
     harness.frameData = {
       1: { A: det("d1", "A") },
       2: { A: det("d2", "A") },
@@ -34,7 +34,7 @@ describe("track identity ops (split / merge)", () => {
       4: { A: det("d4", "A") },
     };
 
-    ops.splitTrack("instance-A", 3);
+    await ops.splitTrack("instance-A", 3);
 
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
 
@@ -83,7 +83,7 @@ describe("track identity ops (split / merge)", () => {
     });
   });
 
-  it("splits a track on its own field when the caller omits one", () => {
+  it("splits a track on its own field when the caller omits one", async () => {
     // Regression: the toolbar's Split button calls `splitTrack(id, frame)` with
     // no field, which defaulted to the stream's PRIMARY field. A polyline track
     // lives on `frames.polylines`, so the reader found no frames for it, the
@@ -95,7 +95,7 @@ describe("track identity ops (split / merge)", () => {
     };
     harness.activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
 
-    ops.splitTrack("instance-A", 2);
+    await ops.splitTrack("instance-A", 2);
 
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
     // frames 2 and 3 move to the new instance, addressed on the POLYLINE field
@@ -114,7 +114,7 @@ describe("track identity ops (split / merge)", () => {
     );
   });
 
-  it("pins both sides of the cut as keyframes, retaining the lerp there", () => {
+  it("pins both sides of the cut as keyframes, retaining the lerp there", async () => {
     // A split makes each half an independent track. The two frames either side
     // of the cut are usually interpolated filler, so without pinning them the
     // next re-lerp on either half recomputes its boundary frame from that half's
@@ -126,7 +126,7 @@ describe("track identity ops (split / merge)", () => {
       4: { A: det("d4", "A", { keyframe: true }) },
     };
 
-    ops.splitTrack("instance-A", 3);
+    await ops.splitTrack("instance-A", 3);
 
     // head: frame 2 is now its last frame, pinned in place
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
@@ -145,10 +145,10 @@ describe("track identity ops (split / merge)", () => {
     );
   });
 
-  it("does not pin a head that does not exist (cut at the first frame)", () => {
+  it("does not pin a head that does not exist (cut at the first frame)", async () => {
     harness.frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
 
-    ops.splitTrack("instance-A", 1);
+    await ops.splitTrack("instance-A", 1);
 
     // nothing stays behind, so there is no head frame to pin
     expect(mockActions.updateLabel).not.toHaveBeenCalledWith(
@@ -162,13 +162,13 @@ describe("track identity ops (split / merge)", () => {
     );
   });
 
-  it("an explicit field still wins over the selection's", () => {
+  it("an explicit field still wins over the selection's", async () => {
     // the timeline's context menu knows the field and passes it; that must not
     // be overridden by whatever happens to be selected
     harness.frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
     harness.activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
 
-    ops.splitTrack("instance-A", 2, "frames.detections_2");
+    await ops.splitTrack("instance-A", 2, "frames.detections_2");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
       path: "frames.detections_2",
@@ -177,11 +177,11 @@ describe("track identity ops (split / merge)", () => {
     });
   });
 
-  it("merges on the source track's own field when the caller omits one", () => {
+  it("merges on the source track's own field when the caller omits one", async () => {
     harness.frameData = { 1: { A: det("d1", "A") }, 2: { B: det("d2", "B") } };
     harness.activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
 
-    ops.mergeTracks("instance-A", "instance-B");
+    await ops.mergeTracks("instance-A", "instance-B");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
       path: "frames.polylines",
@@ -190,26 +190,26 @@ describe("track identity ops (split / merge)", () => {
     });
   });
 
-  it("splitTrack no-ops when no frame is at or after the boundary", () => {
+  it("splitTrack no-ops when no frame is at or after the boundary", async () => {
     harness.frameData = { 1: { A: det("d1", "A") }, 2: { A: det("d2", "A") } };
 
-    ops.splitTrack("instance-A", 5);
+    await ops.splitTrack("instance-A", 5);
 
     expect(mockActions.transaction).not.toHaveBeenCalled();
     expect(mockEngine.mintInstanceId).not.toHaveBeenCalled();
     expect(mockBus.dispatch).not.toHaveBeenCalled();
   });
 
-  it("splitTrack skips a legacy track-<index> id", () => {
+  it("splitTrack skips a legacy track-<index> id", async () => {
     harness.frameData = { 2: { A: det("d2", "A") } };
 
-    ops.splitTrack("track-4", 1);
+    await ops.splitTrack("track-4", 1);
 
     expect(mockActions.transaction).not.toHaveBeenCalled();
     expect(mockEngine.mintInstanceId).not.toHaveBeenCalled();
   });
 
-  it("mergeTracks re-keys source frames onto the target, target-wins on overlap", () => {
+  it("mergeTracks re-keys source frames onto the target, target-wins on overlap", async () => {
     harness.frameData = {
       1: { A: det("d1a", "A") },
       2: { A: det("d2a", "A"), B: det("d2b", "B") },
@@ -217,7 +217,7 @@ describe("track identity ops (split / merge)", () => {
     };
 
     // merge B (source) into A (target)
-    ops.mergeTracks("instance-B", "instance-A");
+    await ops.mergeTracks("instance-B", "instance-A");
 
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
 
@@ -250,16 +250,16 @@ describe("track identity ops (split / merge)", () => {
     });
   });
 
-  it("mergeTracks no-ops on a self-merge", () => {
+  it("mergeTracks no-ops on a self-merge", async () => {
     harness.frameData = { 1: { A: det("d1", "A") } };
 
-    ops.mergeTracks("instance-A", "instance-A");
+    await ops.mergeTracks("instance-A", "instance-A");
 
     expect(mockActions.transaction).not.toHaveBeenCalled();
     expect(mockBus.dispatch).not.toHaveBeenCalled();
   });
 
-  it("mergeTracks operates on an index-based track-<index> (a real address)", () => {
+  it("mergeTracks operates on an index-based track-<index> (a real address)", async () => {
     // source is an instance-less index track; the engine addresses it by its
     // synthetic `track-1` id, so merge treats it like any other track
     harness.frameData = {
@@ -267,7 +267,7 @@ describe("track identity ops (split / merge)", () => {
       2: { A: det("d2", "A") },
     };
 
-    ops.mergeTracks("track-1", "instance-A");
+    await ops.mergeTracks("track-1", "instance-A");
 
     expect(mockActions.transaction).toHaveBeenCalledTimes(1);
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({

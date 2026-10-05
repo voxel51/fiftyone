@@ -13,8 +13,8 @@ import { useCallback } from "react";
 
 /**
  * Hook returning a callback that deletes an entire object track — every
- * occurrence of a `(sample, path, instanceId)` across the engine's loaded
- * frames — and persists the removal. The single-frame {@link useDeleteAnnotation}
+ * occurrence of a `(sample, path, instanceId)` across the clip — and persists
+ * the removal. The single-frame {@link useDeleteAnnotation}
  * drops one occurrence; this drops the whole track so a video Delete matches the
  * timeline's "Delete track" action.
  *
@@ -23,8 +23,12 @@ import { useCallback } from "react";
  * {@link useDeleteAnnotation}'s persistence + activity-toast orchestration and
  * await-and-rollback so a rejected persist restores the track.
  *
- * @returns A callback that resolves `true` on success, `false` on failure, and
- *   rethrows so callers can react to a failed persist.
+ * Waits for the video's track index; while it is unavailable the track's
+ * frames beyond the held window are unknown, so a failed index refuses the
+ * delete (the surface already reported the failure).
+ *
+ * @returns A callback that resolves `true` on success, `false` on failure or
+ *   refusal, and rethrows so callers can react to a failed persist.
  */
 export const useDeleteTrack = (): ((
   label: AnnotationLabel,
@@ -39,16 +43,14 @@ export const useDeleteTrack = (): ((
       const labelId = label.data._id;
 
       try {
-        // Every frame this track occupies on its own field, read through the
-        // engine — the authoritative loaded window (whole clip today).
-        const frames = engine.loadedFrames(ref.sample).filter((frame) =>
-          engine.getLabel({
-            sample: ref.sample,
-            path: ref.path,
-            instanceId: ref.instanceId,
-            frame,
-          }),
-        );
+        if (!(await engine.trackIndexReady(ref.sample))) {
+          return false;
+        }
+
+        // Every frame this track occupies on its own field, loaded first so
+        // each delete diffs against the whole frame.
+        const { frames } = engine.trackFrames(ref);
+        const release = await engine.holdFrames(ref.sample, frames);
 
         // Delete every occurrence as one undo unit; hold the entry it pushes so
         // a rejected persist can restore the whole track (and drop the entry).
@@ -56,16 +58,20 @@ export const useDeleteTrack = (): ((
         // persist queued behind this one reads the engine.
         const prior = engine.lastUndoEntry();
 
-        engine.transaction(() => {
-          for (const frame of frames) {
-            engine.deleteLabel({
-              sample: ref.sample,
-              path: ref.path,
-              instanceId: ref.instanceId,
-              frame,
-            });
-          }
-        });
+        try {
+          engine.transaction(() => {
+            for (const frame of frames) {
+              engine.deleteLabel({
+                sample: ref.sample,
+                path: ref.path,
+                instanceId: ref.instanceId,
+                frame,
+              });
+            }
+          });
+        } finally {
+          release();
+        }
 
         const top = engine.lastUndoEntry();
         const rollback = top === prior ? undefined : top;

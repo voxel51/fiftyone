@@ -2,6 +2,7 @@ import { Loading, LoadingDots } from "@fiftyone/components";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { isE2E } from "@fiftyone/utilities";
 import { useEffect, useMemo, useReducer, useRef } from "react";
 import {
   LoadingManager,
@@ -13,6 +14,7 @@ import { MultiPanelView } from "../annotation/MultiPanelView";
 import { SinglePanelView } from "../annotation/SinglePanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
+import { LookerErrorShown } from "../ErrorBoundary";
 import {
   useFo3d,
   useFo3dCameraControlsConfig,
@@ -116,9 +118,36 @@ const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
       dataCy="looker3d"
       wrapperStyle={{ textAlign: "center", maxWidth: 420 }}
     >
+      <LookerErrorShown />
       <div data-cy="looker-error-info">{message}</div>
     </Loading>
   );
+};
+
+declare global {
+  interface Window {
+    /** E2E affordance: the live camera position, read straight off the camera. */
+    __FO_PLAYWRIGHT_LOOKER3D_CAMERA?: () => number[] | null;
+  }
+}
+
+// only for browser automation (e2e): the status bar lags the camera by a frame
+const useExposeCameraForTest = (
+  cameraRef: React.RefObject<PerspectiveCamera | null>,
+) => {
+  useEffect(() => {
+    if (!isE2E()) return undefined;
+
+    const read = () => cameraRef.current?.position.toArray() ?? null;
+    window.__FO_PLAYWRIGHT_LOOKER3D_CAMERA = read;
+
+    // a remount can mount the next surface before this one unmounts
+    return () => {
+      if (window.__FO_PLAYWRIGHT_LOOKER3D_CAMERA === read) {
+        delete window.__FO_PLAYWRIGHT_LOOKER3D_CAMERA;
+      }
+    };
+  }, [cameraRef]);
 };
 
 export const MediaTypeFo3dComponent = () => {
@@ -159,6 +188,7 @@ export const MediaTypeFo3dComponent = () => {
 
   const cameraRef = useRef<PerspectiveCamera | null>(null);
   const cameraControlsRef = useRef<Fo3dCameraControls | null>(null);
+  useExposeCameraForTest(cameraRef);
   const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
 

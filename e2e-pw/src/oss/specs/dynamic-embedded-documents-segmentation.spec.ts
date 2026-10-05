@@ -3,7 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
 const test = base.extend<{
   grid: GridPom;
@@ -60,7 +60,7 @@ test.describe
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
     await modal.assert.verifyModalOpenedSuccessfully();
   });
 });

@@ -108,10 +108,27 @@ const NOOP_TRACK_OPS = {
 };
 
 /**
+ * Run `op` once the video's track index answers for whole tracks; drop it when
+ * the index failed, since the track's frames beyond the held window are
+ * unknown. The surface reports the failure once, so a dropped op is silent.
+ */
+const whenTrackIndexReady =
+  <A extends unknown[]>(
+    ready: () => Promise<boolean>,
+    op: (...args: A) => Promise<void>,
+  ) =>
+  async (...args: A): Promise<void> => {
+    if (await ready()) {
+      await op(...args);
+    }
+  };
+
+/**
  * Engine-native video annotation writes: per-frame ops route to the frame
  * store, sample-level temporal detections to the sample store, all as engine
  * transactions. Per-frame ops no-op until a labels stream and a sample are
- * active.
+ * active, and every op but `markKeyframe` (one frame) waits for the track
+ * index.
  */
 export const useVideoSurfaceActions = (): VideoSurfaceActions => {
   const engine = useAnnotationEngine();
@@ -138,10 +155,22 @@ export const useVideoSurfaceActions = (): VideoSurfaceActions => {
     }
 
     const deps = { ctx, actions, eventBus, engine };
+    const track = makeTrackOps(deps);
+    const identity = makeTrackIdentityOps(deps);
+    const ready = () => engine.trackIndexReady(ctx.sample);
 
     return {
-      ...makeTrackOps(deps),
-      ...makeTrackIdentityOps(deps),
+      markKeyframe: track.markKeyframe,
+      extendTrack: whenTrackIndexReady(ready, track.extendTrack),
+      trimTrack: whenTrackIndexReady(ready, track.trimTrack),
+      shiftTrack: whenTrackIndexReady(ready, track.shiftTrack),
+      deleteTrack: whenTrackIndexReady(ready, track.deleteTrack),
+      updateTrackAttributes: whenTrackIndexReady(
+        ready,
+        track.updateTrackAttributes,
+      ),
+      splitTrack: whenTrackIndexReady(ready, identity.splitTrack),
+      mergeTracks: whenTrackIndexReady(ready, identity.mergeTracks),
       ...temporal,
     };
   }, [engine, actions, sampleId, stream, eventBus]);

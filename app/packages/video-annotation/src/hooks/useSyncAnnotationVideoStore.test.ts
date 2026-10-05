@@ -2,19 +2,20 @@
  * Copyright 2017-2026, Voxel51, Inc.
  *
  * The frame store is born loading. What settles it: cached data at seed time,
- * or the first landing — never only the whole-clip warmup, which the
- * read-only surface opts out of.
+ * or the first landing.
  */
 
 import { act, renderHook } from "@testing-library/react";
+import { FrameStore } from "@fiftyone/annotation";
 import { Sample } from "@fiftyone/utilities";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface FakeStream {
   cachedFrames: () => { frame_number: number }[];
-  subscribeToEdits: (listener: () => void) => () => void;
-  warmupAll: () => Promise<void>;
-  listener: (() => void) | null;
+  cachedFramesIn: (range: [number, number]) => { frame_number: number }[];
+  subscribeToEdits: (listener: (range: [number, number]) => void) => () => void;
+  subscribeToEvictions: (listener: (frame: number) => void) => () => void;
+  listener: ((range: [number, number]) => void) | null;
 }
 
 const hoisted = vi.hoisted(() => ({
@@ -54,14 +55,17 @@ import { useSyncAnnotationVideoStore } from "./useSyncAnnotationVideoStore";
 const makeStream = (cached: { frame_number: number }[]): FakeStream => {
   const stream: FakeStream = {
     cachedFrames: () => cached,
+    cachedFramesIn: ([start, end]) =>
+      cached.filter(
+        (doc) => doc.frame_number >= start && doc.frame_number <= end,
+      ),
     subscribeToEdits: (listener) => {
       stream.listener = listener;
       return () => {
         stream.listener = null;
       };
     },
-    // Never resolves: settling must not depend on the warmup
-    warmupAll: () => new Promise(() => undefined),
+    subscribeToEvictions: () => () => undefined,
     listener: null,
   };
   return stream;
@@ -79,7 +83,6 @@ describe("useSyncAnnotationVideoStore loading state", () => {
       useSyncAnnotationVideoStore({
         labelTypes: {},
         sampleLevelPaths: new Set<string>(),
-        seedWholeClip: false,
       }),
     );
 
@@ -94,13 +97,37 @@ describe("useSyncAnnotationVideoStore loading state", () => {
       useSyncAnnotationVideoStore({
         labelTypes: {},
         sampleLevelPaths: new Set<string>(),
-        seedWholeClip: false,
       }),
     );
 
     expect(hoisted.registered[0].isLoading()).toBe(true);
 
-    act(() => hoisted.stream?.listener?.());
+    act(() => hoisted.stream?.listener?.([1, 60]));
     expect(hoisted.registered[0].isLoading()).toBe(false);
+  });
+
+  it("a later landing seeds only that window's frames", () => {
+    const cached = [{ frame_number: 1 }, { frame_number: 2 }];
+    hoisted.stream = makeStream(cached);
+
+    renderHook(() =>
+      useSyncAnnotationVideoStore({
+        labelTypes: {},
+        sampleLevelPaths: new Set<string>(),
+      }),
+    );
+
+    const setData = vi.spyOn(FrameStore.prototype, "setData");
+    const mergeData = vi.spyOn(FrameStore.prototype, "mergeData");
+    cached.push({ frame_number: 61 }, { frame_number: 62 });
+
+    act(() => hoisted.stream?.listener?.([61, 120]));
+
+    expect(setData).not.toHaveBeenCalled();
+    expect(mergeData).toHaveBeenCalledTimes(1);
+    expect(Object.keys(mergeData.mock.calls[0][0])).toEqual(["61", "62"]);
+
+    setData.mockRestore();
+    mergeData.mockRestore();
   });
 });

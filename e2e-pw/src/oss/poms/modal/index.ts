@@ -1,9 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { EventUtils } from "src/shared/event-utils";
-import { Duration } from "../../utils";
+import { expectScreenshot } from "src/oss/utils/screenshot";
+import { EventCondition, EventUtils } from "src/shared/event-utils";
+import { afterPopout } from "../action-row/popout";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
+import { collapseWhitespace, escapeRegExp } from "src/oss/utils";
 import { UrlPom } from "../url";
 import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
@@ -14,7 +16,9 @@ import { SampleCanvasPom } from "./sample-canvas";
 import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
 
-const SAMPLE_LOAD_TIMEOUT = Duration.Seconds(20);
+const SAMPLE_LOADED = "e2e:looker:canvas-loaded";
+const SAMPLE_ERROR = "e2e:looker:error-shown";
+const SCENE_READY = "e2e:looker3d:scene-ready";
 
 export class ModalPom {
   readonly assert: ModalAsserter;
@@ -55,13 +59,13 @@ export class ModalPom {
     this.looker3dControls = new Looker3DControlsPom(page, this);
     this.panel = new ModalPanelPom(page, this);
     this.sampleCanvas = new SampleCanvasPom(page, eventUtils);
-    this.sidebar = new ModalSidebarPom(page);
+    this.sidebar = new ModalSidebarPom(page, eventUtils);
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
     this.video = new ModalVideoControlsPom(page, this);
     this.videoAnnotate = new VideoAnnotatePom(page, this);
     this.annotate3d = new ModalAnnotate3dPom(page, this);
-    this.episode = new EpisodePom(page, this.locator);
+    this.episode = new EpisodePom(page, this.locator, eventUtils);
   }
 
   get modalSamplePluginTitle() {
@@ -87,6 +91,37 @@ export class ModalPom {
       .locator("[data-event-index]:not([data-resize-handle])");
   }
 
+  /**
+   * A saved-subset timeline row for `sourceLabel` shows exactly `spans`
+   * (`"0.20-0.50"`, comma separated), pinned or not when `pinned` is given
+   */
+  savedRangeShown(
+    sourceLabel: string,
+    spans: string,
+    pinned?: boolean,
+  ): EventCondition {
+    return {
+      events: "e2e:playback:track-shown",
+      predicate: (e) => {
+        const track = e.detail as {
+          id: string;
+          label: string;
+          eventLabels: string;
+          pinned: boolean;
+          pinnable: boolean;
+          spans: string;
+        };
+        return (
+          track.id.startsWith("fiftyone:saved-segments") &&
+          (track.label.includes(sourceLabel) ||
+            track.eventLabels.includes(sourceLabel)) &&
+          track.spans === spans &&
+          (pinned === undefined || (track.pinnable && track.pinned === pinned))
+        );
+      },
+    };
+  }
+
   get groupLooker() {
     return this.locator
       .getByTestId("group-sample-wrapper")
@@ -110,53 +145,71 @@ export class ModalPom {
     return this.locator.getByTestId("action-display-options");
   }
 
-  armLookerAttached() {
-    return this.eventUtils.arm("looker-attached");
+  afterLookerAttached<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:modal:looker-attached", action);
+  }
+
+  /** Run `action` and resolve once the modal has mounted because of it */
+  afterOpened<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:modal:opened", action);
+  }
+
+  /**
+   * Run `action` and resolve once the modal's sample surface has drawn its
+   * sample (or, with `allowErrorInfo`, shown its load error) because of it
+   */
+  afterSampleLoaded<T>(
+    action: () => Promise<T>,
+    allowErrorInfo = false,
+  ): Promise<T> {
+    return this.eventUtils.after(
+      allowErrorInfo ? [SAMPLE_LOADED, SAMPLE_ERROR] : SAMPLE_LOADED,
+      action,
+      (e) => !(e.detail as { thumbnail: boolean }).thumbnail,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once a group sample's 2D looker has drawn and
+   * its 3D slice's scene is ready; both draw on their own after the modal opens
+   */
+  afterGroupSampleLoaded<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.afterAll(
+      [
+        {
+          events: [SAMPLE_LOADED],
+          predicate: (e) => {
+            const detail = e.detail as {
+              thumbnail: boolean;
+              sampleFilepath?: string;
+            };
+            return !detail.thumbnail && detail.sampleFilepath !== undefined;
+          },
+        },
+        { events: [SCENE_READY], predicate: () => true },
+      ],
+      action,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the group carousel has settled a render
+   * with no page request pending
+   */
+  afterCarouselRendered<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:flashlight:rendered", action, (e) => {
+      const { horizontal, pending } = e.detail as {
+        horizontal: boolean;
+        pending: boolean;
+      };
+      return horizontal && !pending;
+    });
   }
 
   getSampleNavigation(direction: "forward" | "backward") {
     return this.locator.getByTestId(
       `nav-${direction === "forward" ? "right" : "left"}-button`,
     );
-  }
-
-  async hideControls() {
-    const controls = this.locator.getByTestId("looker-controls");
-
-    // Check if controls exist (might not exist in annotate mode)
-    const controlsCount = await controls.count();
-    if (controlsCount === 0) {
-      return;
-    }
-
-    let isHidden = false;
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    // Keep pressing "c" until controls are hidden
-    while (!isHidden && attempts < maxAttempts) {
-      const currentStyle = await controls
-        .evaluate((e) => {
-          const s = getComputedStyle(e);
-          return { opacity: s.opacity, height: s.height };
-        })
-        .catch(() => ({ opacity: "1", height: "auto" }));
-
-      if (
-        parseFloat(currentStyle.opacity) === 0 ||
-        currentStyle.height === "0px"
-      ) {
-        isHidden = true;
-        break;
-      }
-
-      await this.page.keyboard.press("c");
-      // Controls take time to hide
-      // eslint-disable-next-line playwright/no-wait-for-timeout
-      await this.page.waitForTimeout(300);
-
-      attempts++;
-    }
   }
 
   async toggleSelection(isPcd = false) {
@@ -169,12 +222,14 @@ export class ModalPom {
     await this.locator.getByTestId("select-sample-checkbox").click();
   }
 
+  /** Pick the media field in display options, which open and close again */
   async selectMediaField(field: string) {
     const radio = this.page.getByTestId(`radio-button-${field}`);
-    if (!(await radio.isVisible())) {
-      await this.toggleDisplayOptionsButton.click();
-    }
+    await this.toggleDisplayOptionsButton.click();
     await radio.click();
+    await afterPopout(this.eventUtils, "popout", false, () =>
+      this.toggleDisplayOptionsButton.click(),
+    );
   }
 
   async navigateSample(
@@ -183,19 +238,13 @@ export class ModalPom {
   ) {
     const currentSampleId = await this.sidebar.getSampleId();
 
-    await this.locator
-      .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
-      .click();
-
-    // wait for sample id to change
-    await this.page.waitForFunction((currentSampleId) => {
-      const sampleId = document.querySelector(
-        "[data-cy=sidebar-entry-id]",
-      )?.textContent;
-      return sampleId !== currentSampleId;
-    }, currentSampleId);
-
-    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+    // the sidebar remounts its entries on a sample change
+    await this.sidebar.afterEntryChanged("id", currentSampleId, () =>
+      this.afterSampleLoaded(
+        () => this.getSampleNavigation(direction).click(),
+        allowErrorInfo,
+      ),
+    );
   }
 
   async scrollCarousel(left: number = null) {
@@ -205,35 +254,47 @@ export class ModalPom {
   }
 
   async scrollCarouselTo(slice: string) {
-    await this.groupCarousel
-      .getByTestId("flashlight")
-      .evaluate(async (el, targetText) => {
-        const hasTarget = () => {
-          for (const t of el.querySelectorAll('[data-cy="thumbnail-title"]')) {
-            if (t.textContent === targetText) return true;
-          }
-          return false;
-        };
+    const flashlight = this.groupCarousel.getByTestId("flashlight");
+    const target = flashlight
+      .getByTestId("thumbnail-title")
+      .filter({ hasText: new RegExp(`^${escapeRegExp(slice)}$`) });
+    const extent = () =>
+      flashlight.evaluate((el) => ({
+        scrollLeft: el.scrollLeft,
+        scrollWidth: el.scrollWidth,
+        width: el.clientWidth,
+      }));
 
-        if (hasTarget()) return;
-
-        // 384ms is the debounce time for Flashlight's zooming plus two frames of margin
-        const ZOOMING_DEBOUNCE_MS = 384;
-        const step = Math.max(el.clientWidth, 200);
-        for (let pos = 0; pos <= el.scrollWidth; pos += step) {
-          el.scrollTo({ left: pos });
-          await new Promise((r) => setTimeout(r, ZOOMING_DEBOUNCE_MS));
-          if (hasTarget()) return;
-        }
-      }, slice);
+    // each scroll settles in a render of the (horizontal) carousel with no
+    // page request pending, which shows everything in view
+    for (let pos = 0; (await target.count()) === 0; ) {
+      const { scrollLeft, scrollWidth, width } = await extent();
+      if (pos > scrollWidth) return;
+      const left = Math.min(pos, scrollWidth - width);
+      pos += Math.max(width, 200);
+      // no scroll, no render: nothing new comes into view at this step
+      if (left === scrollLeft) continue;
+      await this.eventUtils.after(
+        "e2e:flashlight:rendered",
+        () => flashlight.evaluate((el, x) => el.scrollTo({ left: x }), left),
+        (e) => {
+          const { horizontal, pending } = e.detail as {
+            horizontal: boolean;
+            pending: boolean;
+          };
+          return horizontal && !pending;
+        },
+      );
+    }
   }
 
   async navigateCarousel(index: number, allowErrorInfo = false) {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
 
-    await looker.click({ position: { x: 10, y: 60 } });
-
-    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+    await this.afterSampleLoaded(
+      () => looker.click({ position: { x: 10, y: 60 } }),
+      allowErrorInfo,
+    );
   }
 
   async panSample(
@@ -273,13 +334,6 @@ export class ModalPom {
     await this.locator.getByTestId("action-tag-sample-labels").click();
   }
 
-  async waitForCarouselToLoad() {
-    await this.groupCarousel
-      .getByTestId("looker")
-      .first()
-      .waitFor({ state: "visible" });
-  }
-
   async navigateSlice(
     groupField: string,
     slice: string,
@@ -289,28 +343,19 @@ export class ModalPom {
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
 
-    await looker.click({ position: { x: 10, y: 60 } });
-
-    // wait for slice to change
-    await this.page.waitForFunction(
-      ({ currentSlice, groupField }) => {
-        const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}"]`,
-        )?.textContent;
-        return slice !== currentSlice;
-      },
-      { currentSlice, groupField },
-      { timeout: SAMPLE_LOAD_TIMEOUT },
+    await this.sidebar.afterEntryChanged(groupField, currentSlice ?? "", () =>
+      this.afterSampleLoaded(
+        () => looker.click({ position: { x: 10, y: 60 } }),
+        allowErrorInfo,
+      ),
     );
-    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
   async enterFullscreen() {
-    await this.modalContent.waitFor({ state: "visible" });
     if (!(await this.isFullscreen())) {
       await this.locator.getByTestId("action-toggle-fullscreen").click();
     }
-    await expect.poll(() => this.isFullscreen()).toBe(true);
+    await this.assert.isFullscreen();
   }
 
   async close({ ignoreError } = { ignoreError: false }) {
@@ -322,11 +367,12 @@ export class ModalPom {
 
       if (await this.isFullscreen()) {
         await this.locator.getByTestId("action-toggle-fullscreen").click();
-        await expect.poll(() => this.isFullscreen()).toBe(false);
+        await this.assert.isFullscreen(false);
       }
 
-      await this.page.click("body", { position: { x: 0, y: 0 } });
-      await this.locator.waitFor({ state: "hidden" });
+      await this.eventUtils.after("e2e:modal:closed", () =>
+        this.page.click("body", { position: { x: 0, y: 0 } }),
+      );
     } catch (e) {
       if (ignoreError) {
         return;
@@ -371,39 +417,45 @@ export class ModalPom {
     return this.looker.click();
   }
 
-  async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
-    return this.page.waitForFunction(
-      (allowErrorInfo) => {
-        if (
-          allowErrorInfo &&
-          document.querySelector(
-            "[data-cy=modal-looker-container] [data-cy=looker-error-info]",
-          )
-        ) {
-          return true;
-        }
-
-        // Any surface may raise the marker: the lookers set it on their
-        // canvas, the plain video surface sets it on the `<video>`.
-        return !!document.querySelector(
-          `[data-cy=modal-looker-container] [canvas-loaded="true"]`,
-        );
-      },
-      allowErrorInfo,
-      { timeout: SAMPLE_LOAD_TIMEOUT },
+  /**
+   * Hover the looker, then move the mouse off it and wait for its controls
+   * to hide. The hover makes the mouse leave the looker, which is what hides
+   * them.
+   */
+  async hideLookerControls() {
+    await this.looker.hover();
+    await this.eventUtils.after(
+      "e2e:looker:controls-rendered",
+      () => this.sampleCanvas.parkMouse(),
+      (e) => !(e.detail as { shown: boolean }).shown,
     );
   }
 
-  async waitForLighterReady() {
-    return this.page.waitForFunction(
-      () =>
-        (
-          document.querySelector(
-            `[data-cy=lighter-sample-renderer]`,
-          ) as HTMLElement | null
-        )?.style.visibility === "visible",
-      undefined,
-      { timeout: Duration.Seconds(20) },
+  /**
+   * Run `action` (e.g. the switch to annotate) and resolve once the Lighter
+   * renderer has revealed its sample because of it
+   */
+  afterLighterReady<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:modal:lighter-revealed", action);
+  }
+
+  /**
+   * Run `action` and resolve once a 3D scene is loaded, its camera settled
+   * and revealed because of it
+   */
+  afterSceneReady<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:looker3d:scene-ready", action);
+  }
+
+  /**
+   * Run `action` and resolve once the 3D viewer's loading cover is gone
+   * because of it: its scene is ready, or its load error is shown
+   */
+  afterLooker3dSettled<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(
+      [SCENE_READY, SAMPLE_ERROR],
+      action,
+      (e) => !(e.detail as { thumbnail?: boolean }).thumbnail,
     );
   }
 
@@ -419,36 +471,52 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
+  /** One capture of the modal on the 3D canvas's next rendered frame */
+  async hasLooker3dScreenshot(name: string) {
+    await this.modalPom.eventUtils.next("e2e:looker3d:frame-rendered");
+    await expectScreenshot(this.modalPom.modalContainer, name, {
+      mask: this.modalPom.looker3dScreenshotMasks,
+    });
+  }
+
+  /** One capture of the looker with its controls hidden */
+  async hasLookerScreenshot(name: string) {
+    await this.modalPom.hideLookerControls();
+    await expectScreenshot(this.modalPom.looker, name);
+  }
+
   async isClosed() {
-    await expect(this.modalPom.locator).toBeHidden();
+    expect(await this.modalPom.locator.isVisible()).toBe(false);
   }
 
   async isOpen() {
-    await expect(this.modalPom.locator).toBeVisible();
+    expect(await this.modalPom.locator.isVisible()).toBe(true);
   }
 
+  /** Open with `afterSampleLoaded` first */
   async verifyModalOpenedSuccessfully() {
-    await this.modalPom.waitForSampleLoadDomAttribute();
-    await expect(this.modalPom.locator).toBeVisible();
+    expect(await this.modalPom.locator.isVisible()).toBe(true);
   }
 
   async verifyHasNoViewerError() {
-    await expect(
-      this.modalPom.modalContainer.getByTestId("looker-error-info"),
-    ).toHaveCount(0);
+    expect(
+      await this.modalPom.modalContainer
+        .getByTestId("looker-error-info")
+        .count(),
+    ).toBe(0);
   }
 
   async verifyPrimary2dRendererVisible() {
-    await expect(this.modalPom.groupLooker).toBeVisible();
+    expect(await this.modalPom.groupLooker.isVisible()).toBe(true);
   }
 
   async verify3dRendererVisible() {
-    await expect(this.modalPom.looker3d).toBeVisible();
+    expect(await this.modalPom.looker3d.isVisible()).toBe(true);
   }
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
-    await expect(action.first()).toHaveText(
+    expect(collapseWhitespace(await action.first().textContent())).toBe(
       n === 0
         ? "0 samples · 0 labels"
         : `${n.toLocaleString()} sample${n === 1 ? "" : "s"}`,
@@ -464,17 +532,25 @@ class ModalAsserter {
 
   async verifySampleNavigation(direction: "forward" | "backward") {
     const navigation = this.modalPom.getSampleNavigation(direction);
-    await expect(navigation).toBeVisible();
+    expect(await navigation.isVisible()).toBe(true);
   }
 
   async verifyModalSamplePluginTitle(
     title: string,
     { pinned }: { pinned: boolean } = { pinned: false },
   ) {
-    await expect
-      .poll(async () => this.modalPom.modalSamplePluginTitle, {
-        timeout: 5000,
-      })
-      .toBe(pinned ? `📌 ${title}` : title);
+    expect(
+      collapseWhitespace(
+        await this.modalPom.locator
+          .getByTestId("panel-tab-fo-sample-modal-plugin")
+          .textContent(),
+      ),
+    ).toBe(pinned ? `📌 ${title}` : title);
+  }
+
+  /** The modal fills the viewport (its content is styled 100% x 100%). */
+  async isFullscreen(fullscreen = true) {
+    const style = await this.modalPom.modalContent.getAttribute("style");
+    expect(/width:\s*100%;.*height:\s*100%/.test(style ?? "")).toBe(fullscreen);
   }
 }

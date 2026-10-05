@@ -135,8 +135,6 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
-    // Init
-    await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isOpen();
@@ -149,12 +147,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation
-    const invalid = await jsonEditor.armInvalidJSON();
-    await jsonEditor.setJSON({
-      component: "wrong",
-      type: "classification",
+    await jsonEditor.afterInvalidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "wrong",
+        type: "classification",
+      });
     });
-    await invalid.received;
     await jsonEditor.assert.hasErrors([
       "invalid component 'wrong' for field 'classification'",
     ]);
@@ -164,12 +162,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Successful validation
-    const valid = await jsonEditor.armValidJSON();
-    await jsonEditor.setJSON({
-      component: "text",
-      type: "classification",
+    await jsonEditor.afterValidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "text",
+        type: "classification",
+      });
     });
-    await valid.received;
 
     // Scan
     await jsonEditor.scan();
@@ -213,7 +211,7 @@ test.describe.serial("schema manager", () => {
     // blank seeded video.
     await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
       searchParams: new URLSearchParams({ id: videoId }),
-      readySelector: '[data-cy="modal"]',
+      readyEvent: "e2e:modal:opened",
     });
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
@@ -221,6 +219,7 @@ test.describe.serial("schema manager", () => {
   });
 
   test("patches view required field prompt activates schema and enters edit mode", async ({
+    eventUtils,
     fiftyoneLoader,
     page,
     modal,
@@ -228,28 +227,41 @@ test.describe.serial("schema manager", () => {
     // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
       searchParams: new URLSearchParams({ view: "patches", id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.sidebar.switchMode("annotate");
-
-    // The required field prompt should appear since "predictions" has no active schema
-    await expect(page.getByText("Field not in label schema")).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByTestId("activate-field-schema")).toBeVisible();
+    // The required field prompt should appear since "predictions" has no
+    // active schema; it mounts once the label schemas load
+    await eventUtils.after("e2e:annotate:required-field-prompt", () =>
+      modal.sidebar.switchMode("annotate"),
+    );
+    const activateButton = page.getByTestId("activate-field-schema");
+    expect(await page.getByText("Field not in label schema").isVisible()).toBe(
+      true,
+    );
 
     // Click the activate button to initialize and activate the predictions schema
-    const activateButton = page.getByTestId("activate-field-schema");
-    await expect(activateButton).toBeEnabled();
-    await activateButton.click();
-
-    // After activation, the edit panel should appear with "Edit Detection"
-    await expect(page.getByText("Edit Detection")).toBeVisible({
-      timeout: 10_000,
-    });
+    expect(await activateButton.isEnabled()).toBe(true);
+    // activation generates and activates the schema through operators; the
+    // edit panel then mounts with "Edit Detection" once the activated
+    // schemas are refetched
+    await eventUtils.after(
+      "e2e:annotate:edit-header",
+      () =>
+        eventUtils.after(
+          "e2e:operators:executed",
+          () => activateButton.click(),
+          (e) =>
+            (e.detail as { operator: string }).operator ===
+            "@voxel51/operators/activate_label_schemas",
+        ),
+      (e) => (e.detail as { type: string | null }).type === "Detection",
+    );
+    expect(await page.getByText("Edit Detection").isVisible()).toBe(true);
 
     // In patches view, the Schema button should not be visible
-    await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();
+    expect(await page.getByRole("button", { name: "Schema" }).isVisible()).toBe(
+      false,
+    );
   });
 
   test("annotation enabled for a grouped dataset with a video slice", async ({
@@ -266,7 +278,6 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
       searchParams: new URLSearchParams({ id: groupVideoId }),
     });
-    await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
 
     await schemaManager.assert.isEnabled();

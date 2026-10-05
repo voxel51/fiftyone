@@ -1,22 +1,34 @@
-import { useAnnotationEngine, type LabelRef } from "@fiftyone/annotation";
+import {
+  isFrameScopedPath,
+  type LabelRef,
+  useActiveAnnotationSampleId,
+  useAnnotationEngine,
+} from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
-import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
+import {
+  isPatchesView,
+  useIsImageDynamicGroupVideo,
+  useUnboundStateRef,
+} from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
+import { moveSingleLabel } from "./singleLabelFieldMove";
+import { withTrackHeld } from "./trackFanOut";
 import {
   type LabelType,
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
 import { buildNewLabelData } from "./useAnnotationContext/createNew";
+import { useFrameSingletonSlot } from "./useAnnotationContext/useFrameSingletonSlot";
 
 const createSchema = (
   choices: string[],
@@ -59,6 +71,9 @@ const Field = () => {
     [disabled, fields, isPatches],
   );
   const engine = useAnnotationEngine();
+  const sample = useActiveAnnotationSampleId();
+  const slotOf = useFrameSingletonSlot(engine);
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const nextFieldValue = useRef(currentFieldValue);
   const labelId = currentLabel?.overlay?.id;
   const currentLabelRef = useUnboundStateRef(currentLabel);
@@ -94,41 +109,78 @@ const Field = () => {
       // the instance occupies. Identity is the store's, so the track keeps its
       // `instance._id` across the move. The Lighter bridge's read-half re-homes
       // the overlay off the engine change — the sidebar never touches Lighter.
-      const move = (from: string, to: string) => {
+      const move = async (from: string, to: string) => {
         if (!instanceId || !source) return;
-
-        const type = engine.getLabelType(from);
-
-        // Snapshot each occurrence BEFORE the transaction (the deletes mutate
-        // the store). For an image / sample-level label this is one frame-less
-        // entry; for a video track it is one entry per frame. Match by track
-        // identity + field; each occurrence carries its own full ref (sample +
-        // frame) so writes land in the right store and frame.
-        const occurrences = engine
-          .enumerateLabels([type])
-          .filter((ref) => ref.path === from && ref.instanceId === instanceId)
-          .map((ref) => ({ ref, data: engine.getLabel(ref) }))
-          .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
-
-        if (occurrences.length === 0) return;
 
         const cls = (source as { _cls: LabelType })._cls;
 
-        engine.transaction(() => {
-          for (const { ref } of occurrences) {
-            engine.deleteLabel(ref);
-          }
-
-          for (const { ref, data } of occurrences) {
-            engine.updateLabel(
-              { sample: ref.sample, path: to, instanceId, frame: ref.frame },
-              {
-                ...buildNewLabelData(to, cls, { id: instanceId }),
-                ...data,
-              } as Partial<LabelData>,
-            );
-          }
+        // a single-label value on a frame field moves alone, not as a track
+        const single = moveSingleLabel({
+          engine,
+          sample,
+          from,
+          to,
+          docId: (source as { _docId?: string })._docId || instanceId,
+          slotOf,
+          isFrameField: (path) =>
+            isFrameScopedPath(path, isImageDynamicGroupVideo),
+          base: (path, id) =>
+            buildNewLabelData(path, cls, { id }) as Partial<LabelData>,
         });
+
+        if (single !== "unhandled") {
+          if (single === "moved") setCurrentField(to);
+          return;
+        }
+
+        const type = engine.getLabelType(from);
+
+        const moved = await withTrackHeld(
+          engine,
+          { sample, path: from, instanceId },
+          () => {
+            // Snapshot each occurrence BEFORE the transaction (the deletes
+            // mutate the store). For an image / sample-level label this is one
+            // frame-less entry; for a video track it is one entry per frame.
+            // Match by track identity + field; each occurrence carries its own
+            // full ref (sample + frame) so writes land in the right store and
+            // frame.
+            const occurrences = engine
+              .enumerateLabels([type])
+              .filter(
+                (ref) => ref.path === from && ref.instanceId === instanceId,
+              )
+              .map((ref) => ({ ref, data: engine.getLabel(ref) }))
+              .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
+
+            if (occurrences.length === 0) return false;
+
+            engine.transaction(() => {
+              for (const { ref } of occurrences) {
+                engine.deleteLabel(ref);
+              }
+
+              for (const { ref, data } of occurrences) {
+                engine.updateLabel(
+                  {
+                    sample: ref.sample,
+                    path: to,
+                    instanceId,
+                    frame: ref.frame,
+                  },
+                  {
+                    ...buildNewLabelData(to, cls, { id: instanceId }),
+                    ...data,
+                  } as Partial<LabelData>,
+                );
+              }
+            });
+
+            return true;
+          },
+        );
+
+        if (moved !== true) return;
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
         setCurrentField(to);
@@ -139,7 +191,16 @@ const Field = () => {
         () => move(oldField, newField),
         () => move(newField, oldField),
       );
-    }, [currentLabelRef, engine, setCurrentField, labelId, currentFieldValue]),
+    }, [
+      currentLabelRef,
+      engine,
+      isImageDynamicGroupVideo,
+      sample,
+      setCurrentField,
+      slotOf,
+      labelId,
+      currentFieldValue,
+    ]),
     () => true,
   );
 

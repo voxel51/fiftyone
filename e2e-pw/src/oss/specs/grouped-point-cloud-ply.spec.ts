@@ -190,9 +190,15 @@ test.describe.serial("grouped point-cloud and ply", () => {
     grid,
     modal,
   }) => {
+    /**
+     * Run `step` to show `expectedSlice` of group `index`, then check it.
+     * `sceneLoads` when the step (re)mounts the 3D scene.
+     */
     const assertSingleSliceState = async (
       index: number,
       expectedSlice: "image" | "pcd" | "ply",
+      step: () => Promise<unknown>,
+      sceneLoads = false,
     ) => {
       const spec = groupSpecs[index];
       const expectedName =
@@ -201,37 +207,54 @@ test.describe.serial("grouped point-cloud and ply", () => {
           : expectedSlice === "pcd"
             ? spec.pcdName
             : spec.plyName;
+      const entries = {
+        "group.name": expectedSlice,
+        name: expectedName,
+        scene: spec.scene,
+      };
 
-      await modal.looker3dControls.waitForAllAssetsLoaded();
+      await modal.sidebar.afterEntries(entries, () =>
+        sceneLoads ? modal.looker3dControls.afterAllAssetsLoaded(step) : step(),
+      );
 
       await modal.assert.verifyModalSamplePluginTitle(expectedSlice, {
         pinned: true,
       });
-      await modal.sidebar.assert.verifySidebarEntryTexts({
-        "group.name": expectedSlice,
-        name: expectedName,
-        scene: spec.scene,
-      });
+      await modal.sidebar.assert.verifySidebarEntryTexts(entries);
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
     };
 
-    const assertImageSliceState = async (index: number) => {
+    const assertImageSliceState = async (
+      index: number,
+      step: () => Promise<unknown>,
+    ) => {
       const spec = groupSpecs[index];
-
-      await modal.assert.verifyModalSamplePluginTitle("image", {
-        pinned: true,
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+      const entries = {
         "group.name": "image",
         name: spec.imageName,
         scene: spec.scene,
+      };
+
+      await modal.sidebar.afterEntries(entries, step);
+      await modal.assert.verifyModalSamplePluginTitle("image", {
+        pinned: true,
       });
+      await modal.sidebar.assert.verifySidebarEntryTexts(entries);
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
     };
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    const bothSlices = {
+      "pcd-group.name": "pcd",
+      "ply-group.name": "ply",
+      "pcd-name": groupSpecs[0].pcdName,
+      "ply-name": groupSpecs[0].plyName,
+      "pcd-scene": groupSpecs[0].scene,
+      "ply-scene": groupSpecs[0].scene,
+    };
+
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+    );
 
     await modal.assert.verifyModalSamplePluginTitle("image", { pinned: true });
     await modal.looker3dControls.assert.verifySliceSelectorLabel("pcd");
@@ -242,74 +265,63 @@ test.describe.serial("grouped point-cloud and ply", () => {
     });
     await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
 
-    await modal.clickOnLooker3d();
-    await assertSingleSliceState(0, "pcd");
+    await assertSingleSliceState(0, "pcd", () => modal.clickOnLooker3d());
     await modal.looker3dControls.assert.verifySliceSelectorLabel("pcd");
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("pcd");
     await modal.looker3dControls.assert.verifySliceChecked("ply", false);
     await modal.looker3dControls.closeSliceSelector();
 
-    await modal.toggleLooker3dSlice("ply");
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.sidebar.afterEntries(bothSlices, () =>
+      modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.toggleLooker3dSlice("ply"),
+      ),
+    );
     await modal.assert.verifyModalSamplePluginTitle("pcd and ply", {
       pinned: true,
     });
     await modal.looker3dControls.assert.verifySliceSelectorLabel(
       "all 3D slices",
     );
-    await modal.sidebar.assert.verifySidebarEntryTexts({
-      "pcd-group.name": "pcd",
-      "ply-group.name": "ply",
-      "pcd-name": groupSpecs[0].pcdName,
-      "ply-name": groupSpecs[0].plyName,
-      "pcd-scene": groupSpecs[0].scene,
-      "ply-scene": groupSpecs[0].scene,
-    });
+    await modal.sidebar.assert.verifySidebarEntryTexts(bothSlices);
     await modal.sidebar.assert.verifySidebarFieldCount("detections", 2);
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("pcd");
     await modal.looker3dControls.assert.verifySliceChecked("ply");
     await modal.looker3dControls.closeSliceSelector();
 
-    await modal.groupLooker.click();
-    await assertImageSliceState(0);
-    await modal.clickOnLooker3d();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await assertImageSliceState(0, () => modal.groupLooker.click());
+    await modal.sidebar.afterEntries(bothSlices, () => modal.clickOnLooker3d());
     await modal.assert.verifyModalSamplePluginTitle("pcd and ply", {
       pinned: true,
     });
-    await modal.sidebar.assert.verifySidebarEntryTexts({
-      "pcd-group.name": "pcd",
-      "ply-group.name": "ply",
-      "pcd-name": groupSpecs[0].pcdName,
-      "ply-name": groupSpecs[0].plyName,
-      "pcd-scene": groupSpecs[0].scene,
-      "ply-scene": groupSpecs[0].scene,
-    });
+    await modal.sidebar.assert.verifySidebarEntryTexts(bothSlices);
     await modal.sidebar.assert.verifySidebarFieldCount("detections", 2);
 
-    await modal.toggleLooker3dSlice("pcd");
-    await assertSingleSliceState(0, "ply");
+    await assertSingleSliceState(
+      0,
+      "ply",
+      () => modal.toggleLooker3dSlice("pcd"),
+      true,
+    );
     await modal.looker3dControls.assert.verifySliceSelectorLabel("ply");
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("pcd", false);
     await modal.looker3dControls.assert.verifySliceChecked("ply");
     await modal.looker3dControls.closeSliceSelector();
 
-    await modal.groupLooker.click();
-    await assertImageSliceState(0);
-    await modal.clickOnLooker3d();
-    await assertSingleSliceState(0, "ply");
+    await assertImageSliceState(0, () => modal.groupLooker.click());
+    await assertSingleSliceState(0, "ply", () => modal.clickOnLooker3d());
 
-    await modal.navigateNextSample();
-    await assertSingleSliceState(1, "ply");
-
-    await modal.navigateNextSample();
-    await assertSingleSliceState(2, "ply");
-
-    await modal.navigatePreviousSample();
-    await assertSingleSliceState(1, "ply");
+    const next = () => modal.navigateNextSample();
+    await assertSingleSliceState(1, "ply", next, true);
+    await assertSingleSliceState(2, "ply", next, true);
+    await assertSingleSliceState(
+      1,
+      "ply",
+      () => modal.navigatePreviousSample(),
+      true,
+    );
 
     // TODO: add canvas screenshot assertions once 3D modal screenshots stabilize.
   });

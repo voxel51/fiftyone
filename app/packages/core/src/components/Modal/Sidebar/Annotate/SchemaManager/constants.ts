@@ -54,6 +54,7 @@ export const LABEL_TYPE_OPTIONS = [
   { id: "detections", data: { label: "Detections" } },
   { id: "classification", data: { label: "Classification" } },
   { id: "polylines", data: { label: "Polylines" } },
+  { id: "regression", data: { label: "Regression" } },
 ];
 
 // Label type options for 3D datasets
@@ -61,6 +62,7 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "detections", data: { label: "3D Detections" } },
   { id: "polylines", data: { label: "3D Polylines" } },
   { id: "classification", data: { label: "Classification" } },
+  { id: "regression", data: { label: "Regression" } },
 ];
 
 // Label type options for sample-level fields on video datasets. Spatial labels
@@ -69,6 +71,7 @@ export const LABEL_TYPE_OPTIONS_3D = [
 // use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
 export const LABEL_TYPE_OPTIONS_VIDEO = [
   { id: "classification", data: { label: "Classification" } },
+  { id: "regression", data: { label: "Regression" } },
   { id: "temporaldetections", data: { label: "Temporal Detections" } },
 ];
 
@@ -113,6 +116,12 @@ export const DEFAULT_DETECTION_ATTRIBUTES_3D: AttributeConfig[] = [
 export const DEFAULT_CLASSIFICATION_ATTRIBUTES: AttributeConfig[] =
   BASE_LABEL_ATTRIBUTES;
 
+// Regression has a numeric 'value' in place of a label class
+export const DEFAULT_REGRESSION_ATTRIBUTES: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "value", type: "float", component: "text" },
+];
+
 // Polyline has 'closed', 'filled', and 'index' fields
 export const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
   ...BASE_LABEL_ATTRIBUTES,
@@ -133,6 +142,8 @@ export const getDefaultAttributesForType = (
         : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "regression":
+      return DEFAULT_REGRESSION_ATTRIBUTES;
     case "temporaldetections":
       // `support` is edited via the timeline drag handles, not as a
       // primitive sidebar component. Keep it off the schema's editable

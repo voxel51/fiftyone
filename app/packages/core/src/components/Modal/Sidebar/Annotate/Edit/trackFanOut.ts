@@ -172,3 +172,43 @@ export const buildForwardFill = (
 
   return writes;
 };
+
+/** The slice of the engine {@link withTrackHeld} reads. */
+interface TrackHoldEngine {
+  trackIndexReady(sample: string): Promise<boolean>;
+  trackFrames(ref: { sample: string; path: string; instanceId: string }): {
+    frames: number[];
+  };
+  holdFrames(sample: string, frames: readonly number[]): Promise<() => void>;
+}
+
+/** {@link withTrackHeld}'s answer when the track's frames are unknown. */
+export const TRACK_REFUSED = Symbol("track refused");
+
+/**
+ * Run `fn` with every frame of a track loaded. The store holds only frames
+ * near the playhead, so a walk over a track's occurrences must load them first.
+ * Waits for the video's track index; when it failed, `fn` never runs and this
+ * resolves {@link TRACK_REFUSED}, since a walk over part of a track would
+ * leave the track split.
+ */
+export const withTrackHeld = async <T>(
+  engine: TrackHoldEngine,
+  ref: { sample: string; path: string; instanceId: string },
+  fn: () => T,
+): Promise<T | typeof TRACK_REFUSED> => {
+  if (!(await engine.trackIndexReady(ref.sample))) {
+    return TRACK_REFUSED;
+  }
+
+  const release = await engine.holdFrames(
+    ref.sample,
+    engine.trackFrames(ref).frames,
+  );
+
+  try {
+    return fn();
+  } finally {
+    release();
+  }
+};

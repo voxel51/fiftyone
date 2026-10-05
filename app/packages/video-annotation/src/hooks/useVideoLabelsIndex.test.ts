@@ -16,15 +16,19 @@ vi.mock("../../../core/src/client/videoLabelsClient", () => ({
   getVideoLabelsIndex: (...args: unknown[]) => h.getVideoLabelsIndex(...args),
 }));
 
+import {
+  usePublishDynamicGroupMemberIndex,
+  usePublishDynamicGroupMemberIndexFailed,
+} from "../state/dynamicGroupMemberIndex";
 import { useVideoLabelsIndex } from "./useVideoLabelsIndex";
 
-const stream = (sampleId: string) =>
+const stream = (sampleId: string, dynamicGroup: string | null = null) =>
   ({
     labelQuery: () => ({
       sampleId,
       dataset: "ds",
       view: [],
-      dynamicGroup: null,
+      dynamicGroup,
     }),
   }) as unknown as VideoFrameLabelsStream;
 
@@ -83,6 +87,7 @@ describe("useVideoLabelsIndex", () => {
     );
     expect(result.current).toEqual({
       loaded: true,
+      failed: false,
       indexByPath: { "frames.detections": [{ id: "a" }] },
     });
   });
@@ -105,7 +110,11 @@ describe("useVideoLabelsIndex", () => {
     const swappedAt = loadedByRender.length;
     rerender({ stream: stream("s2"), fields: ["frames.detections"] });
     expect(loadedByRender.slice(swappedAt)).not.toContain(true);
-    expect(result.current).toEqual({ loaded: false, indexByPath: {} });
+    expect(result.current).toEqual({
+      loaded: false,
+      failed: false,
+      indexByPath: {},
+    });
 
     await act(async () => {
       second.resolve({ detections: instances("b") });
@@ -113,6 +122,7 @@ describe("useVideoLabelsIndex", () => {
     });
     expect(result.current).toEqual({
       loaded: true,
+      failed: false,
       indexByPath: { "frames.detections": [{ id: "b" }] },
     });
   });
@@ -130,7 +140,11 @@ describe("useVideoLabelsIndex", () => {
     const tornDownAt = loadedByRender.length;
     rerender({ stream: null, fields: ["frames.detections"] });
     expect(loadedByRender.slice(tornDownAt)).not.toContain(true);
-    expect(result.current).toEqual({ loaded: false, indexByPath: {} });
+    expect(result.current).toEqual({
+      loaded: false,
+      failed: false,
+      indexByPath: {},
+    });
   });
 
   it("does not confuse field sets whose names contain the old delimiter", async () => {
@@ -156,5 +170,97 @@ describe("useVideoLabelsIndex", () => {
     expect(h.getVideoLabelsIndex).toHaveBeenLastCalledWith(
       expect.objectContaining({ fields: ["a,frames.b"] }),
     );
+  });
+
+  it("maps a dynamic group's members onto frames once the member order loads", async () => {
+    h.getVideoLabelsIndex.mockResolvedValue({
+      detections: {
+        instances: [
+          {
+            instanceId: "i1",
+            classLabel: "car",
+            persistedIndex: null,
+            instance: null,
+            members: ["m3", "m1", "m2", "gone"],
+            keyframeMembers: ["m2"],
+          },
+        ],
+      },
+    });
+
+    const groupStream = stream("s1", "video-0");
+    const fields = ["frames.detections"];
+    const { result } = renderHook(() => ({
+      index: useVideoLabelsIndex(groupStream, fields),
+      publish: usePublishDynamicGroupMemberIndex(),
+    }));
+    await act(async () => {});
+
+    // The index landed, but frames come from the member order
+    expect(result.current.index).toEqual({
+      loaded: false,
+      failed: false,
+      indexByPath: {},
+    });
+
+    act(() => result.current.publish(["m1", "m2", "m3", "m9"]));
+
+    expect(result.current.index).toEqual({
+      loaded: true,
+      failed: false,
+      indexByPath: {
+        "frames.detections": [
+          {
+            instanceId: "i1",
+            classLabel: "car",
+            persistedIndex: null,
+            instance: null,
+            segments: [[1, 3]],
+            keyframes: [2],
+          },
+        ],
+      },
+    });
+
+    act(() => result.current.publish(null));
+  });
+
+  it("reports a failed fetch as failed, not as an empty index", async () => {
+    h.getVideoLabelsIndex.mockRejectedValue(new Error("boom"));
+
+    const { result } = renderRecording({
+      stream: stream("s1"),
+      fields: ["frames.detections"],
+    });
+    await act(async () => {});
+
+    expect(result.current).toEqual({
+      loaded: true,
+      failed: true,
+      indexByPath: {},
+    });
+  });
+
+  it("reports a dynamic group's failed member order as a failed index", async () => {
+    h.getVideoLabelsIndex.mockResolvedValue({ detections: { instances: [] } });
+
+    const groupStream = stream("s1", "video-0");
+    const fields = ["frames.detections"];
+    const { result } = renderHook(() => ({
+      index: useVideoLabelsIndex(groupStream, fields),
+      publishFailed: usePublishDynamicGroupMemberIndexFailed(),
+    }));
+    await act(async () => {});
+    expect(result.current.index.loaded).toBe(false);
+
+    act(() => result.current.publishFailed(true));
+
+    expect(result.current.index).toEqual({
+      loaded: true,
+      failed: true,
+      indexByPath: {},
+    });
+
+    act(() => result.current.publishFailed(false));
   });
 });

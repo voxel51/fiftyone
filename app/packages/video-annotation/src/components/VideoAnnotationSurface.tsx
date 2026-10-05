@@ -11,7 +11,8 @@ import {
   useEngineSelector,
 } from "@fiftyone/annotation";
 import { Size, Spinner } from "@voxel51/voodo";
-import React, { useMemo, useState } from "react";
+import { getEventBus } from "@fiftyone/events";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
@@ -49,6 +50,11 @@ import {
 } from "./SyntheticLabels";
 import { VideoAnnotationToolbar } from "./VideoAnnotationToolbar";
 import { LighterVideo } from "./LighterVideo";
+import { FrameCache } from "../streams/frameCache";
+import {
+  VideoFrameSource,
+  VideoFrameSourceProvider,
+} from "../streams/videoFrameSource";
 import styles from "./VideoAnnotationSurface.module.css";
 
 /**
@@ -149,7 +155,26 @@ const STRATEGY_REGISTRAR: Record<DecodeStrategy, React.FC<RegistrarProps>> = {
 
 export interface VideoAnnotationSurfaceProps {
   sample: ModalSample;
+  /** The timeline to render, inside the surface's providers. Hosts pass one
+   *  that adds their extensions' ruler overlays. */
+  Timeline?: React.ComponentType<
+    React.ComponentProps<typeof FrameLabelsTracks>
+  >;
 }
+
+/** e2e specs wait on the surface lifting its cover */
+type SurfaceE2EEvents = {
+  "e2e:video-annotation:surface-revealed": undefined;
+};
+
+const RevealedSignal = () => {
+  useEffect(() => {
+    getEventBus<SurfaceE2EEvents>().dispatch(
+      "e2e:video-annotation:surface-revealed",
+    );
+  }, []);
+  return null;
+};
 
 /**
  * Composition root for the video annotation surface. Wires
@@ -166,6 +191,7 @@ export interface VideoAnnotationSurfaceProps {
  */
 export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   sample,
+  Timeline,
 }) => (
   // One mount per sample. Everything below is resolved from the sample at mount
   // and never rebuilt: the frame stream `RegisterDynamicGroupImage` constructs, the
@@ -175,12 +201,13 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   <VideoAnnotationSurfaceForSample
     key={sample.sample._id ?? sample.sample.id}
     sample={sample}
+    Timeline={Timeline}
   />
 );
 
 const VideoAnnotationSurfaceForSample: React.FC<
   VideoAnnotationSurfaceProps
-> = ({ sample }) => {
+> = ({ sample, Timeline = FrameLabelsTracks }) => {
   const labelsMode = useLabelsMode();
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   useReportAnnotationSurface(isImageDynamicGroupVideo ? "dgva" : "video");
@@ -198,6 +225,15 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const dimensions = useDimensions();
   const surfaceHeight = dimensions.bounds?.height ?? 0;
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
+
+  // One frame budget for the surface: the label stream, the bitmap stream and
+  // the frame store all keep their frames in it.
+  const frameCount = prerequisites.frameCount;
+  const frameSource = useMemo(
+    () =>
+      frameCount ? new VideoFrameSource(new FrameCache({ frameCount })) : null,
+    [frameCount],
+  );
 
   // Resolved top-level media URL for the `html` and `extract` sources; the
   // `fetch` source resolves per-frame URLs instead. A dynamic-group sample's
@@ -310,7 +346,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
-          <FrameLabelsTracks
+          <Timeline
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}
@@ -319,6 +355,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
           />
         )}
       </div>
+      {revealed && <RevealedSignal />}
       {!revealed && (
         <div className={styles.cover}>
           <Spinner size={Size.Lg} />
@@ -361,16 +398,18 @@ const VideoAnnotationSurfaceForSample: React.FC<
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
-    <PlaybackProvider snapToFrameOnSettle mode={mode}>
-      <VideoAnnotationHandlerRegistration />
-      {AUDIO_ONLY_STRATEGIES.has(strategy) && (
-        <RegisterTimelineAudio
-          videoSrc={videoSrc}
-          hasAudio={resolution.hasAudio}
-        />
-      )}
-      {registered}
-    </PlaybackProvider>
+    <VideoFrameSourceProvider value={frameSource}>
+      <PlaybackProvider snapToFrameOnSettle mode={mode}>
+        <VideoAnnotationHandlerRegistration />
+        {AUDIO_ONLY_STRATEGIES.has(strategy) && (
+          <RegisterTimelineAudio
+            videoSrc={videoSrc}
+            hasAudio={resolution.hasAudio}
+          />
+        )}
+        {registered}
+      </PlaybackProvider>
+    </VideoFrameSourceProvider>
   );
 };
 

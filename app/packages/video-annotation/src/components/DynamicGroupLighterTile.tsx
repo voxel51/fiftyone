@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { useViewportInitReveal } from "@fiftyone/lighter";
 import React, { useEffect, useRef, useState } from "react";
 import { useStream } from "@fiftyone/playback";
@@ -6,6 +7,10 @@ import { useVideoAnnotationSyncBundle } from "../hooks/useVideoAnnotationSyncBun
 import { DYNAMIC_GROUP_STREAM_ID } from "../utils/ids";
 import type { DynamicGroupImageFrame } from "../streams/DynamicGroupImageStream";
 import styles from "./DynamicGroupLighterTile.module.css";
+
+type FramePaintEventGroup = {
+  "e2e:video-annotation:frame-painted": { frame: number };
+};
 
 interface ImageDimensions {
   w: number;
@@ -67,6 +72,10 @@ function usePaintFrameToCanvas(
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(frame.bitmap, 0, 0);
     ctx.imageSmoothingEnabled = priorImageSmoothing;
+    getEventBus<FramePaintEventGroup>().dispatch(
+      "e2e:video-annotation:frame-painted",
+      { frame: frame.frameNumber },
+    );
 
     if (dims === null || dims.w !== w || dims.h !== h) {
       setDims({ w, h });
@@ -119,7 +128,7 @@ export const DynamicGroupLighterTile: React.FC<{
   }, [revealed, onRevealChange]);
 
   return (
-    <div className={styles.body}>
+    <div className={styles.body} data-lighter-surface>
       <canvas
         ref={frameCanvasRef}
         className={styles.frame}

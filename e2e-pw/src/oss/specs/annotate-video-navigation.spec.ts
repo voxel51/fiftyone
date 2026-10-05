@@ -104,38 +104,26 @@ test.describe.serial("video annotation sample navigation", () => {
     });
 
     // open the modal from the grid so it carries the sample sequence
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      withGrid: true,
-    });
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.videoAnnotate.waitForSurface();
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     const va = modal.videoAnnotate;
     await va.assert.objectTrackCount(1);
     const [firstTrack] = await va.objectTrackIds();
 
     // page forward to the next video sample (ArrowRight = ModalNextSample)
-    await page.keyboard.press("ArrowRight");
-    await expect
-      .poll(async () => {
-        const ids = await va.objectTrackIds();
-        return ids.length === 1 && ids[0] !== firstTrack;
-      })
-      .toBe(true);
-    await va.waitForSurface();
+    await va.navigateSample("next");
+    await va.assert.hasTrack(firstTrack, false);
+    await va.assert.objectTrackCount(1);
     const [secondTrack] = await va.objectTrackIds();
 
     // page back to the first sample
-    await page.keyboard.press("ArrowLeft");
-    await expect
-      .poll(async () => {
-        const ids = await va.objectTrackIds();
-        return ids.length === 1 && ids[0] === firstTrack;
-      })
-      .toBe(true);
-    await va.waitForSurface();
+    await va.navigateSample("previous");
+    await va.assert.hasTrack(firstTrack);
+    await va.assert.objectTrackCount(1);
 
     expect(secondTrack).not.toBe(firstTrack);
     // no "a store for sample X is already registered" (or similar) was thrown

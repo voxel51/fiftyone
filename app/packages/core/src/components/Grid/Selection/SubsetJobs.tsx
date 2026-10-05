@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useSelectionSubsetDisabledReason } from "@fiftyone/state";
 import ActionSurface from "./ActionSurface";
 import { defaultSubsetScope, useOpenSubset } from "./useSubsetScope";
+import { useSelectionShownSignal } from "./e2eSignals";
 import { Notice } from "./Notice";
 import { plural } from "./format";
 import styles from "./SelectionTray.module.css";
@@ -42,6 +43,16 @@ export function SubsetJobStatus({
   const [error, setError] = useState<string>();
   const openSubset = useOpenSubset(datasetId);
   const current = jobs.find((item) => item.job.id === replacementId) ?? record;
+  useSelectionShownSignal(
+    "e2e:selection:subset-job",
+    current
+      ? {
+          subsetName: current.subsetName,
+          state: current.job.state,
+          result: Boolean(current.job.result),
+        }
+      : null,
+  );
   if (!current) return null;
   const { job, subsetName, subsetId, connectionError } = current;
   const running = selectionJobActive(job);

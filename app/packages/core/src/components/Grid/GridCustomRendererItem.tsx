@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
   type SampleRendererGridClickBehavior,
@@ -12,6 +13,11 @@ import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
 import { TileLanes } from "./TileLanes";
+
+/** e2e specs wait on a custom-rendered tile committing */
+type GridCustomRendererE2EEvents = {
+  "e2e:grid:custom-renderer-mounted": undefined;
+};
 
 type GridCustomRendererItemConfig = {
   pluginName: string;
@@ -173,6 +179,12 @@ const GridCustomRendererWrapper = ({
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
+
+  React.useEffect(() => {
+    getEventBus<GridCustomRendererE2EEvents>().dispatch(
+      "e2e:grid:custom-renderer-mounted",
+    );
+  }, []);
   const passThroughGridActivation = clickBehavior === "passthrough";
 
   return (

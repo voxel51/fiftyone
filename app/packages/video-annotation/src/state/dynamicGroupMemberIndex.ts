@@ -23,3 +23,15 @@ export const useDynamicGroupMemberIndex = (): DynamicGroupMemberIndex | null =>
 export const usePublishDynamicGroupMemberIndex = (): ((
   index: DynamicGroupMemberIndex | null,
 ) => void) => useSetAtom(memberIndexAtom);
+
+/** Internal — true while the playing group's member order failed to load. */
+const memberIndexFailedAtom: PrimitiveAtom<boolean> = atom(false);
+
+/** Whether the member order failed to load, so frames can't map to members. */
+export const useDynamicGroupMemberIndexFailed = (): boolean =>
+  useAtomValue(memberIndexFailedAtom);
+
+/** Publisher — `useDynamicGroupIndex` feeds this. */
+export const usePublishDynamicGroupMemberIndexFailed = (): ((
+  failed: boolean,
+) => void) => useSetAtom(memberIndexFailedAtom);

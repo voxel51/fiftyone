@@ -41,4 +41,24 @@ describe("useFo3dSceneBounds", () => {
 
     expect(useFo3dBoundsMock.mock.calls[1][1]).toBe(true);
   });
+
+  it("is not resolved while bounds are recomputed, even with an earlier box", () => {
+    useFo3dBoundsMock.mockReturnValue({
+      boundingBox: {} as never,
+      recomputeBounds: vi.fn(),
+      isComputing: true,
+    });
+
+    const { result } = renderHook(() =>
+      useFo3dSceneBounds({
+        assetsGroupRef: { current: null },
+        foScene: {} as never,
+        isParsingFo3d: false,
+        rootAssetCount: 2,
+        isThreeJsLoading: false,
+      }),
+    );
+
+    expect(result.current.isBoundsResolved).toBe(false);
+  });
 });

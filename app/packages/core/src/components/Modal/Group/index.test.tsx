@@ -109,6 +109,10 @@ vi.mock("@fiftyone/components", () => ({
   ),
 }));
 
+vi.mock("../VideoTimelineExtensions", () => ({
+  AnnotateTimelineExtensions: () => null,
+}));
+
 vi.mock("./GroupSample3d", () => ({
   default: () => <div>group-sample-3d</div>,
 }));

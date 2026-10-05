@@ -38,6 +38,8 @@ export interface LabelBuilders {
   segmentation(fields: JSONObject): JSONObject;
   /** A `Heatmap`; pass a `map` from `helpers.valueMap`. */
   heatmap(fields: JSONObject): JSONObject;
+  /** A `Regression` carrying a numeric `value`. */
+  regression(fields: JSONObject): JSONObject;
   /** A `TemporalDetection` with a `[first, last]` frame `support`. */
   temporalDetection(fields: JSONObject): JSONObject;
   /** A `TemporalDetections` list field holding `items`. */
@@ -72,6 +74,7 @@ export const makeLabelBuilders = (): LabelBuilders => {
       list("Classifications", "classifications", items),
     segmentation: (fields) => document("Segmentation", fields),
     heatmap: (fields) => document("Heatmap", fields),
+    regression: (fields) => document("Regression", fields),
     temporalDetection: (fields) => document("TemporalDetection", fields),
     temporalDetections: (items) =>
       list("TemporalDetections", "detections", items),

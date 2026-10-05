@@ -71,9 +71,7 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     modal,
   }) => {
     // ── 1. Enter annotate → segmentation → AI ───────────────────────────────
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
@@ -83,12 +81,11 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
 
     // ── 2. Place a positive point — inference auto-fires on context change ──
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so arm the autosave response that will carry it
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.click(0.5, 0.5);
-
+    // the label exists, so wait on the save that carries it
     // ── 3. Wait for the inferred detection to persist ───────────────────────
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.click(0.5, 0.5),
+    );
 
     // The inferred detection is left selected; the create toolbar is hidden
     // while editing, so exit via the edit form rather than the toolbar.
@@ -101,20 +98,22 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       const freshPage = await context.newPage();
       await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
         searchParams: new URLSearchParams({ id: sampleId }),
+        modalSample: "loaded",
       });
       const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-      await fresh.waitForSampleLoadDomAttribute();
-      await fresh.sidebar.switchMode("annotate");
+      await fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      );
       const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+      expect(await rows.count()).toBe(1);
 
-      // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
-      // Loose lower bound catches "field saved but mask empty".
-      await rows.first().click();
+      // the mock worker answers with an 8x8 all-foreground mask at box
+      // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
+      await rows.click();
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
+      await fresh.sampleCanvas.assert.hasMediaScreenshot(
+        "seg-ai-persisted.png",
+      );
     } finally {
       await context.close();
     }

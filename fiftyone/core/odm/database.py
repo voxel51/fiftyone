@@ -373,7 +373,8 @@ def aggregate(
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``motor.motor_asyncio.AsyncIOMotorCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``, or a list of
+            collections, one per pipeline
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
         hints (None): a corresponding index hint or list of index hints for
             each pipeline
@@ -401,40 +402,45 @@ def aggregate(
     if maxTimeMS:
         kwargs["maxTimeMS"] = maxTimeMS
 
-    if isinstance(collection, mtr.AsyncIOMotorCollection):
+    if isinstance(collection, list):
+        collections = collection
+    else:
+        collections = [collection] * num_pipelines
+
+    if collections and isinstance(collections[0], mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             if hints[0]:
                 kwargs["hint"] = hints[0]
 
-            return collection.aggregate(pipelines[0], **kwargs)
+            return collections[0].aggregate(pipelines[0], **kwargs)
 
         return _do_async_pooled_aggregate(
-            collection, pipelines, hints, **kwargs
+            collections, pipelines, hints, **kwargs
         )
 
     if num_pipelines == 1:
         if hints[0]:
             kwargs["hint"] = hints[0]
 
-        result = collection.aggregate(pipelines[0], **kwargs)
+        result = collections[0].aggregate(pipelines[0], **kwargs)
         if _stream:
             return result
 
         return [result] if is_list else result
 
     return _do_pooled_aggregate(
-        collection, pipelines, hints, _stream=_stream, **kwargs
+        collections, pipelines, hints, _stream=_stream, **kwargs
     )
 
 
 def _do_pooled_aggregate(
-    collection, pipelines, hints, _stream=False, **kwargs
+    collections, pipelines, hints, _stream=False, **kwargs
 ):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
 
     def _aggregate(args):
-        pipeline, hint = args
+        collection, pipeline, hint = args
         next_kwargs = dict(**kwargs)
         if hint:
             next_kwargs["hint"] = hint
@@ -451,22 +457,26 @@ def _do_pooled_aggregate(
                 allowDiskUse=True,
                 **({"hint": hint} if hint is not None else {}),
             )
-            for pipeline, hint in zip(pipelines, hints)
+            for collection, pipeline, hint in zip(
+                collections, pipelines, hints
+            )
         ]
 
     with ThreadPool(processes=len(pipelines)) as pool:
         return pool.map(
             _aggregate,
-            zip(pipelines, hints),
+            zip(collections, pipelines, hints),
             chunksize=1,
         )
 
 
-async def _do_async_pooled_aggregate(collection, pipelines, hints, **kwargs):
+async def _do_async_pooled_aggregate(collections, pipelines, hints, **kwargs):
     return await asyncio.gather(
         *[
             _do_async_aggregate(collection, pipeline, hint, **kwargs)
-            for pipeline, hint in zip(pipelines, hints)
+            for collection, pipeline, hint in zip(
+                collections, pipelines, hints
+            )
         ]
     )
 

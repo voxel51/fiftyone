@@ -1,5 +1,6 @@
 import styles from "./Grid.module.css";
 
+import { getEventBus } from "@fiftyone/events";
 import { freeVideos } from "@fiftyone/looker";
 import type Spotlight from "@fiftyone/spotlight";
 import type { Rejected } from "@fiftyone/spotlight";
@@ -11,6 +12,13 @@ import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
 import type { LookerCache } from "./types";
 import type { ScrollLocation } from "./useScrollLocation";
+
+/** e2e specs count grid teardowns to assert one remount per refresh */
+type GridE2EEvents = {
+  "e2e:grid:unmount": { id: string; width: number | undefined };
+  /** the grid's first page is shown, as `tiles` tiles */
+  "e2e:grid:mount": { tiles: number };
+};
 
 export default ({
   id,
@@ -58,6 +66,9 @@ export default ({
       document.dispatchEvent(
         new CustomEvent("grid-mount", { detail: detail() }),
       );
+      getEventBus<GridE2EEvents>().dispatch("e2e:grid:mount", {
+        tiles: cache.shown.size,
+      });
     };
 
     const rejected = (event: Rejected) => {
@@ -78,9 +89,7 @@ export default ({
     return () => {
       clearTimeout(timeout);
       freeVideos();
-      document.dispatchEvent(
-        new CustomEvent("grid-unmount", { detail: detail() }),
-      );
+      getEventBus<GridE2EEvents>().dispatch("e2e:grid:unmount", detail());
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);

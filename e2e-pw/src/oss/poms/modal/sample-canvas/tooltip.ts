@@ -1,5 +1,5 @@
 import { Page, expect } from "src/oss/fixtures";
-import { isElementCoveredBy } from "src/oss/utils";
+import { collapseWhitespace, isElementCoveredBy } from "src/oss/utils";
 import type { EventUtils } from "src/shared/event-utils";
 
 /**
@@ -67,11 +67,22 @@ export class TooltipPom {
     await this.locked.getByTestId("quick-edit").click();
   }
 
-  /**
-   * Toggle the mode of the tooltip. Locked or unlocked
-   */
+  /** Run `action` (a hover) and resolve once the tooltip has shown */
+  afterShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(
+      "e2e:modal:tooltip",
+      action,
+      (e) => (e.detail as { visible: boolean }).visible,
+    );
+  }
+
+  /** Lock the shown tooltip; Control locks it and never unlocks it */
   async toggleLock() {
-    await this.page.keyboard.press("Control");
+    await this.eventUtils.after(
+      "e2e:modal:tooltip",
+      () => this.page.keyboard.press("Control"),
+      (e) => (e.detail as { locked: boolean }).locked,
+    );
   }
 }
 
@@ -87,9 +98,11 @@ class TooltipAsserter {
    * @param locked Whether the tooltip is expected to be locked or not
    */
   async isLocked(locked = true) {
-    return locked
-      ? await expect(this.tooltipPom.locked).toBeVisible()
-      : await expect(this.tooltipPom.locked).toBeAttached({ attached: false });
+    if (locked) {
+      expect(await this.tooltipPom.locked.isVisible()).toBe(true);
+    } else {
+      expect(await this.tooltipPom.locked.count()).toBe(0);
+    }
   }
 
   /**
@@ -98,10 +111,7 @@ class TooltipAsserter {
    * @param visible Whether it is expected to be visibile or not
    */
   async isVisible(visible = true) {
-    const locator = this.tooltipPom.content;
-    return visible
-      ? await expect(locator).toBeVisible()
-      : await expect(locator).toBeHidden();
+    expect(await this.tooltipPom.content.isVisible()).toBe(visible);
   }
 
   /**
@@ -110,7 +120,9 @@ class TooltipAsserter {
    * @param field The field name
    */
   async hasField(field: string) {
-    await expect(this.tooltipPom.title).toHaveText(field);
+    expect(collapseWhitespace(await this.tooltipPom.title.textContent())).toBe(
+      field,
+    );
   }
 
   /**
@@ -123,8 +135,8 @@ class TooltipAsserter {
   async hasAttribute(attribute: string, value: string, hidden?: boolean) {
     const locator = this.tooltipPom.getAttribute(attribute, hidden);
 
-    await expect(locator).toBeVisible();
-    await expect(locator).toHaveText(value);
+    expect(await locator.isVisible()).toBe(true);
+    expect(collapseWhitespace(await locator.textContent())).toBe(value);
   }
 
   /**

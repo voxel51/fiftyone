@@ -17,6 +17,7 @@ const refs = vi.hoisted(() => ({
   engine: null as unknown as {
     updateLabel: (...args: unknown[]) => void;
   } & Record<string, unknown>,
+  frameSlots: {} as Record<string, { instanceId: string; frame: number }>,
 }));
 
 vi.mock("recoil", async (importOriginal) => {
@@ -48,6 +49,10 @@ vi.mock("../../state", () => ({
 
 // Trigger atom invalidates jotai-cached derived atoms when refs.visibleSchemas mutates.
 const visibleSchemasTrigger = atom(0);
+
+vi.mock("./useFrameSingletonSlot", () => ({
+  useFrameSingletonSlot: () => (path: string) => refs.frameSlots[path],
+}));
 
 vi.mock("../../useLabels", () => ({
   labelsByPath: atom<Record<string, unknown>>({}),
@@ -121,6 +126,7 @@ beforeEach(() => {
   };
   refs.sampleId = "SAMPLE_ID";
   refs.engine = { updateLabel: vi.fn() } as typeof refs.engine;
+  refs.frameSlots = {};
   resetAtoms();
 });
 
@@ -437,6 +443,41 @@ describe("useAnnotationContext.createNew (Classification persist)", () => {
     expect(partial._cls).toBe("Classification");
     expect(partial._id).toBe("GENERATED_ID");
     expect(partial.label).toBe("dog");
+  });
+
+  it("writes a frame field's value at the playhead frame, addressed by field", () => {
+    refs.schemas["frames.cls"] = {
+      type: "Classification",
+      label_schema: { classes: ["dog"] },
+    };
+    refs.frameSlots["frames.cls"] = {
+      instanceId: "field:frames.cls",
+      frame: 4,
+    };
+    setVisible(["frames.cls"]);
+
+    const { result } = renderHook(() => useAnnotationContext());
+
+    act(() => {
+      result.current.createNew("Classification");
+    });
+
+    const [ref, partial] = (
+      refs.engine.updateLabel as unknown as { mock: { calls: unknown[][] } }
+    ).mock.calls[0] as [Record<string, unknown>, Record<string, unknown>];
+    expect(ref).toEqual({
+      sample: "SAMPLE_ID",
+      path: "frames.cls",
+      instanceId: "field:frames.cls",
+      frame: 4,
+    });
+    expect(partial).toMatchObject({ _cls: "Classification", label: "dog" });
+    const overlayFactory = refs.lighter as {
+      overlayFactory: { create: { mock: { calls: unknown[][] } } };
+    };
+    expect(overlayFactory.overlayFactory.create.mock.calls[0][1]).toMatchObject(
+      { field: "frames.cls", id: "field:frames.cls" },
+    );
   });
 
   it("does not write to the engine for a Detection create (no draft commit)", () => {

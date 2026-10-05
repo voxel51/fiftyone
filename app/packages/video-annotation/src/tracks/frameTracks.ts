@@ -115,7 +115,7 @@ export interface PerInstanceLabel {
 
 /** Resolve a row's color from its label and the field path it lives on. */
 export type PerInstanceColorResolver = (
-  /** `null` asks for the field's color: a Segmentation or Heatmap row. */
+  /** `null` asks for the field's color: a singleton field's row. */
   label: PerInstanceLabel | null,
   path: string,
 ) => string;
@@ -649,7 +649,7 @@ function toTrack(
     })),
   ];
 
-  // A Segmentation or Heatmap is one row per field, with no class or index
+  // A singleton field is one row, with no class or index
   const field =
     id === singletonAddressId(state.path) ? toSchemaField(state.path) : null;
 

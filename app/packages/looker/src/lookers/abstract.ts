@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { Lookers } from "@fiftyone/state";
 import {
   jotaiStore,
@@ -30,7 +31,7 @@ import {
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, Overlay } from "../overlays/base";
+import { CONTAINS, Overlay, RegularLabel } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import { buildThumbnailSelectionDetail } from "../selection";
 import {
@@ -58,8 +59,22 @@ import {
 } from "../util";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
+import { RENDER_STATUS_PENDING } from "../worker/shared";
 import { LookerUtils } from "./shared";
 import { retrieveTransferables } from "./utils";
+
+/** e2e specs wait on a looker having drawn its sample */
+type LookerE2EEvents = {
+  "e2e:looker:canvas-loaded": {
+    sampleFilepath: string;
+    sampleId: string;
+    thumbnail: boolean;
+    /** a reload or worker job is still painting labels, so a later draw adds them */
+    labelsPending: boolean;
+    /** the drawn overlays as sorted `field:label` pairs, comma-joined */
+    labels: string;
+  };
+};
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -112,6 +127,8 @@ export abstract class AbstractLooker<
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
   private isSampleUpdating: boolean = false;
+  private isSampleReloadScheduled: boolean = false;
+  private labelPaintingJobs = 0;
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
@@ -509,12 +526,26 @@ export abstract class AbstractLooker<
         ctx.globalAlpha = 1;
 
         ctx.canvas.setAttribute("canvas-loaded", "true");
-        ctx.canvas.dispatchEvent(
-          new CustomEvent("canvas-loaded", {
-            detail: { sampleFilepath: this.sample.filepath },
-            bubbles: true,
-          }),
-        );
+        getEventBus<LookerE2EEvents>().dispatch("e2e:looker:canvas-loaded", {
+          sampleFilepath: this.sample.filepath,
+          sampleId: this.sample.id,
+          thumbnail: this.state.config.thumbnail,
+          labelsPending:
+            this.isSampleReloadScheduled ||
+            this.isSampleUpdating ||
+            this.labelPaintingJobs > 0 ||
+            this.currentOverlays.some(
+              (overlay) =>
+                overlay.label?._renderStatus === RENDER_STATUS_PENDING,
+            ),
+          labels: this.currentOverlays
+            .map(
+              (overlay) =>
+                `${overlay.field}:${(overlay.label as RegularLabel)?.label}`,
+            )
+            .sort()
+            .join(","),
+        });
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });
@@ -662,7 +693,9 @@ export abstract class AbstractLooker<
     let timeoutId: ReturnType<typeof setTimeout>;
     return (sample: Sample) => {
       clearTimeout(timeoutId);
+      this.isSampleReloadScheduled = true;
       timeoutId = setTimeout(() => {
+        this.isSampleReloadScheduled = false;
         // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
         // this crashes the app. this is a bug and should be fixed
         if (!this.sample) {
@@ -675,7 +708,12 @@ export abstract class AbstractLooker<
 
         this.isSampleUpdating = true;
         try {
-          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+          // a reload requested before the first load returned has no sample;
+          // posting none would transfer away the painted bitmaps for nothing
+          this.loadSample(
+            sample ?? this.sample,
+            retrieveTransferables(this.sampleOverlays),
+          );
         } catch (error) {
           this.isSampleUpdating = false;
           console.error(error);
@@ -700,10 +738,14 @@ export abstract class AbstractLooker<
       return;
     }
 
+    this.labelPaintingJobs++;
     this.asyncLabelsRenderingManager
       .enqueueLabelPaintingJob({
         sample: this.sample,
         labels: renderLabels,
+      })
+      .finally(() => {
+        this.labelPaintingJobs--;
       })
       .then(({ sample, coloring }) => {
         this.sample = sample;
@@ -936,6 +978,8 @@ export abstract class AbstractLooker<
         this.cleanOverlays();
         this.sample = sample;
         this.loadOverlays(sample);
+        // cleared before the update so its draw reports the labels painted
+        this.isSampleUpdating = false;
         this.updater((prev) => ({
           ...prev,
           overlaysPrepared: true,
@@ -948,8 +992,6 @@ export abstract class AbstractLooker<
         }));
 
         labelsWorker.removeEventListener("message", listener);
-
-        this.isSampleUpdating = false;
       }
     };
 

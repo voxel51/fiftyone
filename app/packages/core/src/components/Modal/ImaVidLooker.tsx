@@ -1,10 +1,6 @@
-import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
 import type { FoTimelineConfig } from "@fiftyone/playback";
 import {
-  PLAYHEAD_STATE_BUFFERING,
-  PLAYHEAD_STATE_PAUSED,
-  PLAYHEAD_STATE_PLAYING,
   useCreateTimeline,
   useDefaultTimelineNameImperative,
   useTimeline,
@@ -13,6 +9,7 @@ import { Timeline } from "@fiftyone/playback/src/views/Timeline/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import type { BufferRange } from "@fiftyone/utilities";
+import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -29,6 +26,8 @@ import {
   useLookerOptionsUpdate,
   useModalContext,
 } from "./hooks";
+import { loadImaVidRange } from "./imaVidLoadRange";
+import { dispatchLookerAttached } from "./lookerAttached";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
@@ -53,8 +52,6 @@ export const ImaVidLookerReact = React.memo(
     );
 
     const { sample } = sampleDataWithExtraParams;
-
-    const theme = useTheme();
     const initialRef = useRef<boolean>(true);
     const baseLookerOptions = fos.useLookerOptions(true);
 
@@ -111,6 +108,7 @@ export const ImaVidLookerReact = React.memo(
     const handleError = useErrorHandler();
 
     const updateLookerOptions = useLookerOptionsUpdate();
+    useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
     useEventHandler(looker, "showOverlays", useShowOverlays());
     useEventHandler(looker, "reset", () => {
       setReset((c) => !c);
@@ -149,6 +147,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEffect(() => {
       looker.attach(id);
+      dispatchLookerAttached();
     }, [looker, id]);
 
     useEventHandler(looker, "clear", useClearSelectedLabels());
@@ -156,73 +155,13 @@ export const ImaVidLookerReact = React.memo(
     useKeyEvents(initialRef, sample._id, looker);
 
     const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-      ref.current?.dispatchEvent(
-        new CustomEvent(`looker-attached`, { bubbles: true }),
-      );
-    }, [ref]);
 
     const loadRange = React.useCallback(
-      async (range: Readonly<BufferRange>) => {
-        const storeBufferManager =
-          imaVidLookerRef.current.frameStoreController.storeBufferManager;
-        const fetchBufferManager =
-          imaVidLookerRef.current.frameStoreController.fetchBufferManager;
-
-        if (storeBufferManager.containsRange(range)) {
-          return;
-        }
-
-        const unprocessedStoreBufferRange =
-          storeBufferManager.getUnprocessedBufferRange(range);
-        const unprocessedBufferRange =
-          fetchBufferManager.getUnprocessedBufferRange(
-            unprocessedStoreBufferRange,
-          );
-
-        if (!unprocessedBufferRange) {
-          return;
-        }
-
-        // if looker is playing, don't change playhead to buffering status
-        // we indicate buffering status in status bar
-        if (getPlayHeadState() !== PLAYHEAD_STATE_PLAYING) {
-          setPlayHeadState(PLAYHEAD_STATE_BUFFERING);
-        }
-
-        imaVidLookerRef.current.frameStoreController.enqueueFetch(
-          unprocessedBufferRange,
-        );
-
-        imaVidLookerRef.current.frameStoreController.resumeFetch();
-
-        return new Promise<void>((resolve) => {
-          const fetchMoreListener = (e: CustomEvent) => {
-            if (
-              e.detail.id === imaVidLookerRef.current.frameStoreController.key
-            ) {
-              if (storeBufferManager.containsRange(unprocessedBufferRange)) {
-                // if we were buffering, set playhead state to playing
-                if (getPlayHeadState() === PLAYHEAD_STATE_BUFFERING) {
-                  setPlayHeadState(PLAYHEAD_STATE_PAUSED);
-                }
-
-                resolve();
-
-                window.removeEventListener(
-                  "fetchMore",
-                  fetchMoreListener as EventListener,
-                );
-              }
-            }
-          };
-
-          window.addEventListener(
-            "fetchMore",
-            fetchMoreListener as EventListener,
-          );
-        });
-      },
+      (range: Readonly<BufferRange>) =>
+        loadImaVidRange(imaVidLookerRef.current.frameStoreController, range, {
+          get: getPlayHeadState,
+          set: setPlayHeadState,
+        }),
       [],
     );
 
@@ -363,7 +302,7 @@ export const ImaVidLookerReact = React.memo(
             width: "100%",
             height: "100%",
             minHeight: 0,
-            background: theme.background.level2,
+            background: getColorCssVar(BackgroundColor.Card),
             position: "relative",
           }}
         />

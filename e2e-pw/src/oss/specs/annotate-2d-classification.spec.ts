@@ -33,14 +33,16 @@ const expectPersistedClassification = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.assert.isOpen();
-    await freshModal.sidebar.switchMode("annotate");
+    await freshModal.sidebar.annotate.afterLabelList(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
     const rows = freshModal.sidebar.annotate.labelRowsFor(FIELD);
-    await expect(rows).toHaveCount(label === null ? 0 : 1);
+    expect(await rows.count()).toBe(label === null ? 0 : 1);
     if (label !== null) {
-      await expect(rows).toHaveAttribute("data-cy-label", label);
+      expect(await rows.getAttribute("data-cy-label")).toBe(label);
     }
   } finally {
     await context.close();
@@ -79,8 +81,8 @@ test.describe.serial("2D annotation classification", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
   });
@@ -96,10 +98,10 @@ test.describe.serial("2D annotation classification", () => {
     // the new classification opens its edit form; choosing a (non-default)
     // class commits. "cloudy" is the 2nd class — distinct from the pre-filled
     // default — so this is a real value change, not a no-op.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "cloudy");
-    await saved;
 
     // true round-trip: the field holds the chosen class
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
@@ -111,15 +113,15 @@ test.describe.serial("2D annotation classification", () => {
     modal,
   }) => {
     await modal.sidebar.annotate.createClassification();
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
 
     // the new classification is selected (form open) — delete it.
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
     await expectPersistedClassification(browser, fiftyoneLoader, null);
   });
 
@@ -132,19 +134,17 @@ test.describe.serial("2D annotation classification", () => {
     modal,
   }) => {
     await modal.sidebar.annotate.createClassification();
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
 
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
 
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
   });
 });

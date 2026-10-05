@@ -1,5 +1,6 @@
-import { expect, Page } from "src/oss/fixtures";
-import type { EventUtils } from "src/shared/event-utils";
+import { expect, Locator, Page } from "src/oss/fixtures";
+import { expectScreenshot } from "src/oss/utils/screenshot";
+import type { EventUtils, ObservedEvent } from "src/shared/event-utils";
 import { ToolbarPom } from "./toolbar";
 import { TooltipPom } from "./tooltip";
 
@@ -8,6 +9,13 @@ import { TooltipPom } from "./tooltip";
  * center. Used by {@link SampleCanvasPom.clickEmptyArea}.
  */
 const EMPTY_AREA = 0.05;
+
+/** Events each hover affordance sends with `{ visible }` as it shows and hides */
+const HOVER_AFFORDANCES = [
+  "e2e:modal:lighter-toolbar",
+  "e2e:modal:sample-checkbox",
+  "e2e:modal:tooltip",
+] as const;
 
 export interface Box {
   x: number;
@@ -29,6 +37,9 @@ export enum SampleCanvasType {
  * All operations use relative [0, 1] coordinates with respect to container,
  * and not the media within it.
  */
+// one wheel gesture of this size zooms Lighter about 1.5x
+const ZOOM_IN_WHEEL_DELTA = 125;
+
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
   #box?: Box;
@@ -171,33 +182,24 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
-   * @param cursor An optional cursor value to expect after moving. When
-   *   provided, the move is retried until the cursor matches. This is
-   *   necessary because the cursor is event-driven — it only updates when a
-   *   mouse event fires — so the underlying state (e.g. detection mode) may
-   *   not have settled yet on the first move attempt.
+   * @param cursor An optional cursor the canvas must show after the move
    */
   async move(x: number, y: number, cursor?: string) {
     const xy = await this.#toScreenCoordinates(x, y);
     this.#mouseX = xy.x;
     this.#mouseY = xy.y;
 
-    if (cursor) {
-      // The cursor flag only updates on mouse events, so it can hold a stale
-      // value from a previous hover (e.g. a just-clicked sidebar button).
-      // Reset it so the gate below is only satisfied by a fresh hover-driven
-      // update at the target position — otherwise the click can fire before
-      // the canvas has rendered the element the test intends to hit.
-      await this.page.evaluate(() => {
-        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = "";
-      });
-      await expect(async () => {
-        await this.page.mouse.move(xy.x, xy.y);
-        await this.assert.hasCursor(cursor);
-      }).toPass();
-    } else {
+    if (!cursor) {
       await this.page.mouse.move(xy.x, xy.y);
+      return;
     }
+    // Lighter writes its canvas cursor on each move, and a drawing mode
+    // stamps its own when it installs, even after the move
+    await this.eventUtils.after(
+      "e2e:lighter:cursor",
+      () => this.page.mouse.move(xy.x, xy.y),
+      (e) => (e.detail as { cursor: string }).cursor === cursor,
+    );
   }
 
   /**
@@ -241,40 +243,90 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Wait for a drawing tool to be armed on the scene.
-   *
-   * `Scene2D.enterInteractiveMode` stamps the installed handler's own cursor
-   * onto the canvas as it installs it, and that install happens in a React
-   * effect that runs *after* the mode flag flips. Clicks fired on the same
-   * tick as the toolbar button therefore reach no handler at all: nothing is
-   * drawn, no request is sent, and the edit form never opens.
-   *
-   * @param cursor The cursor the armed handler advertises (the polyline and
-   *   detection creation handlers use "crosshair")
+   * Zoom the Lighter view in about 1.5x at the pointer as one wheel gesture,
+   * returning once Lighter has applied it
    */
-  async waitForDrawingCursor(cursor = "crosshair") {
-    await expect(
-      this.page.getByTestId("lighter-sample-renderer-canvas"),
-    ).toHaveCSS("cursor", cursor);
+  async zoomIn() {
+    await this.eventUtils.after("lighter:zoomed", () =>
+      this.page.mouse.wheel(0, -ZOOM_IN_WHEEL_DELTA),
+    );
   }
 
   /**
-   * Wait for the cursor to change
+   * The Lighter canvas, shared by the image and video surfaces
    */
-  async waitForCursorChange() {
-    const armed = await this.eventUtils.arm("cursor-change");
-    await armed.received;
+  get lighterCanvas() {
+    return this.page.getByTestId("lighter-sample-renderer-canvas");
   }
 
   /**
-   * Move the mouse to the right edge of the viewport (e.g. to avoid tooltips in
-   * screenshots).
+   * Reset Lighter zoom and pan with the Annotate keyboard shortcut
    */
-  async moveMouseToViewportEdge() {
-    const viewport = this.page.viewportSize();
-    if (viewport) {
-      await this.page.mouse.move(viewport.width - 1, viewport.height / 2);
+  async resetZoomPan() {
+    await this.page.keyboard.press("r");
+  }
+
+  /**
+   * Park the mouse on the modal backdrop beside its content, where nothing
+   * reacts to hover, so tooltips and hover highlights stay out of screenshots
+   */
+  async parkMouse() {
+    const content = await this.page.getByTestId("modal-content").boundingBox();
+    await this.page.mouse.move(content.x / 2, content.y + content.height / 2);
+    expect(
+      await this.page.locator(":hover").last().getAttribute("data-cy"),
+    ).toBe("modal");
+  }
+
+  /**
+   * Park the mouse and resolve once every hover affordance that was showing
+   * has hidden; ones already hidden send nothing.
+   */
+  async prepareForScreenshot() {
+    const latest = await this.eventUtils.latest(HOVER_AFFORDANCES);
+    const hides = HOVER_AFFORDANCES.filter(
+      (event) => latest[event]?.visible === true,
+    ).map((events) => ({
+      events,
+      predicate: (e: ObservedEvent) =>
+        (e.detail as { visible?: boolean })?.visible === false,
+    }));
+    await this.eventUtils.afterAll(hides, () => this.parkMouse());
+  }
+
+  /** Hover a label at relative `x`, `y`; resolves once its tooltip shows */
+  async hoverLabel(x: number, y: number) {
+    await this.tooltip.afterShown(() => this.move(x, y));
+  }
+
+  /**
+   * Hover the canvas center; resolves once the Lighter toolbar the hover
+   * mounts is there
+   */
+  async revealToolbar() {
+    await this.eventUtils.after(
+      "e2e:modal:lighter-toolbar",
+      () => this.move(0.5, 0.5),
+      (e) => (e.detail as { visible?: boolean })?.visible === true,
+    );
+  }
+
+  /**
+   * Run `action` (a mode switch or a quick edit) and resolve once the `type`
+   * renderer it switches to has shown its sample
+   */
+  async afterRenderer<T>(
+    type: SampleCanvasType.LIGHTER | SampleCanvasType.LOOKER,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    if (type === SampleCanvasType.LIGHTER) {
+      return this.eventUtils.after("e2e:modal:lighter-revealed", action);
     }
+    return this.eventUtils.after(
+      "e2e:looker:canvas-loaded",
+      action,
+      (e) => !(e.detail as { thumbnail: boolean }).thumbnail,
+    );
   }
 
   async #toScreenCoordinates(x: number, y: number) {
@@ -292,6 +344,9 @@ export class SampleCanvasPom {
     };
   }
 }
+
+/** The modal content's corner radius, in px */
+const MODAL_RADIUS = 8;
 
 /**
  * Sample canvas asserter
@@ -315,15 +370,33 @@ class SampleCanvasAsserter {
    * @param name the name of the screenshot
    */
   async hasScreenshot(name: string) {
-    await expect(this.sampleCanvasPom.checkbox).toBeHidden();
-    await this.sampleCanvasPom.tooltip.assert.isVisible(false);
-    await this.sampleCanvasPom.moveMouseToViewportEdge();
-    await this.sampleCanvasPom.toolbar.assert.isVisible(false);
-    await this.sampleCanvasPom.page.addStyleTag({
-      content: ".segmentation-toolbar { display: none !important; }",
-    });
-    await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
-      maxDiffPixelRatio: 0.0,
+    await this.#hasScreenshot(this.sampleCanvasPom.locator, name);
+  }
+
+  /**
+   * Does the media, with the labels Lighter paints over it, match this
+   * screenshot; no surrounding controls (timeline, toolbars) are captured
+   *
+   * @param name the name of the screenshot
+   */
+  async hasMediaScreenshot(name: string) {
+    await this.#hasScreenshot(
+      this.sampleCanvasPom.locator.locator("[data-lighter-surface]"),
+      name,
+    );
+  }
+
+  async #hasScreenshot(target: Locator, name: string) {
+    await this.sampleCanvasPom.prepareForScreenshot();
+    // a Lighter frame paints after the state that caused it, so capture the
+    // next one; a looker draws synchronously when its state changes
+    if ((await this.sampleCanvasPom.lighterCanvas.count()) > 0) {
+      await this.sampleCanvasPom.eventUtils.next("e2e:lighter:frame-painted");
+    }
+    // the modal's rounded corners antialias differently run to run
+    await expectScreenshot(target, name, {
+      inset: MODAL_RADIUS,
+      style: ".segmentation-toolbar { display: none !important; }",
     });
   }
 
@@ -332,8 +405,10 @@ class SampleCanvasAsserter {
    *
    * @param name The sample canvas type, e.g. "lighter"
    */
-  is(type: SampleCanvasType) {
-    return expect(this.sampleCanvasPom.locator.getByTestId(type)).toBeVisible();
+  async is(type: SampleCanvasType) {
+    expect(
+      await this.sampleCanvasPom.locator.getByTestId(type).isVisible(),
+    ).toBe(true);
   }
 }
 

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { EventDispatcher } from "./dispatcher";
+import { EventDispatcher, tapAllEvents } from "./dispatcher";
 
 type TestEventGroup = {
   "test:eventA": { id: string; name: string };
   "test:eventB": { value: number };
   "test:eventC": undefined;
   "test:eventD": null;
+  "e2e:signal": { id: string };
 };
 
 describe("EventDispatcher", () => {
@@ -612,5 +613,78 @@ describe("EventDispatcher", () => {
       expect(asyncHandler).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
     });
+  });
+});
+
+describe("tapAllEvents", () => {
+  test("observes dispatches on every dispatcher, with or without handlers", () => {
+    const tap = vi.fn();
+    const off = tapAllEvents(tap);
+    const a = new EventDispatcher<TestEventGroup>();
+    const b = new EventDispatcher<TestEventGroup>();
+
+    a.dispatch("test:eventB", { value: 1 });
+    b.on("test:eventC", vi.fn());
+    b.dispatch("test:eventC");
+    off();
+    a.dispatch("test:eventB", { value: 2 });
+
+    expect(tap.mock.calls).toEqual([
+      ["test:eventB", { value: 1 }],
+      ["test:eventC", undefined],
+    ]);
+  });
+
+  test("a throwing tap does not stop handlers", () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const off = tapAllEvents(() => {
+      throw new Error("tap");
+    });
+    const dispatcher = new EventDispatcher<TestEventGroup>();
+    const handler = vi.fn();
+    dispatcher.on("test:eventB", handler);
+
+    dispatcher.dispatch("test:eventB", { value: 3 });
+    off();
+    errors.mockRestore();
+
+    expect(handler).toHaveBeenCalledWith({ value: 3 });
+  });
+});
+
+describe("e2e events", () => {
+  test("an e2e: event reaches no handler or tap outside browser automation", () => {
+    const dispatcher = new EventDispatcher<TestEventGroup>();
+    const handler = vi.fn();
+    const tap = vi.fn();
+    dispatcher.on("e2e:signal", handler);
+    const untap = tapAllEvents(tap);
+
+    dispatcher.dispatch("e2e:signal", { id: "1" });
+    untap();
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(tap).not.toHaveBeenCalled();
+  });
+
+  test("an e2e: event is delivered under browser automation", () => {
+    Object.defineProperty(navigator, "webdriver", {
+      configurable: true,
+      value: true,
+    });
+    const dispatcher = new EventDispatcher<TestEventGroup>();
+    const handler = vi.fn();
+    const tap = vi.fn();
+    dispatcher.on("e2e:signal", handler);
+    const untap = tapAllEvents(tap);
+
+    dispatcher.dispatch("e2e:signal", { id: "1" });
+    untap();
+    delete (navigator as { webdriver?: boolean }).webdriver;
+
+    expect(handler).toHaveBeenCalledWith({ id: "1" });
+    expect(tap).toHaveBeenCalledWith("e2e:signal", { id: "1" });
   });
 });

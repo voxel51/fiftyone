@@ -7,6 +7,7 @@ import {
   useAnnotationContext,
   useAnnotationFields,
 } from "./useAnnotationContext";
+import { useCreatableSingleLabelFields } from "./singleLabelFields";
 import useExit from "./useExit";
 
 /**
@@ -22,14 +23,7 @@ export const useClassificationMode = () => {
   const reset3dAnnotationMode = useReset3dAnnotationMode();
   const isVideo = useRecoilValue(isVideoDataset);
   const { fields: allFields } = useAnnotationFields(CLASSIFICATION);
-  // On video datasets, only sample-level Classification fields are supported;
-  // frame-level (`frames.*`) Classification is not, so it must not appear in
-  // the toolbar's field picker.
-  const fields = useMemo(
-    () =>
-      isVideo ? allFields.filter((p) => !p.startsWith("frames.")) : allFields,
-    [allFields, isVideo],
-  );
+  const fields = useCreatableSingleLabelFields(allFields, isVideo);
   const classificationModeActive =
     annotationContext.selected?.type === CLASSIFICATION;
 

@@ -55,15 +55,14 @@ test.describe.serial("summary fields", () => {
     page,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
     await modal.sidebar.assert.verifyObject("summary", {
       one: "two",
       three: "four",
     });
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await modal.sidebar.clickFieldDropdown("summaries");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", async () => {
+      await modal.sidebar.clickFieldDropdown("summaries");
+    });
     await modal.sidebar.assert.verifyObject("summaries", {
       five: "six",
       seven: "eight",

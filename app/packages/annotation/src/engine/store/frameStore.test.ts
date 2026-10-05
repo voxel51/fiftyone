@@ -507,6 +507,88 @@ describe("FrameStore setData: re-baseline + GC", () => {
   });
 });
 
+describe("FrameStore mergeData: windowed seed", () => {
+  it("leaves frames outside the window untouched", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+      500: { [PATH]: [det("doc-500", "Z", [9, 9, 9, 9], "truck")] },
+    });
+
+    store.mergeData({ 2: { [PATH]: [det("doc-2", "B", [2, 2, 2, 2])] } });
+
+    expect(store.getLabel(ref("A", 1))?.label).toBe("cat");
+    expect(store.getLabel(ref("Z", 500))?.label).toBe("truck");
+    expect(store.getLabel(ref("B", 2))).toBeDefined();
+  });
+
+  it("emits one update for a newly landed label and a delete for an emptied frame", () => {
+    const store = makeStore({
+      3: { [PATH]: [det("doc-3", "C", [3, 3, 3, 3])] },
+    });
+    const emitted: Array<{ ref: LabelRef; kind: string }> = [];
+    store.subscribeChanges((changes) =>
+      emitted.push(...(changes as Array<{ ref: LabelRef; kind: string }>)),
+    );
+
+    store.mergeData({
+      2: { [PATH]: [det("doc-2", "B", [2, 2, 2, 2])] },
+      3: { [PATH]: [] },
+    });
+
+    expect(emitted).toEqual([
+      { ref: ref("B", 2), kind: "update" },
+      { ref: ref("C", 3), kind: "delete" },
+    ]);
+  });
+
+  it("skips the display tick when the window changes nothing", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] },
+    });
+    let ticks = 0;
+    store.subscribe(() => {
+      ticks++;
+    });
+
+    store.mergeData({ 1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1])] } });
+    expect(ticks).toBe(0);
+
+    store.mergeData({ 1: { [PATH]: [det("doc-1", "A", [5, 5, 5, 5])] } });
+    expect(ticks).toBe(1);
+  });
+
+  it("keeps an edit in progress and clears it when the window echoes it", () => {
+    const store = makeStore({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+    store.updateLabel(ref("A", 1), { label: "dog" });
+
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "cat")] },
+    });
+    expect(store.getLabel(ref("A", 1))?.label).toBe("dog");
+    expect(store.isDirty()).toBe(true);
+
+    store.mergeData({
+      1: { [PATH]: [det("doc-1", "A", [0, 0, 1, 1], "dog")] },
+    });
+    expect(store.isDirty()).toBe(false);
+  });
+
+  it("merges the window's per-frame primitive values", () => {
+    const store = new FrameStore(SAMPLE, {
+      labelTypes: LABEL_TYPES,
+      valuePaths: ["frames.quality"],
+      values: { 1: { "frames.quality": 0.5 } },
+    });
+
+    store.mergeData({ 2: { [PATH]: [] } }, { 2: { "frames.quality": 0.9 } });
+
+    expect(store.getFrameValue("frames.quality", 1)).toBe(0.5);
+    expect(store.getFrameValue("frames.quality", 2)).toBe(0.9);
+  });
+});
+
 describe("FrameStore reconcilePersisted: rebase from confirmed deltas", () => {
   it("a freshly-drawn track's append clears the dirty frame (no save loop)", () => {
     const store = makeStore({ 1: { [PATH]: [] } });

@@ -48,7 +48,12 @@ export class FoWebServer {
 
       console.log(procString);
 
-      const proc = spawn(procString, { shell: true });
+      // the App hands out pool colors in first-request order, so one color
+      // keeps screenshots independent of render order
+      const proc = spawn(procString, {
+        shell: true,
+        env: { ...process.env, FIFTYONE_APP_COLOR_POOL: "#009999" },
+      });
       let startupComplete = false;
       const stderrTail: string[] = [];
 

@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
 import { OperatorsPromptPom } from "src/oss/poms/operators/operators-prompt";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -10,17 +10,17 @@ const test = base.extend<{
   operatorsPromptViewModal: OperatorsPromptPom;
   operatorsPromptDrawer: OperatorsPromptPom;
 }>({
-  operatorsBrowser: async ({ page }, use) => {
-    await use(new OperatorsBrowserPom(page));
+  operatorsBrowser: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsBrowserPom(page, eventUtils));
   },
-  operatorsPrompt: async ({ page }, use) => {
-    await use(new OperatorsPromptPom(page));
+  operatorsPrompt: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsPromptPom(page, eventUtils));
   },
-  operatorsPromptViewModal: async ({ page }, use) => {
-    await use(new OperatorsPromptPom(page, "view-modal"));
+  operatorsPromptViewModal: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsPromptPom(page, eventUtils, "view-modal"));
   },
-  operatorsPromptDrawer: async ({ page }, use) => {
-    await use(new OperatorsPromptPom(page, "drawer"));
+  operatorsPromptDrawer: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsPromptPom(page, eventUtils, "drawer"));
   },
 });
 
@@ -81,14 +81,11 @@ test.describe.serial("operator prompt", () => {
     await operatorsBrowser.search("E2E");
     await operatorsBrowser.choose("E2E: Say hello in modal");
     await operatorsPrompt.assert.isOpen();
-    await operatorsPrompt.locator
-      .locator("input")
-      .first()
-      .pressSequentially("E2E");
+    await operatorsPrompt.typeInput("E2E");
     await operatorsPrompt.assert.isValidated();
+    await operatorsPrompt.assert.canExecute();
     await operatorsPrompt.execute();
-    await operatorsPrompt.assert.isExecuting();
-    await expect(operatorsPrompt.content).toContainText("Message:Hi E2E!");
+    await operatorsPrompt.assert.hasContent("Message:Hi E2E!");
     await operatorsPrompt.close();
     await operatorsPrompt.assert.isClosed();
   });
@@ -114,16 +111,11 @@ test.describe.serial("operator prompt", () => {
     await operatorsBrowser.search("E2E");
     await operatorsBrowser.choose("E2E: Say hello in drawer");
     await operatorsPromptDrawer.assert.isOpen();
-    await operatorsPromptDrawer.locator
-      .locator("input")
-      .first()
-      .pressSequentially("E2E");
+    await operatorsPromptDrawer.typeInput("E2E");
     await operatorsPromptDrawer.assert.isValidated();
+    await operatorsPromptDrawer.assert.canExecute();
     await operatorsPromptDrawer.execute();
-    await operatorsPromptDrawer.assert.isExecuting();
-    await expect(operatorsPromptDrawer.content).toContainText(
-      "Message:Hi E2E!",
-    );
+    await operatorsPromptDrawer.assert.hasContent("Message:Hi E2E!");
     await operatorsPromptDrawer.close();
     await operatorsPromptDrawer.assert.isClosed();
   });
@@ -135,14 +127,17 @@ test.describe.serial("operator prompt", () => {
   }) => {
     await operatorsBrowser.show();
     await operatorsBrowser.search("E2E");
-    await operatorsBrowser.choose("E2E: Progress");
+    // the operator shows each step for half a second before the next
+    await operatorsPromptViewModal.afterOutput(
+      () => operatorsBrowser.choose("E2E: Progress"),
+      "percent_complete",
+      0.5,
+    );
     await operatorsPrompt.assert.isExecuting();
-    await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 1 of 2",
-    );
-    await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 2 of 2",
-    );
+    await operatorsPromptViewModal.assert.hasContent("Loading 1 of 2");
+    // the run closes its prompt once the last step has shown
+    await operatorsPrompt.untilClosed();
+    await operatorsPromptViewModal.assert.hasContent("Loading 2 of 2");
     await operatorsPromptViewModal.done();
     await operatorsPrompt.assert.isClosed();
     await operatorsPromptViewModal.assert.isClosed();

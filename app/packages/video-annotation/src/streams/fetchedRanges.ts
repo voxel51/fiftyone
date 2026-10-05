@@ -55,3 +55,25 @@ export function toSecondRanges(
     ([start, end]) => [(start - 1) / frameRate, end / frameRate] as FrameRange,
   );
 }
+
+/** Remove one frame from a sorted, disjoint list of ranges, in place. */
+export function removeFrame(ranges: Array<FrameRange>, frame: number): void {
+  const i = ranges.findIndex(([start, end]) => frame >= start && frame <= end);
+
+  if (i < 0) {
+    return;
+  }
+
+  const [start, end] = ranges[i];
+  const pieces: FrameRange[] = [];
+
+  if (start < frame) {
+    pieces.push([start, frame - 1]);
+  }
+
+  if (frame < end) {
+    pieces.push([frame + 1, end]);
+  }
+
+  ranges.splice(i, 1, ...pieces);
+}

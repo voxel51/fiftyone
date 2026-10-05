@@ -10,8 +10,8 @@ dataflow acyclic.
 
 **1. The engine is a hub; surfaces are spokes.** The engine federates one or
 more [`LabelStore`](store/types.ts)s (committed truth —
-[`SampleLabelStore`](store/sampleLabelStore.ts) adapts the `Sample` model; a
-frame-indexed `FrameStore` arrives with video) and routes by
+[`SampleLabelStore`](store/sampleLabelStore.ts) adapts the `Sample` model;
+[`FrameStore`](store/frameStore.ts) holds a video's frames) and routes by
 [`LabelRef`](identity/ref.ts). Surfaces never observe each other — they observe
 the engine, and they write into the engine. Identity, change merging,
 transactions, undo, selection, reconcile, and persistence aggregation are all
@@ -170,7 +170,17 @@ playhead moving is projection, not an edit. Bridges declare a posture:
 mount/unmount/update loop) or `pool` (semantic changes only — a timeline draws
 track rows that outlive the playhead). With no frame store registered,
 [`PoolTemporalView`](temporal/poolTemporalView.ts) makes presence ≡ pool and
-the whole apparatus inert by absence. `FrameStore`/`Clock` land with video.
+the whole apparatus inert by absence; with one,
+[`FrameTemporalView`](temporal/frameTemporalView.ts) answers presence at the
+playhead.
+
+Presence is asked of the stores at one frame
+(`enumerateLabelsAt(kinds, frame)`): the frame store answers from that frame
+alone, plus sample-level labels, so a playhead tick costs the labels on screen,
+not the clip. A store that holds frames also reports which frames were edited
+this session (`editedFrames` / `editVersion`), so a pool-posture surface such
+as a timeline can overlay just those frames on a precomputed index instead of
+re-reading the pool.
 
 The [signal pipe](signals/signalPipe.ts) is the high-frequency channel for
 surface-owned transient state (mid-drag geometry, cursors): a pure firehose
@@ -421,13 +431,8 @@ Rules:
 
 ### Rules that apply to everyone
 
-| Do                                                                         | Don't                                                           |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Write through `SurfaceActions`/controller inside gestures                  | Write from inside any subscriber/selector (dev guard throws)    |
-| Re-read via `getLabel` when notified — payloads are invalidation, not data | Cache labels in a second store and try to keep it synced        |
-| One `transaction` per user-visible step, `undoKey` to coalesce             | Wrap an `await` inside a transaction (they are synchronous)     |
-| Let interaction GC own pruning on delete/reset                             | Manually deselect on delete (you'll fight the anchor promotion) |
-| Mint identity once (engine `create`, or durable-from-birth drafts)         | Re-id by evict + re-add (kills handle identity and selection)   |
+The binding rules for every engine caller, in every package, are in
+[`CODING_STANDARDS.md`](../../CODING_STANDARDS.md).
 
 ---
 

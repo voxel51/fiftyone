@@ -624,3 +624,26 @@ describe("engine sample readiness", () => {
     expect(display).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("engine trackIndexReady", () => {
+  it("resolves true at once for a store without a track index", async () => {
+    const { engine } = makeEngine("s1");
+
+    await expect(engine.trackIndexReady("s1")).resolves.toBe(true);
+  });
+
+  it("forwards a frame store's frame source", async () => {
+    const engine = new AnnotationEngine();
+    const frames = new FrameStore("s1", {
+      labelTypes: {},
+      frameSource: {
+        indexedTrack: () => null,
+        trackIndexReady: () => Promise.resolve(false),
+        hold: async () => () => undefined,
+      },
+    });
+    engine.registerStore(frames);
+
+    await expect(engine.trackIndexReady("s1")).resolves.toBe(false);
+  });
+});

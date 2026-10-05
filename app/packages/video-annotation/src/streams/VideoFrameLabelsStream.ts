@@ -20,7 +20,14 @@ import {
   type BufferReadiness,
   type PlaybackStore,
 } from "@fiftyone/playback";
-import { isInFetchedRange, mergeRange, toSecondRanges } from "./fetchedRanges";
+import {
+  isInFetchedRange,
+  mergeRange,
+  removeFrame,
+  toSecondRanges,
+} from "./fetchedRanges";
+import { FrameCache } from "./frameCache";
+import { estimateFrameDocBytes } from "./frameDocBytes";
 
 // Re-exported from `@fiftyone/utilities` for the package barrel.
 export type { LocalDetection, RawDetection, RawDetectionsField };
@@ -61,10 +68,31 @@ export interface VideoFrameLabelsStreamOptions {
    * @default 60
    */
   chunkSize?: number;
+  /**
+   * The surface's frame budget, shared with its bitmap stream. A stream given
+   * none gets its own.
+   */
+  frameCache?: FrameCache;
 }
 
 const DEFAULT_CHUNK_SIZE = 60;
 const DEFAULT_FRAME_FIELD = "detections";
+
+/**
+ * Notified when a window fetch lands, with the server-clamped frame range it
+ * covered, so a subscriber can seed just that range.
+ */
+export type FrameLabelsEditListener = (range: [number, number]) => void;
+
+/** Notified when the frame cache evicts a frame's documents. */
+export type FrameLabelsEvictListener = (frame: number) => void;
+
+/** The part of a decoded mask its cost is measured from. */
+type DecodedMaskSize = { rawPixels: { width: number; height: number } };
+
+/** {@link FrameCache} part names for label documents and decoded masks. */
+const LABELS_PART = "labels";
+const MASKS_PART = "masks";
 
 /** localStorage key + Vite env var for the mask gate toggle (see below). */
 const MASK_GATE_LOCALSTORAGE_KEY = "fo:maskGate";
@@ -115,13 +143,17 @@ const MASK_GATE_ENABLED = readMaskGateEnabled();
  */
 const MAX_CHUNKS_IN_FLIGHT = 4;
 
+/**
+ * The slice of {@link MAX_CHUNKS_IN_FLIGHT} a {@link VideoFrameLabelsStream.load}
+ * may hold: one below the cap, so the playhead's own `prefetch` always finds a
+ * slot.
+ */
+const LOAD_MAX_CHUNKS_IN_FLIGHT = MAX_CHUNKS_IN_FLIGHT - 1;
+
 /** Seconds of labels to keep fetched ahead of the playhead. */
 const LABEL_LOOKAHEAD_SECONDS = 12;
 
 const MASK_HOLD_AHEAD_FRAMES = 12;
-
-/** Frames kept pinned behind the playhead, so small jitter doesn't re-decode. */
-const MASK_HOLD_BEHIND_FRAMES = 2;
 
 /**
  * Labels stream backed by the `POST /video-labels/window` endpoint.
@@ -150,16 +182,26 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
 
   private readonly cache = new Map<number, FrameDoc>();
   private readonly inflight = new Map<number, Promise<void>>();
+  /**
+   * Live chunk fetches, one entry per request — the unit
+   * {@link MAX_CHUNKS_IN_FLIGHT} counts, shared by `prefetch` and `load`.
+   */
+  private readonly liveChunks = new Set<Promise<void>>();
   private readonly fetchedRanges: Array<[number, number]> = [];
+  /**
+   * Decides which frames stay: a frame's documents and decoded masks are
+   * dropped together, with its video bitmap, when the budget evicts it.
+   */
+  private readonly frameCache: FrameCache;
+  private readonly unregisterFromCache: Array<() => void>;
   /**
    * Frames whose masks are decoded AND borrowed, keyed to the sources borrowed
    * for them — see {@link holdMasks}. A borrow is what makes readiness mean
-   * something: the cache can't evict a mask the gate has promised.
+   * something: the mask cache can't close a mask the gate has promised. Held
+   * until the frame is evicted, so a revisit doesn't re-decode.
    */
   private readonly maskHeld = new Map<number, MaskSource[]>();
-  /** Current hold window in frames — see {@link holdWindow}. */
-  private maskHoldStart = 0;
-  private maskHoldEnd = -1;
+  private disposed = false;
   /** Frames with a hold pass currently running. */
   private readonly maskWarmInFlight = new Set<number>();
   /**
@@ -177,7 +219,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   // re-seeds from `cachedFrames()` on this signal (via `subscribeToEdits`);
   // the stream itself holds no edit state — it is a read-only window seed
   // and the engine owns all label mutations.
-  private readonly editListeners = new Set<() => void>();
+  private readonly editListeners = new Set<FrameLabelsEditListener>();
+  private readonly evictListeners = new Set<FrameLabelsEvictListener>();
 
   constructor(opts: VideoFrameLabelsStreamOptions) {
     super(opts.id, {
@@ -209,6 +252,20 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         ? [...new Set([this.frameField, ...opts.frameFields])]
         : [this.frameField];
     this.chunkSize = opts.chunkSize ?? DEFAULT_CHUNK_SIZE;
+    this.frameCache =
+      opts.frameCache ?? new FrameCache({ frameCount: opts.frameCount });
+
+    this.unregisterFromCache = [
+      this.frameCache.register(LABELS_PART, {
+        evict: (frame) => this.evictFrame(frame),
+      }),
+      // re-decoded on the next visit, so a held frame can give these up
+      this.frameCache.register(MASKS_PART, {
+        evict: (frame) => this.evictFrame(frame),
+        shed: (frame) => this.releaseMasksAt(frame),
+      }),
+      this.frameCache.registerLoader((frames) => this.load(frames)),
+    ];
   }
 
   /**
@@ -231,31 +288,83 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /**
-   * Resolve once every frame in [1, frameCount] is cached, fetching missing
-   * chunks in parallel. Expensive over long clips; for one-shot full-clip work.
+   * Resolve once every frame in `frames` is cached or known empty, fetching the
+   * missing ones in chunks while holding at most
+   * {@link LOAD_MAX_CHUNKS_IN_FLIGHT} requests, so a large load never crowds
+   * out the playhead's window or the `<video>`'s own byte fetch. What lands is
+   * subject to the frame budget; {@link FrameCache.hold} keeps it.
    */
-  async warmupAll(): Promise<void> {
-    const promises: Promise<void>[] = [];
-    let f = 1;
+  async load(frames: readonly number[]): Promise<void> {
+    const pending: Promise<void>[] = [];
 
-    while (f <= this.frameCount) {
-      if (this.cache.has(f)) {
-        f++;
-        continue;
+    for (const [start, length] of this.missingRuns(frames)) {
+      for (let f = start; f < start + length; f++) {
+        const inflight = this.inflight.get(f);
+
+        if (inflight) {
+          pending.push(inflight);
+        }
       }
 
-      const inflight = this.inflight.get(f);
-      if (inflight) {
-        promises.push(inflight);
-        f += this.chunkSize;
-        continue;
-      }
+      let f = start;
 
-      promises.push(this.fetchChunk(f));
-      f += this.chunkSize;
+      while (f < start + length) {
+        await this.awaitChunkCapacity(LOAD_MAX_CHUNKS_IN_FLIGHT);
+
+        if (this.disposed) {
+          return;
+        }
+
+        // a prefetch may have claimed frames of this run while we waited
+        if (this.hasSnapshotAt(f) || this.isInflight(f)) {
+          f++;
+          continue;
+        }
+
+        let numFrames = 1;
+        while (
+          numFrames < this.chunkSize &&
+          f + numFrames < start + length &&
+          !this.hasSnapshotAt(f + numFrames) &&
+          !this.isInflight(f + numFrames)
+        ) {
+          numFrames++;
+        }
+
+        pending.push(this.fetchChunk(f, numFrames));
+        f += numFrames;
+      }
     }
 
-    await Promise.all(promises);
+    await Promise.all(pending);
+  }
+
+  /** Contiguous `[start, length]` runs of `frames` not cached or fetched. */
+  private missingRuns(frames: readonly number[]): Array<[number, number]> {
+    const sorted = [...new Set(frames)]
+      .filter((f) => f >= 1 && f <= this.frameCount && !this.hasSnapshotAt(f))
+      .sort((a, b) => a - b);
+    const runs: Array<[number, number]> = [];
+
+    for (const f of sorted) {
+      const last = runs.at(-1);
+
+      if (last && last[0] + last[1] === f) {
+        last[1]++;
+      } else {
+        runs.push([f, 1]);
+      }
+    }
+
+    return runs;
+  }
+
+  /** Resolve once fewer than `limit` chunk requests are live. */
+  private async awaitChunkCapacity(limit: number): Promise<void> {
+    while (this.liveChunks.size >= limit) {
+      // `fetchChunk` never rejects (`doFetch` logs and swallows)
+      await Promise.race([...this.liveChunks]);
+    }
   }
 
   /** Total frames in the clip — useful for callers iterating the cache. */
@@ -266,10 +375,29 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   /**
    * Every cached frame document, for seeding an external store (the annotation
    * engine's frame store). Pairs with {@link subscribeToEdits} so the seed
-   * re-runs as chunks land.
+   * re-runs as chunks land, and {@link subscribeToEvictions} so it drops what
+   * the budget evicts.
    */
   cachedFrames(): FrameDoc[] {
     return [...this.cache.values()];
+  }
+
+  /**
+   * The cached documents within `[startFrame, endFrame]`, for seeding just the
+   * range a fetch reported. Costs the window's size, not the clip's.
+   */
+  cachedFramesIn([startFrame, endFrame]: [number, number]): FrameDoc[] {
+    const docs: FrameDoc[] = [];
+
+    for (let f = Math.max(1, startFrame); f <= endFrame; f++) {
+      const doc = this.cache.get(f);
+
+      if (doc) {
+        docs.push(doc);
+      }
+    }
+
+    return docs;
   }
 
   /** Frame rate the stream was constructed with, in fps. */
@@ -461,12 +589,11 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     // Every source already resident: acquire synchronously so this frame is
     // ready within the current tick rather than a microtask later.
     if (sources.every((source) => maskBitmapCache.has(source))) {
-      const borrowed = sources.filter(
-        (source) => maskBitmapCache.acquire(source) !== undefined,
-      );
+      const decoded = sources.map((source) => maskBitmapCache.acquire(source));
+      const borrowed = sources.filter((_, i) => decoded[i] !== undefined);
 
       if (borrowed.length === sources.length) {
-        this.maskHeld.set(frame, borrowed);
+        this.holdDecoded(frame, borrowed, decoded);
         return;
       }
 
@@ -485,20 +612,22 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       this.maskWarmInFlight.delete(frame);
 
       const borrowed: MaskSource[] = [];
+      const decoded: Array<DecodedMaskSize | undefined> = [];
       let failed = false;
 
       results.forEach((result, index) => {
         if (result.status === "fulfilled") {
           borrowed.push(sources[index]);
+          decoded.push(result.value);
         } else {
           failed = true;
         }
       });
 
-      // A frame the playhead has already left, or whose document was replaced
-      // mid-decode, must not become held — its borrows would never be released,
-      // and holding the old document's masks would report the frame ready
-      // while the new document's are undecoded.
+      // A frame evicted, or whose document was replaced, mid-decode must not
+      // become held — its borrows would never be released, and holding the
+      // old document's masks would report the frame ready while the new
+      // document's are undecoded.
       if (!this.maskHoldWanted(frame, sources)) {
         for (const source of borrowed) {
           maskBitmapCache.release(source);
@@ -514,13 +643,32 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         return;
       }
 
-      this.maskHeld.set(frame, borrowed);
+      this.holdDecoded(frame, borrowed, decoded);
     });
   }
 
+  /** Record a frame's borrowed masks, and what decoding them costs the budget. */
+  private holdDecoded(
+    frame: number,
+    borrowed: MaskSource[],
+    decoded: ReadonlyArray<DecodedMaskSize | undefined>,
+  ): void {
+    this.maskHeld.set(frame, borrowed);
+
+    let bytes = 0;
+    for (const mask of decoded) {
+      if (mask) {
+        // decoded RGBA plus the single-channel hit-test copy
+        bytes += mask.rawPixels.width * mask.rawPixels.height * 5;
+      }
+    }
+
+    this.frameCache.set(MASKS_PART, frame, bytes);
+  }
+
   /**
-   * Whether `frame` still wants the hold pass it started: inside the window,
-   * not already held, and — because a document replaced mid-decode carries
+   * Whether `frame` still wants the hold pass it started: still cached, not
+   * already held, and — because a document replaced mid-decode carries
    * different masks — still describing the same sources the pass decoded.
    */
   private maskHoldWanted(frame: number, startedFor: MaskSource[]): boolean {
@@ -533,39 +681,41 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return false;
     }
 
-    return (
-      frame >= this.maskHoldStart &&
-      frame <= this.maskHoldEnd &&
-      !this.maskHeld.has(frame)
-    );
-  }
-
-  /** Return the borrows for every held frame outside the current hold window. */
-  private releaseMasksOutside(start: number, end: number): void {
-    for (const [frame, sources] of this.maskHeld) {
-      if (frame >= start && frame <= end) {
-        continue;
-      }
-
-      for (const source of sources) {
-        maskBitmapCache.release(source);
-      }
-
-      this.maskHeld.delete(frame);
-    }
+    return !this.disposed && this.cache.has(frame) && !this.maskHeld.has(frame);
   }
 
   /**
    * Return every mask borrow this stream holds; an unreturned borrow pins its
-   * cache entry for good. The window is emptied first so an in-flight warm pass
+   * mask cache entry for good. Marked disposed first so an in-flight warm pass
    * releases rather than re-holds.
    */
   dispose(): void {
-    this.maskHoldStart = 0;
-    this.maskHoldEnd = -1;
+    this.disposed = true;
 
-    // Nothing is inside an empty window, so this releases every held frame.
-    this.releaseMasksOutside(this.maskHoldStart, this.maskHoldEnd);
+    for (const unregister of this.unregisterFromCache) {
+      unregister();
+    }
+
+    for (const frame of [...this.maskHeld.keys()]) {
+      this.releaseMasksAt(frame);
+    }
+  }
+
+  /** The budget dropped `frame`: release everything held for it. */
+  private evictFrame(frame: number): void {
+    if (!this.cache.has(frame) && !this.maskHeld.has(frame)) {
+      return;
+    }
+
+    this.cache.delete(frame);
+    this.maskSourceCache.delete(frame);
+    this.maskUndecodable.delete(frame);
+    this.releaseMasksAt(frame);
+    removeFrame(this.fetchedRanges, frame);
+
+    for (const listener of this.evictListeners) {
+      listener(frame);
+    }
   }
 
   /** Drop any hold on `frame` — its masks may no longer be the right ones. */
@@ -581,25 +731,20 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     }
 
     this.maskHeld.delete(frame);
+    this.frameCache.delete(MASKS_PART, frame);
   }
 
   /**
-   * Re-centre the hold window on the committed frame: hold forward, release
-   * behind. Sized in frames rather than `lookaheadSeconds` because every held
-   * frame pins its masks against eviction.
+   * Decode the masks just ahead of the committed frame. Forward only —
+   * decoding frames the playhead has already passed buys nothing.
    */
   private holdWindow(time: number): void {
     const frame = this.timeToFrame(time);
-    const start = Math.max(1, frame - MASK_HOLD_BEHIND_FRAMES);
-    const end = Math.min(this.frameCount, frame + MASK_HOLD_AHEAD_FRAMES);
+    const end = Math.min(
+      this.frameCount,
+      frame + Math.min(MASK_HOLD_AHEAD_FRAMES, this.frameCache.aheadFrames()),
+    );
 
-    this.maskHoldStart = start;
-    this.maskHoldEnd = end;
-
-    this.releaseMasksOutside(start, end);
-
-    // Forward only — decoding frames the playhead has already passed buys
-    // nothing, though ones still held from behind stay held for jitter.
     for (let f = frame; f <= end; f++) {
       this.holdMasks(f);
     }
@@ -608,7 +753,13 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   prefetch(range: [number, number]): void {
     const [startSec, endSec] = range;
     const startFrame = this.timeToFrame(startSec);
-    const endFrame = this.timeToFrame(endSec);
+    // rank the budget from where the engine is about to commit, not where it
+    // last did: a jump's frames would otherwise be evicted as they land
+    this.frameCache.setPlayhead(startFrame);
+    const endFrame = Math.min(
+      this.timeToFrame(endSec),
+      startFrame + this.frameCache.aheadFrames() - 1,
+    );
 
     // Decode-ahead: frames whose documents are already cached still need their
     // masks rasterized before they can be drawn, and that is the stage the
@@ -630,23 +781,23 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     // (2s at 30fps) and playback consumes a second of labels per second, so
     // one request deep leaves no room for a round-trip.
     //
-    // Bounded by `MAX_CHUNKS_IN_FLIGHT` rather than unbounded, which is what
-    // made `warmupAll` pathological: it dispatched every chunk in the clip at
-    // once and crowded the <video>'s own byte fetch off the connection pool.
-    // The point here is to stay a few chunks ahead of the playhead, not to
-    // load the clip.
-    let issued = 0;
+    // Bounded by `MAX_CHUNKS_IN_FLIGHT`: dispatching every chunk at once
+    // crowds the <video>'s own byte fetch off the connection pool. The point
+    // here is to stay a few chunks ahead of the playhead, not to load the
+    // clip, and the frame budget caps how far ahead that is.
+    //
+    // Counted against `liveChunks`, the cap `load` shares, so the two paths
+    // together never exceed it.
     for (let f = startFrame; f <= endFrame; f += 1) {
+      if (this.liveChunks.size >= MAX_CHUNKS_IN_FLIGHT) {
+        return;
+      }
+
       if (this.cache.has(f) || this.isInflight(f)) {
         continue;
       }
 
       void this.fetchChunk(f);
-      issued += 1;
-
-      if (issued >= MAX_CHUNKS_IN_FLIGHT) {
-        return;
-      }
 
       // `fetchChunk` covers `chunkSize` frames from `f`, so the next missing
       // frame cannot be nearer than that — skip ahead instead of re-testing
@@ -691,6 +842,8 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     const frame = this.timeToFrame(time);
     const prev = this.readPublished(store);
 
+    this.frameCache.setPlayhead(frame);
+
     if (MASK_GATE_ENABLED) {
       // Before the frame-dedupe below: warming has to keep running even on ticks
       // that publish nothing new, since that is most of them.
@@ -716,16 +869,24 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   }
 
   /** Subscribe to `/frames` cache mutations (chunks landing); returns an unsubscribe function. */
-  subscribeToEdits(listener: () => void): () => void {
+  subscribeToEdits(listener: FrameLabelsEditListener): () => void {
     this.editListeners.add(listener);
     return () => {
       this.editListeners.delete(listener);
     };
   }
 
-  private notifyEdits(): void {
+  /** Subscribe to frames the budget evicts; returns an unsubscribe function. */
+  subscribeToEvictions(listener: FrameLabelsEvictListener): () => void {
+    this.evictListeners.add(listener);
+    return () => {
+      this.evictListeners.delete(listener);
+    };
+  }
+
+  private notifyEdits(range: [number, number]): void {
     for (const listener of this.editListeners) {
-      listener();
+      listener(range);
     }
   }
 
@@ -742,23 +903,29 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     return this.inflight.has(frame);
   }
 
-  private async fetchChunk(startFrame: number): Promise<void> {
-    const numFrames = Math.min(
-      this.chunkSize,
-      this.frameCount - startFrame + 1,
-    );
+  private async fetchChunk(
+    startFrame: number,
+    length = this.chunkSize,
+  ): Promise<void> {
+    const numFrames = Math.min(length, this.frameCount - startFrame + 1);
 
     if (numFrames <= 0) {
       return;
     }
 
-    const promise = this.doFetch(startFrame, numFrames).finally(() => {
-      for (let f = startFrame; f < startFrame + numFrames; f++) {
-        if (this.inflight.get(f) === promise) {
-          this.inflight.delete(f);
+    const promise: Promise<void> = this.doFetch(startFrame, numFrames).finally(
+      () => {
+        for (let f = startFrame; f < startFrame + numFrames; f++) {
+          if (this.inflight.get(f) === promise) {
+            this.inflight.delete(f);
+          }
         }
-      }
-    });
+
+        this.liveChunks.delete(promise);
+      },
+    );
+
+    this.liveChunks.add(promise);
 
     for (let f = startFrame; f < startFrame + numFrames; f++) {
       this.inflight.set(f, promise);
@@ -781,25 +948,39 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         endFrame,
       });
 
+      if (this.disposed) {
+        return;
+      }
+
+      const landed: Array<[number, FrameDoc]> = [];
+
       for (const [frameNumber, fields] of Object.entries(result.frames)) {
+        const frame = Number(frameNumber);
         // Field-projected window payload → the cache's per-frame doc shape.
         // The engine owns edits, so the stream never reconciles against it.
-        this.cache.set(Number(frameNumber), {
-          frame_number: Number(frameNumber),
-          ...fields,
-        });
+        const doc: FrameDoc = { frame_number: frame, ...fields };
+        this.cache.set(frame, doc);
         // A replaced document may carry different masks, so drop the memoized
         // sources and any hold taken against the old ones.
-        this.maskSourceCache.delete(Number(frameNumber));
-        this.maskUndecodable.delete(Number(frameNumber));
-        this.releaseMasksAt(Number(frameNumber));
+        this.maskSourceCache.delete(frame);
+        this.maskUndecodable.delete(frame);
+        this.releaseMasksAt(frame);
+        landed.push([frame, doc]);
       }
 
       mergeRange(this.fetchedRanges, result.range);
 
+      // Counted after the whole window is cached, so the budget never evicts
+      // part of a window before it is seeded.
+      for (const [frame, doc] of landed) {
+        if (this.cache.get(frame) === doc) {
+          this.frameCache.set(LABELS_PART, frame, estimateFrameDocBytes(doc));
+        }
+      }
+
       // Also when nothing landed: a window with no frame documents is still an
       // answer, and the first landing is what settles a store born loading
-      this.notifyEdits();
+      this.notifyEdits(result.range);
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.

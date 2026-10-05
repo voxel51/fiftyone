@@ -14,10 +14,15 @@ import numpy as np
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.aggregations as foa
 import fiftyone.core.fields as fof
+import fiftyone.core.frame_aggregations as fofa
+import fiftyone.core.frame_pipelines as fofp
+import fiftyone.core.odm as foo
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
+from frame_pipelines_tests import _make_videos
 
 
 class DatasetTests(unittest.TestCase):
@@ -1614,6 +1619,287 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(len(labels), 5)
         self.assertDictEqual(counts, {True: 1, False: 4})
         self.assertEqual(len(filepaths), 5)
+
+
+_LABEL = "frames.detections.detections.label"
+_CONFIDENCE = "frames.detections.detections.confidence"
+
+
+def _frame_aggregations():
+    return [
+        foa.Count(_LABEL),
+        foa.Count("frames"),
+        foa.Count("frames.flag"),
+        foa.CountValues(_LABEL),
+        foa.CountValues(_LABEL, _first=2, _sort_by="count", _asc=False),
+        foa.CountValues(_LABEL, _first=5, _search="c.*", _selected=["sign"]),
+        foa.CountValues("frames.flag"),
+        foa.Bounds(_CONFIDENCE),
+        foa.Bounds(_CONFIDENCE, safe=True, _count_nonfinites=True),
+        foa.HistogramValues(_CONFIDENCE, bins=4, range=[0, 1]),
+        foa.HistogramValues(_CONFIDENCE, bins=4),
+        foa.Distinct(_LABEL),
+        foa.Sum(_CONFIDENCE),
+        foa.Min(_CONFIDENCE),
+        foa.Max(_CONFIDENCE),
+        foa.Mean(_CONFIDENCE),
+        foa.Mean("frames.frame_number"),
+        foa.Std(_CONFIDENCE),
+        foa.Quantiles(_CONFIDENCE, [0.25, 0.5]),
+    ]
+
+
+def _plan_kind(view, aggregation):
+    plan = fofa.plan_aggregation(view, aggregation, aggregation.to_mongo(view))
+    if plan is None:
+        return None
+
+    return "general" if plan._split is not None else "frames"
+
+
+class FrameFirstAggregationTests(unittest.IsolatedAsyncioTestCase):
+    def _assert_matches_old_path(self, view, kind):
+        for aggregation in _frame_aggregations():
+            field_name = aggregation.field_name
+            if field_name != "frames" and view.get_field(field_name) is None:
+                continue
+
+            expected_kind = kind
+            if kind == "general" and isinstance(
+                aggregation, (foa.Std, foa.Quantiles)
+            ):
+                expected_kind = None
+
+            self.assertEqual(
+                _plan_kind(view, aggregation), expected_kind, aggregation
+            )
+
+            actual = view.aggregate(aggregation)
+            with fofp._disabled():
+                self.assertIsNone(_plan_kind(view, aggregation))
+                expected = view.aggregate(aggregation)
+
+            if isinstance(expected, float):
+                self.assertAlmostEqual(actual, expected, msg=aggregation)
+            else:
+                self.assertEqual(actual, expected, aggregation)
+
+    @drop_datasets
+    def test_frames_path(self):
+        dataset = fo.Dataset()
+        video1, _, _ = _make_videos(dataset)
+
+        views = [
+            dataset,
+            dataset.match_frames(F("frame_number") > 20, omit_empty=False),
+            dataset.filter_labels(
+                "frames.detections", F("label") == "car", only_matches=False
+            ),
+            dataset.select(video1.id),
+            dataset.select(video1.id).filter_labels(
+                "frames.detections", F("label") == "person"
+            ),
+            dataset.select(video1.id).match({"weather": "rainy"}),
+        ]
+
+        for view in views:
+            self._assert_matches_old_path(view, "frames")
+
+    @drop_datasets
+    def test_general_path(self):
+        dataset = fo.Dataset()
+        _make_videos(dataset)
+
+        views = [
+            dataset.match_tags("a"),
+            dataset.sort_by("filepath").limit(2),
+            dataset.match({"weather": "sunny"}).filter_labels(
+                "frames.detections", F("label") == "car"
+            ),
+            dataset.match({_LABEL: {"$in": ["person"]}}).filter_labels(
+                "frames.detections", F("label") == "person"
+            ),
+            dataset.match_frames(F("frame_number") > 20),
+            dataset.select_fields("frames.detections"),
+            dataset.to_clips(F("detections.detections").length() > 1),
+        ]
+
+        for view in views:
+            self._assert_matches_old_path(view, "general")
+
+    @drop_datasets
+    def test_falls_back(self):
+        dataset = fo.Dataset()
+        _make_videos(dataset)
+
+        cases = [
+            (dataset.match(F("frames").length() > 5), foa.Count(_LABEL)),
+            (dataset.match_tags("a"), foa.Values(_LABEL)),
+            (dataset, foa.Count()),
+            (dataset, foa.Count("weather")),
+            (
+                dataset.match_tags("a"),
+                foa.HistogramValues(_CONFIDENCE, bins=4, auto=True),
+            ),
+        ]
+
+        for view, aggregation in cases:
+            self.assertIsNone(_plan_kind(view, aggregation), aggregation)
+
+    @drop_datasets
+    def test_high_cardinality_values(self):
+        dataset = fo.Dataset()
+        _make_videos(dataset)
+
+        ids = "frames.detections.detections.id"
+        cases = [
+            (dataset.match_tags("a"), foa.CountValues(ids), None),
+            (dataset.match_tags("a"), foa.Distinct(ids), None),
+            (dataset.match_tags("a"), foa.Distinct("frames.id"), None),
+            (
+                dataset.match_tags("a"),
+                foa.CountValues(_LABEL, expr=F().upper()),
+                None,
+            ),
+            (dataset.match_tags("a"), foa.Count(ids), "general"),
+            (dataset, foa.CountValues(ids), "frames"),
+            (dataset, foa.Distinct(ids), "frames"),
+        ]
+
+        for view, aggregation, kind in cases:
+            self.assertEqual(_plan_kind(view, aggregation), kind, aggregation)
+
+            actual = view.aggregate(aggregation)
+            with fofp._disabled():
+                expected = view.aggregate(aggregation)
+
+            self.assertEqual(actual, expected, aggregation)
+
+    @drop_datasets
+    def test_group_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="video")
+
+        samples = []
+        for idx in range(2):
+            group = fo.Group()
+            video = fo.Sample(
+                filepath="video%d.mp4" % idx, group=group.element("video")
+            )
+            other = fo.Sample(
+                filepath="other%d.mp4" % idx, group=group.element("other")
+            )
+            for frame_number in range(1, 6):
+                video[frame_number]["detections"] = fo.Detections(
+                    detections=[fo.Detection(label="car", confidence=0.5)]
+                )
+                other[frame_number]["detections"] = fo.Detections(
+                    detections=[fo.Detection(label="sign", confidence=0.1)]
+                )
+
+            samples.extend([video, other])
+
+        dataset.add_samples(samples)
+
+        # Other slices' frames share the frame collection
+        self._assert_matches_old_path(dataset, "general")
+        self.assertEqual(dataset.count_values(_LABEL), {"car": 10})
+
+    @drop_datasets
+    async def test_async_facets_match_old_path(self):
+        dataset = fo.Dataset()
+        video1, _, _ = _make_videos(dataset)
+
+        views = [
+            dataset,
+            dataset.match_tags("a"),
+            dataset.select(video1.id),
+            dataset.match({_LABEL: {"$in": ["person"]}}).filter_labels(
+                "frames.detections", F("label") == "person"
+            ),
+        ]
+
+        def aggregations():
+            return [
+                foa.Count(_LABEL),
+                foa.CountValues(_LABEL, _first=200),
+                foa.Count(_CONFIDENCE),
+                foa.Bounds(_CONFIDENCE, safe=True, _count_nonfinites=True),
+                foa.CountValues("frames.flag"),
+            ]
+
+        for view in views:
+            actual = await view._async_aggregate(aggregations())
+            with fofp._disabled():
+                expected = await view._async_aggregate(aggregations())
+
+            self.assertEqual(actual, expected)
+            self.assertTrue(actual[0])
+
+    @drop_datasets
+    def test_query_shapes(self):
+        dataset = fo.Dataset()
+        video1, _, _ = _make_videos(dataset)
+
+        view = (
+            dataset.match_tags("a")
+            .match({_LABEL: {"$in": ["person"]}})
+            .filter_labels("frames.detections", F("label") == "person")
+        )
+        compiled, _, _, plans = view._build_facets(
+            {
+                0: foa.Count(_LABEL),
+                1: foa.CountValues(_LABEL),
+                2: foa.Bounds(_CONFIDENCE),
+            }
+        )
+        self.assertEqual(len(plans), len(compiled))
+
+        for plan in plans.values():
+            coll_name, pipeline = plan.build()
+            self.assertEqual(coll_name, dataset._sample_collection_name)
+            self.assertFalse(fofp._contains(pipeline, "$frames"))
+
+            lookups = [
+                stage["$lookup"]
+                for stage in pipeline
+                if "$lookup" in stage
+                and stage["$lookup"]["from"] == dataset._frame_collection_name
+            ]
+            self.assertTrue(lookups)
+            for lookup in lookups:
+                self.assertEqual(lookup["localField"], "_id")
+                self.assertEqual(lookup["foreignField"], "_sample_id")
+
+                # Existence checks stop at one frame; partial results are
+                # grouped per sample
+                last = next(iter(lookup["pipeline"][-1]))
+                self.assertTrue(
+                    {"$limit": 1} in lookup["pipeline"]
+                    or last in ("$group", "$count", "$bucket", "$facet"),
+                    lookup,
+                )
+
+            self.assertEqual(lookups[-1]["as"], "_partials")
+
+        plan = fofa.plan_aggregation(
+            dataset.select(video1.id),
+            foa.CountValues(_LABEL),
+            foa.CountValues(_LABEL).to_mongo(dataset),
+        )
+        sample_ids = [
+            d["_id"]
+            for d in foo.aggregate(
+                dataset._sample_collection, plan.ids_pipeline
+            )
+        ]
+        coll_name, pipeline = plan.build(sample_ids)
+        self.assertEqual(coll_name, dataset._frame_collection_name)
+        self.assertEqual(
+            pipeline[0],
+            {"$match": {"_sample_id": {"$in": [ObjectId(video1.id)]}}},
+        )
+        self.assertFalse(fofp._contains(pipeline, "$frames"))
 
 
 if __name__ == "__main__":

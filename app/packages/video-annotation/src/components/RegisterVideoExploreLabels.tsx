@@ -79,15 +79,7 @@ export const RegisterVideoExploreLabels: React.FC = () => {
   // data/schema), so it is safe alongside Annotate's own mount.
   useSyncModalSample();
   useSyncAnnotationFrameClock();
-  // `seedWholeClip: false` — Explore is read-only, so nothing here walks the
-  // whole clip, and the up-front fetch competes with the <video>'s own
-  // buffering rather than helping it. The engine's `prefetch` window keeps
-  // the store seeded around the playhead instead.
-  useSyncAnnotationVideoStore({
-    labelTypes,
-    sampleLevelPaths,
-    seedWholeClip: false,
-  });
+  useSyncAnnotationVideoStore({ labelTypes, sampleLevelPaths });
   // after the clock + store, so the bridge reconciles against the
   // FrameTemporalView and a seeded frame store
   useVideoLighterEngineBridge(paths);

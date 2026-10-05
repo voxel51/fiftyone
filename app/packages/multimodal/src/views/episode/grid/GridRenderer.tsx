@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { multimodalGridFit, type MultimodalGridFit } from "@fiftyone/state";
 import { Clickable, Icon, IconName, Size, Spinner } from "@voxel51/voodo";
@@ -76,6 +77,15 @@ const SNAPSHOT_REFRESH_DEBOUNCE_MS = 250;
  */
 export const HOVER_INTENT_DELAY_MS = 120;
 /** Dwell before hover playback starts, avoiding scroll-under-cursor churn. */
+
+/** e2e specs wait on a tile having drawn its preview */
+type GridRendererE2EEvents = {
+  "e2e:looker:canvas-loaded": {
+    sampleFilepath: string;
+    sampleId: string;
+    thumbnail: boolean;
+  };
+};
 
 const stopGridActivationPropagation = (
   event: React.MouseEvent<HTMLElement>,
@@ -345,6 +355,21 @@ export function GridRenderer({
       size: BitmapDrawSize,
       snapshotPoseKey?: string,
     ) => {
+      // announced like a looker tile's draw, so grid loads count it; a canvas
+      // not yet laid out (or detached) commits too, and redraws once it is
+      const shown = canvas.getBoundingClientRect();
+      if (canvas.isConnected && shown.width > 0 && shown.height > 0) {
+        getEventBus<GridRendererE2EEvents>().dispatch(
+          "e2e:looker:canvas-loaded",
+          {
+            sampleFilepath: String(
+              (ctx.sample.sample as { filepath?: string }).filepath,
+            ),
+            sampleId: String(sampleId),
+            thumbnail: true,
+          },
+        );
+      }
       if (!cacheKey) return;
       if (capturedTokensRef.current.cacheKey !== cacheKey) {
         capturedTokensRef.current = { cacheKey, tokens: new Set() };
@@ -381,9 +406,11 @@ export function GridRenderer({
     },
     [
       cacheKey,
+      ctx.sample.sample,
       preview.streamId,
       preview.streamSourceName,
       preview.streamSourceNames,
+      sampleId,
       source,
     ],
   );

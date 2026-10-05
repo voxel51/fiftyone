@@ -22,7 +22,7 @@ beforeEach(() => {
 });
 
 describe("track ops", () => {
-  it("markKeyframe toggles keyframe on the addressed frame and notifies", () => {
+  it("markKeyframe toggles keyframe on the addressed frame and notifies", async () => {
     // Legacy data may still carry a `propagation` blob; markKeyframe must NOT
     // try to clear it with `propagation: null` (that null is the poison).
     harness.frameData = {
@@ -52,7 +52,7 @@ describe("track ops", () => {
     );
   });
 
-  it("markKeyframe runs its toggle + re-lerp under one gesture key", () => {
+  it("markKeyframe runs its toggle + re-lerp under one gesture key", async () => {
     harness.frameData = { 2: { A: det("d2", "A", { keyframe: false }) } };
 
     ops.markKeyframe(2, ["instance-A"]);
@@ -64,7 +64,7 @@ describe("track ops", () => {
     });
   });
 
-  it("markKeyframe toggles on the track's own field when selected off-primary", () => {
+  it("markKeyframe toggles on the track's own field when selected off-primary", async () => {
     harness.frameData = { 2: { A: det("d2", "A", { keyframe: false }) } };
     // the selected track's active ref points at a non-primary frame field
     harness.activeRefs = [{ instanceId: "A", path: "frames.polylines" }];
@@ -82,7 +82,7 @@ describe("track ops", () => {
     );
   });
 
-  it("markKeyframe skips a legacy track-<index> id (no engine identity)", () => {
+  it("markKeyframe skips a legacy track-<index> id (no engine identity)", async () => {
     harness.frameData = { 2: { A: det("d2", "A") } };
 
     ops.markKeyframe(2, ["track-4"]);
@@ -91,12 +91,12 @@ describe("track ops", () => {
     expect(mockBus.dispatch).not.toHaveBeenCalled();
   });
 
-  it("extendTrack fills target frames with the source content as non-keyframes", () => {
+  it("extendTrack fills target frames with the source content as non-keyframes", async () => {
     harness.frameData = {
       1: { A: det("d1", "A", { keyframe: true, confidence: 0.9 }) },
     };
 
-    ops.extendTrack("instance-A", 1, [2, 3, 99]);
+    await ops.extendTrack("instance-A", 1, [2, 3, 99]);
 
     // 99 is out of range [1,5] and dropped; identity fields stripped from content
     expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
@@ -112,13 +112,13 @@ describe("track ops", () => {
     );
   });
 
-  it("extendTrack carries the source frame's mask onto the filler frames", () => {
+  it("extendTrack carries the source frame's mask onto the filler frames", async () => {
     const mask = { shape: [2, 2], counts: "abcd" };
     harness.frameData = {
       1: { A: det("d1", "A", { keyframe: true, mask }) },
     };
 
-    ops.extendTrack("instance-A", 1, [2]);
+    await ops.extendTrack("instance-A", 1, [2]);
 
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: PATH, instanceId: "A", frame: 2 },
@@ -132,10 +132,10 @@ describe("track ops", () => {
     );
   });
 
-  it("trimTrack deletes only frames where the track is present", () => {
+  it("trimTrack deletes only frames where the track is present", async () => {
     harness.frameData = { 2: { A: det("d2", "A") } };
 
-    ops.trimTrack("instance-A", [2, 3]);
+    await ops.trimTrack("instance-A", [2, 3]);
 
     expect(mockActions.deleteLabel).toHaveBeenCalledTimes(1);
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
@@ -145,10 +145,10 @@ describe("track ops", () => {
     });
   });
 
-  it("shiftTrack deletes originals then re-lays content at frame+delta", () => {
+  it("shiftTrack deletes originals then re-lays content at frame+delta", async () => {
     harness.frameData = { 2: { A: det("d2", "A", { keyframe: true }) } };
 
-    ops.shiftTrack("instance-A", [2], 1);
+    await ops.shiftTrack("instance-A", [2], 1);
 
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
       path: PATH,
@@ -169,10 +169,10 @@ describe("track ops", () => {
   // A polyline (or any non-primary-field track) is edited through the presence
   // bar against ITS OWN frames field — addressing the primary field would miss
   // the source and silently no-op (the drag snaps back).
-  it("extendTrack fills a non-primary frame field when given its path", () => {
+  it("extendTrack fills a non-primary frame field when given its path", async () => {
     harness.frameData = { 1: { A: det("d1", "A", { keyframe: true }) } };
 
-    ops.extendTrack("instance-A", 1, [2], undefined, "frames.polylines");
+    await ops.extendTrack("instance-A", 1, [2], undefined, "frames.polylines");
 
     expect(mockActions.updateLabel).toHaveBeenCalledWith(
       { path: "frames.polylines", instanceId: "A", frame: 2 },
@@ -185,10 +185,10 @@ describe("track ops", () => {
     );
   });
 
-  it("trimTrack deletes from a non-primary frame field when given its path", () => {
+  it("trimTrack deletes from a non-primary frame field when given its path", async () => {
     harness.frameData = { 2: { A: det("d2", "A") } };
 
-    ops.trimTrack("instance-A", [2], "frames.polylines");
+    await ops.trimTrack("instance-A", [2], "frames.polylines");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
       path: "frames.polylines",
@@ -197,10 +197,10 @@ describe("track ops", () => {
     });
   });
 
-  it("shiftTrack re-lays content on a non-primary frame field when given its path", () => {
+  it("shiftTrack re-lays content on a non-primary frame field when given its path", async () => {
     harness.frameData = { 2: { A: det("d2", "A") } };
 
-    ops.shiftTrack("instance-A", [2], 1, "frames.polylines");
+    await ops.shiftTrack("instance-A", [2], 1, "frames.polylines");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
       path: "frames.polylines",
@@ -213,10 +213,10 @@ describe("track ops", () => {
     );
   });
 
-  it("deleteTrack removes every frame it appears on and notifies", () => {
+  it("deleteTrack removes every frame it appears on and notifies", async () => {
     harness.frameData = { 1: { A: det("d1", "A") }, 4: { A: det("d4", "A") } };
 
-    ops.deleteTrack("instance-A");
+    await ops.deleteTrack("instance-A");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledTimes(2);
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
@@ -229,10 +229,10 @@ describe("track ops", () => {
     });
   });
 
-  it("deleteTrack addresses a non-primary frame field when given its path", () => {
+  it("deleteTrack addresses a non-primary frame field when given its path", async () => {
     harness.frameData = { 2: { A: det("d2", "A") } };
 
-    ops.deleteTrack("instance-A", "frames.detections_2");
+    await ops.deleteTrack("instance-A", "frames.detections_2");
 
     expect(mockActions.deleteLabel).toHaveBeenCalledTimes(1);
     expect(mockActions.deleteLabel).toHaveBeenCalledWith({
@@ -242,10 +242,10 @@ describe("track ops", () => {
     });
   });
 
-  it("updateTrackAttributes merges onto every frame", () => {
+  it("updateTrackAttributes merges onto every frame", async () => {
     harness.frameData = { 1: { A: det("d1", "A") }, 3: { A: det("d3", "A") } };
 
-    ops.updateTrackAttributes("instance-A", { label: "car" });
+    await ops.updateTrackAttributes("instance-A", { label: "car" });
 
     expect(mockActions.updateLabel).toHaveBeenCalledTimes(2);
     expect(mockActions.updateLabel).toHaveBeenCalledWith(

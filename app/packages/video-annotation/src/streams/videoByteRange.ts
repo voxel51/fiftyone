@@ -7,10 +7,11 @@
  *
  * The native decode worker parses the `moov` (sample table) up front, then
  * fetches only the byte ranges a chunk's GOP needs via HTTP `Range` requests,
- * so it never loads the whole source video into memory. This module holds the
- * arithmetic and response-shape logic for that — deliberately free of `fetch`,
- * workers, and mp4box so it is exhaustively unit-testable; the worker wires
- * these into the network + decoder.
+ * so it never loads the whole source video into memory. A server that does not
+ * answer `Range` with `206` cannot be decoded from. This module holds the
+ * arithmetic and response-shape logic for that — free of workers and mp4box,
+ * and handed its network request, so it is exhaustively unit-testable; the
+ * worker wires these into the network + decoder.
  */
 
 /** The byte location of one encoded sample within the source file. */
@@ -27,6 +28,13 @@ export interface ByteRange {
   start: number;
   /** One past the last byte, exclusive. */
   end: number;
+}
+
+/** A slice of the source file plus the absolute offset its byte 0 maps to. */
+export interface SpanBuffer {
+  buffer: ArrayBuffer;
+  /** Absolute file offset of `buffer[0]`. */
+  fileStart: number;
 }
 
 /**
@@ -93,28 +101,92 @@ export function parseContentRangeStart(
 export type RangeResponseKind =
   /** `206` — the body is exactly the requested range. */
   | "range"
-  /** `200` — the server ignored `Range` and returned the whole file. */
-  | "whole"
-  /** Anything else (e.g. `416`) — give up on ranges, fetch whole-file. */
-  | "reject";
+  /** `200` — the server ignored `Range` and is sending the whole file. */
+  | "ignored"
+  /** Anything else (e.g. `416`). */
+  | "rejected";
 
-/** Classify a media response status for the range-fetch state machine. */
+/** Classify a media response status for range fetching. */
 export function classifyRangeResponse(status: number): RangeResponseKind {
   if (status === 206) {
     return "range";
   }
 
   if (status === 200) {
-    return "whole";
+    return "ignored";
   }
 
-  return "reject";
+  return "rejected";
+}
+
+const RANGE_REQUIRED =
+  "the media server must support HTTP range requests (and allow them " +
+  "cross-origin)";
+
+/**
+ * Fetches byte ranges of the source video through a {@link ByteRangeCache}.
+ * Only a `206` answer is usable. Any other answer fails the fetch, and that
+ * failure sticks: later fetches throw it without going back to the network,
+ * since chunks fetch concurrently and a server that ignores `Range` sends each
+ * of them the whole file. A request that fails outright (network, CORS
+ * preflight) fails only that fetch.
+ */
+export class RangeFetcher {
+  private failure: Error | null = null;
+
+  constructor(
+    private readonly request: (range: ByteRange) => Promise<Response>,
+    private readonly cache: ByteRangeCache,
+  ) {}
+
+  async fetch(range: ByteRange): Promise<SpanBuffer> {
+    if (this.failure) {
+      throw this.failure;
+    }
+
+    const cached = this.cache.get(range);
+    if (cached) {
+      return { buffer: cached, fileStart: range.start };
+    }
+
+    let resp: Response;
+    try {
+      resp = await this.request(range);
+    } catch (error) {
+      // Not latched: a dropped request may succeed on retry, and a CORS
+      // rejection costs a preflight, not a download
+      throw new Error(
+        `video range request failed (${String(error)}): ${RANGE_REQUIRED}`,
+      );
+    }
+
+    const kind = classifyRangeResponse(resp.status);
+    if (kind !== "range") {
+      // Don't download a body we can't use.
+      void resp.body?.cancel().catch(() => undefined);
+      throw this.fail(
+        kind === "ignored"
+          ? "video server ignored the range request (HTTP 200)"
+          : `video range request answered HTTP ${resp.status}`,
+      );
+    }
+
+    const buffer = await resp.arrayBuffer();
+    const fileStart =
+      parseContentRangeStart(resp.headers.get("Content-Range")) ?? range.start;
+    this.cache.set(range, buffer);
+    return { buffer, fileStart };
+  }
+
+  private fail(reason: string): Error {
+    this.failure ??= new Error(`${reason}: ${RANGE_REQUIRED}`);
+    return this.failure;
+  }
 }
 
 /**
  * View of one sample's encoded bytes within a fetched buffer. `bufferFileStart`
- * is the buffer's absolute file offset (`0` for a whole-file body, the range
- * start for a `206` body). Throws when the sample falls outside the buffer —
+ * is the buffer's absolute file offset (the range start of a `206` body). Throws when the sample falls outside the buffer —
  * that means the fetched range didn't actually cover it (a bug, not a
  * recoverable state).
  */

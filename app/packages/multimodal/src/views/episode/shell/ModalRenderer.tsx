@@ -120,6 +120,7 @@ const EpisodeModal: React.FC<
         layoutScopeKey={datasetId}
         navigationPending={ctx.transitioning === true}
         session={sessionState.session}
+        timeline="episode"
         timeRange={timeRange}
       >
         {({

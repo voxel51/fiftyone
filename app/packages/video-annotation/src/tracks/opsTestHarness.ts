@@ -18,6 +18,21 @@ export const harness = {
 export const mockEngine = {
   getLabel: ({ instanceId, frame }: { instanceId: string; frame?: number }) =>
     frame != null ? harness.frameData[frame]?.[instanceId] : undefined,
+  trackFrames: ({ instanceId }: { instanceId: string }) => {
+    const frames = Object.keys(harness.frameData)
+      .map(Number)
+      .filter((frame) => harness.frameData[frame]?.[instanceId])
+      .sort((a, b) => a - b);
+
+    return {
+      frames,
+      keyframes: frames.filter(
+        (frame) => harness.frameData[frame][instanceId].keyframe,
+      ),
+    };
+  },
+  trackIndexReady: vi.fn(async () => true),
+  holdFrames: vi.fn(async () => () => {}),
   mintInstanceId: vi.fn(() => "NEW"),
   mintGestureId: vi.fn(() => "gesture:1"),
   interaction: { getActive: () => harness.activeRefs },
@@ -49,6 +64,7 @@ export const resetHarness = (): void => {
   harness.frameData = {};
   harness.activeRefs = [];
   vi.clearAllMocks();
+  mockEngine.trackIndexReady.mockImplementation(async () => true);
 };
 
 export const det = (

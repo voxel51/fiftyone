@@ -39,8 +39,9 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
   grid, modal, sidebar.
 - Do not use assertion logic directly in POMs, instead use composition to
   create POMs that contain the assertion class.
-- Refrain from using `page.waitForTimeout()`. There is almost always a better
-  alternative, like using custom events.
+- Follow `CODING_STANDARDS.md`, which is binding: every wait names the `e2e:`
+  event its action causes, then reads the result once. No polls, timeouts,
+  retrying assertions or DOM waits; CI's `e2e-waits` job fails on them.
 - Keep individual tests small. These specs also run in fiftyone-teams CI at
   roughly 2–4x the duration (slower server boot, page loads, and screenshot
   stabilization), so a test that takes more than ~60 seconds here is a timeout
@@ -77,7 +78,10 @@ class MyPOM {
     readonly semanticLocator2: Locator;
     readonly assert: MyPOMAsserter;
 
-    constructor(private readonly page) {
+    constructor(
+        private readonly page: Page,
+        private readonly eventUtils: EventUtils,
+    ) {
         this.semanticLocator1 = this.page.locator("...");
         this.semanticLocator2 = this.page.locator("...");
         this.assert = new MyPOMAsserter(this);
@@ -98,18 +102,22 @@ class MyPOM {
     }
 
     /**
-     * All actions should be verbs or prefixed with a verb.
+     * All actions should be verbs or prefixed with a verb, and resolve on the
+     * `e2e:` event they cause.
      */
     async doSomeAction() {
-        await this.someElement.click();
+        await this.eventUtils.after("e2e:my-component:shown", () =>
+            this.someElement.click(),
+        );
     }
 }
 
 class MyPOMAsserter {
     constructor(private readonly myPOM: MyPOM) {}
 
-    async isFooVisible() {
-        await expect(this.myPOM.someElement).toBeVisible();
+    /** One exact read, after the action that changed it resolved */
+    async hasFooText(text: string) {
+        expect(await this.myPOM.someElement.textContent()).toBe(text);
     }
 }
 ```
@@ -125,15 +133,20 @@ class MyPOMAsserter {
    baseline, harvest the render from a CI run of your PR:
 
 ```
-# download the merged report from the failing run
-gh run download <run-id> -n playwright-report-merged -D /tmp/report
+# download the failing run's blob reports and merge them to JSON
+gh run download <run-id> -p 'e2e-blob-shard-*' -D /tmp/blobs
+mkdir -p /tmp/all && find /tmp/blobs -name '*.zip' -exec cp {} /tmp/all/ \;
+PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/merged.json \
+  npx playwright merge-reports --reporter json /tmp/all
 
-# each failed screenshot's trace zip (in /tmp/report/data/) lists
-# attachments mapping <name>-{expected,actual,diff}.png to sha-named
-# files in the same directory; commit the *actual* over the baseline:
-cp /tmp/report/data/<actual-sha>.png \
+# each failed test's first attempt attaches <name>-actual.png with a local
+# path; commit it over the baseline:
+cp <attachment path> \
   src/oss/specs/<spec>.spec.ts-snapshots/<name>-chromium-linux.png
 ```
+
+A test stops at its first mismatched screenshot but writes every missing one,
+so delete a spec's stale linux baselines to collect them all in one round.
 
 Only accept an actual after reviewing the diff — a dimension change or a
 highlighted UI element is a behavioral difference, not render noise.
@@ -210,12 +223,12 @@ await DatasetFactory.createDataset({
 });
 ```
 
-Verify persistence the way a user would see it: await the edit's sample-save
-response, then assert from a fresh browser context on what the app renders.
-Group slices may be `image`, `3d` or `video` (with per-slice media options);
-video slices take `withFrameData` and `sampleFrames` too. Recipes shared by a
-spec family (the video-annotation and 3D seeds) live beside the specs in
-`src/oss/specs/annotate-*/`.
+Verify persistence the way a user would see it: wrap the edit in
+`modal.sidebar.annotate.afterSave(...)`, then assert from a fresh browser
+context on what the app renders. Group slices may be `image`, `3d` or `video`
+(with per-slice media options); video slices take `withFrameData` and
+`sampleFrames` too. Recipes shared by a spec family (the video-annotation and
+3D seeds) live beside the specs in `src/oss/specs/annotate-*/`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy

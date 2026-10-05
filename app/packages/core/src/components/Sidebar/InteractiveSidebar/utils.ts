@@ -261,7 +261,9 @@ export const getEntryKey = (entry: fos.SidebarEntry) => {
   }
 
   if (entry.kind === fos.EntryKind.LABEL) {
-    return `label-${entry.id}`;
+    return entry.slot === undefined
+      ? `label-${entry.id}`
+      : JSON.stringify(["label", entry.path, entry.slot]);
   }
 
   if (entry.kind === fos.EntryKind.LOADING) {

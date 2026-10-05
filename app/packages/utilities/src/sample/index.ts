@@ -14,7 +14,7 @@ export {
 export type { LabelData } from "./labels";
 // Id-aligned list-delta builder (shift-safe JSON-Patch for label lists); shared
 // by per-frame video labels and temporal detections.
-export { idAlignedListDelta } from "./diff";
+export { idAlignedListDelta, structuralSupplier } from "./diff";
 export type { IdAlignedDeltaSpec } from "./diff";
 // Per-label classification of persisted JSON patches (Activity Analytics
 // label-op capture; see the activity-analytics KB, time-tracking-events.md).
@@ -24,7 +24,7 @@ export type { LabelOpsSummary } from "./labelOps";
 export { applyDeltas } from "./apply";
 // Sample's canonical value-equality (collapses DateTime shapes); reused by
 // reconcilers to decide whether a change is a no-op echo of Sample's truth.
-export { equalsNormalized } from "./normalize";
+export { equalsNormalized, normalizeForCompare } from "./normalize";
 export { Sample, SampleChangeKind } from "./sample";
 export type {
   SampleChange,

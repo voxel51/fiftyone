@@ -5,6 +5,8 @@ import type {
   KeypointLabel,
   KeypointOverlay,
   PolylineOverlay,
+  RegressionLabel,
+  RegressionOverlay,
   TemporalLabel,
   TemporalOverlay,
 } from "@fiftyone/lighter";
@@ -147,6 +149,12 @@ export interface ClassificationAnnotationLabel extends Label {
   type: "Classification";
 }
 
+export interface RegressionAnnotationLabel extends Label {
+  data: RegressionLabel;
+  overlay: RegressionOverlay;
+  type: "Regression";
+}
+
 export interface DetectionAnnotationLabel extends Label {
   data: DetectionLabel;
   overlay: DetectionOverlay;
@@ -179,6 +187,7 @@ export interface TemporalDetectionAnnotationLabel extends Label {
 
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
+  | RegressionAnnotationLabel
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel
@@ -200,6 +209,12 @@ export interface LabelEntry {
   path: string;
   /** Occurrence frame for video frame labels; absent for sample-level labels. */
   frame?: number;
+  /**
+   * Position among the field's rows at the playhead, set with `frame`. Frame
+   * rows key by it: an untracked frame label's id names one frame's
+   * occurrence, so keying by id would remount every row on each frame step.
+   */
+  slot?: number;
 }
 
 export interface LoadingEntry {
@@ -977,13 +992,26 @@ export const sidebarGroup = selectorFamily<
   },
 });
 
-export const sidebarPaths = selector({
-  key: "sidebarPaths",
-  get: ({ get }) => {
-    const groups = get(sidebarGroupsDefinition(false));
-    return groups.flatMap(({ paths }) => paths);
-  },
-});
+export const sidebarPaths = (() => {
+  // groups also hold each group's expanded state; returning the same array
+  // when only that changes keeps the grid's looker options unchanged
+  let current: string[] = [];
+  return selector({
+    key: "sidebarPaths",
+    get: ({ get }) => {
+      const paths = get(sidebarGroupsDefinition(false)).flatMap(
+        ({ paths }) => paths,
+      );
+      if (
+        paths.length !== current.length ||
+        paths.some((path, i) => path !== current[i])
+      ) {
+        current = paths;
+      }
+      return current;
+    },
+  });
+})();
 
 export const sidebarGroupNames = selectorFamily<string[], boolean>({
   key: "sidebarGroupNames",

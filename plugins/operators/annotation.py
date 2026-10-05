@@ -17,6 +17,8 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
@@ -34,6 +36,68 @@ def _strip_frames_prefix(field_name, is_frame_field):
         return field_name[len(_FRAMES_PREFIX) :]
 
     return field_name
+
+
+def _list_app_supported_fields(dataset):
+    """Lists the annotation fields the App can annotate."""
+    fields = foau.list_valid_annotation_fields(
+        dataset, require_app_support=True, flatten=True, include_frames=True
+    )
+    return [
+        f for f in fields if not _is_app_unsupported_frame_field(dataset, f)
+    ]
+
+
+def _is_app_unsupported_frame_field(dataset, field_name):
+    if not dataset._is_frame_field(field_name):
+        return False
+
+    field = dataset.get_field(field_name)
+    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, foac.APP_UNSUPPORTED_FRAME_LABEL_TYPES
+    )
+
+
+def _merge_active_fields(active_fields, app_fields, supported_fields):
+    """Applies the App's active field order while keeping active fields the
+    App doesn't list, since it can't show them, in their relative positions.
+    """
+    kept = {
+        f
+        for f in active_fields
+        if f not in supported_fields and f not in app_fields
+    }
+    app_order = iter(app_fields)
+    merged = []
+    for field in active_fields:
+        if field in kept:
+            merged.append(field)
+            continue
+
+        field = next(app_order, None)
+        if field is not None:
+            merged.append(field)
+
+    merged.extend(app_order)
+    return merged
+
+
+def _get_track_collection(ctx):
+    """Returns the collection whose samples or groups scope tracks.
+
+    An ordered dynamic group of image samples plays as a video, so its
+    groups scope tracks. The grouping is applied to the full dataset so that
+    every sample of each group is covered.
+    """
+    view = ctx.view
+    if ctx.dataset.media_type != fom.IMAGE or not view._is_dynamic_groups:
+        return ctx.dataset
+
+    stage = next(s for s in reversed(view._stages) if s.outputs_dynamic_groups)
+    if stage.order_by is None:
+        return ctx.dataset
+
+    return ctx.dataset.group_by(stage.field_or_expr, order_by=stage.order_by)
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -93,7 +157,11 @@ class SetActiveLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         fields = ctx.params.get("fields", [])
-        ctx.dataset.active_label_schemas = fields
+        ctx.dataset.active_label_schemas = _merge_active_fields(
+            ctx.dataset.active_label_schemas or [],
+            fields,
+            set(_list_app_supported_fields(ctx.dataset)),
+        )
         ctx.dataset.save()
 
 
@@ -117,7 +185,9 @@ class GenerateLabelSchemas(foo.Operator):
         # limited view) and only fills fields that have indexes but no
         # instances yet, so existing tracks are never clobbered.
         if scan_samples:
-            foau.backfill_instances_from_index(ctx.dataset, field)
+            foau.backfill_instances_from_index(
+                _get_track_collection(ctx), field
+            )
 
         if limit:
             view = ctx.dataset.limit(limit)
@@ -145,12 +215,7 @@ class GetLabelSchemas(foo.Operator):
         fields = foau.list_valid_annotation_fields(
             ctx.dataset, flatten=True, include_frames=True
         )
-        supported_fields = foau.list_valid_annotation_fields(
-            ctx.dataset,
-            require_app_support=True,
-            flatten=True,
-            include_frames=True,
-        )
+        supported_fields = _list_app_supported_fields(ctx.dataset)
         default_label_schemas = (
             ctx.dataset.generate_label_schemas(
                 fields=list(supported_fields), scan_samples=False
@@ -181,7 +246,13 @@ class GetLabelSchemas(foo.Operator):
                 )
 
         return {
-            "active_label_schemas": ctx.dataset.active_label_schemas,
+            # an unsupported field may have been activated from the SDK; the
+            # App lists it with the other unsupported fields instead
+            "active_label_schemas": [
+                field
+                for field in ctx.dataset.active_label_schemas
+                if not result.get(field, {}).get("unsupported", False)
+            ],
             "label_schemas": result,
         }
 
@@ -333,6 +404,19 @@ class CreateAndActivateField(foo.Operator):
 
         # Get label schema config from frontend
         label_schema_config = ctx.params.get("label_schema_config", {})
+        attributes = label_schema_config.get("attributes", [])
+
+        # A label type without a `label` class (e.g. Regression) has no
+        # classes to pick from, so its schema carries no component. A list
+        # type's classes live on its elements
+        element_cls = label_cls
+        if issubclass(label_cls, fol._HasLabelList):
+            list_field = label_cls._fields[label_cls._LABEL_LIST_FIELD]
+            element_cls = list_field.field.document_type
+
+        if "label" not in element_cls._fields:
+            return {"type": field_type, "attributes": attributes}
+
         classes = label_schema_config.get("classes")
 
         # Honor an explicit input type from the form; otherwise pick one
@@ -351,7 +435,7 @@ class CreateAndActivateField(foo.Operator):
         return {
             "type": field_type,
             "component": component,
-            "attributes": label_schema_config.get("attributes", []),
+            "attributes": attributes,
             **({"classes": classes} if classes else {}),
         }
 
@@ -412,11 +496,11 @@ class ListValidAnnotationFields(foo.Operator):
     def execute(self, ctx: foo.ExecutionContext):
         require_app_support = ctx.params.get("require_app_support", True)
 
-        valid_fields = foau.list_valid_annotation_fields(
-            ctx.dataset,
-            require_app_support=require_app_support,
-            flatten=True,
-            include_frames=True,
-        )
+        if require_app_support:
+            valid_fields = _list_app_supported_fields(ctx.dataset)
+        else:
+            valid_fields = foau.list_valid_annotation_fields(
+                ctx.dataset, flatten=True, include_frames=True
+            )
 
         return {"valid_fields": valid_fields}

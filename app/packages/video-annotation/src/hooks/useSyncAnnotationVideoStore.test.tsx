@@ -93,7 +93,7 @@ vi.mock("../streams/frameLabelsStream", () => ({
   useFrameLabelsStream: () => ({
     cachedFrames: () => [],
     subscribeToEdits: () => () => undefined,
-    warmupAll: vi.fn(),
+    subscribeToEvictions: () => () => undefined,
   }),
 }));
 
@@ -117,7 +117,6 @@ const Harness = ({
   useSyncAnnotationVideoStore({
     labelTypes: {},
     sampleLevelPaths,
-    seedWholeClip: false,
   });
   return null;
 };

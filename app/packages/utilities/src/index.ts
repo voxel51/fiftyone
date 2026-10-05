@@ -5,6 +5,7 @@ export * from "./buffer-manager";
 export * from "./color";
 export * as constants from "./constants";
 export * from "./datetime";
+export * from "./e2e";
 export * from "./errors";
 export * from "./events";
 export * from "./fetch";

@@ -41,32 +41,40 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
 });
 
 test("grid tagging refreshes visible tiles across pages without reloading", async ({
+  eventUtils,
   fiftyoneLoader,
   grid,
   page,
   sidebar,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldCheckbox("filepath");
-  await sidebar.clickFieldCheckbox("tags");
+  const filepath = (index: number) => path.join(mediaDir, `${index}.png`);
   const tile = (index: number) =>
-    grid.locator.getByTestId("looker").filter({
-      hasText: path.join(mediaDir, `${index}.png`),
-    });
+    grid.locator.getByTestId("looker").filter({ hasText: filepath(index) });
+  const tag = (index: number) => tile(index).getByTestId("tag-tags-grid-test");
+
+  // tiles render their tags once the checkbox shows them, not when scrolled
+  const shown = await grid.tagsRenderedMark();
+  await grid.afterTagsRendered([filepath(0)], async () => {
+    await sidebar.clickFieldCheckbox("filepath");
+    await sidebar.clickFieldCheckbox("tags");
+  });
 
   // Visit later pages before tagging so Relay already holds their old data.
   await grid.scrollBottom();
   await tile(30).scrollIntoViewIfNeeded();
-  await expect(tile(30)).toBeInViewport();
-  await expect(tile(30).getByTestId("tag-tags-grid-test")).toBeHidden();
+  await grid.untilTagsRenderedSince(shown, filepath(30));
+  expect(await tag(30).count()).toBe(0);
 
-  await grid.run(() => new SelectionTrayPom(page).tagSamples("grid-test"));
+  const tagged = await grid.tagsRenderedMark();
+  await grid.run(() =>
+    new SelectionTrayPom(page, eventUtils).tagSamples("grid-test"),
+  );
 
   // Check actual viewport contents, including previously cached later pages.
-  // toBeVisible alone also accepts tiles retained outside the viewport.
   for (const index of [0, 30, 47, 53]) {
     await tile(index).scrollIntoViewIfNeeded();
-    await expect(tile(index)).toBeInViewport();
-    await expect(tile(index).getByTestId("tag-tags-grid-test")).toBeVisible();
+    await grid.untilTagsRenderedSince(tagged, filepath(index));
+    expect(await tag(index).isVisible()).toBe(true);
   }
 });

@@ -41,6 +41,7 @@ test.describe.serial("schema manager tooltip z-index stacking", () => {
   test.beforeEach(async ({ fiftyoneLoader, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
   });
 
@@ -48,10 +49,7 @@ test.describe.serial("schema manager tooltip z-index stacking", () => {
     modal,
     schemaManager,
   }) => {
-    await modal.assert.isOpen();
-    await modal.waitForSampleLoadDomAttribute();
-
-    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    await modal.sampleCanvas.hoverLabel(0.5, 0.5);
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.toggleLock();
     await modal.sampleCanvas.tooltip.assert.isLocked();

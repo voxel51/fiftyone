@@ -74,6 +74,7 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
 });
 
@@ -83,9 +84,9 @@ test.afterEach(async ({ modal, page }) => {
 });
 
 const openAnnotate = async (modal: ModalPom) => {
-  await modal.assert.isOpen();
-  await modal.waitForSampleLoadDomAttribute();
-  await modal.sidebar.switchMode("annotate");
+  await modal.sidebar.annotate.afterLabelList(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** The label list's header, which unmounts while the edit form is showing. */
@@ -144,9 +145,8 @@ test.describe.serial("annotate toolbar state", () => {
   test("detection mode draws under a crosshair, stays active after a draw, and click-to-quit returns to Select", async ({
     modal,
   }) => {
-    await openAnnotate(modal);
     // canvas overlays are not hit-testable until lighter's first render
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => openAnnotate(modal));
 
     await modal.sidebar.annotate.detectionMode("Detections");
     await expectActive(modal, "detection");
@@ -161,15 +161,16 @@ test.describe.serial("annotate toolbar state", () => {
     // draw away from the existing overlay; the new box opens its edit form
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sampleCanvas.move(0.8, 0.8, "crosshair");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.9, 0.9);
-    await modal.sampleCanvas.up();
+    // quitting before the async establish flow commits would re-activate
+    // detection mode, so wait for the edit form the drag opens first
+    await modal.sidebar.annotate.afterEditing(async () => {
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.9, 0.9);
+      await modal.sampleCanvas.up();
+    });
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
     await expectActive(modal, "detection");
 
-    // quitting before the async establish flow commits would re-activate
-    // detection mode, so wait for the edit form first
-    await expect(labelListHeader(modal)).toBeHidden();
     await clickCanvas(modal, 0.09, 0.09, "crosshair");
     await expectActive(modal, "select");
   });
@@ -177,15 +178,14 @@ test.describe.serial("annotate toolbar state", () => {
   test("overlay clicks enter the matching action; in detection mode they quit it", async ({
     modal,
   }) => {
-    await openAnnotate(modal);
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => openAnnotate(modal));
 
     // in detection mode the existing detection doesn't claim the click:
     // click-to-quit applies over overlays like empty canvas
     await modal.sidebar.annotate.detectionMode("Detections");
     await clickCanvas(modal, 0.5, 0.5, "crosshair");
     await expectActive(modal, "select");
-    await expect(labelListHeader(modal)).toBeVisible();
+    expect(await labelListHeader(modal).isVisible()).toBe(true);
 
     // the classification tab renders at the top-left of the media bounds
     await clickCanvas(modal, 0.05, 0.02, "pointer");
@@ -197,7 +197,7 @@ test.describe.serial("annotate toolbar state", () => {
     // clicking the detection opens its edit form and activates detection mode
     await clickCanvas(modal, 0.5, 0.5, "pointer");
     await expectActive(modal, "detection");
-    await expect(labelListHeader(modal)).toBeHidden();
+    expect(await labelListHeader(modal).isVisible()).toBe(false);
 
     await clickCanvas(modal, 0.09, 0.09, "crosshair");
     await expectActive(modal, "select");
@@ -226,22 +226,22 @@ test.describe.serial("annotate toolbar state", () => {
     const detectionModeButton = page.getByTestId("detection-mode");
     const exploreButton = modal.sidebar.locator.getByTestId("explore");
     const annotateButton = modal.sidebar.locator.getByTestId("annotate");
-    await expect(detectionModeButton).toBeVisible();
-    await expect(modal.sidebar.edit.undoButton).toBeVisible();
-    await expect(exploreButton).toBeVisible();
-    await expect(annotateButton).toBeVisible();
-    await expect(labelListHeader(modal)).toBeVisible();
+    expect(await detectionModeButton.isVisible()).toBe(true);
+    expect(await modal.sidebar.edit.undoButton.isVisible()).toBe(true);
+    expect(await exploreButton.isVisible()).toBe(true);
+    expect(await annotateButton.isVisible()).toBe(true);
+    expect(await labelListHeader(modal).isVisible()).toBe(true);
 
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
-    await expect(detectionModeButton).toBeHidden();
-    await expect(labelListHeader(modal)).toBeHidden();
-    await expect(modal.sidebar.edit.undoButton).toBeVisible();
-    await expect(exploreButton).toBeVisible();
-    await expect(annotateButton).toBeVisible();
+    expect(await detectionModeButton.isVisible()).toBe(false);
+    expect(await labelListHeader(modal).isVisible()).toBe(false);
+    expect(await modal.sidebar.edit.undoButton.isVisible()).toBe(true);
+    expect(await exploreButton.isVisible()).toBe(true);
+    expect(await annotateButton.isVisible()).toBe(true);
 
     await modal.sidebar.edit.exitToList();
-    await expect(labelListHeader(modal)).toBeVisible();
-    await expect(detectionModeButton).toBeVisible();
+    expect(await labelListHeader(modal).isVisible()).toBe(true);
+    expect(await detectionModeButton.isVisible()).toBe(true);
   });
 
   test("the schema manager opens from the label list", async ({

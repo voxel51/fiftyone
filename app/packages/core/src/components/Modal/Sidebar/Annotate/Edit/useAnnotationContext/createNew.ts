@@ -7,6 +7,9 @@ import type {
   PolylineLabel,
   PolylineOptions,
   PolylineOverlay,
+  RegressionLabel,
+  RegressionOptions,
+  RegressionOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler } from "@fiftyone/lighter";
 import type { ClassificationLabel } from "@fiftyone/looker";
@@ -14,9 +17,11 @@ import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
+  KEYPOINT,
   type LabelData,
   objectId,
   POLYLINE,
+  REGRESSION,
 } from "@fiftyone/utilities";
 import { getDefaultStore } from "jotai";
 import type { AttributeConfig } from "../../SchemaManager/utils";
@@ -37,10 +42,13 @@ export function createNewLabel(
 ): AnnotationLabel | null {
   const { scene, addOverlay, overlayFactory, engine, sample } = deps;
   const store = getDefaultStore();
-  const id = options?.id ?? objectId();
 
   const field = options?.field ?? store.get(defaultField(type));
   if (!field) return null;
+
+  const isSingleLabel = type === CLASSIFICATION || type === REGRESSION;
+  const slot = isSingleLabel ? deps.frameSlotOf?.(field) : undefined;
+  const id = slot?.instanceId ?? options?.id ?? objectId();
 
   const data = buildNewLabelData(field, type, {
     id,
@@ -48,29 +56,28 @@ export function createNewLabel(
     origin: options?.origin,
   });
 
-  if (type === CLASSIFICATION) {
-    const overlay = overlayFactory.create<
-      ClassificationOptions,
-      ClassificationOverlay
-    >("classification", {
-      field,
-      id,
-      label: data as ClassificationLabel,
-    });
+  if (isSingleLabel) {
+    const overlay =
+      type === CLASSIFICATION
+        ? overlayFactory.create<ClassificationOptions, ClassificationOverlay>(
+            "classification",
+            { field, id, label: data as ClassificationLabel },
+          )
+        : overlayFactory.create<RegressionOptions, RegressionOverlay>(
+            "regression",
+            { field, id, label: data as RegressionLabel },
+          );
     addOverlay(overlay);
     scene?.selectOverlay(id, { ignoreSideEffects: true });
 
-    // Persist the new Classification through to the engine immediately.
-    // Classification has no draw gesture — there is no
-    // `lighter:overlay-establish` to commit on, and the bridge is disabled on
-    // video — so without this write the label would live only in the sidebar's
-    // jotai draft (no engine row, no labels-list entry, no sample-document
-    // mutation). Sample-level only by design (the toolbar's field picker
-    // filters frame-level paths out, and the engine routes a sample-level path
-    // to the sample-level store on video too).
+    // Persist the new chip through to the engine immediately. Neither a
+    // Classification nor a Regression has a draw gesture — there is no
+    // `lighter:overlay-establish` to commit on — so without this write the
+    // label would live only in the sidebar's jotai draft. On a video frame
+    // field it is the playhead frame's value.
     if (sample) {
       engine.updateLabel(
-        { sample, path: field, instanceId: id },
+        { sample, path: field, instanceId: id, frame: slot?.frame },
         data as Partial<LabelData>,
       );
     }
@@ -127,6 +134,14 @@ export function createNewLabel(
 
   return null;
 }
+
+const NEW_LABEL_CLS: Partial<Record<LabelType, string>> = {
+  [CLASSIFICATION]: "Classification",
+  [DETECTION]: "Detection",
+  [KEYPOINT]: "Keypoint",
+  [POLYLINE]: "Polyline",
+  [REGRESSION]: "Regression",
+};
 
 /**
  * Schema defaults for a new label in `field`: the schema-level `label`
@@ -213,17 +228,13 @@ export function buildNewLabelData(
   const defaults = getNewLabelDefaults(field, labelValue);
 
   const data = {
-    _cls:
-      type === CLASSIFICATION
-        ? "Classification"
-        : type === DETECTION
-          ? "Detection"
-          : type === POLYLINE
-            ? "Polyline"
-            : undefined,
+    // `_cls` is server-managed: omit it when unknown, since an explicit
+    // `undefined` overrides the server's value in the merge-then-diff.
+    ...(NEW_LABEL_CLS[type] && { _cls: NEW_LABEL_CLS[type] }),
     _id: labelId,
     ...defaults,
-    ...(labelValue && { label: labelValue }),
+    // a Regression carries a numeric `value`, never a class
+    ...(labelValue && type !== REGRESSION && { label: labelValue }),
   };
 
   if (type === POLYLINE) {

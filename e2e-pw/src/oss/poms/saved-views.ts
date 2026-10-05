@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 
 export type Color =
   | "Gray"
@@ -22,6 +23,12 @@ export type SaveViewParams = {
 
 const defaultColor = "Gray";
 
+const SELECTION_LIST = '[data-cy="saved-views-selection-view"]';
+const SELECTION_EVENT = "e2e:components:selection";
+const DIALOG_EVENT = "e2e:saved-views:dialog";
+const VIEW_LIST = "saved-views";
+const COLOR_LIST = "saved-views-input-color-selection";
+
 export class SavedViewsPom {
   readonly page: Page;
   readonly assert: SavedViewAsserter;
@@ -29,7 +36,10 @@ export class SavedViewsPom {
   readonly locator: Locator;
   readonly dialogLocator: Locator;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new SavedViewAsserter(this);
 
@@ -54,13 +64,39 @@ export class SavedViewsPom {
   }
 
   async clickEditRaw(slug: string) {
-    await this.locator.click();
+    await this.openSelect();
     await this.clickOptionEdit(slug);
   }
 
+  /** Run `action`, resolving once the dropdown `list` has opened or closed */
+  private afterList<T>(list: string, open: boolean, action: () => Promise<T>) {
+    return this.eventUtils.after(SELECTION_EVENT, action, (e) => {
+      const detail = e.detail as { id: string; open: boolean };
+      return detail.id === list && detail.open === open;
+    });
+  }
+
+  /** Run `action`, resolving once the view dialog has closed */
+  private afterDialogClosed<T>(action: () => Promise<T>) {
+    return this.eventUtils.after(
+      DIALOG_EVENT,
+      action,
+      (e) => (e.detail as { open: boolean }).open === false,
+    );
+  }
+
+  /** Open a saved view's edit dialog, resolving once it shows the view */
   async clickOptionEdit(slug: string) {
     await this.savedViewOption(slug).hover();
-    await this.optionEdit(slug).click();
+    // the dialog fills its inputs from the view in an effect after it mounts
+    await this.eventUtils.after(
+      DIALOG_EVENT,
+      () => this.optionEdit(slug).click(),
+      (e) => {
+        const detail = e.detail as { open: boolean; name: string };
+        return detail.open && detail.name !== "";
+      },
+    );
   }
 
   async clickEdit(slug: string) {
@@ -73,78 +109,95 @@ export class SavedViewsPom {
   }
 
   async saveViewInputs({ name, description, color, newColor }: SaveViewParams) {
-    await this.nameInput().fill(name, { timeout: 2000 });
-    await this.descriptionInput().fill(description, { timeout: 2000 });
-    await this.colorInput(color).click({ timeout: 2000 });
-    await this.colorOption(newColor).click();
+    await this.nameInput().fill(name);
+    await this.descriptionInput().fill(description);
+    await this.clickColor(color);
+    await this.pickColor(newColor);
   }
 
-  async waitUntilModalHidden() {
-    await this.dialogLocator.waitFor({ state: "hidden" });
-  }
-
+  /** Create a view; the app selects it once its list has refetched */
   async saveView(view: SaveViewParams) {
     await this.openCreateModal();
     await this.saveViewInputs(view);
-    await this.saveButton().click();
-    await this.waitUntilModalHidden();
+    await this.afterDialogClosed(() =>
+      this.eventUtils.after("e2e:app:page-change", () =>
+        this.saveButton().click(),
+      ),
+    );
   }
 
   async deleteView(name: string) {
-    await this.savedViewOption(name).hover();
-    await this.optionEdit(name).click();
-    await this.deleteViewClick();
+    await this.clickOptionEdit(name);
+    await this.clickDeleteBtn();
   }
 
   async deleteViewClick() {
     await this.clickDeleteBtn();
-    await this.waitUntilModalHidden();
   }
 
+  /**
+   * Rename a view; the app selects it under its new slug once its list has
+   * refetched
+   */
   async editView(
     name: string,
     description: string,
     color: Color,
     newColor: Color,
   ) {
-    await this.nameInput().clear();
-    await this.nameInput().pressSequentially(name);
-    await this.descriptionInput().clear();
-    await this.descriptionInput().pressSequentially(description);
-    // need to force click otherwise intercepted by material-ui
-    await this.colorInputContainer().click({ force: true });
-    await this.colorOption(newColor).click();
+    await this.nameInput().fill(name);
+    await this.descriptionInput().fill(description);
+    await this.clickColor(color);
+    await this.pickColor(newColor);
 
-    await this.saveButton().click();
-    await this.waitUntilModalHidden();
+    await this.afterDialogClosed(() =>
+      this.eventUtils.after("e2e:app:page-change", () =>
+        this.saveButton().click(),
+      ),
+    );
   }
 
+  /** Open the color dropdown */
   async clickColor(color: Color = defaultColor) {
-    await this.colorInput(color).click();
+    await this.afterList(COLOR_LIST, true, () =>
+      this.colorInput(color).click(),
+    );
+  }
+
+  /** Pick a color from the open dropdown, resolving once its menu is gone */
+  async pickColor(color: Color) {
+    await this.afterList(COLOR_LIST, false, () =>
+      this.colorOption(color).click(),
+    );
+  }
+
+  /** Close the saved view list; an edit opened from it leaves it open */
+  async closeSelect() {
+    if ((await this.page.locator(SELECTION_LIST).count()) === 0) return;
+    await this.afterList(VIEW_LIST, false, () =>
+      this.page.keyboard.press("Escape"),
+    );
   }
 
   async clearView() {
-    if (await this.canClearView()) {
-      const urlBeforeClear = this.page.url();
-      await this.clearViewBtn.click();
-      await this.page.waitForFunction((urlBeforeClear) => {
-        return window.location.href !== urlBeforeClear;
-      }, urlBeforeClear);
-    }
+    await this.closeSelect();
+    await this.eventUtils.after("e2e:app:page-change", () =>
+      this.clearViewBtn.click(),
+    );
   }
 
   async clickCloseModal() {
-    // forcing since sometimes MUI backdrop intercepts the click
-    await this.closeModalBtn.click({ force: true, clickCount: 2 });
+    await this.afterDialogClosed(() => this.closeModalBtn.click());
   }
 
-  canClearView() {
-    return this.clearViewBtn.isVisible();
+  async clickCancel() {
+    await this.afterDialogClosed(() => this.cancelButton().click());
   }
 
+  /** Open the saved view list, unless it already is */
   async openSelect() {
-    // need to force click otherwise intercepted by material-ui backdrop
-    await this.selector.click({ timeout: 2000, force: true });
+    if ((await this.page.locator(SELECTION_LIST).count()) > 0) return;
+    await this.afterList(VIEW_LIST, true, () => this.selector.click());
   }
 
   async openCreateModal(
@@ -155,7 +208,11 @@ export class SavedViewsPom {
     if (!isSelectAlreadyOpen) {
       await this.openSelect();
     }
-    await this.saveNewViewBtn.click({ timeout: 2000 });
+    await this.eventUtils.after(
+      DIALOG_EVENT,
+      () => this.saveNewViewBtn.click(),
+      (e) => (e.detail as { open: boolean }).open,
+    );
   }
 
   async savedViewCount(name: string) {
@@ -228,9 +285,13 @@ export class SavedViewsPom {
     return this.dialogLocator.getByRole("button", { name: "Delete" }).first();
   }
 
+  /** Delete the open view; its list refetches after the dialog closes */
   async clickDeleteBtn() {
-    await this.deleteBtn().click();
-    await this.waitUntilModalHidden();
+    await this.afterDialogClosed(() =>
+      this.eventUtils.after("e2e:saved-views:listed", () =>
+        this.deleteBtn().click(),
+      ),
+    );
   }
 }
 
@@ -238,19 +299,15 @@ class SavedViewAsserter {
   constructor(private readonly svp: SavedViewsPom) {}
 
   async verifyNameIsEmpty() {
-    await this.svp.nameInput().waitFor({ state: "visible" });
-    const name = this.svp.nameInput();
-    await expect(name).toBeVisible();
-    await expect(name).toBeEmpty();
+    expect(await this.svp.nameInput().inputValue()).toBe("");
   }
 
   async verifyDescriptionIsEmpty() {
-    const desc = this.svp.descriptionInput();
-    await expect(desc).toBeEmpty();
+    expect(await this.svp.descriptionInput().inputValue()).toBe("");
   }
 
   async verifyDefaultColor(color: Color = defaultColor) {
-    await expect(this.svp.colorInput(color)).toBeVisible();
+    expect(await this.svp.colorInput(color).isVisible()).toBe(true);
   }
 
   async verifyInputIsDefault() {
@@ -260,83 +317,73 @@ class SavedViewAsserter {
   }
 
   async verifySaveBtnIsDisabled() {
-    const saveBtn = this.svp.saveButton();
-    await expect(saveBtn).toBeDisabled();
+    expect(await this.svp.saveButton().isDisabled()).toBe(true);
   }
 
   async verifySaveBtnIsEnabled() {
-    const saveBtn = this.svp.saveButton();
-    await expect(saveBtn).toBeEnabled();
+    expect(await this.svp.saveButton().isEnabled()).toBe(true);
   }
 
   async verifyAllInputClear() {
-    await expect(this.svp.nameInput()).toBeEmpty();
-    await expect(this.svp.descriptionInput()).toBeEmpty();
-    await expect(this.svp.colorInput(defaultColor)).toBeVisible();
+    await this.verifyInputIsDefault();
   }
 
   async verifyCancelBtnClearsAll() {
-    const cancelBtn = this.svp.cancelButton();
-    await cancelBtn.click();
+    await this.svp.clickCancel();
 
     await this.svp.openCreateModal();
     await this.verifyAllInputClear();
   }
 
   async verifySavedView(slug: string = "test") {
-    await expect(this.svp.page).toHaveURL(new RegExp(`view=${slug}`));
+    expect(this.svp.page.url()).toMatch(new RegExp(`view=${slug}`));
   }
 
   async verifyUnsavedView(name: string = "test") {
-    await expect(this.svp.page).not.toHaveURL(new RegExp(`view=${name}`));
-    await expect(this.svp.selector).toBeVisible();
+    expect(this.svp.page.url()).not.toMatch(new RegExp(`view=${name}`));
+    expect(await this.svp.selector.isVisible()).toBe(true);
   }
 
   async verifyModalClosed() {
-    await expect(this.svp.closeModalBtn).toBeHidden();
+    expect(await this.svp.dialogLocator.count()).toBe(0);
   }
 
   async verifyDefaultColors(colorList: string[]) {
     const colorListBox = this.svp.colorListContainer();
-    await expect(colorListBox).toBeVisible();
-    // verify default
-    await expect(
-      colorListBox.getByRole("option", { name: defaultColor }),
-    ).toBeInViewport();
-
-    colorList.forEach(async (color: string) => {
-      await expect(
-        colorListBox.getByRole("option", { name: color }),
-      ).toBeVisible();
-    });
+    for (const color of colorList) {
+      expect(
+        await colorListBox
+          .getByRole("option", { name: color })
+          .first()
+          .isVisible(),
+      ).toBe(true);
+    }
   }
 
   async verifyColorNotExists(color: string = "white") {
-    await expect(this.svp.colorOption(color as Color)).toBeHidden();
+    expect(await this.svp.colorOption(color as Color).count()).toBe(0);
   }
 
   async verifySelectionHasNewOption(name: string = "test") {
     await this.svp.clearView();
-    await this.svp.selector.click();
-    await expect(this.svp.savedViewOption(name)).toBeVisible();
+    await this.svp.openSelect();
+    expect(await this.svp.savedViewOption(name).isVisible()).toBe(true);
   }
 
   async verifySaveViewFails() {
-    await expect(this.svp.saveButton()).toBeDisabled();
-    await expect(this.svp.nameError()).toBeVisible();
+    expect(await this.svp.saveButton().isDisabled()).toBe(true);
+    expect(await this.svp.nameError().isVisible()).toBe(true);
     await this.svp.clickCloseModal();
   }
 
   async verifyModalTitle(name: string) {
-    await expect(
-      this.svp.dialogLocator.getByRole("heading", {
-        name,
-      }),
-    ).toBeVisible();
+    expect(
+      await this.svp.dialogLocator.getByRole("heading", { name }).isVisible(),
+    ).toBe(true);
   }
 
   async verifySearchExists() {
-    await expect(this.svp.searchInput()).toBeVisible();
+    expect(await this.svp.searchInput().isVisible()).toBe(true);
   }
 
   async verifySearch(
@@ -344,44 +391,36 @@ class SavedViewAsserter {
     expectedResult: string[],
     excluded: string[],
   ) {
-    await this.svp.searchInput().clear();
-    await this.svp.searchInput().pressSequentially(term);
+    // the list filters once the search input's debounce fires
+    await this.svp.eventUtils.after(
+      "e2e:saved-views:listed",
+      () => this.svp.searchInput().fill(term),
+      (e) => (e.detail as { search: string }).search === term.toLowerCase(),
+    );
 
-    if (expectedResult.length) {
-      await this.svp
-        .savedViewOption(expectedResult[0])
-        .waitFor({ state: "visible", timeout: 1000 });
-
-      expectedResult.forEach(async (slug: string) => {
-        await expect(this.svp.savedViewOption(slug)).toBeVisible();
-      });
+    for (const slug of expectedResult) {
+      expect(await this.svp.savedViewOption(slug).isVisible()).toBe(true);
     }
 
-    if (excluded.length) {
-      await this.svp
-        .savedViewOption(excluded[1])
-        .waitFor({ state: "hidden", timeout: 1000 });
-
-      excluded.forEach(async (slug: string) => {
-        await expect(this.svp.savedViewOption(slug).first()).toBeHidden();
-      });
+    for (const slug of excluded) {
+      expect(await this.svp.savedViewOption(slug).count()).toBe(0);
     }
   }
 
   async verifyDeleteBtnHidden() {
-    await expect(this.svp.deleteBtn()).toBeHidden();
+    expect(await this.svp.deleteBtn().isVisible()).toBe(false);
   }
 
   async verifyDeleteBtn() {
-    await expect(this.svp.deleteBtn()).toBeVisible();
+    expect(await this.svp.deleteBtn().isVisible()).toBe(true);
   }
 
   async verifyViewOption(name: string = "test") {
-    await expect(this.svp.savedViewOption(name)).toBeVisible();
+    expect(await this.svp.savedViewOption(name).isVisible()).toBe(true);
   }
 
   async verifyViewOptionHidden(name: string = "test") {
-    await expect(this.svp.savedViewOption(name)).toBeHidden();
+    expect(await this.svp.savedViewOption(name).count()).toBe(0);
   }
 
   async verifyInput({
@@ -393,22 +432,16 @@ class SavedViewAsserter {
     description: string;
     color: Color;
   }) {
-    await expect(this.svp.nameInput()).toHaveValue(name);
-    await expect(this.svp.descriptionInput()).toHaveValue(description);
-    await expect(this.svp.colorInput(color)).toBeVisible();
+    expect(await this.svp.nameInput().inputValue()).toBe(name);
+    expect(await this.svp.descriptionInput().inputValue()).toBe(description);
+    expect(await this.svp.colorInput(color).isVisible()).toBe(true);
   }
 
-  async verifyInputUpdated({
-    name,
-    description,
-    color,
-  }: {
+  async verifyInputUpdated(view: {
     name: string;
     description: string;
     color: Color;
   }) {
-    await expect(this.svp.nameInput()).toHaveValue(name);
-    await expect(this.svp.descriptionInput()).toHaveValue(description);
-    await expect(this.svp.colorInput(color)).toBeVisible();
+    await this.verifyInput(view);
   }
 }

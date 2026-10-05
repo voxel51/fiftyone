@@ -8,7 +8,7 @@
  * so its presence on the keyframe and absence on a filler frame is the
  * render-level signal.
  */
-import { expect, test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -70,9 +70,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Drop focus so the "." / "," frame-step keybindings aren't typed into an input. */
@@ -119,19 +119,15 @@ test("a painted mask clears on auto-extended filler frames during playback", asy
   // form stays bound and follows the playhead. The fresh detection already
   // carries the default first class, so a non-default class must be chosen --
   // re-selecting the default is a no-op that never produces a save request
-  const saved = page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sidebar.edit.selectFieldChoice("label", "person"),
   );
-  await modal.sidebar.edit.selectFieldChoice("label", "person");
-  await saved;
   await blur(page);
 
   // step onto a filler frame inside the auto-extended span: the box is present
   // but the mask is not — the overlay must clear it (the form stays open)
   await stepForward(modal, 10);
-  await expect(modal.sidebar.edit.backButton).toBeVisible();
+  await modal.sidebar.edit.assert.isOpen();
   await modal.sidebar.edit.assert.hasMask(false);
   await modal.sidebar.edit.assert.hasMaskPreview(false);
 

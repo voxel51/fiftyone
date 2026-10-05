@@ -45,6 +45,7 @@ def get_supported_app_annotation_fields(sample_collection):
             :class:`fiftyone.core.labels.Classifications`
         -   ``detection``: :class:`fiftyone.core.labels.Detection`
         -   ``detections``: :class:`fiftyone.core.labels.Detections`
+        -   ``regression``: :class:`fiftyone.core.labels.Regression`
 
     Supported ``3d`` label types are:
         -   ``classification``:
@@ -53,6 +54,7 @@ def get_supported_app_annotation_fields(sample_collection):
             :class:`fiftyone.core.labels.Classifications`
         -   ``polyline``: :class:`fiftyone.core.labels.Polyline`
         -   ``polylines``: :class:`fiftyone.core.labels.Polylines`
+        -   ``regression``: :class:`fiftyone.core.labels.Regression`
 
     Args:
         sample_collection: a
@@ -128,6 +130,10 @@ def backfill_instances_from_index(sample_collection, fields=None):
     have any ``instance`` values are left untouched, so existing tracks are
     never clobbered and the operation is idempotent.
 
+    When the collection contains dynamic groups, each group is one track
+    scope, so objects with the same ``index`` across a group's samples join
+    the same track. See :func:`fiftyone.utils.labels.index_to_instance`.
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -135,30 +141,35 @@ def backfill_instances_from_index(sample_collection, fields=None):
             default, all valid annotation fields are processed, matching the
             all-fields scan in :func:`generate_label_schemas`
     """
+    # aggregations on a dynamic groups view only see each group's first
+    # sample, so field checks run on the samples being grouped
+    if sample_collection._is_dynamic_groups:
+        samples = sample_collection._parse_dynamic_groups()[2]
+    else:
+        samples = sample_collection
+
     if fields is None:
-        fields = list_valid_annotation_fields(
-            sample_collection, include_frames=True
-        )
+        fields = list_valid_annotation_fields(samples, include_frames=True)
     elif isinstance(fields, str):
         fields = [fields]
 
     for field in fields:
-        _maybe_backfill_field_instances(sample_collection, field)
+        _maybe_backfill_field_instances(sample_collection, samples, field)
 
 
-def _maybe_backfill_field_instances(sample_collection, field):
+def _maybe_backfill_field_instances(sample_collection, samples, field):
     # imported lazily — `fiftyone.utils.labels` pulls in heavy deps we don't
     # want at annotation-module import time
     import fiftyone.utils.labels as foul
 
-    label_field = sample_collection.get_field(field)
+    label_field = samples.get_field(field)
     if not isinstance(label_field, fof.EmbeddedDocumentField):
         return
 
     if not issubclass(label_field.document_type, foac.TRACK_LABEL_TYPES):
         return
 
-    root, _ = sample_collection._get_label_field_root(field)
+    root, _ = samples._get_label_field_root(field)
     instance_path = f"{root}.instance"
     index_path = f"{root}.index"
 
@@ -166,11 +177,11 @@ def _maybe_backfill_field_instances(sample_collection, field):
     # count the data directly rather than checking the schema
 
     # don't clobber a field that already has tracks
-    if sample_collection.count(instance_path) > 0:
+    if samples.count(instance_path) > 0:
         return
 
     # nothing to backfill from
-    if sample_collection.count(index_path) == 0:
+    if samples.count(index_path) == 0:
         return
 
     foul.index_to_instance(sample_collection, field)

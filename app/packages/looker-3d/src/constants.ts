@@ -18,8 +18,35 @@ export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
 export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
 /** Fired on `document` once a frame has rendered a programmatic camera look-at. */
 export const CAMERA_LOOK_AT_SETTLED_EVENT = "looker3d-camera-look-at-settled";
-/** Dispatched on `document` once a scene is parsed, its assets loaded and its camera settled. */
-export const SCENE_READY_EVENT = "looker3d-scene-ready";
+/** Dispatched on the event bus once a scene is parsed, its assets loaded and its camera settled. */
+export const SCENE_READY_EVENT = "e2e:looker3d:scene-ready";
+export const CAMERA_SAVED_EVENT = "e2e:looker3d:camera-saved";
+/** Dispatched on the event bus after each rendered frame. */
+export const FRAME_RENDERED_EVENT = "e2e:looker3d:frame-rendered";
+/** The 2D looker's signals, dispatched as the 3D canvas mounts or an error shows */
+export const CANVAS_LOADED_EVENT = "e2e:looker:canvas-loaded";
+export const ERROR_SHOWN_EVENT = "e2e:looker:error-shown";
+/** Dispatched with the draft polyline's vertex count as each vertex lands. */
+export const DRAFT_VERTICES_EVENT = "e2e:looker3d:draft-vertices";
+/** Dispatched as the grid helper turns on or off. */
+export const GRID_TOGGLED_EVENT = "e2e:looker3d:grid-toggled";
+/** Dispatched as the 3D slice selector's checkboxes mount and unmount. */
+export const SLICE_SELECTOR_EVENT = "e2e:looker3d:slice-selector";
+/** Dispatched as the annotation toolbar shows, with its active transform ("" for none). */
+export const ANNOTATION_TOOLBAR_EVENT = "e2e:looker3d:annotation-toolbar";
+
+/** The 3D viewer's `e2e:` bus events. */
+export type Looker3dE2EEvents = {
+  [CAMERA_SAVED_EVENT]: undefined;
+  [FRAME_RENDERED_EVENT]: undefined;
+  [SCENE_READY_EVENT]: { sceneKey: string };
+  [CANVAS_LOADED_EVENT]: { thumbnail: boolean };
+  [ERROR_SHOWN_EVENT]: { thumbnail: boolean };
+  [DRAFT_VERTICES_EVENT]: { count: number };
+  [GRID_TOGGLED_EVENT]: { on: boolean };
+  [SLICE_SELECTOR_EVENT]: { open: boolean };
+  [ANNOTATION_TOOLBAR_EVENT]: { visible: boolean; transformMode: string };
+};
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 
 export const SHADE_BY_INTENSITY = "intensity";
