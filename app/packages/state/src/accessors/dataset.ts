@@ -20,6 +20,7 @@ import {
   State,
   view,
 } from "../recoil";
+import { groupField, groupSlice } from "../recoil/groups";
 import { isPatchesView } from "../recoil/view";
 
 /**
@@ -265,6 +266,14 @@ export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 
 /** The applied view's stages. */
 export const useView = (): State.Stage[] => useRecoilValue(view);
+
+/** The group field of a grouped dataset, or null for ungrouped datasets. */
+export const useGroupField = (): string | null =>
+  useRecoilValue(groupField) ?? null;
+
+/** The group slice the grid is browsing, or null without group slices. */
+export const useGridGroupSlice = (): string | null =>
+  useRecoilValue(groupSlice);
 
 /** The grid's sidebar filters. */
 export const useFilters = (): State.Filters => useRecoilValue(filters);
