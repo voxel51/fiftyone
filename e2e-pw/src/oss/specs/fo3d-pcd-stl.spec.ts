@@ -95,59 +95,48 @@ test.describe.serial("fo3d", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 2 });
   });
 
-  test("scene is rendered correctly", async ({ modal, grid, modalSidebar }) => {
+  test("scene is rendered correctly", async ({
+    eventUtils,
+    page,
+    modal,
+    grid,
+    modalSidebar,
+  }) => {
     await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
+    await page.evaluate(() =>
+      localStorage.setItem("fo-3d-annotation-tips-dismissed", "true"),
+    );
     // each loaded asset adds its folders to the render preferences
     await modal.looker3dControls.afterAllAssetsLoaded(() =>
       grid.openFirstSample(),
     );
-    await modal.modalContainer.hover();
 
     const leva = modal.looker3dControls.leva;
 
+    // the leva panel sits off the canvas, so no label is hovered
     await modal.looker3dControls.toggleRenderPreferences();
     await leva.getFolder("Visibility").hover();
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.modalContainer).toHaveScreenshot("scene.png", {
-    //   mask,
-    //   animations: "allow",
-    // });
+    await modal.assert.hasLooker3dScreenshot("scene.png");
 
     await modal.looker3dControls.leva.toggleFolder("Labels");
     await leva.assert.verifyDefaultFolders();
     await leva.assert.verifyAssetFolders(["pcd", "stl"]);
 
-    await leva.moveSliderToMin("Polyline Line Width");
-    await leva.moveSliderToMin("Cuboid Line Width");
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.modalContainer).toHaveScreenshot(
-    //   "min-line-width-scene.png",
-    //   {
-    //     mask,
-    //     animations: "allow",
-    //   }
-    // );
+    // each slider sets one width, which the labels report once drawn with it
+    const afterLineWidths = (action: () => Promise<unknown>) =>
+      eventUtils.after("e2e:looker3d:line-widths", action);
+    await afterLineWidths(() => leva.moveSliderToMin("Polyline Line Width"));
+    await afterLineWidths(() => leva.moveSliderToMin("Cuboid Line Width"));
+    await modal.assert.hasLooker3dScreenshot("min-line-width-scene.png");
 
-    await leva.moveSliderToMax("Polyline Line Width");
-    await leva.moveSliderToMax("Cuboid Line Width");
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.modalContainer).toHaveScreenshot(
-    //   "max-line-width-scene.png",
-    //   {
-    //     mask,
-    //     animations: "allow",
-    //   }
-    // );
+    await afterLineWidths(() => leva.moveSliderToMax("Polyline Line Width"));
+    await afterLineWidths(() => leva.moveSliderToMax("Cuboid Line Width"));
+    await modal.assert.hasLooker3dScreenshot("max-line-width-scene.png");
 
-    // navigate to next sample and make sure the scene is rendered correctly
-    // this time both cuboid and polyline widths should be bigger
-    await modal.navigateNextSample();
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.modalContainer).toHaveScreenshot("scene-2.png", {
-    //   mask,
-    //   animations: "allow",
-    // });
+    // the next sample's scene keeps the max widths
+    await modal.afterLooker3dSettled(() => modal.navigateNextSample());
+    await modal.assert.hasLooker3dScreenshot("scene-2.png");
     await modalSidebar.assert.verifySidebarEntryText("name", "sample2");
   });
 });

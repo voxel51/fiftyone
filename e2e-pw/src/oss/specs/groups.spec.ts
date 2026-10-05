@@ -157,8 +157,10 @@ test.describe.serial("groups", () => {
       expect(await modal.carousel.isVisible()).toBe(true);
     });
 
-    // Flaky: the pcd canvas intermittently renders zero pixels after the
-    // explore -> annotate refresh
+    // App bug: the annotate side panels load the pcd through the main
+    // viewer's LoadingManager (shared Fo3dContext), so after the focused scene
+    // reveals, their loads flip it back to loading and re-cover it; the render
+    // check can land in that gap and read zero pixels
     test.skip("annotate pcd slice renders after refreshing from explore mode", async ({
       modal,
       grid,

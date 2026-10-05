@@ -60,13 +60,26 @@ export const saveCameraState = (
   position: number[],
   target: number[],
 ) => {
-  window?.localStorage.setItem(
-    getCameraPositionKey(datasetName),
-    JSON.stringify({ position, target }),
-  );
+  const pose = JSON.stringify({ position, target });
+  window?.localStorage.setItem(getCameraPositionKey(datasetName), pose);
 
-  getEventBus<Looker3dE2EEvents>().dispatch(CAMERA_SAVED_EVENT);
+  getEventBus<Looker3dE2EEvents>().dispatch(CAMERA_SAVED_EVENT, { pose });
+  return pose;
 };
+
+/**
+ * Save the camera state unless it is the pose `lastSaved` already holds;
+ * returns the pose saved last
+ */
+export const saveCameraStateIfMoved = (
+  datasetName: string | undefined,
+  position: number[],
+  target: number[],
+  lastSaved: string | null,
+): string =>
+  JSON.stringify({ position, target }) === lastSaved
+    ? lastSaved
+    : saveCameraState(datasetName, position, target);
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;

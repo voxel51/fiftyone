@@ -159,15 +159,12 @@ test.describe.skip("camera initialization", () => {
     fiftyoneLoader,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, basicDatasetName);
-    await modal.looker3dControls.afterAllAssetsLoaded(() =>
-      grid.openFirstSample(),
+    // the scene saves its camera once initialized, and again only on a move
+    await renderer3d.afterCameraSaved(() =>
+      modal.looker3dControls.afterAllAssetsLoaded(() => grid.openFirstSample()),
     );
 
     const cameraBefore = await renderer3d.getCameraPosition();
-
-    // localStorage can briefly hold an early fallback value; the next save
-    // after the reveal holds the settled camera
-    await renderer3d.nextCameraSave();
     const saved = await renderer3d.getSavedCameraState(basicDatasetName);
     expect(
       positionsAreClose(
@@ -298,12 +295,11 @@ test.describe.skip("camera initialization", () => {
     // Record the initial camera position
     const initialPosition = await renderer3d.getCameraPosition();
 
-    // Use a public camera action to move the camera after initialization.
-    await modal.looker3dControls.setEgoView();
-
-    // setEgoView resolves once the moved camera has rendered; the next save
-    // after that holds it
-    await renderer3d.nextCameraSave();
+    // Use a public camera action to move the camera after initialization;
+    // the scene saves the pose it moves to
+    await renderer3d.afterCameraSaved(() =>
+      modal.looker3dControls.setEgoView(),
+    );
 
     const newPosition = await renderer3d.getCameraPosition();
     const savedState = await renderer3d.getSavedCameraState(basicDatasetName);

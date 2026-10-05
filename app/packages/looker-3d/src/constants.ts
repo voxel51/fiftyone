@@ -20,9 +20,8 @@ export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
 export const CAMERA_LOOK_AT_SETTLED_EVENT = "looker3d-camera-look-at-settled";
 /** Dispatched on the event bus once a scene is parsed, its assets loaded and its camera settled. */
 export const SCENE_READY_EVENT = "e2e:looker3d:scene-ready";
+/** Dispatched as the camera pose is saved, which it is only when it changes. */
 export const CAMERA_SAVED_EVENT = "e2e:looker3d:camera-saved";
-/** Dispatched on the event bus after each rendered frame. */
-export const FRAME_RENDERED_EVENT = "e2e:looker3d:frame-rendered";
 /** Dispatched after a rendered frame shows the camera at a new position. */
 export const CAMERA_POSITION_EVENT = "e2e:looker3d:camera-position";
 /** The 2D looker's signals, dispatched as the 3D canvas mounts or an error shows */
@@ -30,6 +29,8 @@ export const CANVAS_LOADED_EVENT = "e2e:looker:canvas-loaded";
 export const ERROR_SHOWN_EVENT = "e2e:looker:error-shown";
 /** Dispatched with the draft polyline's vertex count as each vertex lands. */
 export const DRAFT_VERTICES_EVENT = "e2e:looker3d:draft-vertices";
+/** Dispatched with the cuboid and polyline line widths the labels render with. */
+export const LINE_WIDTHS_EVENT = "e2e:looker3d:line-widths";
 /** Dispatched as the grid helper turns on or off. */
 export const GRID_TOGGLED_EVENT = "e2e:looker3d:grid-toggled";
 /** Dispatched as the 3D slice selector's checkboxes mount and unmount. */
@@ -39,14 +40,15 @@ export const ANNOTATION_TOOLBAR_EVENT = "e2e:looker3d:annotation-toolbar";
 
 /** The 3D viewer's `e2e:` bus events. */
 export type Looker3dE2EEvents = {
-  [CAMERA_SAVED_EVENT]: undefined;
-  [FRAME_RENDERED_EVENT]: undefined;
+  /** the saved `{ position, target }` as JSON */
+  [CAMERA_SAVED_EVENT]: { pose: string };
   [CAMERA_POSITION_EVENT]: { x: number; y: number; z: number };
   [SCENE_READY_EVENT]: { sceneKey: string };
   [CANVAS_LOADED_EVENT]: { thumbnail: boolean };
   [ERROR_SHOWN_EVENT]: { thumbnail: boolean };
   [DRAFT_VERTICES_EVENT]: { count: number };
   [GRID_TOGGLED_EVENT]: { on: boolean };
+  [LINE_WIDTHS_EVENT]: { cuboid: number; polyline: number };
   [SLICE_SELECTOR_EVENT]: { open: boolean };
   [ANNOTATION_TOOLBAR_EVENT]: { visible: boolean; transformMode: string };
 };

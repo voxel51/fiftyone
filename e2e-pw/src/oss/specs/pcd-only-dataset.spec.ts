@@ -9,9 +9,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 const normalPcd = `/tmp/test-pcd1-${datasetName}.pcd`;
 const pcdWithNaN = `/tmp/test-pcd2-${datasetName}.pcd`;
 
-/**
- * Hide these elements when taking screenshots
- */
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -71,52 +68,25 @@ test.describe.serial("orthographic projections", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 2 });
   });
 
-  test("orthographic projections are rendered correctly", async ({ grid }) => {
+  test("orthographic projections are rendered correctly", async ({
+    grid,
+    modal,
+    page,
+  }) => {
     await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
 
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
+    await page.evaluate(() =>
+      localStorage.setItem("fo-3d-annotation-tips-dismissed", "true"),
+    );
+    // both point clouds render in the modal, the one with NaN points too
+    await modal.afterLooker3dSettled(() => grid.openFirstSample());
+    await modal.assert.hasLooker3dScreenshot(
+      "orthographic-projection-modal-cuboid-1.png",
+    );
 
-    // // open modal and check that pcds are rendered correctly
-    // await grid.openFirstSample();
-    // await modal.modalContainer.hover();
-
-    // await expect(modal.modalContainer).toHaveScreenshot(
-    //   "orthographic-projection-modal-cuboid-1.png",
-    //   {
-    //     mask,
-    //     animations: "allow",
-    //   }
-    // );
-    // // pan to the left and check that pcds are rendered correctly
-    // await modal.panSample("left");
-    // await modal.modalContainer.hover();
-    // await expect(modal.modalContainer).toHaveScreenshot(
-    //   "orthographic-projection-modal-cuboid-1-left-pan.png",
-    //   {
-    //     mask,
-    //     animations: "allow",
-    //   }
-    // );
-
-    // await modal.navigateNextSample();
-    // await modal.modalContainer.hover();
-    // await expect(modal.modalContainer).toHaveScreenshot(
-    //   "orthographic-projection-modal-cuboid-2.png",
-    //   {
-    //     mask,
-    //     animations: "allow",
-    //   }
-    // );
-
-    // // pan to the right and check that pcds are rendered correctly
-    // await modal.panSample("right");
-    // await modal.modalContainer.hover();
-    // await expect(modal.modalContainer).toHaveScreenshot(
-    //   "orthographic-projection-modal-cuboid-2-right-pan.png",
-    //   {
-    //     mask,
-    //     animations: "allow",
-    //   }
-    // );
+    await modal.afterLooker3dSettled(() => modal.navigateNextSample());
+    await modal.assert.hasLooker3dScreenshot(
+      "orthographic-projection-modal-cuboid-2.png",
+    );
   });
 });

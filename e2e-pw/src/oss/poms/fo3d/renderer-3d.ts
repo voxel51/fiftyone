@@ -80,9 +80,12 @@ export class Renderer3dPom {
     return [position.x, position.y, position.z] as CameraPosition;
   }
 
-  /** Resolve on the next camera save, which the scene makes on its own. */
-  async nextCameraSave(): Promise<void> {
-    await this.eventUtils.next("e2e:looker3d:camera-saved");
+  /**
+   * Run `action` and resolve once the camera pose it moves to is saved; the
+   * scene saves a pose only when it changes
+   */
+  async afterCameraSaved<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:looker3d:camera-saved", action);
   }
 
   async getSavedCameraState(
