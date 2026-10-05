@@ -163,9 +163,11 @@ const BaseSlider = <T extends Range | number>({
   const dirtyMax = useRef(false);
   const sliderRef = useRef<HTMLSpanElement>(null);
 
+  // read unconditionally so the hook order can't depend on fieldType
+  const appTimeZone = useRecoilValue(fos.timeZone);
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
-      ? useRecoilValue(fos.timeZone)
+      ? appTimeZone
       : null;
   const [clicking, setClicking] = useState(false);
 
