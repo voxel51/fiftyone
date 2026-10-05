@@ -81,7 +81,9 @@ export const dynamicGroupPageSelector = selectorFamily<
         dataset: get(datasetName),
         view: get(view),
         dynamicGroup: value,
-        filter: { group: { slice } },
+        filter: { group: { slice } } as {
+          group: { slice: string; slices?: string[] };
+        },
       };
 
       if (get(hasGroupSlices)) {

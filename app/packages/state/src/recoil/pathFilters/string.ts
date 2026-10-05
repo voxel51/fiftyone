@@ -9,11 +9,11 @@ import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import { isFilterDefault } from "./utils";
 
-export interface StringFilter {
+export type StringFilter = {
   values: string[];
   exclude: boolean;
   isMatching: boolean; // match_labels vs filter_labels mode
-}
+};
 
 const getFilter = (
   get: GetRecoilValue,
@@ -169,8 +169,10 @@ export const string = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const filter = get(filterAtoms.filter(params));
-      const visibility = get(visibilityAtoms.visibility(params));
+      const filter = get(filterAtoms.filter(params)) as StringFilter | null;
+      const visibility = get(
+        visibilityAtoms.visibility(params),
+      ) as StringFilter | null;
 
       if (!filter && !visibility) {
         return () => true;
@@ -232,8 +234,10 @@ export const listString = selectorFamily<
     (params) =>
     ({ get }) => {
       // common properties
-      const filter = get(filterAtoms.filter(params));
-      const visibility = get(visibilityAtoms.visibility(params));
+      const filter = get(filterAtoms.filter(params)) as StringFilter | null;
+      const visibility = get(
+        visibilityAtoms.visibility(params),
+      ) as StringFilter | null;
 
       // when there is no filter and no visibility settings, show the label
       if (!filter && !visibility) {

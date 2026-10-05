@@ -216,18 +216,22 @@ function AdaptiveMenuItems<T extends AdaptiveMenuItemPropsType>(
   props: AdaptiveMenuItemsPropsType<T>,
 ) {
   const { items, variant, closeOverflow, refresh } = props;
-  return items.map((item) => {
-    const { Component, id } = item;
-    return (
-      <Component
-        key={id}
-        variant={variant}
-        data-item-id={id}
-        closeOverflow={closeOverflow}
-        refresh={refresh}
-      />
-    );
-  });
+  return (
+    <>
+      {items.map((item) => {
+        const { Component, id } = item;
+        return (
+          <Component
+            key={id}
+            variant={variant}
+            data-item-id={id}
+            closeOverflow={closeOverflow}
+            refresh={refresh}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 function MoreItems<T extends AdaptiveMenuItemPropsType>(

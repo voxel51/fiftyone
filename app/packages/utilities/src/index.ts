@@ -522,8 +522,8 @@ export const useExternalLink = (href: string) => externalLinkHandler(href);
 const isURL = (() => {
   const protocolAndDomainRE = /^(?:\w+:)?\/\/(\S+)$/;
 
-  const localhostDomainRE = /^localhost[\:?\d]*(?:[^\:?\d]\S*)?$/;
-  const nonLocalhostDomainRE = /^[^\s\.]+\.\S{2,}$/;
+  const localhostDomainRE = /^localhost[:?\d]*(?:[^:?\d]\S*)?$/;
+  const nonLocalhostDomainRE = /^[^\s.]+\.\S{2,}$/;
 
   return (string) => {
     if (string.startsWith("gs://")) {
@@ -566,7 +566,9 @@ export const prettify = (
     if (isURL(v)) {
       try {
         return new URL(v);
-      } catch {}
+      } catch {
+        // not parseable as a URL; fall through to the plain string
+      }
     }
 
     return v;

@@ -40,13 +40,13 @@ async function main() {
         line.startsWith("        ") &&
         !line.startsWith("          ")
       ) {
-        const [, argName] = line.trim().match(/^(\w+)\s*[\:|\(]/);
+        const [, argName] = line.trim().match(/^(\w+)\s*[:|(]/);
         console.log("  ", argName);
         currentClass.args[argName] = line.trim();
       }
     } else {
       if (line.startsWith("class") && line.trim().endsWith("(Aggregation):")) {
-        const [, m1] = line.trim().match(/class (\w+)\(Aggregation\)\:/);
+        const [, m1] = line.trim().match(/class (\w+)\(Aggregation\):/);
         currentClass = { name: m1, args: [] };
         classes.push(currentClass);
       }

@@ -23,16 +23,16 @@ export const dynamicGroupsElementCount = selectorFamily({
         return new Promise<number>(() => {});
       }
 
-      return (
-        get(
-          aggregationQuery({
-            dynamicGroup,
-            extended: false,
-            modal,
-            paths: [""],
-            useSelection: false,
-          }),
-        )?.at(0)?.count ?? 0
-      );
+      const first = get(
+        aggregationQuery({
+          dynamicGroup,
+          extended: false,
+          modal,
+          paths: [""],
+          useSelection: false,
+        }),
+      )?.at(0);
+      // a query timeout result carries no count
+      return (first && "count" in first ? first.count : undefined) ?? 0;
     },
 });

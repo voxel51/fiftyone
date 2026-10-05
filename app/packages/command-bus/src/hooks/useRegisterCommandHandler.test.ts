@@ -26,10 +26,14 @@ describe("useRegisterCommandHandler", () => {
 
     try {
       bus.unregister(TestCommand);
-    } catch {}
+    } catch {
+      // not registered
+    }
     try {
       bus.unregister(AnotherCommand);
-    } catch {}
+    } catch {
+      // not registered
+    }
     vi.clearAllMocks();
   });
 
@@ -37,10 +41,14 @@ describe("useRegisterCommandHandler", () => {
     const bus = getCommandBus();
     try {
       bus.unregister(TestCommand);
-    } catch {}
+    } catch {
+      // not registered
+    }
     try {
       bus.unregister(AnotherCommand);
-    } catch {}
+    } catch {
+      // not registered
+    }
   });
 
   it("should register a handler on mount", async () => {

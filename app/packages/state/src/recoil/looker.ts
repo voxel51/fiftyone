@@ -7,6 +7,7 @@ import {
   VideoOptions,
 } from "@fiftyone/looker";
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import type { StringFilter } from "./pathFilters/string";
 import * as atoms from "./atoms";
 import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
@@ -133,8 +134,11 @@ const getActiveLabelTags = (
   activeVisibility: State.Filters,
 ) => {
   if (!isLabelTagActive) return null;
-  const labelTagFilters = activeFilter["_label_tags"]?.values ?? [];
-  const labelTagVisibility = activeVisibility["_label_tags"]?.values ?? [];
+  // _label_tags filters are string filters
+  const labelTagFilters =
+    (activeFilter["_label_tags"] as StringFilter | undefined)?.values ?? [];
+  const labelTagVisibility =
+    (activeVisibility["_label_tags"] as StringFilter | undefined)?.values ?? [];
   if (labelTagFilters.length === 0) return labelTagVisibility;
   if (labelTagVisibility.length === 0) return labelTagFilters;
   return labelTagFilters.filter((tag) => labelTagVisibility.includes(tag));

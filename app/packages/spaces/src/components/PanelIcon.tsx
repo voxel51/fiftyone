@@ -12,11 +12,14 @@ import { Box } from "@mui/material";
 // unwrap rather than assume.
 function toRenderableIcon(
   icon: unknown,
-): React.ComponentType<unknown> | undefined {
-  if (typeof icon === "function") return icon as React.ComponentType<unknown>;
+): React.ComponentType<{ style?: React.CSSProperties }> | undefined {
+  if (typeof icon === "function")
+    return icon as React.ComponentType<{ style?: React.CSSProperties }>;
   if (icon && typeof icon === "object") {
     if ((icon as { $$typeof?: symbol }).$$typeof) {
-      return icon as unknown as React.ComponentType<unknown>;
+      return icon as unknown as React.ComponentType<{
+        style?: React.CSSProperties;
+      }>;
     }
     const inner = (icon as { default?: unknown }).default;
     if (inner) return toRenderableIcon(inner);

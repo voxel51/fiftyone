@@ -534,12 +534,14 @@ export default class Flashlight<K> {
   }
 
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
-    let { rows, remainder } = tile(
+    const tiled = tile(
       items,
       this.config.horizontal,
       this.state.options.rowAspectRatioThreshold,
       Boolean(this.state.currentRequestKey),
     );
+    let rows = tiled.rows;
+    const remainder = tiled.remainder;
 
     this.state.currentRemainder = remainder;
 

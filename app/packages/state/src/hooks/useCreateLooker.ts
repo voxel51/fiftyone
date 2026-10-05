@@ -12,7 +12,18 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
-import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import type {
+  BaseState,
+  FrameConfig,
+  ImaVidConfig,
+  ThreeDConfig,
+  VideoConfig,
+} from "@fiftyone/looker/src/state";
+
+// built up field by field for whichever looker class is chosen below
+type LookerConfig = Partial<
+  FrameConfig & VideoConfig & ImaVidConfig & ThreeDConfig
+>;
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -125,7 +136,7 @@ export default <T extends AbstractLooker<BaseState>>(
           create = ImaVidLooker;
         }
 
-        let config: ConstructorParameters<T>[1] = {
+        let config: LookerConfig = {
           enableTimeline,
           fieldSchema: {
             frames: {
@@ -246,7 +257,7 @@ export default <T extends AbstractLooker<BaseState>>(
                   )
                   .valueMaybe() ?? 1)
               : 1,
-          } as ImaVidConfig;
+          };
         }
 
         const isSelected = selected.has(sample._id);

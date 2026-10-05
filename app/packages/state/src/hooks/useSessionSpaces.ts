@@ -49,10 +49,24 @@ export default useSessionSpaces;
 
 const nonPanelTypes = ["panel-container", "empty"];
 
-function toAPIFormat(state, panelsState = {}) {
+type APISpaceNode = {
+  _cls: "Space" | "Panel";
+  component_id: string;
+  _version?: number;
+  pinned?: boolean;
+  state?: unknown;
+  type?: string;
+  children?: APISpaceTree;
+  orientation?: string;
+  active_child?: string;
+  sizes?: number[];
+};
+type APISpaceTree = APISpaceNode | APISpaceTree[];
+
+function toAPIFormat(state, panelsState = {}): APISpaceTree {
   if (Array.isArray(state))
     return state.map((item) => toAPIFormat(item, panelsState));
-  const apiState = {
+  const apiState: APISpaceNode = {
     _cls: nonPanelTypes.includes(state.type) ? "Space" : "Panel",
     component_id: state.id,
   };

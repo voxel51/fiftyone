@@ -78,7 +78,8 @@ function Selector<T>(props: SelectorProps<T>) {
       try {
         const result = await onSelect(value ? toKey(value) : search, value);
         if (result !== undefined) {
-          local.current = result;
+          // onSelect returns void when it doesn't rename the value
+          local.current = result as string;
         }
         setEditing(false);
       } catch (error) {
