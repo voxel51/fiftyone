@@ -92,6 +92,7 @@ const TimelineExtensions: React.FC<{
       layoutScopeKey={ctx.dataset.datasetId}
       navigationPending={false}
       session={null}
+      timeline="video"
       timeRange={timeRange}
     >
       {children}

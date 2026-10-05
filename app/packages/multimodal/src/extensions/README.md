@@ -25,7 +25,9 @@ commands. Only views publish; a product entrypoint reads it to overlay a tile's
 media or to send the episode back to a stream and a moment. A timeline
 contribution may also supply a `rulerOverlay`, rendered at the ruler's live
 label width over the episode ruler and the video modal's rulers, Annotate's
-included. Annotate draws only the ruler overlay, not a contribution's rows.
+included. Annotate draws only the ruler overlay, not a contribution's rows. An
+extension reads which kind of timeline hosts it from its context's `timeline`
+(`"episode"` or `"video"`).
 
 A registry may opt into a `replace` duplicate-id policy when its registration
 module is evaluated by a bundler that gives it no disposal hook. Ordering stays

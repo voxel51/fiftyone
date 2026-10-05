@@ -99,6 +99,7 @@ describe("VideoTimelineExtensions", () => {
     const context = seen.mock.lastCall?.[0];
     expect(context.ctx.sample.sample._id).toBe("sample-1");
     expect(context.ctx.media.path).toBe("/videos/clip.mp4");
+    expect(context.timeline).toBe("video");
     expect(context.timeRange).toEqual({ startNs: 0n, endNs: 7_000_000_000n });
     expect(env.tracksProps.mock.lastCall?.[0].additionalTracks).toEqual([
       hostRow,

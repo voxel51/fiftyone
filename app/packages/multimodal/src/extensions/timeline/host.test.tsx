@@ -44,6 +44,7 @@ describe("timeline extension host", () => {
         children,
         selectedAnnotationStreams,
         session,
+        timeline,
         timeRange,
       }) => (
         <>
@@ -65,7 +66,12 @@ describe("timeline extension host", () => {
             runtime: <span data-testid="runtime">runtime</span>,
           })}
           <span data-testid="context">
-            {JSON.stringify({ selectedAnnotationStreams, session, timeRange })}
+            {JSON.stringify({
+              selectedAnnotationStreams,
+              session,
+              timeline,
+              timeRange,
+            })}
           </span>
         </>
       ),
@@ -86,7 +92,7 @@ describe("timeline extension host", () => {
     expect(screen.getByTestId("search-enabled").textContent).toBe("true");
     expect(screen.getByTestId("runtime").textContent).toBe("runtime");
     expect(screen.getByTestId("context").textContent).toBe(
-      '{"selectedAnnotationStreams":[],"session":null,"timeRange":null}',
+      '{"selectedAnnotationStreams":[],"session":null,"timeline":"episode","timeRange":null}',
     );
   });
 
@@ -128,6 +134,7 @@ function hostElement() {
       layoutScopeKey="dataset"
       navigationPending={false}
       session={null}
+      timeline="episode"
       timeRange={null}
     >
       {({ preferences, runtime, tracks }) => (

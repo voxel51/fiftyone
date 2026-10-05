@@ -50,6 +50,8 @@ export interface TimelineExtensionContext {
   readonly navigationPending: boolean;
   readonly selectedAnnotationStreams: readonly string[];
   readonly session: EpisodeSession | null;
+  /** Which timeline hosts the extensions: an episode's, or a video modal's. */
+  readonly timeline: "episode" | "video";
   readonly timeRange: TimeWindow | null;
 }
 
