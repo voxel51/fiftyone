@@ -8,7 +8,6 @@ FiftyOne Server samples pagination
 
 import asyncio
 import collections
-from contextvars import copy_context
 import logging
 
 import strawberry as gql
@@ -227,12 +226,7 @@ async def sample_nodes_for_ids(view, sample_ids):
     """
     if not sample_ids:
         return {}
-
-    def select():
-        selected = fosel.select_parents(view, sample_ids)
-        return fosv.get_extended_view(selected, pagination_data=True)
-
-    selected = await run_sync_task(copy_context().run, select)
+    selected = fosel.select_parents(view, sample_ids)
     pipeline = await get_samples_pipeline(selected, None)
     samples = await foo.aggregate(
         foo.get_async_db_conn()[selected._dataset._sample_collection_name],

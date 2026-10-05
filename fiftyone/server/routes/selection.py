@@ -15,6 +15,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 
 import fiftyone.core.json as foj
+import fiftyone.core.media as fom
 import fiftyone.core.subsets as fosub
 import fiftyone.core.utils as fou
 from fiftyone.server import decorators
@@ -78,8 +79,8 @@ class SelectionSnapshots(HTTPEndpoint):
 class SelectionAvailability(HTTPEndpoint):
     """Checks captured parent references independently of browsing filters.
 
-    Present samples receive the grid's own sample node, including resolved
-    media URLs for image and video previews.
+    Reference-backed and 3D samples also receive the grid's own sample node,
+    so tray previews render through the same renderer as grid tiles.
     """
 
     @decorators.route
@@ -92,13 +93,24 @@ class SelectionAvailability(HTTPEndpoint):
             result = foss.selection_availability(
                 dataset, data["episodeIds"], stages
             )
+            rendered = (
+                dataset.media_type == fom.MULTIMODAL
+                or dataset._contains_media_references()
+            )
             present = [
                 sample_id
                 for sample_id, details in result.items()
                 if not details.get("unavailable")
+                and (
+                    rendered
+                    or fom.get_media_type(details.get("filepath") or "")
+                    in (fom.THREE_D, fom.POINT_CLOUD)
+                )
             ]
-            target = foss.view_dataset(dataset, stages) if present else dataset
-            return target, result, present
+            if present and stages:
+                if foss.view_dataset(dataset, stages) is not dataset:
+                    present = []
+            return dataset, result, present
 
         try:
             dataset, result, present = await _run_dataset_task(request, run)
@@ -186,8 +198,6 @@ class Subsets(HTTPEndpoint):
                 data.get("description"),
                 data.get("view"),
                 data.get("preferredGroupSlice"),
-                data.get("provenance"),
-                data.get("lineage"),
             )
         except PermissionError as error:
             raise HTTPException(403, detail=str(error)) from error

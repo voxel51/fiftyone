@@ -70,24 +70,6 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
             endpoint.__new__(endpoint), request, *args
         )
 
-    async def test_subset_creation_forwards_optional_metadata(self):
-        provenance = {"agent": "curation-agent"}
-        lineage = {"subset_ids": ["parent"]}
-        with patch.object(
-            routes.fosub, "create_subset", return_value={}
-        ) as create:
-            await self.call(
-                routes.Subsets,
-                data={
-                    "name": "Review",
-                    "provenance": provenance,
-                    "lineage": lineage,
-                },
-            )
-        create.assert_called_once_with(
-            self.dataset, "Review", None, None, None, provenance, lineage
-        )
-
     async def test_sync_routes_offload_dataset_loading_and_operations(self):
         cases = [
             (
@@ -240,11 +222,16 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
             self.assert_worker()
             return result
 
+        def references():
+            self.assert_worker()
+            return True
+
         async def nodes(dataset, ids):
             self.assertEqual(threading.get_ident(), self.loop_thread)
             self.assertEqual(ids, ["present"])
             return {}
 
+        self.dataset._contains_media_references = references
         with patch.object(
             routes.foss, "selection_availability", side_effect=availability
         ), patch.object(
@@ -257,32 +244,15 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
         read.assert_awaited_once()
         self.assertEqual(actual, result)
 
-    async def test_availability_supplies_grid_nodes_for_present_samples(self):
+    async def test_availability_supplies_grid_nodes_for_3d_samples(self):
+        self.dataset._contains_media_references = lambda: False
         node = routes.foses.ThreeDSample(
             id="scene",
             sample={"_id": "scene", "filepath": "/scene.fo3d"},
             urls=[routes.foses.MediaURL(field="filepath", url="/scene.fo3d")],
             aspect_ratio=1,
         )
-        image = routes.foses.ImageSample(
-            id="image",
-            sample={"_id": "image", "filepath": "gs://bucket/image.jpg"},
-            urls=[
-                routes.foses.MediaURL(
-                    field="filepath",
-                    url="https://media.example/image.jpg?signed=1",
-                )
-            ],
-            aspect_ratio=2,
-        )
-        for media_type in (
-            "image",
-            "video",
-            "3d",
-            "point-cloud",
-            "group",
-            "multimodal",
-        ):
+        for media_type in ("3d", "point-cloud", "group"):
             with self.subTest(media_type=media_type):
                 self.dataset.media_type = media_type
                 details = {
@@ -299,62 +269,37 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
                 ), patch.object(
                     routes.foses,
                     "sample_nodes_for_ids",
-                    return_value={"scene": node, "image": image},
+                    return_value={"scene": node},
                 ) as read:
                     result = await self.call(
                         routes.SelectionAvailability,
                         data={"episodeIds": list(details)},
                     )
-                read.assert_awaited_once_with(
-                    self.dataset, ["scene", "cloud", "image"]
-                )
+                read.assert_awaited_once_with(self.dataset, ["scene", "cloud"])
                 self.assertEqual(result["scene"]["node"]["aspectRatio"], 1)
                 self.assertEqual(
                     result["scene"]["node"]["sample"], node.sample
                 )
-                self.assertEqual(
-                    result["image"]["node"]["urls"][0]["url"],
-                    image.urls[0].url,
-                )
+                self.assertNotIn("node", result["image"])
                 self.assertNotIn("node", result["missing"])
 
-    async def test_availability_resolves_generated_media_in_its_own_dataset(
-        self,
-    ):
+    async def test_availability_skips_grid_nodes_for_generated_samples(self):
+        self.dataset._contains_media_references = lambda: False
         stages = [{"_cls": "fiftyone.core.stages.ToPatches"}]
-        generated = object()
-        node = routes.foses.ImageSample(
-            id="patch",
-            sample={"_id": "patch", "filepath": "gs://bucket/source.jpg"},
-            urls=[
-                routes.foses.MediaURL(
-                    field="filepath",
-                    url="https://media.example/source.jpg?signed=1",
-                )
-            ],
-            aspect_ratio=2,
-        )
-        crop = [0.1, 0.2, 0.3, 0.4]
         with patch.object(
             routes.foss,
             "selection_availability",
-            return_value={
-                "patch": {"filepath": "gs://bucket/source.jpg", "crop": crop}
-            },
+            return_value={"patch": {"filepath": "/scene.fo3d"}},
         ), patch.object(
-            routes.foss, "view_dataset", return_value=generated
+            routes.foss, "view_dataset", return_value=object()
         ), patch.object(
-            routes.foses, "sample_nodes_for_ids", return_value={"patch": node}
+            routes.foses, "sample_nodes_for_ids"
         ) as read:
-            result = await self.call(
+            await self.call(
                 routes.SelectionAvailability,
                 data={"episodeIds": ["patch"], "view": stages},
             )
-        read.assert_awaited_once_with(generated, ["patch"])
-        self.assertEqual(result["patch"]["crop"], crop)
-        self.assertEqual(
-            result["patch"]["node"]["urls"][0]["url"], node.urls[0].url
-        )
+        read.assert_not_awaited()
 
     async def test_dataset_permission_errors_keep_their_http_status(self):
         def denied(identifier):
