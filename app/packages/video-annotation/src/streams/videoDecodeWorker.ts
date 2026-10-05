@@ -559,13 +559,15 @@ async function feedJob(
   if (ready && fedThrough !== null) {
     gop = { kf: fedThrough + 1, span: ready };
   } else {
-    gop = await keyframes.resolveGop(dStart, (kf) => fetchFrom(kf, dEnd));
+    gop = await keyframes.resolveGop(dStart, startFrame, (kf) =>
+      fetchFrom(kf, dEnd),
+    );
     if (gop) {
       // A restart discards whatever the decoder still holds, so let the
       // frames already fed arrive and settle their chunks first.
       await flushOutstanding();
       dec.restart(config as VideoDecoderConfig);
-      ledger.restart();
+      ledger.restart(decodeOrder[gop.kf].frameNumber);
     }
   }
 

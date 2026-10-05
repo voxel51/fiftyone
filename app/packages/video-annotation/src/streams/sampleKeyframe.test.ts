@@ -3,7 +3,14 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { codecFamily, isKeyframeSample, keyframeProbe } from "./sampleKeyframe";
+import {
+  codecFamily,
+  intraStartChunk,
+  isIntraPicture,
+  isKeyframeSample,
+  isRecoveryPoint,
+  keyframeProbe,
+} from "./sampleKeyframe";
 
 /** One length-prefixed NAL unit: `[length][header][payload…]`. */
 const nal = (header: number, lengthSize = 4, payload = 2): number[] => {
@@ -174,5 +181,70 @@ describe("isKeyframeSample: other codecs", () => {
         keyframeProbe("av01.0.04M.08"),
       ),
     ).toBeNull();
+  });
+});
+
+describe("isRecoveryPoint", () => {
+  // x264 --open-gop: a recovery-point SEI, then a non-IDR I-slice (slice_type 7)
+  const OPEN_GOP_I = Uint8Array.from(
+    Buffer.from(
+      "00000005060601c480" +
+        "000000274188ed004ffffeeae3fccb2b623cd7fc55e8f15b5b95d4d3d21244",
+      "hex",
+    ),
+  );
+
+  it("accepts an all-intra picture carrying a recovery-point SEI", () => {
+    expect(isRecoveryPoint(OPEN_GOP_I, AVC)).toBe(true);
+  });
+
+  it("finds the recovery point after other SEI messages", () => {
+    // user data unregistered (type 5, 2 bytes), then the recovery point
+    const sample = bytes(
+      [0, 0, 0, 9, SEI, 0x05, 0x02, 0xaa, 0xbb, 0x06, 0x01, 0xc4, 0x80],
+      [0, 0, 0, 2, NON_IDR, 0x88],
+    );
+    expect(isRecoveryPoint(sample, AVC)).toBe(true);
+  });
+
+  it("rejects a recovery-point SEI on a predicted picture", () => {
+    const sample = bytes(
+      [0, 0, 0, 5, SEI, 0x06, 0x01, 0xc4, 0x80],
+      [0, 0, 0, 2, NON_IDR, 0xc0],
+    );
+    expect(isRecoveryPoint(sample, AVC)).toBe(false);
+  });
+
+  it("rejects an all-intra picture without a recovery point", () => {
+    const sample = bytes(
+      [0, 0, 0, 5, SEI, 0x05, 0x01, 0xaa, 0x80],
+      [0, 0, 0, 2, NON_IDR, 0x88],
+    );
+    expect(isRecoveryPoint(sample, AVC)).toBe(false);
+    expect(isRecoveryPoint(bytes([0, 0, 0, 2, NON_IDR, 0x88]), AVC)).toBe(
+      false,
+    );
+  });
+
+  it("is H.264 only", () => {
+    expect(isRecoveryPoint(OPEN_GOP_I, HEVC)).toBe(false);
+  });
+});
+
+describe("isIntraPicture and intraStartChunk", () => {
+  const INTRA = bytes([0, 0, 0, 2, NON_IDR, 0x88]);
+  const PREDICTED = bytes([0, 0, 0, 2, NON_IDR, 0xc0]);
+
+  it("reads H.264 slice types", () => {
+    expect(isIntraPicture(INTRA, AVC)).toBe(true);
+    expect(isIntraPicture(PREDICTED, AVC)).toBe(false);
+    expect(isIntraPicture(Uint8Array.from([0x82]), VP9)).toBe(false);
+  });
+
+  it("prefixes an all-intra H.264 picture with a recovery point", () => {
+    const start = intraStartChunk(INTRA, AVC);
+    expect(start && isRecoveryPoint(start, AVC)).toBe(true);
+    expect(intraStartChunk(PREDICTED, AVC)).toBeNull();
+    expect(intraStartChunk(Uint8Array.from([0x82]), VP9)).toBeNull();
   });
 });

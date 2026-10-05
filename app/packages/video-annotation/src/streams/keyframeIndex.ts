@@ -2,13 +2,21 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { isKeyframeSample, type KeyframeProbe } from "./sampleKeyframe";
+import {
+  intraStartChunk,
+  isIntraPicture,
+  isKeyframeSample,
+  isRecoveryPoint,
+  type KeyframeProbe,
+} from "./sampleKeyframe";
 import { sliceSampleBytes, type SpanBuffer } from "./videoByteRange";
 
 /** What the index needs to know about a demuxed sample. */
 export interface SyncSample {
   /** Position in decode order. */
   decodeIndex: number;
+  /** 1-indexed presentation-order frame number; `0` when not presented. */
+  frameNumber: number;
   /** The container's sync (keyframe) flag; cleared when the bytes disagree. */
   isSync: boolean;
   offset: number;
@@ -20,8 +28,6 @@ export interface SyncSample {
  * encoders that flag all-intra refresh pictures (see {@link ./intraStartProbe}).
  */
 export interface IntraStarts {
-  /** Whether the sample may serve as a start point, so is not demoted yet. */
-  candidate(data: Uint8Array): boolean;
   /** Bytes to decode as the start chunk, or `null` when it cannot be one. */
   chunk(data: Uint8Array): Promise<Uint8Array | null>;
 }
@@ -36,10 +42,11 @@ export interface Gop {
 /**
  * The keyframes a chunk decode can start from, in decode order, with the
  * container's sync flags verified against sample bytes before they are relied
- * on. A sync table can flag a sample that is not a keyframe (open-GOP encodes
+ * on. A sync table can flag a sample that is not a keyframe (re-muxed files
  * and some camera encoders do), and a decoder asked to start there fails the
  * whole chunk. A flag the bytes contradict is dropped here, so the snap moves
- * back to a real keyframe and later snaps skip the sample.
+ * back to a real keyframe and later snaps skip the sample. A flagged open-GOP
+ * I-frame carrying a recovery point keeps its flag.
  */
 export class KeyframeIndex {
   private indices: number[];
@@ -67,9 +74,11 @@ export class KeyframeIndex {
   }
 
   /**
-   * The `EncodedVideoChunk` type for a sample: `key` only when its bytes are a
-   * keyframe. The sync flag decides for codecs we do not inspect. A flagged
-   * sample the bytes contradict is demoted.
+   * The `EncodedVideoChunk` type for a sample: `key` when its bytes are a
+   * keyframe, or a recovery point the container flags. The sync flag decides
+   * for codecs we do not inspect. A flagged sample whose bytes are a predicted
+   * picture is demoted; a flagged all-intra one may still start a decode, which
+   * {@link resolveGop} decides.
    */
   chunkType(sample: SyncSample, data: Uint8Array): "key" | "delta" {
     const byBytes = isKeyframeSample(data, this.probe);
@@ -77,25 +86,38 @@ export class KeyframeIndex {
       return sample.isSync ? "key" : "delta";
     }
 
-    if (sample.isSync && !byBytes && !this.intraStarts?.candidate(data)) {
+    if (byBytes) {
+      return "key";
+    }
+
+    if (sample.isSync && isRecoveryPoint(data, this.probe)) {
+      return "key";
+    }
+
+    if (sample.isSync && !isIntraPicture(data, this.probe)) {
       this.demote(sample);
     }
 
-    return byBytes ? "key" : "delta";
+    return "delta";
   }
 
   /**
    * Snap the decode span starting at `dStart` back to a keyframe whose bytes
-   * confirm it. `fetchFrom(kf)` fetches the span's bytes from candidate `kf`;
-   * a candidate the bytes contradict is demoted and the previous keyframe
-   * tried, unless it can start the decode as an intra picture. Returns `null` when `fetchFrom` has nothing to fetch and throws when
-   * no real keyframe precedes the span.
+   * confirm it and that presents no later than `startFrame`, the span's first
+   * frame: frames presented before an open-GOP I-frame but decoded after it
+   * reference the GOP before. `fetchFrom(kf)` fetches the span's bytes from
+   * candidate `kf`; a candidate the bytes contradict is demoted and the
+   * previous keyframe tried, unless it can start the decode as an intra
+   * picture. The first sample starts the decode if it is all intra. Returns
+   * `null` when `fetchFrom` has nothing to fetch and throws when no keyframe
+   * precedes the span.
    */
   async resolveGop(
     dStart: number,
+    startFrame: number,
     fetchFrom: (kf: number) => Promise<{ kf: number; span: SpanBuffer } | null>,
   ): Promise<Gop | null> {
-    let kf = this.atOrBefore(dStart);
+    let kf = this.presentingBy(dStart, startFrame);
 
     for (;;) {
       const span = (await fetchFrom(kf))?.span;
@@ -119,14 +141,29 @@ export class KeyframeIndex {
       }
 
       if (kf === 0) {
+        const start = intraStartChunk(data, this.probe);
+        if (start) {
+          return { kf, span, start };
+        }
+
         throw new Error(
           `no keyframe at or before decode index ${dStart}: the first ` +
             "sample is not a keyframe",
         );
       }
 
+      kf = this.presentingBy(kf - 1, startFrame);
+    }
+  }
+
+  /** The keyframe at or before `decodeIndex` presenting by `startFrame`. */
+  private presentingBy(decodeIndex: number, startFrame: number): number {
+    let kf = this.atOrBefore(decodeIndex);
+    while (kf > 0 && this.samples[kf].frameNumber > startFrame) {
       kf = this.atOrBefore(kf - 1);
     }
+
+    return kf;
   }
 
   private demote(sample: SyncSample): void {

@@ -6,14 +6,22 @@
  * Bitstream-level keyframe checks for demuxed samples.
  *
  * A container's sync-sample table can flag a sample as a keyframe when the
- * coded picture is not one: open-GOP H.264 encoders flag their non-IDR
- * I-frames (they carry a recovery-point SEI), and re-muxed files inherit
- * whatever the muxer believed. WebCodecs verifies the first chunk after
- * `configure()`/`flush()` and rejects one marked `key` whose bytes are not a
- * keyframe, which fails the whole chunk. The decode worker therefore checks
- * the bytes of every sample it is about to decode and trusts them over the
- * table. Pure and free of mp4box so it is unit-testable.
+ * coded picture is not one: re-muxed files inherit whatever the muxer
+ * believed, and some camera encoders flag predicted pictures. WebCodecs
+ * verifies the first chunk after `configure()`/`flush()` and rejects one
+ * marked `key` whose bytes are not a keyframe, which fails the whole chunk.
+ * The decode worker therefore checks the bytes of every sample it is about to
+ * decode and trusts them over the table. Open-GOP H.264 encoders flag non-IDR
+ * I-frames that carry a recovery-point SEI; those are genuine start points
+ * (see {@link isRecoveryPoint}). Pure and free of mp4box so it is
+ * unit-testable.
  */
+
+import {
+  intraStartPointChunk,
+  isIntraOnlySample,
+  isRecoveryPointSample,
+} from "./intraStartPoints";
 
 export type CodecFamily = "avc" | "hevc" | "vp9" | "other";
 
@@ -84,6 +92,48 @@ export function isKeyframeSample(
     default:
       return null;
   }
+}
+
+/**
+ * Whether `bytes` code a picture of intra slices only. `false` for codecs whose
+ * slices we do not parse.
+ */
+export function isIntraPicture(
+  bytes: Uint8Array,
+  probe: KeyframeProbe,
+): boolean {
+  return (
+    probe.family === "avc" && isIntraOnlySample(bytes, probe.nalLengthSize)
+  );
+}
+
+/**
+ * Whether `bytes` code an open-GOP H.264 I-frame: all intra, carrying a
+ * recovery-point SEI. A decode can start from one where the container flags
+ * it, though the pictures decoded after it but presented before it reference
+ * the GOP before.
+ */
+export function isRecoveryPoint(
+  bytes: Uint8Array,
+  probe: KeyframeProbe,
+): boolean {
+  return (
+    probe.family === "avc" && isRecoveryPointSample(bytes, probe.nalLengthSize)
+  );
+}
+
+/**
+ * The bytes to start a decode from an all-intra picture that is not marked as
+ * a start point: the sample with a recovery-point SEI in front, or `null`
+ * when the codec is not one we rewrite or the picture is not all intra.
+ */
+export function intraStartChunk(
+  bytes: Uint8Array,
+  probe: KeyframeProbe,
+): Uint8Array | null {
+  return probe.family === "avc"
+    ? intraStartPointChunk(bytes, probe.nalLengthSize)
+    : null;
 }
 
 /** Walk the length-prefixed NAL units of a sample; true if any header matches. */

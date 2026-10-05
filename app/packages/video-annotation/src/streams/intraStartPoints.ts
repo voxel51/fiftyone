@@ -145,6 +145,90 @@ export function isIntraOnlySample(
   return slices > 0;
 }
 
+/** SEI payload type of a recovery point. */
+const RECOVERY_POINT_PAYLOAD = 6;
+
+/** Whether an SEI NAL's payload (after its header byte) holds a recovery point. */
+function seiHasRecoveryPoint(payload: Uint8Array): boolean {
+  const data = rbsp(payload, Number.POSITIVE_INFINITY);
+  // Messages run up to the RBSP trailing byte.
+  const end = data[data.length - 1] === 0x80 ? data.length - 1 : data.length;
+  let p = 0;
+
+  // A message's type and size are each coded as 0xff bytes plus a final byte.
+  const field = (): number => {
+    let value = 0;
+    while (p < end && data[p] === 0xff) {
+      value += 255;
+      p += 1;
+    }
+
+    if (p >= end) {
+      return -1;
+    }
+
+    value += data[p];
+    p += 1;
+    return value;
+  };
+
+  while (p < end) {
+    const type = field();
+    const size = field();
+    if (type < 0 || size < 0) {
+      return false;
+    }
+
+    if (type === RECOVERY_POINT_PAYLOAD) {
+      return true;
+    }
+
+    p += size;
+  }
+
+  return false;
+}
+
+/**
+ * Whether this sample is a recovery point as the encoder marked it: an
+ * all-intra picture carrying a recovery-point SEI, which is how an open-GOP
+ * encoder (x264 `--open-gop`, many broadcast and IP-camera streams) codes the
+ * I-frames it flags as sync samples between IDRs. Decoding from one gives
+ * correct pictures from it on in presentation order.
+ */
+export function isRecoveryPointSample(
+  bytes: Uint8Array,
+  nalLengthSize: number,
+): boolean {
+  let position = 0;
+  let marked = false;
+
+  while (!marked && position + nalLengthSize < bytes.length) {
+    let length = 0;
+    for (let i = 0; i < nalLengthSize; i++) {
+      length = length * 256 + bytes[position + i];
+    }
+
+    if (length <= 0) {
+      return false;
+    }
+
+    // 6 is an SEI NAL
+    if ((bytes[position + nalLengthSize] & 0x1f) === 6) {
+      marked = seiHasRecoveryPoint(
+        bytes.subarray(
+          position + nalLengthSize + 1,
+          position + nalLengthSize + length,
+        ),
+      );
+    }
+
+    position += nalLengthSize + length;
+  }
+
+  return marked && isIntraOnlySample(bytes, nalLengthSize);
+}
+
 /**
  * A recovery-point SEI NAL, length-prefixed for `avcC` sample data.
  *

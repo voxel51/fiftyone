@@ -5,7 +5,7 @@
 /// <reference types="dom-webcodecs" />
 
 import type { IntraStarts } from "./keyframeIndex";
-import { intraStartPointChunk, isIntraOnlySample } from "./intraStartPoints";
+import { intraStartPointChunk } from "./intraStartPoints";
 
 /**
  * Decoding from an all-intra picture, gated on whether this browser accepts
@@ -22,8 +22,6 @@ export function intraStarts(
   let unsupported = false;
 
   return {
-    candidate: (data) => !unsupported && isIntraOnlySample(data, nalLengthSize),
-
     async chunk(data) {
       if (unsupported) {
         return null;

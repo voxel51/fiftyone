@@ -11,12 +11,6 @@ const I_SLICE = Uint8Array.of(0, 0, 0, 2, 0x01, 0b10111000);
 const P_SLICE = Uint8Array.of(0, 0, 0, 2, 0x01, 0b11000000);
 
 describe("intraStarts", () => {
-  it("offers only all-intra pictures as candidates", () => {
-    const starts = intraStarts(4, async () => true);
-    expect(starts.candidate(I_SLICE)).toBe(true);
-    expect(starts.candidate(P_SLICE)).toBe(false);
-  });
-
   it("probes once and returns the SEI-prefixed chunk when it decodes", async () => {
     const decodes = vi.fn(async () => true);
     const starts = intraStarts(4, decodes);
@@ -34,7 +28,6 @@ describe("intraStarts", () => {
     const starts = intraStarts(4, decodes);
 
     await expect(starts.chunk(I_SLICE)).resolves.toBeNull();
-    expect(starts.candidate(I_SLICE)).toBe(false);
     await expect(starts.chunk(I_SLICE)).resolves.toBeNull();
     expect(decodes).toHaveBeenCalledTimes(1);
   });

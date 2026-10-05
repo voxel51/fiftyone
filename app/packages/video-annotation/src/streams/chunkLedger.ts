@@ -89,16 +89,26 @@ export class ChunkLedger<C extends OwedChunk> {
   private readonly inFlight = new Map<number, number>();
   /** Last frame of any chunk opened since the restart; `0` before one. */
   private coveredThrough = 0;
+  /**
+   * The frame the restart's start point presents. Frames presented before it
+   * are an open GOP's leading pictures, decoded without the GOP they
+   * reference, so they are dropped rather than posted.
+   */
+  private floor = 0;
 
   /** Chunks fed and not yet settled, oldest first. */
   get pending(): readonly C[] {
     return this.chunks;
   }
 
-  /** The decoder restarted: nothing fed before is coming out. */
-  restart(): void {
+  /**
+   * The decoder restarted at a start point presenting `floor` (`0` for one
+   * not presented): nothing fed before is coming out.
+   */
+  restart(floor: number): void {
     this.inFlight.clear();
     this.coveredThrough = 0;
+    this.floor = floor;
   }
 
   /**
@@ -165,7 +175,9 @@ export class ChunkLedger<C extends OwedChunk> {
       return { chunk, reqId: chunk.reqId };
     }
 
-    return carrier === undefined ? null : { chunk: null, reqId: carrier };
+    return carrier === undefined || frame < this.floor
+      ? null
+      : { chunk: null, reqId: carrier };
   }
 
   /** Stop tracking `chunk`; `false` when it was already settled. */

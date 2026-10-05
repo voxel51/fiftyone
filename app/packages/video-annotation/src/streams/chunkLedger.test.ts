@@ -20,7 +20,7 @@ describe("ChunkLedger", () => {
   it("posts the lead-in of a keyframe snap as bonus frames", () => {
     const ledger = new ChunkLedger<OwedChunk>();
     const request = chunk(7, 10, 12);
-    ledger.restart();
+    ledger.restart(0);
     ledger.open(request, everyFrame, null);
 
     // the snap decodes from the keyframe at frame 1 through frame 12
@@ -63,10 +63,25 @@ describe("ChunkLedger", () => {
     expect(ledger.settle(request)).toBe(false);
   });
 
+  it("drops leading pictures presented before the start point", () => {
+    const ledger = new ChunkLedger<OwedChunk>();
+    const request = chunk(1, 13, 13);
+    // an open-GOP I-frame presenting frame 13, then its leading B-frames
+    ledger.restart(13);
+    ledger.open(request, everyFrame, null);
+    for (const frame of [13, 11, 12]) {
+      ledger.fed(frame, request.reqId);
+    }
+
+    expect(ledger.output(11)).toBeNull();
+    expect(ledger.output(12)).toBeNull();
+    expect(ledger.output(13)).toEqual({ chunk: request, reqId: 1 });
+  });
+
   it("forgets frames in flight across a restart", () => {
     const ledger = new ChunkLedger<OwedChunk>();
     ledger.fed(3, 1);
-    ledger.restart();
+    ledger.restart(0);
 
     expect(ledger.output(3)).toBeNull();
   });
@@ -192,7 +207,7 @@ async function play(ranges: Array<[number, number]>) {
       await session.flush();
       [...ledger.pending].forEach(settle);
       session.restart(CONFIG);
-      ledger.restart();
+      ledger.restart(0);
     }
 
     const c = chunk(i + 1, startFrame, endFrame);
