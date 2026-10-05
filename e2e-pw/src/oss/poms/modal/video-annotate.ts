@@ -5,6 +5,15 @@ import { ModalPom } from ".";
 /** Dispatched after the timeline commits a changed set of rows, with their ids */
 const TRACKS_RENDERED = "e2e:video-annotation:tracks-rendered";
 
+/** Dispatched when the playhead's frame is applied to the scene, with its number */
+const FRAME_APPLIED = "e2e:video-annotation:frame-applied";
+
+/** Dispatched after a decoded frame is drawn into the frame canvas */
+const FRAME_PAINTED = "e2e:video-annotation:frame-painted";
+
+const frameOf = (e: { detail?: unknown }) =>
+  (e.detail as { frame: number }).frame;
+
 const renderedIds = (e: { detail?: unknown }) =>
   (e.detail as { ids: string }).ids.split(",").filter(Boolean);
 
@@ -41,6 +50,40 @@ export class VideoAnnotatePom {
   /** The painted media frame as a PNG data URL: an exact per-pixel identity. */
   async frameCanvasImage(): Promise<string> {
     return this.frameCanvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  }
+
+  /** Resolve once the frame canvas shows `frame`, painted now or already. */
+  async untilFramePainted(frame: number): Promise<void> {
+    const events = this.modal.eventUtils;
+
+    await events.untilState(
+      FRAME_PAINTED,
+      async () => {
+        const latest = await events.latest([FRAME_PAINTED]);
+        return latest[FRAME_PAINTED]?.frame === frame;
+      },
+      (e) => frameOf(e) === frame,
+    );
+  }
+
+  /**
+   * Seek by clicking the ruler at `fraction`, resolve once the frame canvas
+   * shows the frame the playhead landed on, and return that frame
+   */
+  async seekAndPaint(fraction: number): Promise<number> {
+    let frame = 0;
+
+    await this.modal.eventUtils.after(
+      FRAME_APPLIED,
+      () => this.seekToRulerFraction(fraction),
+      (e) => {
+        frame = frameOf(e);
+        return true;
+      },
+    );
+    await this.untilFramePainted(frame);
+
+    return frame;
   }
 
   /** The dynamic group's order-by value beside the clock, `(value)`. */

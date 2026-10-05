@@ -31,19 +31,32 @@ const expectPersistedRegression = async (
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
     await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await freshModal.waitForSampleLoadDomAttribute();
     await freshModal.assert.isOpen();
-    await freshModal.sidebar.switchMode("annotate");
+    await freshModal.sidebar.annotate.afterLabelList(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
     const rows = freshModal.sidebar.annotate.labelRowsFor(FIELD);
-    await expect(rows).toHaveCount(value === null ? 0 : 1);
+    expect(await rows.count()).toBe(value === null ? 0 : 1);
     if (value !== null) {
-      await expect(rows).toHaveAttribute("data-cy-label", value);
+      expect(await rows.getAttribute("data-cy-label")).toBe(value);
     }
   } finally {
     await context.close();
   }
 };
+
+/**
+ * Type the value and resolve once it is saved. Creating the regression first
+ * saves it without a value, so the save is the one whose patch carries it.
+ */
+const saveValue = (modal: ModalPom) =>
+  modal.sidebar.annotate.afterSave(async () => {
+    const saved = modal.sidebar.annotate.waitForPatchContaining(VALUE);
+    await modal.sidebar.edit.setFieldValue("value", VALUE);
+    await saved;
+  });
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -75,8 +88,8 @@ test.describe.serial("2D annotation regression", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
   });
@@ -86,13 +99,14 @@ test.describe.serial("2D annotation regression", () => {
     fiftyoneLoader,
     modal,
   }) => {
-    await modal.sidebar.annotate.createRegression();
+    await modal.sidebar.annotate.afterEditing(() =>
+      modal.sidebar.annotate.createRegression(),
+    );
 
-    await expect(modal.sidebar.edit.getFieldContainer("label")).toBeHidden();
-    const saved = modal.sidebar.annotate.waitForPatchContaining(VALUE);
-    await modal.sidebar.edit.setFieldValue("value", VALUE);
+    // a regression has a numeric value and no class picker
+    expect(await modal.sidebar.edit.getFieldContainer("label").count()).toBe(0);
+    await saveValue(modal);
     await modal.sidebar.edit.assert.verifyFieldValue("value", VALUE);
-    await saved;
 
     await expectPersistedRegression(browser, fiftyoneLoader, VALUE);
   });
@@ -102,15 +116,15 @@ test.describe.serial("2D annotation regression", () => {
     fiftyoneLoader,
     modal,
   }) => {
-    await modal.sidebar.annotate.createRegression();
-    const saved = modal.sidebar.annotate.waitForPatchContaining(VALUE);
-    await modal.sidebar.edit.setFieldValue("value", VALUE);
-    await saved;
+    await modal.sidebar.annotate.afterEditing(() =>
+      modal.sidebar.annotate.createRegression(),
+    );
+    await saveValue(modal);
     await expectPersistedRegression(browser, fiftyoneLoader, VALUE);
 
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
     await expectPersistedRegression(browser, fiftyoneLoader, null);
   });
 });

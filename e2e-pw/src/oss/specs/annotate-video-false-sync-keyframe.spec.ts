@@ -11,7 +11,8 @@
  * The clip is two solid colors of about 75 frames, keyframes every 25 frames.
  * The sync table is rewritten so the true keyframe at sample 101 is unflagged
  * and the P-frame at sample 90 is flagged in its place: a seek anywhere in
- * frames 90-125 snaps onto the lie.
+ * frames 90-125 snaps onto the lie, while frames 76-89 decode from the true
+ * keyframe at 76.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
@@ -84,36 +85,35 @@ test("frames behind a false keyframe flag still decode", async ({
     }
   });
 
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    withGrid: true,
-  });
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await grid.openFirstSample();
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 
   // frame 1 painted: the canvas takes the clip's dimensions
-  await expect(modal.videoAnnotate.frameCanvas).toHaveAttribute("width", "64");
+  await modal.videoAnnotate.untilFramePainted(1);
+  expect(await modal.videoAnnotate.frameCanvas.getAttribute("width")).toBe(
+    "64",
+  );
   const firstColor = await modal.videoAnnotate.frameCanvasImage();
 
-  // ~frame 106: the chunk snaps to the flagged P-frame at sample 90
-  await modal.videoAnnotate.seekToRulerFraction(0.7);
-  await expect
-    .poll(() => modal.videoAnnotate.frameCanvasImage())
-    .not.toBe(firstColor);
+  // a chunk here snaps to the flagged P-frame at sample 90
+  const behindLie = await modal.videoAnnotate.seekAndPaint(0.7);
+  expect(behindLie).toBeGreaterThanOrEqual(90);
+  expect(behindLie).toBeLessThan(126);
   const secondColor = await modal.videoAnnotate.frameCanvasImage();
+  expect(secondColor).not.toBe(firstColor);
 
-  // back to the first half, so the next assertion cannot pass on a stale canvas
-  await modal.videoAnnotate.seekToRulerFraction(0.1);
-  await expect
-    .poll(() => modal.videoAnnotate.frameCanvasImage())
-    .toBe(firstColor);
+  // back to the first color, so the last read cannot pass on a stale canvas
+  await modal.videoAnnotate.seekAndPaint(0.1);
+  expect(await modal.videoAnnotate.frameCanvasImage()).toBe(firstColor);
 
-  // ~frame 83, decoded from the real keyframe at 76: same color, same pixels
-  await modal.videoAnnotate.seekToRulerFraction(0.55);
-  await expect
-    .poll(() => modal.videoAnnotate.frameCanvasImage())
-    .toBe(secondColor);
+  // decoded from the real keyframe at 76: the same color, the same pixels
+  const beforeLie = await modal.videoAnnotate.seekAndPaint(0.55);
+  expect(beforeLie).toBeGreaterThanOrEqual(76);
+  expect(beforeLie).toBeLessThan(90);
+  expect(await modal.videoAnnotate.frameCanvasImage()).toBe(secondColor);
 
   expect(chunkFailures).toEqual([]);
 });
