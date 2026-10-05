@@ -47,8 +47,9 @@ Configuring model providers
 ___________________________
 
 The first time you open the Agent, you will be prompted to configure a model
-provider. The Agent supports over 100 providers, including Anthropic, OpenAI,
-Google, and more.
+provider. The **Provider** dropdown lists every supported provider,
+including Anthropic, OpenAI, Google, Azure, AWS Bedrock, Vertex AI, and many
+more.
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/agent_settings.webp
    :alt: fiftyone-agent-settings
@@ -59,15 +60,26 @@ To add a provider, fill in the following fields:
 - **Name**: a label for this provider configuration
 - **Provider**: select from the list of supported providers
 - **Endpoint** (optional): use this to route requests to a custom URL, such
-  as an internal enterprise gateway or a self-hosted model server
-- **API key**: your provider's API key
-- **Models**: select one or more models to make available
+  as an internal enterprise gateway or a self-hosted model server. Setting an
+  endpoint does not change how model names are routed automatically; when
+  it's set, use the **Custom model names** field to provide a
+  provider-prefixed model name (see below) so the request is routed
+  correctly
+- **API key** (optional): your provider's API key. Leave this field blank to
+  use credentials already configured in the server environment
+- **Models**: select one or more models to make available. Leave this empty
+  to allow every model from this provider; note that **Test connection**
+  requires at least one model to be selected
 - **Custom model names** (optional): enter model identifiers that are not in
-  the standard picker, such as non-standard IDs used by an enterprise gateway.
-  Prefix with the provider slug (e.g. ``openai/my-model-id``) to ensure
-  correct routing when the model name alone is ambiguous
-- **Extra headers** (optional): static key-value HTTP headers sent with every
-  request (e.g. ``User-Agent``, project tokens required by your gateway)
+  the standard picker, such as non-standard IDs used by an enterprise
+  gateway. Prefix with the provider slug so the request is routed correctly,
+  e.g. ``openai/aws:anthropic.claude-sonnet-4-6`` to reach a Bedrock-hosted
+  Claude model through an OpenAI-compatible gateway
+- **Extra headers** (optional): static key-value HTTP headers sent with
+  every request (e.g. ``User-Agent``, project tokens required by your
+  gateway). When an endpoint is set, an ``X-FiftyOne-User-Email`` header
+  identifying the requesting user is also added automatically, to support
+  attribution/logging on your own gateway
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/provider_more_details.webp
    :alt: fiftyone-agent-provider-details
