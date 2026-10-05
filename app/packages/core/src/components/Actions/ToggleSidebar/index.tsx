@@ -7,7 +7,7 @@ import type { ActionProps } from "../types";
 import { getStringAndNumberProps } from "../utils";
 
 const ToggleSidebar = React.forwardRef<
-  HTMLButtonElement,
+  HTMLDivElement,
   ActionProps & {
     modal: boolean;
   }

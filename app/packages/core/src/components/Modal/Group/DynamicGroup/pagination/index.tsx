@@ -1,5 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import type { Primitive } from "@fiftyone/utilities";
 import { modalSelector } from "@fiftyone/state";
 import { PaginationItem } from "@mui/material";
 import type { PaginationProps } from "@mui/material/Pagination";
@@ -70,7 +71,7 @@ const PaginationBarContent = ({
   isTextBoxEmpty: boolean;
   textBoxRef: React.RefObject<HTMLInputElement>;
   dynamicGroupCurrentElementIndex: number;
-  isPaginationChangeRef: React.RefObject<boolean>;
+  isPaginationChangeRef: React.MutableRefObject<boolean>;
 }) => {
   const data = usePreloadedQuery(foq.paginateSamples, queryRef);
 
@@ -147,7 +148,9 @@ const PaginationBarContent = ({
             component={PaginationComponentWithTooltip}
             orderByValue={
               item.page >= 0 && orderBy
-                ? map.get(item.page - 1)?.sample[orderBy]
+                ? (map.get(item.page - 1)?.sample[orderBy] as
+                    | Primitive
+                    | boolean)
                 : undefined
             }
             // hack because page is not being forwarded as-is for some reason

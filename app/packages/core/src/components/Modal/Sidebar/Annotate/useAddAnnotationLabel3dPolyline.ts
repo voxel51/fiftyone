@@ -18,12 +18,13 @@ export const useAddAnnotationLabel3dPolyline = () => {
         return null;
       }
 
+      const polylineLabel = data as PolylineLabel;
       return {
-        data,
+        data: polylineLabel,
         overlay: {
-          id: data._id,
+          id: polylineLabel._id,
           field,
-          label: data as PolylineLabel,
+          label: polylineLabel,
         },
         type,
         path: field,

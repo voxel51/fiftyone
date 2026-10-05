@@ -8,7 +8,7 @@ import * as fos from "@fiftyone/state";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChromePicker } from "react-color";
+import { ChromePicker, type ColorResult } from "react-color";
 import { useRecoilValue } from "recoil";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
@@ -69,7 +69,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 
   // color picker selection and sync with session
   const hanldeColorChange = useCallback(
-    (color: any, colorIdx: number) => {
+    (color: ColorResult, colorIdx: number) => {
       setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = color?.hex;

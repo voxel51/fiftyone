@@ -1,6 +1,7 @@
 import { Text, TextVariant } from "@voxel51/voodo";
 import useLabelSchema from "../SchemaManager/EditFieldLabelSchema/useLabelSchema";
 import PrimitiveEdit from "./PrimitiveEdit";
+import type { PrimitiveSchema } from "./schemaHelpers";
 import useActivePrimitive from "./useActivePrimitive";
 
 export function PrimitiveWrapper() {
@@ -17,7 +18,8 @@ export function PrimitiveWrapper() {
   return (
     <PrimitiveEdit
       path={activePrimitivePath}
-      currentLabelSchema={currentLabelSchema}
+      // a primitive path's label schema is a PrimitiveSchema
+      currentLabelSchema={currentLabelSchema as PrimitiveSchema}
     />
   );
 }

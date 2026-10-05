@@ -40,7 +40,8 @@ const JSONEditor = ({
   onChange: (value: string) => void;
   scanning: boolean;
   onCancelScan?: () => void;
-  showDocumentation: boolean;
+  // defaults to true
+  showDocumentation?: boolean;
 }) => {
   const [value, setValue] = useState("");
 

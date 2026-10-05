@@ -9,7 +9,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import IconButton from "@mui/material/IconButton";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChromePicker } from "react-color";
+import { ChromePicker, type ColorResult } from "react-color";
 import { useRecoilValue } from "recoil";
 import Input, { NumberInput } from "../../Common/Input";
 import { Button } from "../../utils";
@@ -85,7 +85,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
 
   // color picker selection and sync with session
   const hanldeColorChange = useCallback(
-    (color: any, colorIdx: number) => {
+    (color: ColorResult, colorIdx: number) => {
       setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = convertToRGB(color.hex);

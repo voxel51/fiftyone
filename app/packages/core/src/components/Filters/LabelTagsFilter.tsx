@@ -12,6 +12,8 @@ const LabelTagsFilter = ({
   modal,
   ...rest
 }: {
+  // forwarded to StringFilter via rest (FilterItem passes it)
+  color: string;
   path: string;
   modal: boolean;
   onFocus?: () => void;

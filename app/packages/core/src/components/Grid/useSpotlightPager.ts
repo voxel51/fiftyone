@@ -16,7 +16,8 @@ import { handleNode } from "./utils";
 
 export const PAGE_SIZE = 20;
 
-export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
+// holds the paginated relay node itself (its `sample` is the sample JSON)
+export type SampleStore = WeakMap<ID, fos.Sample>;
 
 const processSamplePageData = (
   page: number,

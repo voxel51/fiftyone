@@ -1,4 +1,6 @@
 import { SpacesRoot, usePanelsState, useSpaces } from "@fiftyone/spaces";
+import type SpaceTree from "@fiftyone/spaces/src/SpaceTree";
+import type { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { constants, useSessionSpaces } from "@fiftyone/state";
 import { isEqual, size } from "lodash";
 import React, { useEffect, useRef } from "react";
@@ -13,7 +15,8 @@ function MainSpace() {
     sessionSpaces,
   );
   const [panelsState, setPanelsState] = usePanelsState();
-  const oldSpaces = useRef(spaces);
+  // starts as the tree, then holds the last serialized tree
+  const oldSpaces = useRef<SpaceTree | SpaceNodeJSON>(spaces);
   const oldPanelsState = useRef(panelsState);
   const isMounted = useRef(false);
   // Lamport-style ordering for the two-way spaces sync: every local push

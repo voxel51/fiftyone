@@ -505,7 +505,7 @@ function FieldInfoTable({
 }) {
   info = info || {};
   const tableData = info;
-  let items = Object.entries<any>(tableData)
+  let items = Object.entries(tableData as Record<string, unknown>)
     .filter(keyValueIsRenderable)
     .map((v) => toRenderValue(v, timeZone));
 

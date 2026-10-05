@@ -15,6 +15,7 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import PrimitiveRenderer from "../../../Edit/PrimitiveRenderer";
 import { generatePrimitiveSchema } from "../../../Edit/schemaHelpers";
+import type { ComponentType, FieldType } from "../../../useSchemaManager";
 import {
   COMPONENT_OPTIONS,
   componentNeedsRange,
@@ -189,8 +190,9 @@ const PrimitiveFieldContent = ({
 
   const previewSchema = useMemo(() => {
     return generatePrimitiveSchema(field, {
-      type: schemaType,
-      component,
+      // both come from the schema-type and component option tables
+      type: schemaType as FieldType,
+      component: component as ComponentType,
       values,
       range: range
         ? ([parseFloat(range.min), parseFloat(range.max)] as [number, number])

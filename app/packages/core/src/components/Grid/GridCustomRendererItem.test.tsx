@@ -10,6 +10,8 @@ import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
+type ItemCtx = ConstructorParameters<typeof GridCustomRendererItem>[0]["ctx"];
+
 // The multimodal guard also mounts the temporal-tag overlay, which reaches
 // for an mcap source these tests do not build
 vi.mock("../../../../multimodal/src/grid-overlay/EpisodeGridOverlay", () => ({
@@ -85,7 +87,7 @@ describe("GridCustomRendererItem", () => {
         ctx: {
           ...BASE_CTX,
           media: { ...BASE_CTX.media, mediaType: "multimodal" },
-        } as any,
+        } as unknown as ItemCtx,
         symbol: BASE_SYMBOL,
       });
       looker.attach(host, [200, 120], 12);
@@ -114,7 +116,7 @@ describe("GridCustomRendererItem", () => {
         ctx: {
           ...BASE_CTX,
           media: { ...BASE_CTX.media, mediaType: "multimodal" },
-        } as any,
+        } as unknown as ItemCtx,
         symbol: BASE_SYMBOL,
       });
       looker.attach(host, [200, 120], 12);
@@ -153,7 +155,7 @@ describe("GridCustomRendererItem", () => {
         ctx: {
           ...BASE_CTX,
           media: { ...BASE_CTX.media, mediaType: "multimodal" },
-        } as any,
+        } as unknown as ItemCtx,
         symbol: BASE_SYMBOL,
       });
       looker.attach(host, [200, 120], 12);
@@ -197,7 +199,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: ctx as any,
+      ctx: ctx as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -290,7 +292,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "passive-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -326,7 +328,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "broken-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -378,7 +380,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: rawSampleCtx as any,
+      ctx: rawSampleCtx as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -412,7 +414,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "measured-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -439,7 +441,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "activity-renderer",
       Renderer,
       RecoilBridge: ModalBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -465,7 +467,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "broken-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -497,7 +499,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
       isSampleSelected,
     });
@@ -529,7 +531,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
       isSampleSelected,
     });
@@ -566,7 +568,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
       isSampleSelected,
     });
@@ -596,7 +598,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "pdf-renderer",
       Renderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");
@@ -626,7 +628,7 @@ describe("GridCustomRendererItem", () => {
       pluginName: "renderer",
       Renderer: TestRenderer,
       RecoilBridge: TestBridge,
-      ctx: BASE_CTX as any,
+      ctx: BASE_CTX as unknown as ItemCtx,
       symbol: BASE_SYMBOL,
     });
     const host = document.createElement("div");

@@ -12,6 +12,8 @@ const BooleanFieldFilter = ({
   modal,
   ...rest
 }: {
+  // forwarded to StringFilter via rest (FilterItem passes it)
+  color: string;
   modal: boolean;
   named?: boolean;
   onFocus?: () => void;

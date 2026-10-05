@@ -60,7 +60,9 @@ export const useLooker3dAnnotationBridge = (): void => {
     () => ({
       get: (id) => docRef.current.labelsById[id],
       add,
-      update,
+      // the engine's partials for 3D labels are 3D document partials
+      update: (instanceId, partial) =>
+        update(instanceId, partial as Parameters<typeof update>[1]),
       remove,
     }),
     [add, update, remove],

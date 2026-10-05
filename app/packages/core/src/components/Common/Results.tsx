@@ -79,7 +79,8 @@ const Result = <T,>({
 
   return (
     <ResultContainer
-      title={result === null ? "None" : result}
+      // non-string results are coerced by React, as before
+      title={(result === null ? "None" : result) as string}
       {...props}
       onClick={onClick}
       ref={ref}

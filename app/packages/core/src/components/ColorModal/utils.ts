@@ -18,7 +18,7 @@ export const isSameArray = (a: readonly unknown[], b: readonly unknown[]) => {
   return isEmpty(xor(a, b));
 };
 
-export const isString = (v: unknown) => typeof v === "string";
+export const isString = (v: unknown): v is string => typeof v === "string";
 export const isObject = (v: unknown) => typeof v === "object" && v != null;
 export const isBoolean = (v: unknown) => typeof v === "boolean";
 
@@ -104,7 +104,7 @@ const getValidMaskColors = (maskColors: unknown[]) => {
 };
 
 export const validateMaskColor = (
-  arr: any,
+  arr: unknown,
 ): ColorSchemeInput["defaultMaskTargetsColors"] => {
   return Array.isArray(arr) ? getValidMaskColors(arr) : null;
 };
@@ -133,17 +133,17 @@ const getValidColorscaleList = (list: unknown[]) => {
 };
 
 export const validateDefaultColorscale = (
-  obj: any,
+  value: unknown,
 ): ColorSchemeInput["defaultColorscale"] => {
-  if (typeof obj === "object" && obj !== null) {
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
     const list = Array.isArray(obj["list"])
       ? getValidColorscaleList(obj["list"])
       : null;
 
+    const rawName = obj["name"];
     const name =
-      isString(obj["name"]) && namedColorScales.includes(obj["name"])
-        ? obj["name"]
-        : null;
+      isString(rawName) && namedColorScales.includes(rawName) ? rawName : null;
 
     return (
       name || list ? { name, list } : null
@@ -153,7 +153,7 @@ export const validateDefaultColorscale = (
 };
 
 export const validateColorscales = (
-  arr: any,
+  arr: unknown,
 ): ColorSchemeInput["colorscales"] => {
   const result = Array.isArray(arr)
     ? arr

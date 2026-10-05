@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import React from "react";
+import React, { type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 
@@ -66,7 +66,7 @@ const sample = {
     filepath: "/tmp/file.pdf",
     media_type: "unknown",
   },
-} as any;
+} as unknown as ComponentProps<typeof ModalSampleRenderer>["sample"];
 
 const ctx = {
   sample,

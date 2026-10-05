@@ -41,7 +41,7 @@ const Popout = ({
   });
   const alignStyle = useAlign(anchorRef, modal);
 
-  const positionStyle = fixed ? { position: "fixed" } : {};
+  const positionStyle = fixed ? { position: "fixed" as const } : {};
 
   return (
     <PopoutDiv

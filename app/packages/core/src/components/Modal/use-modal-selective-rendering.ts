@@ -8,6 +8,7 @@ import {
   handleNetNewOverlays,
   handlePotentiallyStillPendingOverlays,
   markTheseOverlaysAsPending,
+  type MaskLikeLabel,
 } from "../Grid/useUpdates";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 
@@ -34,15 +35,17 @@ export const useImageModalSelectiveRendering = (
 
     if (shouldHardReload) {
       const overlays = getOverlays(looker);
-      const newOverlays = overlays.filter(
-        (o) =>
+      const newOverlays = overlays.filter((o) => {
+        const label = o.label as MaskLikeLabel | undefined;
+        return (
           o.field &&
-          (o.label?.mask_path?.length > 0 ||
-            o.label?.map_path?.length > 0 ||
-            o.label?.mask ||
-            o.label?.map) &&
-          newFields.includes(o.field),
-      );
+          (label?.mask_path?.length > 0 ||
+            label?.map_path?.length > 0 ||
+            label?.mask ||
+            label?.map) &&
+          newFields.includes(o.field)
+        );
+      });
 
       if (newOverlays?.length) {
         markTheseOverlaysAsPending(newOverlays);

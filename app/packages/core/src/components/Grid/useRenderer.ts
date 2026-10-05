@@ -1,3 +1,4 @@
+import type { SampleRendererSampleLike } from "@fiftyone/plugins";
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef } from "react";
@@ -179,13 +180,20 @@ export default function useRenderer({
       }
 
       const item = sampleRendererRef.current.createItem(
-        result,
+        // the node's `sample` is the sample JSON, which carries _id etc.
+        result as unknown as SampleRendererSampleLike,
         id,
         getFontSize(),
       );
 
-      item.addEventListener("selectthumbnail", ({ detail }) =>
-        selectSample.current?.(detail),
+      item.addEventListener("selectthumbnail", (event) =>
+        selectSample.current?.(
+          (
+            event as CustomEvent<
+              Parameters<NonNullable<typeof selectSample.current>>[0]
+            >
+          ).detail,
+        ),
       );
       item.addEventListener("refresh", () => {
         if (cache.isShown(key)) {

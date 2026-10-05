@@ -26,7 +26,7 @@ import ApplyOntologySection from "./ApplyOntologySection";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
-import JSONEditor from "./JSONEditor";
+import JSONEditor, { type JSONValue } from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
@@ -145,7 +145,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           <JSONEditor
             key={labelSchema.editorKey}
             errors={!!labelSchema.errors.length}
-            data={labelSchema.currentLabelSchema}
+            // label schemas are JSON documents
+            data={labelSchema.currentLabelSchema as JSONValue}
             onChange={labelSchema.validate}
             scanning={labelSchema.isScanning}
             onCancelScan={labelSchema.cancelScan}

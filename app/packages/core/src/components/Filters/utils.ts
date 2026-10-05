@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { genSort } from "../../utils/generic";
 
-const NONSTRING_VALUES: any[] = [false, true, null];
+const NONSTRING_VALUES: unknown[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
 export const CHECKBOX_LIMIT = 20;
 

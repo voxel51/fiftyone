@@ -79,7 +79,7 @@ function getStageNames(stages: fos.State.Stage[]) {
   }
   return stages.map((stage: fos.State.Stage) => stage._cls);
 }
-function getExtendedStageNames(stages: { [key: string]: any }) {
+function getExtendedStageNames(stages: { [key: string]: unknown }) {
   const names = [];
   for (const key in stages) {
     if (stages[key]) {
@@ -88,7 +88,9 @@ function getExtendedStageNames(stages: { [key: string]: any }) {
   }
   return names;
 }
-function getFilterNames(filters: { [path: string]: any }) {
+function getFilterNames(filters: {
+  [path: string]: { values?: unknown; range?: unknown };
+}) {
   const names = [];
   filters = filters || {};
   for (const [, filter] of Object.entries(filters)) {

@@ -33,7 +33,7 @@ import Draggable from "./Draggable";
 
 type PillEntry = {
   dataCy?: string;
-  icon?: React.ReactNode;
+  icon?: JSX.Element;
   onClick: () => void;
   text: string;
   title: string;

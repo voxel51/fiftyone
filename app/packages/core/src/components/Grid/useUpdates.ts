@@ -1,5 +1,6 @@
 import { Coloring, ImaVidLooker, VideoLooker } from "@fiftyone/looker";
-import { Colorscale } from "@fiftyone/looker/src/state";
+import type { Overlay } from "@fiftyone/looker/src/overlays/base";
+import type { BaseState, Colorscale } from "@fiftyone/looker/src/state";
 import { RENDER_STATUS_PENDING } from "@fiftyone/looker/src/worker/shared";
 import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
@@ -9,7 +10,14 @@ import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
-export const getOverlays = (entry: fos.Lookers) => {
+export type MaskLikeLabel = {
+  mask_path?: string;
+  map_path?: string;
+  mask?: unknown;
+  map?: unknown;
+};
+
+export const getOverlays = (entry: fos.Lookers): Overlay<BaseState>[] => {
   // todo: there should be consistency here between video looker and other looker
   return entry instanceof VideoLooker
     ? (entry.pluckedOverlays ?? [])
@@ -98,15 +106,18 @@ const useItemUpdater = (
 
         if (shouldHardReload) {
           const overlays = getOverlays(entry);
-          const newOverlays = overlays.filter(
-            (o) =>
+          const newOverlays = overlays.filter((o) => {
+            // segmentation/heatmap labels carry these; others don't
+            const label = o.label as MaskLikeLabel | undefined;
+            return (
               o.field &&
-              (o.label?.mask_path?.length > 0 ||
-                o.label?.map_path?.length > 0 ||
-                o.label?.mask ||
-                o.label?.map) &&
-              newFields.includes(o.field),
-          );
+              (label?.mask_path?.length > 0 ||
+                label?.map_path?.length > 0 ||
+                label?.mask ||
+                label?.map) &&
+              newFields.includes(o.field)
+            );
+          });
 
           if (newOverlays?.length) {
             markTheseOverlaysAsPending(newOverlays);

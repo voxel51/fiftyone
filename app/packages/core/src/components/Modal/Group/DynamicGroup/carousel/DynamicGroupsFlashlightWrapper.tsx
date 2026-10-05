@@ -1,5 +1,5 @@
 import Flashlight, { Response } from "@fiftyone/flashlight";
-import { Sample, freeVideos } from "@fiftyone/looker";
+import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { get } from "lodash";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -64,8 +64,8 @@ const useUpdateItems = (
   flashlight: Flashlight<number> | null,
   store: fos.LookerStore<fos.Lookers>,
   options: ReturnType<typeof fos.useLookerOptions>,
-  highlight: (sample: fos.Sample) => boolean,
-  selected: Set<string>,
+  highlight: (sample: fos.ModalSample["sample"]) => boolean,
+  selected: Map<string, fos.SelectionType>,
   style: fos.SelectionStyle,
 ) => {
   const updateItem = useCallback(
@@ -82,7 +82,7 @@ const useUpdateItems = (
         selected: isSelected,
         selectionType,
         selectionIcon,
-        highlight: highlight(store.samples.get(id)!.sample as Sample),
+        highlight: highlight(store.samples.get(id)!.sample),
       });
     },
     [highlight, options, selected, store, style],
@@ -109,7 +109,7 @@ const useCreateFlashlight = (
 ) => {
   const modalSampleId = useRecoilValue(fos.modalSampleId);
   const highlight = useCallback(
-    (sample) => sample._id === modalSampleId,
+    (sample: fos.ModalSample["sample"]) => sample._id === modalSampleId,
     [modalSampleId],
   );
   const select = fos.useSelectSample();

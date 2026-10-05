@@ -66,7 +66,7 @@ interface NumberInputProps extends BaseProps {
 }
 
 const Input = React.memo(
-  forwardRef(
+  forwardRef<HTMLInputElement, InputProps>(
     (
       {
         color = undefined,
@@ -132,7 +132,7 @@ const Input = React.memo(
 export default Input;
 
 export const NumberInput = React.memo(
-  forwardRef(
+  forwardRef<HTMLInputElement, NumberInputProps>(
     (
       {
         color = undefined,

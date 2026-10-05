@@ -95,7 +95,7 @@ const Sidebar = () => {
               entry.type === "add" ? (
                 <Entries.AddGroup key={key} />
               ) : (
-                <Entries.Filter modal={false} key={key} />
+                <Entries.Filter key={key} />
               ),
             disabled: true,
           };

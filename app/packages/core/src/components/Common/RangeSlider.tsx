@@ -1,7 +1,10 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-import { Slider as SliderUnstyled } from "@mui/material";
+import {
+  Slider as SliderUnstyled,
+  type SliderProps as MuiSliderProps,
+} from "@mui/material";
 import React, {
   SyntheticEvent,
   useEffect,
@@ -109,7 +112,16 @@ const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
       opacity: 1;
     }
   `}
-` as typeof SliderUnstyled;
+` as unknown as React.ComponentType<
+  // MUI's polymorphic Slider overloads drop styled's extra props, so spell
+  // out what the styled component accepts
+  MuiSliderProps &
+    SliderStyledProps & {
+      ref?: React.Ref<HTMLSpanElement>;
+      // styled-components' per-instance theme override
+      theme?: object;
+    }
+>;
 
 type SliderValue = number | undefined | null;
 

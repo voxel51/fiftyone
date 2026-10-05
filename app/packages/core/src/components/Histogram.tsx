@@ -36,7 +36,12 @@ const PlotTooltip = ({ title, count }) => {
 };
 
 const getAxisTick = (isDateTime, timeZone) => {
-  return class CustomizedAxisTick extends PureComponent {
+  return class CustomizedAxisTick extends PureComponent<{
+    x?: number;
+    y?: number;
+    fill?: string;
+    payload?: { value: number | string };
+  }> {
     render() {
       const { x, y, payload, fill } = this.props;
       const v = payload.value;
@@ -53,10 +58,10 @@ const getAxisTick = (isDateTime, timeZone) => {
           >
             {isDateTime && typeof v !== "string"
               ? formatDateTime(v, timeZone)
-              : isFloat(v)
-                ? v.toFixed(3)
-                : v.length > 24
-                  ? v.slice(0, 21) + "..."
+              : isFloat(v as number)
+                ? (v as number).toFixed(3)
+                : (v as string).length > 24
+                  ? (v as string).slice(0, 21) + "..."
                   : v}
           </text>
         </g>

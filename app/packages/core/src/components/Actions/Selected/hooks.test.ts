@@ -6,31 +6,39 @@
 
 import { act, renderHook } from "@testing-library/react";
 import React from "react";
-import { RecoilRoot, useRecoilValue, type MutableSnapshot } from "recoil";
+import {
+  RecoilRoot,
+  useRecoilValue,
+  type MutableSnapshot,
+  type RecoilState,
+} from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+type StubLabel = { labelId: string } & Record<string, unknown>;
+type StubLabelMap = Record<string, Record<string, unknown>>;
+
 const stubs = vi.hoisted(() => ({
-  selectedLabels: null as any,
-  selectedLabelMap: null as any,
+  selectedLabels: null as unknown as RecoilState<StubLabel[]>,
+  selectedLabelMap: null as unknown as RecoilState<StubLabelMap>,
 }));
 
 vi.mock("@fiftyone/state", async () => {
   const { atom, selector, DefaultValue: DV } = await import("recoil");
 
-  stubs.selectedLabels = atom<any[]>({
+  stubs.selectedLabels = atom<StubLabel[]>({
     key: "_test/Selected/selectedLabels",
     default: [],
   });
 
-  stubs.selectedLabelMap = selector<Record<string, any>>({
+  stubs.selectedLabelMap = selector<StubLabelMap>({
     key: "_test/Selected/selectedLabelMap",
     get: ({ get }) =>
-      (get(stubs.selectedLabels) as any[]).reduce(
-        (acc: Record<string, any>, { labelId, ...label }: any) => ({
+      get(stubs.selectedLabels).reduce(
+        (acc: StubLabelMap, { labelId, ...label }) => ({
           [labelId]: label,
           ...acc,
         }),
-        {} as Record<string, any>,
+        {} as StubLabelMap,
       ),
     set: ({ set }, newValue) => {
       if (newValue instanceof DV) {
@@ -39,9 +47,10 @@ vi.mock("@fiftyone/state", async () => {
       }
       set(
         stubs.selectedLabels,
-        Object.entries(newValue as Record<string, any>).map(
-          ([labelId, label]) => ({ ...label, labelId }),
-        ),
+        Object.entries(newValue).map(([labelId, label]) => ({
+          ...label,
+          labelId,
+        })),
       );
     },
   });

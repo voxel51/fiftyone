@@ -27,7 +27,10 @@ export const tagStatistics = selectorFamily<
   get:
     ({ modal, labels: countLabels }) =>
     async ({ get }) => {
-      return await getFetchFunction()(
+      return await getFetchFunction()<
+        unknown,
+        { count: number; items: number; tags: { [key: string]: number } }
+      >(
         "POST",
         "/tagging",
         tagParameters({
@@ -130,6 +133,8 @@ export const tagParameters = ({
   } | null;
   targetLabels: boolean;
   sampleId: string | null;
+  // extended stages (grid only); forwarded with the other params
+  extended?: object | null;
 }) => {
   const shouldShowCurrentSample =
     params.modal && selectedSamples.size === 0 && hiddenLabels.length === 0;
