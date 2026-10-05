@@ -24,7 +24,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
 
   await Promise.all(
-    [testVideoPath1, testVideoPath2].map(async (outputPath) => {
+    [testVideoPath1, testVideoPath2].map((outputPath) =>
       mediaFactory.createVideo({
         outputPath,
         duration: 3,
@@ -32,8 +32,8 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         height: 100,
         frameRate: 5,
         color: "#000000",
-      });
-    }),
+      }),
+    ),
   );
 
   await fiftyoneLoader.executePythonCode(
@@ -106,24 +106,9 @@ test.describe.serial("groups video labels", () => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
 
       await modal.looker.hover();
-
-      // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-      // check screenshot before video is played
-      // await expect(modal.looker).toHaveScreenshot(`${slice}-before-play.png`, {
-      //   animations: "allow",
-      // });
-
       await modal.video.playUntilAdvanced();
-      await modal.looker.hover();
 
-      // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-      // check screenshot after video is played
-      // await expect(modal.looker).toHaveScreenshot(`${slice}-after-play.png`, {
-      //   // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
-      //   // the real test is that the correct label is shown
-      //   mask: [modal.video.time],
-      //   animations: "allow",
-      // });
+      await modal.sampleCanvas.assert.hasScreenshot(`${slice}-played.png`);
     };
 
     await checkVideo("v1");

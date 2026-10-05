@@ -22,8 +22,16 @@ const COUNT_SHOWN = "e2e:components:entry-count-shown";
 
 type TileDraw = {
   sampleFilepath: string;
+  sampleId: string;
   labelsPending: boolean;
+  mediaPending: boolean;
   labels: string;
+};
+
+/** A draw no later draw changes: its media and labels have all painted */
+export const isSettledDraw = (detail: unknown) => {
+  const draw = detail as TileDraw;
+  return !draw.labelsPending && !draw.mediaPending;
 };
 
 /** Each tile's drawn labels (sorted `field:label` pairs), by file name */
@@ -31,7 +39,7 @@ export type TileLabels = Record<string, string[]>;
 
 /**
  * Track tiles' latest draws: settled once `tiles` tiles have drawn and none
- * has a reload or label painting still to draw
+ * has media, a reload or label painting still to draw
  */
 class TileDraws {
   private readonly latest = new Map<string, TileDraw>();
@@ -49,7 +57,7 @@ class TileDraws {
     return (
       tiles !== null &&
       this.latest.size === tiles &&
-      [...this.latest.values()].every((draw) => !draw.labelsPending)
+      [...this.latest.values()].every(isSettledDraw)
     );
   }
 
@@ -302,15 +310,15 @@ export class GridPom {
   }
 
   /**
-   * Resolve once the tile of `fileName` has drawn, which it does on its own
-   * after the page loads. `fileName` must back only one tile, since any tile
-   * of it resolves the wait
+   * Resolve once the tile of `fileName` has settled a draw, which it does on
+   * its own after the page loads. `fileName` must back only one tile, since
+   * any tile of it resolves the wait
    */
   async untilTileDrawn(fileName: string) {
     const isTile = (detail: unknown) =>
       String(
         (detail as { sampleFilepath?: string } | undefined)?.sampleFilepath,
-      ).endsWith(`/${fileName}`);
+      ).endsWith(`/${fileName}`) && isSettledDraw(detail);
     await this.eventUtils.untilState(
       "e2e:looker:canvas-loaded",
       async () =>
@@ -322,17 +330,17 @@ export class GridPom {
   }
 
   /**
-   * Run `action` and resolve once `count` distinct tiles have drawn their
-   * canvas because of it
+   * Run `action` and resolve once `count` distinct tiles' latest draws because
+   * of it have settled
    */
   async afterTilesDrawn<T>(
     count: number,
     action: () => Promise<T>,
   ): Promise<T> {
-    const drawn = new Set<string>();
+    const settled = new Map<string, boolean>();
     return this.eventUtils.after("e2e:looker:canvas-loaded", action, (e) => {
-      drawn.add((e.detail as { sampleId: string }).sampleId);
-      return drawn.size === count;
+      settled.set((e.detail as TileDraw).sampleId, isSettledDraw(e.detail));
+      return [...settled.values()].filter(Boolean).length === count;
     });
   }
 

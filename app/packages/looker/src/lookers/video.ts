@@ -56,6 +56,10 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 
+  protected get mediaPending() {
+    return this.state.posterPending;
+  }
+
   detach() {
     this.pause();
     if (LOOKER_WITH_READER === this) {
@@ -176,6 +180,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
+      posterPending: Boolean(config.thumbnail),
       waitingForVideo: false,
       waitingToStream: false,
       lockedToSupport: Boolean(config.support),

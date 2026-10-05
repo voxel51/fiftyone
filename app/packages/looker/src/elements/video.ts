@@ -27,6 +27,7 @@ import {
   getFrameString,
   getFullTimeString,
   getTime,
+  presentsSeekTarget,
 } from "./util";
 
 import {
@@ -659,14 +660,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   posterAt(seconds: number | null) {
     this.update(({ config: { src, frameRate, support } }) => {
       this.drawPoster(src, frameRate, support, seconds, false);
-      return {};
+      return { posterPending: true };
     });
   }
 
   /**
-   * Draws the poster seeked to `seconds`, or to the clip's start when null.
-   * The `initial` draw marks the looker loaded, so no redraw supersedes it;
-   * redraws supersede one another, so a slower earlier one cannot land last.
+   * Draws the poster seeked to `seconds`, or to the clip's start when null,
+   * once the video presents the seeked frame. The `initial` draw marks the
+   * looker loaded, so no redraw supersedes it; redraws supersede one another,
+   * so a slower earlier one cannot land last.
    */
   private drawPoster(
     src: string,
@@ -677,20 +679,30 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   ) {
     const draw = initial ? this.posterDraw : ++this.posterDraw;
     acquireThumbnailer().then(([video, release]) => {
-      const error = () => {
+      const watchesFrames = "requestVideoFrameCallback" in video;
+      let frameCallback: number | null = null;
+      let presented: number | null = null;
+      let seekDone = false;
+
+      const finish = () => {
         video.removeEventListener("error", error);
+        video.removeEventListener("loadedmetadata", load);
         video.removeEventListener("seeked", seeked);
+        frameCallback !== null && video.cancelVideoFrameCallback(frameCallback);
+        frameCallback = null;
         release();
+      };
+
+      const error = () => {
+        finish();
         if (initial) {
           this.update({ error: true, loaded: true, dimensions: [512, 512] });
         }
       };
 
-      const seeked = () => {
-        video.removeEventListener("seeked", seeked);
-        video.removeEventListener("error", error);
+      const paint = () => {
+        finish();
         if (!initial && draw !== this.posterDraw) {
-          release();
           return;
         }
 
@@ -701,12 +713,36 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         if (!initial) {
           this.posterSeconds = seconds === null ? null : video.currentTime;
         }
-        release();
         this.update(
           initial
-            ? { hasPoster: true, duration, loaded: true }
-            : { hasPoster: true },
+            ? { hasPoster: true, posterPending: false, duration, loaded: true }
+            : { hasPoster: true, posterPending: false },
         );
+      };
+
+      // Armed before `src` is set, so no presented frame goes unseen
+      const watchFrames = () => {
+        frameCallback = video.requestVideoFrameCallback((_, { mediaTime }) => {
+          frameCallback = null;
+          presented = mediaTime;
+          seekDone ? paint() : watchFrames();
+        });
+      };
+
+      const seeked = () => {
+        video.removeEventListener("seeked", seeked);
+        seekDone = true;
+        if (!initial && draw !== this.posterDraw) {
+          finish();
+          return;
+        }
+
+        if (
+          !watchesFrames ||
+          presentsSeekTarget(presented, video.currentTime, frameRate)
+        ) {
+          paint();
+        }
       };
 
       const load = () => {
@@ -731,6 +767,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.update({ dimensions: [video.videoWidth, video.videoHeight] });
       };
 
+      watchesFrames && watchFrames();
       video.addEventListener("error", error);
       video.addEventListener("loadedmetadata", load);
       video.src = src;

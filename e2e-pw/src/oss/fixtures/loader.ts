@@ -86,17 +86,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
       document.addEventListener("pointerdown", handleCursorChange);
       document.addEventListener("pointerup", handleCursorChange);
 
-      // log-visibility watchdog for every spec; specs asserting on loading
-      // screen counts arm an EventUtils.initCounter for
-      // "global-loading-screen" instead
-      let loadingScreens = 0;
+      // the page fixture asserts each document showed the global loading
+      // screen at most once
+      const documentId = `${performance.timeOrigin}-${Math.random()}`;
       document.addEventListener("global-loading-screen", () => {
-        loadingScreens += 1;
-        if (loadingScreens > 1) {
-          throw new Error(
-            "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load",
-          );
-        }
+        window.__FO_GLOBAL_LOADING_SCREEN__?.(documentId);
       });
 
       window.IS_PLAYWRIGHT = true;
@@ -163,8 +157,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
       ],
       navigate,
       ({ event, detail }) => {
-        const { labelsPending, sampleId, thumbnail } = (detail ?? {}) as {
+        const { labelsPending, mediaPending, sampleId, thumbnail } = (detail ??
+          {}) as {
           labelsPending?: boolean;
+          mediaPending?: boolean;
           sampleId?: string;
           thumbnail?: boolean;
         };
@@ -177,10 +173,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
         }
         if (TILE_READY.includes(event)) {
           if (!tiles) tileReady = true;
-          // a tile counts once it has drawn with all of its labels painted
+          // a tile counts once it has drawn its media and all of its labels
           if (
             thumbnail &&
             !labelsPending &&
+            !mediaPending &&
             event === "e2e:looker:canvas-loaded"
           ) {
             drawn.add(sampleId);

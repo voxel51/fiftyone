@@ -71,6 +71,8 @@ type LookerE2EEvents = {
     thumbnail: boolean;
     /** a reload or worker job is still painting labels, so a later draw adds them */
     labelsPending: boolean;
+    /** the media under the labels has not drawn yet, so a later draw shows it */
+    mediaPending: boolean;
     /** the drawn overlays as sorted `field:label` pairs, comma-joined */
     labels: string;
   };
@@ -538,6 +540,7 @@ export abstract class AbstractLooker<
               (overlay) =>
                 overlay.label?._renderStatus === RENDER_STATUS_PENDING,
             ),
+          mediaPending: this.mediaPending,
           labels: this.currentOverlays
             .map(
               (overlay) =>
@@ -812,6 +815,10 @@ export abstract class AbstractLooker<
   }
 
   protected get waiting() {
+    return false;
+  }
+
+  protected get mediaPending() {
     return false;
   }
 
