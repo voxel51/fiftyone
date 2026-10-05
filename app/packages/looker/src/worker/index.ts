@@ -63,7 +63,7 @@ const shouldProcessLabel = ({
 }: {
   prefix: string;
   field: string;
-  label: any;
+  label: Record<string, unknown>;
   activePaths: string[];
 }) => {
   // check if it has a valid render status, in which case it takes precendence over activePaths

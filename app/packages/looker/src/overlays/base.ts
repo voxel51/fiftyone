@@ -44,7 +44,8 @@ export interface PointInfo<Label extends BaseLabel = BaseLabel> {
   point?: {
     index: number;
     attributes: [string, unknown][];
-    coordinates: Coordinates;
+    // keypoints can report non-finite coordinates
+    coordinates: Coordinates | [number | NONFINITE, number | NONFINITE];
   };
   target?: number;
   type: string;
@@ -94,7 +95,8 @@ export interface Overlay<State extends Partial<BaseState>> {
   label?: BaseLabel;
   containsPoint(state: Readonly<State>): CONTAINS;
   getMouseDistance(state: Readonly<State>): number;
-  getPointInfo(state: Readonly<State>): any;
+  // segmentation overlays report a partial point info
+  getPointInfo(state: Readonly<State>): Partial<PointInfo>;
   getPoints(state: Readonly<State>): Coordinates[];
   getSelectData(state: Readonly<State>): SelectData;
   getSizeBytes(): number;

@@ -27,7 +27,7 @@ interface BootParams<State extends BaseState> {
   abortController: AbortController;
   batchUpdate?: (cb: () => unknown) => void;
   config: Readonly<State["config"]>;
-  dispatchEvent: (eventType: string, details?: any) => void;
+  dispatchEvent: (eventType: string, details?: unknown) => void;
   update: StateUpdate<State>;
 }
 

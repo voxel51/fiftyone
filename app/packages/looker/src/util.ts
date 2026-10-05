@@ -309,7 +309,7 @@ export const getFitRect = (
 /**
  * Rotates items in an array.
  */
-export const rotate = (array: any[], rotation: number): [any[], number] => {
+export const rotate = <T>(array: T[], rotation: number): [T[], number] => {
   rotation = Math.min(rotation, array.length - 1);
   return [[...array.slice(rotation), ...array.slice(0, rotation)], rotation];
 };
@@ -436,7 +436,7 @@ const ERRORS = [AppError, GraphQLError, NetworkError, ServerError].reduce(
 
 export const createWorker = (
   listeners?: {
-    [key: string]: ((worker: Worker, args: any) => void)[];
+    [key: string]: ((worker: Worker, args: unknown) => void)[];
   },
   dispatchEvent?: DispatchEvent,
   abortController?: AbortController,
@@ -569,7 +569,10 @@ export const getDPR = (() => {
   };
 })();
 
-export const getMimeType = (sample: any) => {
+export const getMimeType = (sample: {
+  metadata?: { mime_type?: string } | null;
+  filepath?: string;
+}) => {
   return (
     (sample.metadata && sample.metadata.mime_type) ||
     mime.getType(sample.filepath) ||

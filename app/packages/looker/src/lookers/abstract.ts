@@ -32,7 +32,10 @@ import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
-import { buildThumbnailSelectionDetail } from "../selection";
+import {
+  buildThumbnailSelectionDetail,
+  type ThumbnailSelectionModifiers,
+} from "../selection";
 import {
   FO_LABEL_HOVERED_EVENT,
   FO_LABEL_UNHOVERED_EVENT,
@@ -114,7 +117,7 @@ export abstract class AbstractLooker<
   S extends Sample = Sample,
 > {
   public readonly subscriptions: {
-    [fieldName: string]: ((newValue: any) => void)[];
+    [fieldName: string]: ((newValue: unknown) => void)[];
   };
   private eventTarget: EventTarget;
 
@@ -278,7 +281,7 @@ export abstract class AbstractLooker<
 
   public subscribeToState(
     field: string,
-    callback: (value: any) => void,
+    callback: (value: unknown) => void,
   ): () => void {
     if (!(field in this.subscriptions)) {
       this.subscriptions[field] = [];
@@ -340,7 +343,7 @@ export abstract class AbstractLooker<
     return size;
   }
 
-  dispatchEvent(eventType: string, detail: any): void {
+  dispatchEvent(eventType: string, detail: unknown): void {
     if (detail instanceof ErrorEvent) {
       this.updater({ error: detail.error });
       return;
@@ -375,8 +378,8 @@ export abstract class AbstractLooker<
     }
   }
 
-  protected getDispatchEvent(): (eventType: string, detail: any) => void {
-    return (eventType: string, detail: any) => {
+  protected getDispatchEvent(): (eventType: string, detail: unknown) => void {
+    return (eventType: string, detail: unknown) => {
       if (eventType === "selectthumbnail") {
         this.dispatchEvent(
           eventType,
@@ -384,7 +387,8 @@ export abstract class AbstractLooker<
             id: this.sample.id,
             sample: this.sample,
             symbol: this.state.config.symbol,
-            modifiers: detail,
+            // selectthumbnail events carry the click's modifier keys
+            modifiers: detail as Partial<ThumbnailSelectionModifiers>,
           }),
         );
         return;
@@ -574,9 +578,9 @@ export abstract class AbstractLooker<
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    ...args: any[]
+    options?: boolean | EventListenerOptions,
   ) {
-    this.eventTarget.removeEventListener(eventType, handler, ...args);
+    this.eventTarget.removeEventListener(eventType, handler, options);
   }
 
   getRootEvents(): RootEvents<State> {

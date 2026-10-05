@@ -24,7 +24,7 @@ export const ICONS = Object.freeze({
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' version='1.1' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='rgb(238, 238, 238)' d='M16,17H5V7H16L19.55,12M17.63,5.84C17.27,5.33 16.67,5 16,5H5A2,2 0 0,0 3,7V17A2,2 0 0,0 5,19H16C16.67,19 17.27,18.66 17.63,18.15L22,12L17.63,5.84Z' /%3E%3C/svg%3E",
 });
 
-export type DispatchEvent = (eventType: string, details?: any) => void;
+export type DispatchEvent = (eventType: string, details?: unknown) => void;
 
 type ElementConstructor<
   State extends BaseState,
@@ -46,7 +46,7 @@ export function createElementsTree<
   abortController: AbortController;
   batchUpdate?: (cb: () => unknown) => void;
   config: Readonly<State["config"]>;
-  dispatchEvent: (eventType: string, details?: any) => void;
+  dispatchEvent: (eventType: string, details?: unknown) => void;
   root: ElementsTemplate<State, Element>;
   update: StateUpdate<State>;
 }): Element {

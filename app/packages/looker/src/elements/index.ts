@@ -25,7 +25,7 @@ export type GetElements<State extends BaseState> = (params: {
   abortController: AbortController;
   batchUpdate?: (cb: () => unknown) => void;
   config: Readonly<State["config"]>;
-  dispatchEvent: (eventType: string, details?: any) => void;
+  dispatchEvent: (eventType: string, details?: unknown) => void;
   update: StateUpdate<State>;
 }) => common.LookerElement<State>;
 

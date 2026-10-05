@@ -68,7 +68,7 @@ const LABEL_LISTS = LABEL_LISTS_MAP;
 
 export const loadOverlays = <State extends BaseState>(
   sample: {
-    [key: string]: any;
+    [key: string]: unknown;
   },
   schema: Schema,
   video = false,
@@ -93,7 +93,7 @@ const EMBEDDED_FIELDS = Object.freeze(
 
 export const accumulateOverlays = <State extends BaseState>(
   data: {
-    [key: string]: any;
+    [key: string]: unknown;
   },
   schema: Schema,
   prefix = [],
@@ -105,7 +105,9 @@ export const accumulateOverlays = <State extends BaseState>(
   const classifications = [];
   const overlays = [];
   for (const field in data) {
-    const label = data[field];
+    // label documents (or embedded documents holding them); primitives fall
+    // through every branch below
+    const label = data[field] as Record<string, unknown> | null;
 
     if (!label || Array.isArray(label)) {
       continue;

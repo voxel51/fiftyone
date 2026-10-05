@@ -36,7 +36,8 @@ export const getIcon = (path: string): string => {
     icon = iconMapping[extension];
   }
 
-  return (icon as any as { src: string }).src ?? icon;
+  // bundlers hand back either a URL string or an asset object with a src
+  return (icon as unknown as { src?: string }).src ?? icon;
 };
 
 export const getFileName = (path?: string): string | undefined => {

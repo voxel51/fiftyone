@@ -53,7 +53,8 @@ export const dispatchTooltipEvent = <State extends BaseState>(
           sampleId: state.config.sampleId,
           labelId: detail.label.id,
           instanceId: detail.label.instance?._id,
-          field: detail.label.field,
+          // labels don't normally carry `field` (PointInfo has it top-level)
+          field: (detail.label as { field?: string }).field,
         }),
       );
     } else {

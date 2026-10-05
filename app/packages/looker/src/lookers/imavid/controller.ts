@@ -28,8 +28,10 @@ export class ImaVidFramesController {
     private readonly config: {
       environment: Environment;
       firstFrameNumber: number;
-      // todo: remove any
-      page: any;
+      page: (
+        cursor: number,
+        count: number,
+      ) => foq.paginateSamplesQuery$variables;
       key: string;
       totalFrameCountPromise: Promise<number>;
       targetFrameRate: number;

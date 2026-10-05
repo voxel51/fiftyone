@@ -144,7 +144,7 @@ export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 export type BufferRange = [number, number];
 export type Buffers = Readonly<BufferRange>[];
 
-export type DispatchEvent = (eventType: string, details?: any) => void;
+export type DispatchEvent = (eventType: string, details?: unknown) => void;
 
 export type Action<State extends BaseState> = (
   update: StateUpdate<State>,
@@ -368,7 +368,7 @@ export interface BaseState {
   zoomToContent: boolean;
   setZoom: boolean;
   hasDefaultZoom: boolean;
-  SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
+  SHORTCUTS: Readonly<ControlMap<BaseState>>;
   error: boolean | number | AppError | MediaError;
   destroyed: boolean;
   reloading: boolean;
