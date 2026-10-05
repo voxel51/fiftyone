@@ -45,6 +45,11 @@ export default function SimilarityIndex({
         const details = (
           <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
             <span style={{ fontWeight: "bold" }}>{bk.key}</span>
+            {!bk.compatible && (
+              <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+                {bk.incompatibleReason}
+              </Text>
+            )}
             {bk.model && (
               <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                 Model: {bk.model}
@@ -100,16 +105,8 @@ export default function SimilarityIndex({
         return {
           id: bk.key,
           data: {
-            // Indexes that can't be used in the current view are shown
-            // grayed out with an explanatory tooltip
             style: bk.compatible ? undefined : { opacity: 0.5 },
-            primaryContent: bk.compatible ? (
-              details
-            ) : (
-              <Tooltip content={bk.incompatibleReason}>
-                <div>{details}</div>
-              </Tooltip>
-            ),
+            primaryContent: details,
           },
         };
       }),

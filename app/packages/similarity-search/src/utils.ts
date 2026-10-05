@@ -1,5 +1,7 @@
 import { buildSimilarityRunName } from "@fiftyone/utilities";
 import {
+  AnnotatedBrainKeyConfig,
+  BrainKeyConfig,
   SimilarityRun,
   SimilaritySearchParams,
   DateFilterPreset,
@@ -7,6 +9,46 @@ import {
   ViewTarget,
 } from "./types";
 import { DAY_MS } from "./constants";
+
+/**
+ * Every brain key, annotated with whether this panel can search with it in
+ * the current view, usable ones first. Ones it can't — one the server marks
+ * unavailable, or one that doesn't fit the view (a patch index in a sample
+ * view, and vice versa) — are kept with the reason, for components to gray
+ * out rather than hide.
+ */
+export const annotateBrainKeys = (
+  brainKeys: BrainKeyConfig[],
+  isPatchesView: boolean,
+  patchesField: string | undefined,
+): AnnotatedBrainKeyConfig[] => {
+  const annotated = brainKeys.map((bk): AnnotatedBrainKeyConfig => {
+    if (bk.unavailable_reason) {
+      return {
+        ...bk,
+        compatible: false,
+        incompatibleReason: bk.unavailable_reason,
+      };
+    }
+    const compatible = isPatchesView
+      ? bk.patches_field === patchesField
+      : !bk.patches_field;
+    if (compatible) {
+      return { ...bk, compatible: true };
+    }
+    return {
+      ...bk,
+      compatible: false,
+      incompatibleReason: bk.patches_field
+        ? "Cannot use a patch index in the current view"
+        : "Cannot use a dataset index in the current view",
+    };
+  });
+  return [
+    ...annotated.filter((bk) => bk.compatible),
+    ...annotated.filter((bk) => !bk.compatible),
+  ];
+};
 
 export const formatQuery = (run: SimilarityRun): string => {
   if (run.query_type === QueryType.Text && typeof run.query === "string") {
