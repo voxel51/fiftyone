@@ -427,7 +427,9 @@ export class FrameStore implements LabelStore {
   }
 
   /** No-op: frames protect in-flight edits structurally (see {@link reconcilePersisted}). */
-  captureBaseline(): void {}
+  captureBaseline(): void {
+    // intentionally empty
+  }
 
   /**
    * Fold the server-confirmed deltas into `source` (the new committed truth),

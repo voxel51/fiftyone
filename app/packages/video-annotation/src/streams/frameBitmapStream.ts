@@ -158,7 +158,9 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
   }
 
   /** Optional extra teardown (beyond terminating the worker). */
-  protected disposeSource(): void {}
+  protected disposeSource(): void {
+    // intentionally empty; subclasses override
+  }
 
   // ---- shared machinery --------------------------------------------------
 
