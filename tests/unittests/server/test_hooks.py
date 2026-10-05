@@ -120,13 +120,19 @@ class TestRegistry:
         ):
             assert type(fosh.get()) is fosh.RequestHooks
 
-    def test_broken_optional_module_raises(self):
-        broken = ModuleNotFoundError(name="some_dependency")
+    @pytest.mark.parametrize(
+        "error",
+        [ModuleNotFoundError(name="some_dependency"), ImportError("broken")],
+    )
+    def test_broken_optional_module_raises_every_call(self, error):
         with patch.object(fosh, "_hooks", None), patch.object(
-            fosh.importlib, "import_module", side_effect=broken
-        ):
-            with pytest.raises(ModuleNotFoundError):
-                fosh.get()
+            fosh.importlib, "import_module", side_effect=error
+        ) as import_module:
+            for _ in range(2):
+                with pytest.raises(type(error)):
+                    fosh.get()
+
+            assert import_module.call_count == 2
 
     def test_write_paths(self):
         assert fosh.write_paths(

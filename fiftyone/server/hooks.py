@@ -141,7 +141,13 @@ def get():
             importlib.import_module(_OPTIONAL_HOOKS_MODULE)
         except ModuleNotFoundError as e:
             if e.name != _OPTIONAL_HOOKS_MODULE:
+                _hooks = None
                 raise
+        except Exception:
+            # The module exists but failed to load: raise on every call
+            # rather than serve the no-op defaults in its place
+            _hooks = None
+            raise
 
     return _hooks
 
