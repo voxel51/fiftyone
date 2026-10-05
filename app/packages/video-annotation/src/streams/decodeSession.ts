@@ -9,9 +9,12 @@
  *
  * WebCodecs needs a keyframe after every `configure()` and every `flush()`, so
  * a stream whose real keyframes are far apart pays a long lead-in decode for
- * every chunk that restarts the decoder. When the next chunk begins right after
- * the last sample fed, the session continues instead and only the new samples
- * are decoded.
+ * every chunk that restarts the decoder. When the next chunk's samples begin
+ * within or right after the run fed since the last restart, the session
+ * continues instead and only the samples not yet fed are decoded. With
+ * B-frames that overlap is the usual case: the picture a chunk presents first
+ * is often a reference the previous chunk already fed, decoded ahead of the
+ * B-frames presented before it.
  *
  * A decoder holds a pipeline of finished frames and emits them as later input
  * arrives, so the tail of a chunk generally leaves with the NEXT chunk's
@@ -21,7 +24,11 @@
  */
 export class DecodeSession {
   private decoder: VideoDecoder;
-  /** Decode index of the last sample fed; `null` when continuity is broken. */
+  /**
+   * Decode indices `[start, end]` fed since the last restart, contiguous;
+   * `null` when continuity is broken.
+   */
+  private start: number | null = null;
   private end: number | null = null;
 
   constructor(
@@ -32,9 +39,19 @@ export class DecodeSession {
     this.decoder = this.createDecoder();
   }
 
+  /** Decode index of the last sample fed; `null` when continuity is broken. */
+  get fedThrough(): number | null {
+    return this.end;
+  }
+
   /** Whether a span starting at decode index `dStart` can continue this session. */
   canContinue(dStart: number): boolean {
-    return this.end !== null && dStart === this.end + 1;
+    return (
+      this.start !== null &&
+      this.end !== null &&
+      dStart >= this.start &&
+      dStart <= this.end + 1
+    );
   }
 
   /** Begin a fresh session; the next chunk fed must be a keyframe. */
@@ -44,11 +61,13 @@ export class DecodeSession {
     }
 
     this.decoder.configure(config);
-    this.end = null;
+    this.reset();
   }
 
+  /** Feed the sample at `decodeIndex`, the one after the last fed. */
   decode(chunk: EncodedVideoChunk, decodeIndex: number): void {
     this.decoder.decode(chunk);
+    this.start ??= decodeIndex;
     this.end = decodeIndex;
   }
 
@@ -57,7 +76,7 @@ export class DecodeSession {
    * WebCodecs requires a keyframe after a flush, so the next chunk snaps back.
    */
   async flush(): Promise<void> {
-    this.end = null;
+    this.reset();
 
     if (this.decoder.state !== "configured") {
       return;
@@ -70,9 +89,14 @@ export class DecodeSession {
     return new VideoDecoder({
       output: this.output,
       error: (error) => {
-        this.end = null;
+        this.reset();
         this.onError(error as Error);
       },
     });
+  }
+
+  private reset(): void {
+    this.start = null;
+    this.end = null;
   }
 }

@@ -32,11 +32,12 @@
  * they're already decoded and help scrub-back. The sync table is verified
  * against sample bytes before a snap relies on it (see {@link KeyframeIndex}),
  * an all-intra picture the table flags can start the decode where the browser
- * allows it (see {@link ./intraStartProbe}), and a chunk that starts right
- * after the previous one continues the open decoder instead of snapping back
- * (see {@link DecodeSession}). A decoder holds finished frames until later
- * input arrives, so chunks are settled by attributing frames as they land, not
- * by flushing at each boundary.
+ * allows it (see {@link ./intraStartProbe}), and a chunk whose samples pick up
+ * where the previous chunks left off continues the open decoder instead of
+ * snapping back, feeding only the samples not yet fed (see
+ * {@link DecodeSession}). A decoder holds finished frames until later input
+ * arrives, so chunks are settled by attributing frames as they land, not by
+ * flushing at each boundary (see {@link ChunkLedger}).
  *
  * Sample bytes come from HTTP `Range` requests, so the media server must
  * answer them with `206`; one that doesn't fails every chunk (see
@@ -61,7 +62,12 @@ import {
   presentationStart,
   presentedInOrder,
 } from "./editList";
-import { ChunkLedger, type OwedChunk } from "./chunkLedger";
+import {
+  ChunkLedger,
+  type ChunkSpan,
+  chunkSpan,
+  type OwedChunk,
+} from "./chunkLedger";
 import { DecodeSession } from "./decodeSession";
 import { decodesAsStart, intraStarts } from "./intraStartProbe";
 import { type Gop, KeyframeIndex } from "./keyframeIndex";
@@ -470,8 +476,8 @@ function enqueueJob(msg: FetchChunkMessage): void {
 interface PreparedSpan {
   startFrame: number;
   endFrame: number;
-  dStart: number;
-  dEnd: number;
+  /** `null` when no requested frame has a sample. */
+  samples: ChunkSpan | null;
   span: Promise<SpanBuffer | null>;
 }
 
@@ -485,32 +491,19 @@ function prepareSpan(msg: FetchChunkMessage): PreparedSpan {
   const request = msg.request as NativeChunkRequest;
   const startFrame = request.startFrame;
   const endFrame = Math.min(startFrame + request.numFrames - 1, totalFrames);
-
-  let dStart = Number.POSITIVE_INFINITY;
-  let dEnd = -1;
-  for (let frame = startFrame; frame <= endFrame; frame++) {
-    const sample = byFrameNumber[frame - 1];
-    if (!sample) {
-      continue;
-    }
-
-    dStart = Math.min(dStart, sample.decodeIndex);
-    dEnd = Math.max(dEnd, sample.decodeIndex);
-  }
+  const samples = chunkSpan(decodeOrder, decodeIndexOf, startFrame, endFrame);
 
   return {
     startFrame,
     endFrame,
-    dStart,
-    dEnd,
+    samples,
     // A failed speculative fetch is not an error yet: the feed step decides,
     // and may need a different span anyway.
-    span:
-      dEnd < 0
-        ? Promise.resolve(null)
-        : fetchFrom(dStart, dEnd)
-            .then((result) => result?.span ?? null)
-            .catch(() => null),
+    span: !samples
+      ? Promise.resolve(null)
+      : fetchFrom(samples.dFirst, samples.dEnd)
+          .then((result) => result?.span ?? null)
+          .catch(() => null),
   };
 }
 
@@ -518,9 +511,9 @@ async function runJob(
   msg: FetchChunkMessage,
   prepared: PreparedSpan,
 ): Promise<void> {
-  const { startFrame, endFrame, dStart, dEnd } = prepared;
+  const { startFrame, endFrame, samples } = prepared;
 
-  if (dEnd < 0) {
+  if (!samples) {
     // Nothing to decode (out-of-range request) — settle the chunk cleanly.
     post({
       type: "chunkDone",
@@ -535,59 +528,73 @@ async function runJob(
   // mid-fetch would end continuity behind this job's back.
   cancelIdleFlush();
 
-  // The speculative fetch covers this span; it is enough only if the decoder
-  // is still where the chunk begins. Read that AFTER the fetch, since a
-  // flush during it moves the decoder. Otherwise snap back to a verified
-  // keyframe, which needs the longer span.
-  const ready = await prepared.span;
-  const continuing = dec.canContinue(dStart);
-  const gop: Gop | null =
-    continuing && ready
-      ? { kf: dStart, span: ready }
-      : await keyframes.resolveGop(dStart, (kf) => fetchFrom(kf, dEnd));
-  if (!gop) {
-    post({
-      type: "chunkDone",
-      reqId: msg.reqId,
-      range: [startFrame, endFrame],
-    });
-    return;
+  try {
+    await feedJob(msg.reqId, prepared, samples, dec);
+  } finally {
+    // The decoder keeps the tail of what was fed until more input comes; the
+    // idle flush covers the case where none does.
+    scheduleIdleFlush();
   }
+}
 
-  const { kf, span, start } = gop;
-  if (kf !== dStart || !dec.canContinue(dStart)) {
-    // A restart discards whatever the decoder still holds, so let the frames
-    // already fed arrive and settle their chunks first.
-    await flushOutstanding();
-    dec.restart(config as VideoDecoderConfig);
-    ledger.restart();
+async function feedJob(
+  reqId: number,
+  prepared: PreparedSpan,
+  { dFirst, dStart, dEnd }: ChunkSpan,
+  dec: DecodeSession,
+): Promise<void> {
+  const { startFrame, endFrame } = prepared;
+
+  // The speculative fetch covers this span; it is enough only if the chunk
+  // continues the open decoder. Read that AFTER the fetch, since a flush
+  // during it moves the decoder. Otherwise snap back to a verified keyframe,
+  // which needs the longer span.
+  const ready = await prepared.span;
+  const fedThrough =
+    ready && dec.canContinue(dFirst) && ledger.follows(startFrame)
+      ? dec.fedThrough
+      : null;
+
+  let gop: Gop | null;
+  if (ready && fedThrough !== null) {
+    gop = { kf: fedThrough + 1, span: ready };
+  } else {
+    gop = await keyframes.resolveGop(dStart, (kf) => fetchFrom(kf, dEnd));
+    if (gop) {
+      // A restart discards whatever the decoder still holds, so let the
+      // frames already fed arrive and settle their chunks first.
+      await flushOutstanding();
+      dec.restart(config as VideoDecoderConfig);
+      ledger.restart();
+    }
   }
 
   const job: Job = {
-    reqId: msg.reqId,
+    reqId,
     startFrame,
     endFrame,
     expected: new Set<number>(),
     pending: [],
   };
-  ledger.open(job, (frame) => Boolean(byFrameNumber[frame - 1]));
+  if (gop) {
+    ledger.open(job, decodeIndexOf, fedThrough);
+  }
 
-  if (job.expected.size === 0) {
-    post({
-      type: "chunkDone",
-      reqId: msg.reqId,
-      range: [startFrame, endFrame],
-    });
+  if (!gop || job.expected.size === 0) {
+    post({ type: "chunkDone", reqId, range: [startFrame, endFrame] });
     return;
   }
 
+  // `kf` is where feeding resumes: the snap target, or the sample after the
+  // last one fed.
+  const { kf, span, start } = gop;
   for (let i = kf; i <= dEnd; i++) {
     const s = decodeOrder[i];
     const data =
       i === kf && start
         ? start
         : sliceSampleBytes(span.buffer, span.fileStart, s);
-    ledger.fed(s.frameNumber, job.reqId);
+    ledger.fed(s.frameNumber, reqId);
     dec.decode(
       new EncodedVideoChunk({
         type: i === kf && start ? "key" : keyframes.chunkType(s, data),
@@ -598,10 +605,6 @@ async function runJob(
       i,
     );
   }
-
-  // The decoder keeps the tail of this chunk until the next one is fed; the
-  // idle flush covers the case where no next chunk comes.
-  scheduleIdleFlush();
 }
 
 /**
@@ -664,6 +667,10 @@ async function fetchFrom(
   }
 
   return { kf, span: await ranges.fetch(range) };
+}
+
+function decodeIndexOf(frame: number): number | undefined {
+  return byFrameNumber[frame - 1]?.decodeIndex;
 }
 
 function ensureSession(): DecodeSession {

@@ -55,18 +55,22 @@ afterEach(() => {
 });
 
 describe("DecodeSession", () => {
-  it("continues only from the sample right after the last one fed", () => {
+  it("continues a span that starts within or right after the samples fed", () => {
     const session = new DecodeSession(
       () => undefined,
       () => undefined,
     );
     session.restart(CONFIG);
-    session.decode(chunk(0), 0);
-    session.decode(chunk(1), 1);
+    session.decode(chunk(3), 3);
+    session.decode(chunk(4), 4);
 
-    expect(session.canContinue(2)).toBe(true);
-    expect(session.canContinue(3)).toBe(false);
-    expect(session.canContinue(1)).toBe(false);
+    expect(session.fedThrough).toBe(4);
+    expect(session.canContinue(5)).toBe(true);
+    expect(session.canContinue(4)).toBe(true);
+    expect(session.canContinue(3)).toBe(true);
+    expect(session.canContinue(6)).toBe(false);
+    // samples before the restart were never fed to this decoder
+    expect(session.canContinue(2)).toBe(false);
   });
 
   it("does not flush to hand a chunk over", () => {
@@ -95,6 +99,7 @@ describe("DecodeSession", () => {
 
     expect(frames).toEqual([0, 1]);
     expect(session.canContinue(2)).toBe(false);
+    expect(session.fedThrough).toBeNull();
   });
 
   it("flushing an unconfigured decoder is a no-op", async () => {
