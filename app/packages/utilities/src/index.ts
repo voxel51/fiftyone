@@ -512,9 +512,12 @@ export const isNotebook = () => {
   );
 };
 
-export const useExternalLink = (_href) => {
-  return (e) => e.stopPropagation();
+/** Click handler for an external link; safe to use outside React. */
+export const externalLinkHandler = (_href: string) => {
+  return (e: Event | { stopPropagation: () => void }) => e.stopPropagation();
 };
+
+export const useExternalLink = (href: string) => externalLinkHandler(href);
 
 const isURL = (() => {
   const protocolAndDomainRE = /^(?:\w+:)?\/\/(\S+)$/;

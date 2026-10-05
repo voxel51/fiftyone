@@ -6,7 +6,7 @@ import {
   COLOR_BY,
   getColor,
   prettify as pretty,
-  useExternalLink,
+  externalLinkHandler,
 } from "@fiftyone/utilities";
 
 import { Overlay, RegularLabel } from "../../overlays/base";
@@ -104,7 +104,7 @@ export const prettify = (
 
   if (result instanceof URL) {
     const url = result.toString();
-    const onClick = useExternalLink(url);
+    const onClick = externalLinkHandler(url);
 
     const a = document.createElement("a");
     a.onclick = onClick;
