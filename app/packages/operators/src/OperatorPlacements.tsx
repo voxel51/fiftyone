@@ -139,7 +139,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         title={title}
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
         style={{ whiteSpace: "nowrap" }}
-        tooltipPlacement={modal ? "top" : "bottom"}
+        tooltipPlacement={modal ? "top-center" : "bottom-center"}
       />
     );
   }
