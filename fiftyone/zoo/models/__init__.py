@@ -291,7 +291,8 @@ def load_zoo_model(
 
     Returns:
         a :class:`fiftyone.core.models.Model`, whose ``zoo_model_name``
-        attribute is the name it can be loaded by again
+        attribute is the name of the zoo model it was loaded as, without
+        any remote source
     """
     if model_name is not None:
         name = model_name
