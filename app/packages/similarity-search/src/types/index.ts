@@ -17,7 +17,9 @@ export enum QueryType {
   Upload = "upload",
 }
 
-export { ViewTarget } from "@fiftyone/operators/src/types";
+import { ViewTarget } from "@fiftyone/operators/src/types";
+
+export { ViewTarget };
 
 /**
  * Configuration for a brain similarity key.

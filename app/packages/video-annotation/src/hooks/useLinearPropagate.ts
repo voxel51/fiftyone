@@ -62,7 +62,11 @@ export const useLinearPropagate = () => {
       };
 
       const result = await agent.infer(context);
-      applyPropagation(result, { undoKey, path: args.path });
+      // propagation agents report the instance they ran for
+      applyPropagation(
+        { ...result, labelId: result.labelId ?? instanceId },
+        { undoKey, path: args.path },
+      );
       return true;
     },
     [resolveAgent, sampleDescriptor, applyPropagation],

@@ -1,3 +1,4 @@
+import type { OperatorResult } from "@fiftyone/operators/src/operators";
 import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -84,7 +85,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   );
 
   const handleSuccess = useCallback(
-    (result: Record<string, unknown>) => {
+    (result: OperatorResult) => {
       setSubmitting(false);
       if (result?.delegated) {
         const resultObj = result?.result as
