@@ -51,7 +51,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
           stringListFilters.forEach((key) => {
             const strFilter = f[`${path}.${key}`] as StringFilter;
             if (strFilter && strFilter.values.length && value[key]) {
-              const included = strFilter.values.includes(value[key]);
+              const included = strFilter.values.includes(value[key] as string);
               if (strFilter.exclude) {
                 if (included) {
                   result = false;

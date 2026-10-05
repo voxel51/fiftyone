@@ -254,7 +254,11 @@ export function sessionAtom<K extends keyof Session>(
 
       if (!isTest) {
         if (setterRef) {
-          setterRef(options.key, newValue);
+          // read-only keys threw above, so K is a setter key here
+          setterRef(
+            options.key as K & SetterKeys,
+            newValue as Session[K & SetterKeys],
+          );
         }
         if (sessionRef) {
           sessionRef[options.key] = newValue;

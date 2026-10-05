@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("react", () => ({
-  useCallback: (fn: any) => fn,
+  useCallback: <F>(fn: F) => fn,
 }));
 
 vi.mock("react-relay", () => ({
   useRelayEnvironment: () => ({}),
-  commitLocalUpdate: (_env: any, updater: (store: any) => void) => {
+  commitLocalUpdate: (
+    _env: unknown,
+    updater: (store: typeof mockStore) => void,
+  ) => {
     updater(mockStore);
   },
 }));
@@ -18,7 +21,10 @@ vi.mock("./useLookerStore", () => ({
 import { useUpdateSamples } from "./useUpdateSamples";
 import { stores } from "./useLookerStore";
 
-let storeRecords: Record<string, any>;
+type SampleArg = Parameters<ReturnType<typeof useUpdateSamples>>[0][number][1];
+type StoreEntry = typeof stores extends Set<infer E> ? E : never;
+
+let storeRecords: Record<string, ReturnType<typeof createMockRecord>>;
 let deletedIds: string[];
 
 const mockStore = {
@@ -48,7 +54,7 @@ describe("useUpdateSamples", () => {
 
     const updateSamples = useUpdateSamples();
     const sample = { _id: "sample-1", filepath: "/img.png" };
-    updateSamples([["sample-1", sample as any]]);
+    updateSamples([["sample-1", sample as unknown as SampleArg]]);
 
     expect(record.setValue).toHaveBeenCalledWith(
       JSON.stringify(sample),
@@ -71,7 +77,7 @@ describe("useUpdateSamples", () => {
       _sample_id: "source-1",
       filepath: "/patch.png",
     };
-    updateSamples([["patch-label-id", patchSample as any]]);
+    updateSamples([["patch-label-id", patchSample as unknown as SampleArg]]);
 
     expect(deletedIds).toContain("source-1-modal");
     expect(storeRecords["source-1-modal"]).toBeUndefined();
@@ -82,7 +88,7 @@ describe("useUpdateSamples", () => {
 
     const updateSamples = useUpdateSamples();
     const sample = { _id: "sample-1", filepath: "/img.png" };
-    updateSamples([["sample-1", sample as any]]);
+    updateSamples([["sample-1", sample as unknown as SampleArg]]);
 
     expect(deletedIds).toHaveLength(0);
   });
@@ -90,13 +96,17 @@ describe("useUpdateSamples", () => {
   it("updates looker stores when the sample exists", () => {
     const mockLooker = { updateSample: vi.fn() };
     const sampleData = { sample: { _id: "s1" }, urls: {} };
-    const lookers = { get: vi.fn(() => mockLooker) } as any;
-    const samples = new Map<string, any>([["s1", sampleData]]);
+    const lookers = {
+      get: vi.fn(() => mockLooker),
+    } as unknown as StoreEntry["lookers"];
+    const samples = new Map([
+      ["s1", sampleData],
+    ]) as unknown as StoreEntry["samples"];
     stores.add({ samples, lookers });
 
     const updateSamples = useUpdateSamples();
     const newSample = { _id: "s1", filepath: "/new.png" };
-    updateSamples([["s1", newSample as any]]);
+    updateSamples([["s1", newSample as unknown as SampleArg]]);
 
     expect(samples.get("s1")).toEqual({ ...sampleData, sample: newSample });
     expect(mockLooker.updateSample).toHaveBeenCalledWith(newSample);

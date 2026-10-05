@@ -306,7 +306,8 @@ export const useOnShiftClickLabel = () => {
 
         const isVideoWithMultipleFrames =
           hoveredSampleValue?._media_type === "video" &&
-          hoveredSampleValue?.frames?.length > 0;
+          Array.isArray(hoveredSampleValue?.frames) &&
+          hoveredSampleValue.frames.length > 0;
 
         if (isVideoWithMultipleFrames) {
           return handleVideo(e);

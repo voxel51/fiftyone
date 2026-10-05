@@ -84,9 +84,10 @@ export namespace State {
     $date: number;
   }
 
-  export interface Targets {
-    [key: number]: string;
-  }
+  // mask target JSON keys are stringified ints (or hex colors)
+  export type Targets = {
+    [key: string]: string;
+  };
 
   export interface SavedView {
     id: string;
@@ -168,7 +169,8 @@ export namespace State {
   }
 
   export interface DynamicGroupParameters {
-    groupBy: object | string[];
+    // a field name, a list of fields, or an expression
+    groupBy: string | string[] | object;
     orderBy?: string;
     orderByKey?: unknown;
   }

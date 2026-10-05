@@ -2,6 +2,7 @@ import {
   AbstractLooker,
   FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
+  type LabelToggledEvent,
   ImaVidLooker,
   ImageLooker,
   MetadataLooker,
@@ -33,7 +34,11 @@ import {
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilValue,
+  type SerializableParam,
+} from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
@@ -139,6 +144,7 @@ export default <T extends AbstractLooker<BaseState>>(
         let config: LookerConfig = {
           enableTimeline,
           fieldSchema: {
+            // synthetic field; looker reads only its ftype, subfield and fields
             frames: {
               name: "frames",
               ftype: LIST_FIELD,
@@ -146,7 +152,7 @@ export default <T extends AbstractLooker<BaseState>>(
               embeddedDocType: "fiftyone.core.frames.FrameSample",
               fields: frameFieldSchema,
               dbField: null,
-            },
+            } as LookerConfig["fieldSchema"][string],
             ...fieldSchema,
           },
           sources: urls,
@@ -158,8 +164,8 @@ export default <T extends AbstractLooker<BaseState>>(
           dataset,
           mediaField,
           thumbnail,
-          view,
-          shouldHandleKeyEvents: isModal,
+          // state's Stage types kwargs values as unknown, looker's as object
+          view: view as LookerConfig["view"],
           isModal,
         };
 
@@ -203,7 +209,12 @@ export default <T extends AbstractLooker<BaseState>>(
 
         if (create === ImaVidLooker) {
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount({ value: sample._group }),
+            // NOTE: grid filters (modal: false) while the page below uses
+            // isModal; kept as-is, see PR 8654
+            dynamicGroupsElementCount({
+              value: sample._group as SerializableParam,
+              modal: false,
+            }),
           );
           const page = snapshot
             .getLoadable(
@@ -268,7 +279,11 @@ export default <T extends AbstractLooker<BaseState>>(
 
         const looker = new create(
           sample,
-          { ...config, symbol },
+          // each looker reads only its own config keys
+          { ...config, symbol } as FrameConfig &
+            VideoConfig &
+            ImaVidConfig &
+            ThreeDConfig,
           {
             ...options,
             ...extra,
@@ -289,11 +304,13 @@ export default <T extends AbstractLooker<BaseState>>(
 
         selectiveRenderingEventBus.on(
           FO_LABEL_TOGGLED_EVENT,
-          (e) => getOnShiftClickLabelCallback(e),
+          // only label-toggled events are delivered for this event type
+          (e) => getOnShiftClickLabelCallback(e as LabelToggledEvent),
           abortControllerRef.current.signal,
         );
 
-        return looker;
+        // the caller chooses T for the looker kind it renders
+        return looker as unknown as T;
       },
     [
       dataset,

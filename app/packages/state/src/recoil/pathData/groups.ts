@@ -14,7 +14,8 @@ export const dynamicGroupsElementCount = selectorFamily({
       modal: boolean;
     }) =>
     ({ get }) => {
-      const dynamicGroup = value === null ? get(groupByFieldValue) : value;
+      const dynamicGroup =
+        value === null ? (get(groupByFieldValue) as SerializableParam) : value;
 
       // groupByFieldValue settles to null while the modal's group state
       // initializes; suspend instead of counting against a null group, which

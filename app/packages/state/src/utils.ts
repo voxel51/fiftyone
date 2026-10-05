@@ -1,4 +1,7 @@
-import { savedViewsFragment$key } from "@fiftyone/relay";
+import type {
+  datasetFragment$data,
+  savedViewsFragment$key,
+} from "@fiftyone/relay";
 import {
   Field,
   GQLError,
@@ -22,8 +25,8 @@ import { ModalSample, State } from "./recoil";
 
 export const deferrer =
   (initialized: MutableRefObject<boolean>) =>
-  (fn: (...args: any[]) => void) =>
-  (...args: any[]): void => {
+  <A extends unknown[]>(fn: (...args: A) => void) =>
+  (...args: A): void => {
     if (initialized.current) fn(...args);
   };
 
@@ -126,9 +129,9 @@ export const getNormalizedUrls = (
 };
 
 export const convertTargets = (
-  targets: {
-    target: string;
-    value: string;
+  targets: readonly {
+    readonly target: string;
+    readonly value: string;
   }[],
 ): { [key: string]: { label: string; intTarget: number } | string } => {
   return Object.fromEntries(
@@ -145,7 +148,9 @@ export const convertTargets = (
   );
 };
 
-export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
+export const transformDataset = (
+  dataset: datasetFragment$data,
+): Readonly<State.Dataset> => {
   const targets = Object.fromEntries(
     (dataset?.maskTargets || []).map(({ name, targets }) => [
       name,
@@ -153,15 +158,16 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     ]),
   );
 
-  const copy: any = clone(dataset);
+  const copy = clone(dataset);
 
+  // the fragment's fields plus app-side target maps make up State.Dataset
   return {
     ...copy,
     defaultMaskTargets: convertTargets(dataset.defaultMaskTargets),
     brainMethods: [...dataset.brainMethods],
     evaluations: [...dataset.evaluations],
     maskTargets: targets,
-  };
+  } as unknown as Readonly<State.Dataset>;
 };
 
 export type ResponseFrom<TQuery extends { response: unknown }> =

@@ -281,7 +281,12 @@ export const similaritySorting = atom<boolean>({
 // `read` runs on every fragment update, so it must hand back the last write
 // or a refetch drops the selection. Module scope so the reset can clear it.
 let currentSelection = { selection: null };
-let currentOverrideStage = null;
+// a stage keyed by its class, e.g. { "fiftyone.core.stages.Select": kwargs }
+export type ExtendedSelectionOverrideStage = {
+  [stageCls: string]: unknown;
+} | null;
+
+let currentOverrideStage: ExtendedSelectionOverrideStage = null;
 
 /** Clears what `read` hands back, so a reset survives the next update. */
 export function clearExtendedSelectionMirror(): void {
@@ -291,7 +296,9 @@ export function clearExtendedSelectionMirror(): void {
 
 /** Sets what `read` hands back to a published override stage, so the stage
  * survives the next update. */
-export function writeExtendedSelectionMirror(overrideStage: unknown): void {
+export function writeExtendedSelectionMirror(
+  overrideStage: ExtendedSelectionOverrideStage,
+): void {
   currentSelection = { selection: null };
   currentOverrideStage = overrideStage;
 }
@@ -348,7 +355,7 @@ export const extendedSelection = graphQLSyncFragmentAtom<
 
 export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
   datasetFragment$key,
-  any
+  ExtendedSelectionOverrideStage
 >(
   {
     fragments: [datasetFragment],

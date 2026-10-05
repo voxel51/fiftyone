@@ -1,6 +1,10 @@
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
-import { lightningQuery, queryPerformanceMaxSearch } from "../queryPerformance";
+import {
+  lightningQuery,
+  queryPerformanceMaxSearch,
+  type LightningPathParam,
+} from "../queryPerformance";
 
 export const lightningStringResults = selectorFamily<
   string[],
@@ -19,7 +23,11 @@ export const lightningStringResults = selectorFamily<
     ({ get }) => {
       const [data] = get(
         lightningQuery([
-          { ...params, maxDocumentsSearch: get(queryPerformanceMaxSearch) },
+          {
+            ...params,
+            filters: params.filters as LightningPathParam["filters"],
+            maxDocumentsSearch: get(queryPerformanceMaxSearch),
+          },
         ]),
       );
 

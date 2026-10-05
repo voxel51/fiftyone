@@ -213,7 +213,8 @@ export const dynamicGroupParameters =
       if (isFlat) return null;
       return {
         // first index is 'field_or_expr', which defines group-by
-        groupBy: groupByViewStageNode.kwargs[0][1] as string,
+        groupBy: groupByViewStageNode
+          .kwargs[0][1] as State.DynamicGroupParameters["groupBy"],
         // second index is 'order_by', which defines order-by
         orderBy: groupByViewStageNode.kwargs[1][1] as string,
         orderByKey: groupByViewStageNode.kwargs[2][1] as string,

@@ -34,7 +34,7 @@ export * from "./utils";
 const KEYPOINT_TYPES = new Set([KEYPOINT_FIELD, KEYPOINTS_FIELD]);
 
 const primitiveFilter = selectorFamily<
-  (value: any) => boolean,
+  (value: unknown) => boolean,
   { modal: boolean; path: string }
 >({
   key: "primitiveFilter",
