@@ -2,13 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ByteRangeCache,
   type ByteRange,
   type SampleLocation,
   classifyRangeResponse,
   parseContentRangeStart,
+  RangeFetcher,
   rangeRequestHeader,
   sliceSampleBytes,
   spanByteRange,
@@ -100,13 +101,85 @@ describe("classifyRangeResponse", () => {
     expect(classifyRangeResponse(206)).toBe("range");
   });
 
-  it("maps 200 to a whole-file body", () => {
-    expect(classifyRangeResponse(200)).toBe("whole");
+  it("maps 200 to an ignored Range header", () => {
+    expect(classifyRangeResponse(200)).toBe("ignored");
   });
 
   it("rejects any other status (e.g. 416, 500)", () => {
-    expect(classifyRangeResponse(416)).toBe("reject");
-    expect(classifyRangeResponse(500)).toBe("reject");
+    expect(classifyRangeResponse(416)).toBe("rejected");
+    expect(classifyRangeResponse(500)).toBe("rejected");
+  });
+});
+
+describe("RangeFetcher", () => {
+  const RANGE: ByteRange = { start: 100, end: 110 };
+
+  /** A response stub whose body records whether it was cancelled. */
+  const response = (status: number, contentRange?: string) => {
+    const cancel = vi.fn(async () => undefined);
+    return {
+      status,
+      headers: new Headers(
+        contentRange ? { "Content-Range": contentRange } : {},
+      ),
+      body: { cancel },
+      arrayBuffer: vi.fn(async () => new ArrayBuffer(10)),
+      cancel,
+    };
+  };
+
+  const fetcher = (request: (range: ByteRange) => Promise<unknown>) =>
+    new RangeFetcher(
+      request as (range: ByteRange) => Promise<Response>,
+      new ByteRangeCache(1000),
+    );
+
+  it("serves a 206 body at the offset its Content-Range names", async () => {
+    const request = vi.fn(async () => response(206, "bytes 96-109/500"));
+    const ranges = fetcher(request);
+
+    const span = await ranges.fetch(RANGE);
+
+    expect(span.fileStart).toBe(96);
+    expect(span.buffer.byteLength).toBe(10);
+    // cached: the same range does not go back to the network
+    await ranges.fetch(RANGE);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails on a 200 without reading the body, and fails fast after", async () => {
+    const whole = response(200);
+    const request = vi.fn(async () => whole);
+    const ranges = fetcher(request);
+
+    await expect(ranges.fetch(RANGE)).rejects.toThrow(
+      /ignored the range request.*must support HTTP range requests/,
+    );
+    expect(whole.arrayBuffer).not.toHaveBeenCalled();
+    expect(whole.cancel).toHaveBeenCalled();
+
+    await expect(ranges.fetch({ start: 200, end: 210 })).rejects.toThrow(
+      /must support HTTP range requests/,
+    );
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails on any other status", async () => {
+    const ranges = fetcher(async () => response(416));
+    await expect(ranges.fetch(RANGE)).rejects.toThrow(/HTTP 416/);
+  });
+
+  it("fails when the request itself fails, and fails fast after", async () => {
+    const request = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const ranges = fetcher(request);
+
+    await expect(ranges.fetch(RANGE)).rejects.toThrow(
+      /Failed to fetch.*must support HTTP range requests/,
+    );
+    await expect(ranges.fetch(RANGE)).rejects.toThrow();
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -118,7 +191,7 @@ describe("sliceSampleBytes", () => {
     return b.buffer;
   })();
 
-  it("slices from a whole-file buffer (fileStart 0)", () => {
+  it("slices from a buffer at the start of the file", () => {
     const bytes = sliceSampleBytes(buf, 0, { offset: 4, size: 3 });
     expect(Array.from(bytes)).toEqual([4, 5, 6]);
   });

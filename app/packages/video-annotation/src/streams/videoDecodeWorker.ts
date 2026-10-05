@@ -38,6 +38,10 @@
  * input arrives, so chunks are settled by attributing frames as they land, not
  * by flushing at each boundary.
  *
+ * Sample bytes come from HTTP `Range` requests, so the media server must
+ * answer them with `206`; one that doesn't fails every chunk (see
+ * {@link RangeFetcher}).
+ *
  * Scope: MP4 / H.264 first (mp4box + the common `avcC`/`hvcC`/`av1C`/`vpcC`
  * description boxes). Other containers/codecs are follow-ons gated on
  * `VideoDecoder.isConfigSupported`.
@@ -63,9 +67,7 @@ import { type Gop, KeyframeIndex } from "./keyframeIndex";
 import { keyframeProbe } from "./sampleKeyframe";
 import {
   ByteRangeCache,
-  type ByteRange,
-  classifyRangeResponse,
-  parseContentRangeStart,
+  RangeFetcher,
   rangeRequestHeader,
   sliceSampleBytes,
   type SpanBuffer,
@@ -129,15 +131,15 @@ let mediaHeaders: Record<string, string> | undefined;
 
 /** Cap on cached encoded byte ranges — small next to the decoded-bitmap LRU. */
 const RANGE_CACHE_BUDGET_BYTES = 64 * 1024 * 1024;
-const rangeCache = new ByteRangeCache(RANGE_CACHE_BUDGET_BYTES);
-/**
- * Set once a server proves it won't honor `Range` (returned `200`, or the
- * ranged request failed CORS/preflight). From then on we serve every chunk
- * from `wholeFileBuffer` instead of retrying ranges.
- */
-let rangeFetchDisabled = false;
-/** The whole file, held only when we fell back to a non-ranged fetch. */
-let wholeFileBuffer: ArrayBuffer | null = null;
+/** Sample bytes come only from `Range` requests; see {@link RangeFetcher}. */
+const ranges = new RangeFetcher(
+  (range) =>
+    fetch(videoSrc, {
+      mode: "cors",
+      headers: { ...mediaHeaders, Range: rangeRequestHeader(range) },
+    }),
+  new ByteRangeCache(RANGE_CACHE_BUDGET_BYTES),
+);
 
 let ready = false;
 let unsupportedReason: string | null = null;
@@ -661,82 +663,6 @@ async function flushOutstanding(): Promise<void> {
   }
 }
 
-/**
- * Fetch the encoded bytes covering `range`, preferring an HTTP `Range` request
- * so decode streams on demand rather than downloading the whole clip. Degrades
- * gracefully:
- *
- * - `206` — the body is exactly the range; cache it and slice at `range.start`.
- * - `200` — the server ignored `Range` and sent the whole file; keep it and
- *   serve every future chunk from it (no more network).
- * - ranged request rejected / failed (`416`, CORS preflight on a bucket without
- *   `OPTIONS`, …) — fall back once to a plain (no-`Range`) whole-file fetch,
- *   matching `<video src>` semantics, and latch off ranges.
- *
- * Never fabricates bytes: a hard fetch failure throws, failing the chunk.
- */
-async function fetchSpanBuffer(range: ByteRange): Promise<SpanBuffer> {
-  // Server already proved it won't range-serve — everything lives in memory.
-  if (rangeFetchDisabled && wholeFileBuffer) {
-    return { buffer: wholeFileBuffer, fileStart: 0 };
-  }
-
-  const cached = rangeCache.get(range);
-  if (cached) {
-    return { buffer: cached, fileStart: range.start };
-  }
-
-  if (!rangeFetchDisabled) {
-    try {
-      const resp = await fetch(videoSrc, {
-        mode: "cors",
-        headers: { ...mediaHeaders, Range: rangeRequestHeader(range) },
-      });
-      const kind = classifyRangeResponse(resp.status);
-
-      if (kind === "range") {
-        const buffer = await resp.arrayBuffer();
-        const fileStart =
-          parseContentRangeStart(resp.headers.get("Content-Range")) ??
-          range.start;
-        rangeCache.set(range, buffer);
-        return { buffer, fileStart };
-      }
-
-      if (kind === "whole") {
-        // Ranges ignored — take the whole file we were handed and stop asking.
-        rangeFetchDisabled = true;
-        wholeFileBuffer = await resp.arrayBuffer();
-        return { buffer: wholeFileBuffer, fileStart: 0 };
-      }
-
-      // Unexpected status (e.g. 416): abandon ranges, fall through to whole.
-      rangeFetchDisabled = true;
-    } catch {
-      // Network / CORS-preflight failure on the ranged request — abandon
-      // ranges and fall through to a plain whole-file fetch.
-      rangeFetchDisabled = true;
-    }
-  }
-
-  return { buffer: await fetchWholeFile(), fileStart: 0 };
-}
-
-/** Plain (no-`Range`) whole-file fetch; the result is memoized for reuse. */
-async function fetchWholeFile(): Promise<ArrayBuffer> {
-  if (wholeFileBuffer) {
-    return wholeFileBuffer;
-  }
-
-  const resp = await fetch(videoSrc, { mode: "cors", headers: mediaHeaders });
-  if (!resp.ok) {
-    throw new Error(`video fetch failed: ${resp.status}`);
-  }
-
-  wholeFileBuffer = await resp.arrayBuffer();
-  return wholeFileBuffer;
-}
-
 /** Bytes for decode-order samples `[kf, dEnd]`, or `null` when there are none. */
 async function fetchFrom(
   kf: number,
@@ -747,7 +673,7 @@ async function fetchFrom(
     return null;
   }
 
-  return { kf, span: await fetchSpanBuffer(range) };
+  return { kf, span: await ranges.fetch(range) };
 }
 
 function ensureSession(): DecodeSession {
