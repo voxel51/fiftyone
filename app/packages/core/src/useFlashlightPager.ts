@@ -99,6 +99,9 @@ const useFlashlightPager = (
 
   return {
     isEmpty,
+    // Not callable as a reset: this is the page-variables callback, whose
+    // identity changes with the query params. Use it as an effect dependency
+    // to rebuild the flashlight when the params change.
     reset: page,
     page: useCallback((page: number) => ref.current(page), []),
   };

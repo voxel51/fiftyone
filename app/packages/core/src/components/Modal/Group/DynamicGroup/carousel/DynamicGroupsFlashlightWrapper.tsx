@@ -211,7 +211,6 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
     const identity = `${mediaField}::${key ?? "null"}`;
     if (lastIdentity.current === identity) return;
     lastIdentity.current = identity;
-    reset();
     setFlashlight(createFlashlight());
   }, [createFlashlight, key, reset, mediaField]);
 
