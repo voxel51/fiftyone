@@ -95,9 +95,10 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             size={Size.Md}
             defaultIndex={0}
             onChange={handleTabChange}
+            // the panels below render the content; the switch only toggles
             tabs={[
-              { id: TAB_GUI, data: { label: "GUI" } },
-              { id: TAB_JSON, data: { label: "JSON" } },
+              { id: TAB_GUI, data: { label: "GUI", content: null } },
+              { id: TAB_JSON, data: { label: "JSON", content: null } },
             ]}
           />
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>

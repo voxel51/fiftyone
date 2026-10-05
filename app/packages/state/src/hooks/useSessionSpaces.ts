@@ -21,7 +21,8 @@ const useSessionSpaces = () => {
 
   const setSessionSpaces = useCallback(
     (spaces: object, panelsState?: object) => {
-      const formattedSpaces = toAPIFormat(spaces, panelsState);
+      // a spaces root is a single node, never a list
+      const formattedSpaces = toAPIFormat(spaces, panelsState) as APISpaceNode;
       setSessionSpacesState(formattedSpaces);
     },
     [setSessionSpacesState],
@@ -49,7 +50,7 @@ export default useSessionSpaces;
 
 const nonPanelTypes = ["panel-container", "empty"];
 
-type APISpaceNode = {
+export type APISpaceNode = {
   _cls: "Space" | "Panel";
   component_id: string;
   _version?: number;
@@ -60,8 +61,10 @@ type APISpaceNode = {
   orientation?: string;
   active_child?: string;
   sizes?: number[];
+  // saved workspaces carry their name on the root
+  _name?: string;
 };
-type APISpaceTree = APISpaceNode | APISpaceTree[];
+export type APISpaceTree = APISpaceNode | APISpaceTree[];
 
 function toAPIFormat(state, panelsState = {}): APISpaceTree {
   if (Array.isArray(state))

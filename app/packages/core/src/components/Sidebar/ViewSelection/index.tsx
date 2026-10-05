@@ -11,7 +11,10 @@ import {
 } from "recoil";
 import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilters";
 import SavedViewsSelection from "./SavedViewsSelection";
-import ViewDialog, { viewDialogContent } from "./ViewDialog";
+import ViewDialog, {
+  type SavedViewSummary,
+  viewDialogContent,
+} from "./ViewDialog";
 import { Box } from "./styledComponents";
 
 export const viewSearchTerm = atom<string>({
@@ -174,7 +177,7 @@ export default function ViewSelection() {
           id="saved-views"
           savedViews={items}
           onEditSuccess={(
-            createSavedView: fos.State.SavedView,
+            createSavedView: SavedViewSummary,
             reload?: boolean,
           ) => {
             refetch(

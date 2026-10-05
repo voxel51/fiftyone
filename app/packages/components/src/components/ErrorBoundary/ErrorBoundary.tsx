@@ -35,7 +35,8 @@ interface Props<T extends AppError> extends FallbackProps {
   error: T;
 }
 
-interface ErrorDisplayProps<T extends AppError> {
+// any Error renders; the app error classes add details via instanceof
+interface ErrorDisplayProps<T extends Error> {
   error: T;
   onReset?: () => void;
   disableReset?: boolean;
@@ -46,7 +47,7 @@ interface ErrorDisplayProps<T extends AppError> {
  * Note: we shouldn't add any side effects to this component.
  * For that, use `ErrorsDisplayWithSideEffects`.
  */
-export const ErrorDisplayMarkup = <T extends AppError>({
+export const ErrorDisplayMarkup = <T extends Error>({
   error,
   onReset,
   disableReset,

@@ -30,10 +30,17 @@ import {
   NameInput,
 } from "./styledComponents";
 
+/** The saved-view fields the dialog reads (relay mutation results carry
+ * these; their timestamps don't match State.SavedView's). */
+export type SavedViewSummary = Pick<
+  fos.State.SavedView,
+  "id" | "name" | "slug" | "description" | "color" | "viewStages"
+>;
+
 interface Props {
   id: string;
-  savedViews: fos.State.SavedView[];
-  onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
+  savedViews: readonly SavedViewSummary[];
+  onEditSuccess: (saveView: SavedViewSummary, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
   canEdit?: boolean;
 }
@@ -102,9 +109,7 @@ export default function ViewDialog(props: Props) {
     description: "",
   });
 
-  const savedViewSlugs = new Set(
-    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase()),
-  );
+  const savedViewSlugs = new Set(savedViews.map((sv) => sv.slug.toLowerCase()));
   const slugValue = toSlug(nameValue);
   const nameExists =
     nameValue &&
@@ -168,7 +173,7 @@ export default function ViewDialog(props: Props) {
         descriptionValue,
         colorOption.color || DEFAULT_COLOR,
         view,
-        (saveView: fos.State.SavedView) => {
+        (saveView: SavedViewSummary) => {
           resetValues();
           onEditSuccess(saveView, true);
           setIsOpen(false);
@@ -180,7 +185,7 @@ export default function ViewDialog(props: Props) {
         nameValue,
         descriptionValue,
         colorOption.color || DEFAULT_COLOR,
-        (saveView: fos.State.SavedView) => {
+        (saveView: SavedViewSummary) => {
           resetValues();
           onEditSuccess(saveView, initialName !== nameValue);
           setIsOpen(false);

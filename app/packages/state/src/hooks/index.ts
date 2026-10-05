@@ -71,6 +71,7 @@ export { default as useSchemaSettings } from "./useSchemaSettings";
 export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSessionSpaces } from "./useSessionSpaces";
+export type { APISpaceNode, APISpaceTree } from "./useSessionSpaces";
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";

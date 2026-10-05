@@ -4,6 +4,7 @@ import {
   subscribe,
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import type { APISpaceNode } from "./hooks/useSessionSpaces";
 import { useCallback } from "react";
 import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
@@ -99,7 +100,9 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   sampleSelectionStyle: SelectionStyle;
   labelSelectionStyle: LabelSelectionStyle;
-  sessionSpaces: SpaceNodeJSON;
+  // the server and setSessionSpaces store the API format; the default
+  // carries both shapes
+  sessionSpaces: SpaceNodeJSON | APISpaceNode;
   sessionGroupSlice?: string;
 }
 

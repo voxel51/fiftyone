@@ -3,7 +3,7 @@
  */
 
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
-import type { ModalSelector, State } from "@fiftyone/state";
+import type { APISpaceNode, ModalSelector, State } from "@fiftyone/state";
 import { pathToRegexp } from "path-to-regexp";
 import type { OperationType, VariablesOf } from "relay-runtime";
 
@@ -20,7 +20,7 @@ export type LocationState<T extends OperationType = OperationType> = {
   modalSelector?: ModalSelector;
   savedViewSlug?: string;
   view?: State.Stage[];
-  workspace?: SpaceNodeJSON;
+  workspace?: SpaceNodeJSON | APISpaceNode;
 } & VariablesOf<T>;
 
 interface MatchPathOptions<T extends OperationType> {

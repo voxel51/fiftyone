@@ -90,3 +90,10 @@ declare module "@mui/material/Button" {
     tertiary: true;
   }
 }
+
+declare module "@mui/material" {
+  // the app theme adds a near-black grey shade at key 5
+  interface Color {
+    5?: string;
+  }
+}

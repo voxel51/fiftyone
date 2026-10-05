@@ -95,7 +95,8 @@ export namespace State {
     description?: string;
     color?: string;
     slug: string;
-    viewStages: Stage[];
+    // serialized stage strings, as relay returns them
+    viewStages: readonly string[];
     createdAt: DateTime;
     lastLoadedAt: DateTime;
     lastModifiedAt?: DateTime;

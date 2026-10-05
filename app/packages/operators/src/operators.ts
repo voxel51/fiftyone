@@ -1,6 +1,7 @@
 import { AnalyticsInfo, usingAnalytics } from "@fiftyone/analytics";
 import SpaceNode from "@fiftyone/spaces/src/SpaceNode";
 import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
+import type { APISpaceNode } from "@fiftyone/state";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import type {
   LabelSelectionStyle,
@@ -113,7 +114,8 @@ export type RawContext = {
   };
   groupSlice: string;
   queryPerformance?: boolean;
-  spaces: SpaceNodeJSON;
+  // fos.sessionSpaces: normally the API format the server expects
+  spaces: SpaceNodeJSON | APISpaceNode;
   workspaceName: string;
   promptId?: string | null;
   activeFields: string[];
@@ -166,7 +168,9 @@ export class ExecutionContext {
     return Boolean(this._currentContext.queryPerformance);
   }
   public get spaces(): SpaceNode {
-    return spaceNodeFromJSON(this._currentContext.spaces);
+    // NOTE: spaceNodeFromJSON reads the app format (id, layout, ...); the
+    // API format (component_id, orientation, ...) yields a node with no id
+    return spaceNodeFromJSON(this._currentContext.spaces as SpaceNodeJSON);
   }
   public get workspaceName(): string {
     return this._currentContext.workspaceName;

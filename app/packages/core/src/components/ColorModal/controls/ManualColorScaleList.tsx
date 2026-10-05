@@ -3,6 +3,7 @@ In color by value mode, fields and label tags use this component
 */
 
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import type { ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import DeleteIcon from "@mui/icons-material/Delete";
 import IconButton from "@mui/material/IconButton";
@@ -22,19 +23,14 @@ import { activeColorPath } from "../state";
 import { convertToRGB, getRGBColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
 
-type ColorscaleListInput = {
-  value: number; // float
-  color: string;
-};
-
 type Input = {
-  value?: number;
+  value?: number | null; // float
   color: string;
 };
 
 type ManualColorScaleListProp = {
-  initialValue: ColorscaleListInput[];
-  values: ColorscaleListInput[];
+  initialValue: readonly ColorscaleListInput[];
+  values: readonly ColorscaleListInput[];
   style: React.CSSProperties;
   onValidate?: (value: number) => boolean;
   onSyncUpdate: (input: ColorscaleListInput[]) => void;
@@ -55,7 +51,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
   max,
   step,
 }) => {
-  const [input, setInput] = useState<Input[]>(initialValue ?? []);
+  const [input, setInput] = useState<readonly Input[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false),
   );
