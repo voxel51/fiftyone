@@ -84,3 +84,9 @@ declare module "@mui/material/styles" {
     invert: string;
   }
 }
+
+declare module "@mui/material/Button" {
+  interface ButtonPropsColorOverrides {
+    tertiary: true;
+  }
+}

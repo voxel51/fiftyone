@@ -17,7 +17,8 @@ const PillBadge = ({
   color?: string;
   variant?: "filled" | "outlined";
   showIcon?: boolean;
-  operator?: () => void;
+  // URI of the operator to trigger when the selection changes
+  operator?: string;
   readOnly?: boolean;
   tooltipTitle?: string;
 }) => {

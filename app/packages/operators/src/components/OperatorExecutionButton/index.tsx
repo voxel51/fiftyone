@@ -1,4 +1,4 @@
-import { Button } from "@mui/material";
+import { Button, type ButtonProps } from "@mui/material";
 import { OperatorExecutionTrigger } from "../OperatorExecutionTrigger";
 import React from "react";
 import { ExecutionCallback, ExecutionErrorCallback } from "../../ts";
@@ -48,7 +48,7 @@ export const OperatorExecutionButton = ({
     horizontal: "left" | "right" | "center";
   };
   children: React.ReactNode;
-}) => {
+} & Omit<ButtonProps, "onClick" | "disabled" | "children">) => {
   return (
     <OperatorExecutionTrigger
       operatorUri={operatorUri}
