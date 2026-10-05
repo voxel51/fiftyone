@@ -37,6 +37,12 @@ import {
   createPointCloudSpriteMaterial,
   type PointCloudInstanceAttributes,
 } from "./gpu/point-cloud-sprite-material";
+import {
+  createGpuPointCloudComputeCull,
+  isGpuPointCloudComputeRenderer,
+  type GpuPointCloudComputeCull,
+} from "./gpu/gpu-point-cloud-compute-cull";
+import { requestedPointCloudCompute } from "../webgpu/graphics-backend";
 import { POINT_COMPONENT_COUNT } from "./point-cloud-colors";
 import {
   GpuPointCloud3dPickerRegistryContext,
@@ -152,6 +158,8 @@ export const PointCloudSceneLayer = memo(function PointCloudSceneLayer({
 interface GpuPointCloud3dResource {
   readonly capacity: number;
   color: GpuPointCloudChannelResource | null;
+  /** Opt-in WebGPU screen-coverage cull; null keeps the budget-prefix draw. */
+  readonly cull: GpuPointCloudComputeCull | null;
   readonly position: THREE.BufferAttribute;
   renderedPointCount: number;
   sampledPointCount: number;
@@ -186,7 +194,19 @@ function GpuPointCloudPoints({
   readonly pointSize: number;
 }) {
   const invalidate = useThree((state) => state.invalidate);
+  const gl = useThree((state) => state.gl);
   const pickerRegistry = useContext(GpuPointCloud3dPickerRegistryContext);
+  const { backend } = useGraphicsRuntime();
+  // Page-scoped opt-in, sampled once per renderer. Three's WebGL2 backend
+  // also exposes compute (transform feedback), so gate on the backend too:
+  // WebGL2 and flag-off keep the budget-prefix draw unchanged.
+  const computeCullEnabled = useMemo(
+    () =>
+      backend === "webgpu" &&
+      requestedPointCloudCompute() &&
+      isGpuPointCloudComputeRenderer(gl),
+    [backend, gl],
+  );
   const capacityRef = useRef(0);
   // Capacity is monotonic for this mounted layer. Smaller later frames reuse
   // the existing GPU allocation; only a larger worker bucket replaces it.
@@ -195,10 +215,11 @@ function GpuPointCloudPoints({
   }
   const capacity = capacityRef.current;
   const resource = useMemo(
-    () => createGpuPointCloud3dResource(gpu.payload, capacity),
+    () =>
+      createGpuPointCloud3dResource(gpu.payload, capacity, computeCullEnabled),
     // Capacity is grow-only. The current payload seeds a newly grown buffer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [capacity],
+    [capacity, computeCullEnabled],
   );
   // Fields may appear after the first frame. Schema growth must happen before
   // material construction because TSL storage bindings define shader topology.
@@ -228,6 +249,12 @@ function GpuPointCloudPoints({
       layerId
         ? {
             colorAttribute: null,
+            computeCull: resource.cull
+              ? {
+                  indirect: resource.cull.indirect,
+                  visibleIndices: resource.cull.visibleIndices,
+                }
+              : null,
             layerId,
             object: sprite,
             positionAttribute: resource.position,
@@ -237,7 +264,7 @@ function GpuPointCloudPoints({
             sampledPointCount: 0,
           }
         : null,
-    [layerId, resource.position, sprite],
+    [layerId, resource.cull, resource.position, sprite],
   );
   const appliedContentRef = useRef<string | PointCloudRenderPayload | null>(
     null,
@@ -253,7 +280,11 @@ function GpuPointCloudPoints({
     }
     resource.sampledPointCount = gpu.payload.sampledPointCount;
     resource.renderedPointCount = gpu.renderedPointCount;
+    // With the compute cull, renderedPointCount is only the upper cap: the
+    // indirect args carry the real instance count, but Three skips the draw
+    // when the object's count is zero.
     sprite.count = gpu.renderedPointCount;
+    resource.cull?.markDirty();
     shader.material.size = pointSize;
     updateGpuPointCloudColorUniforms(shader.colorUniforms, gpu.color);
     if (pickLayer) {
@@ -281,8 +312,27 @@ function GpuPointCloudPoints({
     }
     return pickerRegistry.register(pickLayer);
   }, [pickLayer, pickerRegistry]);
+  // The cull runs before R3F's render in the same frame and only when the
+  // camera, object transform, viewport, point size, or data changed, so the
+  // on-demand canvas never dispatches compute for an unchanged view.
+  useFrame((state) => {
+    const cull = resource.cull;
+    if (!cull || !isGpuPointCloudComputeRenderer(state.gl)) return;
+    cull.update(state.gl, {
+      // Fiber types its camera against a different @types/three copy; the
+      // runtime object is this package's THREE.Camera (see picking layer).
+      camera: state.camera as unknown as THREE.Camera,
+      candidateCount: resource.sampledPointCount,
+      cellSizePx: shader.material.size * state.viewport.dpr,
+      maxDrawCount: resource.renderedPointCount,
+      object: sprite,
+      viewportHeightPx: state.size.height * state.viewport.dpr,
+      viewportWidthPx: state.size.width * state.viewport.dpr,
+    });
+  });
   useEffect(
     () => () => {
+      resource.cull?.dispose();
       resource.spriteGeometry.dispose();
     },
     [resource],
@@ -295,6 +345,7 @@ function GpuPointCloudPoints({
 function createGpuPointCloud3dResource(
   payload: PointCloudRenderPayload,
   capacity: number,
+  computeCullEnabled: boolean,
 ): GpuPointCloud3dResource {
   // Flat float storage avoids Three's main-thread vec3→vec4 padding
   // pass for WebGPU storage buffers. The shader reconstructs vec3 values.
@@ -323,10 +374,21 @@ function createGpuPointCloud3dResource(
       channel.attribute,
     );
   }
+  const cull = computeCullEnabled
+    ? createGpuPointCloudComputeCull({
+        capacity,
+        indexCount: spriteGeometry.index?.count ?? 0,
+        owner: spriteGeometry,
+        position,
+      })
+    : null;
+  // drawIndexedIndirect: the compute pass writes this quad's instance count.
+  if (cull) spriteGeometry.setIndirect(cull.indirect);
 
   return {
     capacity,
     color,
+    cull,
     position,
     renderedPointCount: 0,
     sampledPointCount: payload.sampledPointCount,
@@ -344,8 +406,11 @@ function createGpuPointCloud3dMaterial(
     sizeAttenuation: false,
   });
   // instanceIndex spans the progressively ordered payload prefix, allowing
-  // runtime point budgets without new CPU arrays or point replacement.
-  const sampleIndex = gpuPointCloudSampleIndexNode();
+  // runtime point budgets without new CPU arrays or point replacement. With
+  // the compute cull, instances instead index the compacted visible samples.
+  const sampleIndex = resource.cull
+    ? resource.cull.sampleIndexNode()
+    : gpuPointCloudSampleIndexNode();
   const positionNode = gpuPointCloudPositionNode(
     resource.position,
     "flat",

@@ -1,7 +1,10 @@
 import { createContext } from "react";
 import * as THREE from "three";
 import * as TSL from "three/tsl";
-import { PointsNodeMaterial } from "three/webgpu";
+import {
+  PointsNodeMaterial,
+  type IndirectStorageBufferAttribute,
+} from "three/webgpu";
 
 import {
   createGpuPickController,
@@ -9,6 +12,7 @@ import {
 } from "../../webgpu/gpu-pick-controller";
 import { isGpuPickRenderer } from "../../webgpu/gpu-pick-render-target";
 import {
+  gpuPointCloudCulledSampleIndexNode,
   gpuPointCloudPositionNode,
   gpuPointCloudSampleIndexNode,
   type GpuPointCloudPositionLayout,
@@ -39,9 +43,21 @@ interface PickPointsMaterial extends PointsNodeMaterial {
 // declarations expose only a subset.
 const pickTsl: PointCloud3dPickTslFacade = TSL;
 
+/**
+ * Compute-cull buffers of a visible cloud. When present, the pick pass draws
+ * exactly the culled instances (same indirect args) and maps each instance to
+ * its canonical sample through the same compacted index buffer.
+ */
+export interface GpuPointCloud3dComputeCullBinding {
+  readonly indirect: IndirectStorageBufferAttribute;
+  readonly visibleIndices: THREE.BufferAttribute;
+}
+
 /** One live 3D cloud sharing its exact position buffer with the GPU picker. */
 export interface GpuPointCloud3dPickLayer {
   readonly colorAttribute: THREE.BufferAttribute | null;
+  /** Set only by the opt-in WebGPU compute-cull draw path. */
+  readonly computeCull?: GpuPointCloud3dComputeCullBinding | null;
   readonly layerId: string;
   readonly object: THREE.Object3D;
   readonly positionAttribute: THREE.BufferAttribute;
@@ -200,6 +216,7 @@ function createPointCloud3dPickPass(
 ): PointCloud3dPickPass {
   const scene = new THREE.Scene();
   const materials: PointsNodeMaterial[] = [];
+  const geometries: THREE.BufferGeometry[] = [];
   const layers: ActivePointCloud3dPickLayer[] = [];
   const viewProjection = pickTsl.uniform(new THREE.Matrix4());
   const pointerNdc = pickTsl.uniform(new THREE.Vector2());
@@ -215,6 +232,9 @@ function createPointCloud3dPickPass(
     for (const material of materials) {
       material.dispose();
     }
+    for (const geometry of geometries) {
+      geometry.dispose();
+    }
   };
 
   try {
@@ -227,7 +247,10 @@ function createPointCloud3dPickPass(
     } of activePickLayers(sourceLayers)) {
       const worldMatrix = pickTsl.uniform(new THREE.Matrix4());
       const visible = pickTsl.uniform(1);
-      const sampleIndex = gpuPointCloudSampleIndexNode();
+      const computeCull = source.computeCull ?? null;
+      const sampleIndex = computeCull
+        ? gpuPointCloudCulledSampleIndexNode(computeCull.visibleIndices)
+        : gpuPointCloudSampleIndexNode();
       const material = createPointCloud3dPickMaterialNode({
         activeLayerIndex: layers.length,
         far,
@@ -249,6 +272,14 @@ function createPointCloud3dPickPass(
       );
       sprite.count = renderedPointCount;
       sprite.frustumCulled = false;
+      if (computeCull) {
+        // Private quad so the indirect binding never touches Three's shared
+        // sprite geometry. renderedPointCount is then only the upper cap.
+        const geometry = new THREE.PlaneGeometry(1, 1);
+        geometry.setIndirect(computeCull.indirect);
+        sprite.geometry = geometry;
+        geometries.push(geometry);
+      }
       scene.add(sprite);
       materials.push(material);
       layers.push({
@@ -279,7 +310,9 @@ function createPointCloud3dPickPass(
           ({ source }, index) =>
             source.positionAttribute !==
               layers[index].source.positionAttribute ||
-            source.positionLayout !== layers[index].source.positionLayout,
+            source.positionLayout !== layers[index].source.positionLayout ||
+            (source.computeCull?.visibleIndices ?? null) !==
+              (layers[index].source.computeCull?.visibleIndices ?? null),
         )
       ) {
         return false;
