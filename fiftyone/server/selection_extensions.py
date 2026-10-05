@@ -38,6 +38,39 @@ def resolve_filters(dataset, filters):
     return _filter_resolver(dataset, filters)
 
 
+_stream_resolver = None
+
+
+def register_selection_stream_resolver(resolver):
+    """Registers a resolver for a sample's complete stream inventory.
+
+    The callable receives a sample, its dataset and an optional request-local
+    cache. It returns a list of stream IDs, or ``None`` to use the built-in
+    resolvers. Resolution errors must propagate rather than return a partial
+    inventory. Temporal tag resolution supplies the sample's metadata.
+
+    Returns:
+        a function that restores the previous resolver
+    """
+    global _stream_resolver
+    previous = _stream_resolver
+    _stream_resolver = resolver
+
+    def unregister():
+        global _stream_resolver
+        if _stream_resolver is resolver:
+            _stream_resolver = previous
+
+    return unregister
+
+
+def resolve_streams(sample, dataset, cache=None):
+    """Returns provider stream IDs, or ``None`` for built-in resolution."""
+    if _stream_resolver is None:
+        return None
+    return _stream_resolver(sample, dataset, cache)
+
+
 _sample_builder = None
 
 
