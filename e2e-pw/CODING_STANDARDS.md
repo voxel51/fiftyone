@@ -122,11 +122,20 @@ timeout.
 
 ## Screenshots
 
-- Only canvases. Check DOM with exact reads.
-- Use `expectScreenshot` (exact: `maxDiffPixelRatio: 0, threshold: 0`). Masking
-  or loosening a threshold is not allowed.
+Canvases (the looker, Lighter, 3D, video and grid tiles) draw pixels, not DOM.
+An exact screenshot is how a spec checks what a canvas draws: which overlays,
+where, in what color, at which frame. Don't stand in for it with app events
+that describe the drawing, or with window or DOM probes.
+
+- Screenshot only canvases; check DOM with exact reads.
+- Take the screenshot after the cause-wait of the step it checks, one per state
+  that matters.
+- Use `expectScreenshot` (exact: `maxDiffPixelRatio: 0, threshold: 0`).
+  Masking, cropping in other UI, or loosening a threshold is not allowed.
 - Rendering is deterministic: Chromium runs at 1x, the e2e server defaults to a
   one-color pool, and the App renders once its bundled fonts load.
+- Record macOS baselines with `--update-snapshots`; harvest Linux baselines
+  from CI (see the README).
 
 ## When a test hangs
 

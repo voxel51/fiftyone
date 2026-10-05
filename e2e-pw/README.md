@@ -52,10 +52,9 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
   reported as retried, which confuses flake triage. When tests mutate shared
   data (e.g. annotation autosave), prefer giving each test its own sample
   (`numSamples` plus `indexToId`-addressed ids) over serializing the file.
-- Settle the canvas before `toHaveScreenshot` (finish drags, move the pointer
-  to a neutral position). Screenshot assertions wait for consecutive identical
-  frames, so each one against a repainting canvas pays a multi-second
-  stabilization loop.
+- Check what a canvas draws with an exact canvas screenshot
+  (`expectScreenshot`), taken once after the step's cause-wait; see
+  `CODING_STANDARDS.md`.
 
 #### Check for flakiness
 
