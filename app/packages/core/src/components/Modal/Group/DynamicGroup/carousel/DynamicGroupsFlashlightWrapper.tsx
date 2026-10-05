@@ -223,6 +223,7 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
         freeVideos();
       };
     }
+    return undefined;
   }, [flashlight, id]);
 
   const selected = useRecoilValue(fos.selectedSamples);

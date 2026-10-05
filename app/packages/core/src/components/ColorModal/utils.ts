@@ -81,6 +81,7 @@ export const validateLabelTags = (
 
     return f.fieldColor || f.valueColors?.length > 0 ? f : null;
   }
+  return undefined;
 };
 
 const getValidMaskColors = (maskColors: unknown[]) => {
@@ -146,6 +147,7 @@ export const validateDefaultColorscale = (
       name || list ? { name, list } : null
     ) as ColorSchemeInput["defaultColorscale"];
   }
+  return undefined;
 };
 
 export const validateColorscales = (
@@ -163,6 +165,7 @@ export const validateColorscales = (
 
             return name || list ? { name, list, path: x["path"] } : null;
           }
+          return undefined;
         })
         .filter((x) => x !== null)
     : [];

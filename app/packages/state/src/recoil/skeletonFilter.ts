@@ -101,6 +101,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
                 result = false;
               }
             }
+            return undefined;
           });
 
           booleanListFilters.forEach((key) => {

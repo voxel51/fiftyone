@@ -202,7 +202,7 @@ const BaseSlider = <T extends Range | number>({
 
   // Adjust on value changes
   useLayoutEffect(() => {
-    if (!sliderRef.current || !containerRef?.current) return;
+    if (!sliderRef.current || !containerRef?.current) return undefined;
 
     const frameId = requestAnimationFrame(adjustLabelsPosition);
     return () => cancelAnimationFrame(frameId);

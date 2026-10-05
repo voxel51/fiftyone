@@ -58,6 +58,7 @@ export const usePersistenceRetryController = (): AnnotationRetryController => {
     } else {
       resetInternal();
     }
+    return undefined;
   }, [canAttempt]);
 
   // reset internal and controlled state

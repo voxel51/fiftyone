@@ -59,7 +59,7 @@ export const handleRowChange = <K, V>({
   matches: Matches<K, V>;
 }) => {
   if (!dispatchOffset && !at) {
-    return;
+    return undefined;
   }
   let item = forward?.row.first;
   let delta = forward?.delta;
@@ -70,7 +70,7 @@ export const handleRowChange = <K, V>({
   }
 
   if (!keys.has(item)) {
-    return;
+    return undefined;
   }
 
   return new RowChange(item, keys.get(item), Math.abs(delta));

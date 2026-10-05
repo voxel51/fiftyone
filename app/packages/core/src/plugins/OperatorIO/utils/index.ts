@@ -63,6 +63,7 @@ function getTypeName(property) {
   for (const typeName in types) {
     if (type.constructor === types[typeName]) return typeName;
   }
+  return undefined;
 }
 
 function getComponent(property, options) {

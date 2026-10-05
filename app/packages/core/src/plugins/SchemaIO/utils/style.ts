@@ -6,6 +6,7 @@ export function getColorByCode(code: ColorType) {
       return "var(--fo-palette-primary-main)";
     return code;
   }
+  return undefined;
 }
 
 export function getDisabledColors() {

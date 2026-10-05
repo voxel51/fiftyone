@@ -107,6 +107,7 @@ export const SchemaSelectionRow = (props: Props) => {
       }
       return <InfoCell>None</InfoCell>;
     }
+    return undefined;
   }, [info, path]);
 
   return (

@@ -33,6 +33,7 @@ export function spaceToHeight(space?: number, max?: number) {
   if (typeof space === "number" && typeof max === "number") {
     return space * (max / 12);
   }
+  return undefined;
 }
 
 export function getLayoutProps(props: ViewPropsType) {

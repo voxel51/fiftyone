@@ -34,6 +34,7 @@ export function useActiveFilter(evaluation, compareEvaluation) {
       }
     }
   }
+  return undefined;
 }
 
 export function getConfigLabel({ config, type, dashed }) {

@@ -75,6 +75,7 @@ function getType(value) {
   if (!isNullish(value)) {
     return Array.isArray(value) ? "array" : typeof value;
   }
+  return undefined;
 }
 
 function getDominantType(array) {

@@ -191,6 +191,7 @@ export function getAbsolutePluginPath(name: string, path: string): string {
   if (pluginDefinition) {
     return `${pluginDefinition.serverPath}/${path}`;
   }
+  return undefined;
 }
 
 export function usePluginSettings<T>(

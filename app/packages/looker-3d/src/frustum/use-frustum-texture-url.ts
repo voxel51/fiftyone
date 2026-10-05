@@ -14,7 +14,7 @@ export function useFrustumTextureUrl(
   useEffect(() => {
     if (!imageUrl) {
       setTextureUrl(null);
-      return;
+      return undefined;
     }
 
     let cancelled = false;

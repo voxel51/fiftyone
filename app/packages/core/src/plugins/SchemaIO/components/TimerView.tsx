@@ -75,7 +75,7 @@ function useTimer(params: TimerViewParams) {
       console.warn(
         "useTimer requires either `interval` or `timeout` to be defined.",
       );
-      return;
+      return undefined;
     }
 
     const TimerType = interval ? IntervalTimer : TimeoutTimer;

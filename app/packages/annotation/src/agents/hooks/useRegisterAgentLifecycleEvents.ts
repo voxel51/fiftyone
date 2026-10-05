@@ -35,7 +35,7 @@ export const useRegisterAgentLifecycleEvents = (): void => {
       setInferenceStatus("idle");
       setInferenceProgress(null);
       setInferenceError(null);
-      return;
+      return undefined;
     }
 
     const currentStatus = agent.getLifecycleStatus();

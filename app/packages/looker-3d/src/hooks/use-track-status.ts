@@ -56,7 +56,7 @@ export const useTrackStatus = (
 
   useEffect(() => {
     if (!loadingManager) {
-      return;
+      return undefined;
     }
 
     let active = true;

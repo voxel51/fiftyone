@@ -10,6 +10,7 @@ export const METADATA_FIELDS = [
       if (!isNaN(metadata.width) && !isNaN(metadata.height)) {
         return `${metadata.width} x ${metadata.height}`;
       }
+      return undefined;
     },
   },
   { name: "Channels", key: "num_channels" },

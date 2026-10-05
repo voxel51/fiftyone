@@ -10,7 +10,7 @@ export default function useQueryPerformanceTimeout(
   const shouldOptimize = useRecoilValue(pathCanBeOptimized(path));
   useEffect(() => {
     if (modal || !shouldOptimize) {
-      return;
+      return undefined;
     }
 
     const timeout = setTimeout(() => {

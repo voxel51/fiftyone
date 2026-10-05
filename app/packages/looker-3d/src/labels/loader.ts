@@ -114,7 +114,7 @@ export const load3dOverlays = (
   const overlays = [];
   for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
     if (!sampleWrapper?.sample?._id) {
-      return;
+      return undefined;
     }
 
     overlays.push(

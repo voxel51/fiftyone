@@ -74,7 +74,7 @@ export const useLighterSetupWithPixi = (
   }, [sceneId, stableCanvas]);
 
   useEffect(() => {
-    if (!scene || scene.isDestroyed) return;
+    if (!scene || scene.isDestroyed) return undefined;
 
     setInitError(null);
 

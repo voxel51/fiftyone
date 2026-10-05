@@ -198,4 +198,5 @@ function getOperatorTypeName(type) {
   if (type instanceof Boolean) return "boolean";
   if (type instanceof String) return "string";
   if (type instanceof Number) return "number";
+  return undefined;
 }

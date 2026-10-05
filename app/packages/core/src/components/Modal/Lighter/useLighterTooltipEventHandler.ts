@@ -143,7 +143,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
 
   useEffect(() => {
     if (!scene) {
-      return;
+      return undefined;
     }
 
     document.addEventListener("mousemove", handleDocumentMouseMove);

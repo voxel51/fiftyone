@@ -18,5 +18,6 @@ export const useAutoSave = (enabled = false, autoSaveInterval = 3_000) => {
 
       return () => clearInterval(intervalHandle);
     }
+    return undefined;
   }, [autoSaveInterval, enabled, eventBus]);
 };

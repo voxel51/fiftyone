@@ -58,10 +58,10 @@ export function graphQLSyncFragmentAtomFamily<
               ({ setSelf, trigger }: Parameters<AtomEffect<K>>[0]) => {
                 // recoil state should be initialized via RecoilRoot's
                 // initializeState during tests
-                if (isTest) return;
+                if (isTest) return undefined;
 
                 if (trigger === "set") {
-                  return;
+                  return undefined;
                 }
                 const { pageQuery, subscribe } = getPageQuery();
                 let ctx: ReturnType<typeof loadContext>;

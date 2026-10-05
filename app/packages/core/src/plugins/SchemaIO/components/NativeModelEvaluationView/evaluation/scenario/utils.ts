@@ -12,4 +12,5 @@ export function getSubsetDef(scenario, subset) {
   } else if (type === "custom_code") {
     return { type, code: subsets_code, subset };
   }
+  return undefined;
 }

@@ -42,7 +42,7 @@ export const useActiveCapabilities = <T extends InferenceResultProxy>(
     setCapabilities([]);
     setIsResolved(false);
 
-    if (!agent || !task) return;
+    if (!agent || !task) return undefined;
 
     let cancelled = false;
 

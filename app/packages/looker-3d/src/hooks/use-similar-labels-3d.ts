@@ -26,7 +26,7 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
   // This effect subscribes to hover events and updates similar-label hover state.
   useEffect(() => {
     if (!instanceId) {
-      return;
+      return undefined;
     }
 
     const unsubHovering = selectiveRenderingEventBus.on(

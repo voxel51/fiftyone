@@ -69,7 +69,7 @@ export const extractNestedField = <T>(
       current = current[part];
     } else {
       // missing field
-      return;
+      return undefined;
     }
   }
 

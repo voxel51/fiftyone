@@ -55,6 +55,7 @@ const useHover = (ref, delay, onHover, onHoverEnd) => {
         node.removeEventListener("mouseout", handleMouseOut);
       };
     }
+    return undefined;
   }, [ref.current]);
 
   return hovering;

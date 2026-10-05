@@ -323,7 +323,7 @@ export const TooltipInfo = React.memo(() => {
 
   useLayoutEffect(() => {
     if (!isTooltipLocked) {
-      return;
+      return undefined;
     }
 
     // set esc handler to unlock tooltip
