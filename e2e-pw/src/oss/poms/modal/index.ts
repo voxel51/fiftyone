@@ -405,14 +405,6 @@ export class ModalPom {
   }
 
   /** Chrome hidden from 3D screenshots: the action bar, selection bar, and panels. */
-  get looker3dScreenshotMasks(): Locator[] {
-    return [
-      this.locator.getByTestId("looker3d-action-bar"),
-      this.locator.getByTestId("selectable-bar"),
-      this.locator.getByTestId("panel-container"),
-    ];
-  }
-
   async clickOnLooker() {
     return this.looker.click();
   }
@@ -471,12 +463,13 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
-  /** One capture of the modal on the 3D canvas's next rendered frame */
+  /** One capture of the 3D canvas on its next rendered frame */
   async hasLooker3dScreenshot(name: string) {
     await this.modalPom.eventUtils.next("e2e:looker3d:frame-rendered");
-    await expectScreenshot(this.modalPom.modalContainer, name, {
-      mask: this.modalPom.looker3dScreenshotMasks,
-    });
+    await expectScreenshot(
+      this.modalPom.looker3d.locator("canvas").first(),
+      name,
+    );
   }
 
   /** One capture of the looker with its controls hidden */

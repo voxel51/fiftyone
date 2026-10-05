@@ -500,12 +500,9 @@ class GridAsserter {
    * One capture of `target` (the forward section by default); draw it first
    * with {@link GridPom.afterTilesDrawn}
    */
-  async hasScreenshot(
-    name: string,
-    options: { target?: Locator; mask?: Locator[] } = {},
-  ) {
+  async hasScreenshot(name: string, options: { target?: Locator } = {}) {
     const target = options.target ?? this.gridPom.getForwardSection();
-    await expectScreenshot(target, name, { mask: options.mask });
+    await expectScreenshot(target, name);
   }
 
   async isTileCountEqualTo(n: number) {

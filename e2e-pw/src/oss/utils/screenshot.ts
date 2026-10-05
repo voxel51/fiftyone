@@ -8,11 +8,10 @@ import { expect, Locator } from "src/oss/fixtures";
 export const expectScreenshot = async (
   target: Locator,
   name: string,
-  options: { inset?: number; mask?: Locator[]; style?: string } = {},
+  options: { inset?: number; style?: string } = {},
 ) => {
   const capture = {
     animations: "disabled" as const,
-    mask: options.mask,
     style: options.style,
   };
   const box = options.inset ? await target.boundingBox() : null;
