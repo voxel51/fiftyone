@@ -1,6 +1,5 @@
 import { isNullish, pluralize } from "@fiftyone/utilities";
 import { Boolean, Enum, List, Number, Object, Property, String } from "./types";
-import { ParamsType } from "./ts";
 
 export class ValidationError {
   constructor(
@@ -162,7 +161,8 @@ export class ValidationContext {
   }
 }
 
-export function validate(params: ParamsType, property: Property) {
+// params is whatever value is being validated against the root property
+export function validate(params: unknown, property: Property) {
   const context = new ValidationContext({ params }, property, {
     config: { disableSchemaValidation: false },
   });
