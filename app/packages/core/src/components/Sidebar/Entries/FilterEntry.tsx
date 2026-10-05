@@ -1,11 +1,16 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
-import { FilterList, VisibilityOff } from "@mui/icons-material";
+import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React, { useEffect } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
@@ -20,18 +25,13 @@ type SidebarModeE2EEvents = {
   "e2e:sidebar:mode-shown": { filter: boolean };
 };
 
-/**
- * The sidebar's mode row: the Filter / Visibility toggle on the left,
- * the query-performance bolt on the right. Field visibility is owned
- * by persisted label schemas now (the schema row above, and the Schema
- * Manager), so the per-session Field Visibility modal and its gear are
- * gone from here.
- */
-const Filter = (_props: { modal?: boolean }) => {
+const Filter = () => {
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode,
   );
+
+  const setSchemaModal = useSetRecoilState(fos.settingsModal);
 
   useEffect(() => {
     getEventBus<SidebarModeE2EEvents>().dispatch("e2e:sidebar:mode-shown", {
@@ -44,6 +44,7 @@ const Filter = (_props: { modal?: boolean }) => {
   );
 
   const {
+    resetTextFilter,
     resetExcludedPaths,
     affectedPathCount,
     mergedSchema,
@@ -144,6 +145,25 @@ const Filter = (_props: { modal?: boolean }) => {
           </Tooltip>
         )}
         {queryPerformance && <QueryPerformanceIcon />}
+        <Tooltip
+          text="Change field visibility"
+          placement="bottom-center"
+          data-cy="field-visibility-toggle-tooltip"
+        >
+          <Settings
+            data-cy="field-visibility-icon"
+            onClick={() => {
+              setSchemaModal({
+                open: true,
+              });
+              resetTextFilter();
+            }}
+            sx={{
+              color: theme.text.tertiary,
+              "&:hover": { color: theme.text.primary },
+            }}
+          />
+        </Tooltip>
       </Box>
     </FilterInputDiv>
   );

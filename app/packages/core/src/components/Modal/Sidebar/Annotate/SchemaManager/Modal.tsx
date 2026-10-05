@@ -20,8 +20,10 @@ import { useSchemaManagerOpenSignal } from "./e2eSignals";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
 import {
+  useActivateFields,
   useCurrentField,
   useCurrentFieldValue,
+  useDeactivateFields,
   useNewFieldMode,
   useSchemaEditorGUIJSONToggle,
   useSchemaManagerCleanup,
@@ -29,11 +31,6 @@ import {
   useSelectedFieldCounts,
 } from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
-import {
-  useHideSelectedFields,
-  useUnhideSelectedFields,
-} from "./useVisibilityMoves";
-import { useOpenOnCurrentSchema } from "./useSchemaDocs";
 import {
   BackButton,
   ModalBackground,
@@ -60,16 +57,7 @@ const Heading = () => {
   }
 
   if (!field) {
-    return (
-      <div>
-        <Text variant={TextVariant.Xl}>Schema manager</Text>
-        <div style={{ marginTop: 4 }}>
-          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-            Label schemas decide which fields annotators and explorers see.
-          </Text>
-        </div>
-      </div>
-    );
+    return <Text variant={TextVariant.Xl}>Schema manager</Text>;
   }
 
   return (
@@ -83,6 +71,22 @@ const Heading = () => {
     </ItemLeft>
   );
 };
+
+const Subheading = () => {
+  const field = useCurrentFieldValue();
+  const { isNewField: newFieldMode } = useNewFieldMode();
+
+  if (field || newFieldMode) {
+    return null;
+  }
+
+  return (
+    <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
+      Manage your field schemas
+    </Text>
+  );
+};
+
 const Page = () => {
   const field = useCurrentFieldValue();
   const { isNewField: newFieldMode } = useNewFieldMode();
@@ -103,8 +107,8 @@ const SchemaManagerFooter = () => {
   const { tab } = useSchemaEditorGUIJSONToggle();
   const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
     useSelectedFieldCounts();
-  const unhideFields = useUnhideSelectedFields();
-  const hideFields = useHideSelectedFields();
+  const activateFields = useActivateFields();
+  const deactivateFields = useDeactivateFields();
 
   // Don't show footer when editing a field (it has its own footer)
   if (field) {
@@ -127,7 +131,7 @@ const SchemaManagerFooter = () => {
   const selectedCount = isMovingToVisible
     ? hiddenSelectedCount
     : activeSelectedCount;
-  const onMove = isMovingToVisible ? unhideFields : hideFields;
+  const onMove = isMovingToVisible ? activateFields : deactivateFields;
 
   return (
     <ModalFooter>
@@ -155,7 +159,7 @@ const SchemaManagerFooter = () => {
               style={{ marginRight: 4 }}
             />
           )}
-          Move {selectedCount} to {isMovingToVisible ? "active" : "hidden"}{" "}
+          Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
           fields
         </Button>
       </Stack>
@@ -169,12 +173,6 @@ const Modal = () => {
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
   useSchemaManagerOpenSignal();
-
-  // Open on the schema currently IN USE — the active workflow task's
-  // schema, else the Explore lens — instead of always defaulting to
-  // dataset mode. One-shot per open (cleanup nulls the selection on
-  // close), so switching to "Dataset schema" afterwards sticks.
-  useOpenOnCurrentSchema();
 
   const { closeSchemaManager } = useSchemaManagerModal();
 
@@ -220,6 +218,8 @@ const Modal = () => {
             />
           </Button>
         </ModalHeader>
+
+        <Subheading />
 
         <Page />
 

@@ -7,9 +7,9 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
+import SchemaSettings from "./Schema/SchemaSettings";
 import { Entries, default as RenderSidebar } from "./Sidebar";
 import { Filter } from "./Sidebar/Entries";
-import SchemaLensRow from "./Sidebar/SchemaLensRow";
 import { createExploreIsDisabled } from "./Sidebar/InteractiveSidebar";
 import SidebarContainer from "./Sidebar/SidebarContainer";
 import ViewSelection from "./Sidebar/ViewSelection";
@@ -119,9 +119,10 @@ const Sidebar = () => {
 
   return (
     <SidebarContainer modal={false}>
+      <SchemaSettings />
+
       <TopContainer>
         <ViewSelection />
-        <SchemaLensRow padded={false} />
         <Filter />
       </TopContainer>
 

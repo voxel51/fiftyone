@@ -80,22 +80,16 @@ const Toggle = ({ name }: { name: string }) => {
 
 export const LABELS_GROUP_NAME = "Labels";
 export const PRIMITIVES_GROUP_NAME = "PRIMITIVES";
-/** Manager-only group of fields not yet set up for annotation. */
-export const UNSCANNED_GROUP_NAME = "UNSCANNED FIELDS";
 
 export const labelsExpanded = atom(true);
 export const primitivesExpanded = atom(true);
-// Collapsed by default: it is a setup affordance, not annotation work.
-export const unscannedExpanded = atom(false);
 
 const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
   [LABELS_GROUP_NAME]: labelsExpanded,
   [PRIMITIVES_GROUP_NAME]: primitivesExpanded,
-  [UNSCANNED_GROUP_NAME]: unscannedExpanded,
 };
 
 export const primitivesCount = atom(0);
-export const unscannedCount = atom(0);
 
 const Group = React.memo(({ name }: { name: string }) => {
   const theme = useTheme();
@@ -105,15 +99,12 @@ const Group = React.memo(({ name }: { name: string }) => {
   // unconditionally; the group name selects which value to show.
   const presentLabelCount = usePresentLabelCount();
   const primitives = useAtomValue(primitivesCount);
-  const unscanned = useAtomValue(unscannedCount);
   const count =
     name === LABELS_GROUP_NAME
       ? presentLabelCount
       : name === PRIMITIVES_GROUP_NAME
         ? primitives
-        : name === UNSCANNED_GROUP_NAME
-          ? unscanned
-          : null;
+        : null;
 
   return (
     <div

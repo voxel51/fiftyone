@@ -166,20 +166,6 @@ export const GUISectionHeader = styled.div`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-/**
- * Wraps a selectable RichList so its unchecked checkboxes take the
- * same secondary color as the row's field-type text: voodo's default
- * border token is close to invisible on the card background.
- */
-export const SelectableList = styled.div`
-  [role="checkbox"]:not([data-checked]) {
-    border-color: ${({ theme }) => theme.text.secondary};
-  }
-  [role="checkbox"]:not([data-checked]):hover {
-    border-color: ${({ theme }) => theme.primary.plainColor};
-  }
-`;
-
 export const CollapsibleHeader = styled(GUISectionHeader)`
   cursor: pointer;
   user-select: none;

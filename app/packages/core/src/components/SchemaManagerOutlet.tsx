@@ -24,7 +24,6 @@ import SchemaManagementProvider from "./Modal/Sidebar/Annotate/SchemaManagementP
 import { useAnnotationContextManager } from "./Modal/Sidebar/Annotate/useAnnotationContextManager";
 import useCanManageSchema from "./Modal/Sidebar/Annotate/useCanManageSchema";
 import { useEnsureSchemasLoaded } from "./Modal/Sidebar/Annotate/useEnsureSchemasLoaded";
-import { useSyncSchemaDataset } from "./Modal/Sidebar/Annotate/useSyncSchemaDataset";
 
 const SchemaManagerOutlet = () => {
   const canManage = useCanManageSchema();
@@ -33,23 +32,17 @@ const SchemaManagerOutlet = () => {
   // Run unconditionally so effect cleanups stay stable across readiness
   // flips. Schema loading remains disabled until its operator is available.
   useSchemaManagerUrl();
-  // Scope the schema atoms to the current dataset (runs for every viewer:
-  // the Annotate sidebar reads the same atoms).
-  useSyncSchemaDataset();
   useEnsureSchemasLoaded(canManage && operatorAvailable);
   // The context-manager implementation registers app-level (not gated on
   // `canManage` — enter/exit must work regardless, and programmatic entry
   // via the `annotate` operator can precede the modal mounting).
   useRegisterAnnotationContextManager(useAnnotationContextManager());
 
-  if (!canManage) return null;
+  if (!canManage || !operatorAvailable) return null;
 
-  // The modal mounts the moment it is requested — even while the operator
-  // registry is still loading — and shows its own loading state; a click
-  // that silently does nothing reads as broken.
   return (
     <>
-      {operatorAvailable && <SchemaManagementProvider />}
+      <SchemaManagementProvider />
       {schemaManagerDisplayed && <SchemaManager />}
     </>
   );

@@ -60,79 +60,12 @@ export class SchemaManagerPom {
   }
 
   /**
-   * The schema row's dropdown trigger (grid sidebar and sample modal).
-   * "Manage schema" lives inside its menu; the standalone gear only
-   * renders where the row does not (inside a workflow task). Both the
-   * grid sidebar and the sample modal render the row; with the modal
-   * open, its trigger is the one on top.
-   */
-  async lensTrigger() {
-    const modal = this.page.getByTestId("modal");
-    if (await modal.isVisible()) {
-      return modal.getByTestId("schema-lens-select");
-    }
-    return this.page.getByTestId("schema-lens-select").first();
-  }
-
-  /**
    * Open the schema manager modal. The sample modal must be open for the
    * schema manager modal to open
    */
   async open() {
-    // the lens menu holds the entry when the lens row is shown; the plain
-    // button otherwise
-    const trigger = await this.lensTrigger();
-    const viaLens = await trigger.isVisible();
-    await this.eventUtils.after("e2e:schema-manager:opened", async () => {
-      if (viaLens) {
-        await trigger.click();
-        await this.page
-          .getByRole("menu")
-          .getByTestId("open-schema-manager")
-          .click();
-        return;
-      }
-
-      await this.page.getByTestId("open-schema-manager").click();
-    });
-  }
-
-  /**
-   * Create a custom schema from the actions menu. The manager switches to
-   * the new schema, whose rows can be moved between Active and Hidden.
-   *
-   * @param name The schema name (unique per dataset)
-   */
-  async createSchema(name: string) {
-    await this.locator.getByTestId("schema-actions-menu").click();
-    await this.page.getByRole("menu").getByTestId("schema-action-new").click();
-    await this.locator.getByTestId("schema-name-input").fill(name);
-    await this.eventUtils.after(
-      "e2e:schema-manager:schema-shown",
-      () =>
-        this.locator.getByRole("button", { name: "Save", exact: true }).click(),
-      (e) => (e.detail as { name: string | null }).name === name,
-    );
-  }
-
-  /**
-   * Apply a custom schema as the sidebar's schema lens, or the dataset
-   * default when no name is given. The dataset default shows every field;
-   * only a custom schema hides fields.
-   *
-   * @param name The schema name, or undefined for the default
-   */
-  async applyLens(name?: string) {
-    const trigger = await this.lensTrigger();
-    await trigger.click();
-    const menu = this.page.getByRole("menu");
-    const option = name
-      ? menu.getByTestId("schema-lens-option").filter({ hasText: name })
-      : menu.getByTestId("schema-lens-option-default");
-    await this.eventUtils.after(
-      "e2e:sidebar:lens-applied",
-      () => option.click(),
-      (e) => (e.detail as { name: string | null }).name === (name ?? null),
+    await this.eventUtils.after("e2e:schema-manager:opened", () =>
+      this.page.getByTestId("open-schema-manager").click(),
     );
   }
 
@@ -240,21 +173,25 @@ class SchemaManagerAsserter {
   }
 
   /**
-   * Is the schema entry point (the schema row's trigger) disabled
+   * Is the "Add schema" button disabled
    */
   async isDisabled() {
-    expect(await (await this.schemaManagerPom.lensTrigger()).isDisabled()).toBe(
-      true,
-    );
+    expect(
+      await this.schemaManagerPom.page
+        .getByTestId("open-schema-manager")
+        .isDisabled(),
+    ).toBe(true);
   }
 
   /**
-   * Is the schema entry point (the schema row's trigger) enabled
+   * Is the "Add schema" button enabled
    */
   async isEnabled() {
-    expect(await (await this.schemaManagerPom.lensTrigger()).isEnabled()).toBe(
-      true,
-    );
+    expect(
+      await this.schemaManagerPom.page
+        .getByTestId("open-schema-manager")
+        .isEnabled(),
+    ).toBe(true);
   }
 
   /**

@@ -24,7 +24,7 @@ import {
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { AnnotationLabel, useGetKeypointSkeleton } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
-import { isFieldBboxLocked, labelSchemaData } from "./state";
+import { isFieldReadOnly, labelSchemaData } from "./state";
 
 /**
  * Hook which provides a method for creating an {@link AnnotationLabel}.
@@ -71,11 +71,10 @@ export const useCreateAnnotationLabel = () => {
         const label = data as DetectionOverlayOptions["label"];
         const boundingBox = label?.bounding_box;
 
-        // Field read-only or stage-policy bbox lock: either way a
-        // new box must not be movable/resizable.
+        // Check if field is read-only
         const store = getDefaultStore();
         const fieldSchema = store.get(labelSchemaData(field));
-        const isReadOnly = isFieldBboxLocked(fieldSchema);
+        const isReadOnly = isFieldReadOnly(fieldSchema);
 
         // Pre-decode `mask_path` masks. The caller-provided resolver maps
         // the structural path to a fetchable URL; we don't fetch

@@ -4,7 +4,10 @@ import {
   Button,
   Icon,
   IconName,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -24,7 +27,6 @@ import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
-import AttributeMoveAction from "./AttributeMoveAction";
 import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
@@ -153,7 +155,23 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
       <Errors errors={labelSchema.errors} />
 
       <Footer
-        leftContent={hasSavedSchema ? <AttributeMoveAction /> : undefined}
+        leftContent={
+          hasSavedSchema ? (
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              style={{ alignItems: "center" }}
+            >
+              <Toggle
+                data-cy={"toggle-visibility"}
+                size={Size.Md}
+                checked={labelSchema.isFieldVisible}
+                onChange={labelSchema.toggleVisibility}
+              />
+              <Text variant={TextVariant.Lg}>Visible field</Text>
+            </Stack>
+          ) : undefined
+        }
         secondaryButton={{
           onClick: labelSchema.discard,
           disabled: !labelSchema.hasChanges,

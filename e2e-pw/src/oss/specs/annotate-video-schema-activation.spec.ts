@@ -139,23 +139,6 @@ const assertBothFieldsRendered = async (modal: ModalPom) => {
   await va.assert.labelListed("approach", true);
 };
 
-/**
- * Hide `field` through a fresh custom schema and view the sample through
- * it: the dataset default shows every field, so gating is exercised via a
- * schema that hides the field, applied as the sidebar's schema lens.
- */
-const hideThroughSchema = async (
-  schemaManager: SchemaManagerPom,
-  schemaName: string,
-  field: string,
-) => {
-  await schemaManager.open();
-  await schemaManager.createSchema(schemaName);
-  await schemaManager.deactivateField(field);
-  await schemaManager.close();
-  await schemaManager.applyLens(schemaName);
-};
-
 test.describe.serial("video annotation schema activation gating", () => {
   test("deactivating a frame field hides its canvas overlays, timeline tracks, and sidebar rows", async ({
     fiftyoneLoader,
@@ -169,9 +152,11 @@ test.describe.serial("video annotation schema activation gating", () => {
     await assertBothFieldsRendered(modal);
 
     await va.afterTracksChange(() =>
-      va.afterCanvasFields({ [FRAME_FIELD]: false }, () =>
-        hideThroughSchema(schemaManager, "no-frame-field", FRAME_FIELD),
-      ),
+      va.afterCanvasFields({ [FRAME_FIELD]: false }, async () => {
+        await schemaManager.open();
+        await schemaManager.deactivateField(FRAME_FIELD);
+        await schemaManager.close();
+      }),
     );
 
     // the frame field is gone everywhere; the TD field is untouched
@@ -196,9 +181,11 @@ test.describe.serial("video annotation schema activation gating", () => {
     await assertBothFieldsRendered(modal);
 
     await va.afterTracksChange(() =>
-      va.afterCanvasFields({ [TD_FIELD]: false }, () =>
-        hideThroughSchema(schemaManager, "no-td-field", TD_FIELD),
-      ),
+      va.afterCanvasFields({ [TD_FIELD]: false }, async () => {
+        await schemaManager.open();
+        await schemaManager.deactivateField(TD_FIELD);
+        await schemaManager.close();
+      }),
     );
 
     // the TD field is gone everywhere; the frame field is untouched
@@ -222,16 +209,17 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    // hide, confirm it's gone from the canvas, then show it again
+    // deactivate, confirm it's gone from the canvas, then reactivate
     await va.afterTracksChange(() =>
-      va.afterCanvasFields({ [FRAME_FIELD]: false }, () =>
-        hideThroughSchema(schemaManager, "toggle-frame-field", FRAME_FIELD),
-      ),
+      va.afterCanvasFields({ [FRAME_FIELD]: false }, async () => {
+        await schemaManager.open();
+        await schemaManager.deactivateField(FRAME_FIELD);
+        await schemaManager.close();
+      }),
     );
     await va.assert.canvasRendersField(FRAME_FIELD, false);
     await va.assert.objectTrackCount(0);
 
-    // the manager opens on the schema in use; closing it re-applies the lens
     await va.afterTracksChange(() =>
       va.afterCanvasFields({ [FRAME_FIELD]: true }, async () => {
         await schemaManager.open();
