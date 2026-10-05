@@ -29,10 +29,11 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
 
   if (isCompositeView(schema)) {
     const hasOverlay = !!schema?.view?.overlay;
-    const sxForOverlay = overlayToSx[schema?.view?.overlay] || {};
-    if (hasOverlay) {
-      sxForOverlay.zIndex = 999;
-    }
+    // copy: overlayToSx is shared module state
+    const sxForOverlay = {
+      ...(overlayToSx[schema?.view?.overlay] || {}),
+      ...(hasOverlay ? { zIndex: 999 } : {}),
+    };
     return (
       <Box sx={{ position: "relative", height: "100%", ...sxForOverlay }}>
         {containerizedChildren}
