@@ -138,6 +138,15 @@ module.exports = {
   },
   overrides: [
     {
+      // CommonJS config files and build scripts run in Node
+      files: [
+        "**/*.config.js",
+        "**/.eslintrc.js",
+        "packages/*/scripts/**/*.js",
+      ],
+      env: { node: true },
+    },
+    {
       // Tests and mocks stub out interfaces with empty methods
       files: [
         "**/*.test.*",
