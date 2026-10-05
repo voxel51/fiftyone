@@ -600,7 +600,7 @@ const buildDateTimeOpts = (timeZone: string): Intl.DateTimeFormatOptions => {
 
 export const formatDateTime = (
   timeStamp: number,
-  timeZone: string = "local",
+  timeZone = "local",
 ): string => {
   const MS = 1000;
   const S = 60 * MS;
@@ -637,7 +637,7 @@ export const formatDateTime = (
 
 export const formatLongDateTime = (
   timeStamp: number,
-  timeZone: string = "local",
+  timeZone = "local",
 ): string => {
   const options = buildDateTimeOpts(timeZone);
 

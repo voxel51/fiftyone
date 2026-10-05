@@ -143,7 +143,7 @@ describe("useRegisterCommandHandler", () => {
     );
 
     const bus = getCommandBus();
-    let result = await bus.execute(new TestCommand(5));
+    const result = await bus.execute(new TestCommand(5));
     expect(handler1).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ value: 10 });
 

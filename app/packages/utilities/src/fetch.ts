@@ -531,7 +531,7 @@ export const setFetchFunction = (
     path: string,
     body: A = null,
     result: FetchResultType = "json",
-    retries: number = 2,
+    retries = 2,
     retryCodes: number[] = [502, 503, 504],
     errorHandler: (response: Response) => void | Promise<void>,
     headers: Record<string, string>,

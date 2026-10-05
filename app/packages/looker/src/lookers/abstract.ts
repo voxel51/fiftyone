@@ -111,7 +111,7 @@ export abstract class AbstractLooker<
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
-  private isSampleUpdating: boolean = false;
+  private isSampleUpdating = false;
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];

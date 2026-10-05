@@ -330,7 +330,7 @@ export const ImaVidLookerReact = React.memo(
     useEffect(() => {
       // hack: poll every 10ms for total frame count
       // replace with event listener or callback
-      let intervalId = setInterval(() => {
+      const intervalId = setInterval(() => {
         const totalFrameCount =
           imaVidLookerRef.current.frameStoreController.totalFrameCount;
         if (totalFrameCount) {

@@ -29,11 +29,9 @@ const GlobalColorscale: React.FC = () => {
 
   const [input, setInput] = React.useState(setting?.name ?? "");
   const [tab, setTab] = React.useState(
-    Boolean(
-      (setting?.name || setting?.name !== "") &&
+    (setting?.name || setting?.name !== "") &&
       setting?.list &&
-      setting?.list.length > 0,
-    )
+      setting?.list.length > 0
       ? "list"
       : "name",
   );
@@ -157,7 +155,7 @@ const GlobalColorscale: React.FC = () => {
             <a
               href="https://plotly.com/python/colorscales/"
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
               title="what is named colorscale"
             >
               <InfoOutlinedIcon

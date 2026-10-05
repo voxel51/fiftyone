@@ -170,8 +170,8 @@ export function hslToRgb(
  */
 export function generateColorFromId(
   id: string,
-  saturation: number = 70,
-  lightness: number = 50,
+  saturation = 70,
+  lightness = 50,
 ): string {
   // Create a hash from the overlay ID for deterministic color generation
   let hash = 0;

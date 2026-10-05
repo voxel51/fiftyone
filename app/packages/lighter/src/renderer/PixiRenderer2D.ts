@@ -984,7 +984,7 @@ export class PixiRenderer2D implements Renderer2D {
    * Adjusts the viewport zoom and pan so that the given world-space rectangle
    * is centered and fully visible, with optional padding.
    */
-  fitToRect(worldRect: Rect, padding: number = 0): void {
+  fitToRect(worldRect: Rect, padding = 0): void {
     if (!this.viewport || this.viewport.destroyed) return;
     if (!worldRect.width || !worldRect.height) return;
 

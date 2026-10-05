@@ -39,7 +39,7 @@ export class DashLine {
   graphics: PIXI.Graphics;
 
   /** current length of the line */
-  lineLength: number = 0;
+  lineLength = 0;
 
   /** cursor location */
   cursor = new PIXI.Point();
@@ -152,8 +152,8 @@ export class DashLine {
 
       // find the first part of the dash for this line
       const place = this.lineLength % (this.dashSize * this.scale);
-      let dashIndex: number = 0,
-        dashStart: number = 0;
+      let dashIndex = 0,
+        dashStart = 0;
       let dashX = 0;
       for (let i = 0; i < this.dash.length; i++) {
         const dashSize = this.dash[i] * this.scale;
@@ -171,7 +171,7 @@ export class DashLine {
       while (remaining > 0) {
         // && count++ < 1000) {
         const dashSize = this.dash[dashIndex] * this.scale - dashStart;
-        let dist = remaining > dashSize ? dashSize : remaining;
+        const dist = remaining > dashSize ? dashSize : remaining;
         if (closed) {
           const remainingDistance = DashLine.distance(
             x0 + cos * dist,

@@ -40,17 +40,14 @@ export const useLighter = () => {
     };
   }, [scene]);
 
-  const addOverlay = useCallback(
-    (overlay: BaseOverlay, withUndo: boolean = false) => {
-      if (sceneRef.current) {
-        sceneRef.current.addOverlay(overlay, withUndo);
-      }
-    },
-    [],
-  );
+  const addOverlay = useCallback((overlay: BaseOverlay, withUndo = false) => {
+    if (sceneRef.current) {
+      sceneRef.current.addOverlay(overlay, withUndo);
+    }
+  }, []);
 
   const removeOverlay = useCallback(
-    (id: string, withUndo: boolean = false, lifecycle: boolean = false) => {
+    (id: string, withUndo = false, lifecycle = false) => {
       if (sceneRef.current) {
         sceneRef.current.removeOverlay(id, withUndo, lifecycle);
       }

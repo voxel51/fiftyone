@@ -357,7 +357,7 @@ const processSample = async ({
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
-  let maskTargetsBuffers: ArrayBuffer[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (is3d(sample?._media_type)) {
     // we process all 3d labels regardless of active paths

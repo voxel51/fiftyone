@@ -74,7 +74,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
         const currentData = current.data ? _.cloneDeep(current.data) : {}; // Clone the object
         const currentFrameData = _.get(currentData, path, { frames: [] })
           .frames[frameNumber];
-        let updatedData = { ...currentData };
+        const updatedData = { ...currentData };
         _.set(updatedData, target, currentFrameData); // Use lodash set to update safely
         return { ...current, data: updatedData };
       });

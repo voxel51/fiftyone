@@ -15,7 +15,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
         const f = get(modal ? modalFilters : filters);
         return getCallback(({ snapshot }) => (path: string, value: Point) => {
           path = snapshot.getLoadable(expandPath(path)).contents;
-          let result: boolean = true;
+          let result = true;
 
           const stringListFilters: string[] = [];
           const numberListFilters: string[] = [];

@@ -614,7 +614,7 @@ const useTarget = (field, target) => {
 };
 
 const AttrInfo = ({ label, field, labelType, children = null }) => {
-  let entries = Object.entries(label).filter(
+  const entries = Object.entries(label).filter(
     ([k]) => "tags" !== k && !k.startsWith("_"),
   );
   if (!entries || !entries.length) {

@@ -11,7 +11,7 @@ import { makeCheckboxRow } from "./util";
 export class OptionsPanelElement<
   State extends BaseState,
 > extends BaseElement<State> {
-  private showOptions: boolean = false;
+  private showOptions = false;
   getEvents(): Events<State> {
     return {
       click: ({ event }) => {

@@ -270,7 +270,7 @@ function createPlotlyHandlers(handleEvent: any) {
     // 'onUnhover',
     // 'onWebGlContextLost'
   ];
-  let handlers = {} as any;
+  const handlers = {} as any;
   for (const event of PLOTLY_EVENTS) {
     handlers[event] = handleEvent(event);
   }

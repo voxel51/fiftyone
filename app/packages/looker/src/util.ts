@@ -544,7 +544,7 @@ export const addToBuffers = (range: BufferRange, buffers: Buffers): Buffers => {
   let i = 0;
 
   while (i < buffers.length - 1) {
-    var current = buffers[i],
+    const current = buffers[i],
       next = buffers[i + 1];
 
     if (current[1] >= next[0] - 1) {

@@ -38,10 +38,7 @@ const getPrimitiveSchemaType = (type: string): string => {
  * Creates a disabled text input for read-only fields.
  * For array values, the data should be formatted as comma-separated before passing to the component.
  */
-export const createReadOnly = (
-  name: string,
-  type: string = "string",
-): SchemaType => {
+export const createReadOnly = (name: string, type = "string"): SchemaType => {
   return {
     type: getPrimitiveSchemaType(type),
     view: {
@@ -114,7 +111,7 @@ export const createSlider = (
 export const createRadio = (
   name: string,
   choices: string[] | number[],
-  type: string = "string",
+  type = "string",
 ) => {
   return {
     type,
@@ -177,7 +174,7 @@ export const createTags = (name: string, choices: string[] | number[]) => {
 export const createSelect = (
   name: string,
   choices: string[] | number[],
-  type: string = "string",
+  type = "string",
 ) => {
   return {
     type,

@@ -6,7 +6,7 @@ import {
 } from "@mui/material/styles";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
-let theme = extendMuiTheme({
+const theme = extendMuiTheme({
   colorSchemes: {
     light: createTheme({
       palette: {

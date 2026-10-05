@@ -105,11 +105,9 @@ const Colorscale: React.FC = () => {
   const [input, setInput] = React.useState(colorscaleValues?.name ?? "");
   const [tab, setTab] = React.useState(
     state.useFieldSetting
-      ? Boolean(
-          (setting?.name || setting?.name !== "") &&
-          setting?.list &&
-          setting?.list.length > 0,
-        )
+      ? (setting?.name || setting?.name !== "") &&
+        setting?.list &&
+        setting?.list.length > 0
         ? "list"
         : "name"
       : null,
@@ -248,7 +246,7 @@ const Colorscale: React.FC = () => {
                 <a
                   href={NAME_COLORSCALE}
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   title="what is named colorscale"
                 >
                   <InfoOutlinedIcon

@@ -699,7 +699,7 @@ export default function DashboardView(props: ViewPropsType) {
       }
 
       const rawClipboardData = await navigator.clipboard.readText();
-      let clipboardData = safeParseJSON(rawClipboardData);
+      const clipboardData = safeParseJSON(rawClipboardData);
 
       if (!clipboardData) {
         showNotification({

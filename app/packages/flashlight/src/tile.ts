@@ -10,7 +10,7 @@ const lastRow = (
   );
   if (aspectRatios.length && new Set(aspectRatios).size === 1) {
     let aspectRatio = aspectRatios[0];
-    let singleAR = aspectRatio;
+    const singleAR = aspectRatio;
     let counter = 1;
     while (aspectRatio < threshold) {
       aspectRatio += singleAR;

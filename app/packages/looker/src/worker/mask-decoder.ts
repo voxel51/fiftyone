@@ -40,7 +40,7 @@ export const decodeMaskOnDisk = async (
   field: string,
   coloring: Coloring,
 ) => {
-  let channels: number = 4;
+  let channels = 4;
 
   if (blob.type !== "image/jpg" && blob.type !== "image/jpeg") {
     const headerInfo = await getMaybePngHeader(blob);

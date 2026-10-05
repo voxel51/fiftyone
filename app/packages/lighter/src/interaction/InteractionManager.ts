@@ -1653,7 +1653,7 @@ export class InteractionManager {
    */
   private findHandlerAtPoint(
     point: Point,
-    skipCanonicalMedia: boolean = false,
+    skipCanonicalMedia = false,
   ): InteractionHandler | undefined {
     // Single-pass: find best handler at point using priority rules.
     // Priority: selected > highest selectable priority > topmost (reverse order).
