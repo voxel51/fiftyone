@@ -339,11 +339,9 @@ export const PainterFactory = (requestColor) => ({
         coloring.by === COLOR_BY.FIELD ||
         (maskTargets && Object.keys(maskTargets).length === 1)
       ) {
-        let fieldColor;
-
         // if field color has valid custom settings, use the custom field color
         // convert the color into hex code, since it could be a color name (e.g. yellowgreen)
-        fieldColor = setting?.fieldColor
+        const fieldColor = setting?.fieldColor
           ? setting.fieldColor
           : await requestColor(coloring.pool, coloring.seed, field);
         color = get32BitColor(convertToHex(fieldColor));

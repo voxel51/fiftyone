@@ -6,6 +6,7 @@ import {
 import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
 import { Coloring, Sample } from "..";
+import type { FrameSample } from "../state";
 import { LookerUtils } from "../lookers/shared";
 import { retrieveTransferables } from "../lookers/utils";
 import { accumulateOverlays } from "../overlays";
@@ -127,7 +128,10 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   worker.addEventListener("error", handleError);
 
   // filter sample to only include keys in job.labels
-  const pluckRelevant = (sample: Sample, frames = false) => {
+  const pluckRelevant = <T extends Sample | FrameSample>(
+    sample: T,
+    frames = false,
+  ): T => {
     const filtered = { ...sample };
     Object.keys(filtered).forEach((key) => {
       if (!job.labels.includes(frames ? `frames.${key}` : key)) {
@@ -139,7 +143,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     });
 
     if (filtered.frames?.length) {
-      filtered.frames = filtered.frames.map((frame) => {
+      filtered.frames = filtered.frames.map((frame: FrameSample) => {
         return pluckRelevant(frame, true);
       });
     }

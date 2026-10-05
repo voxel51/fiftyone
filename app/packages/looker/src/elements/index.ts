@@ -141,7 +141,10 @@ export const getImageElements: GetElements<ImageState> = (params) => {
 
 export const getVideoElements: GetElements<VideoState> = (params) => {
   const elements = {
-    node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
+    node: withEvents<VideoState, common.LookerElement<VideoState>>(
+      common.LookerElement,
+      video.withVideoLookerEvents(),
+    ),
     children: [
       {
         node: video.VideoElement,
@@ -250,7 +253,10 @@ export const getImaVidElements: GetElements<ImaVidState> = (params) => {
   );
 
   const elements = {
-    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
+    node: withEvents<ImaVidState, common.LookerElement<ImaVidState>>(
+      common.LookerElement,
+      imavid.withImaVidLookerEvents(),
+    ),
     children,
   };
 

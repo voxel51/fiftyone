@@ -22,7 +22,8 @@ export interface Coloring {
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
-  defaultMaskTargetsColors: MaskColorInput[];
+  // absent until a color scheme provides it
+  defaultMaskTargetsColors?: MaskColorInput[];
   maskTargets: {
     [field: string]: MaskTargets;
   };
@@ -184,8 +185,9 @@ export interface BaseOptions {
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
-  colorscale: Colorscale;
-  labelTagColors: CustomizeColor;
+  // absent from the defaults until the app supplies them
+  colorscale?: Colorscale;
+  labelTagColors?: CustomizeColor;
   selectedLabels: string[];
   selectedLabelTypes: Record<string, string>;
   labelSelectionStyle: {
@@ -483,7 +485,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   onlyShowHoveredLabel: false,
   filter: null,
   coloring: {
-    by: "field",
+    by: COLOR_BY.FIELD,
     points: true,
     pool: ["#000000"],
     scale: null,
@@ -542,9 +544,11 @@ export interface FrameSample {
   frame_number: number;
 }
 
-export interface VideoSample extends Sample {
+// An alias, not an interface: an interface extending Sample would have to fit
+// every named field to GenericLabel's index signature.
+export type VideoSample = Sample & {
   frames: [FrameSample];
-}
+};
 
 export interface FrameChunk {
   frames: FrameSample[];

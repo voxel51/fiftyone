@@ -28,7 +28,10 @@ import {
  */
 export function compareData(a: object, b: object): boolean {
   for (const p in a) {
-    if (a.hasOwnProperty(p) !== b.hasOwnProperty(p)) {
+    if (
+      Object.prototype.hasOwnProperty.call(a, p) !==
+      Object.prototype.hasOwnProperty.call(b, p)
+    ) {
       return false;
     } else if (a[p] != b[p]) {
       return false;

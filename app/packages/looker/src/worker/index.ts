@@ -91,6 +91,10 @@ const shouldProcessLabel = ({
  * 6. Await bitmap generation to finish.
  * 7. Transfer bitmaps and mask targets array buffers back to the main thread.
  */
+const isFulfilled = <T>(
+  result: PromiseSettledResult<T>,
+): result is PromiseFulfilledResult<T> => result.status === "fulfilled";
+
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
@@ -360,8 +364,9 @@ const processSample = async ({
   const maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (is3d(sample?._media_type)) {
-    // we process all 3d labels regardless of active paths
-    process3DLabels(schema, sample);
+    // we process all 3d labels regardless of active paths; a 3D media type
+    // means this is a sample, not a frame
+    process3DLabels(schema, sample as Sample);
   } else {
     const [bitmapPromises, moreMaskTargetsBuffers] = await processLabels(
       sample,
@@ -575,7 +580,7 @@ const getSendChunk =
       );
 
       const allLabelsResults = allLabelsPromiseResults
-        .filter((result) => result.status === "fulfilled")
+        .filter(isFulfilled)
         .map((result) => result.value);
 
       const allBuffers = allLabelsResults.map((result) => result[1]).flat();

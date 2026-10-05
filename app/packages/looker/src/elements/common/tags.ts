@@ -57,7 +57,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         timeZone,
       },
       playing,
-    }: Readonly<State>,
+      // only video states carry `playing`
+    }: Readonly<State & { playing?: boolean }>,
     sample: Readonly<Sample>,
   ) {
     this.handleFont(fontSize);

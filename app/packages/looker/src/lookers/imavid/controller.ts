@@ -217,7 +217,11 @@ export class ImaVidFramesController {
         },
       ).subscribe({
         next: (data) => {
-          if (data?.samples?.edges?.length) {
+          // a QueryTimeout result has no edges
+          const samples = data?.samples;
+          const edges =
+            samples && "edges" in samples ? samples.edges : undefined;
+          if (edges?.length) {
             // map of frame index to sample id resolved by image fetching promise
             // (insertion order preserved)
             const imageFetchPromisesMap: Map<
@@ -226,7 +230,7 @@ export class ImaVidFramesController {
             > = new Map();
 
             // update store
-            for (const { cursor, node } of data.samples.edges) {
+            for (const { cursor, node } of edges) {
               if (!node) {
                 continue;
               }
@@ -271,10 +275,8 @@ export class ImaVidFramesController {
               })
               .then(() => {
                 const newRange = [
-                  Number(data.samples.edges[0].cursor) + 1,
-                  Number(
-                    data.samples.edges[data.samples.edges.length - 1].cursor,
-                  ) + 1,
+                  Number(edges[0].cursor) + 1,
+                  Number(edges[edges.length - 1].cursor) + 1,
                 ] as BufferRange;
 
                 this.storeBufferManager.addNewRange(newRange);

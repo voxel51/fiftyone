@@ -246,12 +246,10 @@ export class ClassificationsOverlay<
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = state.options.alpha;
 
-    let [tlx, tly, w, h] = [
-      state.textPad + cx,
-      top + cy,
-      state.textPad * 3 + width,
-      state.fontSize + state.textPad * 3,
-    ];
+    let tlx = state.textPad + cx;
+    let tly = top + cy;
+    const w = state.textPad * 3 + width;
+    const h = state.fontSize + state.textPad * 3;
     ctx.beginPath();
     ctx.fillStyle = color;
     ctx.moveTo(tlx, tly);

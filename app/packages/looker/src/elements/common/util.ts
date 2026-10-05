@@ -15,6 +15,7 @@ import {
   BaseState,
   Coloring,
   CustomizeColor,
+  LabelTagColor,
   DispatchEvent,
 } from "../../state";
 
@@ -139,7 +140,7 @@ function getFallbackColor(
 }
 
 function getColorByField(
-  setting: CustomizeColor,
+  setting: Partial<CustomizeColor>,
   pool: readonly string[],
   seed: number,
   path: string,
@@ -153,7 +154,7 @@ function getColorByField(
 
 function getCurrentValue(
   isPrimitive: boolean,
-  setting: CustomizeColor,
+  setting: Partial<CustomizeColor>,
   param: string | RegularLabel | Regression,
   fallbackLabel: string,
   value: string | number | boolean,
@@ -178,7 +179,7 @@ function getCurrentValue(
 }
 
 function getTagColor(
-  setting: CustomizeColor,
+  setting: Partial<CustomizeColor>,
   pool: readonly string[],
   seed: number,
   param: string | RegularLabel | Regression,
@@ -197,7 +198,7 @@ function getTagColor(
 
 function getTargetColor(
   isPrimitive: boolean,
-  setting: CustomizeColor,
+  setting: Partial<CustomizeColor>,
   param: string | RegularLabel | Regression,
   key: string,
   value: string | number | boolean,
@@ -261,7 +262,7 @@ type ColorParams = {
   // if primitive fields
   value?: string | number | boolean;
   customizeColorSetting: CustomizeColor[];
-  labelTagColors?: CustomizeColor;
+  labelTagColors?: LabelTagColor;
   isValidColor: (string) => boolean;
 };
 
@@ -276,7 +277,7 @@ export function getAssignedColor({
   labelTagColors,
   isValidColor,
 }: ColorParams): string {
-  const setting =
+  const setting: Partial<CustomizeColor> =
     path === "_label_tags" || isTagged
       ? labelTagColors
       : findColorSetting(customizeColorSetting, path);
@@ -315,8 +316,9 @@ export function getAssignedColor({
 
   if (by === COLOR_BY.VALUE) {
     if (isTagged) {
+      // a tagged param is always a label, never a tag string
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
-        param.tags?.includes(pair.value),
+        (param as RegularLabel).tags?.includes(pair.value),
       )?.color;
       if (isValidColor(tagColor)) {
         return tagColor;

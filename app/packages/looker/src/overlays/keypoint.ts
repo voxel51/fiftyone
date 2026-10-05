@@ -138,11 +138,11 @@ export default class KeypointOverlay<
     state: Readonly<State>,
   ): [number, number | null] | null {
     const distances: [number, number][] = [];
-    let {
+    const {
       dimensions,
-      pointRadius,
       pixelCoordinates: [x, y],
     } = state;
+    let { pointRadius } = state;
     pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
 
     const skeleton = getSkeleton(this.field, state);

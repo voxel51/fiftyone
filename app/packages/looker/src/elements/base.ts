@@ -20,9 +20,8 @@ export type Events<
   >;
 };
 
-type LoadedEvents = {
-  [K in keyof HTMLElementEventMap]?: HTMLElementEventMap[K];
-};
+// the bound listeners registered in boot(), keyed by event type
+type LoadedEvents = Record<string, (event: Event) => void>;
 
 interface BootParams<State extends BaseState> {
   abortController: AbortController;
@@ -75,8 +74,11 @@ export abstract class BaseElement<
     this.element = this.createHTMLElement(dispatchEvent, config);
 
     for (const [eventType, handler] of Object.entries(this.getEvents(config))) {
+      // entries() loses the pairing between each key and its event type; the
+      // DOM delivers the matching event for each registered type
+      const typedHandler = handler as ElementEvent<State, Event>;
       this.events[eventType] = (event) =>
-        handler({ event, update, dispatchEvent });
+        typedHandler({ event, update, dispatchEvent });
       this.element?.addEventListener(eventType, this.events[eventType], {
         signal: abortController.signal,
       });

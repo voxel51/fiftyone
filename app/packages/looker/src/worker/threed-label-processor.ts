@@ -39,11 +39,13 @@ const getInferredParamsForUndefinedProjection = (
   let minY = Infinity;
   let maxY = -Infinity;
 
-  for (const [field, label] of Object.entries(sample)) {
+  for (const [field, value] of Object.entries(sample)) {
     const cls = getCls(field, schema);
-    if (typeof label !== "object" || !cls) {
+    if (typeof value !== "object" || !cls) {
       continue; // skip non-labels like "filepath", "id"
     }
+    // a Detections or Detection document, per `cls`
+    const label = value as Partial<DetectionsLabel> & Partial<DetectionLabel>;
 
     if (cls === DETECTIONS) {
       for (const detection of label.detections as DetectionLabel[]) {
@@ -118,7 +120,10 @@ const PainterFactory3D = (
 
     const [lx, ly, lz] = label.location; // centroid of bounding box
     const [dx, dy, dz] = label.dimensions; // length of bounding box in each dimension
-    const [rx, ry, rz] = label.rotation ?? [0, 0, 0]; // rotation of bounding box
+    // 3D boxes carry an [x, y, z] rotation (2D ones a scalar)
+    const [rx, ry, rz] = (label.rotation as [number, number, number]) ?? [
+      0, 0, 0,
+    ]; // rotation of bounding box
 
     const [nx, ny, nz] = normal ?? [0, 0, 1];
 

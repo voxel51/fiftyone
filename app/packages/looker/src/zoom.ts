@@ -13,6 +13,7 @@ import {
   Dimensions,
   FrameState,
   ImageState,
+  ImaVidState,
   VideoState,
 } from "./state";
 import { getContainingBox, mergeUpdates, snapBox } from "./util";
@@ -48,7 +49,7 @@ const adjustBox = (
 };
 
 export const zoomToContent = <
-  State extends FrameState | ImageState | VideoState,
+  State extends FrameState | ImageState | VideoState | ImaVidState,
 >(
   state: Readonly<State>,
   overlays: Overlay<State>[],
@@ -132,7 +133,7 @@ export const zoomAspectRatio = (
 
   recurse(sample, true);
 
-  let [_, __, width, height] = getContainingBox(points);
+  let [, , width, height] = getContainingBox(points);
 
   if (width === 0 || height === 0) {
     if (width === height) {

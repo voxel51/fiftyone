@@ -212,7 +212,10 @@ export class ImaVidFrameSamples {
     for (const [_field, value] of Object.entries(sample.sample)) {
       if (typeof value === "object" && value !== null && "_cls" in value) {
         if (value._cls === DETECTIONS) {
-          for (const detection of value.detections) {
+          const { detections } = value as {
+            detections: Parameters<typeof checkMask>[0][];
+          };
+          for (const detection of detections) {
             if (checkMask(detection)) {
               return true;
             }
