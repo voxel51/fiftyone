@@ -1,4 +1,3 @@
-// @ts-ignore
 import { getFragmentResourceForEnvironment } from "react-relay/lib/relay-hooks/FragmentResource";
 import { KeyType, KeyTypeData } from "react-relay/relay-hooks/helpers";
 import {
@@ -15,7 +14,6 @@ export function loadContext(
   data: unknown,
 ) {
   const node = getFragment(fragment);
-  // @ts-ignore
   if (!data["__fragments"][node.name]) {
     throw new Error(`fragment ${node.name} not present`);
   }

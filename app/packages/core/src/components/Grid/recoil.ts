@@ -166,8 +166,10 @@ export const gridCrop = selector({
 
 // ensure navigator is defined
 const deviceMemory =
-  // @ts-ignore
-  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
+  typeof navigator !== "undefined"
+    ? // not in lib.dom: Chromium-only Device Memory API
+      (navigator as Navigator & { deviceMemory?: number })?.deviceMemory || 8
+    : 8;
 
 export const maxGridItemsSizeBytes = atom({
   key: "maxGridItemsSizeBytes",

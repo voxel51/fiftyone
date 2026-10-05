@@ -17,7 +17,8 @@ export const useUpdateSamples = () => {
             if (record) {
               sampleStore.samples.set(id, { ...record, sample });
 
-              // @ts-ignore
+              // @ts-expect-error lookers is a union and each updateSample takes
+              // its own sample type; the stored sample matches its looker
               sampleStore.lookers.get(id)?.updateSample(sample);
             }
           }

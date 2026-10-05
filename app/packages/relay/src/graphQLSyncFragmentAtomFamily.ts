@@ -95,7 +95,6 @@ export function graphQLSyncFragmentAtomFamily<
                     for (let i = 0; i < fragmentOptions.fragments.length; i++) {
                       const fragment = fragmentOptions.fragments[i];
                       if (fragmentOptions?.keys[i]) {
-                        // @ts-ignore
                         data = data[fragmentOptions.keys[i]];
                       }
 
@@ -109,7 +108,6 @@ export function graphQLSyncFragmentAtomFamily<
                         );
                       }
 
-                      // @ts-ignore
                       ctx = loadContext(
                         fragment,
                         preloadedQuery.environment,

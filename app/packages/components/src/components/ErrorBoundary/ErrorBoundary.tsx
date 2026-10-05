@@ -190,7 +190,6 @@ const ErrorBoundary: React.FC<
     Fallback?: ComponentType;
   }>
 > = ({ children, onReset, disableReset, Fallback }) => {
-  // @ts-ignore
   return (
     <Boundary
       FallbackComponent={TrackFallback(Fallback, onReset, disableReset)}

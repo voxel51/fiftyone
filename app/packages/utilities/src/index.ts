@@ -695,7 +695,7 @@ export const formatPrimitive = ({
     }
   }
 
-  // @ts-ignore
+  // @ts-expect-error Primitive is wider than prettify's parameter type
   return prettify(value);
 };
 

@@ -197,7 +197,8 @@ export function sessionAtom<K extends keyof Session>(
           );
         }
 
-        // @ts-ignore
+        // @ts-expect-error setters is keyed by the session-atom keys, a
+        // subset of keyof Session that K is not narrowed to
         setters[options.key] = (value: Session[K]) => {
           const resolved = value === undefined ? options.default : value;
           setSelf(resolved);
