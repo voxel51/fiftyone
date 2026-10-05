@@ -33,7 +33,10 @@ vi.mock("@fiftyone/video-annotation", () => ({
   },
 }));
 
-import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
+import {
+  AnnotateTimelineExtensions,
+  VideoTimelineExtensions,
+} from "./VideoTimelineExtensions";
 
 const SAMPLE = {
   sample: { _id: "sample-1", filepath: "/videos/clip.mp4" },
@@ -101,5 +104,52 @@ describe("VideoTimelineExtensions", () => {
       hostRow,
       ROW,
     ]);
+  });
+});
+
+describe("AnnotateTimelineExtensions", () => {
+  const registerRowsAndRuler = (overlay: (labelWidth: number) => string) =>
+    registerTimelineExtension({
+      id: "test:ruler",
+      order: 1,
+      Component: ({ children }: TimelineExtensionComponentProps) => (
+        <>
+          {children({
+            sections: [
+              { id: "test:rows", label: "Rows", order: 1, tracks: [ROW] },
+            ],
+            rulerOverlay: overlay,
+            runtime: <span data-cy="test-runtime" />,
+          })}
+        </>
+      ),
+    });
+
+  it("draws the extensions' ruler overlays and nothing else they contribute", () => {
+    unregister = registerRowsAndRuler((labelWidth) => `marker@${labelWidth}`);
+    const hostRow = { ...ROW, id: "fiftyone:host-row" };
+
+    render(
+      <AnnotateTimelineExtensions
+        sample={SAMPLE}
+        additionalTracks={[hostRow]}
+      />,
+    );
+
+    const props = env.tracksProps.mock.lastCall?.[0];
+    expect(props.additionalTracks).toEqual([hostRow]);
+    expect(props.decorateAdditionalTrack).toBeUndefined();
+    expect(props.runtime).toBeUndefined();
+    expect(render(<>{props.rulerOverlay(120)}</>).container.textContent).toBe(
+      "marker@120",
+    );
+  });
+
+  it("leaves the playhead where it is when the video has a published focus", () => {
+    publishSampleFocus({ "sample-1": { startUs: 2_500_000 } });
+
+    render(<AnnotateTimelineExtensions sample={SAMPLE} />);
+
+    expect(env.seek).not.toHaveBeenCalled();
   });
 });

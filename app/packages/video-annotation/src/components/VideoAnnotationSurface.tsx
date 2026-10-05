@@ -155,6 +155,11 @@ const STRATEGY_REGISTRAR: Record<DecodeStrategy, React.FC<RegistrarProps>> = {
 
 export interface VideoAnnotationSurfaceProps {
   sample: ModalSample;
+  /** The timeline to render, inside the surface's providers. Hosts pass one
+   *  that adds their extensions' ruler overlays. */
+  Timeline?: React.ComponentType<
+    React.ComponentProps<typeof FrameLabelsTracks>
+  >;
 }
 
 /** e2e specs wait on the surface lifting its cover */
@@ -186,6 +191,7 @@ const RevealedSignal = () => {
  */
 export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   sample,
+  Timeline,
 }) => (
   // One mount per sample. Everything below is resolved from the sample at mount
   // and never rebuilt: the frame stream `RegisterDynamicGroupImage` constructs, the
@@ -195,12 +201,13 @@ export const VideoAnnotationSurface: React.FC<VideoAnnotationSurfaceProps> = ({
   <VideoAnnotationSurfaceForSample
     key={sample.sample._id ?? sample.sample.id}
     sample={sample}
+    Timeline={Timeline}
   />
 );
 
 const VideoAnnotationSurfaceForSample: React.FC<
   VideoAnnotationSurfaceProps
-> = ({ sample }) => {
+> = ({ sample, Timeline = FrameLabelsTracks }) => {
   const labelsMode = useLabelsMode();
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   useReportAnnotationSurface(isImageDynamicGroupVideo ? "dgva" : "video");
@@ -339,7 +346,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
         {labelsMode === "synthetic" ? (
           <SyntheticTrackTimeline />
         ) : (
-          <FrameLabelsTracks
+          <Timeline
             sample={sample}
             maxSize={timelineMaxSize}
             extraActions={<VideoAnnotationToolbar />}

@@ -50,34 +50,18 @@ const ExtendedTracks: React.FC<
 };
 
 /**
- * The video modal's read-only timeline, running the registered timeline
- * extensions over it, a video being an episode with one stream, and opening
- * it at its published focus. Must render inside the surface's
+ * Run the registered timeline extensions for `sample`, handing their composed
+ * contributions to `children`. Must render inside the surface's
  * `PlaybackProvider`.
  */
-export const VideoTimelineExtensions: React.FC<
-  TracksProps & { sample: fos.ModalSample }
-> = (props) => {
-  const { sample } = props;
+const TimelineExtensions: React.FC<{
+  sample: fos.ModalSample;
+  children: (composition: TimelineComposition) => React.ReactNode;
+}> = ({ sample, children }) => {
   const dataset = fos.useCurrentDataset();
   const schema = fos.useModalSampleSchema();
   const mediaField = fos.useSelectedMediaFieldModal();
   const durationSec = useDuration();
-
-  const sampleId = sample.sample._id;
-  const identity = useMemo(
-    () => ({ sample: { sample: { _id: sampleId } } }),
-    [sampleId],
-  );
-  const focus = useSampleFocus(identity);
-  const { seek } = usePlayback();
-  const seeked = useRef<string | null>(null);
-  useEffect(() => {
-    // A seek before the duration is known clamps to the start
-    if (!focus || durationSec <= 0 || seeked.current === sampleId) return;
-    seeked.current = sampleId;
-    seek(Number(focus.startNs) / 1e9);
-  }, [seek, durationSec, focus, sampleId]);
 
   const ctx = useMemo(
     () =>
@@ -100,10 +84,7 @@ export const VideoTimelineExtensions: React.FC<
     [durationSec],
   );
 
-  const renderTracks = (composition: TimelineComposition) => (
-    <ExtendedTracks {...props} composition={composition} />
-  );
-  if (!ctx) return renderTracks(NO_EXTENSIONS);
+  if (!ctx) return <>{children(NO_EXTENSIONS)}</>;
   return (
     <TimelineExtensionHost
       builtInSections={NO_SECTIONS}
@@ -113,7 +94,59 @@ export const VideoTimelineExtensions: React.FC<
       session={null}
       timeRange={timeRange}
     >
-      {renderTracks}
+      {children}
     </TimelineExtensionHost>
   );
 };
+
+/**
+ * The video modal's read-only timeline, running the registered timeline
+ * extensions over it, a video being an episode with one stream, and opening
+ * it at its published focus. Must render inside the surface's
+ * `PlaybackProvider`.
+ */
+export const VideoTimelineExtensions: React.FC<
+  TracksProps & { sample: fos.ModalSample }
+> = (props) => {
+  const { sample } = props;
+  const durationSec = useDuration();
+
+  const sampleId = sample.sample._id;
+  const identity = useMemo(
+    () => ({ sample: { sample: { _id: sampleId } } }),
+    [sampleId],
+  );
+  const focus = useSampleFocus(identity);
+  const { seek } = usePlayback();
+  const seeked = useRef<string | null>(null);
+  useEffect(() => {
+    // A seek before the duration is known clamps to the start
+    if (!focus || durationSec <= 0 || seeked.current === sampleId) return;
+    seeked.current = sampleId;
+    seek(Number(focus.startNs) / 1e9);
+  }, [seek, durationSec, focus, sampleId]);
+
+  return (
+    <TimelineExtensions sample={sample}>
+      {(composition) => <ExtendedTracks {...props} composition={composition} />}
+    </TimelineExtensions>
+  );
+};
+
+/**
+ * Annotate's timeline, drawing the registered extensions' ruler overlays. Their
+ * rows and focus stay with the read-only timeline. Must render inside the
+ * surface's `PlaybackProvider`.
+ */
+export const AnnotateTimelineExtensions: React.FC<
+  React.ComponentProps<typeof FrameLabelsTracks>
+> = (props) =>
+  props.sample ? (
+    <TimelineExtensions sample={props.sample}>
+      {(composition) => (
+        <FrameLabelsTracks {...props} rulerOverlay={composition.rulerOverlay} />
+      )}
+    </TimelineExtensions>
+  ) : (
+    <FrameLabelsTracks {...props} />
+  );

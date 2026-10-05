@@ -9,6 +9,7 @@ import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
 import { VideoLookerSurface } from "./VideoLookerSurface";
+import { AnnotateTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -116,7 +117,12 @@ const ModalLookerContent = React.memo(
 
     if (isVideo) {
       if (isAnnotate) {
-        return <VideoAnnotationSurface sample={sample} />;
+        return (
+          <VideoAnnotationSurface
+            sample={sample}
+            Timeline={AnnotateTimelineExtensions}
+          />
+        );
       }
       return <VideoLookerSurface sample={sample} />;
     }
