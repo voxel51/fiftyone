@@ -533,28 +533,29 @@ export const removeFromBuffers = (
 };
 
 export const addToBuffers = (range: BufferRange, buffers: Buffers): Buffers => {
-  buffers = [...buffers];
-  buffers.push(range);
+  // copy the ranges too: merging extends them, and the input is state
+  const merged: BufferRange[] = buffers.map(([start, end]) => [start, end]);
+  merged.push([range[0], range[1]]);
 
-  buffers.sort((a, b) => {
+  merged.sort((a, b) => {
     return a[0] - b[0];
   });
 
   let i = 0;
 
-  while (i < buffers.length - 1) {
-    const current = buffers[i],
-      next = buffers[i + 1];
+  while (i < merged.length - 1) {
+    const current = merged[i],
+      next = merged[i + 1];
 
     if (current[1] >= next[0] - 1) {
       current[1] = Math.max(current[1], next[1]);
-      buffers.splice(i + 1, 1);
+      merged.splice(i + 1, 1);
     } else {
       i++;
     }
   }
 
-  return buffers;
+  return merged;
 };
 
 export const getDPR = (() => {
