@@ -167,7 +167,8 @@ export class ExecutionContext {
     return this._currentContext.activeFields;
   }
   getCurrentPanelId(): string | null {
-    return this.params.panel_id || this.currentPanel?.id || null;
+    const { panel_id } = this.params as { panel_id?: string };
+    return panel_id || this.currentPanel?.id || null;
   }
   trigger(operatorURI: string, params: object = {}) {
     if (!this.executor) {
@@ -352,7 +353,9 @@ export class Operator {
   }
   async needsUserInput(ctx: ExecutionContext) {
     const inputs = await this.resolveInput(ctx);
-    return inputs && inputs.type && inputs.type.properties.size > 0;
+    return (
+      inputs && inputs.type && (inputs.type as types.Object).properties.size > 0
+    );
   }
   needsResolution() {
     return this.config.dynamic;
@@ -373,7 +376,7 @@ export class Operator {
     }
     return false;
   }
-  useHooks(): unknown {
+  useHooks(_ctx?: ExecutionContext): unknown {
     // This can be overridden to use hooks in the execute function
     return {};
   }
@@ -393,7 +396,9 @@ export class Operator {
     }
     return null;
   }
-  async resolvePlacement(): Promise<void | null | types.Placement> {
+  async resolvePlacement(
+    _ctx: ExecutionContext,
+  ): Promise<void | null | types.Placement> {
     return null;
   }
   async execute(ctx: ExecutionContext): Promise<unknown> {
@@ -401,16 +406,12 @@ export class Operator {
     throw new Error(`Operator ${this.uri} does not implement execute`);
   }
   public isRemote = false;
-  static fromRemoteJSON(json: object) {
+  static fromRemoteJSON(json: OperatorJSON) {
     const operator = this.fromJSON(json);
     operator.isRemote = true;
     return operator;
   }
-  static fromJSON(json: {
-    plugin_name: string;
-    _builtin: boolean;
-    config: object;
-  }) {
+  static fromJSON(json: OperatorJSON) {
     const config = OperatorConfig.fromJSON(json.config);
     const operator = new Operator(json.plugin_name, json._builtin, config);
     return operator;
@@ -427,6 +428,9 @@ class OperatorRegistry {
   }
   operatorExists(uri: string) {
     return this.operators.has(uri);
+  }
+  list(): Operator[] {
+    return Array.from(this.operators.values());
   }
 }
 
@@ -450,14 +454,11 @@ export function _registerBuiltInOperator(OperatorType: typeof Operator) {
 export async function loadOperatorsFromServer(datasetName: string) {
   initializationErrors = [];
   try {
-    const { operators, errors } = await getFetchFunction()(
-      "POST",
-      "/operators",
-      { dataset_name: datasetName },
-    );
-    const operatorInstances = operators.map((d: object) =>
-      Operator.fromRemoteJSON(d),
-    );
+    const { operators, errors } = await getFetchFunction()<
+      unknown,
+      LoadOperatorsResponse
+    >("POST", "/operators", { dataset_name: datasetName });
+    const operatorInstances = operators.map((d) => Operator.fromRemoteJSON(d));
     for (const operator of operatorInstances) {
       remoteRegistry.register(operator);
     }
@@ -473,17 +474,16 @@ export async function loadOperatorsFromServer(datasetName: string) {
       }
     }
 
-    return operators
-      .filter((d: { panel?: { panel_name?: string } }) => d.panel)
-      .map((d: { panel?: { panel_name?: string } }) => d.panel);
+    return operators.filter((d) => d.panel).map((d) => d.panel);
   } catch (e) {
     initializationErrors.push({
       reason: "Error loading operators from server",
       details: stringifyError(e),
     });
     if (e instanceof ServerError) {
-      const errorBody = e.bodyResponse;
-      if (errorBody && errorBody.kind === "Server Error") {
+      // bodyResponse is typed string but holds the parsed JSON error body
+      const errorBody: unknown = e.bodyResponse;
+      if (isServerErrorBody(errorBody) && errorBody.kind === "Server Error") {
         console.error("Error loading operators from server:");
         console.error(errorBody.stack);
       } else {
@@ -514,8 +514,8 @@ export function getLocalOrRemoteOperator(operatorURI) {
 }
 
 export function listLocalAndRemoteOperators() {
-  const localOperators = Array.from(localRegistry.operators.values());
-  const remoteOperators = Array.from(remoteRegistry.operators.values());
+  const localOperators = localRegistry.list();
+  const remoteOperators = remoteRegistry.list();
   return {
     localOperators,
     remoteOperators,
@@ -540,9 +540,7 @@ enum MessageType {
 }
 
 class ExecutionResult {
-  constructor(result) {
-    this.result = result;
-  }
+  constructor(public result: unknown) {}
   fromJSON(json) {
     return new ExecutionResult(json.result);
   }
@@ -576,7 +574,13 @@ function formatSelectedLabels(selectedLabels) {
   const labels = [];
   if (Array.isArray(selectedLabels) && selectedLabels.length > 0) {
     return selectedLabels.map((label) => {
-      const formattedLabel = {
+      const formattedLabel: {
+        field: string;
+        label_id: string;
+        sample_id: string;
+        instance: { _cls: string; _id: string };
+        frame_number?: number;
+      } = {
         field: label.field,
         label_id: label.labelId,
         sample_id: label.sampleId,
@@ -609,12 +613,66 @@ export function formatSelectionPayload(currentContext: Partial<RawContext>) {
   };
 }
 
+/*
+ * Response shapes of the /operators endpoints
+ */
+
+type OperatorJSON = {
+  plugin_name: string;
+  _builtin: boolean;
+  config: object;
+  panel?: { panel_name?: string };
+};
+
+type LoadOperatorsResponse = {
+  operators: OperatorJSON[];
+  errors?: unknown[];
+};
+
+type OperatorExecutionResponse = {
+  result: unknown;
+  delegated?: boolean;
+  error?: string;
+  error_message?: string;
+  executor?: { requests: RawInvocationRequest[]; logs: string[] };
+};
+
+type GeneratorStreamParser = {
+  abort: () => void;
+  parse: (
+    callback: (chunk: OperatorExecutionResponse) => void,
+  ) => Promise<void>;
+};
+
+type ResolveTypeResponse = types.PropertyJSON & {
+  error?: string;
+  name?: string;
+};
+
+type ExecutionOptionsResponse = {
+  orchestrator_registration_enabled: boolean;
+  allow_immediate_execution: boolean;
+  allow_delegated_execution: boolean;
+  available_orchestrators?: Parameters<typeof Orchestrator.fromJSON>[0][];
+  default_choice_to_delegated?: boolean;
+};
+
+type ResolvePlacementsResponse = {
+  error?: string;
+  placements: { operator_uri: string; placement: unknown }[];
+};
+
+const isServerErrorBody = (
+  body: unknown,
+): body is { kind?: string; stack?: string } =>
+  typeof body === "object" && body !== null;
+
 async function executeOperatorAsGenerator(
   operator: Operator,
   ctx: ExecutionContext,
 ) {
   const currentContext = ctx._currentContext;
-  const parser = await getFetchFunction()(
+  const parser = await getFetchFunction()<unknown, GeneratorStreamParser>(
     "POST",
     "/operators/execute/generator",
     {
@@ -644,8 +702,8 @@ async function executeOperatorAsGenerator(
   const abortQueue = getAbortableOperationQueue();
   abortQueue.add(operator.uri, ctx.params, parser);
 
-  const result = { result: {} };
-  const onChunk = (chunk) => {
+  const result: OperatorExecutionResponse = { result: {} };
+  const onChunk = (chunk: OperatorExecutionResponse) => {
     if (chunk?.delegated) {
       result.delegated = chunk?.delegated;
     }
@@ -779,30 +837,29 @@ export async function executeOperatorWithContext(
         }
       }
     } else {
-      const serverResult = await getFetchFunction()(
-        "POST",
-        "/operators/execute",
-        {
-          current_sample: currentContext.currentSample,
-          dataset_name: currentContext.datasetName,
-          delegation_target: currentContext.delegationTarget,
-          extended: currentContext.extended,
-          extended_selection: currentContext.extendedSelection,
-          filters: currentContext.filters,
-          operator_uri: operatorURI,
-          params: ctx.params,
-          request_delegation: ctx.requestDelegation,
-          ...formatSelectionPayload(currentContext),
-          view: currentContext.view,
-          view_name: currentContext.viewName,
-          group_slice: currentContext.groupSlice,
-          query_performance: currentContext.queryPerformance,
-          spaces: currentContext.spaces,
-          workspace_name: currentContext.workspaceName,
-          prompt_id: ctx.promptId,
-          active_fields: ctx.activeFields,
-        },
-      );
+      const serverResult = await getFetchFunction()<
+        unknown,
+        OperatorExecutionResponse
+      >("POST", "/operators/execute", {
+        current_sample: currentContext.currentSample,
+        dataset_name: currentContext.datasetName,
+        delegation_target: currentContext.delegationTarget,
+        extended: currentContext.extended,
+        extended_selection: currentContext.extendedSelection,
+        filters: currentContext.filters,
+        operator_uri: operatorURI,
+        params: ctx.params,
+        request_delegation: ctx.requestDelegation,
+        ...formatSelectionPayload(currentContext),
+        view: currentContext.view,
+        view_name: currentContext.viewName,
+        group_slice: currentContext.groupSlice,
+        query_performance: currentContext.queryPerformance,
+        spaces: currentContext.spaces,
+        workspace_name: currentContext.workspaceName,
+        prompt_id: ctx.promptId,
+        active_fields: ctx.activeFields,
+      });
       result = serverResult.result;
       error = serverResult.error;
       errorMessage = serverResult.error_message;
@@ -865,7 +922,7 @@ export async function resolveRemoteType(
 ) {
   operatorURI = resolveOperatorURI(operatorURI);
   const currentContext = ctx._currentContext;
-  const typeAsJSON = await getFetchFunction()(
+  const typeAsJSON = await getFetchFunction()<unknown, ResolveTypeResponse>(
     "POST",
     "/operators/resolve-type",
     {
@@ -951,29 +1008,28 @@ export async function resolveExecutionOptions(
 ) {
   operatorURI = resolveOperatorURI(operatorURI);
   const currentContext = ctx._currentContext;
-  const executionOptionsAsJSON = await getFetchFunction()(
-    "POST",
-    "/operators/resolve-execution-options",
-    {
-      current_sample: currentContext.currentSample,
-      dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
-      extended: currentContext.extended,
-      extended_selection: currentContext.extendedSelection,
-      filters: currentContext.filters,
-      operator_uri: operatorURI,
-      params: ctx.params,
-      request_delegation: ctx.requestDelegation,
-      ...formatSelectionPayload(currentContext),
-      view: currentContext.view,
-      view_name: currentContext.viewName,
-      group_slice: currentContext.groupSlice,
-      query_performance: currentContext.queryPerformance,
-      spaces: currentContext.spaces,
-      workspace_name: currentContext.workspaceName,
-      active_fields: ctx.activeFields,
-    },
-  );
+  const executionOptionsAsJSON = await getFetchFunction()<
+    unknown,
+    ExecutionOptionsResponse
+  >("POST", "/operators/resolve-execution-options", {
+    current_sample: currentContext.currentSample,
+    dataset_name: currentContext.datasetName,
+    delegation_target: currentContext.delegationTarget,
+    extended: currentContext.extended,
+    extended_selection: currentContext.extendedSelection,
+    filters: currentContext.filters,
+    operator_uri: operatorURI,
+    params: ctx.params,
+    request_delegation: ctx.requestDelegation,
+    ...formatSelectionPayload(currentContext),
+    view: currentContext.view,
+    view_name: currentContext.viewName,
+    group_slice: currentContext.groupSlice,
+    query_performance: currentContext.queryPerformance,
+    spaces: currentContext.spaces,
+    workspace_name: currentContext.workspaceName,
+    active_fields: ctx.activeFields,
+  });
 
   return new ExecutionOptions(
     executionOptionsAsJSON.orchestrator_registration_enabled,
@@ -987,7 +1043,7 @@ export async function resolveExecutionOptions(
 }
 export async function fetchRemotePlacements(ctx: ExecutionContext) {
   const currentContext = ctx._currentContext;
-  const result = await getFetchFunction()(
+  const result = await getFetchFunction()<unknown, ResolvePlacementsResponse>(
     "POST",
     "/operators/resolve-placements",
     {
@@ -1020,7 +1076,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
 }
 
 export async function resolveLocalPlacements(ctx: ExecutionContext) {
-  const localOperators = Array.from(localRegistry.operators.values());
+  const localOperators = localRegistry.list();
   const localPlacements = [];
 
   for (const operator of localOperators) {
