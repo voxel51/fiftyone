@@ -1,4 +1,4 @@
-# Annotation Engine Coding Standards
+# Annotation engine coding standards
 
 Binding for any code that reads or writes through the annotation engine
 (`AnnotationEngine`, `useAnnotationEngine`, `SurfaceActions`), wherever it
