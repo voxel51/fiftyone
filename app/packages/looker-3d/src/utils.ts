@@ -24,6 +24,7 @@ import type {
 
 export type FoSceneRawNode = {
   _type: string;
+  uuid?: string;
   name: string;
   visible: boolean;
   position: Vector3Tuple;

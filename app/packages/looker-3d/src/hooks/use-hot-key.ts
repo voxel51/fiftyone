@@ -6,13 +6,20 @@ const KEYBOARD_EVENT_NAME = "keydown";
 
 type KeyboardEventUnionType = KeyboardEvent & React.KeyboardEvent;
 
+/**
+ * What a hotkey callback receives: a Recoil transaction interface (`get`,
+ * the default) or, with `useTransaction: false`, a callback interface
+ * (`snapshot`). Both provide `set`.
+ */
+type HotkeyContext = {
+  set: recoil.SetRecoilState;
+  get?: recoil.GetRecoilValue;
+  snapshot?: recoil.Snapshot;
+};
+
 export const useHotkey = (
   keyCode: string,
-  cb: (props: {
-    get: recoil.GetRecoilValue;
-    set: recoil.SetRecoilState;
-    snapshot: recoil.Snapshot;
-  }) => void,
+  cb: (props: HotkeyContext) => void,
   deps: readonly unknown[] = [],
   props: {
     useTransaction?: boolean;
