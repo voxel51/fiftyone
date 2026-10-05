@@ -143,7 +143,7 @@ function schemaWithInheritedVariant(
 
 function getComputedSchema(props: ViewPropsType) {
   const { schema, parentSchema, relativePath } = props;
-  let computedSchema = schemaWithInheritedDefault(
+  let computedSchema: SchemaType = schemaWithInheritedDefault(
     schema,
     parentSchema,
     relativePath,

@@ -22,6 +22,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import type { PlotData, PlotDatum, PlotMouseEvent } from "plotly.js";
 import { useMemo, useState } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import EvaluationTable from "../../components/EvaluationTable";
@@ -88,6 +89,36 @@ export default function ClassPerformance(props) {
       ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
       : undefined;
 
+  // traces carry a `key`, which Plotly's trace types don't declare
+  const classPerformanceTraces: Array<Partial<PlotData> & { key?: string }> = [
+    {
+      histfunc: "sum",
+      y: classPerformance.map((metrics) => metrics.value),
+      x: classPerformance.map((metrics) => metrics.property),
+      type: "histogram",
+      name: `${CLASS_LABELS[performanceClass]} per class`,
+      marker: {
+        color: KEY_COLOR,
+      },
+      key: name,
+      selectedpoints: selectedPoints,
+    },
+    {
+      histfunc: "sum",
+      y: classPerformance.map((metrics) => metrics.compareValue),
+      x: classPerformance.map(
+        (metrics) => metrics.compareProperty || metrics.property,
+      ),
+      type: "histogram",
+      name: `${CLASS_LABELS[performanceClass]} per class`,
+      marker: {
+        color: COMPARE_KEY_COLOR,
+      },
+      key: compareKey,
+      selectedpoints: selectedPoints,
+    },
+  ];
+
   return (
     <Stack spacing={1}>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}>
@@ -150,35 +181,13 @@ export default function ClassPerformance(props) {
       </Stack>
       {classMode === "chart" && (
         <Plot
-          data={[
-            {
-              histfunc: "sum",
-              y: classPerformance.map((metrics) => metrics.value),
-              x: classPerformance.map((metrics) => metrics.property),
-              type: "histogram",
-              name: `${CLASS_LABELS[performanceClass]} per class`,
-              marker: {
-                color: KEY_COLOR,
-              },
-              key: name,
-              selectedpoints: selectedPoints,
-            },
-            {
-              histfunc: "sum",
-              y: classPerformance.map((metrics) => metrics.compareValue),
-              x: classPerformance.map(
-                (metrics) => metrics.compareProperty || metrics.property,
-              ),
-              type: "histogram",
-              name: `${CLASS_LABELS[performanceClass]} per class`,
-              marker: {
-                color: COMPARE_KEY_COLOR,
-              },
-              key: compareKey,
-              selectedpoints: selectedPoints,
-            },
-          ]}
-          onClick={({ points }) => {
+          data={classPerformanceTraces}
+          onClick={({
+            points,
+          }: Readonly<PlotMouseEvent> & {
+            // histogram clicks carry the binned point indices
+            points: Array<PlotDatum & { pointIndices: number[] }>;
+          }) => {
             if (selectedPoints?.[0] === points[0]?.pointIndices[0]) {
               return loadView("clear", {});
             }

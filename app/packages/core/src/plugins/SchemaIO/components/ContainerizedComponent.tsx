@@ -40,7 +40,7 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
     );
   }
 
-  return containerizedChildren;
+  return <>{containerizedChildren}</>;
 }
 
 function PaperContainer(props: PaperContainerProps) {

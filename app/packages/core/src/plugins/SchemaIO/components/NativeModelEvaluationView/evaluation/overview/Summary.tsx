@@ -231,7 +231,7 @@ export default function Summary(props) {
           };
 
           return (
-            <TableRow key={rowId}>
+            <TableRow key={String(rowId)}>
               <TableCell scope="row">{property}</TableCell>
               <TableCell>
                 <Stack

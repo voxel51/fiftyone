@@ -9,15 +9,19 @@ export function getNumericDifference(
   compareValue,
   percentage = false,
   fractionDigits?: number,
-) {
+): number {
+  // formatValueAsNumber returns a number for numeric input
   if (typeof value === "number" && typeof compareValue === "number") {
     const difference = value - compareValue;
     const sanitizedCompareValue = compareValue === 0 ? 1 : compareValue;
     if (percentage) {
       const percentageDifference = (difference / sanitizedCompareValue) * 100;
-      return formatValueAsNumber(percentageDifference, fractionDigits);
+      return formatValueAsNumber(
+        percentageDifference,
+        fractionDigits,
+      ) as number;
     }
-    return formatValueAsNumber(difference, fractionDigits);
+    return formatValueAsNumber(difference, fractionDigits) as number;
   }
   return NaN;
 }

@@ -20,7 +20,8 @@ export type StyleObject<Sx> = UnionToIntersection<
   >
 >;
 
-export function getColorByCode(code: ColorType) {
+// named FiftyOne colors map to theme vars; anything else is used as a CSS color
+export function getColorByCode(code: ColorType | string) {
   if (code) {
     if (code === "primary") return "var(--fo-palette-text-primary)";
     if (code === "secondary") return "var(--fo-palette-text-secondary)";
@@ -37,7 +38,7 @@ export function getDisabledColors() {
 
 export function getFieldSx(options: FieldsetOptionsType) {
   const { color, variant } = options;
-  const sx = {
+  const sx: FieldSx = {
     "& fieldset": {
       borderColor: `${getColorByCode(color)}!important`,
     },
@@ -60,6 +61,20 @@ type ColorType =
   | "orange"
   | "FiftyOne"
   | "fiftyone";
+
+// Structural subset of an MUI sx object; this file can't import MUI types
+// (it isn't on the MUI allowlist).
+type FieldSx = {
+  "& fieldset": {
+    borderColor: string;
+    borderWidth?: string;
+    borderRadius?: number;
+  };
+  borderRadius?: string;
+  backgroundColor?: (theme: {
+    palette: { background: { field: string } };
+  }) => string;
+};
 
 type FieldsetOptionsType = {
   color: ColorType;

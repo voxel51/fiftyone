@@ -135,7 +135,6 @@ export default function FileExplorer({
                 <ExplorerActions
                   onSidebarClick={() => setSidebarOpen((open) => !open)}
                   currentPath={currentPath}
-                  selectedFile={selectedFile}
                   onPathChange={(path) => setCurrentPath(path)}
                   onRefresh={refresh}
                   onUpDir={handleUpDir}

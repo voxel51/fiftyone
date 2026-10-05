@@ -28,7 +28,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import type { Data } from "plotly.js";
+import type { Data, PlotDatum } from "plotly.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { atom } from "recoil";
 import AlertView from "../../../AlertView";
@@ -91,7 +91,7 @@ export default function Scenarios(props) {
   const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
-  const { key, compareKey, id: eval_id } = data?.view;
+  const { key, compareKey, id: eval_id } = data.view;
   const trackEvent = useTrackEvent();
   const [scenario, setScenario] = usePanelStatePartial(
     `${key}_scenario`,
@@ -124,7 +124,9 @@ export default function Scenarios(props) {
     () => data?.[`scenario_${scenario}_changes`] || [],
     [data, scenario],
   );
-  const scenariosArray = scenarios ? Object.values(scenarios) : [];
+  const scenariosArray = scenarios
+    ? Object.values<{ id: string; name: string }>(scenarios)
+    : [];
   const scenariosIds = Object.keys(scenarios);
   const readOnly = !data.permissions?.can_delete_scenario;
   const canCreate = data.permissions?.can_create_scenario;
@@ -580,7 +582,7 @@ function PredictionStatisticsTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data.view;
   const width = getWidth(props);
   const type = getEvaluationType(props.evaluation);
   const isMulticlassClassification = type === "multiclass_classification";
@@ -784,7 +786,7 @@ function ModelPerformanceMetricsTable(props) {
   const { subsets, subsets_data, id } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data.view;
   const width = getWidth(props);
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const metrics = MODEL_PERFORMANCE_METRICS.filter(
@@ -882,7 +884,7 @@ const CONFIDENCE_DISTRIBUTION_METRICS_VALUES = Object.values(
 
 function ConfidenceDistributionTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data.view;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = usePanelStatePartial("cdt_mode", "avg");
@@ -1246,7 +1248,17 @@ function PredictionStatisticsChart(props) {
       <Plot
         data={plotData}
         layout={showAllMetric ? { barmode: "stack" } : {}}
-        onClick={({ points }) => {
+        onClick={({
+          points,
+        }: {
+          // traces carry an `id`, and the compare flag rides on fullData._input
+          points: Array<
+            PlotDatum & {
+              data: { id?: string | boolean };
+              fullData?: { _input?: { isCompare?: boolean } };
+            }
+          >;
+        }) => {
           const firstPoint = points[0];
           const { id } = firstPoint.data;
           const isCompare = firstPoint?.fullData?._input?.isCompare;
@@ -1288,7 +1300,7 @@ function ScenarioModelPerformanceChart(props) {
 
   const { metrics } = subsetData;
   const compareMetrics = compareSubsetData?.metrics;
-  const { key, compareKey } = props.data?.view;
+  const { key, compareKey } = props.data.view;
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const metricFields = MODEL_PERFORMANCE_METRICS.filter(
     (metric) => !inapplicable.includes(metric.key),
@@ -1508,7 +1520,7 @@ function ConfidenceDistributionChart(props) {
   const { scenario, compareScenario } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const { key, compareKey } = props.data?.view;
+  const { key, compareKey } = props.data.view;
   const [mode, setMode] = usePanelStatePartial("cd_mode", "overview");
   const isOverview = mode === "overview";
 
@@ -1776,7 +1788,7 @@ function SubsetDistributionChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data, type } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const { key, compareKey } = props.data?.view;
+  const { key, compareKey } = props.data.view;
 
   const y = subsets.map((subset) => {
     const subsetData = subsets_data[subset];

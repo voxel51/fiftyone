@@ -65,7 +65,8 @@ export default function DropdownView(props: ViewPropsType) {
   const isArrayType = type === "array";
   const multiple = multiSelect || isArrayType;
   const fallbackDefaultValue = multiple ? [] : "";
-  const rawDefaultValue = data ?? fallbackDefaultValue;
+  // choice values: a string, or a list of them for multi-select
+  const rawDefaultValue = (data ?? fallbackDefaultValue) as string | string[];
   const computedDefaultValue =
     multiple && !Array.isArray(rawDefaultValue)
       ? rawDefaultValue.toString().split(separator)
@@ -193,7 +194,7 @@ export default function DropdownView(props: ViewPropsType) {
       fullWidth={!icon}
       displayEmpty
       title={compact ? description : undefined}
-      renderValue={(value) => {
+      renderValue={(value: string | string[]) => {
         if (icon) {
           return renderIcon();
         }
@@ -204,10 +205,13 @@ export default function DropdownView(props: ViewPropsType) {
           }
           return placeholder;
         }
+        // multiple selects hold an array, single selects a string
         if (multiple) {
-          return value.map((item) => choiceLabels[item] || item).join(", ");
+          return (value as string[])
+            .map((item) => choiceLabels[item] || item)
+            .join(", ");
         }
-        return choiceLabels[value] || value;
+        return choiceLabels[value as string] || value;
       }}
       onChange={(e) => {
         handleOnChange(e.target.value);
@@ -236,7 +240,7 @@ export default function DropdownView(props: ViewPropsType) {
           }}
           {...getComponentProps(props, "optionContainer")}
         >
-          <ChoiceMenuItemBody {...choice} {...props} />
+          <ChoiceMenuItemBody label={choice.label} {...choice} {...props} />
         </MenuItem>
       ))}
     </Select>

@@ -153,9 +153,10 @@ function FileList({ files, onUpdateFiles }: FileListProps) {
   if (files.length === 0) return null;
   return (
     <Box sx={{ mb: 1, display: "flex", flexWrap: "wrap" }}>
-      {files.map(({ name }) => {
+      {files.map(({ name }, i) => {
         return (
           <Chip
+            key={i}
             sx={{ m: 0.25 }}
             size="small"
             label={name}

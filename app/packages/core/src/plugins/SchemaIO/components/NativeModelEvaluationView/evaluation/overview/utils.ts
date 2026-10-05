@@ -14,7 +14,11 @@ export function useActiveFilter(evaluation, compareEvaluation) {
     const stage = stages[0];
     const { _cls, kwargs } = stage;
     if (_cls.endsWith("FilterLabels")) {
-      const [_, filter] = kwargs;
+      // FilterLabels kwargs: [["field", ...], ["filter", { $eq: [lhs, rhs] }]]
+      const [_, filter] = kwargs as [
+        [string, unknown],
+        [string, { $eq?: unknown[] }],
+      ];
       const filterEq = filter[1].$eq || [];
       const [filterEqLeft, filterEqRight] = filterEq;
       if (filterEqLeft === "$$this.label") {

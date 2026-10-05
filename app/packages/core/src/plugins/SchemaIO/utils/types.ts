@@ -6,6 +6,8 @@ export type BaseSchemaType = {
   default?: unknown;
   name?: string;
   read_only?: boolean;
+  // operator URI triggered on change (Property.toProps' onChange)
+  onChange?: string;
 };
 
 export type ArraySchemaType = BaseSchemaType & {

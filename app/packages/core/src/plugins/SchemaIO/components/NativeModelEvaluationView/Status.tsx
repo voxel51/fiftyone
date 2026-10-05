@@ -65,7 +65,8 @@ export default function Status(props: StatusProps) {
 
 type StatusProps = {
   status: string;
-  canEdit: boolean;
+  // only needed when editable (not readOnly)
+  canEdit?: boolean;
   readOnly?: boolean;
   setStatusEvent?: string;
 };

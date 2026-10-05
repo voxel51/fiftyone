@@ -11,7 +11,7 @@ export default function ErrorView(props) {
   const { detailed, popout, left } = view;
   const errors = [
     ...(Array.isArray(data) ? data : []),
-    ...(Array.isArray(schema?.default) ? schema?.default : []),
+    ...(Array.isArray(schema?.default) ? schema.default : []),
   ];
 
   if (errors.length === 0) return null;
@@ -53,8 +53,8 @@ function DetailedErrors(props) {
 
   return (
     <Wrapper {...wrapperProps} {...getComponentProps(props, "container")}>
-      {errors.map((error) => (
-        <DetailedError {...error} />
+      {errors.map((error, i) => (
+        <DetailedError key={i} {...error} />
       ))}
     </Wrapper>
   );

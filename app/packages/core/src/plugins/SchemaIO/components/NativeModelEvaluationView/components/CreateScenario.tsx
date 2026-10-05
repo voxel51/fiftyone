@@ -39,7 +39,7 @@ export default function CreateScenario(props: CreateScenarioPropsType) {
             },
             operator: CONFIGURE_SCENARIO_ACTION,
             prompt: true,
-            callback: (results: unknown) => {
+            callback: (results: { result?: { id?: string } }) => {
               trackEvent("create_scenario_modal_open", {
                 eval_id,
               });

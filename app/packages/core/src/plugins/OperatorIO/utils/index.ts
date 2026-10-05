@@ -11,7 +11,7 @@ export type IOSchema = {
   type: string;
   view: SchemaViewType;
   default: unknown;
-  onChange: unknown;
+  onChange?: string;
   required: unknown;
   min?: number;
   max?: number;
@@ -244,7 +244,7 @@ function getPropertiesSchema(
   property,
   options?: IOSchemaOptions,
 ): Record<string, IOSchema> {
-  const { properties } = property?.type;
+  const { properties } = property.type;
   if (properties instanceof Map) {
     const propertiesObject: Record<string, IOSchema> = {};
     properties.forEach((value, key) => {

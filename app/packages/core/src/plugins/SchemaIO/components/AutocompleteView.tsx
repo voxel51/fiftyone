@@ -83,7 +83,12 @@ export default function AutocompleteView(props) {
               {...props}
               {...getComponentProps(props, "optionContainer")}
             >
-              <ChoiceMenuItemBody {...option} {...props} />
+              {/* the listed options are always the mapped choices; free-solo
+                  strings are typed but never rendered as options */}
+              <ChoiceMenuItemBody
+                {...(option as { label: string; [key: string]: unknown })}
+                {...props}
+              />
             </MenuItem>
           );
         }}

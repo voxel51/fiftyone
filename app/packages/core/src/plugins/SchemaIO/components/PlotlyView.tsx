@@ -16,19 +16,21 @@ type TraceWithIds = {
 };
 
 function getIdForTrace(
-  point: Plotly.Point,
+  point: Plotly.PlotDatum,
   trace: TraceWithIds,
   options: { is2DArray?: boolean } = {},
 ) {
   const { is2DArray = false } = options;
   const { data } = point;
   const { x: _x, y: _y, z: _z } = data;
+  // 2D traces (heatmaps) report an [x, y] index pair
+  const pointIndex = point.pointIndex as number | number[];
   if (trace?.ids) {
     if (is2DArray) {
-      const [xIdx, yIdx] = point.pointIndex;
+      const [xIdx, yIdx] = pointIndex as number[];
       return trace.ids[yIdx][xIdx];
     } else {
-      return trace.ids[point.pointIndex];
+      return trace.ids[pointIndex as number];
     }
   }
   return null;
