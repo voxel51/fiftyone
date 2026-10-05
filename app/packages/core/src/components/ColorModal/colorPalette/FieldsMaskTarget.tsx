@@ -16,10 +16,12 @@ import {
 
 const FieldsMaskTargets: React.FC = () => {
   const maskTargets = useRecoilValue(fos.targets).fields;
-  const isRGBMask = isRgbMaskTargets(maskTargets);
 
   const colorScheme = useRecoilValue(fos.colorScheme);
   const activePath = useRecoilValue(activeColorPath);
+  // check the active field's targets, not the map of every field's targets
+  const fieldTargets = maskTargets?.[activePath];
+  const isRGBMask = fieldTargets ? isRgbMaskTargets(fieldTargets) : false;
   const [setting, setSetting] = useRecoilState(fieldColorSetting(activePath));
 
   const values = setting?.maskTargetsColors ?? [];
