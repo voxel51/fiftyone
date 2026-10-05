@@ -223,6 +223,27 @@ class DeclareLabelSchemaAttributesTests(unittest.TestCase):
 
         self.assertIsNone(dataset.get_field("gt.detections.brand"))
 
+    @drop_datasets
+    def test_backfill_retries_after_a_failed_declaration(self):
+        dataset = self._dataset()
+        dataset._doc.set_stored_label_schema(
+            "gt", _schema(dataset, "gt", _BRAND)
+        )
+        dataset.save()
+
+        with mock.patch.object(
+            foa,
+            "declare_label_schema_attributes",
+            side_effect=RuntimeError("boom"),
+        ):
+            fold.declare_schema_attributes(dataset_id=dataset._doc.id)
+
+        self.assertIsNone(dataset.get_field("gt.detections.brand"))
+
+        fold.declare_schema_attributes(dataset_id=dataset._doc.id)
+
+        self.assertIsNotNone(dataset.get_field("gt.detections.brand"))
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

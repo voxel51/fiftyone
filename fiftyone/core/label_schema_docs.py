@@ -222,13 +222,17 @@ def _scope(*, ctx=None, dataset_id=None) -> ObjectId:
     return resolve_dataset_id(ctx=ctx, dataset_id=dataset_id)
 
 
-def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> None:
+def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> bool:
     """Declares the label attributes ``label_schema`` defines on the
     dataset's field schema (``declare_label_schema_attributes``), so the
     App's sidebar, filters and aggregations see them. Best-effort: a
-    failure is logged and never fails the schema write."""
+    failure is logged and never fails the schema write.
+
+    Returns:
+        whether the declaration completed without error
+    """
     if not label_schema:
-        return
+        return True
 
     try:
         import fiftyone.core.annotation as foa
@@ -244,6 +248,9 @@ def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> None:
         logger.warning(
             "Failed to declare label schema attributes", exc_info=True
         )
+        return False
+
+    return True
 
 
 #: ``(dataset_id, path, attribute name)`` the backfill already tried in
@@ -278,6 +285,7 @@ def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
 
         # One label schema per path holding every attribute not yet tried
         content = {}
+        keys = set()
         for path, label_schema in schemas:
             if not isinstance(label_schema, dict):
                 continue
@@ -285,10 +293,10 @@ def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
             for attr in label_schema.get("attributes") or []:
                 name = attr.get("name") if isinstance(attr, dict) else None
                 key = (str(dataset._doc.id), path, name)
-                if name is None or key in _BACKFILLED:
+                if name is None or key in _BACKFILLED or key in keys:
                     continue
 
-                _BACKFILLED.add(key)
+                keys.add(key)
                 content.setdefault(path, {"attributes": []})[
                     "attributes"
                 ].append(attr)
@@ -298,7 +306,10 @@ def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
         )
         return
 
-    _declare_attributes(content, ctx=ctx, dataset_id=dataset_id)
+    # Remember the attributes only once they were declared (or skipped, as
+    # mixed types are), so a failed declaration is retried next time
+    if _declare_attributes(content, ctx=ctx, dataset_id=dataset_id):
+        _BACKFILLED.update(keys)
 
 
 def _now_ms() -> int:
