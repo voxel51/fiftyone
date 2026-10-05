@@ -6,6 +6,7 @@ import { Alert, Box, CircularProgress, Typography } from "@mui/material";
 import { get } from "lodash";
 import { useEffect } from "react";
 import { getComponentProps } from "../utils";
+import type { SchemaType, ViewPropsType } from "../utils/types";
 import DynamicIO from "./DynamicIO";
 import {
   useDependencyHash,
@@ -105,7 +106,12 @@ export default function LoaderView(props: LoaderViewProps) {
   return null;
 }
 
-export type LoaderViewProps = {
+// SchemaIO renders LoaderView with the full view props, which the
+// placeholder DynamicIO needs.
+export type LoaderViewProps = Omit<
+  ViewPropsType,
+  "schema" | "onChange" | "fullData"
+> & {
   path: string;
   schema: {
     view?: {
@@ -114,10 +120,7 @@ export type LoaderViewProps = {
       label?: string;
       message?: string;
       dependencies?: string[];
-      placeholder_view?: {
-        view?: Record<string, unknown>;
-        [key: string]: unknown;
-      };
+      placeholder_view?: SchemaType;
       [key: string]: unknown;
     };
     [key: string]: unknown;

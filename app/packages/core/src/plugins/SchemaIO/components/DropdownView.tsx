@@ -1,4 +1,10 @@
-import { IconButton, MenuItem, Select, Tooltip } from "@mui/material";
+import {
+  IconButton,
+  MenuItem,
+  Select,
+  Tooltip,
+  type SelectProps,
+} from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AutocompleteView } from ".";
 import { useKey } from "../hooks";
@@ -11,13 +17,38 @@ import FieldWrapper from "./FieldWrapper";
 
 // if we want to support more icons in the future, add them here
 const iconImports: {
-  [key: string]: () => Promise<{ default: React.ComponentType<any> }>;
+  [key: string]: () => Promise<{ default: React.ComponentType }>;
 } = {
   MoreVertIcon: () => import("@mui/icons-material/MoreVert"),
   SettingsIcon: () => import("@mui/icons-material/Settings"),
 };
 
 const MULTI_SELECT_TYPES = ["string", "array"];
+
+type DropdownChoice = {
+  value: string;
+  label: string;
+  readOnly?: boolean;
+  [key: string]: unknown;
+};
+
+type DropdownViewOptions = {
+  choices: DropdownChoice[];
+  multiple?: boolean;
+  placeholder?: string;
+  separator?: string;
+  readOnly?: boolean;
+  compact?: boolean;
+  label?: string;
+  description?: string;
+  color?: FieldsetOptions["color"];
+  variant?: FieldsetOptions["variant"];
+  icon?: string;
+  addOnClickToMenuItems?: boolean;
+  tooltipTitle?: string;
+};
+
+type FieldsetOptions = Parameters<typeof getFieldSx>[0];
 
 export default function DropdownView(props: ViewPropsType) {
   const { onChange, schema, path, data } = props;
@@ -36,13 +67,13 @@ export default function DropdownView(props: ViewPropsType) {
     icon,
     addOnClickToMenuItems = false,
     tooltipTitle = "",
-  } = view;
+  } = view as DropdownViewOptions;
   const [IconComponent, setIconComponent] =
-    useState<React.ComponentType<any> | null>(null);
+    useState<React.ComponentType | null>(null);
   const [key, setUserChanged] = useKey(path, schema, data, true);
 
   const handleOnChange = useCallback(
-    (value: any) => {
+    (value: unknown) => {
       const computedValue =
         Array.isArray(value) && type !== "array"
           ? value.join(separator)
@@ -146,16 +177,14 @@ export default function DropdownView(props: ViewPropsType) {
   };
 
   // Now, condense the code like this:
-  const { MenuProps = {}, ...selectProps } = getComponentProps(
-    props,
-    "select",
-    {
-      sx: {
-        ...getDropdownStyles(icon, selected),
-        ...getFieldSx({ color, variant }),
-      },
+  const { MenuProps = {}, ...selectProps } = getComponentProps<
+    Pick<SelectProps, "sx" | "MenuProps">
+  >(props, "select", {
+    sx: {
+      ...getDropdownStyles(icon, selected),
+      ...getFieldSx({ color, variant }),
     },
-  );
+  });
 
   const renderIcon = () => {
     if (!IconComponent) return null;

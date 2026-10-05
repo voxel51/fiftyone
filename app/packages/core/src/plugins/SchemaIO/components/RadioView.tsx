@@ -21,7 +21,14 @@ export default function RadioView(props: RadioGroupProps) {
     orientation,
     readOnly,
     variant = "default",
-  } = view;
+  } = view as {
+    choices: Choice[];
+    label?: string;
+    description?: string;
+    orientation?: string;
+    readOnly?: boolean;
+    variant?: string;
+  };
 
   const useButtons = variant === "button";
   const [key, setUserChanged] = useKey(path, schema, data, true);
@@ -172,7 +179,7 @@ export type RadioGroupProps = {
   description?: string;
   choices: Array<Choice>;
   onChange: ViewPropsType["onChange"];
-  schema: any; // todo
+  schema: ViewPropsType["schema"];
   path: string;
   data: unknown;
   autoFocused?: ViewPropsType["autoFocused"];

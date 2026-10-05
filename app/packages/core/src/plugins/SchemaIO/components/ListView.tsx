@@ -4,7 +4,7 @@ import { Avatar, Box, Grid, IconButton } from "@mui/material";
 import { cloneDeep, set, throttle } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getComponentProps, getEmptyValue } from "../utils";
-import { ArraySchemaType, ViewPropsType } from "../utils/types";
+import { ArraySchemaType, SchemaViewType, ViewPropsType } from "../utils/types";
 import Accordion from "./Accordion";
 import Button from "./Button";
 import DynamicIO from "./DynamicIO";
@@ -14,13 +14,22 @@ import HeaderView from "./HeaderView";
 export default function ListView(props: ViewPropsType<ArraySchemaType>) {
   const { schema, onChange, path, data, errors } = props;
   const { state, addItem, deleteItem, updateItem, size } = useListState(
-    data ?? schema.default ?? DEFAULT_LIST_STATE,
+    ((data ?? schema.default) as unknown[] | undefined) ?? DEFAULT_LIST_STATE,
     path,
     onChange,
   );
 
   const { items, view = {} } = schema;
-  const { items: itemsView = {}, collapsible, readOnly } = view;
+  const {
+    items: itemsView = {},
+    collapsible,
+    readOnly,
+  } = view as {
+    // view overrides applied to every item
+    items?: SchemaViewType;
+    collapsible?: boolean;
+    readOnly?: boolean;
+  };
   const itemsSchema = {
     ...items,
     view: { ...(items?.view || {}), ...itemsView },

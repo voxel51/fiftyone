@@ -11,7 +11,7 @@ export default function MarkdownView(props: ViewPropsType) {
     <Box {...getComponentProps(props, "container")}>
       <HeaderView {...props} nested />
       <Markdown {...getComponentProps(props, "markdown")}>
-        {data ?? schema?.default}
+        {(data ?? schema?.default) as string}
       </Markdown>
     </Box>
   );

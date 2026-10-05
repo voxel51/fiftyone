@@ -18,7 +18,30 @@ import { useCallback } from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
-import ActionsMenu from "./ActionsMenu";
+import ActionsMenu, {
+  type ActionPropsType,
+  type SizeType,
+} from "./ActionsMenu";
+
+type TableViewOptions = {
+  columns: Array<{ key: string; label: string }>;
+  // per-row visibility: rows[rowIndex] === false hides the action
+  row_actions?: Array<
+    Omit<ActionPropsType, "onClick"> & {
+      rows?: Record<number, boolean>;
+      on_click?: string;
+    }
+  >;
+  on_click_cell?: string;
+  on_click_row?: string;
+  on_click_column?: string;
+  actions_label?: string;
+  selected_color?: string;
+  size?: SizeType;
+  variant?: string;
+  max_inline_actions?: number;
+  tooltips?: Array<{ value: string; row: number; column: number }>;
+};
 import EmptyState from "./EmptyState";
 
 export default function TableView(props: ViewPropsType) {
@@ -36,7 +59,7 @@ export default function TableView(props: ViewPropsType) {
     variant = "filled",
     max_inline_actions = 1,
     tooltips = [],
-  } = view;
+  } = view as TableViewOptions;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
   const dataMissing = rows.length === 0;
@@ -49,12 +72,13 @@ export default function TableView(props: ViewPropsType) {
 
   const getRowActions = useCallback(
     (row) => {
-      const computedRowActions = [] as any;
+      const computedRowActions: ActionPropsType[] = [];
       for (const action of row_actions) {
         if (action.rows?.[row] !== false) {
           computedRowActions.push({
             ...action,
-            onClick: (action) => {
+            // the clicked action is the row action spread above
+            onClick: (action: ActionPropsType & { on_click?: string }) => {
               handleClick(panelId, {
                 operator: action.on_click,
                 params: { path, event: action.name, row },

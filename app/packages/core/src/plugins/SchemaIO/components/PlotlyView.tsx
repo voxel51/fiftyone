@@ -90,7 +90,8 @@ export default function PlotlyView(props: ViewPropsType) {
       }
     }
 
-    const eventHandlerOperator = view[snakeCase(event)];
+    // operator URI configured for this event, e.g. view.on_click
+    const eventHandlerOperator = view[snakeCase(event)] as string | undefined;
     const defaultParams = {
       id,
       path: props.path,
@@ -214,8 +215,8 @@ export default function PlotlyView(props: ViewPropsType) {
     }, 500); // Delay to allow for layout to be animated
   }, [relativeLayout?.w, relativeLayout?.x, relativeLayout?.COLS]);
 
-  const plotHeight = view?.height || "100%";
-  const plotWidth = view?.width || "100%";
+  const plotHeight = (view?.height as string | number) || "100%";
+  const plotWidth = (view?.width as string | number) || "100%";
 
   return (
     <Box
@@ -238,7 +239,9 @@ export default function PlotlyView(props: ViewPropsType) {
   );
 }
 
-function createPlotlyHandlers(handleEvent: any) {
+function createPlotlyHandlers(
+  handleEvent: (event: string) => (e: unknown) => void,
+) {
   const PLOTLY_EVENTS = [
     // 'onAfterExport',
     // 'onAfterPlot',
@@ -272,7 +275,7 @@ function createPlotlyHandlers(handleEvent: any) {
     // 'onUnhover',
     // 'onWebGlContextLost'
   ];
-  const handlers = {} as any;
+  const handlers: Record<string, (e: unknown) => void> = {};
   for (const event of PLOTLY_EVENTS) {
     handlers[event] = handleEvent(event);
   }

@@ -171,9 +171,11 @@ function getSchema(property, options: IOSchemaOptions = {}): IOSchema {
     );
     schema.minItems = property.type.minItems;
     schema.maxItems = property.type.maxItems;
-    if (schema?.view?.items) {
-      schema.view.items.component = getComponent(
-        { type: property.type.elementType, view: schema?.view?.items },
+    // view overrides for every list item
+    const itemsView = schema?.view?.items as SchemaViewType | undefined;
+    if (itemsView) {
+      itemsView.component = getComponent(
+        { type: property.type.elementType, view: itemsView },
         computedOptions,
       );
     }

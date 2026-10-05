@@ -436,6 +436,6 @@ describe("SchemaIO Type Detection", () => {
     };
 
     // No view property = JSON Schema
-    expect((jsonSchema as any).view).toBeUndefined();
+    expect((jsonSchema as { view?: unknown }).view).toBeUndefined();
   });
 });

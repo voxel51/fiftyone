@@ -46,7 +46,7 @@ export interface CompareKey {
 }
 
 export function computeSortedCompareKeys(
-  evaluations: any[],
+  evaluations: { key: string; type: string; method?: string }[],
   currentName: string,
   currentType: string,
   currentMethod: string,

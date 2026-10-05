@@ -58,7 +58,9 @@ const SliderInputField: React.FC<SliderInputFieldProps> = ({
 export default function SliderView(
   props: ViewPropsType<NumberSchemaType & { viewMultipleOf?: number }>,
 ) {
-  const { data, onChange, path, schema } = props;
+  const { onChange, path, schema } = props;
+  // a value, or [min, max] for a range slider
+  const data = props.data as number | [number, number] | undefined;
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);
 
@@ -81,7 +83,17 @@ export default function SliderView(
     view_multiple_of: viewMultipleOf = null,
     min: viewMin,
     max: viewMax,
-  } = view;
+  } = view as {
+    value_label_display?: "auto" | "off" | "on";
+    value_format?: ValueFormat;
+    value_precision?: number;
+    variant?: string | null;
+    label_position?: string;
+    label?: string;
+    view_multiple_of?: number | null;
+    min?: number;
+    max?: number;
+  };
 
   const isDoubleSlider = Boolean(viewMin) && Boolean(viewMax);
 

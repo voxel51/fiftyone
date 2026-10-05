@@ -10,6 +10,7 @@ import {
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import { isPlainObject } from "lodash";
+import type { ReactNode } from "react";
 
 export default function KeyValueView(props) {
   const { path, schema, data, nested } = props;
@@ -51,7 +52,7 @@ export default function KeyValueView(props) {
                   {getLabel(schema, key)}
                 </TableCell>
                 <TableCell align="left" {...getComponentProps(props, "value")}>
-                  {value}
+                  {value as ReactNode}
                 </TableCell>
               </TableRow>
             ))}

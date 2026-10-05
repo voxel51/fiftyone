@@ -1,5 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
-import { useState } from "react";
+import { useState, type ElementType } from "react";
 import PopoutButton from "./PopoutButton";
 import { Error } from "@mui/icons-material";
 import { getComponentProps } from "../utils";
@@ -36,7 +36,8 @@ export default function ErrorView(props) {
 function DetailedErrors(props) {
   const { errors, popout, left } = props;
 
-  const Wrapper = popout ? PopoutButton : Box;
+  // either takes the wrapper and componentsProps spread below
+  const Wrapper: ElementType = popout ? PopoutButton : Box;
   const wrapperProps = popout
     ? {
         Button: (

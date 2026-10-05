@@ -138,7 +138,7 @@ function Action(props: ActionPropsType) {
   );
 }
 
-type SizeType = "small" | "medium";
+export type SizeType = "small" | "medium";
 
 type ActionsPropsType = {
   actions: Array<ActionPropsType>;
@@ -146,7 +146,7 @@ type ActionsPropsType = {
   size?: SizeType;
 };
 
-type ActionPropsType = {
+export type ActionPropsType = {
   name: string;
   label: string;
   onClick: (action: ActionPropsType, e: React.MouseEvent) => void;

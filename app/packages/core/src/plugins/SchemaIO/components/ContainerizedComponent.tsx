@@ -12,10 +12,14 @@ import { ViewPropsType } from "../utils/types";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
   const { schema, children, path } = props;
-  const container = schema?.view?.container;
+  const container = schema?.view?.container as
+    | ({ name: string } & Record<string, unknown>)
+    | undefined;
   let containerizedChildren = children;
   if (container) {
-    const Container = containersByName[container.name];
+    // unknown names fall through to the warning below
+    const Container =
+      containersByName[container.name as keyof typeof containersByName];
     if (Container) {
       containerizedChildren = (
         <Container {...container} path={path}>
@@ -31,7 +35,7 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
     const hasOverlay = !!schema?.view?.overlay;
     // copy: overlayToSx is shared module state
     const sxForOverlay = {
-      ...(overlayToSx[schema?.view?.overlay] || {}),
+      ...(overlayToSx[schema?.view?.overlay as keyof typeof overlayToSx] || {}),
       ...(hasOverlay ? { zIndex: 999 } : {}),
     };
     return (
@@ -107,5 +111,11 @@ const containersByName = { PaperContainer, OutlinedContainer };
 type ContainerizedComponent = PropsWithChildren<ViewPropsType>;
 
 type PaperContainerProps = PropsWithChildren<
-  PaperProps & { rounded?: boolean; [key: string]: any }
+  PaperProps & {
+    rounded?: boolean;
+    on_click?: string;
+    params?: Record<string, unknown>;
+    path?: string;
+    prompt?: boolean;
+  }
 >;

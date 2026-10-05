@@ -9,10 +9,19 @@ import _ from "lodash";
 
 const FRAME_LOADED_EVENT = "frames-loaded";
 
+// the loaded frames and a signature that changes when they're reloaded
+type FrameLoaderData = { frames?: unknown; signature?: string };
+
 export default function FrameLoaderView(props: ViewPropsType) {
-  const { schema, path, data } = props;
+  const { schema, path } = props;
+  const data = props.data as FrameLoaderData | undefined;
   const { view = {} } = schema;
-  const { on_load_range, target, timeline_name } = view;
+  const { on_load_range, target, timeline_name } = view as {
+    on_load_range: string;
+    // path in the panel data to write the current frame's data to
+    target: string;
+    timeline_name?: string;
+  };
   const panelId = usePanelId();
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);

@@ -17,7 +17,9 @@ import FieldWrapper from "./FieldWrapper";
 export default function DateTimeView(props: ViewPropsType) {
   const timeZone = useRecoilValue<string>(fos.timeZone);
   const [formattedDate, setFormattedDate] = useState<string>("");
-  const { onChange, schema, path, data } = props;
+  const { onChange, schema, path } = props;
+  // epoch milliseconds from the backend
+  const data = props.data as number | undefined;
   const { compact, placeholder = "", readOnly } = schema.view;
   const [key, setUserChanged] = useKey(path, schema, data, true);
 

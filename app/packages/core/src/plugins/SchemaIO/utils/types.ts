@@ -1,3 +1,6 @@
+// Server-configured view options. SchemaIO views type the keys they read
+// locally; moving this to `unknown` also needs components' RJSF translators
+// (SmartForm/RJSF/translators) to type theirs.
 export type SchemaViewType = { [key: string]: any };
 
 export type BaseSchemaType = {
@@ -40,14 +43,14 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   customComponents?: CustomComponentsType;
   onChange: (
     path: string,
-    value: any,
+    value: unknown,
     schema?: Schema,
     ancestors?: AncestorsType,
   ) => void;
   parentSchema?: SchemaType;
   relativePath: string;
-  data?: any;
-  initialData?: any;
+  data?: unknown;
+  initialData?: unknown;
   layout?: {
     height: number;
     width: number;

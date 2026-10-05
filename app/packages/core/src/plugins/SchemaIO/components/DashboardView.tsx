@@ -37,7 +37,11 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { ButtonView } from ".";
 import { getPath, getProps } from "../utils";
-import { ObjectSchemaType, ViewPropsType } from "../utils/types";
+import {
+  ObjectSchemaType,
+  SchemaViewType,
+  ViewPropsType,
+} from "../utils/types";
 import DynamicIO from "./DynamicIO";
 import DashboardPNGExport from "./DashboardPNGExport";
 import { get as getFromPath } from "lodash";
@@ -54,10 +58,29 @@ const createButtonViewProps = (schema, onClick) => ({
   onClick,
 });
 
+// Operator URIs and layout settings a DashboardView reads from its view.
+type DashboardViewOptions = SchemaViewType & {
+  allow_addition?: boolean;
+  allow_deletion?: boolean;
+  allow_edit?: boolean;
+  data_path?: string;
+  rows?: number;
+  cols?: number;
+  auto_layout?: boolean;
+  items?: GridLayout.Layout[];
+  on_add_item?: string;
+  on_edit_item?: string;
+  on_remove_item?: string;
+  on_remove_items?: string;
+  on_duplicate_item?: string;
+  on_save_layout?: string;
+  on_auto_layout_change?: string;
+};
+
 // Helper function to generate unique copy IDs to avoid collisions
 function generateUniqueCopyId(
   baseId: string,
-  state: any,
+  state: object | undefined,
   dataPath: string,
 ): string {
   const existing = new Set(Object.keys(getFromPath(state, dataPath) || {}));
@@ -78,7 +101,7 @@ function getPlatformShortcutKey(): string {
 // Shared layout calculation utility
 function calculateLayoutDimensions(
   numItems: number,
-  layout: any,
+  layout: { width?: number; height?: number } | undefined,
   autoLayout: boolean,
   layoutMode: string,
   numRows: number,
@@ -568,7 +591,12 @@ const ControlContainer = ({
 };
 
 export default function DashboardView(props: ViewPropsType) {
-  const { schema, path, data, layout } = props;
+  const { path, layout } = props;
+  const schema = props.schema as ObjectSchemaType & {
+    view: DashboardViewOptions;
+  };
+  // dashboard item data keyed by item id
+  const data = props.data as Record<string, unknown> | undefined;
   const { properties } = schema as ObjectSchemaType;
   const propertiesAsArray = [];
   const allow_addition = schema.view.allow_addition;
@@ -576,7 +604,7 @@ export default function DashboardView(props: ViewPropsType) {
   const allow_edit = schema.view.allow_edit;
   const allowMutation = allow_edit || allow_deletion;
   const dataPath = schema.view.data_path || "items_config";
-  const [panelState] = usePanelState();
+  const [panelState] = usePanelState<{ state?: object }>();
 
   // Shared clipboard state
   const clipboardData = useClipboardData();
@@ -742,16 +770,18 @@ export default function DashboardView(props: ViewPropsType) {
 
       // Generate new layout with updated IDs
       const layout = clipboardData.layout
-        ? clipboardData.layout.map((layoutItem: any, index: number) => {
-            const originalPlot = clipboardData.plots[index];
-            const newId = `${
-              originalPlot.name || "plot"
-            }_${Date.now()}_${index}`;
-            return {
-              ...layoutItem,
-              id: newId,
-            };
-          })
+        ? clipboardData.layout.map(
+            (layoutItem: GridLayout.Layout, index: number) => {
+              const originalPlot = clipboardData.plots[index];
+              const newId = `${
+                originalPlot.name || "plot"
+              }_${Date.now()}_${index}`;
+              return {
+                ...layoutItem,
+                id: newId,
+              };
+            },
+          )
         : null;
 
       const auto_layout = clipboardData.auto_layout;
@@ -912,17 +942,16 @@ export default function DashboardView(props: ViewPropsType) {
 
   const onDuplicateItem = useCallback(
     ({ id, path: _path }) => {
+      // a dashboard item: a plot config, optionally with raw_params
       const originalItem = getFromPath(
-        (panelState as any)?.state,
+        panelState?.state,
         `${dataPath}.${id}`,
-      );
+      ) as
+        | (Record<string, unknown> & { raw_params?: Record<string, unknown> })
+        | undefined;
       if (schema.view.on_duplicate_item && originalItem) {
         // Generate a unique ID to avoid collisions
-        const newId = generateUniqueCopyId(
-          id,
-          (panelState as any)?.state,
-          dataPath,
-        );
+        const newId = generateUniqueCopyId(id, panelState?.state, dataPath);
 
         // Get layout information for this item from customLayout
         const layoutItem = customLayout.find((item) => item.i === id);
@@ -987,10 +1016,7 @@ export default function DashboardView(props: ViewPropsType) {
         const layoutList = [];
 
         for (const id of itemsToCopy) {
-          const value = getFromPath(
-            (panelState as any)?.state,
-            `${dataPath}.${id}`,
-          );
+          const value = getFromPath(panelState?.state, `${dataPath}.${id}`);
           if (value) {
             plotList.push(value);
 
@@ -1503,7 +1529,8 @@ export default function DashboardView(props: ViewPropsType) {
           >
             {propertiesAsArray.map((property) => {
               const { id } = property;
-              const value = data?.[id];
+              // an item's data may carry a display name
+              const value = data?.[id] as { name?: string } | undefined;
               const label = property.view?.layout?.title || value?.name || id;
               const itemPath = getPath(path, id);
               const baseItemProps: BoxProps = {

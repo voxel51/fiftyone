@@ -16,6 +16,7 @@ vi.mock("@fiftyone/utilities", () => ({
   },
 }));
 
+import type { FileObjectType } from "./types";
 import { limitFiles } from "./utils";
 
 describe("limitFiles", () => {
@@ -24,7 +25,7 @@ describe("limitFiles", () => {
       { type: "directory", name: "dir1" },
       { type: "directory", name: "dir2" },
       { type: "file", name: "file1" },
-    ] as any[];
+    ] as FileObjectType[];
 
     const { limitedFiles } = limitFiles(files, 0);
 
@@ -38,7 +39,7 @@ describe("limitFiles", () => {
       { type: "file", name: "file1" },
       { type: "file", name: "file2" },
       { type: "file", name: "file3" },
-    ] as any[];
+    ] as FileObjectType[];
 
     const { limitedFiles } = limitFiles(files, 2);
 
@@ -50,7 +51,7 @@ describe("limitFiles", () => {
       { type: "directory", name: "dir1" },
       { type: "file", name: "file1" },
       { type: "file", name: "file2" },
-    ] as any[];
+    ] as FileObjectType[];
 
     const { fileCount } = limitFiles(files, 10);
 
@@ -61,7 +62,7 @@ describe("limitFiles", () => {
     const files = [
       { type: "file", name: "file1" },
       { type: "directory", name: "dir1" },
-    ] as any[];
+    ] as FileObjectType[];
 
     const { limitedFiles } = limitFiles(files, 10);
 

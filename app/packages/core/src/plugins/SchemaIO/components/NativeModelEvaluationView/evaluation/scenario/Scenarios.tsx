@@ -28,7 +28,32 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import type { Data, PlotDatum } from "plotly.js";
+import type { Data, PlotData, PlotDatum, PlotHoverEvent } from "plotly.js";
+
+// hover points of the class heatmaps and subset box plots; PlotDatum
+// omits the trace-specific fields and types x/y as any Datum
+type HeatmapHoverPoint = Omit<PlotDatum, "x" | "y"> & {
+  x: string;
+  y: string;
+  z: number;
+};
+type BoxHoverPoint = Omit<PlotDatum, "x"> & {
+  x: string;
+  lowerfence: number;
+  upperfence: number;
+  q1: number;
+  q3: number;
+  median: number;
+};
+
+// box traces built from precomputed stats, which @types/plotly.js lacks
+type BoxStatsTrace = Partial<PlotData> & {
+  q1: number[];
+  median: number[];
+  q3: number[];
+  lowerfence: number[];
+  upperfence: number[];
+};
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { atom } from "recoil";
 import AlertView from "../../../AlertView";
@@ -1460,8 +1485,8 @@ function ConfusionMatrixChart(props) {
                 subset_def: subsetDef,
               });
             }}
-            tooltip={(event: any) => {
-              const [point] = event.points;
+            tooltip={(event: PlotHoverEvent) => {
+              const [point] = event.points as HeatmapHoverPoint[];
               const x = point.x;
               const y = point.y;
               const z = point.z;
@@ -1494,8 +1519,8 @@ function ConfusionMatrixChart(props) {
                   key: compareKey,
                 });
               }}
-              tooltip={(event: any) => {
-                const [point] = event.points;
+              tooltip={(event: PlotHoverEvent) => {
+                const [point] = event.points as HeatmapHoverPoint[];
                 const x = point.x;
                 const y = point.y;
                 const z = point.z;
@@ -1524,7 +1549,7 @@ function ConfidenceDistributionChart(props) {
   const [mode, setMode] = usePanelStatePartial("cd_mode", "overview");
   const isOverview = mode === "overview";
 
-  const plotData: any = [];
+  const plotData: Array<Data | BoxStatsTrace> = [];
 
   if (!isOverview) {
     const y = [];
@@ -1674,8 +1699,8 @@ function ConfidenceDistributionChart(props) {
         layout={compareSubsetsData ? { boxmode: "group" } : {}}
         tooltip={
           isOverview
-            ? (event: any) => {
-                const [point] = event.points;
+            ? (event: PlotHoverEvent) => {
+                const [point] = event.points as BoxHoverPoint[];
 
                 const min = formatValueAsNumber(point.lowerfence);
                 const max = formatValueAsNumber(point.upperfence);

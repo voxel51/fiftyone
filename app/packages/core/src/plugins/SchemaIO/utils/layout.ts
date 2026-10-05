@@ -38,7 +38,8 @@ export function spaceToHeight(space?: number, max?: number) {
 
 export function getLayoutProps(props: ViewPropsType) {
   const { schema, layout } = props;
-  const { view = {} } = schema;
+  const { view: schemaView = {} } = schema;
+  const view = schemaView as SizeViewOptions;
   const { height, width } = layout || {};
   return {
     sx: {
@@ -52,7 +53,9 @@ export function getLayoutProps(props: ViewPropsType) {
   };
 }
 
-export function getPaddingSx(view: SchemaViewType = {}): PaddingSxType {
+// takes any object carrying padding keys (a view, or container props)
+export function getPaddingSx(schemaView: object = {}): PaddingSxType {
+  const view = schemaView as SpacingViewOptions;
   return {
     p: view.pad,
     px: view.pad_x || view.px || view.padX,
@@ -64,7 +67,8 @@ export function getPaddingSx(view: SchemaViewType = {}): PaddingSxType {
   };
 }
 
-export function getMarginSx(view: SchemaViewType = {}): MarginSxType {
+export function getMarginSx(schemaView: object = {}): MarginSxType {
+  const view = schemaView as SpacingViewOptions;
   return {
     m: view.margin,
     mx: view.margin_x || view.mx || view.marginX,
@@ -77,7 +81,8 @@ export function getMarginSx(view: SchemaViewType = {}): MarginSxType {
 }
 
 export function getGridSx(view: SchemaViewType = {}): SxProps {
-  const { columns, orientation, rows, alignX, alignY, align_x, align_y } = view;
+  const { columns, orientation, rows, alignX, alignY, align_x, align_y } =
+    view as GridViewOptions;
   const is2D = orientation !== "vertical" && orientation !== "horizontal";
   const x = alignX || align_x || "start";
   const y = alignY || align_y || "start";
@@ -218,6 +223,31 @@ export function getAdjustedLayoutDimensions({
   }
   return { height: adjustedHeight, width };
 }
+
+// view options the layout helpers read; views come from the server, so these
+// are only the keys each helper understands
+type SizeValue = number | string;
+type SizeViewOptions = {
+  height?: SizeValue;
+  width?: SizeValue;
+  minHeight?: SizeValue;
+  min_height?: SizeValue;
+  minWidth?: SizeValue;
+  min_width?: SizeValue;
+  maxHeight?: SizeValue;
+  max_height?: SizeValue;
+  maxWidth?: SizeValue;
+};
+type SpacingViewOptions = { [key: string]: number | undefined };
+type GridViewOptions = {
+  columns?: number;
+  rows?: number;
+  orientation?: string;
+  alignX?: string;
+  alignY?: string;
+  align_x?: string;
+  align_y?: string;
+};
 
 type PaddingSxType = {
   p?: number;

@@ -18,6 +18,29 @@ import {
 } from "../utils";
 import { ViewPropsType } from "../utils/types";
 
+type MenuOrigin = {
+  vertical: "top" | "bottom" | "center";
+  horizontal: "left" | "right" | "center";
+};
+
+type OperatorExecutionButtonViewOptions = {
+  description?: string;
+  icon?: string;
+  icon_position?: "left" | "right";
+  label?: string;
+  operator: string;
+  params?: Record<string, unknown>;
+  title?: string;
+  disabled?: boolean;
+  // operator URIs triggered on these events
+  on_error?: string;
+  on_success?: string;
+  on_option_selected?: string;
+  inside_modal?: boolean;
+  menu_anchor_origin?: MenuOrigin;
+  menu_transform_origin?: MenuOrigin;
+};
+
 export default function OperatorExecutionButtonView(props: ViewPropsType) {
   const { schema, path } = props;
   const { view = {} } = schema;
@@ -36,7 +59,7 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     inside_modal = false,
     menu_anchor_origin,
     menu_transform_origin,
-  } = view;
+  } = view as OperatorExecutionButtonViewOptions;
   const panelId = usePanelId();
   const variant = getVariant(props);
   const computedParams = { ...params, path, panel_id: panelId };
@@ -119,8 +142,14 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
 }
 
 function getButtonProps(props: ViewPropsType): ButtonProps {
-  const { label, color, disabled } = props.schema.view;
-  const variant = getVariant(props);
+  const { label, color, disabled } = props.schema.view as {
+    label?: string;
+    color?: string;
+    disabled?: boolean;
+  };
+  // getVariant only yields contained/outlined, so the round/square branches
+  // below never apply; kept as-is
+  const variant: string = getVariant(props);
   const baseProps: ButtonProps = getCommonProps(props);
   const sx = baseProps.sx as StyleObject<ButtonProps["sx"]>;
   if (isNullish(label)) {
@@ -172,7 +201,8 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
   return baseProps;
 }
 
-function getIconProps(props: ViewPropsType): ButtonProps {
+// the icon only takes the shared sx
+function getIconProps(props: ViewPropsType): Pick<ButtonProps, "sx"> {
   return getCommonProps(props);
 }
 
@@ -202,7 +232,7 @@ function getColor(props: ViewPropsType) {
   const {
     schema: { view = {} },
   } = props;
-  const { color } = view;
+  const { color } = view as { color?: string };
   if (color) {
     return getColorByCode(color);
   }
@@ -217,8 +247,9 @@ function getColor(props: ViewPropsType) {
 const defaultVariant = ["contained", "outlined"];
 
 function getVariant(pros: ViewPropsType) {
-  const variant = pros.schema.view.variant;
-  if (defaultVariant.includes(variant)) return variant;
+  const variant = pros.schema.view.variant as string;
+  if (defaultVariant.includes(variant))
+    return variant as "contained" | "outlined";
   if (variant === "round") return "contained";
   return "contained";
 }

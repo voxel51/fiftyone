@@ -15,7 +15,10 @@ import DynamicIO from "./DynamicIO";
 export default function GridView(props: ViewPropsType) {
   const { schema, path, data } = props;
   const { properties, view = {} } = schema as ObjectSchemaType;
-  const { gap = 1, orientation } = view;
+  const { gap = 1, orientation } = view as {
+    gap?: number | string;
+    orientation?: string;
+  };
 
   const propertiesAsArray = Object.entries(properties).map(([id, property]) => {
     return { id, ...property };
