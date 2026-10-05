@@ -20,7 +20,7 @@ export default ({
           adaptiveMenuItemProps?.closeOverflow?.();
         }}
         title={"Browse operations"}
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? "bottom-center" : "top-center"}
         data-cy="action-browse-operations"
       />
     </ActionDiv>

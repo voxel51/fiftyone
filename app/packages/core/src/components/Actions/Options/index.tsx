@@ -20,7 +20,7 @@ export default ({
       ref={ref}
     >
       <PillButton
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? "bottom-center" : "top-center"}
         icon={<Settings />}
         open={open}
         onClick={() => setOpen(!open)}

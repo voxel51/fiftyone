@@ -12,7 +12,7 @@ const ToggleFullscreen = () => {
       open={fullScreen}
       highlight={false}
       onClick={() => setFullScreen(!fullScreen)}
-      tooltipPlacement="bottom"
+      tooltipPlacement="bottom-center"
       title={fullScreen ? "Exit fullscreen (f)" : "Enter fullscreen (f)"}
       data-cy="action-toggle-fullscreen"
     />

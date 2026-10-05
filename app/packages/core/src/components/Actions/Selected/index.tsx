@@ -88,7 +88,7 @@ export default ({
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
         title={title}
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? "bottom-center" : "top-center"}
         style={{
           cursor: loading ? "default" : "pointer",
         }}
