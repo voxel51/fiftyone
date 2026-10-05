@@ -5,6 +5,7 @@ import type {
   SampleRendererProps,
 } from "./sample-renderer";
 import { hasMatchMediaMatchers } from "./sample-renderer";
+import type * as fos from "@fiftyone/state";
 
 declare global {
   interface Window {
@@ -72,7 +73,7 @@ export function usePlugin<TType extends PluginComponentType>(
 /** a utility for safely calling plugin defined activator functions */
 export function safePluginActivator(
   plugin: PluginComponentRegistration,
-  ctx: any,
+  ctx: PluginActivatorContext,
 ): boolean {
   if (typeof plugin.activator === "function") {
     try {
@@ -107,7 +108,7 @@ const getRegistryVersion = () => usingRegistry().getVersion();
 
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
-  ctx: Record<string, unknown>,
+  ctx: PluginActivatorContext,
 ) {
   // useSyncExternalStore reads the snapshot synchronously during render and
   // atomically subscribes, so a register/unregister event that fires between
@@ -162,7 +163,12 @@ export enum Categories {
   Custom = "custom",
 }
 
-export type PluginActivator = (props: any) => boolean;
+/** What useActivePlugins callers pass to activators; dataset when known. */
+export type PluginActivatorContext = {
+  dataset?: fos.State.Dataset;
+} & Record<string, unknown>;
+
+export type PluginActivator = (ctx: PluginActivatorContext) => boolean;
 
 export type PanelOptions = {
   /**

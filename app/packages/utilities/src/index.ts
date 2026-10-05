@@ -26,12 +26,9 @@ export * from "./types";
 export * from "./validation";
 export * from "./videoLabels";
 
-interface O {
-  [key: string]: O | any;
-}
-
-export const toCamelCase = (obj: O): O =>
-  _.transform(obj, (acc, value, key, target) => {
+// keys change, so the result is no longer the input's type; callers cast
+export const toCamelCase = (obj: object): unknown =>
+  _.transform(obj as Record<string, unknown>, (acc, value, key, target) => {
     const camelKey = _.isArray(target) ? key : safeCamelCase(key);
 
     acc[
@@ -44,8 +41,8 @@ function safeCamelCase(key) {
   return _.camelCase(key);
 }
 
-export const toSnakeCase = (obj: O): O =>
-  _.transform(obj, (acc, value, key, target) => {
+export const toSnakeCase = (obj: object): unknown =>
+  _.transform(obj as Record<string, unknown>, (acc, value, key, target) => {
     const snakeKey = _.isArray(target) ? key : _.snakeCase(key);
 
     acc[snakeKey] = _.isObject(value) ? toSnakeCase(value) : value;

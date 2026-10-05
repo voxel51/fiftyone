@@ -783,9 +783,7 @@ export const sendEvent = async (data: object) => {
 
 interface PollingEventResponse {
   event: string;
-  data: {
-    [key: string]: any;
-  };
+  data: Record<string, unknown>;
 }
 
 const pollingEventSource = (

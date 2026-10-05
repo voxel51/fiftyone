@@ -86,7 +86,7 @@ ${printArgs(cls.args)}
 }
 
 function printArgs(args) {
-  const output = Object.keys(args).map((a) => `  ${fromPyToJS(a)}?: any`);
+  const output = Object.keys(args).map((a) => `  ${fromPyToJS(a)}?: unknown`);
   return output.join(",\n");
 }
 

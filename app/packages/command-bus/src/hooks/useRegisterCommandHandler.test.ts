@@ -5,7 +5,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getCommandBus } from "../dispatch";
-import { Command, CommandCtor } from "../types";
+import { Command, CommandCtor, CommandHandler } from "../types";
 import { useRegisterCommandHandler } from "./useRegisterCommandHandler";
 
 class TestCommand extends Command<{ value: number }> {
@@ -140,10 +140,10 @@ describe("useRegisterCommandHandler", () => {
         type,
         handler,
       }: {
-        type: CommandCtor<TestCommand> | CommandCtor<AnotherCommand>;
-        handler: any;
+        type: CommandCtor<Command>;
+        handler: CommandHandler<Command>;
       }) => {
-        useRegisterCommandHandler(type as any, handler);
+        useRegisterCommandHandler(type, handler);
       },
       {
         initialProps: { type: TestCommand, handler: handler1 },
@@ -186,10 +186,10 @@ describe("useRegisterCommandHandler", () => {
         type,
         handler,
       }: {
-        type: CommandCtor<TestCommand> | CommandCtor<AnotherCommand>;
-        handler: any;
+        type: CommandCtor<Command>;
+        handler: CommandHandler<Command>;
       }) => {
-        useRegisterCommandHandler(type as any, handler);
+        useRegisterCommandHandler(type, handler);
       },
       {
         initialProps: { type: TestCommand, handler: handler1 },

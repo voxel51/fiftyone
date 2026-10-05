@@ -6,7 +6,7 @@ export const DEFAULT_CHANNEL_ID = "default";
 /**
  * Static registry of event dispatchers by channel ID.
  */
-const dispatcherRegistry = new Map<string, EventDispatcher<any>>();
+const dispatcherRegistry = new Map<string, EventDispatcher<EventGroup>>();
 
 /**
  * Gets or creates an event dispatcher for the given channel ID.

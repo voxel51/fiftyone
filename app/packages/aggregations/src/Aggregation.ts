@@ -4,10 +4,10 @@ export default class Aggregation {
   params: object;
   toJSON(): {
     _cls: string;
-    kwargs: Array<Array<any>>;
+    kwargs: Array<[string, unknown]>;
   } {
     const _cls = this._cls;
-    const kwargs = [];
+    const kwargs: Array<[string, unknown]> = [];
     if (this.params) {
       for (const [paramName, paramValue] of Object.entries(this.params)) {
         if (paramName) {

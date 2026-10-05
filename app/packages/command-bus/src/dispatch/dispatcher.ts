@@ -2,7 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Command, CommandCtor, CommandHandler, CommandResult } from "../types";
+import {
+  Command,
+  CommandCtor,
+  CommandHandler,
+  CommandResult,
+  ErasedCommandHandler,
+} from "../types";
 
 /**
  * Type-safe command dispatcher with runtime single handler enforcement.
@@ -28,7 +34,7 @@ import { Command, CommandCtor, CommandHandler, CommandResult } from "../types";
  * ```
  */
 export class CommandDispatcher {
-  private handlers = new Map<CommandCtor<any>, CommandHandler<any>>();
+  private handlers = new Map<CommandCtor<Command>, ErasedCommandHandler>();
 
   /**
    * Registers a handler for a command type.
@@ -46,7 +52,7 @@ export class CommandDispatcher {
    * });
    * ```
    */
-  register<C extends Command<any>>(
+  register<C extends Command<unknown>>(
     type: CommandCtor<C>,
     handler: CommandHandler<C>,
   ): void {
@@ -67,7 +73,7 @@ export class CommandDispatcher {
    * bus.unregister(CreateUser);
    * ```
    */
-  unregister<C extends Command<any>>(type: CommandCtor<C>): void {
+  unregister<C extends Command<unknown>>(type: CommandCtor<C>): void {
     this.handlers.delete(type);
   }
 
@@ -85,8 +91,11 @@ export class CommandDispatcher {
    * // result: { id: string }
    * ```
    */
-  async execute<C extends Command<any>>(cmd: C): Promise<CommandResult<C>> {
-    const handler = this.handlers.get(cmd.constructor as CommandCtor<any>);
+  async execute<C extends Command<unknown>>(cmd: C): Promise<CommandResult<C>> {
+    // handlers are keyed by constructor, so this one handles C
+    const handler = this.handlers.get(cmd.constructor as CommandCtor<C>) as
+      | CommandHandler<C>
+      | undefined;
     if (!handler) {
       throw new Error(`No handler registered for ${cmd.constructor.name}`);
     }

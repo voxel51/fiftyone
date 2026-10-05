@@ -42,7 +42,7 @@ export class Analytics {
     }
   }
 
-  redact(properties: Record<string, any>) {
+  redact(properties: Record<string, unknown>) {
     if (!properties) return properties;
     return Object.keys(properties).reduce((acc, key) => {
       if (this._redactedProperties.includes(key)) {

@@ -40,7 +40,7 @@ export abstract class Command<Result = unknown> {
  * type Result = CommandResult<CreateUser>; // { id: string }
  * ```
  */
-export type CommandResult<C extends Command<any>> =
+export type CommandResult<C extends Command<unknown>> =
   C extends Command<infer R> ? R : never;
 
 /**
@@ -48,7 +48,10 @@ export type CommandResult<C extends Command<any>> =
  *
  * @template C - Command type
  */
-export type CommandCtor<C extends Command<any>> = new (...args: any[]) => C;
+// never[] accepts constructors with any parameter list
+export type CommandCtor<C extends Command<unknown>> = new (
+  ...args: never[]
+) => C;
 
 /**
  * Handler function that processes a command and returns a result.
@@ -65,6 +68,13 @@ export type CommandCtor<C extends Command<any>> = new (...args: any[]) => C;
  * };
  * ```
  */
-export type CommandHandler<C extends Command<any>> = (
+export type CommandHandler<C extends Command<unknown>> = (
   cmd: C,
 ) => Promise<CommandResult<C>>;
+
+/**
+ * A handler with its command type erased, for storing handlers of
+ * different commands together. Narrow back to CommandHandler<C> before
+ * calling.
+ */
+export type ErasedCommandHandler = (cmd: never) => Promise<unknown>;

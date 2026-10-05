@@ -362,18 +362,18 @@ export function usePanelStateCallback<T>(
  * ```
  */
 export function usePanelStateByIdCallback<T>(
-  callback: (panelId: string, panelState: T, args: any[]) => void,
+  callback: (panelId: string, panelState: T, args: unknown[]) => void,
   local?: boolean,
   scope?: string,
 ) {
   const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ snapshot }) =>
-      async (panelId: string, ...args) => {
+      async (panelId: string, ...args: unknown[]) => {
         const panelState = await snapshot.getPromise(
           panelStateSelector({ panelId, local, scope: panelScope }),
         );
-        callback(panelId, panelState, args as any[]);
+        callback(panelId, panelState, args);
       },
     [],
   );

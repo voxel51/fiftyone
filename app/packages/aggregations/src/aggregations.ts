@@ -1,9 +1,9 @@
 import Aggregation from "./Aggregation";
 
 export type BoundsParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
 };
 
 export class Bounds extends Aggregation {
@@ -22,9 +22,9 @@ export class Bounds extends Aggregation {
 }
 
 export type CountParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
 };
 
 export class Count extends Aggregation {
@@ -43,9 +43,9 @@ export class Count extends Aggregation {
 }
 
 export type CountValuesParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
 };
 
 export class CountValues extends Aggregation {
@@ -64,9 +64,9 @@ export class CountValues extends Aggregation {
 }
 
 export type DistinctParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
 };
 
 export class Distinct extends Aggregation {
@@ -85,11 +85,11 @@ export class Distinct extends Aggregation {
 }
 
 export type HistogramValuesParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  bins?: any;
-  range?: any;
-  auto?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  bins?: unknown;
+  range?: unknown;
+  auto?: unknown;
 };
 
 export class HistogramValues extends Aggregation {
@@ -110,9 +110,9 @@ export class HistogramValues extends Aggregation {
 }
 
 export type MeanParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
 };
 
 export class Mean extends Aggregation {
@@ -131,10 +131,10 @@ export class Mean extends Aggregation {
 }
 
 export type StdParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
-  sample?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
+  sample?: unknown;
 };
 
 export class Std extends Aggregation {
@@ -154,9 +154,9 @@ export class Std extends Aggregation {
 }
 
 export type SumParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  safe?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  safe?: unknown;
 };
 
 export class Sum extends Aggregation {
@@ -175,10 +175,10 @@ export class Sum extends Aggregation {
 }
 
 export type ValuesParams = {
-  fieldOrExpr?: any;
-  expr?: any;
-  missingValue?: any;
-  unwind?: any;
+  fieldOrExpr?: unknown;
+  expr?: unknown;
+  missingValue?: unknown;
+  unwind?: unknown;
 };
 
 export class Values extends Aggregation {
