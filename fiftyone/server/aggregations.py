@@ -24,10 +24,10 @@ from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info
 from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.hooks as fosh
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
-import fiftyone.server.hooks as fosh
 import fiftyone.server.view as fosv
 
 
