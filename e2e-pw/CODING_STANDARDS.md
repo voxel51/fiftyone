@@ -154,8 +154,10 @@ that describe the drawing, or with window or DOM probes.
 - Screenshot only canvases; check DOM with exact reads.
 - Take the screenshot after the cause-wait of the step it checks, one per state
   that matters.
-- Use `expectScreenshot` (exact: `maxDiffPixelRatio: 0, threshold: 0`).
-  Masking, cropping in other UI, or loosening a threshold is not allowed.
+- Capture through the POM's screenshot asserter (for the modal,
+  `modal.sampleCanvas.assert`), which uses `expectScreenshot` (exact:
+  `maxDiffPixelRatio: 0, threshold: 0`). Masking, cropping in other UI, or
+  loosening a threshold is not allowed.
 - Rendering is deterministic: Chromium runs at 1x, the e2e server defaults to a
   one-color pool, and the App renders once its bundled fonts load.
 - Record macOS baselines with `--update-snapshots`; harvest Linux baselines
@@ -165,15 +167,25 @@ that describe the drawing, or with window or DOM probes.
 
 ## Canvases
 
-- Drive a canvas only through the `modal.sampleCanvas` pointer and keyboard
-  primitives (`move`, `down`, `up`, `click`). Never query canvas elements with
-  locators or accessibility queries; the canvas is opaque to the DOM.
-- Assert on a canvas with screenshots and cursor values only.
+`modal.sampleCanvas` (`SampleCanvasPom`) is the only authority over the modal
+canvas, for every media type (image, video, 3D). Every input to it and every
+assertion on it goes through that POM.
+
+- Drive the canvas only with its primitives: `move`, `movePixels`, `down`,
+  `up`, `click`, `dblclick` and its keyboard methods. No `page.mouse`, no
+  `hover` or `click` on a canvas or looker locator, and no bounding-box math
+  outside the POM.
+- Assert only through `modal.sampleCanvas.assert`: `hasScreenshot`,
+  `hasMediaScreenshot`, `hasCursor` (or a cursor passed to `move`) and `is`.
+  Never screenshot a canvas any other way, and never compare one capture to
+  another instead of a baseline.
+- Never query canvas elements with locators or accessibility queries; the
+  canvas is opaque to the DOM.
 - Park the pointer with `moveMouseToViewportEdge()` before a screenshot, so
   hover states don't reach the baseline.
-- Keep `SampleCanvasPom` free of feature knowledge: no `clickDetectionHandle`
-  or `openQuickEdit`. The spec composes the primitives, so every media type
-  (image, video, 3D) is tested the same way.
+- Gestures live in the spec. Neither `SampleCanvasPom` nor any other POM wraps
+  a feature gesture (`drawBox`, `drawCuboid`, `clickDetectionHandle`); the spec
+  writes out the primitives, so every media type is tested the same way.
 
 ## When a test hangs
 
