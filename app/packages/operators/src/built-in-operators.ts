@@ -962,7 +962,7 @@ class TestOperator extends Operator {
       inputs.defineProperty("warning", new types.String(), {
         label: "Warning",
         description: "Invalid JSON",
-        view: { name: "Warning" },
+        view: new types.Warning(),
       });
     }
 
@@ -970,7 +970,7 @@ class TestOperator extends Operator {
       label: "Params",
       required: true,
       default: JSON.stringify({ param: "value" }, null, 2),
-      view: { name: "CodeView", props: { language: "json" } },
+      view: new types.CodeView({ language: "json" }),
     });
     return new types.Property(inputs);
   }
