@@ -51,7 +51,6 @@ export function translateToUISchema(
       };
       break;
 
-    case SmartFormComponents.Select:
     case SmartFormComponents.SelectWidget:
       uiSchema["ui:widget"] = "SelectWidget";
       uiSchema["ui:options"] = {
