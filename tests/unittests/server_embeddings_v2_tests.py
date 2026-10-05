@@ -604,7 +604,7 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
 
         self.assertIn("gt.detections.label", fields)
         self.assertIn("gt.detections.tags", fields)
-        self.assertNotIn("gt.detections.bounding_box", fields)
+        self.assertNotIn("gt.detections.id", fields)
         self.assertNotIn("cluster", fields)
         self.assertTrue(all(f.startswith("gt.detections.") for f in fields))
 
