@@ -60,12 +60,13 @@ export default function AutocompleteView(props) {
         )}
         onInputChange={(e) => {
           if (!e) return;
-          if (!e.target.value && !multiple) {
+          const { value } = e.target as HTMLInputElement;
+          if (!value && !multiple) {
             onChange(path, null);
             setUserChanged();
           }
           if (!multiple && e && allowUserInput) {
-            onChange(path, e.target.value);
+            onChange(path, value);
             setUserChanged();
           }
         }}

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";
 import { CloudUpload } from "@mui/icons-material";
 import autoFocus from "../utils/auto-focus";
+import type { ViewPropsType } from "../utils/types";
 
 type FileDropProps = {
   label?: string;
@@ -11,6 +12,7 @@ type FileDropProps = {
   /** comma separated file types. i.e. .png,.jpg,.svg */
   types?: string;
   allowMultiple?: boolean;
+  autoFocused?: ViewPropsType["autoFocused"];
 };
 
 export default function FileDrop({

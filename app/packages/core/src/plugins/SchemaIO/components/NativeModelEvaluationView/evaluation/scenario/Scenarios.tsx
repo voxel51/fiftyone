@@ -28,6 +28,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import type { Data } from "plotly.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { atom } from "recoil";
 import AlertView from "../../../AlertView";
@@ -1302,7 +1303,7 @@ function ScenarioModelPerformanceChart(props) {
     theta.push(label);
     r.push(value);
   }
-  const plotData = [
+  const plotData: Data[] = [
     {
       type: "scatterpolar",
       r,
@@ -1706,7 +1707,7 @@ function MetricPerformanceChart(props) {
     return subsetData.metrics[metric];
   });
 
-  const plotData = [
+  const plotData: Data[] = [
     {
       x: subsets,
       y,
@@ -1782,7 +1783,7 @@ function SubsetDistributionChart(props) {
     return subsetData.distribution;
   });
 
-  const plotData = [
+  const plotData: Data[] = [
     {
       x: subsets,
       y,

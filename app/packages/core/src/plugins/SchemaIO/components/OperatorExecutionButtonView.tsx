@@ -10,7 +10,12 @@ import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, ButtonProps, Typography } from "@mui/material";
-import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
+import {
+  getColorByCode,
+  getComponentProps,
+  getDisabledColors,
+  type StyleObject,
+} from "../utils";
 import { ViewPropsType } from "../utils/types";
 
 export default function OperatorExecutionButtonView(props: ViewPropsType) {
@@ -117,48 +122,49 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
   const { label, color, disabled } = props.schema.view;
   const variant = getVariant(props);
   const baseProps: ButtonProps = getCommonProps(props);
+  const sx = baseProps.sx as StyleObject<ButtonProps["sx"]>;
   if (isNullish(label)) {
-    baseProps.sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
-    baseProps.sx.minWidth = "auto";
-    baseProps.sx.p = "6px";
+    sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
+    sx.minWidth = "auto";
+    sx.p = "6px";
   }
   if (variant === "round") {
-    baseProps.sx.borderRadius = "1rem";
-    baseProps.sx.p = "3.5px 10.5px";
+    sx.borderRadius = "1rem";
+    sx.p = "3.5px 10.5px";
   }
   if (variant === "square") {
-    baseProps.sx.borderRadius = "3px 3px 0 0";
-    baseProps.sx.backgroundColor = (theme) => theme.palette.background.field;
-    baseProps.sx.borderBottom = "1px solid";
-    baseProps.sx.paddingBottom = "5px";
-    baseProps.sx.borderColor = (theme) => theme.palette.primary.main;
+    sx.borderRadius = "3px 3px 0 0";
+    sx.backgroundColor = (theme) => theme.palette.background.field;
+    sx.borderBottom = "1px solid";
+    sx.paddingBottom = "5px";
+    sx.borderColor = (theme) => theme.palette.primary.main;
   }
   if (variant === "outlined") {
-    baseProps.sx.p = "5px";
+    sx.p = "5px";
   }
   if ((variant === "square" || variant === "outlined") && isNullish(color)) {
     const borderColor =
       "rgba(var(--fo-palette-common-onBackgroundChannel) / 0.23)";
-    baseProps.sx.borderColor = borderColor;
-    baseProps.sx.borderBottomColor = borderColor;
+    sx.borderColor = borderColor;
+    sx.borderBottomColor = borderColor;
   }
   if (isNullish(variant) || variant === "contained") {
     baseProps.variant = "contained";
     baseProps.color = "primary";
-    baseProps.sx.color = (theme) => theme.palette.text.primary;
-    baseProps.sx["&:hover"] = {
+    sx.color = (theme) => theme.palette.text.primary;
+    sx["&:hover"] = {
       backgroundColor: (theme) => theme.palette.tertiary.hover,
     };
   }
 
   if (disabled) {
     const [bgColor, textColor] = getDisabledColors();
-    baseProps.sx["&.Mui-disabled"] = {
+    sx["&.Mui-disabled"] = {
       backgroundColor: variant === "outlined" ? "inherit" : bgColor,
       color: textColor,
     };
     if (["square", "outlined"].includes(variant)) {
-      baseProps.sx["&.Mui-disabled"].backgroundColor = (theme) =>
+      sx["&.Mui-disabled"].backgroundColor = (theme) =>
         theme.palette.background.field;
     }
   }

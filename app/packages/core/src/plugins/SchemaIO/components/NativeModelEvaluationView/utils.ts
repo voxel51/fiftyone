@@ -1,5 +1,6 @@
 import { formatValueAsNumber } from "@fiftyone/utilities";
 import { capitalize } from "lodash";
+import type { Data } from "plotly.js";
 import { atom } from "recoil";
 import { NONE_CLASS } from "./constants";
 
@@ -228,7 +229,7 @@ export function getConfusionMatrix(
 export function getConfusionMatrixPlotlyData(
   data: MatrixData,
   config: MatrixPlotDataConfig,
-) {
+): Data[] {
   const {
     classes: originalClasses,
     matrix: originalMatrix,

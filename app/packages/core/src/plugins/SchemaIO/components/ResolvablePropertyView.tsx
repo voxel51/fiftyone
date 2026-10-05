@@ -88,7 +88,8 @@ export default function ResolvablePropertyView(props) {
           }
           setResolvedParams(serializedObservedData);
           const { result: schema, error } = result;
-          setError(error);
+          // remote resolution reports its failure as a string
+          setError(error as string | undefined);
           if (schema) {
             try {
               const property = types.Property.fromJSON(schema);

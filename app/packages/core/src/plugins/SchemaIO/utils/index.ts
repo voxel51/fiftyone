@@ -5,6 +5,7 @@ import {
   ArraySchemaType,
   CustomComponentsType,
   SchemaType,
+  SchemaViewType,
   ViewPropsType,
 } from "./types";
 import { getLayoutProps } from "./layout";
@@ -34,8 +35,12 @@ export function getComponent(
   );
 }
 
+/**
+ * Reads `schema.view.componentsProps[id]` from any props object (missing
+ * paths yield `{}`) and merges it over `baseProps`.
+ */
 export function getComponentProps<P>(
-  props: ViewPropsType,
+  props: object & { schema?: { view?: SchemaViewType } },
   id: string,
   baseProps?: P,
 ) {

@@ -8,7 +8,7 @@ export type TimerViewParams = {
   on_timeout?: string;
   interval?: number;
   timeout?: number;
-  params?: object;
+  params?: Record<string, unknown>;
 };
 
 class Timer {

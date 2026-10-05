@@ -2,7 +2,7 @@ import { HelpTooltip } from "@fiftyone/components";
 import { Box, Stack, Typography } from "@mui/material";
 
 type RoundedTabsProps = {
-  tabs: Array<{ id: string; label: string }>;
+  tabs: Array<{ id: string; label: string; description?: string }>;
   selected: string;
   onChange: (tab: string) => void;
 };

@@ -89,7 +89,7 @@ export default function ColorView(props) {
 }
 
 function formatColor(color: ColorType) {
-  const { hsl = {}, hex } = color;
+  const { hsl = {} as ColorType["hsl"], hex } = color;
   const { h, s, l, a } = hsl;
   const bgColor = hsl ? `hsla(${h},${s * 100}%,${l * 100}%,${a})` : color.hex;
   const hexColor = (hex.startsWith("#") ? hex : `#${hex}`).toLowerCase();

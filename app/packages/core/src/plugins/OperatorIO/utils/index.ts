@@ -1,4 +1,38 @@
 import { types } from "@fiftyone/operators";
+import type { SchemaViewType } from "../../SchemaIO/utils/types";
+
+type IOSchemaOptions = { readOnly?: boolean; isOutput?: boolean };
+
+/**
+ * JSON-schema-like shape that SchemaIO renders, built from an operator
+ * property by {@link operatorToIOSchema}.
+ */
+export type IOSchema = {
+  type: string;
+  view: SchemaViewType;
+  default: unknown;
+  onChange: unknown;
+  required: unknown;
+  min?: number;
+  max?: number;
+  multipleOf?: number;
+  properties?: Record<string, IOSchema>;
+  items?: IOSchema | IOSchema[];
+  minItems?: number;
+  maxItems?: number;
+  types?: IOSchema[];
+  additionalProperties?: IOSchema;
+  resolver?: unknown;
+  debounce?: unknown;
+  throttle?: unknown;
+  wait?: unknown;
+  auto_update?: unknown;
+  dependencies?: unknown;
+  params?: unknown;
+  validate?: unknown;
+  leading?: unknown;
+  trailing?: unknown;
+};
 
 const inputComponentsByType = {
   Object: "ObjectView",
@@ -101,13 +135,13 @@ function getComponentByView(property) {
   }
 }
 
-function getSchema(property, options = {}) {
+function getSchema(property, options: IOSchemaOptions = {}): IOSchema {
   const { defaultValue, required } = property;
   const typeName = getTypeName(property);
   const type = operatorTypeToJSONSchemaType[typeName];
   const readOnly =
     typeof options.readOnly === "boolean" ? options.readOnly : options.isOutput;
-  const schema = {
+  const schema: IOSchema = {
     type,
     view: { readOnly, ...getViewSchema(property) },
     default: defaultValue,
@@ -206,10 +240,13 @@ function getViewSchema(property) {
   return view;
 }
 
-function getPropertiesSchema(property, options?) {
+function getPropertiesSchema(
+  property,
+  options?: IOSchemaOptions,
+): Record<string, IOSchema> {
   const { properties } = property?.type;
   if (properties instanceof Map) {
-    const propertiesObject = {};
+    const propertiesObject: Record<string, IOSchema> = {};
     properties.forEach((value, key) => {
       propertiesObject[key] = getSchema(value, options);
     });
@@ -218,13 +255,18 @@ function getPropertiesSchema(property, options?) {
   return {};
 }
 
-export function operatorToIOSchema(operatorSchema, options?) {
+export function operatorToIOSchema(
+  operatorSchema,
+  options?: IOSchemaOptions,
+): IOSchema {
   return getSchema(operatorSchema, options);
 }
 
-export function getErrorsByPath(errors: []) {
+export function getErrorsByPath<E extends { path: string }>(
+  errors: E[],
+): Record<string, E[]> {
   if (!Array.isArray(errors)) return {};
-  return errors.reduce((pathErrors, error) => {
+  return errors.reduce<Record<string, E[]>>((pathErrors, error) => {
     const { path } = error;
     if (!pathErrors[path]) pathErrors[path] = [];
     pathErrors[path].push(error);

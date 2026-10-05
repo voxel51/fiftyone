@@ -4,14 +4,14 @@ import { Avatar, Box, Grid, IconButton } from "@mui/material";
 import { cloneDeep, set, throttle } from "lodash";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getComponentProps, getEmptyValue } from "../utils";
-import { ViewPropsType } from "../utils/types";
+import { ArraySchemaType, ViewPropsType } from "../utils/types";
 import Accordion from "./Accordion";
 import Button from "./Button";
 import DynamicIO from "./DynamicIO";
 import EmptyState from "./EmptyState";
 import HeaderView from "./HeaderView";
 
-export default function ListView(props: ViewPropsType) {
+export default function ListView(props: ViewPropsType<ArraySchemaType>) {
   const { schema, onChange, path, data, errors } = props;
   const { state, addItem, deleteItem, updateItem, size } = useListState(
     data ?? schema.default ?? DEFAULT_LIST_STATE,

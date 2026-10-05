@@ -27,7 +27,9 @@ export default function LoaderView(props: LoaderViewProps) {
     message,
   } = view;
 
-  const currentValue: LoaderValue = get(fullData, path) || { state: "idle" };
+  const currentValue: LoaderValue = (get(fullData, path) as
+    | LoaderValue
+    | undefined) || { state: "idle" };
   const { state, error } = currentValue;
 
   const dependencyHash = useDependencyHash(params, dependencies);

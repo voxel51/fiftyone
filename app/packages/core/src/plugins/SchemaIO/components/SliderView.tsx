@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useKey } from "../hooks";
 import { autoFocus, getComponentProps } from "../utils";
 import FieldWrapper from "./FieldWrapper";
-import { ViewPropsType } from "../utils/types";
+import { NumberSchemaType, ViewPropsType } from "../utils/types";
 
 type ValueFormat = "" | "%";
 
@@ -55,7 +55,9 @@ const SliderInputField: React.FC<SliderInputFieldProps> = ({
   </Grid>
 );
 
-export default function SliderView(props: ViewPropsType) {
+export default function SliderView(
+  props: ViewPropsType<NumberSchemaType & { viewMultipleOf?: number }>,
+) {
   const { data, onChange, path, schema } = props;
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);

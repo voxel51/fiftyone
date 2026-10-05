@@ -175,4 +175,5 @@ export type RadioGroupProps = {
   schema: any; // todo
   path: string;
   data: unknown;
+  autoFocused?: ViewPropsType["autoFocused"];
 };

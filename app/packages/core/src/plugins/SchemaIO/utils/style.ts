@@ -1,3 +1,25 @@
+type UnionToIntersection<U> = (
+  U extends unknown ? (arg: U) => void : never
+) extends (arg: infer I) => void
+  ? I
+  : never;
+
+/**
+ * The plain-object form of an MUI `sx` type (e.g. `ButtonProps["sx"]`). MUI
+ * types it as a union of CSS properties, pseudo selectors and nested
+ * selectors; merging them lets individual keys be assigned.
+ */
+export type StyleObject<Sx> = UnionToIntersection<
+  Exclude<
+    Sx,
+    | ((...args: never[]) => unknown)
+    | ReadonlyArray<unknown>
+    | boolean
+    | null
+    | undefined
+  >
+>;
+
 export function getColorByCode(code: ColorType) {
   if (code) {
     if (code === "primary") return "var(--fo-palette-text-primary)";
