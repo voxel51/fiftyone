@@ -192,6 +192,17 @@ export function useSelectionBridge({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
 
+  // A response landing after unmount (a tab switch, a close) must not
+  // publish for a plot that is gone — the close effect may have just
+  // cleared the grid it would re-narrow
+  useEffect(
+    () => () => {
+      lassoSeq.current++;
+      clickSeq.current++;
+    },
+    [],
+  );
+
   // A patches run's points are labels, so sample-level ids (a samples-view
   // grid's checkboxes, other panels' selections) resolve through each
   // point's owning sample. Only fetched once something needs it
