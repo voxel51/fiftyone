@@ -116,12 +116,6 @@ test.skip("check modal playback and tagging behavior", async ({
 
   const tagged = await modal.imavid.playUntilFrames("13 / 150");
 
-  // verify it's the "13th" (todo: 3rd) frame that's rendered
-  // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-  // await expect(modal.looker).toHaveScreenshot("ima-vid-1-3.png", {
-  //   mask: [modal.imavid.controls],
-  //   animations: "allow",
-  // });
   await modal.sidebar.assert.verifySidebarEntryTexts({
     frame_number: String(tagged),
     video_id: "1",

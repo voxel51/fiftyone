@@ -6,6 +6,62 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
+// the default fields, always selected, then the dataset's own fields, as the
+// selection list orders them
+const DEFAULT_FIELDS = ["filepath", "id", "metadata", "tags"];
+const OWN_FIELDS = [
+  "uniqueness",
+  "predictions",
+  "last_modified_at",
+  "index",
+  "ground_truth",
+  "created_at",
+];
+const DETECTION_ATTRIBUTES = ["confidence", "id", "label", "mask_path", "tags"];
+const detectionsPaths = (field: string) => [
+  field,
+  `${field}.detections`,
+  ...DETECTION_ATTRIBUTES.map((name) => `${field}.detections.${name}`),
+];
+const METADATA_PATHS = [
+  "metadata",
+  ...["height", "mime_type", "num_channels", "size_bytes", "width"].map(
+    (name) => `metadata.${name}`,
+  ),
+];
+// with nested fields shown, every path in schema order
+const ALL_PATHS = [
+  "created_at",
+  "filepath",
+  ...detectionsPaths("ground_truth"),
+  "id",
+  "index",
+  "last_modified_at",
+  ...METADATA_PATHS,
+  ...detectionsPaths("predictions"),
+  "tags",
+  "uniqueness",
+];
+// a filter rule selects the read-only fields and the paths it matches; the
+// list shows the selected rows in reverse path order, then the rest in order
+const FILTER_DEFAULTS = [
+  "created_at",
+  "filepath",
+  "id",
+  "last_modified_at",
+  "metadata",
+  "tags",
+];
+const filterResults = (matches: string[]) => {
+  const checked = [...FILTER_DEFAULTS, ...matches];
+  return {
+    checked: [...checked].sort().reverse(),
+    unchecked: ALL_PATHS.filter((path) => !checked.includes(path)),
+  };
+};
+// metadata.width carries the owner and description the spec sets
+const METADATA_MATCH = METADATA_PATHS.slice(1);
+
 const test = base.extend<{
   fieldVisibility: FieldVisibilityPom;
   sidebar: SidebarPom;
@@ -65,13 +121,16 @@ test.describe.serial("field visibility", () => {
     await fieldVisibility.asserter.fieldVisibilityIconHasTooltip();
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.toggleAllSelection();
-    await fieldVisibility.asserter.assertEnabledFieldsAreUnselected();
+    await fieldVisibility.asserter.assertSelection({
+      checked: DEFAULT_FIELDS,
+      unchecked: OWN_FIELDS,
+    });
   });
 
   test("show nested field works", async ({ fieldVisibility }) => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.toggleShowNestedFields();
-    await fieldVisibility.asserter.assertNestedFieldsVisible();
+    await fieldVisibility.asserter.assertShownFields(ALL_PATHS);
 
     await fieldVisibility.asserter.assertMetadataInVisible();
     await fieldVisibility.toggleShowMetadata();
@@ -116,14 +175,20 @@ test.describe.serial("field visibility", () => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.openTab("Filter rule");
     await fieldVisibility.addFilterRuleInput("metadata");
-    await fieldVisibility.asserter.assertDefaultPathsSelected();
+    await fieldVisibility.asserter.assertSelection(
+      filterResults(METADATA_MATCH),
+      "all",
+    );
   });
 
   test("filter rule by info shows results", async ({ fieldVisibility }) => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.openTab("Filter rule");
     await fieldVisibility.addFilterRuleInput("owner:bob");
-    await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
+    await fieldVisibility.asserter.assertSelection(
+      filterResults([...METADATA_MATCH, "ground_truth"]),
+      "all",
+    );
   });
 
   test("filter rule by description shows results", async ({
@@ -134,14 +199,20 @@ test.describe.serial("field visibility", () => {
     await fieldVisibility.addFilterRuleInput(
       "description:ground_truth description",
     );
-    await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
+    await fieldVisibility.asserter.assertSelection(
+      filterResults(["ground_truth"]),
+      "all",
+    );
   });
 
   test("filter rule by name shows results", async ({ fieldVisibility }) => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.openTab("Filter rule");
     await fieldVisibility.addFilterRuleInput("name:predictions");
-    await fieldVisibility.asserter.assertFieldsAreSelected(["predictions"]);
+    await fieldVisibility.asserter.assertSelection(
+      filterResults(["predictions"]),
+      "all",
+    );
   });
 
   test("filter rule by free text shows results if text in field info", async ({
@@ -150,7 +221,10 @@ test.describe.serial("field visibility", () => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.openTab("Filter rule");
     await fieldVisibility.addFilterRuleInput("bob");
-    await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
+    await fieldVisibility.asserter.assertSelection(
+      filterResults([...METADATA_MATCH, "ground_truth"]),
+      "all",
+    );
   });
 
   test("sidebar group is hidden if all its fields are hidden using field visibility", async ({

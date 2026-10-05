@@ -109,12 +109,12 @@ test.describe.serial("tag", () => {
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
-    await modal.sidebar.toggleLabelCheckbox("ground_truth");
-
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.looker).toHaveScreenshot("labels.png");
+    await modal.afterLabelsRedrawn(() =>
+      modal.sidebar.toggleLabelCheckbox("ground_truth"),
+    );
+    await modal.sampleCanvas.assert.hasScreenshot("predictions.png");
 
     await eventUtils.after("animation-onRest", async () => {
       await modal.sidebar.clickFieldDropdown("predictions");
@@ -131,8 +131,9 @@ test.describe.serial("tag", () => {
     await modal.tagger.toggleOpen();
     await modal.tagger.addLabelTag("correct");
 
-    await modal.sidebar.clearGroupFilters("labels");
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.looker).toHaveScreenshot("labels.png");
+    await modal.afterLabelsRedrawn(() =>
+      modal.sidebar.clearGroupFilters("labels"),
+    );
+    await modal.sampleCanvas.assert.hasScreenshot("predictions.png");
   });
 });

@@ -10,6 +10,8 @@
 interface Window {
   /** Guards the init script so it only runs once per page lifecycle. */
   __FO_PLAYWRIGHT_INIT__: boolean;
+  /** the page fixture's count of global loading screens per document */
+  __FO_GLOBAL_LOADING_SCREEN__?: (documentId: string) => void;
 
   /** The CSS cursor under the pointer, updated on every pointer move. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;

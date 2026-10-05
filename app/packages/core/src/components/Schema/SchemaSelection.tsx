@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { getEventBus } from "@fiftyone/events";
+import { useEffect, useRef } from "react";
 import { Box } from "@mui/material";
 
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
@@ -6,6 +7,17 @@ import { SchemaSelectionControls } from "./SchemaSelectControls";
 import { SchemaSearchHelp } from "./SchemaSearchHelp";
 import { EMBEDDED_DOCUMENT_FIELD } from "@fiftyone/utilities";
 import { SchemaSelectionRow } from "./SchemaSelectionRow";
+
+/** e2e specs wait on the field rows the selection list shows, as they change */
+type SchemaSelectionE2EEvents = {
+  "e2e:schema:selection-shown": {
+    /** the shown rows' paths, comma-joined in order */
+    shown: string;
+    /** the checked rows' paths, comma-joined in order */
+    checked: string;
+    metadata: boolean;
+  };
+};
 
 export const SchemaSelection = () => {
   const {
@@ -21,6 +33,7 @@ export const SchemaSelection = () => {
 
   const showSearchHelp = isFilterRuleActive && !searchResults?.length;
   const showSelection = !showSearchHelp;
+  const announced = useRef<string | null>(null);
 
   useEffect(() => {
     if (showMetadata && finalSchema && !expandedPaths) {
@@ -31,10 +44,37 @@ export const SchemaSelection = () => {
         }
       });
       setExpandedPaths(res);
+      return;
     } else if (!showMetadata && !!expandedPaths) {
       setExpandedPaths(null);
+      return;
     }
-  }, [expandedPaths, finalSchema, setExpandedPaths, showMetadata]);
+
+    const rows = showSelection
+      ? (finalSchema ?? []).filter(({ skip }) => !skip)
+      : [];
+    const shown = {
+      shown: rows.map(({ path }) => path).join(","),
+      checked: rows
+        .filter(({ isSelected }) => isSelected)
+        .map(({ path }) => path)
+        .join(","),
+      metadata: Boolean(showMetadata),
+    };
+    const key = JSON.stringify(shown);
+    if (key === announced.current) return;
+    announced.current = key;
+    getEventBus<SchemaSelectionE2EEvents>().dispatch(
+      "e2e:schema:selection-shown",
+      shown,
+    );
+  }, [
+    expandedPaths,
+    finalSchema,
+    setExpandedPaths,
+    showMetadata,
+    showSelection,
+  ]);
 
   return (
     <Box

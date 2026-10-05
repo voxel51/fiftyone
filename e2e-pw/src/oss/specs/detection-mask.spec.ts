@@ -33,15 +33,14 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
       badDetectionMaskSampleImage,
       goodDetectionMaskSampleImage,
       goodDetectionMaskPathSampleImage,
-    ].map((img, index) => {
-      const fillColor = colors[index];
+    ].map((img, index) =>
       mediaFactory.createImage({
         outputPath: img,
         width: 25,
         height: 25,
-        fillColor: fillColor,
-      });
-    }),
+        fillColor: colors[index],
+      }),
+    ),
   );
 
   await fiftyoneLoader.executePythonCode(

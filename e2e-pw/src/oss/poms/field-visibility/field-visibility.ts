@@ -2,36 +2,8 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { GridPom } from "../grid";
 
-const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];
-const disabledParentPaths = ["filepath", "id", "metadata", "tags"];
-const allParentPaths = [...enabledParentPaths, ...disabledParentPaths];
-const annotationSubpaths = (type: "predictions" | "ground_truth") => [
-  `${type}.detections.confidence`,
-  `${type}.detections.id`,
-  `${type}.detections.label`,
-  `${type}.detections.tags`,
-];
-const metadataSubpaths = [
-  "metadata.height",
-  "metadata.mime_type",
-  "metadata.num_channels",
-  "metadata.size_bytes",
-  "metadata.width",
-];
-const allSubpaths = [
-  ...annotationSubpaths("predictions"),
-  ...annotationSubpaths("ground_truth"),
-  ...metadataSubpaths,
-];
-const allPaths = [...allParentPaths, ...allSubpaths];
-const defaultParentPaths = ["id", "filepath", "metadata", "tags"];
-const defaultAllPaths = [
-  "id",
-  "filepath",
-  "metadata",
-  "tags",
-  ...metadataSubpaths,
-];
+const SELECTION_SHOWN = "e2e:schema:selection-shown";
+const ROW_PREFIX = "schema-selection-";
 
 type TabType = "Filter rule" | "Selection";
 
@@ -119,61 +91,46 @@ export class FieldVisibilityPom {
     return this.containerLocator.getByTitle(tabName);
   }
 
-  async getSelectionFields(
-    status: "checked" | "unchecked" | "all" = "checked",
-    mode:
-      | "parents-only"
-      | "nested-only"
-      | "all"
-      | "customFields" = "parents-only",
+  /** The rendered selection rows `mode` covers, in order, read once */
+  async selectionRows(
+    mode: "parents-only" | "nested-only" | "all" = "parents-only",
   ) {
-    let paths: string[] = [];
-    switch (mode) {
-      case "parents-only":
-        paths = allParentPaths;
-        break;
-      case "nested-only":
-        paths = allSubpaths;
-        break;
-      case "all":
-        paths = allPaths;
-        break;
-      case "customFields":
-      default:
-        break;
-    }
+    const rows = await this.containerLocator
+      .locator(
+        `[data-cy^="${ROW_PREFIX}"]:not([data-cy^="${ROW_PREFIX}info-container-"])`,
+      )
+      .evaluateAll(
+        (elements, prefix) =>
+          elements.map((element) => ({
+            path: (element.getAttribute("data-cy") ?? "").slice(prefix.length),
+            checked: Boolean(element.querySelector("input")?.checked),
+          })),
+        ROW_PREFIX,
+      );
+    return rows.filter(({ path }) =>
+      mode === "all" ? true : path.includes(".") === (mode === "nested-only"),
+    );
+  }
 
-    const checked = status === "checked";
-    const fields: string[] = [];
-
-    for (let i = 0; i < paths.length; i++) {
-      const cc = this.getFieldCheckbox(paths[i]);
-      if (status === "all") {
-        fields.push(paths[i]);
-        continue;
-      }
-
-      const isCheckedFinal = await cc.isChecked();
-      if ((checked && isCheckedFinal) || (!checked && !isCheckedFinal)) {
-        fields.push(paths[i]);
-      }
-    }
-    return fields;
+  /** Run `action` and resolve once the selection rows it changes render */
+  private afterSelectionShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(SELECTION_SHOWN, action);
   }
 
   async toggleAllSelection() {
-    const toggle = this.getControl("select-all");
-    await toggle.click();
+    await this.afterSelectionShown(() => this.getControl("select-all").click());
   }
 
   async toggleShowNestedFields() {
-    const toggle = this.getControl("show-nested-fields");
-    await toggle.click();
+    await this.afterSelectionShown(() =>
+      this.getControl("show-nested-fields").click(),
+    );
   }
 
   async toggleShowMetadata() {
-    const toggle = this.getControl("show-field-metadata");
-    await toggle.click();
+    await this.afterSelectionShown(() =>
+      this.getControl("show-field-metadata").click(),
+    );
   }
 
   async openFieldVisibilityModal() {
@@ -219,12 +176,13 @@ export class FieldVisibilityPom {
   }
 
   async openTab(tabName: TabType) {
-    return await this.getTab(tabName).click();
+    await this.afterSelectionShown(() => this.getTab(tabName).click());
   }
 
+  /** Type a filter rule and run its search with Enter */
   async addFilterRuleInput(input: string) {
-    await this.filterRuleInput.type(input);
-    await this.filterRuleInput.press("Enter");
+    await this.filterRuleInput.fill(input);
+    await this.afterSelectionShown(() => this.filterRuleInput.press("Enter"));
   }
 }
 
@@ -238,26 +196,22 @@ class FieldVisibilityAsserter {
     );
   }
 
-  async assertAllFieldsSelected(selectionFields: string[] = allParentPaths) {
-    await this.fv.openFieldVisibilityModal();
-    const expectedSelectionFields = await this.fv.getSelectionFields();
-
-    expect(expectedSelectionFields.length).toEqual(selectionFields.length);
+  /** The rendered rows `mode` covers, in order, split by their checkbox */
+  async assertSelection(
+    expected: { checked: string[]; unchecked: string[] },
+    mode: "parents-only" | "nested-only" | "all" = "parents-only",
+  ) {
+    const rows = await this.fv.selectionRows(mode);
+    expect({
+      checked: rows.filter((row) => row.checked).map(({ path }) => path),
+      unchecked: rows.filter((row) => !row.checked).map(({ path }) => path),
+    }).toEqual(expected);
   }
 
-  async assertEnabledFieldsAreUnselected() {
-    const fields = await this.fv.getSelectionFields("unchecked");
-    expect(fields.length).toEqual(enabledParentPaths.length);
-  }
-
-  async assertEnabledFieldsAreSelected() {
-    const fields = await this.fv.getSelectionFields();
-    expect(fields.length).toEqual(disabledParentPaths.length);
-  }
-
-  async assertNestedFieldsVisible() {
-    const fields = await this.fv.getSelectionFields("all", "all");
-    expect(fields.length).toBeGreaterThan(allParentPaths.length);
+  /** Exactly these rows render, in order */
+  async assertShownFields(paths: string[]) {
+    const rows = await this.fv.selectionRows("all");
+    expect(rows.map(({ path }) => path)).toEqual(paths);
   }
 
   async assertMetadataInVisible(path: string = "ground_truth") {
@@ -275,25 +229,5 @@ class FieldVisibilityAsserter {
 
   async assertFilterRuleExamplesVisible() {
     expect(await this.fv.filterRuleContainer.isVisible()).toBe(true);
-  }
-
-  async assertDefaultParentPathsSelected() {
-    const fields = await this.fv.getSelectionFields("checked", "parents-only");
-    expect(fields.length).toEqual(defaultParentPaths.length);
-  }
-
-  async assertDefaultPathsSelected() {
-    const fields = await this.fv.getSelectionFields("checked", "all");
-    expect(fields).toHaveLength(defaultAllPaths.length);
-  }
-
-  async assertFieldsAreSelected(fieldNames: string[]) {
-    const selectedFields = await this.fv.getSelectionFields(
-      "checked",
-      "parents-only",
-    );
-    for (let i = 0; i < fieldNames.length; i++) {
-      expect(selectedFields).toContain(fieldNames[i]);
-    }
   }
 }

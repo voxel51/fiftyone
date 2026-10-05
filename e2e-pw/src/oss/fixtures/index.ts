@@ -81,7 +81,23 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
         console.error(`[browser-error] ${testInfo.title}: ${message.text()}`);
       }
     });
+    // global loading screens per document, reported by the loader's watchdog
+    const loadingScreens = new Map<string, number>();
+    await page.exposeBinding(
+      "__FO_GLOBAL_LOADING_SCREEN__",
+      (_source, documentId: string) => {
+        loadingScreens.set(
+          documentId,
+          (loadingScreens.get(documentId) ?? 0) + 1,
+        );
+      },
+    );
     await use(page);
+    if (Math.max(0, ...loadingScreens.values()) > 1) {
+      throw new Error(
+        "the top-level Suspense boundary re-activated after the page loaded",
+      );
+    }
   },
   eventUtils: async ({ page }, use, testInfo) => {
     const eventUtils = new EventUtils(page);

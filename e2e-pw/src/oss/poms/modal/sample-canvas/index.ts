@@ -253,13 +253,6 @@ export class SampleCanvasPom {
   }
 
   /**
-   * The Lighter canvas, shared by the image and video surfaces
-   */
-  get lighterCanvas() {
-    return this.page.getByTestId("lighter-sample-renderer-canvas");
-  }
-
-  /**
    * Reset Lighter zoom and pan with the Annotate keyboard shortcut
    */
   async resetZoomPan() {
@@ -388,15 +381,14 @@ class SampleCanvasAsserter {
 
   async #hasScreenshot(target: Locator, name: string) {
     await this.sampleCanvasPom.prepareForScreenshot();
-    // a Lighter frame paints after the state that caused it, so capture the
-    // next one; a looker draws synchronously when its state changes
-    if ((await this.sampleCanvasPom.lighterCanvas.count()) > 0) {
-      await this.sampleCanvasPom.eventUtils.next("e2e:lighter:frame-painted");
-    }
-    // the modal's rounded corners antialias differently run to run
+    // the capture renders a frame first, so Lighter paints the committed
+    // state into it; a looker draws synchronously when its state changes
+    // the modal's rounded corners antialias differently run to run, and a
+    // toast over the media comes and goes on its own timer
     await expectScreenshot(target, name, {
       inset: MODAL_RADIUS,
-      style: ".segmentation-toolbar { display: none !important; }",
+      style:
+        ".segmentation-toolbar, .notistack-SnackbarContainer { display: none !important; }",
     });
   }
 

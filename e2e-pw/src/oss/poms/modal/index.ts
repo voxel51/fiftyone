@@ -170,6 +170,22 @@ export class ModalPom {
   }
 
   /**
+   * Run `action` and resolve on the modal looker's first settled draw whose
+   * labels differ from its previous one
+   */
+  async afterLabelsRedrawn<T>(action: () => Promise<T>): Promise<T> {
+    type Draw = { thumbnail: boolean; labelsPending: boolean; labels: string };
+    const settled = (draw: Draw) => !draw.thumbnail && !draw.labelsPending;
+    const before = ((await this.eventUtils.recorded(SAMPLE_LOADED)) as Draw[])
+      .filter(settled)
+      .at(-1)?.labels;
+    return this.eventUtils.after(SAMPLE_LOADED, action, (e) => {
+      const draw = e.detail as Draw;
+      return settled(draw) && draw.labels !== before;
+    });
+  }
+
+  /**
    * Run `action` and resolve once a group sample's 2D looker has drawn and
    * its 3D slice's scene is ready; both draw on their own after the modal opens
    */
@@ -463,12 +479,19 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
-  /** One capture of the 3D canvas on its next rendered frame */
+  /**
+   * One capture of the 3D canvas, which renders a frame for the capture; wait
+   * first on the scene state it should show. The render preferences panel
+   * floats over the canvas, so it is hidden for the capture
+   */
   async hasLooker3dScreenshot(name: string) {
-    await this.modalPom.eventUtils.next("e2e:looker3d:frame-rendered");
     await expectScreenshot(
       this.modalPom.looker3d.locator("canvas").first(),
       name,
+      {
+        style:
+          "[data-cy=looker3d-leva-container] { visibility: hidden !important; }",
+      },
     );
   }
 

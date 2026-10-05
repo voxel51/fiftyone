@@ -184,33 +184,35 @@ test.describe.serial("2D annotation polyline", () => {
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
   });
 
-  // flaky: intermittently fails on the delete/undo round-trip
-  test.skip("a polyline can be deleted and the deletion is undoable", async ({
+  test("a polyline can be deleted and the deletion is undoable", async ({
     modal,
   }) => {
-    await modal.sidebar.annotate.polylineMode();
+    const annotate = modal.sidebar.annotate;
+    await annotate.polylineMode();
     await drawPolyline(modal, TRIANGLE);
 
-    await modal.sidebar.annotate.afterSave(() =>
+    await annotate.afterSave(() =>
       modal.sidebar.edit.selectFieldChoice("label", "lane"),
     );
 
     // exit to the list so the label is counted (the actively-edited label
     // isn't listed in the Labels group while its form is open).
-    await modal.sidebar.edit.exitToList();
-    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
+    await annotate.afterLabelList(() => modal.sidebar.edit.exitToList());
+    await annotate.assert.hasActiveLabelsCount(1);
 
-    // re-select and delete it.
-    await modal.sidebar.annotate.selectActiveLabel("lane", 0);
-    await modal.sidebar.annotate.afterSave(() =>
-      modal.sidebar.edit.deleteLabel(),
+    // re-select and delete it; the list comes back without it
+    await annotate.afterEditing(() => annotate.selectActiveLabel("lane", 0));
+    await annotate.afterLabelList(() =>
+      annotate.afterSave(() => modal.sidebar.edit.deleteLabel()),
     );
-    await modal.sidebar.annotate.assert.hasActiveLabelsCount(0);
+    await annotate.assert.hasActiveLabelsCount(0);
 
     // delete is one undoable engine unit (the undo control lives in the
     // list-level actions bar, so it's reachable after the form exits).
     await modal.sidebar.edit.assert.undoIsEnabled();
-    await modal.sidebar.edit.undo();
-    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
+    await annotate.afterLabelList(() =>
+      annotate.afterSave(() => modal.sidebar.edit.undo()),
+    );
+    await annotate.assert.hasActiveLabelsCount(1);
   });
 });

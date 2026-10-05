@@ -87,26 +87,6 @@ test.describe.serial("2D annotation classification", () => {
     await modal.sidebar.switchMode("annotate");
   });
 
-  // flaky: passed only on retry in CI
-  test.skip("creating a classification assigns a class and persists", async ({
-    browser,
-    fiftyoneLoader,
-    modal,
-  }) => {
-    await modal.sidebar.annotate.createClassification();
-
-    // the new classification opens its edit form; choosing a (non-default)
-    // class commits. "cloudy" is the 2nd class — distinct from the pre-filled
-    // default — so this is a real value change, not a no-op.
-    await modal.sidebar.annotate.afterSave(() =>
-      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
-    );
-    await modal.sidebar.edit.assert.verifyFieldValue("label", "cloudy");
-
-    // true round-trip: the field holds the chosen class
-    await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
-  });
-
   test("a classification can be deleted", async ({
     browser,
     fiftyoneLoader,

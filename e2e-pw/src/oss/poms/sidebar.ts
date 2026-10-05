@@ -317,25 +317,6 @@ class SidebarAsserter {
     expect(await this.sb.addGroupField.isVisible()).toBe(false);
   }
 
-  async assertCanDragFieldToGroup(fieldName: string, groupName: string) {
-    const targetGroup = this.sb.groupField(groupName);
-
-    const draggableSidebarFieldArea =
-      this.sb.sidebarEntryDraggableArea(fieldName);
-
-    const draggableAreaBB = await draggableSidebarFieldArea.boundingBox();
-    await draggableSidebarFieldArea.dragTo(targetGroup);
-
-    const newDraggableAreaBB = await draggableSidebarFieldArea.boundingBox();
-    expect(draggableAreaBB.x).not.toEqual(newDraggableAreaBB.x);
-    expect(draggableAreaBB.y).not.toEqual(newDraggableAreaBB.y);
-
-    expect(draggableSidebarFieldArea.getAttribute("draggable")).toBeTruthy();
-    expect(await draggableSidebarFieldArea.getAttribute("data-draggable")).toBe(
-      "true",
-    );
-  }
-
   async assertCanDragField(fieldName: string) {
     expect(
       await this.sb
