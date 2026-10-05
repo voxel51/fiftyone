@@ -44,7 +44,9 @@ export default function TextView(props: ViewPropsType<NumberSchemaType>) {
   } = view as TextViewOptions;
 
   const sx = {
-    font_family,
+    // "default" keeps the theme font
+    ...(font_family !== "default" ? { fontFamily: font_family } : {}),
+    textDecoration: text_decoration,
     ...(bold ? { fontWeight: "bold" } : {}),
     ...(italic ? { fontStyle: "italic" } : {}),
     ...(no_wrap
@@ -66,7 +68,6 @@ export default function TextView(props: ViewPropsType<NumberSchemaType>) {
         letterSpacing={letter_spacing}
         noWrap={no_wrap}
         lineHeight={line_height}
-        textDecoration={text_decoration}
         sx={sx}
         {...getComponentProps(props, "text")}
       >
