@@ -49,8 +49,10 @@ class ListLabelSchemaDocsOperator(Operator):
 
         # Schemas saved before their attributes were declared on write:
         # the Explore schema row and the Schema Manager both list docs on
-        # open, so declare any that are still missing here
-        docs.declare_schema_attributes(ctx=ctx)
+        # open, so declare any that are still missing here. This writes
+        # the dataset's field schema, so only for viewers who manage it
+        if can_manage(ctx):
+            docs.declare_schema_attributes(ctx=ctx)
 
         return {"ok": True, "schemas": docs.list_(ctx=ctx)}
 

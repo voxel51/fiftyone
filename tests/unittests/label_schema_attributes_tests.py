@@ -7,6 +7,7 @@ Label schema attributes are declared on the dataset's field schema.
 """
 
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.annotation as foa
@@ -181,6 +182,46 @@ class DeclareLabelSchemaAttributesTests(unittest.TestCase):
 
         self.assertIsNotNone(dataset.get_field("gt.detections.camera"))
         self.assertIsNotNone(dataset.get_field("gt.detections.brand"))
+
+    @drop_datasets
+    def test_backfill_scans_each_field_once_and_does_not_retry(self):
+        dataset = self._dataset()
+        # brand holds values of mixed types, so it can never be declared
+        for i, brand in enumerate(["a", 1]):
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="/tmp/brand%d.png" % i,
+                    gt=fo.Detections(
+                        detections=[fo.Detection(label="x", brand=brand)]
+                    ),
+                )
+            )
+
+        # the dataset's stored schema and a schema doc both define gt
+        dataset._doc.set_stored_label_schema(
+            "gt", _schema(dataset, "gt", _CAMERA, _BRAND)
+        )
+        dataset.save()
+        doc = fold.create(
+            name="mixed",
+            label_schema={"gt": _schema(dataset, "gt", _BRAND)},
+            dataset_id=dataset._doc.id,
+        )
+        self.addCleanup(fold.delete, doc["id"], dataset_id=dataset._doc.id)
+
+        with mock.patch.object(
+            fo.Dataset,
+            "get_dynamic_field_schema",
+            autospec=True,
+            side_effect=fo.Dataset.get_dynamic_field_schema,
+        ) as scan:
+            fold.declare_schema_attributes(dataset_id=dataset._doc.id)
+            self.assertEqual(scan.call_count, 1)
+
+            fold.declare_schema_attributes(dataset_id=dataset._doc.id)
+            self.assertEqual(scan.call_count, 1)
+
+        self.assertIsNone(dataset.get_field("gt.detections.brand"))
 
 
 if __name__ == "__main__":

@@ -246,12 +246,22 @@ def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> None:
         )
 
 
+#: ``(dataset_id, path, attribute name)`` the backfill already tried in
+#: this process. An attribute it cannot declare (mixed value types) would
+#: otherwise trigger a scan of its field on every listing.
+_BACKFILLED = set()
+
+
 def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
     """Declares the label attributes defined by the dataset's own label
     schemas and by every schema doc of the dataset on its field schema
-    (see :func:`_declare_attributes`). Idempotent and cheap once nothing
-    is missing; covers schemas saved before declaration happened on
-    write. Best-effort, like :func:`_declare_attributes`."""
+    (see :func:`_declare_attributes`). Covers schemas saved before
+    declaration happened on write.
+
+    Each field is scanned at most once per call, and an attribute at most
+    once per process: one that could not be declared is not retried until
+    a schema write declares it. Best-effort, like
+    :func:`_declare_attributes`."""
     try:
         import fiftyone.core.odm as foo
 
@@ -261,26 +271,34 @@ def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
                 id=_scope(ctx=ctx, dataset_id=dataset_id)
             )
 
-        content = {}
-        stored = _stored_label_schemas(dataset)
-        for path, label_schema in stored.items():
-            content.setdefault(path, []).append(label_schema)
-
+        schemas = list(_stored_label_schemas(dataset).items())
         query = {"dataset_id": dataset._doc.id}
         for doc in _coll().find(query, {"label_schema": 1}):
-            for path, label_schema in (doc.get("label_schema") or {}).items():
-                content.setdefault(path, []).append(label_schema)
+            schemas.extend((doc.get("label_schema") or {}).items())
+
+        # One label schema per path holding every attribute not yet tried
+        content = {}
+        for path, label_schema in schemas:
+            if not isinstance(label_schema, dict):
+                continue
+
+            for attr in label_schema.get("attributes") or []:
+                name = attr.get("name") if isinstance(attr, dict) else None
+                key = (str(dataset._doc.id), path, name)
+                if name is None or key in _BACKFILLED:
+                    continue
+
+                _BACKFILLED.add(key)
+                content.setdefault(path, {"attributes": []})[
+                    "attributes"
+                ].append(attr)
     except Exception:  # pylint: disable=broad-except
         logger.warning(
             "Failed to collect label schema attributes", exc_info=True
         )
         return
 
-    for path, label_schemas in content.items():
-        for label_schema in label_schemas:
-            _declare_attributes(
-                {path: label_schema}, ctx=ctx, dataset_id=dataset_id
-            )
+    _declare_attributes(content, ctx=ctx, dataset_id=dataset_id)
 
 
 def _now_ms() -> int:
