@@ -307,9 +307,12 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       const previous =
         (engineBase as LabelData | undefined) ?? (data as LabelData);
 
+      // a draft's instance exists on this frame only, so it has no track to
+      // wait for or walk
       const fansOut =
-        Object.keys(trackPartial).length > 0 ||
-        Object.keys(dynamicPartial).length > 0;
+        !currentLabelRef.current?.isNew &&
+        (Object.keys(trackPartial).length > 0 ||
+          Object.keys(dynamicPartial).length > 0);
 
       const commit = () => {
         const trackWrites = [
