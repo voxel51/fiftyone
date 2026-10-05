@@ -62,21 +62,6 @@ export default function DropdownView(props: ViewPropsType) {
     }
   }, [icon]);
 
-  if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
-    return (
-      <AlertView
-        schema={{
-          view: {
-            label: `Unsupported type "${type}" for multi-select`,
-            description:
-              "Multi-select is supported for types " +
-              MULTI_SELECT_TYPES.join(", "),
-            severity: "error",
-          },
-        }}
-      />
-    );
-
   const isArrayType = type === "array";
   const multiple = multiSelect || isArrayType;
   const fallbackDefaultValue = multiple ? [] : "";
@@ -102,6 +87,22 @@ export default function DropdownView(props: ViewPropsType) {
       !(Array.isArray(value) && value.length === 0)
     );
   }, [computedDefaultValue]);
+
+  // after every hook, so the hook order doesn't depend on the schema
+  if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
+    return (
+      <AlertView
+        schema={{
+          view: {
+            label: `Unsupported type "${type}" for multi-select`,
+            description:
+              "Multi-select is supported for types " +
+              MULTI_SELECT_TYPES.join(", "),
+            severity: "error",
+          },
+        }}
+      />
+    );
 
   const getIconOnlyStyles = () => ({
     "&.MuiInputBase-root.MuiOutlinedInput-root.MuiInputBase-colorPrimary": {
