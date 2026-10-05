@@ -124,7 +124,6 @@ test.describe("MCAP persistence", () => {
   test("persists the ego camera pose across channel-id changes, modal reopen, and reload", async ({
     grid,
     modal,
-    page,
   }) => {
     await modal.episode.afterReady(cameraPoseFileNames[0], () =>
       openMcapModal(grid, modal, sampleIndex.cameraPoseStart),
@@ -161,7 +160,6 @@ test.describe("MCAP persistence", () => {
   test("persists dataset sidebar settings across channel ids, remount, and reload", async ({
     grid,
     modal,
-    page,
   }) => {
     await modal.episode.afterReady(sidebarFileNames[0], () =>
       openMcapModal(grid, modal, sampleIndex.sidebarStart),
