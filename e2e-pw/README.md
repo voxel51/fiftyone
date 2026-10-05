@@ -231,7 +231,9 @@ await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
 
 #### Canvas Testing
 
-The `SampleCanvas` POM is attached to the `ModalPom` as `modal.sampleCanvas`.
+`modal.sampleCanvas` spans the modal's sample; `modal.sampleCanvas3d`,
+`modal.groupSampleCanvas` and `modal.episode.canvas(tile)` are the same POM
+rooted at the 3D viewer, a group modal's 2D pane and an episode surface.
 
 ```ts
 // Move the pointer to a canvas-relative position (0–1 in both axes)
@@ -247,6 +249,9 @@ await modal.sampleCanvas.movePixels(10, -5, "grab"); // with optional cursor ass
 // Press and release the mouse button
 await modal.sampleCanvas.down();
 await modal.sampleCanvas.up();
+
+// Press a key with the canvas focused
+await modal.sampleCanvas3d.press("Enter");
 
 // Click or double-click at a position
 await modal.sampleCanvas.click(0.9, 0.9);
@@ -264,9 +269,6 @@ import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
 await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER3D);
-
-// Park the pointer off the canvas before a screenshot
-await modal.sampleCanvas.moveMouseToViewportEdge();
 ```
 
 ### Known Issues

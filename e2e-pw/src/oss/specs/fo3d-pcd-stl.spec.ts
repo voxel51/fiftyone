@@ -117,7 +117,7 @@ test.describe.serial("fo3d", () => {
     // the leva panel sits off the canvas, so no label is hovered
     await modal.looker3dControls.toggleRenderPreferences();
     await leva.getFolder("Visibility").hover();
-    await modal.assert.hasLooker3dScreenshot("scene.png");
+    await modal.sampleCanvas3d.assert.hasScreenshot("scene.png");
 
     await modal.looker3dControls.leva.toggleFolder("Labels");
     await leva.assert.verifyDefaultFolders();
@@ -128,15 +128,15 @@ test.describe.serial("fo3d", () => {
       eventUtils.after("e2e:looker3d:line-widths", action);
     await afterLineWidths(() => leva.moveSliderToMin("Polyline Line Width"));
     await afterLineWidths(() => leva.moveSliderToMin("Cuboid Line Width"));
-    await modal.assert.hasLooker3dScreenshot("min-line-width-scene.png");
+    await modal.sampleCanvas3d.assert.hasScreenshot("min-line-width-scene.png");
 
     await afterLineWidths(() => leva.moveSliderToMax("Polyline Line Width"));
     await afterLineWidths(() => leva.moveSliderToMax("Cuboid Line Width"));
-    await modal.assert.hasLooker3dScreenshot("max-line-width-scene.png");
+    await modal.sampleCanvas3d.assert.hasScreenshot("max-line-width-scene.png");
 
     // the next sample's scene keeps the max widths
     await modal.afterLooker3dSettled(() => modal.navigateNextSample());
-    await modal.assert.hasLooker3dScreenshot("scene-2.png");
+    await modal.sampleCanvas3d.assert.hasScreenshot("scene-2.png");
     await modalSidebar.assert.verifySidebarEntryText("name", "sample2");
   });
 });

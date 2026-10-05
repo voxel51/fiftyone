@@ -126,7 +126,7 @@ test.describe.serial("tag", () => {
         .isVisible(),
     ).toBe(true);
 
-    await modal.looker.hover();
+    await modal.sampleCanvas.move(0.5, 0.5);
 
     await modal.tagger.toggleOpen();
     await modal.tagger.addLabelTag("correct");

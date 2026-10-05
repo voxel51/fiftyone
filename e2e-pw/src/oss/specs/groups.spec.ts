@@ -1,6 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
-import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -16,7 +15,6 @@ const SECOND_SAMPLE_FILENAME = "left-1.png";
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  renderer3d: Renderer3dPom;
   sidebar: SidebarPom;
   asset3dPanel: Asset3dPanelPom;
 }>({
@@ -25,9 +23,6 @@ const test = base.extend<{
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  renderer3d: async ({ page, eventUtils }, use) => {
-    await use(new Renderer3dPom(page, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
@@ -94,7 +89,7 @@ test.describe.serial("groups", () => {
       modal,
     }) => {
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
-      await modal.clickOnLooker3d();
+      await modal.sampleCanvas3d.click(0.5, 0.5);
       await modal.assert.verifyModalSamplePluginTitle("pcd", { pinned: true });
     });
 
@@ -124,19 +119,7 @@ test.describe.serial("groups", () => {
     });
 
     test("group media visibility toggle works", async ({ modal }) => {
-      // make sure popout is right aligned to the toggle button
       await modal.group.openMediaVisibility();
-
-      // const popoutBoundingBox =
-      //   await modal.group.groupMediaVisibilityPopout.boundingBox();
-      // const toggleButtonBoundingBox =
-      //   await modal.group.toggleMediaButton.boundingBox();
-
-      // todo: alignment is off by a bit, fix it later
-      // expect(popoutBoundingBox.x + popoutBoundingBox.width).toBeCloseTo(
-      //   toggleButtonBoundingBox.x + toggleButtonBoundingBox.width,
-      //   0
-      // );
 
       expect(await modal.looker3d.isVisible()).toBe(true);
       await modal.group.toggleMedia("3d");
@@ -165,7 +148,6 @@ test.describe.serial("groups", () => {
       modal,
       grid,
       page,
-      renderer3d,
       fiftyoneLoader,
     }) => {
       await modal.sidebar.switchMode("annotate");
@@ -176,7 +158,7 @@ test.describe.serial("groups", () => {
         ),
       );
       await modal.assert.verifyHasNoViewerError();
-      await renderer3d.assert.expectSomethingToRender();
+      await modal.sampleCanvas3d.assert.hasScreenshot("annotate-pcd.png");
 
       await modal.sidebar.switchMode("explore");
       await modal.group.openMediaVisibility();
@@ -186,7 +168,7 @@ test.describe.serial("groups", () => {
 
       expect(await modal.groupLooker.isVisible()).toBe(true);
       expect(await modal.looker3d.isVisible()).toBe(true);
-      await modal.clickOnLooker();
+      await modal.groupSampleCanvas.click(0.5, 0.5);
       await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
 
       await modal.close();
@@ -208,7 +190,7 @@ test.describe.serial("groups", () => {
       );
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("pcd");
       await modal.assert.verifyHasNoViewerError();
-      await renderer3d.assert.expectSomethingToRender();
+      await modal.sampleCanvas3d.assert.hasScreenshot("annotate-pcd.png");
     });
   });
 

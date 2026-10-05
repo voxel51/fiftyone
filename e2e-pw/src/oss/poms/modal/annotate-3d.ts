@@ -13,14 +13,12 @@ export class ModalAnnotate3dPom {
   readonly modal: ModalPom;
   readonly assert: ModalAnnotate3dAsserter;
   readonly container: Locator;
-  readonly canvas: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new ModalAnnotate3dAsserter(this);
     this.container = page.getByTestId("looker3d");
-    this.canvas = this.container.locator("canvas").first();
   }
 
   /**
@@ -173,69 +171,15 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * Draw a cuboid with the three-click gesture (center → orientation → width)
-   * at container-fractional coordinates, each click an explicit move→down→up so
-   * the empty-canvas handler raycasts a plane point per click. Clicks raycast
-   * onto the annotation plane (world XY at z=0), so pair with
-   * `looker3dControls.setTopView()` and assert creation rather than geometry.
+   * Run `action` (a click on the 3D canvas while drawing a polyline) and
+   * resolve once the draft has `count` vertices
    */
-  async drawCuboid(points: Array<[number, number]>) {
-    if (points.length !== 3) {
-      throw new Error("a cuboid draw is exactly three clicks");
-    }
-
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("3D canvas has no bounding box");
-    }
-
-    for (const [fx, fy] of points) {
-      const x = box.x + box.width * fx;
-      const y = box.y + box.height * fy;
-      await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-    }
-  }
-
-  /**
-   * Draw a polyline by clicking each container-fractional vertex and committing
-   * with Enter; the last point must stay clear of the first or the loop closes
-   * instead. Like {@link drawCuboid}, clicks raycast onto the z=0 annotation
-   * plane, so pair with a top view and assert creation rather than exact
-   * vertices.
-   */
-  async drawPolyline(points: Array<[number, number]>) {
-    if (points.length < 2) {
-      throw new Error("a polyline draw needs at least two clicks");
-    }
-
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("3D canvas has no bounding box");
-    }
-
-    const toScreen = ([fx, fy]: [number, number]): [number, number] => [
-      box.x + box.width * fx,
-      box.y + box.height * fy,
-    ];
-
-    // each click must register as a vertex before the next lands
-    for (const [index, point] of points.entries()) {
-      const [x, y] = toScreen(point);
-      await this.page.mouse.move(x, y);
-      await this.modal.eventUtils.after(
-        "e2e:looker3d:draft-vertices",
-        async () => {
-          await this.page.mouse.down();
-          await this.page.mouse.up();
-        },
-        (e) => (e.detail as { count: number }).count === index + 1,
-      );
-    }
-
-    // Enter commits the segment; a double-click would ride on wall-clock timing
-    await this.page.keyboard.press("Enter");
+  async afterDraftVertices<T>(count: number, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:draft-vertices",
+      action,
+      (e) => (e.detail as { count: number }).count === count,
+    );
   }
 }
 

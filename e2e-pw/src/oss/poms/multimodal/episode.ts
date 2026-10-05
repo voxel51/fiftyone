@@ -1,17 +1,7 @@
-import fs from "fs";
-import path from "path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { exactText } from "src/oss/utils";
 import { EventCondition, EventUtils } from "src/shared/event-utils";
-
-/**
- * Screenshot style that hides everything in the episode shell except its
- * canvases, so a capture shows rendered pixels and no DOM chrome.
- */
-const CANVAS_ONLY_STYLE = fs.readFileSync(
-  path.resolve(__dirname, "../../../shared/assets/canvas-only.css"),
-  "utf8",
-);
+import { EPISODE_CAPTURE, SampleCanvasPom } from "../modal/sample-canvas";
 
 /** Detail of the app's `e2e:multimodal:point-cloud-frame-rendered` */
 interface PointCloudFrameDetail {
@@ -46,7 +36,6 @@ const shown = (
  * {@link EpisodePom.after} with the conditions below, then read once.
  */
 export class EpisodePom {
-  readonly assert: EpisodeAsserter;
   readonly shell: Locator;
   readonly state: Locator;
   private inspectedStream: string | null = null;
@@ -56,9 +45,18 @@ export class EpisodePom {
     readonly scope: Locator,
     private readonly eventUtils: EventUtils,
   ) {
-    this.assert = new EpisodeAsserter();
     this.shell = scope.locator("[data-episode-playback-shell]");
     this.state = byDataTestId(scope, "episode-modal-state");
+  }
+
+  /** The canvas surface at `target` (a tile, or a canvas within one) */
+  canvas(target: Locator): SampleCanvasPom {
+    return new SampleCanvasPom(
+      this.page,
+      this.eventUtils,
+      target,
+      EPISODE_CAPTURE,
+    );
   }
 
   /**
@@ -956,21 +954,6 @@ export class EpisodePom {
     await this.page.evaluate(() =>
       (document.activeElement as HTMLElement | null)?.blur(),
     );
-  }
-}
-
-class EpisodeAsserter {
-  /**
-   * One capture of `target`'s area showing only the episode shell's canvases.
-   * A page clip, since the style hides `target` itself and an element capture
-   * waits for it to be visible.
-   */
-  async hasCanvasScreenshot(target: Locator, name: string): Promise<void> {
-    const clip = await target.boundingBox();
-    expect(clip).not.toBeNull();
-    expect(
-      await target.page().screenshot({ clip: clip!, style: CANVAS_ONLY_STYLE }),
-    ).toMatchSnapshot(name, { maxDiffPixelRatio: 0, threshold: 0 });
   }
 }
 

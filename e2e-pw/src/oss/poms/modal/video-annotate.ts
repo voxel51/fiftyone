@@ -619,59 +619,6 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Draw a polyline by clicking each vertex on the canvas (polyline mode must
-   * already be armed, see `polylineMode`). The first click seeds a new polyline via the creation
-   * handler; each subsequent click extends it from the nearest endpoint.
-   *
-   * @param vertices Container-relative [0, 1] points, one per vertex.
-   */
-  async drawPolyline(vertices: Array<[number, number]>) {
-    // the first vertex creates the polyline and establishes its track
-    const [[x0, y0], ...rest] = vertices;
-    await this.afterTracksChange(() => this.modal.sampleCanvas.click(x0, y0));
-
-    for (const [x, y] of rest) {
-      await this.modal.sampleCanvas.click(x, y);
-    }
-  }
-
-  /**
-   * Draw a detection box across two container-relative corners (detection
-   * mode must already be active), resolving once its track is on the timeline.
-   */
-  async drawBox(from: [number, number], to: [number, number]) {
-    await this.afterTracksChange(async () => {
-      await this.modal.sampleCanvas.move(from[0], from[1]);
-      await this.modal.sampleCanvas.down();
-      await this.modal.sampleCanvas.move(to[0], to[1]);
-      await this.modal.sampleCanvas.up();
-    });
-  }
-
-  /**
-   * Paint a mask brush stroke on the canvas (segmentation mode + the Brush tool
-   * must already be active). With nothing selected the stroke's first move
-   * creates a fresh masked detection, then paints onto it.
-   *
-   * @param path Container-relative [0, 1] points; the first is the press point,
-   *   the rest are drag positions before release.
-   */
-  async paintMaskStroke(path: Array<[number, number]>) {
-    const [first, ...rest] = path;
-    // the stroke creates the masked detection and its track
-    await this.afterTracksChange(async () => {
-      await this.modal.sampleCanvas.move(first[0], first[1]);
-      await this.modal.sampleCanvas.down();
-
-      for (const [x, y] of rest) {
-        await this.modal.sampleCanvas.move(x, y);
-      }
-
-      await this.modal.sampleCanvas.up();
-    });
-  }
-
-  /**
    * Create a temporal detection at the current playhead via the "New TD"
    * toolbar action (a 1-second support window starting at the playhead frame).
    */

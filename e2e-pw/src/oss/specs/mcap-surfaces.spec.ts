@@ -2,7 +2,6 @@ import type { Locator, Page } from "@playwright/test";
 import {
   alternateMediaDatasetName,
   expect,
-  expectDominantColor,
   fixturePaths,
   openMcapModal,
   sampleIndex,
@@ -97,7 +96,9 @@ test.describe("MCAP surfaces", () => {
     }) => {
       const tile = grid.getNthTile(0);
       expect(await tile.getAttribute("data-cy")).toBe("looker");
-      await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
+      await grid.assert.hasScreenshot("alternate-media-tile.png", {
+        target: tile,
+      });
 
       await modal.episode.afterReady(tinyA.fileName, () =>
         openMcapModal(grid, modal, 0),
@@ -113,20 +114,14 @@ test.describe("MCAP surfaces", () => {
           modal.selectMediaField("thumbnail_path"),
         ),
       );
-      await expectDominantColor(
-        modal.modalContainer.locator("canvas"),
-        [255, 0, 255],
-      );
+      await modal.sampleCanvas.assert.hasScreenshot("alternate-media-1.png");
 
       await modal.afterSampleLoaded(() =>
         modal.afterLookerAttached(() =>
           modal.getSampleNavigation("forward").click(),
         ),
       );
-      await expectDominantColor(
-        modal.modalContainer.locator("canvas"),
-        [0, 255, 255],
-      );
+      await modal.sampleCanvas.assert.hasScreenshot("alternate-media-2.png");
 
       await modal.episode.afterReady(tinyB.fileName, () =>
         modal.selectMediaField("filepath"),
@@ -212,26 +207,23 @@ test.describe("MCAP surfaces", () => {
         { at: "2024-01-01 00:00:00.000", pointCount: 4, pointSize: 10 },
         () => modal.episode.setSidebarNumber("points", "Point size (px)", 10),
       );
-      await modal.episode.assert.hasCanvasScreenshot(
-        canvas,
-        "point-frame-1.png",
-      );
+      await modal.episode
+        .canvas(canvas)
+        .assert.hasScreenshot("point-frame-1.png");
       await modal.episode.afterPointCloudFrame(
         { at: "2024-01-01 00:00:01.000", pointCount: 4, pointSize: 10 },
         () => modal.episode.stepForward(),
       );
-      await modal.episode.assert.hasCanvasScreenshot(
-        canvas,
-        "point-frame-2.png",
-      );
+      await modal.episode
+        .canvas(canvas)
+        .assert.hasScreenshot("point-frame-2.png");
       await modal.episode.afterPointCloudFrame(
         { at: "2024-01-01 00:00:02.000", pointCount: 5, pointSize: 10 },
         () => modal.episode.stepForward(),
       );
-      await modal.episode.assert.hasCanvasScreenshot(
-        canvas,
-        "point-frame-3.png",
-      );
+      await modal.episode
+        .canvas(canvas)
+        .assert.hasScreenshot("point-frame-3.png");
 
       await modal.close();
       // projections start off, so the first image frame shows none
@@ -256,10 +248,9 @@ test.describe("MCAP surfaces", () => {
       );
       // only the camera tile's area of the shared image canvas
       const cameraTile = modal.episode.tile("camera/front");
-      await modal.episode.assert.hasCanvasScreenshot(
-        cameraTile,
-        "projection-off.png",
-      );
+      await modal.episode
+        .canvas(cameraTile)
+        .assert.hasScreenshot("projection-off.png");
       // largest projected points so the overlay is plain to see
       await modal.episode.afterImageFrame(
         { at: "2024-01-01 00:00:00.000", projectedStreams: 1, pointSize: 10 },
@@ -272,10 +263,9 @@ test.describe("MCAP surfaces", () => {
           await modal.episode.setProjectionPointSize("camera/front", 10);
         },
       );
-      await modal.episode.assert.hasCanvasScreenshot(
-        cameraTile,
-        "projection-on.png",
-      );
+      await modal.episode
+        .canvas(cameraTile)
+        .assert.hasScreenshot("projection-on.png");
 
       await modal.episode.scope
         .getByRole("tab", { name: "Scene", exact: true })

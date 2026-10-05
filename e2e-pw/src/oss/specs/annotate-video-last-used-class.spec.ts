@@ -104,7 +104,12 @@ const drawBox = async (
   to: [number, number],
 ) => {
   await modal.sidebar.annotate.detectionMode("Detections");
-  await modal.videoAnnotate.drawBox(from, to);
+  await modal.videoAnnotate.afterTracksChange(async () => {
+    await modal.sampleCanvas.move(from[0], from[1]);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(to[0], to[1]);
+    await modal.sampleCanvas.up();
+  });
 };
 
 test.describe.serial("video annotation last-used class", () => {

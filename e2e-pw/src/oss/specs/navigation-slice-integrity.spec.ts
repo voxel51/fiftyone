@@ -1,12 +1,8 @@
 import fs from "node:fs";
 import { test as base } from "src/oss/fixtures";
-import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import {
-  compareLocatorScreenshotToBuffer,
-  getUniqueDatasetNameWithPrefix,
-} from "src/oss/utils";
+import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("modal-main-2d-slice");
 const groupSpecs = [1, 2].map((index) => ({
@@ -24,24 +20,15 @@ const TEMP_FILE_PATHS = groupSpecs.flatMap((spec) => [
   spec.pointCloudPath,
 ]);
 
-const ensureMain2dCanvasReadyForScreenshot = async (modal: ModalPom) => {
-  await modal.assert.verifyPrimary2dRendererVisible();
-  await modal.sampleCanvas.prepareForScreenshot();
-};
-
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  renderer3d: Renderer3dPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  renderer3d: async ({ page, eventUtils }, use) => {
-    await use(new Renderer3dPom(page, eventUtils));
   },
 });
 
@@ -174,7 +161,6 @@ test.describe.serial("navigation slice integrity", () => {
   test("keeps the same main 2d viewer when opening from image or 3d grid slices", async ({
     grid,
     modal,
-    renderer3d,
   }) => {
     const expectedFirstGroup = groupSpecs[0];
 
@@ -188,7 +174,7 @@ test.describe.serial("navigation slice integrity", () => {
       await modal.assert.verifyHasNoViewerError();
       await modal.assert.verifyPrimary2dRendererVisible();
       await modal.assert.verify3dRendererVisible();
-      await renderer3d.assert.expectSomethingToRender();
+      await modal.sampleCanvas3d.assert.hasScreenshot("main-3d.png");
     };
 
     await grid.sliceSelector.assert.verifyActiveSlice("img1");
@@ -206,9 +192,8 @@ test.describe.serial("navigation slice integrity", () => {
       pinned: true,
     });
     await modal.sidebar.assert.verifySidebarEntryTexts(firstGroup);
-    const expectedMain2dCanvas = modal.groupLooker.locator("canvas");
-    await ensureMain2dCanvasReadyForScreenshot(modal);
-    const expectedMain2dScreenshot = await expectedMain2dCanvas.screenshot();
+    await modal.assert.verifyPrimary2dRendererVisible();
+    await modal.groupSampleCanvas.assert.hasScreenshot("main-2d.png");
 
     await modal.close();
     await grid.selectSlice("3d");
@@ -216,13 +201,8 @@ test.describe.serial("navigation slice integrity", () => {
     await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
 
     await assertMain2dAnd3dAreVisible(() => grid.openFirstSample());
-    await compareLocatorScreenshotToBuffer(
-      modal.groupLooker.locator("canvas"),
-      expectedMain2dScreenshot,
-      {
-        beforeScreenshot: async () =>
-          ensureMain2dCanvasReadyForScreenshot(modal),
-      },
-    );
+    // the 2D pane shows the same image it showed with the image slice active
+    await modal.assert.verifyPrimary2dRendererVisible();
+    await modal.groupSampleCanvas.assert.hasScreenshot("main-2d.png");
   });
 });

@@ -105,7 +105,7 @@ test.describe.serial("groups video labels", () => {
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
 
-      await modal.looker.hover();
+      await modal.sampleCanvas.move(0.5, 0.5);
       await modal.video.playUntilAdvanced();
 
       await modal.sampleCanvas.assert.hasScreenshot(`${slice}-played.png`);

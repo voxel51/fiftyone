@@ -78,7 +78,9 @@ export class Looker3DControlsPom {
       return;
     }
 
-    await this.afterSliceSelector(false, () => this.modal.clickOnLooker3d());
+    await this.afterSliceSelector(false, () =>
+      this.modal.sampleCanvas3d.click(0.5, 0.5),
+    );
   }
 
   private afterSliceSelector<T>(open: boolean, action: () => Promise<T>) {

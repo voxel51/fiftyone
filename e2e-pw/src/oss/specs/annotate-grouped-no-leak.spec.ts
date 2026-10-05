@@ -323,13 +323,11 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.annotate3d.toggleCreateCuboid();
     await modal.annotate3d.assert.createCuboidActive(true);
     // the draw saves on its own; it must land before the class change's save
-    await modal.sidebar.annotate.afterSave(() =>
-      modal.annotate3d.drawCuboid([
-        [0.4, 0.4],
-        [0.6, 0.4],
-        [0.6, 0.6],
-      ]),
-    );
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas3d.click(0.4, 0.4);
+      await modal.sampleCanvas3d.click(0.6, 0.4);
+      await modal.sampleCanvas3d.click(0.6, 0.6);
+    });
 
     // the freshly-drawn cuboid auto-selects with its edit form open; give it a
     // distinct class so the create is unambiguous, then let it autosave

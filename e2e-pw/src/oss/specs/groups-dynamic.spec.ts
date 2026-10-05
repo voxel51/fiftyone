@@ -65,7 +65,7 @@ test.describe.serial("groups-dynamic", () => {
     await modal.navigateSlice("group.name", "right");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
 
-    await modal.clickOnLooker3d();
+    await modal.sampleCanvas3d.click(0.5, 0.5);
     await modal.assert.verifyModalSamplePluginTitle("pcd", { pinned: true });
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "pcd");
   });

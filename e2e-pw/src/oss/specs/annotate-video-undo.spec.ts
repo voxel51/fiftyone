@@ -112,7 +112,12 @@ test.describe.serial("video annotation undo/redo", () => {
 
     // draw a second box; its auto-extend spans many frames as one coalesced unit
     await modal.sidebar.annotate.detectionMode("Detections");
-    await va.drawBox([0.6, 0.6], [0.82, 0.82]);
+    await va.afterTracksChange(async () => {
+      await modal.sampleCanvas.move(0.6, 0.6);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.82, 0.82);
+      await modal.sampleCanvas.up();
+    });
     await va.assert.objectTrackCount(2);
 
     // ONE undo removes the entire drawn track (every auto-extended frame), not
@@ -176,7 +181,12 @@ test.describe.serial("video annotation undo/redo", () => {
 
     // edit B: draw a second track (its auto-extend coalesces into one unit)
     await modal.sidebar.annotate.detectionMode("Detections");
-    await va.drawBox([0.6, 0.6], [0.82, 0.82]);
+    await va.afterTracksChange(async () => {
+      await modal.sampleCanvas.move(0.6, 0.6);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.82, 0.82);
+      await modal.sampleCanvas.up();
+    });
     await va.assert.objectTrackCount(2);
     await modal.sidebar.edit.exitToList();
 

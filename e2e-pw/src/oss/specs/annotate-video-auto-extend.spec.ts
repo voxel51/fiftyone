@@ -80,7 +80,12 @@ const openAnnotate = async (
 /** Draw a detection box across the given relative corners (annotate mode). */
 const drawBox = async (modal: ModalPom) => {
   await modal.sidebar.annotate.detectionMode("Detections");
-  await modal.videoAnnotate.drawBox([0.55, 0.55], [0.78, 0.78]);
+  await modal.videoAnnotate.afterTracksChange(async () => {
+    await modal.sampleCanvas.move(0.55, 0.55);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.78, 0.78);
+    await modal.sampleCanvas.up();
+  });
 };
 
 const stepForward = async (modal: ModalPom, n: number) => {

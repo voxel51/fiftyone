@@ -152,11 +152,11 @@ test.describe.serial("video non-box label create", () => {
     const before = (await modal.videoAnnotate.objectTrackIds()).length;
 
     await modal.sidebar.annotate.polylineMode();
-    await modal.videoAnnotate.drawPolyline([
-      [0.45, 0.45],
-      [0.6, 0.45],
-      [0.52, 0.6],
-    ]);
+    await modal.videoAnnotate.afterTracksChange(() =>
+      modal.sampleCanvas.click(0.45, 0.45),
+    );
+    await modal.sampleCanvas.click(0.6, 0.45);
+    await modal.sampleCanvas.click(0.52, 0.6);
 
     // the draw creates exactly one new object track on the timeline
     await modal.videoAnnotate.assert.objectTrackCount(before + 1);
@@ -187,11 +187,13 @@ test.describe.serial("video non-box label create", () => {
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.edit.selectBrushTool();
-    await modal.videoAnnotate.paintMaskStroke([
-      [0.4, 0.4],
-      [0.48, 0.48],
-      [0.56, 0.56],
-    ]);
+    await modal.videoAnnotate.afterTracksChange(async () => {
+      await modal.sampleCanvas.move(0.4, 0.4);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.48, 0.48);
+      await modal.sampleCanvas.move(0.56, 0.56);
+      await modal.sampleCanvas.up();
+    });
 
     // the paint creates exactly one new masked-detection track
     await modal.videoAnnotate.assert.objectTrackCount(before + 1);

@@ -1,13 +1,12 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { ConsoleMessage, Locator } from "@playwright/test";
-import { expect, test as base } from "src/oss/fixtures";
+import type { ConsoleMessage } from "@playwright/test";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { McapExplorerPom } from "src/oss/poms/multimodal/mcap-explorer";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
 import { MCAP_FIXTURE_CONTRACT } from "src/shared/media-factory/mcap";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
@@ -273,20 +272,6 @@ export async function openMcapModal(
   await grid.openNthSample(index);
   // Multimodal has its own right panel, so the classic sidebar never mounts.
   await modal.enterFullscreen();
-}
-
-/**
- * One read of `locator`'s dominant color. Pixels are meaningful once painted:
- * wait on the episode image tile's `imageShown`, or on the looker's
- * canvas-loaded, first.
- */
-export async function expectDominantColor(
-  locator: Locator,
-  expected: readonly [number, number, number],
-): Promise<void> {
-  expect(await getLocatorDominantColorShare(locator, expected)).toBeGreaterThan(
-    0.15,
-  );
 }
 
 export { expect } from "src/oss/fixtures";

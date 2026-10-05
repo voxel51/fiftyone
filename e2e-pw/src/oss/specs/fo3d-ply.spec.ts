@@ -94,6 +94,6 @@ test.describe.serial("fo3d-ply", () => {
     // Hide grid helper (better for screenshots)
     await modal.looker3dControls.toggleGridHelper();
 
-    await modal.assert.hasLooker3dScreenshot("ply-scene-top-view.png");
+    await modal.sampleCanvas3d.assert.hasScreenshot("ply-scene-top-view.png");
   });
 });

@@ -300,13 +300,11 @@ test.describe.serial("3d cuboid creation", () => {
 
     // center -> orientation -> width; the draw's own save must land first,
     // or it satisfies the class change's wait below
-    await modal.sidebar.annotate.afterSave(() =>
-      modal.annotate3d.drawCuboid([
-        [0.4, 0.4],
-        [0.6, 0.4],
-        [0.6, 0.6],
-      ]),
-    );
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas3d.click(0.4, 0.4);
+      await modal.sampleCanvas3d.click(0.6, 0.4);
+      await modal.sampleCanvas3d.click(0.6, 0.6);
+    });
 
     // the freshly-drawn cuboid is auto-selected with its edit form open (which
     // replaces the label list), so verify creation through the form, then

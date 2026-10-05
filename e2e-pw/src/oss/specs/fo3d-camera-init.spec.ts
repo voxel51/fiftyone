@@ -256,7 +256,13 @@ test.describe.skip("camera initialization", () => {
     ).toBe(true);
 
     // damping is off, so the camera has moved by the time the drag returns
-    await renderer3d.dragCameraBy(10, 10);
+    // a drag in small steps, so the controls see pointer movement throughout
+    await modal.sampleCanvas3d.move(0.5, 0.5);
+    await modal.sampleCanvas3d.down();
+    for (let step = 0; step < 10; step++) {
+      await modal.sampleCanvas3d.movePixels(1, 1);
+    }
+    await modal.sampleCanvas3d.up();
 
     const annotateCameraAfterDrag = await renderer3d.getCameraPosition();
 

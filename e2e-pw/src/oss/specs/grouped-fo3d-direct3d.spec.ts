@@ -275,7 +275,9 @@ test.describe.serial("grouped fo3d and direct 3d", () => {
     });
     await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
 
-    await assertFo3dOnlyState(0, "fo3d_left", () => modal.clickOnLooker3d());
+    await assertFo3dOnlyState(0, "fo3d_left", () =>
+      modal.sampleCanvas3d.click(0.5, 0.5),
+    );
     await modal.looker3dControls.assert.verifySliceSelectorLabel("fo3d_left");
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("fo3d_left");

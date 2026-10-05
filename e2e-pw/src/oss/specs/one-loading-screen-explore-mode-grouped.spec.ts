@@ -72,7 +72,7 @@ test("does not show when opening or navigating the modal for a group dataset", a
   // the 3D slice becomes the modal's sample; its scene is already loaded
   const imageId = await modal.sidebar.getSampleId();
   await modal.sidebar.afterEntryChanged("id", imageId, () =>
-    modal.clickOnLooker3d(),
+    modal.sampleCanvas3d.click(0.5, 0.5),
   );
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 

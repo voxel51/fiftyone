@@ -1,5 +1,4 @@
 import {
-  expectDominantColor,
   long,
   openMcapModal,
   sampleIndex,
@@ -34,7 +33,9 @@ test.describe("MCAP playback", () => {
     await episode.setSamplingRate(1);
     await episode.inspectStream("/pose");
     await episode.expectRawField("position.x", tinyA.poseX[0]);
-    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[0]);
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("tiny-a-front-1.png");
 
     const second = "2024-01-01 00:00:01.000";
     const playhead = "2024-01-01 00:00:01.000 / 2024-01-01 00:00:02.000";
@@ -52,7 +53,9 @@ test.describe("MCAP playback", () => {
     await episode.expectPlayhead(playhead);
     await episode.expectRawField("position.x", tinyA.poseX[1]);
     await episode.expectLog("A log 1");
-    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[1]);
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("tiny-a-front-2.png");
 
     const first = "2024-01-01 00:00:00.000";
     await episode.after([episode.utcTime(first), episode.raw("/pose")], () =>
@@ -95,10 +98,9 @@ test.describe("MCAP playback", () => {
     await episode.setSamplingRate(2);
     await episode.inspectStream("/status");
     await episode.expectRawField("status_code", tinyB.statusCodes[0]);
-    await expectDominantColor(
-      episode.image("camera/rear"),
-      tinyB.rearImageRgb[0],
-    );
+    await episode
+      .canvas(episode.image("camera/rear"))
+      .assert.hasScreenshot("tiny-b-rear-1.png");
 
     await episode.after(
       [episode.playhead("0:00.50 / 0:01.50"), episode.raw("/status")],
@@ -241,7 +243,9 @@ test.describe("MCAP playback", () => {
     await episode.expectUtcTime("2024-01-01 00:00:01.000");
     await episode.inspectStream("/pose");
     await episode.expectRawField("position.x", tinyA.poseX[1]);
-    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[1]);
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("tiny-a-front-2.png");
 
     const longStart = "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000";
     await episode.navigateDatasetSample("forward", long.fileName, [
@@ -257,10 +261,9 @@ test.describe("MCAP playback", () => {
     await episode.expectTileTitles(["camera/front"], ["/pose"]);
     await episode.inspectStream("/status");
     await episode.expectRawField("counter", 0);
-    await expectDominantColor(
-      episode.image("camera/front"),
-      long.cameraPhaseRgb[0],
-    );
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("long-front-phase-0.png");
 
     await episode.after(
       [episode.utcTime("2024-01-01 00:45:00.000"), episode.raw("/status")],
@@ -291,7 +294,9 @@ test.describe("MCAP playback", () => {
     await episode.expectRawSelectionCleared();
     await episode.inspectStream("/pose");
     await episode.expectRawField("position.x", tinyA.poseX[0]);
-    await expectDominantColor(episode.image("camera/front"), tinyA.imageRgb[0]);
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("tiny-a-front-1.png");
   });
 
   test("honors rear-camera first and last temporal boundaries through seeks and scrubs", async ({
@@ -323,10 +328,9 @@ test.describe("MCAP playback", () => {
         episode.scrubToFraction(fractionOfLongRecording(long.rearFirstSecond)),
       [episode.imageShown("camera/rear")],
     );
-    await expectDominantColor(
-      episode.image("camera/rear"),
-      long.cameraPhaseRgb[0],
-    );
+    await episode
+      .canvas(episode.image("camera/rear"))
+      .assert.hasScreenshot("long-rear-phase-0.png");
 
     await episode.seekToUtcTime(
       "2024-01-01 00:50:00.000",
@@ -335,10 +339,9 @@ test.describe("MCAP playback", () => {
         episode.seekToFraction(fractionOfLongRecording(long.rearLastSecond)),
       [episode.imageShown("camera/rear")],
     );
-    await expectDominantColor(
-      episode.image("camera/rear"),
-      long.cameraPhaseRgb[3],
-    );
+    await episode
+      .canvas(episode.image("camera/rear"))
+      .assert.hasScreenshot("long-rear-phase-3.png");
 
     await episode.seekToUtcTime(
       "2024-01-01 00:50:00.500",
@@ -380,10 +383,9 @@ test.describe("MCAP playback", () => {
     await episode.inspectStream("/rosout");
     await episode.expectRawMeta(relativeSecond(long.logBeforeMidpointSecond));
     await episode.expectRawField("msg", "LONG pre-midpoint nominal");
-    await expectDominantColor(
-      episode.image("camera/front"),
-      long.cameraPhaseRgb[1],
-    );
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("long-front-phase-1.png");
 
     await episode.seekToUtcTime(
       "2024-01-01 00:30:00.000",
@@ -406,10 +408,9 @@ test.describe("MCAP playback", () => {
     await episode.expectRawField("msg", "LONG midpoint warning");
     await episode.expectLogs(["LONG midpoint warning"]);
     await episode.expectDiagnostics(["midpoint warning"]);
-    await expectDominantColor(
-      episode.image("camera/front"),
-      long.cameraPhaseRgb[2],
-    );
+    await episode
+      .canvas(episode.image("camera/front"))
+      .assert.hasScreenshot("long-front-phase-2.png");
 
     // both anchors stay on the midpoint records, so nothing re-renders
     await episode.seekToUtcTime("2024-01-01 00:30:00.500", 500, () =>

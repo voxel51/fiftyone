@@ -56,7 +56,7 @@ test.describe.serial("multi-pcd", () => {
   test("multi-pcd slice in modal", async ({ grid, modal }) => {
     await grid.openFirstSample();
 
-    await modal.clickOnLooker3d();
+    await modal.sampleCanvas3d.click(0.5, 0.5);
 
     await modal.toggleLooker3dSlice("pcd2");
 

@@ -51,6 +51,20 @@ E2E_RULES = [
     # locator.waitFor and the removed DOM-mutation wait are DOM polls
     ("locator-wait-for", re.compile(r"\.waitFor\(")),
     ("until-dom", re.compile(r"\buntilDom\(")),
+    # the sample canvas POM is the only authority over the modal canvas: its
+    # primitives drive the pointer, and its asserter takes the screenshots
+    (
+        "raw-mouse",
+        re.compile(r"\.mouse\.(?:move|down|up|click|dblclick|wheel)\("),
+    ),
+    (
+        "canvas-locator-input",
+        re.compile(
+            r"\b(?:looker3d|groupLooker|looker|canvas)\b(?:\(\))?\.(?:click|hover|dblclick)\("
+        ),
+    ),
+    ("raw-screenshot", re.compile(r"\.screenshot\(|\.toMatchSnapshot\(")),
+    ("direct-expect-screenshot", re.compile(r"\bexpectScreenshot\(")),
     (
         "retry-loop",
         re.compile(
@@ -100,6 +114,15 @@ ALLOW = {
     "app/packages/playback/src/lib/timeline/use-timeline.ts:new CustomEvent(": "play/pause; timeline/use-create-timeline.ts listens (useEventHandler on window)",
     "app/packages/playback/src/lib/timeline/utils.ts:new CustomEvent(": "set-frame-number; timeline/use-create-timeline.ts listens",
     "e2e-pw/src/oss/poms/modal/annotate-sidebar.ts:waitForResponse(": "waitForPatch: the grouped-video specs assert which sample the PATCH URL targets, so the request itself is the subject; saves wait on afterSave",
+    "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:.mouse.": "the sample canvas POM: its primitives are the only pointer input to the canvas",
+    "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:expectScreenshot(": "the sample canvas asserter",
+    "e2e-pw/src/oss/poms/grid/index.ts:expectScreenshot(": "the grid asserter: tiles are grid DOM, not the modal canvas",
+    "e2e-pw/src/oss/utils/screenshot.ts:screenshot(": "the capture under the POM asserters",
+    "e2e-pw/src/oss/utils/screenshot.ts:toMatchSnapshot(": "the exact comparison under the POM asserters",
+    "e2e-pw/src/oss/poms/modal/video-annotate.ts:.mouse.": "drags on the timeline's DOM (tag range overlay, interval resize handle), not the canvas",
+    "e2e-pw/src/oss/poms/multimodal/episode.ts:.mouse.": "seeks and scrubs on the episode timeline's DOM, not a canvas",
+    "e2e-pw/src/oss/poms/fo3d/assets-panel/index.ts:.mouse.": "drags a leva slider, which is DOM",
+    "e2e-pw/src/oss/poms/modal/index.ts:looker.click(": "a group carousel thumbnail, which navigates like a grid tile; not the sample canvas",
     "app/packages/playback/src/views/Timeline/Timeline.tsx:new CustomEvent(": "seek; timeline/use-create-timeline.ts listens (useEventHandler on window)",
 }
 

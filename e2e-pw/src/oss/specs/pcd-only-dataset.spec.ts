@@ -80,12 +80,12 @@ test.describe.serial("orthographic projections", () => {
     );
     // both point clouds render in the modal, the one with NaN points too
     await modal.afterLooker3dSettled(() => grid.openFirstSample());
-    await modal.assert.hasLooker3dScreenshot(
+    await modal.sampleCanvas3d.assert.hasScreenshot(
       "orthographic-projection-modal-cuboid-1.png",
     );
 
     await modal.afterLooker3dSettled(() => modal.navigateNextSample());
-    await modal.assert.hasLooker3dScreenshot(
+    await modal.sampleCanvas3d.assert.hasScreenshot(
       "orthographic-projection-modal-cuboid-2.png",
     );
   });

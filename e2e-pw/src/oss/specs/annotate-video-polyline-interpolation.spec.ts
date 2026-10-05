@@ -164,7 +164,13 @@ const drawPolyline = async (modal: ModalPom): Promise<string> => {
   const before = new Set(await modal.videoAnnotate.objectTrackIds());
 
   await modal.sidebar.annotate.polylineMode();
-  await modal.videoAnnotate.drawPolyline(DRAWN);
+  const [first, ...rest] = DRAWN;
+  await modal.videoAnnotate.afterTracksChange(() =>
+    modal.sampleCanvas.click(...first),
+  );
+  for (const point of rest) {
+    await modal.sampleCanvas.click(...point);
+  }
   await modal.sampleCanvas.rightClick(0.9, 0.1);
   await modal.sidebar.annotate.polylineMode();
 

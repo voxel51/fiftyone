@@ -104,11 +104,13 @@ test("a painted mask clears on auto-extended filler frames during playback", asy
   // paint a mask on frame 1 — segmentation mode opens a fresh masked detection
   await modal.sidebar.annotate.segmentationMode();
   await modal.sidebar.edit.selectBrushTool();
-  await va.paintMaskStroke([
-    [0.4, 0.4],
-    [0.48, 0.48],
-    [0.56, 0.56],
-  ]);
+  await va.afterTracksChange(async () => {
+    await modal.sampleCanvas.move(0.4, 0.4);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.48, 0.48);
+    await modal.sampleCanvas.move(0.56, 0.56);
+    await modal.sampleCanvas.up();
+  });
   await va.assert.objectTrackCount(1);
 
   // the keyframe carries the mask — the preview renders against the live overlay

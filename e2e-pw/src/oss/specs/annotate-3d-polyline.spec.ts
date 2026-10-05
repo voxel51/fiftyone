@@ -290,13 +290,22 @@ test.describe.serial("3d polyline creation", () => {
     await modal.annotate3d.assert.newSegmentActive(true);
     // the draw's own save must land first, or it satisfies the class
     // change's wait below
-    await modal.sidebar.annotate.afterSave(() =>
-      modal.annotate3d.drawPolyline([
+    await modal.sidebar.annotate.afterSave(async () => {
+      // each click registers as a vertex before the next lands; the last
+      // stays clear of the first so the line doesn't close into a loop
+      const points: Array<[number, number]> = [
         [0.4, 0.4],
         [0.6, 0.4],
         [0.6, 0.6],
-      ]),
-    );
+      ];
+      for (const [index, [x, y]] of points.entries()) {
+        await modal.annotate3d.afterDraftVertices(index + 1, () =>
+          modal.sampleCanvas3d.click(x, y),
+        );
+      }
+      // Enter commits the segment; a double-click would ride on timing
+      await modal.sampleCanvas3d.press("Enter");
+    });
     expect(await labelInput.isVisible()).toBe(true);
 
     // the freshly-drawn polyline is auto-selected with its edit form open

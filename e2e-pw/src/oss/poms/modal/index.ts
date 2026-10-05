@@ -1,5 +1,4 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventCondition, EventUtils } from "src/shared/event-utils";
 import { afterPopout } from "../action-row/popout";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
@@ -12,7 +11,7 @@ import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
-import { SampleCanvasPom } from "./sample-canvas";
+import { LOOKER3D_CAPTURE, SampleCanvasPom } from "./sample-canvas";
 import { VideoAnnotatePom } from "./video-annotate";
 import { ModalVideoControlsPom } from "./video-controls";
 
@@ -34,6 +33,10 @@ export class ModalPom {
   readonly looker3dControls: Looker3DControlsPom;
   readonly panel: ModalPanelPom;
   readonly sampleCanvas: SampleCanvasPom;
+  /** The 3D viewer's canvas: a 3D sample's, or a group modal's 3D pane */
+  readonly sampleCanvas3d: SampleCanvasPom;
+  /** A group modal's 2D pane */
+  readonly groupSampleCanvas: SampleCanvasPom;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
@@ -59,6 +62,17 @@ export class ModalPom {
     this.looker3dControls = new Looker3DControlsPom(page, this);
     this.panel = new ModalPanelPom(page, this);
     this.sampleCanvas = new SampleCanvasPom(page, eventUtils);
+    this.sampleCanvas3d = new SampleCanvasPom(
+      page,
+      eventUtils,
+      this.looker3d.locator("canvas").first(),
+      LOOKER3D_CAPTURE,
+    );
+    this.groupSampleCanvas = new SampleCanvasPom(
+      page,
+      eventUtils,
+      this.groupLooker,
+    );
     this.sidebar = new ModalSidebarPom(page, eventUtils);
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);
@@ -229,11 +243,7 @@ export class ModalPom {
   }
 
   async toggleSelection(isPcd = false) {
-    if (isPcd) {
-      await this.looker3d.hover();
-    } else {
-      await this.looker.hover();
-    }
+    await (isPcd ? this.sampleCanvas3d : this.sampleCanvas).move(0.5, 0.5);
 
     await this.locator.getByTestId("select-sample-checkbox").click();
   }
@@ -313,39 +323,6 @@ export class ModalPom {
     );
   }
 
-  async panSample(
-    direction: "left" | "right" | "up" | "down",
-    offsetPixels = 100,
-  ) {
-    const modalBoundingBox = await this.modalContainer.boundingBox();
-    await this.page.mouse.move(
-      modalBoundingBox.width / 2,
-      modalBoundingBox.height / 2,
-    );
-    await this.page.mouse.down();
-
-    let newPositionX = modalBoundingBox.width / 2;
-    let newPositionY = modalBoundingBox.height / 2;
-
-    switch (direction) {
-      case "left":
-        newPositionX -= offsetPixels;
-        break;
-      case "right":
-        newPositionX += offsetPixels;
-        break;
-      case "up":
-        newPositionY -= offsetPixels;
-        break;
-      case "down":
-        newPositionY += offsetPixels;
-        break;
-    }
-
-    await this.page.mouse.move(newPositionX, newPositionY);
-    await this.page.mouse.up();
-  }
-
   async toggleTagSampleOrLabels() {
     await this.locator.getByTestId("action-tag-sample-labels").click();
   }
@@ -405,10 +382,6 @@ export class ModalPom {
     return this.navigateSample("backward", allowErrorInfo);
   }
 
-  async clickOnLooker3d() {
-    return this.looker3d.click();
-  }
-
   async toggleLooker3dSlice(slice: string) {
     await this.looker3dActionBar.getByTestId("looker3d-select-slices").click();
 
@@ -417,26 +390,8 @@ export class ModalPom {
       .getByTestId(`checkbox-${slice}`)
       .click();
 
-    await this.clickOnLooker3d();
-  }
-
-  /** Chrome hidden from 3D screenshots: the action bar, selection bar, and panels. */
-  async clickOnLooker() {
-    return this.looker.click();
-  }
-
-  /**
-   * Hover the looker, then move the mouse off it and wait for its controls
-   * to hide. The hover makes the mouse leave the looker, which is what hides
-   * them.
-   */
-  async hideLookerControls() {
-    await this.looker.hover();
-    await this.eventUtils.after(
-      "e2e:looker:controls-rendered",
-      () => this.sampleCanvas.parkMouse(),
-      (e) => !(e.detail as { shown: boolean }).shown,
-    );
+    // closes the slice dropdown
+    await this.sampleCanvas3d.click(0.5, 0.5);
   }
 
   /**
@@ -478,28 +433,6 @@ export class ModalPom {
 
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
-
-  /**
-   * One capture of the 3D canvas, which renders a frame for the capture; wait
-   * first on the scene state it should show. The render preferences panel
-   * floats over the canvas, so it is hidden for the capture
-   */
-  async hasLooker3dScreenshot(name: string) {
-    await expectScreenshot(
-      this.modalPom.looker3d.locator("canvas").first(),
-      name,
-      {
-        style:
-          "[data-cy=looker3d-leva-container] { visibility: hidden !important; }",
-      },
-    );
-  }
-
-  /** One capture of the looker with its controls hidden */
-  async hasLookerScreenshot(name: string) {
-    await this.modalPom.hideLookerControls();
-    await expectScreenshot(this.modalPom.looker, name);
-  }
 
   async isClosed() {
     expect(await this.modalPom.locator.isVisible()).toBe(false);

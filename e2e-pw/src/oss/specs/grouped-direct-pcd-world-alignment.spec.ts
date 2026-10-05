@@ -86,5 +86,5 @@ test("renders both point-cloud slices aligned in the world frame", async ({
   await modal.looker3dControls.setTopView();
   await modal.looker3dControls.toggleGridHelper();
 
-  await modal.assert.hasLooker3dScreenshot("world-aligned-slices.png");
+  await modal.sampleCanvas3d.assert.hasScreenshot("world-aligned-slices.png");
 });

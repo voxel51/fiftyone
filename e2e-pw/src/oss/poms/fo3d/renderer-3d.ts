@@ -1,10 +1,8 @@
-import { Jimp } from "jimp";
-import { expect, Locator, Page } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
 import { EventUtils } from "src/shared/event-utils";
 
 export type CameraPosition = [number, number, number];
-const DEFAULT_MIN_RENDERED_PIXELS = 150;
 const CAMERA_POSITION = "e2e:looker3d:camera-position";
 
 type SavedCameraState = {
@@ -43,7 +41,6 @@ export function positionsAreClose(
 }
 
 export class Renderer3dPom {
-  readonly assert: Renderer3dAsserter;
   readonly asset3dPanel: Asset3dPanelPom;
   readonly modalLookerContainer: Locator;
   readonly looker3d: Locator;
@@ -55,7 +52,6 @@ export class Renderer3dPom {
     private readonly page: Page,
     private readonly eventUtils: EventUtils,
   ) {
-    this.assert = new Renderer3dAsserter(this);
     this.asset3dPanel = new Asset3dPanelPom(this.page);
     this.modalLookerContainer = this.page.getByTestId("modal-looker-container");
     this.looker3d = this.modalLookerContainer.getByTestId("looker3d");
@@ -107,70 +103,5 @@ export class Renderer3dPom {
     await this.page.evaluate((name) => {
       localStorage.removeItem(`${name}-fo3d-camera-position`);
     }, datasetName);
-  }
-
-  async dragCameraBy(deltaX: number, deltaY: number): Promise<void> {
-    const box = await this.looker3d.boundingBox();
-    if (!box) {
-      throw new Error("Unable to find looker3d bounds for camera drag");
-    }
-
-    const startX = box.x + box.width / 2;
-    const startY = box.y + box.height / 2;
-
-    // Ease into the drag and then interpolate a longer path so the renderer
-    // consistently receives pointer movement events during camera rotation.
-    await this.page.mouse.move(startX, startY, { steps: 6 });
-    await this.page.mouse.down();
-    await this.page.mouse.move(startX + deltaX, startY + deltaY, {
-      steps: 18,
-    });
-    await this.page.mouse.up();
-  }
-
-  async countRenderedPixels(): Promise<number> {
-    const screenshot = await this.looker3d.screenshot();
-    const image = await Jimp.read(screenshot);
-
-    const width = image.bitmap.width;
-    const height = image.bitmap.height;
-    const centerCrop = image.clone().crop({
-      x: Math.floor(width * 0.2),
-      y: Math.floor(height * 0.2),
-      w: Math.max(1, Math.floor(width * 0.6)),
-      h: Math.max(1, Math.floor(height * 0.6)),
-    });
-
-    let renderedPixelCount = 0;
-
-    for (let index = 0; index < centerCrop.bitmap.data.length; index += 4) {
-      const red = centerCrop.bitmap.data[index];
-      const green = centerCrop.bitmap.data[index + 1];
-      const blue = centerCrop.bitmap.data[index + 2];
-      const alpha = centerCrop.bitmap.data[index + 3];
-
-      if (alpha > 0 && red + green + blue > 30) {
-        renderedPixelCount += 1;
-      }
-    }
-
-    return renderedPixelCount;
-  }
-}
-
-class Renderer3dAsserter {
-  constructor(private readonly renderer3dPom: Renderer3dPom) {}
-
-  async expectSomethingToRender(
-    minRenderedPixels = DEFAULT_MIN_RENDERED_PIXELS,
-  ) {
-    // scene-ready = assets loaded, camera settled, revealed — the frame is
-    // painted, so one pixel count is enough
-    expect(
-      await this.renderer3dPom.looker3d.getAttribute("data-scene-ready"),
-    ).toBe("true");
-    expect(await this.renderer3dPom.countRenderedPixels()).toBeGreaterThan(
-      minRenderedPixels,
-    );
   }
 }

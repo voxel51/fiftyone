@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { expectScreenshot } from "src/oss/utils/screenshot";
 import type { EventUtils, ObservedEvent } from "src/shared/event-utils";
@@ -24,6 +26,49 @@ export interface Box {
   height: number;
 }
 
+/** How a canvas surface is captured for a screenshot */
+export interface CanvasCapture {
+  /** The element captured within the root; the root itself by default */
+  target?: (root: Locator) => Locator;
+  /** Pixels trimmed from each edge, for antialiased rounded corners */
+  inset?: number;
+  /** CSS applied for the capture to hide overlays */
+  style?: string;
+  /** Park the pointer and wait out hover affordances before the capture */
+  park?: boolean;
+}
+
+/** The modal content's corner radius, in px */
+const MODAL_RADIUS = 8;
+
+/**
+ * The modal's sample: its rounded corners antialias differently run to run,
+ * and a toast over the media comes and goes on its own timer
+ */
+export const MODAL_CAPTURE: CanvasCapture = {
+  park: true,
+  inset: MODAL_RADIUS,
+  style:
+    ".segmentation-toolbar, .notistack-SnackbarContainer { display: none !important; }",
+};
+
+/** A 3D canvas, without the render preferences panel floating over it */
+export const LOOKER3D_CAPTURE: CanvasCapture = {
+  style: "[data-cy=looker3d-leva-container] { visibility: hidden !important; }",
+};
+
+/**
+ * A multimodal episode surface: its canvases, none of the shell's DOM. A page
+ * clip (`inset: 0`), since the style hides the captured element itself
+ */
+export const EPISODE_CAPTURE: CanvasCapture = {
+  inset: 0,
+  style: fs.readFileSync(
+    path.resolve(__dirname, "../../../../shared/assets/canvas-only.css"),
+    "utf8",
+  ),
+};
+
 export enum SampleCanvasType {
   LIGHTER = "lighter-sample-renderer",
   LOOKER = "modal-looker-container",
@@ -32,9 +77,10 @@ export enum SampleCanvasType {
 
 /**
  * The canvas of the sample plugin in the modal. Applies to image, video and 3D
- * media types.
+ * media types. By default it spans the whole modal sample; a group modal's
+ * panes and an episode's surfaces each get their own, rooted at that pane.
  *
- * All operations use relative [0, 1] coordinates with respect to container,
+ * All operations use relative [0, 1] coordinates with respect to the root,
  * and not the media within it.
  */
 // one wheel gesture of this size zooms Lighter about 1.5x
@@ -42,13 +88,14 @@ const ZOOM_IN_WHEEL_DELTA = 125;
 
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
-  #box?: Box;
   #mouseX = 0;
   #mouseY = 0;
 
   constructor(
     readonly page: Page,
     readonly eventUtils: EventUtils,
+    readonly root: Locator = page.getByTestId("sample-canvas"),
+    readonly capture: CanvasCapture = MODAL_CAPTURE,
   ) {
     this.assert = new SampleCanvasAsserter(this);
   }
@@ -57,7 +104,7 @@ export class SampleCanvasPom {
    * The sample canvas locator
    */
   get locator() {
-    return this.page.getByTestId("sample-canvas");
+    return this.root;
   }
 
   /**
@@ -252,6 +299,11 @@ export class SampleCanvasPom {
     );
   }
 
+  /** Press `key` with the canvas focused, e.g. "Enter" to commit a draw */
+  async press(key: string) {
+    await this.page.keyboard.press(key);
+  }
+
   /**
    * Reset Lighter zoom and pan with the Annotate keyboard shortcut
    */
@@ -323,11 +375,11 @@ export class SampleCanvasPom {
   }
 
   async #toScreenCoordinates(x: number, y: number) {
-    if (!this.#box) {
-      this.#box = await this.locator.boundingBox();
+    // measured per call: a group pane resizes when media visibility changes
+    const box = await this.locator.boundingBox();
+    if (!box) {
+      throw new Error("the sample canvas is not on screen");
     }
-
-    const box = this.#box;
     const xPixels = x * box.width;
     const yPixels = y * box.height;
 
@@ -337,9 +389,6 @@ export class SampleCanvasPom {
     };
   }
 }
-
-/** The modal content's corner radius, in px */
-const MODAL_RADIUS = 8;
 
 /**
  * Sample canvas asserter
@@ -363,7 +412,8 @@ class SampleCanvasAsserter {
    * @param name the name of the screenshot
    */
   async hasScreenshot(name: string) {
-    await this.#hasScreenshot(this.sampleCanvasPom.locator, name);
+    const { capture, locator } = this.sampleCanvasPom;
+    await this.#hasScreenshot(capture.target?.(locator) ?? locator, name);
   }
 
   /**
@@ -376,19 +426,24 @@ class SampleCanvasAsserter {
     await this.#hasScreenshot(
       this.sampleCanvasPom.locator.locator("[data-lighter-surface]"),
       name,
+      MODAL_CAPTURE,
     );
   }
 
-  async #hasScreenshot(target: Locator, name: string) {
-    await this.sampleCanvasPom.prepareForScreenshot();
-    // the capture renders a frame first, so Lighter paints the committed
-    // state into it; a looker draws synchronously when its state changes
-    // the modal's rounded corners antialias differently run to run, and a
-    // toast over the media comes and goes on its own timer
+  async #hasScreenshot(
+    target: Locator,
+    name: string,
+    capture = this.sampleCanvasPom.capture,
+  ) {
+    if (capture.park) {
+      await this.sampleCanvasPom.prepareForScreenshot();
+    }
+    // the capture renders a frame first, so Lighter and 3D paint the
+    // committed state into it; a looker draws synchronously when its state
+    // changes
     await expectScreenshot(target, name, {
-      inset: MODAL_RADIUS,
-      style:
-        ".segmentation-toolbar, .notistack-SnackbarContainer { display: none !important; }",
+      inset: capture.inset,
+      style: capture.style,
     });
   }
 

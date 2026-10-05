@@ -265,7 +265,9 @@ test.describe.serial("grouped point-cloud and ply", () => {
     });
     await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
 
-    await assertSingleSliceState(0, "pcd", () => modal.clickOnLooker3d());
+    await assertSingleSliceState(0, "pcd", () =>
+      modal.sampleCanvas3d.click(0.5, 0.5),
+    );
     await modal.looker3dControls.assert.verifySliceSelectorLabel("pcd");
     await modal.looker3dControls.openSliceSelector();
     await modal.looker3dControls.assert.verifySliceChecked("pcd");
@@ -290,8 +292,12 @@ test.describe.serial("grouped point-cloud and ply", () => {
     await modal.looker3dControls.assert.verifySliceChecked("ply");
     await modal.looker3dControls.closeSliceSelector();
 
-    await assertImageSliceState(0, () => modal.groupLooker.click());
-    await modal.sidebar.afterEntries(bothSlices, () => modal.clickOnLooker3d());
+    await assertImageSliceState(0, () =>
+      modal.groupSampleCanvas.click(0.5, 0.5),
+    );
+    await modal.sidebar.afterEntries(bothSlices, () =>
+      modal.sampleCanvas3d.click(0.5, 0.5),
+    );
     await modal.assert.verifyModalSamplePluginTitle("pcd and ply", {
       pinned: true,
     });
@@ -310,8 +316,12 @@ test.describe.serial("grouped point-cloud and ply", () => {
     await modal.looker3dControls.assert.verifySliceChecked("ply");
     await modal.looker3dControls.closeSliceSelector();
 
-    await assertImageSliceState(0, () => modal.groupLooker.click());
-    await assertSingleSliceState(0, "ply", () => modal.clickOnLooker3d());
+    await assertImageSliceState(0, () =>
+      modal.groupSampleCanvas.click(0.5, 0.5),
+    );
+    await assertSingleSliceState(0, "ply", () =>
+      modal.sampleCanvas3d.click(0.5, 0.5),
+    );
 
     const next = () => modal.navigateNextSample();
     await assertSingleSliceState(1, "ply", next, true);
