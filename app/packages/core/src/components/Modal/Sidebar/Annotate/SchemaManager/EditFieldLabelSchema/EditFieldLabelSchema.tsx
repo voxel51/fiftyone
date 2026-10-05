@@ -65,7 +65,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           />
         </div>
         <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          When enabled, annotators can view this field but can't edit its
+          When enabled, annotators can view this field but can&apos;t edit its
           values.
         </Text>
       </div>

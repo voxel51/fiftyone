@@ -394,8 +394,8 @@ export default function RunList({
         >
           <Text color={TextColor.Secondary}>No similarity searches yet</Text>
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-            Click "New Search" to find similar samples using your computed
-            embeddings.
+            Click &quot;New Search&quot; to find similar samples using your
+            computed embeddings.
           </Text>
         </Stack>
       ) : filteredRuns.length === 0 ? (

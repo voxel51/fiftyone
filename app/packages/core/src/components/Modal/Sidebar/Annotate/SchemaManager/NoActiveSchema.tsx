@@ -27,7 +27,7 @@ const NoActiveSchema = () => {
         color={TextColor.Secondary}
         style={{ textAlign: "center", marginBottom: 16 }}
       >
-        Select fields that you'd like to add schemas to for annotation
+        Select fields that you&apos;d like to add schemas to for annotation
       </Text>
       <Button
         size={Size.Md}
