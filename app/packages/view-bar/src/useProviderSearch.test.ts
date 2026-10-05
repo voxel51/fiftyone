@@ -41,7 +41,7 @@ const SEARCH_INDEX = {
   runTimestamp: null,
 };
 
-const providerSearch = (sourcesWanted = false) =>
+const useProviderSearchFor = (sourcesWanted = false) =>
   useProviderSearch({
     onRun: env.onRun,
     selectedIndex: INDEX,
@@ -49,7 +49,7 @@ const providerSearch = (sourcesWanted = false) =>
     sourcesWanted,
   });
 
-const renderSearch = () => renderHook(() => providerSearch());
+const renderSearch = () => renderHook(() => useProviderSearchFor());
 const STAGE = { "fiftyone.core.stages.Select": { sample_ids: ["ep1"] } };
 
 /** A search the test settles by hand. */
@@ -260,7 +260,7 @@ describe("useProviderSearch", () => {
       ],
     ]);
     const { result, rerender } = renderHook(
-      ({ wanted }) => providerSearch(wanted),
+      ({ wanted }) => useProviderSearchFor(wanted),
       { initialProps: { wanted: false } },
     );
     expect(env.sources).not.toHaveBeenCalled();

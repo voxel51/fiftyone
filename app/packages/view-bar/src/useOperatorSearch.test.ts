@@ -34,7 +34,7 @@ const INDEX: PromptableSimilarityIndex = {
   patchesField: null,
 };
 
-const operatorSearch = (
+const useOperatorSearchFor = (
   view: readonly SerializedStage[],
   index: PromptableSimilarityIndex = INDEX,
 ) =>
@@ -66,7 +66,7 @@ describe("useOperatorSearch", () => {
 
   it("replaces a search typed over its unchanged result view", () => {
     const { result, rerender } = renderHook(
-      ({ view }) => operatorSearch(view),
+      ({ view }) => useOperatorSearchFor(view),
       { initialProps: { view: [] as SerializedStage[] } },
     );
 
@@ -80,7 +80,7 @@ describe("useOperatorSearch", () => {
 
   it("stops replacing a search once another change supersedes its result", () => {
     const { result, rerender } = renderHook(
-      ({ view }) => operatorSearch(view),
+      ({ view }) => useOperatorSearchFor(view),
       { initialProps: { view: [] as SerializedStage[] } },
     );
 
@@ -98,7 +98,7 @@ describe("useOperatorSearch", () => {
   });
 
   it("sends the slices only when the pick narrows the search", () => {
-    const { result } = renderHook(() => operatorSearch([]));
+    const { result } = renderHook(() => useOperatorSearchFor([]));
 
     act(() => result.current.run(INDEX, "a car", 25, ["left"]));
     expect(env.execute.mock.lastCall[1].slices).toStrictEqual(["left"]);
@@ -109,7 +109,7 @@ describe("useOperatorSearch", () => {
 
   it("offers the slices the selected index recorded as its sources", () => {
     const { result } = renderHook(() =>
-      operatorSearch([], { ...INDEX, groupSlices: ["left", "right"] }),
+      useOperatorSearchFor([], { ...INDEX, groupSlices: ["left", "right"] }),
     );
 
     expect(result.current.sources).toStrictEqual({
@@ -123,7 +123,7 @@ describe("useOperatorSearch", () => {
 
   it("offers no sources for an index that recorded no slices", () => {
     const { result } = renderHook(() =>
-      operatorSearch([], { ...INDEX, groupSlices: [] }),
+      useOperatorSearchFor([], { ...INDEX, groupSlices: [] }),
     );
 
     expect(result.current.sources).toBeNull();
@@ -132,7 +132,7 @@ describe("useOperatorSearch", () => {
 
   it("offers the dataset's slices as unavailable on a grouped dataset for an index that recorded none", () => {
     env.datasetSlices = ["left", "right"];
-    const { result } = renderHook(() => operatorSearch([]));
+    const { result } = renderHook(() => useOperatorSearchFor([]));
     env.datasetSlices = [];
 
     expect(result.current.sources).toStrictEqual({
