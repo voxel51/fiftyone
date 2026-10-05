@@ -5,11 +5,13 @@
  */
 
 import { renderHook } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   labelFields: {} as Record<string, string>,
-  index: { indexByPath: {}, loaded: false },
+  index: { indexByPath: {}, loaded: false, failed: false },
+  setToast: vi.fn(),
   loaded: [] as number[],
   edited: [] as number[],
   editVersion: 0,
@@ -39,6 +41,10 @@ vi.mock("../hooks/useVideoLabelsIndex", () => ({
   useVideoLabelsIndex: () => h.index,
 }));
 
+vi.mock("@fiftyone/state", () => ({
+  useActivityToast: () => ({ setConfig: h.setToast }),
+}));
+
 vi.mock("../state/accessors", () => ({
   useFrameLabelFields: () => h.labelFields,
   useVisibleLabelSchemas: () => h.visible(),
@@ -48,6 +54,12 @@ vi.mock("../streams/frameLabelsStream", () => ({
   useFrameLabelsStream: () => h.stream,
 }));
 
+import { TRACK_INDEX_FAILED_MESSAGE } from "../hooks/useTrackIndexFailureNotice";
+import { FrameCache } from "../streams/frameCache";
+import {
+  VideoFrameSource,
+  VideoFrameSourceProvider,
+} from "../streams/videoFrameSource";
 import { useFrameDerivedTracks } from "./useFrameDerivedTracks";
 
 const ENGINE = vi.hoisted(() => ({
@@ -85,12 +97,14 @@ const INDEXED = {
     ],
   },
   loaded: true,
+  failed: false,
 };
 
 describe("useFrameDerivedTracks", () => {
   beforeEach(() => {
     h.labelFields = {};
-    h.index = { indexByPath: {}, loaded: false };
+    h.index = { indexByPath: {}, loaded: false, failed: false };
+    h.setToast.mockClear();
     h.loaded = [];
     h.edited = [];
     h.editVersion = 0;
@@ -108,7 +122,11 @@ describe("useFrameDerivedTracks", () => {
 
     expect(render().resolved).toBe(false);
 
-    h.index = { indexByPath: { "frames.detections": [] }, loaded: true };
+    h.index = {
+      indexByPath: { "frames.detections": [] },
+      loaded: true,
+      failed: false,
+    };
     expect(render().resolved).toBe(true);
   });
 
@@ -143,5 +161,58 @@ describe("useFrameDerivedTracks", () => {
 
     expect(result.current.tracks).toBe(before);
     expect(h.reads).toEqual([]);
+  });
+
+  describe("track index status", () => {
+    const renderWithSource = () => {
+      const source = new VideoFrameSource(new FrameCache({ frameCount: 100 }));
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(VideoFrameSourceProvider, { value: source }, children);
+      const rendered = renderHook(
+        () =>
+          useFrameDerivedTracks(
+            () => "#fff",
+            () => [],
+          ),
+        { wrapper },
+      );
+      return { source, rerender: rendered.rerender };
+    };
+
+    it("publishes the loaded index to the frame source", async () => {
+      h.labelFields = { [PATH]: "Detections" };
+      const { source, rerender } = renderWithSource();
+      const ready = source.trackIndexReady();
+
+      h.index = INDEXED;
+      rerender();
+
+      await expect(ready).resolves.toBe(true);
+      expect(source.indexedTrack(PATH, "a")?.frames).toHaveLength(100);
+    });
+
+    it("publishes a failed index and toasts once for it", async () => {
+      h.labelFields = { [PATH]: "Detections" };
+      const { source, rerender } = renderWithSource();
+
+      h.index = { indexByPath: {}, loaded: true, failed: true };
+      rerender();
+      rerender();
+
+      await expect(source.trackIndexReady()).resolves.toBe(false);
+      expect(h.setToast).toHaveBeenCalledOnce();
+      expect(h.setToast).toHaveBeenCalledWith(
+        expect.objectContaining({ message: TRACK_INDEX_FAILED_MESSAGE }),
+      );
+    });
+
+    it("does not toast without a frame source", () => {
+      h.labelFields = { [PATH]: "Detections" };
+      h.index = { indexByPath: {}, loaded: true, failed: true };
+
+      render();
+
+      expect(h.setToast).not.toHaveBeenCalled();
+    });
   });
 });

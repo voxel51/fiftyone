@@ -30,6 +30,7 @@ import {
   buildForwardFill,
   buildTrackFanOut,
   splitTrackEdit,
+  TRACK_REFUSED,
   withTrackHeld,
 } from "./trackFanOut";
 import { useAnnotationContext } from "./useAnnotationContext";
@@ -335,7 +336,11 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       };
 
       if (fansOut) {
-        await withTrackHeld(engine, ref, commit);
+        // refused (the track index failed): the edit, anchor frame included,
+        // is dropped rather than written to part of the track
+        if ((await withTrackHeld(engine, ref, commit)) === TRACK_REFUSED) {
+          return;
+        }
       } else {
         commit();
       }

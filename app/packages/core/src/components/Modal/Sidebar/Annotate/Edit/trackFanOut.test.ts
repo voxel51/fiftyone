@@ -6,6 +6,7 @@ import {
   buildForwardFill,
   buildTrackFanOut,
   splitTrackEdit,
+  TRACK_REFUSED,
   withTrackHeld,
 } from "./trackFanOut";
 
@@ -228,7 +229,9 @@ describe("buildTrackFanOut", () => {
 
 describe("withTrackHeld", () => {
   /** A store that holds frame 1 until the track's other frames are held. */
-  const windowedEngine = () => {
+  const windowedEngine = (
+    trackIndexReady: () => Promise<boolean> = () => Promise.resolve(true),
+  ) => {
     const track = [1, 2, 3, 4];
     const loaded = new Set([1]);
     const release = vi.fn(() => loaded.clear());
@@ -239,7 +242,8 @@ describe("withTrackHeld", () => {
         loaded.has(ref.frame as number)
           ? ({ _id: `${ref.frame}`, label: "cat" } as LabelData)
           : undefined,
-      trackFrames: () => ({ frames: track }),
+      trackIndexReady: vi.fn(trackIndexReady),
+      trackFrames: vi.fn(() => ({ frames: track })),
       holdFrames: vi.fn(async (_sample: string, frames: readonly number[]) => {
         frames.forEach((frame) => loaded.add(frame));
         return release;
@@ -270,5 +274,36 @@ describe("withTrackHeld", () => {
       }),
     ).rejects.toThrow("boom");
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("refuses without running the walk when the track index failed", async () => {
+    const { engine } = windowedEngine(() => Promise.resolve(false));
+    const walk = vi.fn();
+
+    await expect(withTrackHeld(engine, frameRef(1), walk)).resolves.toBe(
+      TRACK_REFUSED,
+    );
+    expect(walk).not.toHaveBeenCalled();
+    expect(engine.holdFrames).not.toHaveBeenCalled();
+  });
+
+  it("waits for a loading track index, then walks the whole track", async () => {
+    let settle: (ready: boolean) => void = () => undefined;
+    const { engine } = windowedEngine(
+      () => new Promise<boolean>((resolve) => (settle = resolve)),
+    );
+
+    const pending = withTrackHeld(engine, frameRef(1), () =>
+      buildTrackFanOut(engine, frameRef(1), { label: "dog" }),
+    );
+    await Promise.resolve();
+
+    expect(engine.trackFrames).not.toHaveBeenCalled();
+
+    settle(true);
+    const writes = await pending;
+
+    expect(writes).not.toBe(TRACK_REFUSED);
+    expect(engine.holdFrames).toHaveBeenCalledWith("s1", [1, 2, 3, 4]);
   });
 });

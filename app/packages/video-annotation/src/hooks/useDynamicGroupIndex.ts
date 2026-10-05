@@ -9,7 +9,10 @@ import {
   getFrames,
 } from "../../../core/src/client/framesClient";
 import { type DateTime, parseTimestamp } from "../../../core/src/client/util";
-import { usePublishDynamicGroupMemberIndex } from "../state/dynamicGroupMemberIndex";
+import {
+  usePublishDynamicGroupMemberIndex,
+  usePublishDynamicGroupMemberIndexFailed,
+} from "../state/dynamicGroupMemberIndex";
 
 /** Ordered member ids (position i ↔ frame i+1) and the group version token the next write validates against. */
 export interface GroupWriteState {
@@ -92,13 +95,15 @@ export const useDynamicGroupIndex = ({
   // bumped on each (re)mount so a stale fetch cannot land its state
   const generation = useRef(0);
   const publishIndex = usePublishDynamicGroupMemberIndex();
+  const publishFailed = usePublishDynamicGroupMemberIndexFailed();
   // the member order is published for readers outside the write path
   const setState = useCallback(
     (state: GroupWriteState | null) => {
       stateRef.current = state;
       publishIndex(state?.index ?? null);
+      publishFailed(false);
     },
-    [publishIndex],
+    [publishIndex, publishFailed],
   );
 
   const loadIndex = useCallback((): Promise<void> => {
@@ -131,11 +136,24 @@ export const useDynamicGroupIndex = ({
       })
       .catch((err) => {
         console.error("failed to load dynamic group member index", err);
+
+        if (requested === generation.current) {
+          publishFailed(true);
+        }
       });
 
     readyRef.current = request;
     return request;
-  }, [sampleId, dataset, view, slice, dynamicGroup, frameCount, setState]);
+  }, [
+    sampleId,
+    dataset,
+    view,
+    slice,
+    dynamicGroup,
+    frameCount,
+    setState,
+    publishFailed,
+  ]);
 
   useEffect(() => {
     if (!active) {

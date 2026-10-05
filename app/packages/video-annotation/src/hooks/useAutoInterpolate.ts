@@ -16,7 +16,7 @@ const SURFACE = "video";
  * On `annotation:keyframeChanged`, re-propagate (linear) each bracketing
  * segment against the new keyframe layout, and step-hold an edited last
  * keyframe's geometry over its trailing filler. A no-op until a labels stream
- * is published.
+ * is published, and when the track index failed.
  */
 export const useAutoInterpolate = (): void => {
   const engine = useAnnotationEngine();
@@ -42,6 +42,13 @@ export const useAutoInterpolate = (): void => {
         // re-lerp on the field the change happened on (a non-primary track,
         // e.g. a polyline, re-lerps in place); fall back to the primary field
         const path = payload.path ?? stream.labelsPath;
+
+        // without the track index the keyframe layout beyond the held window
+        // is unknown, and a re-lerp over part of it would be wrong
+        if (!(await engine.trackIndexReady(sampleId))) {
+          return;
+        }
+
         // Every frame the instance is present on (keyframe or filler), held
         // or not. The tail step-hold below walks the trailing filler.
         const { frames: presentFrames, keyframes: keyframeFrames } =

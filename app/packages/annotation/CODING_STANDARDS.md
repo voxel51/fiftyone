@@ -22,10 +22,16 @@ the playhead, the frames an operation holds, and every frame edited this
 session. `enumerateLabels` and `loadedFrames` return only that window, so
 walking them to reach a track's frames misses the rest of the track.
 
-Anything that reads or writes every frame of a track gets the track's frames
-from `trackFrames`, loads them with `holdFrames`, and writes inside the hold:
+Anything that reads or writes every frame of a track first awaits
+`trackIndexReady` and stops if it resolves `false`, then gets the track's
+frames from `trackFrames`, loads them with `holdFrames`, and writes inside the
+hold:
 
 ```ts
+if (!(await engine.trackIndexReady(ref.sample))) {
+    return;
+}
+
 const { frames } = engine.trackFrames(ref);
 const release = await engine.holdFrames(ref.sample, frames);
 
@@ -40,14 +46,20 @@ try {
 }
 ```
 
+- Read `trackFrames` after `trackIndexReady` resolves, not before.
+- `trackIndexReady` waits while the track index loads and resolves `false` when
+  it failed. On `false`, refuse the whole operation, including the frame the
+  user edited: a partial write splits the track. The surface shows one notice
+  for the failure, so the refused operation shows none.
 - Await `holdFrames` before the transaction, never inside it.
 - Always release, including when the work throws.
-- `trackFrames` combines the server index with this session's edits. While the
-  index is loading, or when it failed, it lists only the frames the store
-  holds.
-- Stores without a frame source (images, 3D) hold everything: `holdFrames`
-  resolves at once, so the same code is correct there.
+- `trackFrames` combines the server index with this session's edits.
+- Stores without a frame source (images, 3D) hold everything: `trackIndexReady`
+  resolves `true` and `holdFrames` resolves at once, so the same code is
+  correct there.
 
 Existing helpers: `withHeldFrames` in
-`video-annotation/src/tracks/frameReader.ts` for track ops, and `withTrackHeld`
-in the Annotate sidebar's `trackFanOut.ts`.
+`video-annotation/src/tracks/frameReader.ts` for track ops (whose
+`trackIndexReady` gate is applied where `useVideoSurfaceActions` assembles
+them), and `withTrackHeld` in the Annotate sidebar's `trackFanOut.ts`, which
+gates on its own.

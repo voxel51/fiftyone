@@ -31,6 +31,7 @@ export const mockEngine = {
       ),
     };
   },
+  trackIndexReady: vi.fn(async () => true),
   holdFrames: vi.fn(async () => () => {}),
   mintInstanceId: vi.fn(() => "NEW"),
   mintGestureId: vi.fn(() => "gesture:1"),
@@ -63,6 +64,7 @@ export const resetHarness = (): void => {
   harness.frameData = {};
   harness.activeRefs = [];
   vi.clearAllMocks();
+  mockEngine.trackIndexReady.mockImplementation(async () => true);
 };
 
 export const det = (

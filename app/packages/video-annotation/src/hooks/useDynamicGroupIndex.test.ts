@@ -4,7 +4,7 @@
  * @vitest-environment jsdom
  */
 
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
@@ -15,20 +15,20 @@ vi.mock("../../../core/src/client/framesClient", () => ({
   getFrames: (...args: unknown[]) => h.getFrames(...args),
 }));
 
+import { useDynamicGroupMemberIndexFailed } from "../state/dynamicGroupMemberIndex";
 import { useDynamicGroupIndex } from "./useDynamicGroupIndex";
 
-const render = () =>
-  renderHook(() =>
-    useDynamicGroupIndex({
-      active: true,
-      sampleId: "member-1",
-      dataset: "ds",
-      view: [],
-      slice: null,
-      dynamicGroup: "scene-a",
-      frameCount: 2,
-    }),
-  ).result;
+const input = {
+  active: true,
+  sampleId: "member-1",
+  dataset: "ds",
+  view: [],
+  slice: null,
+  dynamicGroup: "scene-a",
+  frameCount: 2,
+};
+
+const render = () => renderHook(() => useDynamicGroupIndex(input)).result;
 
 describe("useDynamicGroupIndex", () => {
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -81,5 +81,26 @@ describe("useDynamicGroupIndex", () => {
         message: expect.stringContaining("member-2"),
       }),
     );
+  });
+
+  it("publishes a rejected member-order fetch as failed, and clears it on a retry that lands", async () => {
+    h.getFrames.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce({
+      frames: [
+        { _id: "member-1", last_modified_at: "2026-09-01T10:00:00.000Z" },
+      ],
+      range: [1, 1],
+    });
+
+    const { result } = renderHook(() => ({
+      group: useDynamicGroupIndex(input),
+      failed: useDynamicGroupMemberIndexFailed(),
+    }));
+    await act(() => result.current.group.whenReady());
+
+    expect(result.current.failed).toBe(true);
+
+    await act(() => result.current.group.loadIndex());
+
+    expect(result.current.failed).toBe(false);
   });
 });

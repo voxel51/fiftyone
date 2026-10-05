@@ -132,6 +132,10 @@ export class VideoLabelStore implements LabelStore {
     return this.frames.trackFrames(path, instanceId);
   }
 
+  trackIndexReady(): Promise<boolean> {
+    return this.frames.trackIndexReady?.() ?? Promise.resolve(true);
+  }
+
   holdFrames(frames: readonly number[]): Promise<() => void> {
     return this.frames.holdFrames(frames);
   }

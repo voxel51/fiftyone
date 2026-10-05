@@ -74,6 +74,10 @@ export interface FrameSource {
    *  for `path`. */
   indexedTrack(path: string, instanceId: string): TrackFrames | null;
 
+  /** Resolves `true` once the index has loaded and `false` if it failed;
+   *  pending while it loads. */
+  trackIndexReady(): Promise<boolean>;
+
   /** Load `frames` and keep them until the returned release runs. */
   hold(frames: readonly number[]): Promise<() => void>;
 }
@@ -144,6 +148,11 @@ export interface LabelStore {
    *  frames the store doesn't hold. Optional; the engine scans
    *  {@link loadedFrames} for a store without it. */
   trackFrames?(path: string, instanceId: string): TrackFrames;
+
+  /** Resolves `true` once {@link trackFrames} can answer for a whole track,
+   *  `false` when it never will (its index failed). Optional; a store without
+   *  it answers from frames it holds. */
+  trackIndexReady?(): Promise<boolean>;
 
   /** Load `frames` and keep them until the returned release runs. Optional;
    *  a store without it holds every frame it has. */

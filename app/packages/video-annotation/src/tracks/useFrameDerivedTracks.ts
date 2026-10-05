@@ -10,6 +10,7 @@ import {
 import type { Track } from "@fiftyone/playback";
 import type { LabelData, LabelType } from "@fiftyone/utilities";
 import { useEffect, useMemo } from "react";
+import { useTrackIndexFailureNotice } from "../hooks/useTrackIndexFailureNotice";
 import { useVideoLabelsIndex } from "../hooks/useVideoLabelsIndex";
 import {
   useFrameLabelFields,
@@ -96,18 +97,29 @@ export function useFrameDerivedTracks(
     [allFields, visible],
   );
 
-  const { indexByPath, loaded } = useVideoLabelsIndex(
+  const { indexByPath, loaded, failed } = useVideoLabelsIndex(
     stream,
     allFields,
     allDynamicAttributes,
   );
 
+  // the index fetch never runs for an empty field set
+  const resolved = loaded || allFields.length === 0;
+
   // Track ops ask the frame store which frames a track spans; the index
-  // answers for frames the store doesn't hold.
+  // answers for frames the store doesn't hold, and track ops wait for it.
   const frameSource = useVideoFrameSource();
   useEffect(() => {
-    frameSource?.setIndex(loaded ? indexByPath : null);
-  }, [frameSource, indexByPath, loaded]);
+    frameSource?.setIndex(
+      failed
+        ? { status: "failed" }
+        : resolved
+          ? { status: "loaded", indexByPath }
+          : { status: "loading" },
+    );
+  }, [frameSource, indexByPath, resolved, failed]);
+  // only an annotation surface has a frame source, and track edits to refuse
+  useTrackIndexFailureNotice(failed && frameSource !== null);
 
   // No visible frame field, or the index hasn't settled: no rows. Tracks build
   // per visible field from that field's index ⊕ its dirty-frame overlay, then
@@ -185,7 +197,7 @@ export function useFrameDerivedTracks(
 
   const tracks = useEngineSelector(engine, selectTracks, tracksEqual);
 
-  return { tracks, resolved: loaded || allFields.length === 0 };
+  return { tracks, resolved };
 }
 
 const EMPTY_TRACKS: Track[] = [];

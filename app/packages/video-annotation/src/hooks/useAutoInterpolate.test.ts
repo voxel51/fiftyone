@@ -15,6 +15,7 @@ const {
   updateLabel,
   transaction,
   getLabelImpl,
+  trackIndexReady,
 } = vi.hoisted(() => ({
   annotationHandlers: new Map<
     string,
@@ -23,6 +24,7 @@ const {
   propagate: vi.fn(),
   updateLabel: vi.fn(),
   transaction: vi.fn((fn: () => void) => fn()),
+  trackIndexReady: vi.fn(async () => true),
   // Mutable so individual tests swap in their own label table.
   getLabelImpl: {
     current: ({ frame }: { frame: number }) =>
@@ -63,6 +65,7 @@ vi.mock("@fiftyone/annotation", () => ({
 
       return { frames, keyframes };
     },
+    trackIndexReady,
     holdFrames: async () => () => {},
   }),
   useActiveSampleId: () => "sample-1",
@@ -99,6 +102,8 @@ beforeEach(() => {
   propagate.mockReset();
   updateLabel.mockReset();
   transaction.mockClear();
+  trackIndexReady.mockReset();
+  trackIndexReady.mockResolvedValue(true);
   streamRef.current = {
     labelsField: "detections",
     labelsPath: "frames.detections",
@@ -113,6 +118,23 @@ afterEach(() => {
 });
 
 describe("useAutoInterpolate (re-lerp)", () => {
+  it("does nothing when the track index failed", async () => {
+    trackIndexReady.mockResolvedValue(false);
+    renderHook(() => useAutoInterpolate());
+
+    await fireKeyframeChanged({
+      trackId: "t1",
+      instanceId: "i1",
+      frame: 2,
+      kind: "set",
+      path: "frames.detections",
+    });
+
+    expect(trackIndexReady).toHaveBeenCalledWith("sample-1");
+    expect(propagate).not.toHaveBeenCalled();
+    expect(updateLabel).not.toHaveBeenCalled();
+  });
+
   it("re-lerps both bracketing segments on a middle keyframe edit, threading the field path and undo key", async () => {
     renderHook(() => useAutoInterpolate());
 

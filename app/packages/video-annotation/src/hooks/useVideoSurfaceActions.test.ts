@@ -6,6 +6,8 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  det,
+  harness,
   mockActions,
   mockBus,
   mockEngine,
@@ -78,5 +80,55 @@ describe("temporal-detection ops", () => {
       path: "events",
       instanceId: "t1",
     });
+  });
+});
+
+describe("track index gate", () => {
+  it("drops a whole-track op when the track index failed", async () => {
+    mockEngine.trackIndexReady.mockResolvedValue(false);
+    harness.frameData = { 1: { A: det("d1", "A") } };
+
+    await render().current.deleteTrack("instance-A");
+
+    expect(mockEngine.trackIndexReady).toHaveBeenCalledWith(SAMPLE);
+    expect(mockActions.deleteLabel).not.toHaveBeenCalled();
+    expect(mockBus.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("runs a whole-track op over the full track once a loading index lands", async () => {
+    let settle: (ready: boolean) => void = () => undefined;
+    mockEngine.trackIndexReady.mockReturnValue(
+      new Promise<boolean>((resolve) => (settle = resolve)),
+    );
+    // only the held frame is known while the index loads
+    harness.frameData = { 1: { A: det("d1", "A") } };
+
+    const pending = render().current.deleteTrack("instance-A");
+    await Promise.resolve();
+    expect(mockActions.deleteLabel).not.toHaveBeenCalled();
+
+    harness.frameData = {
+      1: { A: det("d1", "A") },
+      4: { A: det("d4", "A") },
+    };
+    settle(true);
+    await pending;
+
+    expect(
+      mockActions.deleteLabel.mock.calls.map(([ref]) => ref.frame),
+    ).toEqual([1, 4]);
+  });
+
+  it("does not gate markKeyframe, a single-frame op", () => {
+    mockEngine.trackIndexReady.mockResolvedValue(false);
+    harness.frameData = { 2: { A: det("d2", "A") } };
+
+    render().current.markKeyframe(2, ["instance-A"]);
+
+    expect(mockEngine.trackIndexReady).not.toHaveBeenCalled();
+    expect(mockActions.updateLabel).toHaveBeenCalledWith(
+      { path: PATH, instanceId: "A", frame: 2 },
+      { keyframe: true },
+    );
   });
 });

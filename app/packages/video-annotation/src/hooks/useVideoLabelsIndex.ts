@@ -4,7 +4,10 @@ import {
   type VideoLabelIndexInstance,
   type VideoLabelMemberIndexInstance,
 } from "../../../core/src/client/videoLabelsClient";
-import { useDynamicGroupMemberIndex } from "../state/dynamicGroupMemberIndex";
+import {
+  useDynamicGroupMemberIndex,
+  useDynamicGroupMemberIndexFailed,
+} from "../state/dynamicGroupMemberIndex";
 import type { IndexInstance } from "../tracks/frameTracks";
 import {
   frameNumbersByMember,
@@ -18,9 +21,22 @@ interface VideoLabelsIndexState {
   indexByPath: Record<string, IndexInstance[]>;
   /** True once the fetch settles (success or failure) — gates first paint. */
   loaded: boolean;
+  /** True when the index could not load (its fetch, or a dynamic group's
+   *  member order, failed); `indexByPath` is then empty, not the clip's. */
+  failed: boolean;
 }
 
-const EMPTY: VideoLabelsIndexState = { indexByPath: {}, loaded: false };
+const EMPTY: VideoLabelsIndexState = {
+  indexByPath: {},
+  loaded: false,
+  failed: false,
+};
+
+const FAILED: VideoLabelsIndexState = {
+  indexByPath: {},
+  loaded: true,
+  failed: true,
+};
 
 /**
  * The stored answer, tagged with the inputs it answers for. State outlives the
@@ -112,6 +128,7 @@ export function useVideoLabelsIndex(
         setState({
           indexByPath,
           loaded: true,
+          failed: false,
           stream,
           key,
           memberIndexByPath: isDynamicGroup ? memberIndexByPath : null,
@@ -122,13 +139,7 @@ export function useVideoLabelsIndex(
           return;
         }
 
-        setState({
-          indexByPath: {},
-          loaded: true,
-          stream,
-          key,
-          memberIndexByPath: null,
-        });
+        setState({ ...FAILED, stream, key, memberIndexByPath: null });
       });
 
     return () => {
@@ -141,6 +152,7 @@ export function useVideoLabelsIndex(
   const current = state.stream === stream && state.key === key;
 
   const memberIndex = useDynamicGroupMemberIndex();
+  const memberIndexFailed = useDynamicGroupMemberIndexFailed();
   const frameOf = useMemo(
     () => (memberIndex ? frameNumbersByMember(memberIndex) : null),
     [memberIndex],
@@ -153,13 +165,17 @@ export function useVideoLabelsIndex(
 
     const { memberIndexByPath } = state;
     if (!memberIndexByPath) {
-      return { indexByPath: state.indexByPath, loaded: state.loaded };
+      return {
+        indexByPath: state.indexByPath,
+        loaded: state.loaded,
+        failed: state.failed,
+      };
     }
 
     // A dynamic group's index maps onto frames through its member order,
     // which loads separately
     if (!frameOf) {
-      return EMPTY;
+      return memberIndexFailed ? FAILED : EMPTY;
     }
 
     const indexByPath: Record<string, IndexInstance[]> = {};
@@ -167,6 +183,6 @@ export function useVideoLabelsIndex(
       indexByPath[path] = toFrameIndexInstances(instances, frameOf);
     }
 
-    return { indexByPath, loaded: state.loaded };
-  }, [current, state, frameOf]);
+    return { indexByPath, loaded: state.loaded, failed: false };
+  }, [current, state, frameOf, memberIndexFailed]);
 }

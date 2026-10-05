@@ -23,8 +23,12 @@ import { useCallback } from "react";
  * {@link useDeleteAnnotation}'s persistence + activity-toast orchestration and
  * await-and-rollback so a rejected persist restores the track.
  *
- * @returns A callback that resolves `true` on success, `false` on failure, and
- *   rethrows so callers can react to a failed persist.
+ * Waits for the video's track index; while it is unavailable the track's
+ * frames beyond the held window are unknown, so a failed index refuses the
+ * delete (the surface already reported the failure).
+ *
+ * @returns A callback that resolves `true` on success, `false` on failure or
+ *   refusal, and rethrows so callers can react to a failed persist.
  */
 export const useDeleteTrack = (): ((
   label: AnnotationLabel,
@@ -39,6 +43,10 @@ export const useDeleteTrack = (): ((
       const labelId = label.data._id;
 
       try {
+        if (!(await engine.trackIndexReady(ref.sample))) {
+          return false;
+        }
+
         // Every frame this track occupies on its own field, loaded first so
         // each delete diffs against the whole frame.
         const { frames } = engine.trackFrames(ref);

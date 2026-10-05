@@ -39,6 +39,7 @@ const source = (
 ): FrameSource & { hold: typeof hold } => ({
   indexedTrack: (_path, instanceId) =>
     indexed ? (indexed[instanceId] ?? { frames: [], keyframes: [] }) : null,
+  trackIndexReady: () => Promise.resolve(indexed !== null),
   hold,
 });
 
@@ -138,6 +139,21 @@ describe("FrameStore.trackFrames", () => {
     const store = makeStore({ 2: { [PATH]: [det("d2", "A")] } }, source(null));
 
     expect(store.trackFrames(PATH, "A").frames).toEqual([2]);
+  });
+});
+
+describe("FrameStore.trackIndexReady", () => {
+  it("answers with the frame source's index status", async () => {
+    await expect(makeStore({}, source({})).trackIndexReady()).resolves.toBe(
+      true,
+    );
+    await expect(makeStore({}, source(null)).trackIndexReady()).resolves.toBe(
+      false,
+    );
+  });
+
+  it("resolves true without a frame source", async () => {
+    await expect(makeStore({}).trackIndexReady()).resolves.toBe(true);
   });
 });
 

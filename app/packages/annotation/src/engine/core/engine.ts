@@ -394,6 +394,18 @@ export class AnnotationEngine {
   }
 
   /**
+   * Resolves `true` once {@link trackFrames} answers for a sample's whole
+   * tracks, `false` when it can't (the track index failed to load). Whole-track
+   * work awaits this and stops on `false`. `true` at once for a store that
+   * holds every frame.
+   */
+  trackIndexReady(sample: string): Promise<boolean> {
+    return (
+      this.stores.get(sample)?.trackIndexReady?.() ?? Promise.resolve(true)
+    );
+  }
+
+  /**
    * Load a sample's `frames` and keep them until the returned release runs, so
    * an operation reads and writes whole frames away from the playhead.
    */

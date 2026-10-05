@@ -112,6 +112,7 @@ export const makeEngine = () => {
     }),
     loadedFrames: () => [1, 2, 3],
     getLabel: () => ({}),
+    trackIndexReady: async () => true,
     trackFrames: () => ({ frames: [1, 2, 3], keyframes: [] }),
     holdFrames: async () => () => {},
   };

@@ -180,7 +180,7 @@ const Field = () => {
           },
         );
 
-        if (!moved) return;
+        if (moved !== true) return;
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
         setCurrentField(to);

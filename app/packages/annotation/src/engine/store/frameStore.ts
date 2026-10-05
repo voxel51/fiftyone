@@ -328,6 +328,14 @@ export class FrameStore implements LabelStore {
   }
 
   /**
+   * Whether {@link trackFrames} covers whole tracks: the frame source's index
+   * status, `true` at once without a frame source (the store holds every frame).
+   */
+  trackIndexReady(): Promise<boolean> {
+    return this.frameSource?.trackIndexReady() ?? Promise.resolve(true);
+  }
+
+  /**
    * Load `frames` from the frame source and keep them until the returned
    * release runs, so an operation reads and writes whole frames.
    */
