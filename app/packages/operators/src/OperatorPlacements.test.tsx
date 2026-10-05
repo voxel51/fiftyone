@@ -36,7 +36,6 @@ vi.mock("./OperatorIcon", () => ({ default: () => null }));
 vi.mock("./state", () => ({
   useOperatorExecutor: () => ({ execute }),
   useOperatorPlacements: () => ({ placements: [] }),
-  useOperatorPromptOpen: () => false,
   usePromptOperatorInput: () => promptForInput,
 }));
 vi.mock(".", () => ({

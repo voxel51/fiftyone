@@ -69,10 +69,8 @@ export class ThumbnailSelectorElement<
 
   createHTMLElement() {
     [this.label, this.checkbox] = makeCheckboxRow("", false);
-    this.label.setAttribute("data-fo-selection-checkbox", "");
     this.checkbox.checked = false;
     const element = document.createElement("div");
-    element.setAttribute("data-fo-thumbnail-selector", "");
     element.classList.add(lookerThumbnailSelector);
     element.appendChild(this.label);
     element.title = SELECTION_TEXT;
