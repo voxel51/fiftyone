@@ -22,4 +22,4 @@ def test_a_loaded_model_carries_its_zoo_name():
             "clip-vit-base32-torch", ensure_requirements=False, cache=False
         )
 
-    assert model.zoo_model_name == "clip-vit-base32-torch"
+    assert model.zoo_name == "clip-vit-base32-torch"
