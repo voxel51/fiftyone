@@ -30,7 +30,7 @@ const selectedFieldInfo = atom<string | null>({
 // the given element for a specified amount of time
 const useHover = (ref, delay, onHover, onHoverEnd) => {
   const [hovering, setHovering] = useState(false);
-  const timer = useRef<number>();
+  const timer = useRef<ReturnType<typeof setTimeout>>();
 
   const handleMouseOver = (e) => {
     timer.current = setTimeout(() => {

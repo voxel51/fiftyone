@@ -160,7 +160,8 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const map = strData.reduce(
     (acc, cur) => ({
       ...acc,
-      [cur.key]: cur.edges,
+      // only histogram buckets have edges; count values map to undefined
+      [cur.key]: "edges" in cur ? cur.edges : undefined,
     }),
     {},
   );

@@ -86,13 +86,13 @@ export const validateLabelTags = (
 
 const getValidMaskColors = (maskColors: unknown[]) => {
   const r = maskColors
-    ?.filter((input) => {
+    ?.filter((input): input is { intTarget?: unknown; color?: string } => {
       return (
-        input &&
+        !!input &&
         isObject(input) &&
         typeof Number(input["intTarget"]) == "number" &&
         isString(input["color"]) &&
-        isValidColor(input?.color)
+        isValidColor(input["color"])
       );
     })
     .map((item) => ({
@@ -111,16 +111,18 @@ export const validateMaskColor = (
 
 const getValidColorscaleList = (list: unknown[]) => {
   const r = list
-    ?.filter((x: unknown) => {
-      return (
-        x &&
-        isObject(x) &&
-        typeof Number(x["value"]) == "number" &&
-        isString(x["color"]) &&
-        isValidColor(x["color"]) &&
-        isString(x["color"])
-      );
-    })
+    ?.filter(
+      (x: unknown): x is { value?: unknown; color?: string; path?: string } => {
+        return (
+          !!x &&
+          isObject(x) &&
+          typeof Number(x["value"]) == "number" &&
+          isString(x["color"]) &&
+          isValidColor(x["color"]) &&
+          isString(x["color"])
+        );
+      },
+    )
     .map((y) => ({
       value: Number(y?.value),
       color: convertToRGB(y?.color),

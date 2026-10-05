@@ -9,7 +9,10 @@ export const Box = styled.div`
   background-color: ${({ theme }) => theme.background.body};
 `;
 
-export const VerticalSpacer = styled.div`
+export const VerticalSpacer = styled.div<{
+  height?: number | string;
+  opaque?: boolean;
+}>`
   height: ${({ height }) =>
     typeof height == "number" ? height + "px" : height};
   background-color: ${({ opaque, theme }) =>

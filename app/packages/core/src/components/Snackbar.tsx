@@ -7,7 +7,7 @@ import { useRecoilState } from "recoil";
 
 const SNACK_VISIBLE_DURATION = 5000;
 
-const Link = ({ link, message }: { link: string; message: string }) => {
+const Link = ({ link, message }: { link?: string; message: string }) => {
   const theme = useTheme();
   return (
     <ExternalLink style={{ color: theme.text.primary }} href={link}>
@@ -21,7 +21,7 @@ const LAYOUT = {
   bottom: "50px !important",
   vertical: "bottom",
   horizontal: "center",
-};
+} as const;
 
 const Dismiss = ({ onClick }: { onClick: () => void }) => {
   const theme = useTheme();

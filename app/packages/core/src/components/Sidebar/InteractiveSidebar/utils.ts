@@ -226,7 +226,9 @@ export const getAfterKey = (
         index++;
 
       index--;
-    } catch {}
+    } catch {
+      // walked past the last entry: fall through and return order[index]
+    }
 
     return order[index];
   }

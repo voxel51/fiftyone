@@ -55,11 +55,22 @@ const ColorFooter: React.FC = () => {
         <Button
           title={title}
           onClick={() => {
-            // remove rgb list from defaultColorscale and colorscales
-            const { rgb: _rgb, ...rest } = colorScheme.defaultColorscale;
+            // remove rgb list from defaultColorscale and colorscales; the
+            // loaded scheme carries an rgb list the input types don't declare
+            const { rgb: _rgb, ...rest } =
+              colorScheme.defaultColorscale as typeof colorScheme.defaultColorscale & {
+                rgb?: unknown;
+              };
             const newDefaultColorscale = rest;
             const newColorscales = colorScheme.colorscales?.length
-              ? colorScheme.colorscales?.map(({ rgb: _rgb, ...rest }) => rest)
+              ? colorScheme.colorscales?.map(
+                  ({
+                    rgb: _rgb,
+                    ...rest
+                  }: (typeof colorScheme.colorscales)[number] & {
+                    rgb?: unknown;
+                  }) => rest,
+                )
               : [];
 
             setDatasetColorScheme({

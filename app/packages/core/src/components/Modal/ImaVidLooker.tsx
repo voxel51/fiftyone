@@ -254,8 +254,7 @@ export const ImaVidLookerReact = React.memo(
     const readyWhen = useCallback(async () => {
       return new Promise<void>((resolve) => {
         // hack: wait for total frame count to be resolved
-        let intervalId;
-        intervalId = setInterval(() => {
+        const intervalId = setInterval(() => {
           if (totalFrameCountRef.current) {
             clearInterval(intervalId);
             resolve();

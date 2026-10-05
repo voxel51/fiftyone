@@ -49,7 +49,7 @@ interface ResultProps<T> {
   color: string;
 }
 
-const Result = <T extends unknown>({
+const Result = <T,>({
   active,
   highlight,
   onClick,
@@ -99,7 +99,7 @@ interface ResultsProps<T> {
   color: string;
 }
 
-const Results = <T extends unknown>({
+const Results = <T,>({
   color,
   onSelect,
   results,

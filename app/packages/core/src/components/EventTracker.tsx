@@ -3,14 +3,21 @@ import { useEffect, useState, useCallback } from "react";
 import * as fos from "@fiftyone/state";
 import { analyticsInfo, useTrackEvent } from "@fiftyone/analytics";
 
+type ViewChanges = {
+  view?: string[];
+  extendedStages?: string[];
+  count?: number;
+  filters?: string[];
+};
+
 const useTrackViewChanges = () => {
-  const [changes, setChanges] = useState({});
+  const [changes, setChanges] = useState<ViewChanges>({});
   const [lastTracked, setLastTracked] = useState(0);
   const debounceTime = 500;
 
   const handleStateChange = useCallback(
     ({ snapshot }) => {
-      const newChanges = {};
+      const newChanges: ViewChanges = {};
       const view = snapshot.getLoadable(fos.view)?.contents;
       const extendedStages = snapshot.getLoadable(fos.extendedStages)?.contents;
       const count = snapshot.getLoadable(

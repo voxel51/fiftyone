@@ -1,5 +1,6 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { LOADING } from "@fiftyone/state";
 import type { Primitive, Schema } from "@fiftyone/utilities";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -22,7 +23,9 @@ import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 
-const { LOADING, useActiveModalSampleValue } = fos;
+// imported by name: destructuring from the namespace widens the unique
+// symbol to `symbol`, which breaks `=== LOADING` narrowing
+const { useActiveModalSampleValue } = fos;
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
