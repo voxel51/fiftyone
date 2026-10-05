@@ -1,5 +1,26 @@
 import type { RJSFSchema, UiSchema } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+import type {
+  SchemaType,
+  SchemaViewType,
+} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+
+/**
+ * The parts of a SchemaIO schema the translators read. Views carry
+ * component-specific keys, so they keep SchemaIO's open view type.
+ */
+export type SchemaIONode = {
+  type?: string;
+  default?: unknown;
+  required?: boolean;
+  min?: number;
+  max?: number;
+  multipleOf?: number;
+  properties?: Record<string, SchemaIONode>;
+  additionalProperties?: SchemaIONode;
+  items?: SchemaIONode | SchemaIONode[];
+  types?: SchemaIONode[];
+  view?: SchemaViewType;
+};
 
 export interface TranslationResult {
   schema: RJSFSchema;
@@ -51,7 +72,7 @@ export function getEmptyValueForType(type: string): unknown {
  *
  * SchemaIO schemas always have a `view` property, while JSON Schemas do not.
  */
-export function isSchemaIOSchema(schema: any): schema is SchemaType {
+export function isSchemaIOSchema(schema: unknown): schema is SchemaType {
   return (
     schema !== null &&
     typeof schema === "object" &&
@@ -63,7 +84,7 @@ export function isSchemaIOSchema(schema: any): schema is SchemaType {
 /**
  * Type guard to check if a schema is a JSON Schema (RJSF)
  */
-export function isJSONSchema(schema: any): schema is RJSFSchema {
+export function isJSONSchema(schema: unknown): schema is RJSFSchema {
   return (
     schema !== null &&
     typeof schema === "object" &&

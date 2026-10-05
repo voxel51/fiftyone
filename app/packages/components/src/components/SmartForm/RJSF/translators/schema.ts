@@ -1,16 +1,18 @@
 import type { RJSFSchema } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
-import { addWarning, type TranslationContext } from "./utils";
+
+type JSONValue = NonNullable<RJSFSchema["default"]>;
+import {
+  addWarning,
+  type SchemaIONode,
+  type TranslationContext,
+} from "./utils";
 import { SmartFormInputs } from "../../types";
 
 /**
  * Translates SchemaIO type to JSON Schema
- *
- * Note: Uses `any` for schemaIO parameter due to recursive processing of
- * dynamic schema structures with varying shapes.
  */
 export function translateToJSONSchema(
-  schemaIO: any,
+  schemaIO: SchemaIONode,
   context: TranslationContext,
 ): RJSFSchema {
   const schema: RJSFSchema = {};
@@ -49,7 +51,7 @@ export function translateToJSONSchema(
           schema.properties[key] = translateToJSONSchema(value, propContext);
 
           // Collect required fields
-          if ((value as any).required === true) {
+          if (value.required === true) {
             requiredFields.push(key);
           }
         }
@@ -76,7 +78,7 @@ export function translateToJSONSchema(
       if (schemaIO.items) {
         // Handle tuple-style arrays (items is an array)
         if (Array.isArray(schemaIO.items)) {
-          schema.items = schemaIO.items.map((item: any, index: number) => {
+          schema.items = schemaIO.items.map((item, index) => {
             const itemContext = {
               ...context,
               path: [...context.path, `items[${index}]`],
@@ -97,7 +99,7 @@ export function translateToJSONSchema(
       break;
     case SmartFormInputs.OneOf:
       if (schemaIO.types && Array.isArray(schemaIO.types)) {
-        schema.oneOf = schemaIO.types.map((typeSchema: any, index: number) => {
+        schema.oneOf = schemaIO.types.map((typeSchema, index) => {
           const oneOfContext = {
             ...context,
             path: [...context.path, `oneOf[${index}]`],
@@ -115,7 +117,8 @@ export function translateToJSONSchema(
 
   // Add default value if present
   if (defaultValue !== undefined && defaultValue !== null) {
-    schema.default = defaultValue;
+    // SchemaIO defaults are JSON values
+    schema.default = defaultValue as JSONValue;
   }
 
   // Add title and description from view
@@ -136,25 +139,27 @@ export function translateToJSONSchema(
  */
 export function addChoicesToSchema(
   schema: RJSFSchema,
-  schemaIO: SchemaType,
+  schemaIO: SchemaIONode,
 ): RJSFSchema {
   const view = schemaIO.view;
   const component = view?.component || view?.name;
 
   if (view?.choices && Array.isArray(view.choices)) {
-    const enumValues = view.choices.map((choice: any) => choice.value);
-    const enumNames = view.choices.map(
-      (choice: any) => choice.label || choice.value,
-    );
+    // choice values come from Python as JSON values
+    const choices: { value: JSONValue; label?: string }[] = view.choices;
+    const enumValues = choices.map((choice) => choice.value);
+    const enumNames = choices.map((choice) => choice.label || choice.value);
 
     // For array types (multi-select AutocompleteView), add items definition
     if (schema.type === "array") {
       if (enumValues.length > 0) {
-        schema.items = {
+        // enumNames is an RJSF extension to JSON Schema
+        const items: RJSFSchema & { enumNames: JSONValue[] } = {
           type: "string",
           enum: enumValues,
           enumNames: enumNames,
         };
+        schema.items = items;
 
         schema.examples = enumValues;
       }

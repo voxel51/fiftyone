@@ -2,7 +2,13 @@ import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
 import { DEFAULT_SELECTED, constants } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { ListSubheader, MenuItem, Select, Typography } from "@mui/material";
+import {
+  ListSubheader,
+  MenuItem,
+  type MenuListProps,
+  Select,
+  Typography,
+} from "@mui/material";
 import { debounce } from "lodash";
 import React, { useCallback, useState, useRef } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
@@ -100,6 +106,19 @@ export default function Selection(props: SelectionProps) {
   const isSelectedInItems = items.some((item) => item.id === selectedId);
   const itemsWithSelected = isSelectedInItems ? items : [selected, ...items];
 
+  // data-* attributes aren't part of MenuListProps' declared keys
+  const menuListProps: Partial<MenuListProps> & { "data-cy": string } = {
+    "data-cy": `${id}-selection-view`,
+    sx: {
+      paddingY: 0,
+      zIndex: 999,
+      maxHeight: "400px",
+      width: "100%",
+      overflowY: "auto",
+      background: theme.background.level2,
+    },
+  };
+
   return (
     <div
       ref={containerRef}
@@ -117,17 +136,7 @@ export default function Selection(props: SelectionProps) {
               width: containerRef.current?.clientWidth,
             },
           },
-          MenuListProps: {
-            "data-cy": `${id}-selection-view`,
-            sx: {
-              paddingY: 0,
-              zIndex: 999,
-              maxHeight: "400px",
-              width: "100%",
-              overflowY: "auto",
-              background: theme.background.level2,
-            },
-          },
+          MenuListProps: menuListProps,
         }}
         IconComponent={
           selectedId === DEFAULT_SELECTED.id || hideActions

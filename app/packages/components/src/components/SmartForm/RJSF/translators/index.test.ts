@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { translateSchema, isSchemaIOSchema, isJSONSchema } from "./index";
+import type { RJSFSchema } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 describe("translateSchema", () => {
@@ -73,7 +74,7 @@ describe("translateSchema", () => {
   });
 
   it("should collect warnings for unsupported types", () => {
-    const schemaIO: any = {
+    const schemaIO: SchemaType = {
       type: "custom",
       view: { component: "CustomView" },
     };
@@ -84,7 +85,7 @@ describe("translateSchema", () => {
   });
 
   it("should respect strict mode", () => {
-    const schemaIO: any = {
+    const schemaIO: SchemaType = {
       type: "unsupported",
       view: { component: "CustomView" },
     };
@@ -129,7 +130,7 @@ describe("translateSchema with choices", () => {
 
     expect(result.schema.type).toBe("array");
     expect(result.schema.items).toBeDefined();
-    expect((result.schema.items as any).enum).toEqual(["tag1", "tag2"]);
+    expect((result.schema.items as RJSFSchema).enum).toEqual(["tag1", "tag2"]);
     expect(result.schema.examples).toEqual(["tag1", "tag2"]);
   });
 
@@ -208,10 +209,9 @@ describe("end-to-end integration", () => {
     expect(result.schema.type).toBe("object");
     expect(result.schema.required).toEqual(["username", "email"]);
     expect(result.schema.properties?.role.enum).toEqual(["admin", "user"]);
-    expect((result.schema.properties?.tags as any).items.enum).toEqual([
-      "dev",
-      "qa",
-    ]);
+    expect(
+      ((result.schema.properties?.tags as RJSFSchema).items as RJSFSchema).enum,
+    ).toEqual(["dev", "qa"]);
 
     // Check UI schema
     expect(result.uiSchema.username?.["ui:placeholder"]).toBe("Enter username");
@@ -290,7 +290,7 @@ describe("end-to-end integration", () => {
     const result = translateSchema(schemaIO);
 
     expect(result.schema.type).toBe("array");
-    expect((result.schema.items as any).type).toBe("object");
+    expect((result.schema.items as RJSFSchema).type).toBe("object");
   });
 });
 
@@ -316,7 +316,7 @@ describe("type guards integration", () => {
   });
 
   it("should handle translation based on schema type", () => {
-    const schema: any = {
+    const schema: unknown = {
       type: "string",
       view: { component: "FieldView", label: "Name" },
     };

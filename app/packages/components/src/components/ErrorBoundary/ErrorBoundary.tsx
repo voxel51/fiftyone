@@ -6,7 +6,6 @@ import {
   NotFoundError,
   OperatorError,
   PanelEventError,
-  ServerError,
 } from "@fiftyone/utilities";
 import { Clear } from "@mui/icons-material";
 import classnames from "classnames";
@@ -22,18 +21,6 @@ import scrollableStyles from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
-
-type AppError =
-  | GraphQLError
-  | NetworkError
-  | NotFoundError
-  | ServerError
-  | OperatorError
-  | PanelEventError;
-
-interface Props<T extends AppError> extends FallbackProps {
-  error: T;
-}
 
 // any Error renders; the app error classes add details via instanceof
 interface ErrorDisplayProps<T extends Error> {
@@ -60,7 +47,7 @@ export const ErrorDisplayMarkup = <T extends Error>({
   let messages: { message: string; content: string }[] = [];
 
   if (error instanceof GraphQLError) {
-    messages = error.errors.map((e: any) => {
+    messages = error.errors.map((e) => {
       const stack = e?.extensions?.stack;
       const trace = Array.isArray(stack) ? stack.join("\n") : stack;
       return {
@@ -142,10 +129,7 @@ const ErrorsDisplayWithSideEffects = (
   onReset?: () => void,
   disableReset?: boolean,
 ) => {
-  const FallbackComponent = <T extends AppError>({
-    error,
-    resetErrorBoundary,
-  }: Props<T>) => {
+  const FallbackComponent = ({ error, resetErrorBoundary }: FallbackProps) => {
     const clearModal = useClearModal();
     useLayoutEffect(() => {
       clearModal();
@@ -164,7 +148,7 @@ const ErrorsDisplayWithSideEffects = (
 };
 
 const TrackFallback = (
-  Fallback: ComponentType<any> | undefined,
+  Fallback: ComponentType<FallbackProps> | undefined,
   onReset?: () => void,
   disableReset?: boolean,
 ) => {
@@ -173,14 +157,16 @@ const TrackFallback = (
   const ActualFallback =
     Fallback || ErrorsDisplayWithSideEffects(onReset, disableReset);
 
-  const TrackedFallback = (props: any) => {
+  const TrackedFallback = (props: FallbackProps) => {
     const trackEvent = useTrackEvent();
 
     useEffect(() => {
+      // GraphQLError carries per-error messages
+      const error = props?.error as Error & { errors?: { message?: string }[] };
       trackEvent("uncaught_app_error", {
-        error: props?.error?.message || props?.error?.name || props?.error,
-        stack: props?.error?.stack,
-        messages: props?.error?.errors?.map((e: any) => e.message),
+        error: error?.message || error?.name || error,
+        stack: error?.stack,
+        messages: error?.errors?.map((e) => e.message),
       });
     }, []);
 
@@ -193,7 +179,7 @@ const ErrorBoundary: React.FC<
   PropsWithChildren<{
     onReset?: () => void;
     disableReset?: boolean;
-    Fallback?: ComponentType;
+    Fallback?: ComponentType<FallbackProps>;
   }>
 > = ({ children, onReset, disableReset, Fallback }) => {
   // A new component type each render would remount the fallback (re-firing

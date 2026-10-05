@@ -13,7 +13,8 @@ export default function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   // Check if this object should use horizontal layout (GridView)
   const layout = uiSchema?.["ui:options"]?.layout;
   const isHorizontal = layout === "horizontal";
-  const gap = uiSchema?.["ui:options"]?.gap ?? 2;
+  const gap =
+    (uiSchema?.["ui:options"]?.gap as number | string | undefined) ?? 2;
   const hideTitle = uiSchema?.["ui:options"]?.hideTitle === true;
 
   return (

@@ -173,7 +173,9 @@ function TypographyOrNode(props: TypographyProps) {
 }
 
 export type PanelCTAProps = {
-  Actions?: FunctionComponent<any>;
+  // rendered with the CTA's props spread in; implementations read only
+  // what they need (or nothing)
+  Actions?: FunctionComponent<object>;
   caption?: string | React.ReactNode;
   description?: string | React.ReactNode;
   docCaption?: string;
@@ -184,7 +186,7 @@ export type PanelCTAProps = {
   mode?: "onboarding" | "default";
   name: string;
   onBack: () => void;
-  panelProps?: any;
+  panelProps?: Record<string, unknown>;
   demoLabel?: string;
   demoDescription?: string;
   demoCaption?: string;

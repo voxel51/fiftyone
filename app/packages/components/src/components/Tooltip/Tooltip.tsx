@@ -31,7 +31,8 @@ const Tooltip: React.FC<{
         </span>
       );
     } else {
-      return React.cloneElement(children, {
+      // non-text children are a single element to attach the trigger to
+      return React.cloneElement(children as React.ReactElement, {
         ...triggerProps,
         ...hoverProps,
       });

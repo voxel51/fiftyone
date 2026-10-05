@@ -39,7 +39,7 @@ function PlotlyWithCustomTooltip(props: EvaluationPlotProps) {
           setTooltip(undefined);
         }}
         {...props}
-        data={memoizedData as any}
+        data={memoizedData as PlotParams["data"]}
       />
       <PlotlyTooltip event={tooltip} value={value} />
     </Box>

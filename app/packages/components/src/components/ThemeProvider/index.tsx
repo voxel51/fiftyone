@@ -7,6 +7,13 @@ import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
+declare module "@mui/material/styles" {
+  interface CssVarsThemeOptions {
+    // emitted as --fo-fontFamily-body, which app/src/index.css and Plotly use
+    fontFamily?: { body?: string };
+  }
+}
+
 function dynamicTheme(accessor: string) {
   const parts = accessor.split(".");
   parts.unshift("--fo");

@@ -41,7 +41,7 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
         itemsById[item.id] = { ...item, index };
         return itemsById;
       },
-      {} as Record<string, AdaptiveMenuItemPropsType>,
+      {} as Record<string, T & { index: number }>,
     );
   }, [items]);
 
@@ -332,7 +332,7 @@ type MoreItemsPropsType<T extends AdaptiveMenuItemPropsType> = {
   id: string;
   items: T[];
   onMove: (e: MoveEvent, source: MenuVariant) => boolean;
-  onEnd: () => void;
+  onEnd: (e: SortableEvent) => void;
   onStart: () => void;
   onOrderChange?: (items: T[]) => void;
   orientation?: MenuOrientation;

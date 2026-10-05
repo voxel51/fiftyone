@@ -4,6 +4,34 @@ import { Box, Modal, Typography } from "@mui/material";
 import DisplayTags from "./DisplayTags";
 import { MuiIconFont } from "../index";
 
+// An operator URI from a Python panel, or a callback from JS callers
+type OperatorRef = string | (() => void);
+
+type ModalButtonConfig = {
+  href?: string;
+  prompt?: boolean;
+  params?: { tags?: string[]; [key: string]: unknown };
+  operator?: OperatorRef;
+  align?: string;
+  width?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+};
+
+// the remaining view props of the trigger button
+type ModalTriggerProps = {
+  variant?: string;
+  label?: string;
+  disabled?: boolean;
+  title?: string;
+  height?: string | number;
+  width?: string | number;
+  padding?: string | number;
+  icon?: string;
+  iconPosition?: string;
+  [key: string]: unknown;
+};
+
 interface ModalBaseProps {
   modal: {
     icon?: string;
@@ -13,34 +41,18 @@ interface ModalBaseProps {
     body: string;
     textAlign?: string | { [key: string]: string };
   };
-  primaryButton?: {
-    href?: any;
-    prompt?: any;
-    params?: any;
-    operator?: any;
-    align?: string;
-    width?: string;
-    onClick?: any;
-    disabled?: boolean;
+  primaryButton?: ModalButtonConfig & {
     primaryText: string;
     primaryColor: string;
   };
-  secondaryButton?: {
-    href?: any;
-    prompt?: any;
-    params?: any;
-    operator?: any;
-    align?: string;
-    width?: string;
-    onClick?: any;
-    disabled?: boolean;
+  secondaryButton?: ModalButtonConfig & {
     secondaryText: string;
     secondaryColor: string;
   };
   functionality?: string;
-  primaryCallback?: () => void;
-  secondaryCallback?: () => void;
-  props: any;
+  primaryCallback?: OperatorRef;
+  secondaryCallback?: OperatorRef;
+  props: ModalTriggerProps;
 }
 
 interface ModalButtonView {
@@ -50,7 +62,7 @@ interface ModalButtonView {
   icon?: string;
   iconPosition?: string;
   title?: string;
-  componentsProps: any;
+  componentsProps: { button: { sx: Record<string, unknown> } };
 }
 
 const ModalBase: React.FC<ModalBaseProps> = ({

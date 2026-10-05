@@ -6,6 +6,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  type TableCellProps,
   TableContainer,
   TableHead,
   TableRow,
@@ -13,6 +14,13 @@ import {
 } from "@mui/material";
 import { useHover } from "react-laag";
 import ReactMarkdown from "react-markdown";
+import type {
+  LiProps,
+  TableDataCellProps,
+  TableHeaderCellProps,
+  OrderedListProps,
+  UnorderedListProps,
+} from "react-markdown/lib/ast-to-react";
 import { ReactMarkdownOptions } from "react-markdown/lib/react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
@@ -87,8 +95,14 @@ const componentsMap = {
       </TableContainer>
     );
   },
-  td: TableCell,
-  th: TableCell,
+  // react-markdown's cell props are td/th attributes; MUI's TableCell
+  // narrows a few of them (e.g. align)
+  td: (props: TableDataCellProps) => (
+    <TableCell {...(props as TableCellProps)} />
+  ),
+  th: (props: TableHeaderCellProps) => (
+    <TableCell {...(props as TableCellProps)} />
+  ),
   tbody: TableBody,
   thead: TableHead,
   tr: TableRow,
@@ -170,7 +184,7 @@ const componentsMap = {
       {children}
     </Typography>
   ),
-  ul: ({ children, className, ...props }) => {
+  ul: ({ children, className, ...props }: UnorderedListProps) => {
     // using checkboxes instead of bullets
     const isTaskList = className?.includes("contains-task-list");
 
@@ -195,7 +209,7 @@ const componentsMap = {
       </Box>
     );
   },
-  ol: ({ children, className, ...props }) => {
+  ol: ({ children, className, ...props }: OrderedListProps) => {
     // using checkboxes instead of numbers
     const isTaskList = className?.includes("contains-task-list");
 
@@ -220,7 +234,7 @@ const componentsMap = {
       </Box>
     );
   },
-  li: ({ children, className, ...props }) => {
+  li: ({ children, className, ...props }: LiProps) => {
     // using checkboxes instead of bullets
     const isTaskItem = className?.includes("task-list-item");
 

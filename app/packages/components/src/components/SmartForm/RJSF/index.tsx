@@ -45,7 +45,11 @@ const deserializeFormData = (data: unknown): unknown => {
 
 export default function RJSF(props: SmartFormProps) {
   const { formProps } = props;
-  const formRef = useRef<{ validateForm: () => boolean } | null>(null);
+  // the themed Form forwards its ref to @rjsf/core's Form instance
+  const formRef =
+    useRef<Extract<React.ElementRef<typeof Form>, { validateForm: unknown }>>(
+      null,
+    );
   const [revision, setRevision] = useState(0);
 
   const data = props.data;
