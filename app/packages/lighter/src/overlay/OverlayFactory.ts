@@ -10,16 +10,20 @@ import { KeypointOverlay } from "./KeypointOverlay";
 import { PolylineOverlay } from "./PolylineOverlay";
 import { TemporalOverlay } from "./TemporalOverlay";
 
+type OptionsOf<C extends abstract new (...args: never[]) => unknown> =
+  ConstructorParameters<C>[0];
+
 /**
  * Constructor type for overlays.
  */
-export type OverlayConstructor<T = any> = (opts: T) => BaseOverlay;
+export type OverlayConstructor<T = unknown> = (opts: T) => BaseOverlay;
 
 /**
  * Factory for creating overlays.
  */
 export class OverlayFactory {
-  private registry = new Map<string, OverlayConstructor>();
+  // constructors take different option types; `create` restores the caller's
+  private registry = new Map<string, OverlayConstructor<never>>();
 
   /**
    * Creates a factory instance with built-in overlays pre-registered.
@@ -29,15 +33,31 @@ export class OverlayFactory {
     const factory = new OverlayFactory();
 
     // Register built-in overlays
-    factory.register("detection", (opts) => new DetectionOverlay(opts));
+    factory.register(
+      "detection",
+      (opts: OptionsOf<typeof DetectionOverlay>) => new DetectionOverlay(opts),
+    );
     factory.register(
       "classification",
-      (opts) => new ClassificationOverlay(opts),
+      (opts: OptionsOf<typeof ClassificationOverlay>) =>
+        new ClassificationOverlay(opts),
     );
-    factory.register("image", (opts) => new ImageOverlay(opts));
-    factory.register("keypoint", (opts) => new KeypointOverlay(opts));
-    factory.register("polyline", (opts) => new PolylineOverlay(opts));
-    factory.register("temporal", (opts) => new TemporalOverlay(opts));
+    factory.register(
+      "image",
+      (opts: OptionsOf<typeof ImageOverlay>) => new ImageOverlay(opts),
+    );
+    factory.register(
+      "keypoint",
+      (opts: OptionsOf<typeof KeypointOverlay>) => new KeypointOverlay(opts),
+    );
+    factory.register(
+      "polyline",
+      (opts: OptionsOf<typeof PolylineOverlay>) => new PolylineOverlay(opts),
+    );
+    factory.register(
+      "temporal",
+      (opts: OptionsOf<typeof TemporalOverlay>) => new TemporalOverlay(opts),
+    );
 
     return factory;
   }
@@ -47,8 +67,8 @@ export class OverlayFactory {
    * @param type - The overlay type identifier.
    * @param constructor - The constructor function.
    */
-  register<T = any>(type: string, constructor: OverlayConstructor<T>): void {
-    this.registry.set(type, constructor);
+  register<T>(type: string, constructor: OverlayConstructor<T>): void {
+    this.registry.set(type, constructor as OverlayConstructor<never>);
   }
 
   /**
@@ -58,8 +78,10 @@ export class OverlayFactory {
    * @returns The created overlay.
    * @throws Error if the overlay type is not registered.
    */
-  create<T = any, R = BaseOverlay>(type: string, opts: T): R {
-    const constructor = this.registry.get(type);
+  create<T = unknown, R = BaseOverlay>(type: string, opts: T): R {
+    const constructor = this.registry.get(type) as
+      | OverlayConstructor<T>
+      | undefined;
     if (!constructor) {
       throw new Error(`Overlay type '${type}' is not registered`);
     }

@@ -10,8 +10,8 @@ import type { LoadOptions, ResourceLoader } from "./ResourceLoader";
  * making it suitable for creating lightweight lighter scenes without actual resource loading.
  */
 export class MockResourceLoader implements ResourceLoader {
-  private loadedResources = new Map<string, any>();
-  private backgroundLoadedResources = new Map<string, any>();
+  private loadedResources = new Map<string, unknown>();
+  private backgroundLoadedResources = new Map<string, unknown>();
 
   /**
    * Mock implementation of resource loading.

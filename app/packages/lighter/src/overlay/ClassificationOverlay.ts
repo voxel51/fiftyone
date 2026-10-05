@@ -6,7 +6,7 @@ import { Selectable } from "../selection/Selectable";
 import { BaseOverlay } from "./BaseOverlay";
 
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Point, RawLookerLabel, RenderMeta } from "../types";
+import type { Point, RawLookerLabel, RenderMeta, TooltipInfo } from "../types";
 
 import {
   LABEL_ARCHETYPE_PRIORITY,
@@ -184,12 +184,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
   }
 
-  getTooltipInfo(): {
-    color: string;
-    field: string;
-    label: any;
-    type: string;
-  } | null {
+  getTooltipInfo(): TooltipInfo | null {
     return {
       color: this.getCurrentStyle()?.fillStyle ?? "#ffffff",
       field: this.field || "unknown",

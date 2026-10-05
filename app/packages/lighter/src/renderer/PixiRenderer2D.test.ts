@@ -8,10 +8,19 @@ import type { Rect } from "../types";
 import { PixiRenderer2D } from "./PixiRenderer2D";
 
 // Wire up a renderer without booting WebGL; initializePixiJS normally makes these.
+type PixiRendererInternals = {
+  // only what cleanUp touches; tests stub it
+  app: { stop: () => void; stage: { removeChildren: () => void } };
+  foregroundContainer: PIXI.Container;
+  backgroundContainer: PIXI.Container;
+  containers: Map<string, PIXI.Container>;
+  ownedTextures: Map<string, PIXI.Texture[]>;
+};
+
 const makeRenderer = () => {
   const renderer = new PixiRenderer2D(document.createElement("canvas"));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const internal = renderer as any;
+  // reach the renderer's private state the tests assert on
+  const internal = renderer as unknown as PixiRendererInternals;
   internal.foregroundContainer = new PIXI.Container();
   internal.backgroundContainer = new PIXI.Container();
   return { renderer, internal };
@@ -163,8 +172,10 @@ describe("PixiRenderer2D slot reuse", () => {
     vi.restoreAllMocks();
   });
 
-  const childrenOf = (internal: any, id: string): PIXI.Container[] =>
-    internal.containers.get(id).children;
+  const childrenOf = (
+    internal: PixiRendererInternals,
+    id: string,
+  ): PIXI.Container[] => internal.containers.get(id).children;
 
   it("repaints into the same display objects across passes", () => {
     const { renderer, internal } = makeRenderer();

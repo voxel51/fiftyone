@@ -159,7 +159,10 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
-  override applyLabel(label: PolylineLabel): void {
+  // The signature takes the base label type to satisfy the override; a
+  // polyline overlay is only ever handed polyline labels.
+  override applyLabel(incoming: PolylineLabel | KeypointLabel): void {
+    const label = incoming as PolylineLabel;
     // Apply polyline-specific state (`closed`/`filled`/points) before the base
     // label set so the overlay's derived getters are current.
     const { flatPoints, connections, segmentBoundaries } =

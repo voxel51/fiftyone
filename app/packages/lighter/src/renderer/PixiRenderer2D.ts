@@ -829,7 +829,7 @@ export class PixiRenderer2D implements Renderer2D {
         if (!image.texture) {
           return;
         }
-        texture = image.texture;
+        texture = image.texture as PIXI.Texture;
         break;
       case "canvas":
         if (!image.canvas) {
@@ -875,7 +875,9 @@ export class PixiRenderer2D implements Renderer2D {
           return;
         }
         try {
-          texture = PIXI.Texture.from(image.custom);
+          texture = PIXI.Texture.from(
+            image.custom as Parameters<typeof PIXI.Texture.from>[0],
+          );
         } catch {
           return;
         }

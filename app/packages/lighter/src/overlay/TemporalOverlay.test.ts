@@ -4,6 +4,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LABEL_ARCHETYPE_PRIORITY } from "../constants";
+import type { Renderer2D } from "../renderer/Renderer2D";
 import type { DrawStyle, RenderMeta } from "../types";
 import { TemporalOverlay, type TemporalLabel } from "./TemporalOverlay";
 
@@ -169,7 +170,7 @@ describe("TemporalOverlay", () => {
     it("drops its chip and skips drawing when inactive", () => {
       const o = make("a", [10, 20]);
       const renderer = makeRendererMock();
-      o.render(renderer as any, STYLE, makeMeta());
+      o.render(renderer as unknown as Renderer2D, STYLE, makeMeta());
 
       // drawing nothing inside a closed rebuild pass is what discards the
       // previous chip — the pass trims every slot it did not reach
@@ -182,7 +183,7 @@ describe("TemporalOverlay", () => {
       const o = make("a", [10, 20], { label: "running", confidence: 0.9 });
       o.setCurrentFrame(15);
       const renderer = makeRendererMock();
-      o.render(renderer as any, STYLE, makeMeta());
+      o.render(renderer as unknown as Renderer2D, STYLE, makeMeta());
 
       expect(renderer.drawText).toHaveBeenCalledTimes(1);
       const [text] = renderer.drawText.mock.calls[0];
@@ -196,7 +197,7 @@ describe("TemporalOverlay", () => {
       });
       o.setCurrentFrame(15);
       const renderer = makeRendererMock();
-      o.render(renderer as any, STYLE, makeMeta());
+      o.render(renderer as unknown as Renderer2D, STYLE, makeMeta());
 
       const [text] = renderer.drawText.mock.calls[0];
       expect(text).toBe("running");
@@ -207,7 +208,7 @@ describe("TemporalOverlay", () => {
       o.setCurrentFrame(15);
       const renderer = makeRendererMock();
       const meta = makeMeta(); // x=0, y=0, width=800, height=600
-      o.render(renderer as any, STYLE, meta);
+      o.render(renderer as unknown as Renderer2D, STYLE, meta);
 
       const [, pos, opts] = renderer.drawText.mock.calls[0];
       // Anchor at x = bounds.x + bounds.width = 800.
@@ -233,8 +234,8 @@ describe("TemporalOverlay", () => {
 
       const renderA = makeRendererMock();
       const renderC = makeRendererMock();
-      a.render(renderA as any, STYLE, makeMeta());
-      c.render(renderC as any, STYLE, makeMeta());
+      a.render(renderA as unknown as Renderer2D, STYLE, makeMeta());
+      c.render(renderC as unknown as Renderer2D, STYLE, makeMeta());
 
       // Sorted alphabetically by label: alpha=0, gamma=1.
       expect(renderA.drawText.mock.calls[0][2].offset).toMatchObject({
@@ -249,7 +250,7 @@ describe("TemporalOverlay", () => {
       const o = make("a", [10, 20], { label: "" });
       o.setCurrentFrame(15);
       const renderer = makeRendererMock();
-      o.render(renderer as any, STYLE, makeMeta());
+      o.render(renderer as unknown as Renderer2D, STYLE, makeMeta());
 
       const [text, , opts] = renderer.drawText.mock.calls[0];
       expect(text).toBe("temporal detection");
@@ -260,7 +261,7 @@ describe("TemporalOverlay", () => {
       const o = make("a", [10, 20]);
       o.setCurrentFrame(15);
       const renderer = makeRendererMock();
-      o.render(renderer as any, null, makeMeta());
+      o.render(renderer as unknown as Renderer2D, null, makeMeta());
 
       // The rebuild pass still opens and closes, so a prior chip is trimmed,
       // but nothing is drawn.

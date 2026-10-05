@@ -82,7 +82,7 @@ export type LighterEventGroup = {
   // RESOURCE LOADING EVENTS
   // ============================================================================
   /** Emitted when a resource (image, texture, etc.) has finished loading. This doesn't apply to overlays that have no media. */
-  "lighter:resource-loaded": { url: string; resource: any };
+  "lighter:resource-loaded": { url: string; resource: unknown };
   /** Emitted when a resource fails to load. This doesn't apply to overlays that have no media. */
   "lighter:resource-error": { url: string; error: Error };
 
