@@ -29,11 +29,13 @@ import type {
 import { parseColorWithAlpha } from "../utils/color";
 import { clipPolygonToRect } from "../utils/geometry";
 import { IndexedMaskMesh } from "./IndexedMaskMesh";
+import { ScalarMaskMesh } from "./ScalarMaskMesh";
 import type {
   ImageOptions,
   ImageSource,
   IndexedImage,
   Renderer2D,
+  ScalarImage,
 } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
@@ -838,6 +840,14 @@ export class PixiRenderer2D implements Renderer2D {
       return;
     }
 
+    if (image.type === "scalar") {
+      if (!image.scalar) {
+        return;
+      }
+      this.drawScalarImage(image.scalar, destination, options, containerId);
+      return;
+    }
+
     switch (image.type) {
       case "texture":
         if (!image.texture) {
@@ -938,6 +948,37 @@ export class PixiRenderer2D implements Renderer2D {
       containerId,
       (child) => child instanceof IndexedMaskMesh,
       () => new IndexedMaskMesh(),
+      (existing) => this.resetDisplayObject(existing),
+      false,
+    );
+
+    mesh.setImage(image);
+    // a unit quad: the destination rect is its position and scale
+    mesh.position.set(destination.x, destination.y);
+    mesh.scale.set(destination.width, destination.height);
+    if (options?.opacity !== undefined) {
+      mesh.alpha = options.opacity;
+    }
+    if (options?.rotation !== undefined) {
+      mesh.rotation = options.rotation;
+    }
+  }
+
+  /**
+   * A continuous-valued raster, range-mapped and colored in a fragment
+   * shader. The values upload once per frame and the ramp once per palette;
+   * a range or mode change is a uniform write.
+   */
+  private drawScalarImage(
+    image: ScalarImage,
+    destination: Rect,
+    options: ImageOptions | undefined,
+    containerId: string,
+  ): void {
+    const mesh = this.acquireSlot<ScalarMaskMesh>(
+      containerId,
+      (child) => child instanceof ScalarMaskMesh,
+      () => new ScalarMaskMesh(),
       (existing) => this.resetDisplayObject(existing),
       false,
     );

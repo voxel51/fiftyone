@@ -15,9 +15,9 @@
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 import { decodeMaskToRaster } from "./maskRaster";
-import { decodeHeatmapIndices, type DecodedHeatmap } from "./heatmapIndices";
+import { decodeHeatmap, type DecodedHeatmap } from "./heatmapValues";
 import type {
-  HeatmapIndicesSuccess,
+  HeatmapValuesSuccess,
   MaskDecodeRequest,
   MaskDecodeResponse,
   MaskDecodeSuccess,
@@ -39,7 +39,7 @@ export interface DecodedMask {
 type WorkerSuccess =
   | MaskDecodeSuccess
   | MaskIndicesSuccess
-  | HeatmapIndicesSuccess;
+  | HeatmapValuesSuccess;
 
 let worker: Worker | undefined;
 let nextId = 1;
@@ -113,9 +113,8 @@ const ensureWorker = (): Worker | undefined => {
 };
 
 /**
- * `Omit` over a union collapses to the keys its members share, which drops
- * `range` from the heatmap request. Distribute it so each member keeps its
- * own shape.
+ * `Omit` over a union collapses to the keys its members share, which blurs
+ * the `kind` discriminant. Distribute it so each member keeps its own shape.
  */
 type Unsent<T> = T extends unknown ? Omit<T, "uuid"> : never;
 
@@ -161,26 +160,14 @@ const decodeIndicesViaWorker = async (
 const decodeHeatmapViaWorker = async (
   w: Worker,
   maskData: string | OverlayMask,
-  range: readonly [number, number] | undefined,
 ): Promise<DecodedHeatmap> => {
-  const data = await requestViaWorker(w, {
-    kind: "heatmap",
-    maskData,
-    range: range ? [range[0], range[1]] : undefined,
-  });
+  const data = await requestViaWorker(w, { kind: "heatmap", maskData });
 
   if (data.kind !== "heatmap") {
     throw new Error("mask worker answered a heatmap request with a raster");
   }
 
-  return {
-    indices: data.indices,
-    width: data.width,
-    height: data.height,
-    values: data.values,
-    channels: data.channels,
-    range: data.range,
-  };
+  return { values: data.values, width: data.width, height: data.height };
 };
 
 const decodeOnMainThread = async (
@@ -246,25 +233,24 @@ export async function decodeSegmentationIndicesAsync(
 }
 
 /**
- * Quantize a heatmap to palette indices off the main thread, with the same
+ * Decode a heatmap to its values off the main thread, with the same
  * fallbacks as {@link decodeMask}.
  */
-export async function decodeHeatmapIndicesAsync(
+export async function decodeHeatmapAsync(
   mapData: string | OverlayMask,
-  range?: readonly [number, number],
 ): Promise<DecodedHeatmap> {
   const w = ensureWorker();
   if (!w) {
-    return decodeHeatmapIndices(mapData, range);
+    return decodeHeatmap(mapData);
   }
 
   try {
-    return await decodeHeatmapViaWorker(w, mapData, range);
+    return await decodeHeatmapViaWorker(w, mapData);
   } catch (err) {
     console.error(
       "[decodeMask] worker heatmap decode failed; main-thread fallback:",
       err,
     );
-    return decodeHeatmapIndices(mapData, range);
+    return decodeHeatmap(mapData);
   }
 }
