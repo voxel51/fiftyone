@@ -14,6 +14,7 @@ import React, {
   ComponentType,
   PropsWithChildren,
   useEffect,
+  useMemo,
   useLayoutEffect,
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
@@ -161,15 +162,17 @@ const ErrorsDisplayWithSideEffects = (
   return FallbackComponent;
 };
 
-const TrackFallback =
-  (
-    Fallback: ComponentType<any> | undefined,
-    onReset?: () => void,
-    disableReset?: boolean,
-  ) =>
-  (props: any) => {
-    const ActualFallback =
-      Fallback || ErrorsDisplayWithSideEffects(onReset, disableReset);
+const TrackFallback = (
+  Fallback: ComponentType<any> | undefined,
+  onReset?: () => void,
+  disableReset?: boolean,
+) => {
+  // built once per fallback, not per render, so the error display keeps its
+  // identity (and its state) across re-renders
+  const ActualFallback =
+    Fallback || ErrorsDisplayWithSideEffects(onReset, disableReset);
+
+  const TrackedFallback = (props: any) => {
     const trackEvent = useTrackEvent();
 
     useEffect(() => {
@@ -182,6 +185,8 @@ const TrackFallback =
 
     return <ActualFallback {...props} />;
   };
+  return TrackedFallback;
+};
 
 const ErrorBoundary: React.FC<
   PropsWithChildren<{
@@ -190,13 +195,14 @@ const ErrorBoundary: React.FC<
     Fallback?: ComponentType;
   }>
 > = ({ children, onReset, disableReset, Fallback }) => {
-  return (
-    <Boundary
-      FallbackComponent={TrackFallback(Fallback, onReset, disableReset)}
-    >
-      {children}
-    </Boundary>
+  // A new component type each render would remount the fallback (re-firing
+  // the uncaught_app_error event) whenever the parent re-renders.
+  const FallbackComponent = useMemo(
+    () => TrackFallback(Fallback, onReset, disableReset),
+    [Fallback, onReset, disableReset],
   );
+
+  return <Boundary FallbackComponent={FallbackComponent}>{children}</Boundary>;
 };
 
 export default ErrorBoundary;
