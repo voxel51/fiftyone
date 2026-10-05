@@ -172,3 +172,32 @@ export const buildForwardFill = (
 
   return writes;
 };
+
+/** The slice of the engine {@link withTrackHeld} reads. */
+interface TrackHoldEngine {
+  trackFrames(ref: { sample: string; path: string; instanceId: string }): {
+    frames: number[];
+  };
+  holdFrames(sample: string, frames: readonly number[]): Promise<() => void>;
+}
+
+/**
+ * Run `fn` with every frame of a track loaded. The store holds only frames
+ * near the playhead, so a walk over a track's occurrences must load them first.
+ */
+export const withTrackHeld = async <T>(
+  engine: TrackHoldEngine,
+  ref: { sample: string; path: string; instanceId: string },
+  fn: () => T,
+): Promise<T> => {
+  const release = await engine.holdFrames(
+    ref.sample,
+    engine.trackFrames(ref).frames,
+  );
+
+  try {
+    return fn();
+  } finally {
+    release();
+  }
+};

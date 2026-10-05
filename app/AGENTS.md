@@ -3,6 +3,10 @@
 Instructions for AI coding agents working on the FiftyOne App (this directory).
 `CODING_STANDARDS.md`, alongside this file, is binding — read it too.
 
+Code that reads or writes through the annotation engine (`AnnotationEngine`,
+`useAnnotationEngine`, `SurfaceActions`) also follows
+`packages/annotation/CODING_STANDARDS.md`, whichever package it lives in.
+
 ## Design system
 
 App UI is built with VOODO (`@voxel51/voodo`), Voxel51's component library.

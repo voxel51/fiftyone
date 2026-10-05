@@ -30,6 +30,7 @@ import {
   buildForwardFill,
   buildTrackFanOut,
   splitTrackEdit,
+  withTrackHeld,
 } from "./trackFanOut";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { current } from "./useAnnotationContext/selectors";
@@ -305,26 +306,39 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       const previous =
         (engineBase as LabelData | undefined) ?? (data as LabelData);
 
-      const trackWrites = [
-        ...buildTrackFanOut(engine, ref, trackPartial),
-        ...buildForwardFill(
-          engine,
-          ref,
-          dynamicPartial,
-          previous as Record<string, unknown>,
-        ),
-      ];
+      const fansOut =
+        Object.keys(trackPartial).length > 0 ||
+        Object.keys(dynamicPartial).length > 0;
 
-      // One engine transaction is one undo unit: the engine captures
-      // before-values and the engine bridge pushes the single value-based entry.
-      // The form must NOT push its own undoable (no createPushAndExec) — that
-      // would double-count the edit on the shared command stack.
-      engine.transaction(() => {
-        engine.updateLabel(ref, persistableValue as Partial<LabelData>);
-        for (const write of trackWrites) {
-          engine.updateLabel(write.ref, write.forward as Partial<LabelData>);
-        }
-      });
+      const commit = () => {
+        const trackWrites = [
+          ...buildTrackFanOut(engine, ref, trackPartial),
+          ...buildForwardFill(
+            engine,
+            ref,
+            dynamicPartial,
+            previous as Record<string, unknown>,
+          ),
+        ];
+
+        // One engine transaction is one undo unit: the engine captures
+        // before-values and the engine bridge pushes the single value-based
+        // entry. The form must NOT push its own undoable (no
+        // createPushAndExec) — that would double-count the edit on the shared
+        // command stack.
+        engine.transaction(() => {
+          engine.updateLabel(ref, persistableValue as Partial<LabelData>);
+          for (const write of trackWrites) {
+            engine.updateLabel(write.ref, write.forward as Partial<LabelData>);
+          }
+        });
+      };
+
+      if (fansOut) {
+        await withTrackHeld(engine, ref, commit);
+      } else {
+        commit();
+      }
 
       // the anchor binding rewrites `editing` only for committed labels —
       // a DRAFT's slot is surface-owned, so the form keeps it in sync

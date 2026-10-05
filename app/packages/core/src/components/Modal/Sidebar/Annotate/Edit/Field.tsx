@@ -21,6 +21,7 @@ import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import { moveSingleLabel } from "./singleLabelFieldMove";
+import { withTrackHeld } from "./trackFanOut";
 import {
   type LabelType,
   useAnnotationContext,
@@ -108,7 +109,7 @@ const Field = () => {
       // the instance occupies. Identity is the store's, so the track keeps its
       // `instance._id` across the move. The Lighter bridge's read-half re-homes
       // the overlay off the engine change — the sidebar never touches Lighter.
-      const move = (from: string, to: string) => {
+      const move = async (from: string, to: string) => {
         if (!instanceId || !source) return;
 
         const cls = (source as { _cls: LabelType })._cls;
@@ -134,34 +135,52 @@ const Field = () => {
 
         const type = engine.getLabelType(from);
 
-        // Snapshot each occurrence BEFORE the transaction (the deletes mutate
-        // the store). For an image / sample-level label this is one frame-less
-        // entry; for a video track it is one entry per frame. Match by track
-        // identity + field; each occurrence carries its own full ref (sample +
-        // frame) so writes land in the right store and frame.
-        const occurrences = engine
-          .enumerateLabels([type])
-          .filter((ref) => ref.path === from && ref.instanceId === instanceId)
-          .map((ref) => ({ ref, data: engine.getLabel(ref) }))
-          .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
+        const moved = await withTrackHeld(
+          engine,
+          { sample, path: from, instanceId },
+          () => {
+            // Snapshot each occurrence BEFORE the transaction (the deletes
+            // mutate the store). For an image / sample-level label this is one
+            // frame-less entry; for a video track it is one entry per frame.
+            // Match by track identity + field; each occurrence carries its own
+            // full ref (sample + frame) so writes land in the right store and
+            // frame.
+            const occurrences = engine
+              .enumerateLabels([type])
+              .filter(
+                (ref) => ref.path === from && ref.instanceId === instanceId,
+              )
+              .map((ref) => ({ ref, data: engine.getLabel(ref) }))
+              .filter((o): o is { ref: LabelRef; data: LabelData } => !!o.data);
 
-        if (occurrences.length === 0) return;
+            if (occurrences.length === 0) return false;
 
-        engine.transaction(() => {
-          for (const { ref } of occurrences) {
-            engine.deleteLabel(ref);
-          }
+            engine.transaction(() => {
+              for (const { ref } of occurrences) {
+                engine.deleteLabel(ref);
+              }
 
-          for (const { ref, data } of occurrences) {
-            engine.updateLabel(
-              { sample: ref.sample, path: to, instanceId, frame: ref.frame },
-              {
-                ...buildNewLabelData(to, cls, { id: instanceId }),
-                ...data,
-              } as Partial<LabelData>,
-            );
-          }
-        });
+              for (const { ref, data } of occurrences) {
+                engine.updateLabel(
+                  {
+                    sample: ref.sample,
+                    path: to,
+                    instanceId,
+                    frame: ref.frame,
+                  },
+                  {
+                    ...buildNewLabelData(to, cls, { id: instanceId }),
+                    ...data,
+                  } as Partial<LabelData>,
+                );
+              }
+            });
+
+            return true;
+          },
+        );
+
+        if (!moved) return;
 
         // Best-effort sidebar sync; no-ops when the label isn't selected.
         setCurrentField(to);

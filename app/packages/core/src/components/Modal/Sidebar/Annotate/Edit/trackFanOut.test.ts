@@ -1,11 +1,12 @@
 import type { LabelRef } from "@fiftyone/annotation";
 import type { LabelData, LabelType } from "@fiftyone/utilities";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildForwardFill,
   buildTrackFanOut,
   splitTrackEdit,
+  withTrackHeld,
 } from "./trackFanOut";
 
 const DETECTIONS = "Detections" as LabelType;
@@ -222,5 +223,52 @@ describe("buildTrackFanOut", () => {
   it("returns nothing for a geometry-only edit (empty track partial)", () => {
     const engine = stubEngine([{ ref: frameRef(1), data: { _id: "a" } }]);
     expect(buildTrackFanOut(engine, frameRef(2), {})).toEqual([]);
+  });
+});
+
+describe("withTrackHeld", () => {
+  /** A store that holds frame 1 until the track's other frames are held. */
+  const windowedEngine = () => {
+    const track = [1, 2, 3, 4];
+    const loaded = new Set([1]);
+    const release = vi.fn(() => loaded.clear());
+    const engine = {
+      getLabelType: () => DETECTIONS,
+      enumerateLabels: () => [...loaded].map((frame) => frameRef(frame)),
+      getLabel: (ref: LabelRef) =>
+        loaded.has(ref.frame as number)
+          ? ({ _id: `${ref.frame}`, label: "cat" } as LabelData)
+          : undefined,
+      trackFrames: () => ({ frames: track }),
+      holdFrames: vi.fn(async (_sample: string, frames: readonly number[]) => {
+        frames.forEach((frame) => loaded.add(frame));
+        return release;
+      }),
+    };
+
+    return { engine, release };
+  };
+
+  it("fans an edit across track frames the store did not hold", async () => {
+    const { engine, release } = windowedEngine();
+
+    const writes = await withTrackHeld(engine, frameRef(1), () =>
+      buildTrackFanOut(engine, frameRef(1), { label: "dog" }),
+    );
+
+    expect(engine.holdFrames).toHaveBeenCalledWith("s1", [1, 2, 3, 4]);
+    expect(writes.map((w) => w.ref.frame)).toEqual([2, 3, 4]);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("releases the track when the walk throws", async () => {
+    const { engine, release } = windowedEngine();
+
+    await expect(
+      withTrackHeld(engine, frameRef(1), () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(release).toHaveBeenCalledOnce();
   });
 });
