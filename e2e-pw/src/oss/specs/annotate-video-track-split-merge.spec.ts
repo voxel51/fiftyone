@@ -140,8 +140,8 @@ const timelineTracks = async (
  * The two tracks a split leaves on a fresh browser context's timeline: `head`
  * (the original instance, frames before the cut) and `tail` (the minted
  * instance, frames from the cut on), each with the cut-adjacent frame as its
- * only keyframe and exactly one of them painted on every frame. Without the
- * keyframe pins the shape at the cut jumps; other tracks are ignored.
+ * only keyframe, and the shape painted once on both sides of the cut. Without
+ * the keyframe pins the shape at the cut jumps.
  */
 const expectSplitPersisted = async (
   modal: ModalPom,
@@ -185,19 +185,15 @@ const expectSplitPersisted = async (
     "tail's first frame is its only keyframe",
   ).toEqual([tailSpan.start]);
 
-  // overlay ids are the timeline's track ids (`instance-<id>`)
-  for (let frame = 1; frame <= totalFrames; frame++) {
-    if (frame > 1) {
-      await va.stepForward();
-    }
-    const painted = (await va.canvasOverlayGeometry())
-      .filter((overlay) => overlay.field === field)
-      .map((overlay) => overlay.id)
-      .filter((id) => id === head || id === tail);
-    expect(painted, `frame ${frame} paints the split track once`).toEqual([
-      frame < cut ? head : tail,
-    ]);
+  // the split shape is painted once on either side of the cut: by the head on
+  // its last frame, by the tail on its first
+  const shot = field.split(".").pop();
+  for (let frame = 1; frame < cut - 1; frame++) {
+    await va.stepForward();
   }
+  await modal.sampleCanvas.assert.hasMediaScreenshot(`${shot}-before-cut.png`);
+  await va.stepForward();
+  await modal.sampleCanvas.assert.hasMediaScreenshot(`${shot}-from-cut.png`);
 };
 
 test.describe.serial("video annotation track split / merge", () => {

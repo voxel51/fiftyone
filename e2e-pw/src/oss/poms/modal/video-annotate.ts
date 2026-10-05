@@ -4,8 +4,6 @@ import { ModalPom } from ".";
 
 /** Dispatched after the timeline commits a changed set of rows, with their ids */
 const TRACKS_RENDERED = "e2e:video-annotation:tracks-rendered";
-const OVERLAYS_SHOWN = "e2e:video-annotation:overlays-shown";
-const OVERLAY_SHOWN = "e2e:video-annotation:overlay-shown";
 
 const renderedIds = (e: { detail?: unknown }) =>
   (e.detail as { ids: string }).ids.split(",").filter(Boolean);
@@ -335,22 +333,6 @@ export class VideoAnnotatePom {
       action,
       (e) => [...renderedIds(e)].sort().join(",") === want,
     );
-  }
-
-  /**
-   * Run `action` and resolve once the canvas paints overlays of each field in
-   * `fields` marked true and of none marked false
-   */
-  async afterCanvasFields<T>(
-    fields: Record<string, boolean>,
-    action: () => Promise<T>,
-  ) {
-    return this.modal.eventUtils.after(OVERLAYS_SHOWN, action, (e) => {
-      const painted = (e.detail as { fields: string }).fields.split(" ");
-      return Object.entries(fields).every(
-        ([field, on]) => painted.includes(field) === on,
-      );
-    });
   }
 
   /**
@@ -701,60 +683,6 @@ export class VideoAnnotatePom {
       this.page.locator('button[aria-label="New TD"]').click(),
     );
   }
-
-  /** The overlay set the scene last painted; empty if it painted none */
-  async canvasOverlaysShown(): Promise<{ fields: string; ids: string }> {
-    const shown = (await this.modal.eventUtils.latest([OVERLAYS_SHOWN]))[
-      OVERLAYS_SHOWN
-    ];
-    return {
-      fields: String(shown?.fields ?? ""),
-      ids: String(shown?.ids ?? ""),
-    };
-  }
-
-  /**
-   * The geometry of the overlays the canvas last painted, as the OVERLAY
-   * holds it — deliberately not what the engine stores; use it to catch a
-   * projection that updated the store but never reached the canvas.
-   */
-  async canvasOverlayGeometry(): Promise<
-    Array<{
-      id: string;
-      field: string;
-      type: string;
-      points?: [number, number][];
-    }>
-  > {
-    const ids = (await this.canvasOverlaysShown()).ids
-      .split(" ")
-      .filter(Boolean);
-    const latest = new Map<string, Record<string, unknown>>();
-    for (const shown of await this.modal.eventUtils.recorded(OVERLAY_SHOWN)) {
-      latest.set(String(shown.id), shown);
-    }
-    return ids.map((id) => {
-      const shown = latest.get(id);
-      const points = String(shown?.points ?? "");
-      return {
-        id,
-        field: String(shown?.field ?? ""),
-        type: String(shown?.type ?? ""),
-        points: points
-          ? points
-              .split(";")
-              .map((xy) => xy.split(",").map(Number) as [number, number])
-          : undefined,
-      };
-    });
-  }
-
-  /** The vertices of the single polyline overlay on the canvas, if any. */
-  async canvasPolylinePoints(): Promise<[number, number][] | undefined> {
-    const overlays = await this.canvasOverlayGeometry();
-
-    return overlays.find((o) => o.type === "PolylineOverlay")?.points;
-  }
 }
 
 class VideoAnnotateAsserter {
@@ -866,11 +794,5 @@ class VideoAnnotateAsserter {
     } else {
       expect(await rows.count()).toBe(0);
     }
-  }
-
-  /** Assert whether the canvas last painted any overlay for `field`. */
-  async canvasRendersField(field: string, rendered = true) {
-    const { fields } = await this.va.canvasOverlaysShown();
-    expect(fields.split(" ").includes(field)).toBe(rendered);
   }
 }
