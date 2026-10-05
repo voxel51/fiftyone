@@ -124,6 +124,50 @@ describe("DynamicGroupImageStream failed-frame handling", () => {
   });
 });
 
+describe("DynamicGroupImageStream frames no request asked for", () => {
+  it("caches them, so a later request for one is served without a fetch", () => {
+    const stream = makeStream();
+    const worker = FakeWorker.instances[0];
+
+    stream.prefetch([9 / 30, 9 / 30]);
+    const request = fetchChunks(worker)[0];
+    expect(request.request!.frameNumber).toBe(10);
+
+    // the decode snapped back to a keyframe and posted its lead-in
+    for (let frame = 1; frame <= 10; frame++) {
+      landFrame(worker, request.reqId!, frame, 100);
+    }
+
+    expect(stream.bufferState(8 / 30)).toBe("ready");
+    stream.prefetch([8 / 30, 8 / 30]);
+    expect(fetchChunks(worker)).toHaveLength(1);
+
+    stream.destroy();
+  });
+
+  it("closes one the cache already holds", () => {
+    const stream = makeStream();
+    const worker = FakeWorker.instances[0];
+    landFrame(worker, 1, 5, 100);
+
+    const bitmap = { close: vi.fn() };
+    worker.emit({
+      type: "frameReady",
+      reqId: 2,
+      frameNumber: 5,
+      bitmap,
+      width: 100,
+      height: 100,
+      meta: { src: "f.png" },
+    });
+
+    expect(bitmap.close).toHaveBeenCalled();
+    expect(stream.getValue(4 / 30)?.bitmap).not.toBe(bitmap);
+
+    stream.destroy();
+  });
+});
+
 describe("DynamicGroupImageStream decode-ahead budget", () => {
   it("requests a full chunk until the frame size is known", () => {
     const stream = makeStream(160_000);

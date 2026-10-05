@@ -61,6 +61,7 @@ import {
   presentationStart,
   presentedInOrder,
 } from "./editList";
+import { ChunkLedger, type OwedChunk } from "./chunkLedger";
 import { DecodeSession } from "./decodeSession";
 import { decodesAsStart, intraStarts } from "./intraStartProbe";
 import { type Gop, KeyframeIndex } from "./keyframeIndex";
@@ -156,16 +157,10 @@ let session: DecodeSession | null = null;
  */
 const IDLE_FLUSH_MS = 120;
 /** A chunk being decoded: the frames it still owes, and their bitmap work. */
-interface Job {
-  reqId: number;
-  startFrame: number;
-  endFrame: number;
-  /** Frame numbers this chunk has yet to see out of the decoder. */
-  expected: Set<number>;
+interface Job extends OwedChunk {
   pending: Promise<void>[];
 }
-/** Chunks fed to the decoder and not yet settled, oldest first. */
-let jobs: Job[] = [];
+const ledger = new ChunkLedger<Job>();
 let idleFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let jobChain: Promise<void> = Promise.resolve();
 
@@ -565,6 +560,7 @@ async function runJob(
     // already fed arrive and settle their chunks first.
     await flushOutstanding();
     dec.restart(config as VideoDecoderConfig);
+    ledger.restart();
   }
 
   const job: Job = {
@@ -574,11 +570,7 @@ async function runJob(
     expected: new Set<number>(),
     pending: [],
   };
-  for (let frame = startFrame; frame <= endFrame; frame++) {
-    if (byFrameNumber[frame - 1]) {
-      job.expected.add(frame);
-    }
-  }
+  ledger.open(job, (frame) => Boolean(byFrameNumber[frame - 1]));
 
   if (job.expected.size === 0) {
     post({
@@ -589,14 +581,13 @@ async function runJob(
     return;
   }
 
-  jobs.push(job);
-
   for (let i = kf; i <= dEnd; i++) {
     const s = decodeOrder[i];
     const data =
       i === kf && start
         ? start
         : sliceSampleBytes(span.buffer, span.fileStart, s);
+    ledger.fed(s.frameNumber, job.reqId);
     dec.decode(
       new EncodedVideoChunk({
         type: i === kf && start ? "key" : keyframes.chunkType(s, data),
@@ -619,11 +610,10 @@ async function runJob(
  * frames failed off the back of this message.
  */
 async function settleJob(job: Job): Promise<void> {
-  if (!jobs.includes(job)) {
+  if (!ledger.settle(job)) {
     return;
   }
 
-  jobs = jobs.filter((j) => j !== job);
   await Promise.all(job.pending);
   post({
     type: "chunkDone",
@@ -652,13 +642,13 @@ function scheduleIdleFlush(): void {
 async function flushOutstanding(): Promise<void> {
   cancelIdleFlush();
 
-  if (!session || jobs.length === 0) {
+  if (!session || ledger.pending.length === 0) {
     return;
   }
 
   await session.flush();
 
-  for (const job of [...jobs]) {
+  for (const job of [...ledger.pending]) {
     await settleJob(job);
   }
 }
@@ -681,7 +671,7 @@ function ensureSession(): DecodeSession {
     session = new DecodeSession(onDecoderOutput, () => {
       // The frames already fed will never arrive; settle their chunks so the
       // stream can mark them failed instead of waiting forever.
-      for (const job of [...jobs]) {
+      for (const job of [...ledger.pending]) {
         void settleJob(job);
       }
     });
@@ -690,22 +680,21 @@ function ensureSession(): DecodeSession {
   return session;
 }
 
+/**
+ * Post a decoded frame: to the chunk that owes it, or as a bonus frame the
+ * stream may cache. A frame no chunk carried (pre-roll, or a timestamp we can't
+ * place) is dropped.
+ */
 function onDecoderOutput(frame: VideoFrame): void {
   const frameNumber = microsToFrame.get(frame.timestamp);
-  const job =
-    frameNumber == null
-      ? undefined
-      : jobs.find((j) => j.expected.has(frameNumber));
+  const destination = ledger.output(frameNumber);
 
-  if (frameNumber == null || !job) {
-    // Lead-in from a keyframe snap, or a timestamp we can't place — drop it;
-    // never leak.
+  if (frameNumber === undefined || !destination) {
     frame.close();
     return;
   }
 
-  job.expected.delete(frameNumber);
-
+  const { chunk: job, reqId } = destination;
   const width = frame.displayWidth;
   const height = frame.displayHeight;
   const timestamp = frame.timestamp;
@@ -717,7 +706,7 @@ function onDecoderOutput(frame: VideoFrame): void {
       post(
         {
           type: "frameReady",
-          reqId: job.reqId,
+          reqId,
           frameNumber,
           bitmap,
           width,
@@ -733,6 +722,10 @@ function onDecoderOutput(frame: VideoFrame): void {
     .finally(() => {
       frame.close();
     });
+
+  if (!job) {
+    return;
+  }
 
   job.pending.push(p);
 

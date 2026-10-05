@@ -448,6 +448,14 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
       return;
     }
 
+    // The worker also posts frames no request asked for (a decode's lead-in);
+    // one the cache already has adds nothing.
+    const entry = this.inflight.get(msg.frameNumber);
+    if (!entry && this.cache.has(msg.frameNumber)) {
+      msg.bitmap.close();
+      return;
+    }
+
     this.cache.set(msg.frameNumber, {
       bitmap: msg.bitmap,
       width: msg.width,
@@ -460,7 +468,6 @@ export abstract class FrameBitmapStream<M = unknown> extends PlaybackStreamBase<
       msg.width * msg.height * 4,
     );
 
-    const entry = this.inflight.get(msg.frameNumber);
     if (entry) {
       entry.resolve();
       this.inflight.delete(msg.frameNumber);
