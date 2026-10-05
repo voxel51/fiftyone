@@ -1,33 +1,47 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 
-export type Color =
-  | "Gray"
-  | "Blue"
-  | "Purple"
-  | "Red"
-  | "Yellow"
-  | "Green"
-  | "Pink"
-  | "Orange"
-  | "Purple";
+/** The App's color choices, in the order its color dropdown lists them */
+export const COLORS = [
+  "Gray",
+  "Blue",
+  "Cyan",
+  "Green",
+  "Yellow",
+  "Orange",
+  "Red",
+  "Pink",
+  "Purple",
+] as const;
+
+export type Color = (typeof COLORS)[number];
 
 export type SaveViewParams = {
   name: string;
   description: string;
+  /** The color picked in the dialog */
   color: Color;
-  id?: number;
-  newColor?: Color;
-  slug?: string;
+  slug: string;
 };
 
-const defaultColor = "Gray";
+/** A new view's color before one is picked */
+export const DEFAULT_COLOR: Color = "Gray";
 
-const SELECTION_LIST = '[data-cy="saved-views-selection-view"]';
-const SELECTION_EVENT = "e2e:components:selection";
-const DIALOG_EVENT = "e2e:saved-views:dialog";
+/** The entry the view list shows while no saved view is loaded */
+export const UNSAVED_VIEW = { label: "Unsaved view", slug: "unsaved-view" };
+
 const VIEW_LIST = "saved-views";
 const COLOR_LIST = "saved-views-input-color-selection";
+const OPTION_PREFIX = "saved-views-";
+const OPTION_SUFFIX = "-selection-option";
+
+const SELECTION_EVENT = "e2e:components:selection";
+const OPTION_EVENT = "e2e:components:selection-option";
+const DIALOG_EVENT = "e2e:saved-views:dialog";
+const LISTED_EVENT = "e2e:saved-views:listed";
+const PAGE_CHANGE_EVENT = "e2e:app:page-change";
+
+type DialogDetail = { open: boolean; name: string; description: string };
 
 export class SavedViewsPom {
   readonly page: Page;
@@ -52,7 +66,7 @@ export class SavedViewsPom {
   }
 
   get clearViewBtn() {
-    return this.locator.getByTestId("saved-views-btn-selection-clear").first();
+    return this.locator.getByTestId("saved-views-btn-selection-clear");
   }
 
   get closeModalBtn() {
@@ -63,9 +77,8 @@ export class SavedViewsPom {
     return this.page.getByTestId("saved-views-create-new");
   }
 
-  async clickEditRaw(slug: string) {
-    await this.openSelect();
-    await this.clickOptionEdit(slug);
+  get viewList() {
+    return this.page.getByTestId("saved-views-selection-view");
   }
 
   /** Run `action`, resolving once the dropdown `list` has opened or closed */
@@ -76,91 +89,114 @@ export class SavedViewsPom {
     });
   }
 
-  /** Run `action`, resolving once the view dialog has closed */
-  private afterDialogClosed<T>(action: () => Promise<T>) {
-    return this.eventUtils.after(
-      DIALOG_EVENT,
-      action,
-      (e) => (e.detail as { open: boolean }).open === false,
+  /** Run `action`, resolving on the dialog state it changes */
+  private afterDialog<T>(
+    action: () => Promise<T>,
+    predicate: (detail: DialogDetail) => boolean = () => true,
+  ) {
+    return this.eventUtils.after(DIALOG_EVENT, action, (e) =>
+      predicate(e.detail as DialogDetail),
     );
   }
 
-  /** Open a saved view's edit dialog, resolving once it shows the view */
+  /** Save the dialog's view; the app selects it once its list has refetched */
+  private async save() {
+    await this.afterDialog(
+      () =>
+        this.eventUtils.after(PAGE_CHANGE_EVENT, () =>
+          this.saveButton().click(),
+        ),
+      (detail) => !detail.open,
+    );
+  }
+
+  /** Open the saved view list */
+  async openSelect() {
+    await this.afterList(VIEW_LIST, true, () => this.selector.click());
+  }
+
+  /** Close the saved view list; an edit opened from it leaves it open */
+  async closeSelect() {
+    await this.afterList(VIEW_LIST, false, () =>
+      this.page.keyboard.press("Escape"),
+    );
+  }
+
+  /** Open the create dialog from the open view list, which closes the list */
+  async openCreateModal() {
+    await this.eventUtils.afterAll(
+      [
+        {
+          events: DIALOG_EVENT,
+          predicate: (e) => (e.detail as DialogDetail).open,
+        },
+        {
+          events: SELECTION_EVENT,
+          predicate: (e) => {
+            const detail = e.detail as { id: string; open: boolean };
+            return detail.id === VIEW_LIST && !detail.open;
+          },
+        },
+      ],
+      () => this.saveNewViewBtn.click(),
+    );
+  }
+
+  /** Open a listed view's edit dialog, resolving once it shows the view */
   async clickOptionEdit(slug: string) {
-    await this.savedViewOption(slug).hover();
-    // the dialog fills its inputs from the view in an effect after it mounts
+    // the edit button renders once the option's hover state commits
     await this.eventUtils.after(
-      DIALOG_EVENT,
-      () => this.optionEdit(slug).click(),
+      OPTION_EVENT,
+      () => this.savedViewOption(slug).hover(),
       (e) => {
-        const detail = e.detail as { open: boolean; name: string };
-        return detail.open && detail.name !== "";
+        const detail = e.detail as { slug: string; hovered: boolean };
+        return detail.slug === slug && detail.hovered;
       },
     );
-  }
-
-  async clickEdit(slug: string) {
-    await this.clearView();
-    await this.clickEditRaw(slug);
+    // the dialog fills its inputs from the view in an effect after it mounts
+    await this.afterDialog(
+      () => this.optionEdit(slug).click(),
+      (detail) => detail.open && detail.name !== "",
+    );
   }
 
   optionEdit(slug: string) {
     return this.savedViewOption(slug).getByTestId("btn-edit-selection");
   }
 
-  async saveViewInputs({ name, description, color, newColor }: SaveViewParams) {
-    await this.nameInput().fill(name);
-    await this.descriptionInput().fill(description);
-    await this.clickColor(color);
-    await this.pickColor(newColor);
+  async fillName(name: string) {
+    await this.afterDialog(() => this.nameInput().fill(name));
   }
 
-  /** Create a view; the app selects it once its list has refetched */
+  async fillDescription(description: string) {
+    await this.afterDialog(() => this.descriptionInput().fill(description));
+  }
+
+  async fillInputs({ name, description, color }: SaveViewParams) {
+    await this.fillName(name);
+    await this.fillDescription(description);
+    await this.clickColor();
+    await this.pickColor(color);
+  }
+
+  /** Create a view from a closed view list; the list stays closed */
   async saveView(view: SaveViewParams) {
+    await this.openSelect();
     await this.openCreateModal();
-    await this.saveViewInputs(view);
-    await this.afterDialogClosed(() =>
-      this.eventUtils.after("e2e:app:page-change", () =>
-        this.saveButton().click(),
-      ),
-    );
+    await this.fillInputs(view);
+    await this.save();
   }
 
-  async deleteView(name: string) {
-    await this.clickOptionEdit(name);
-    await this.clickDeleteBtn();
-  }
-
-  async deleteViewClick() {
-    await this.clickDeleteBtn();
-  }
-
-  /**
-   * Rename a view; the app selects it under its new slug once its list has
-   * refetched
-   */
-  async editView(
-    name: string,
-    description: string,
-    color: Color,
-    newColor: Color,
-  ) {
-    await this.nameInput().fill(name);
-    await this.descriptionInput().fill(description);
-    await this.clickColor(color);
-    await this.pickColor(newColor);
-
-    await this.afterDialogClosed(() =>
-      this.eventUtils.after("e2e:app:page-change", () =>
-        this.saveButton().click(),
-      ),
-    );
+  /** Save the open edit dialog as `view`; the app selects it once saved */
+  async editView(view: SaveViewParams) {
+    await this.fillInputs(view);
+    await this.save();
   }
 
   /** Open the color dropdown */
-  async clickColor(color: Color = defaultColor) {
+  async clickColor() {
     await this.afterList(COLOR_LIST, true, () =>
-      this.colorInput(color).click(),
+      this.colorInputContainer().click(),
     );
   }
 
@@ -171,62 +207,57 @@ export class SavedViewsPom {
     );
   }
 
-  /** Close the saved view list; an edit opened from it leaves it open */
-  async closeSelect() {
-    if ((await this.page.locator(SELECTION_LIST).count()) === 0) return;
-    await this.afterList(VIEW_LIST, false, () =>
-      this.page.keyboard.press("Escape"),
-    );
-  }
-
+  /** Clear the loaded view; the view list must be closed */
   async clearView() {
-    await this.closeSelect();
-    await this.eventUtils.after("e2e:app:page-change", () =>
+    await this.eventUtils.after(PAGE_CHANGE_EVENT, () =>
       this.clearViewBtn.click(),
     );
   }
 
   async clickCloseModal() {
-    await this.afterDialogClosed(() => this.closeModalBtn.click());
-  }
-
-  async clickCancel() {
-    await this.afterDialogClosed(() => this.cancelButton().click());
-  }
-
-  /** Open the saved view list, unless it already is */
-  async openSelect() {
-    if ((await this.page.locator(SELECTION_LIST).count()) > 0) return;
-    await this.afterList(VIEW_LIST, true, () => this.selector.click());
-  }
-
-  async openCreateModal(
-    { isSelectAlreadyOpen }: { isSelectAlreadyOpen?: boolean } = {
-      isSelectAlreadyOpen: false,
-    },
-  ) {
-    if (!isSelectAlreadyOpen) {
-      await this.openSelect();
-    }
-    await this.eventUtils.after(
-      DIALOG_EVENT,
-      () => this.saveNewViewBtn.click(),
-      (e) => (e.detail as { open: boolean }).open,
+    await this.afterDialog(
+      () => this.closeModalBtn.click(),
+      (detail) => !detail.open,
     );
   }
 
-  async savedViewCount(name: string) {
-    return await this.locator.getByRole("button", { name }).count();
+  async clickCancel() {
+    await this.afterDialog(
+      () => this.cancelButton().click(),
+      (detail) => !detail.open,
+    );
+  }
+
+  /** Delete the open view; its list refetches after the dialog closes */
+  async clickDeleteBtn() {
+    await this.afterDialog(
+      () => this.eventUtils.after(LISTED_EVENT, () => this.deleteBtn().click()),
+      (detail) => !detail.open,
+    );
   }
 
   savedViewOption(slug: string) {
-    return this.page
-      .getByTestId("saved-views-selection-view")
-      .getByTestId(`saved-views-${slug}-selection-option`);
+    return this.viewList.getByTestId(`${OPTION_PREFIX}${slug}${OPTION_SUFFIX}`);
   }
 
-  async savedViewOptionCount(slug: string) {
-    return await this.savedViewOption(slug).count();
+  /** Slugs of the saved views in the open list, without the unsaved entry */
+  async listedSlugs() {
+    const ids = await this.viewList
+      .locator(`[data-cy^="${OPTION_PREFIX}"][data-cy$="${OPTION_SUFFIX}"]`)
+      .evaluateAll((els) => els.map((el) => el.getAttribute("data-cy") ?? ""));
+    return ids
+      .map((id) => id.slice(OPTION_PREFIX.length, -OPTION_SUFFIX.length))
+      .filter((slug) => slug !== UNSAVED_VIEW.slug);
+  }
+
+  /** The label the view selector shows */
+  async selectedLabel() {
+    return this.selector.getByRole("combobox").textContent();
+  }
+
+  /** The `view` URL parameter, or null without one */
+  viewParam() {
+    return new URL(this.page.url()).searchParams.get("view");
   }
 
   nameInput() {
@@ -243,13 +274,20 @@ export class SavedViewsPom {
     );
   }
 
-  colorInput(c: Color = defaultColor) {
-    return this.colorInputContainer().getByText(c);
+  /** The color the dialog's color selector shows */
+  async selectedColor() {
+    return this.colorInputContainer().getByRole("combobox").textContent();
   }
 
-  colorOption(c: Color = "Purple") {
+  colorListContainer() {
+    return this.page.getByTestId(
+      "saved-views-input-color-selection-selection-view",
+    );
+  }
+
+  colorOption(color: Color) {
     return this.colorListContainer().getByRole("option", {
-      name: c,
+      name: color,
       exact: true,
     });
   }
@@ -265,14 +303,10 @@ export class SavedViewsPom {
     });
   }
 
-  colorListContainer() {
-    return this.page
-      .getByTestId("saved-views-input-color-selection-selection-view")
-      .filter({ hasText: defaultColor });
-  }
-
   nameError() {
-    return this.dialogLocator.getByText("Name already exists");
+    return this.dialogLocator.getByText("Name already exists", {
+      exact: true,
+    });
   }
 
   searchInput() {
@@ -282,146 +316,22 @@ export class SavedViewsPom {
   }
 
   deleteBtn() {
-    return this.dialogLocator.getByRole("button", { name: "Delete" }).first();
+    return this.dialogLocator.getByTestId("saved-views-btn-delete");
   }
 
-  /** Delete the open view; its list refetches after the dialog closes */
-  async clickDeleteBtn() {
-    await this.afterDialogClosed(() =>
-      this.eventUtils.after("e2e:saved-views:listed", () =>
-        this.deleteBtn().click(),
-      ),
+  /** Search the open view list, resolving once the list has filtered */
+  async search(term: string) {
+    // the list filters once the search input's debounce fires
+    await this.eventUtils.after(
+      LISTED_EVENT,
+      () => this.searchInput().fill(term),
+      (e) => (e.detail as { search: string }).search === term.toLowerCase(),
     );
   }
 }
 
 class SavedViewAsserter {
   constructor(private readonly svp: SavedViewsPom) {}
-
-  async verifyNameIsEmpty() {
-    expect(await this.svp.nameInput().inputValue()).toBe("");
-  }
-
-  async verifyDescriptionIsEmpty() {
-    expect(await this.svp.descriptionInput().inputValue()).toBe("");
-  }
-
-  async verifyDefaultColor(color: Color = defaultColor) {
-    expect(await this.svp.colorInput(color).isVisible()).toBe(true);
-  }
-
-  async verifyInputIsDefault() {
-    await this.verifyNameIsEmpty();
-    await this.verifyDescriptionIsEmpty();
-    await this.verifyDefaultColor();
-  }
-
-  async verifySaveBtnIsDisabled() {
-    expect(await this.svp.saveButton().isDisabled()).toBe(true);
-  }
-
-  async verifySaveBtnIsEnabled() {
-    expect(await this.svp.saveButton().isEnabled()).toBe(true);
-  }
-
-  async verifyAllInputClear() {
-    await this.verifyInputIsDefault();
-  }
-
-  async verifyCancelBtnClearsAll() {
-    await this.svp.clickCancel();
-
-    await this.svp.openCreateModal();
-    await this.verifyAllInputClear();
-  }
-
-  async verifySavedView(slug: string = "test") {
-    expect(this.svp.page.url()).toMatch(new RegExp(`view=${slug}`));
-  }
-
-  async verifyUnsavedView(name: string = "test") {
-    expect(this.svp.page.url()).not.toMatch(new RegExp(`view=${name}`));
-    expect(await this.svp.selector.isVisible()).toBe(true);
-  }
-
-  async verifyModalClosed() {
-    expect(await this.svp.dialogLocator.count()).toBe(0);
-  }
-
-  async verifyDefaultColors(colorList: string[]) {
-    const colorListBox = this.svp.colorListContainer();
-    for (const color of colorList) {
-      expect(
-        await colorListBox
-          .getByRole("option", { name: color })
-          .first()
-          .isVisible(),
-      ).toBe(true);
-    }
-  }
-
-  async verifyColorNotExists(color: string = "white") {
-    expect(await this.svp.colorOption(color as Color).count()).toBe(0);
-  }
-
-  async verifySelectionHasNewOption(name: string = "test") {
-    await this.svp.clearView();
-    await this.svp.openSelect();
-    expect(await this.svp.savedViewOption(name).isVisible()).toBe(true);
-  }
-
-  async verifySaveViewFails() {
-    expect(await this.svp.saveButton().isDisabled()).toBe(true);
-    expect(await this.svp.nameError().isVisible()).toBe(true);
-    await this.svp.clickCloseModal();
-  }
-
-  async verifyModalTitle(name: string) {
-    expect(
-      await this.svp.dialogLocator.getByRole("heading", { name }).isVisible(),
-    ).toBe(true);
-  }
-
-  async verifySearchExists() {
-    expect(await this.svp.searchInput().isVisible()).toBe(true);
-  }
-
-  async verifySearch(
-    term: string,
-    expectedResult: string[],
-    excluded: string[],
-  ) {
-    // the list filters once the search input's debounce fires
-    await this.svp.eventUtils.after(
-      "e2e:saved-views:listed",
-      () => this.svp.searchInput().fill(term),
-      (e) => (e.detail as { search: string }).search === term.toLowerCase(),
-    );
-
-    for (const slug of expectedResult) {
-      expect(await this.svp.savedViewOption(slug).isVisible()).toBe(true);
-    }
-
-    for (const slug of excluded) {
-      expect(await this.svp.savedViewOption(slug).count()).toBe(0);
-    }
-  }
-
-  async verifyDeleteBtnHidden() {
-    expect(await this.svp.deleteBtn().isVisible()).toBe(false);
-  }
-
-  async verifyDeleteBtn() {
-    expect(await this.svp.deleteBtn().isVisible()).toBe(true);
-  }
-
-  async verifyViewOption(name: string = "test") {
-    expect(await this.svp.savedViewOption(name).isVisible()).toBe(true);
-  }
-
-  async verifyViewOptionHidden(name: string = "test") {
-    expect(await this.svp.savedViewOption(name).count()).toBe(0);
-  }
 
   async verifyInput({
     name,
@@ -434,14 +344,74 @@ class SavedViewAsserter {
   }) {
     expect(await this.svp.nameInput().inputValue()).toBe(name);
     expect(await this.svp.descriptionInput().inputValue()).toBe(description);
-    expect(await this.svp.colorInput(color).isVisible()).toBe(true);
+    expect(await this.svp.selectedColor()).toBe(color);
   }
 
-  async verifyInputUpdated(view: {
-    name: string;
-    description: string;
-    color: Color;
-  }) {
-    await this.verifyInput(view);
+  async verifyInputIsDefault() {
+    await this.verifyInput({ name: "", description: "", color: DEFAULT_COLOR });
+  }
+
+  async verifySaveBtnIsDisabled() {
+    expect(await this.svp.saveButton().isDisabled()).toBe(true);
+  }
+
+  async verifySaveBtnIsEnabled() {
+    expect(await this.svp.saveButton().isEnabled()).toBe(true);
+  }
+
+  async verifyCancelBtnClearsAll() {
+    await this.svp.clickCancel();
+
+    await this.svp.openSelect();
+    await this.svp.openCreateModal();
+    await this.verifyInputIsDefault();
+  }
+
+  /** The URL and the selector both show `view` */
+  async verifySavedView(view: { name: string; slug: string }) {
+    expect(this.svp.viewParam()).toBe(view.slug);
+    expect(await this.svp.selectedLabel()).toBe(view.name);
+  }
+
+  /** Neither the URL nor the selector shows a saved view */
+  async verifyUnsavedView() {
+    expect(this.svp.viewParam()).toBeNull();
+    expect(await this.svp.selectedLabel()).toBe(UNSAVED_VIEW.label);
+  }
+
+  async verifyModalClosed() {
+    expect(await this.svp.dialogLocator.count()).toBe(0);
+  }
+
+  async verifyColorOptions() {
+    expect(
+      await this.svp.colorListContainer().getByRole("option").allTextContents(),
+    ).toEqual([...COLORS]);
+  }
+
+  async verifyListedSlugs(slugs: string[]) {
+    expect(await this.svp.listedSlugs()).toEqual(slugs);
+  }
+
+  async verifySaveViewFails() {
+    expect(await this.svp.saveButton().isDisabled()).toBe(true);
+    expect(await this.svp.nameError().count()).toBe(1);
+  }
+
+  async verifySearchExists() {
+    expect(await this.svp.searchInput().isVisible()).toBe(true);
+  }
+
+  async verifySearch(term: string, slugs: string[]) {
+    await this.svp.search(term);
+    await this.verifyListedSlugs(slugs);
+  }
+
+  async verifyDeleteBtnHidden() {
+    expect(await this.svp.deleteBtn().count()).toBe(0);
+  }
+
+  async verifyDeleteBtn() {
+    expect(await this.svp.deleteBtn().count()).toBe(1);
   }
 }
