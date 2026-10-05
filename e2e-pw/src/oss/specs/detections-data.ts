@@ -3,10 +3,9 @@ import type {
   GroupSliceConfig,
 } from "src/shared/dataset-factory";
 
-// Ground truth matches the first 5 samples of the quickstart zoo dataset,
-// preserved when migrating away from it (zoo datasets are a bad test pattern:
-// slow, network-dependent, and couple tests to external data).
-export const QUICKSTART_GROUND_TRUTH = [
+// Five images of detections; each sample's ground truth + predictions total
+// differs, so per-sample counts tell samples apart.
+export const GROUND_TRUTH_DETECTIONS = [
   ["bird", "bird", "bird"],
   ["horse", "person"],
   ["carrot", "cat"],
@@ -28,7 +27,7 @@ export const QUICKSTART_GROUND_TRUTH = [
 
 // 16 predictions over 13 distinct labels; each sample's label count (ground
 // truth + predictions) is distinct: 6, 7, 4, 15, 5
-export const QUICKSTART_PREDICTIONS = [
+export const PREDICTION_DETECTIONS = [
   ["bear", "bird", "bird"],
   ["backpack", "backpack", "handbag", "horse", "person"],
   ["bed", "cat"],
@@ -37,7 +36,7 @@ export const QUICKSTART_PREDICTIONS = [
 ];
 
 /** Five `validation`-tagged images, `<index>.png`, with the labels above */
-export const createQuickstartDataset = (
+export const createDetectionsDataset = (
   datasetFactory: typeof DatasetFactory,
   datasetName: string,
   savedViews?: { [name: string]: string },
@@ -45,7 +44,7 @@ export const createQuickstartDataset = (
   datasetFactory.createDataset({
     datasetName,
     savedViews,
-    numSamples: QUICKSTART_GROUND_TRUTH.length,
+    numSamples: GROUND_TRUTH_DETECTIONS.length,
     schema: { ground_truth: "Detections", predictions: "Detections" },
     withSampleData: ({ index }, { label }) => {
       const detections = (labels: string[]) =>
@@ -59,14 +58,14 @@ export const createQuickstartDataset = (
         );
       return {
         tags: ["validation"],
-        ground_truth: detections(QUICKSTART_GROUND_TRUTH[index]),
-        predictions: detections(QUICKSTART_PREDICTIONS[index]),
+        ground_truth: detections(GROUND_TRUTH_DETECTIONS[index]),
+        predictions: detections(PREDICTION_DETECTIONS[index]),
       };
     },
   });
 
-/** The quickstart-groups layout: two image slices and a 3D `pcd` slice */
-export const QUICKSTART_GROUP_SLICES: GroupSliceConfig[] = [
+/** Two image slices and a 3D `pcd` slice */
+export const GROUP_SLICES: GroupSliceConfig[] = [
   { name: "left", mediaType: "image" },
   { name: "right", mediaType: "image" },
   { name: "pcd", mediaType: "3d" },

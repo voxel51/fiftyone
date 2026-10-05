@@ -5,9 +5,9 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { QUICKSTART_GROUP_SLICES } from "./quickstart-data";
+import { GROUP_SLICES } from "./detections-data";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
 
 // the factory names group media `<slice>-<groupIndex>`
 const FIRST_SAMPLE_FILENAME = "left-0.png";
@@ -49,11 +49,11 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
     mediaType: "group",
     datasetName,
     numGroups: 4,
-    slices: QUICKSTART_GROUP_SLICES,
+    slices: GROUP_SLICES,
   });
 });
 
-test.describe.serial("quickstart-groups", () => {
+test.describe.serial("groups", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

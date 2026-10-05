@@ -4,9 +4,9 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createQuickstartDataset } from "./quickstart-data";
+import { createDetectionsDataset } from "./detections-data";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
 const test = base.extend<{
   grid: GridPom;
@@ -34,7 +34,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await createQuickstartDataset(datasetFactory, datasetName);
+  await createDetectionsDataset(datasetFactory, datasetName);
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {

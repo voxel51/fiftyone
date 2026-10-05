@@ -3,7 +3,7 @@ import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { QUICKSTART_GROUP_SLICES } from "./quickstart-data";
+import { GROUP_SLICES } from "./detections-data";
 
 const test = base.extend<{
   actionsRow: GridActionsRowPom;
@@ -21,7 +21,7 @@ const test = base.extend<{
   },
 });
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
@@ -33,7 +33,7 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
     mediaType: "group",
     datasetName,
     numGroups: 4,
-    slices: QUICKSTART_GROUP_SLICES,
+    slices: GROUP_SLICES,
   });
 });
 

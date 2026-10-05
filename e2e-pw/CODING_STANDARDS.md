@@ -118,7 +118,7 @@ timeout.
 - Build only what the spec asserts on, and derive each expected value from the
   data the spec builds.
 - Data shared by a spec family lives beside the specs, as in
-  `quickstart-data.ts`.
+  `detections-data.ts`.
 
 ## Screenshots
 
