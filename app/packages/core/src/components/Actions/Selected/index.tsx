@@ -102,7 +102,7 @@ export default ({
             lookerRef={lookerRef}
           />
         ) : (
-          <Grid close={close} anchorRef={ref} />
+          <Grid close={() => setOpen(false)} anchorRef={ref} />
         ))}
     </ActionDiv>
   );
