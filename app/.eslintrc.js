@@ -145,6 +145,10 @@ module.exports = {
         "packages/*/scripts/**/*.js",
       ],
       env: { node: true },
+      rules: {
+        // CommonJS loads modules with require
+        "@typescript-eslint/no-var-requires": "off",
+      },
     },
     {
       // Tests and mocks stub out interfaces with empty methods
