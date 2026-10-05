@@ -140,6 +140,7 @@ export const resolveSegmentationPalette = (
 export const colorForTarget = (
   target: number,
   palette: SegmentationPalette,
+  ramp: (target: number) => string = (value) => rampColor(value, palette),
 ): string | undefined => {
   if (target === 0) {
     return undefined;
@@ -153,7 +154,7 @@ export const colorForTarget = (
     return palette.uniformColor;
   }
 
-  return palette.targetColors[target] ?? rampColor(target, palette);
+  return palette.targetColors[target] ?? ramp(target);
 };
 
 /**
@@ -165,15 +166,42 @@ export const colorForTarget = (
  * wrapped index yields a different color — the same mask would paint one way
  * in the grid and another here, with nothing to point at. Wrap first.
  */
-const rampColor = (target: number, palette: SegmentationPalette): string => {
+const rampColor = (target: number, palette: SegmentationPalette): string =>
+  getColor(palette.pool, palette.seed, rampIndex(target, palette));
+
+/** What `getColor` is asked for on a target's behalf; see {@link rampColor}. */
+const rampIndex = (target: number, palette: SegmentationPalette): number => {
   const index = Math.round(Math.abs(target));
-  const { pool, seed } = palette;
+  const { pool } = palette;
 
   // An empty pool means `getColor` substitutes its own default pool, so there
   // is no length to wrap against; hand it the index and let it decide.
-  return pool.length > 0
-    ? getColor(pool, seed, index % pool.length)
-    : getColor(pool, seed, index);
+  return pool.length > 0 ? index % pool.length : index;
+};
+
+/**
+ * {@link colorForTarget} for many targets of one palette: the same answers,
+ * with the ramp memoized by wrapped index. `getColor` re-serializes the pool
+ * on every call, which is negligible per target and ~60 ms over the 65,535 of
+ * a 16-bit lookup table; wrapped, the ramp has only `pool.length` distinct
+ * colors. Called in the same order, it asks `getColor` for the same values in
+ * the same first-seen order, so the colors are identical.
+ */
+export const targetColorer = (
+  palette: SegmentationPalette,
+): ((target: number) => string | undefined) => {
+  const ramp = new Map<number, string>();
+  const rampFor = (target: number): string => {
+    const index = rampIndex(target, palette);
+    let color = ramp.get(index);
+    if (color === undefined) {
+      color = getColor(palette.pool, palette.seed, index);
+      ramp.set(index, color);
+    }
+    return color;
+  };
+
+  return (target) => colorForTarget(target, palette, rampFor);
 };
 
 /** Stable key for a palette — a cheap way to know a re-rasterize is needed. */

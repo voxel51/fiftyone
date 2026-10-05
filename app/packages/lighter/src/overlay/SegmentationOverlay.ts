@@ -24,8 +24,8 @@ import {
   type SegmentationPalette,
 } from "../utils/segmentationPalette";
 import {
-  buildSegmentationLut,
   decodeSegmentationIndices,
+  segmentationLutFor,
   type DecodedSegmentation,
 } from "../utils/segmentationIndices";
 import type { IndexedImage } from "../renderer/Renderer2D";
@@ -317,19 +317,9 @@ export class SegmentationOverlay
           }
         : this.decodeIndices(source);
 
-      // An 8-bit table covers every target the mask could hold, so it
-      // outlives the frame; a 16-bit one is built for the targets present.
-      const reusableLut =
-        samePalette &&
-        decoded.indices instanceof Uint8Array &&
-        previous.indices instanceof Uint8Array
-          ? previous.lut
-          : undefined;
-
-      this.#indexed = {
-        ...decoded,
-        lut: reusableLut ?? buildSegmentationLut(decoded.indices, palette),
-      };
+      // The table depends on the palette alone and is shared across frames
+      // and overlays, so a new frame under the same scheme rebuilds nothing.
+      this.#indexed = { ...decoded, lut: segmentationLutFor(palette) };
       this.#renderedSource = source;
       this.#renderedPalette = key;
       this.#failedSource = undefined;
