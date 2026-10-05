@@ -342,9 +342,7 @@ export type SetExtendedSelectionHooks = {
   setExtendedSelection: SetterOrUpdater<
     RecoilStateValue<typeof fos.extendedSelection>
   >;
-  clearExtendedSelection: SetterOrUpdater<
-    RecoilStateValue<typeof fos.extendedSelection>
-  >;
+  clearExtendedSelection: () => void;
   resetExtendedSelection: ReturnType<typeof fos.useResetExtendedSelection>;
 };
 

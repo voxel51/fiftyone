@@ -1384,9 +1384,10 @@ class SetExtendedSelection extends Operator {
     });
   }
   useHooks(): SetExtendedSelectionHooks {
+    const setExtendedSelection = useSetRecoilState(fos.extendedSelection);
     return {
-      setExtendedSelection: useSetRecoilState(fos.extendedSelection),
-      clearExtendedSelection: useSetRecoilState(fos.extendedSelection),
+      setExtendedSelection,
+      clearExtendedSelection: () => setExtendedSelection({ selection: null }),
       resetExtendedSelection: fos.useResetExtendedSelection(),
     };
   }
