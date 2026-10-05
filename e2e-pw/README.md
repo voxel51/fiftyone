@@ -39,9 +39,9 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
   grid, modal, sidebar.
 - Do not use assertion logic directly in POMs, instead use composition to
   create POMs that contain the assertion class.
-- Wait the way `WAITS.md` describes: every wait names the `e2e:` event its
-  action causes, then reads the result once. No polls, timeouts, retrying
-  assertions or DOM waits; CI's `e2e-waits` job fails on them.
+- Follow `CODING_STANDARDS.md`, which is binding: every wait names the `e2e:`
+  event its action causes, then reads the result once. No polls, timeouts,
+  retrying assertions or DOM waits; CI's `e2e-waits` job fails on them.
 - Keep individual tests small. These specs also run in fiftyone-teams CI at
   roughly 2–4x the duration (slower server boot, page loads, and screenshot
   stabilization), so a test that takes more than ~60 seconds here is a timeout

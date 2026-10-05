@@ -4,7 +4,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
 const test = base.extend<{
   fieldVisibility: FieldVisibilityPom;
@@ -26,7 +26,7 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  // the field visibility asserter reads these quickstart fields by name
+  // the field visibility asserter reads these fields by name
   await datasetFactory.createDataset({
     datasetName,
     schema: {

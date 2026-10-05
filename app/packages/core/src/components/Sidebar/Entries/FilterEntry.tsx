@@ -31,13 +31,14 @@ const Filter = () => {
     fos.isSidebarFilterMode,
   );
 
+  const setSchemaModal = useSetRecoilState(fos.settingsModal);
+
   useEffect(() => {
     getEventBus<SidebarModeE2EEvents>().dispatch("e2e:sidebar:mode-shown", {
       filter: isFilterMode,
     });
   }, [isFilterMode]);
 
-  const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const resetSelectedFieldStages = useResetRecoilState(
     fos.fieldVisibilityStage,
   );

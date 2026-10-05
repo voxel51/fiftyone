@@ -3,9 +3,9 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { QUICKSTART_GROUP_SLICES } from "./quickstart-data";
+import { GROUP_SLICES } from "./detections-data";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
 
 const test = base.extend<{
   grid: GridPom;
@@ -35,7 +35,7 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
     mediaType: "group",
     datasetName,
     numGroups: 16,
-    slices: QUICKSTART_GROUP_SLICES,
+    slices: GROUP_SLICES,
     schema: { scene_id: "IntField", timestamp: "IntField" },
     withSampleData: ({ groupIndex }) => ({
       scene_id: Math.floor(groupIndex / 2),
@@ -47,7 +47,7 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   });
 });
 
-test.describe.serial("quickstart-groups", () => {
+test.describe.serial("groups-dynamic", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ view: "dynamic" }),

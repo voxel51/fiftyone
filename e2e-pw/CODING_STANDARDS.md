@@ -1,7 +1,8 @@
-# Waiting in e2e specs
+# e2e coding standards
 
-Every wait names the app event its action causes, then reads the result once.
-CI enforces this with `scripts/check-e2e-waits.py`.
+Binding for every spec, POM and App `e2e:` event. The core rule: every wait
+names the app event its action causes, then reads the result once. CI's
+`e2e-waits` job enforces the wait rules with `scripts/check-e2e-waits.py`.
 
 ## Why not Playwright's auto-waiting
 
@@ -108,6 +109,16 @@ expect(draw.t - open.t).toBeLessThan(MODAL_DRAW_BUDGET_MS);
 is the claim the spec makes, so name it and explain where it comes from. A
 timing assertion never decides when a spec proceeds, and a wait never carries a
 timeout.
+
+## Datasets
+
+- Build every dataset with `DatasetFactory.createDataset` (see the README's
+  "Creating Datasets"). Never load zoo datasets: they download, change, and
+  couple a spec to data it doesn't control.
+- Build only what the spec asserts on, and derive each expected value from the
+  data the spec builds.
+- Data shared by a spec family lives beside the specs, as in
+  `detections-data.ts`.
 
 ## Screenshots
 

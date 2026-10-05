@@ -3,9 +3,9 @@ import { GridPom, TileLabels } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
-import { createQuickstartDataset } from "./quickstart-data";
+import { createDetectionsDataset } from "./detections-data";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
 const LABEL_PATH = "ground_truth.detections.label";
 
@@ -46,7 +46,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await createQuickstartDataset(datasetFactory, datasetName);
+  await createDetectionsDataset(datasetFactory, datasetName);
 });
 
 test.describe.serial("sidebar-filter-visibility", () => {

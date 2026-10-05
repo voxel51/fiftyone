@@ -128,7 +128,7 @@ jobs:
   e2e-waits:
     needs: modified-files
     # specs wait on the app event an action causes, then read once (see
-    # e2e-pw/WAITS.md); no build needed, so it gates drafts and light PRs too
+    # e2e-pw/CODING_STANDARDS.md); no build needed, so it gates drafts and light PRs too
     if: >-
       needs.modified-files.outputs.app-changes == 'true' ||
       needs.modified-files.outputs.e2e-changes == 'true'

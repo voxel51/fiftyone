@@ -6,9 +6,9 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import {
-  QUICKSTART_GROUND_TRUTH,
-  createQuickstartDataset,
-} from "./quickstart-data";
+  GROUND_TRUTH_DETECTIONS,
+  createDetectionsDataset,
+} from "./detections-data";
 
 const test = base.extend<{
   sidebar: SidebarPom;
@@ -34,7 +34,7 @@ const test = base.extend<{
   },
 });
 
-const quickstartColorByField = getUniqueDatasetNameWithPrefix("quickstart");
+const colorByFieldDataset = getUniqueDatasetNameWithPrefix("color-by-field");
 
 const dummyDatasetColorByInstance = getUniqueDatasetNameWithPrefix(
   "dummy-color-by-instance",
@@ -46,7 +46,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
-  await createQuickstartDataset(datasetFactory, quickstartColorByField);
+  await createDetectionsDataset(datasetFactory, colorByFieldDataset);
 
   await fiftyoneLoader.executePythonCode(`
       import fiftyone as fo
@@ -64,9 +64,9 @@ test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
     `);
 });
 
-test.describe.serial("color scheme basic functionality with quickstart", () => {
+test.describe.serial("color scheme basic functionality", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, quickstartColorByField);
+    await fiftyoneLoader.waitUntilGridVisible(page, colorByFieldDataset);
   });
 
   test("update color by value mode, use tag as colorByAttribute", async ({
@@ -79,7 +79,7 @@ test.describe.serial("color scheme basic functionality with quickstart", () => {
   }) => {
     // each change redraws every tile's tags; waiting out each one leaves the
     // custom color's redraw as the only one the last wait can see
-    const tiles = QUICKSTART_GROUND_TRUTH.map((_, i) => `${i}.png`);
+    const tiles = GROUND_TRUTH_DETECTIONS.map((_, i) => `${i}.png`);
     const afterTags = (action: () => Promise<void>) =>
       grid.afterTagsRenderedNamed(tiles, action);
 

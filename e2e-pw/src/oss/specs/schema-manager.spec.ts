@@ -187,7 +187,9 @@ test.describe.serial("schema manager", () => {
     ]);
 
     // Hide
-    await schemaManager.deactivateField("classification");
+    await row.clickCheckbox();
+    await row.assert.isChecked(true);
+    await schemaManager.moveFields();
     await schemaManager.assert.hasHiddenFieldRows([
       { name: "classification", type: "Classification" },
     ]);

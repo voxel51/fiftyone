@@ -3,9 +3,9 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createQuickstartDataset } from "./quickstart-data";
+import { createDetectionsDataset } from "./detections-data";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
 const test = base.extend<{
   grid: GridPom;
@@ -25,7 +25,7 @@ const test = base.extend<{
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await createQuickstartDataset(datasetFactory, datasetName, {
+  await createDetectionsDataset(datasetFactory, datasetName, {
     patches: 'dataset.to_patches("predictions")',
     "grouped-patches":
       'dataset.to_patches("predictions").group_by("predictions.label")',
@@ -45,7 +45,7 @@ test.afterEach(async ({ modal, page }) => {
   await page.reload();
 });
 
-test.describe.serial("quickstart", () => {
+test.describe.serial("smoke", () => {
   test("smoke", async ({ eventUtils, grid, modal, sidebar }) => {
     await grid.assert.isEntryCountTextEqualTo("5 samples");
 

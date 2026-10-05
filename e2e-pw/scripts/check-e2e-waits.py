@@ -158,6 +158,6 @@ for name, items in by_rule.items():
 print(f"TOTAL {len(findings)}")
 if findings:
     print(
-        "Each wait should name the app event its action causes; see e2e-pw/WAITS.md"
+        "Each wait should name the app event its action causes; see e2e-pw/CODING_STANDARDS.md"
     )
 sys.exit(1 if findings else 0)
