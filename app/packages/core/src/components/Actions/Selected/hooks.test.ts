@@ -6,12 +6,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import React from "react";
-import {
-  DefaultValue,
-  RecoilRoot,
-  useRecoilValue,
-  type MutableSnapshot,
-} from "recoil";
+import { RecoilRoot, useRecoilValue, type MutableSnapshot } from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const stubs = vi.hoisted(() => ({

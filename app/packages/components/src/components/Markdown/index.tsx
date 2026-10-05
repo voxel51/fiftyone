@@ -92,7 +92,7 @@ const componentsMap = {
   tbody: TableBody,
   thead: TableHead,
   tr: TableRow,
-  code({ node, inline, className, children, ...props }) {
+  code({ node: _node, inline, className, children, ...props }) {
     const theme = useTheme();
     const [hovered, hoverProps] = useHover();
     const isDarkMode = theme.mode === "dark";

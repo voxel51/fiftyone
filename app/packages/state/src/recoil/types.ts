@@ -107,7 +107,7 @@ export namespace State {
     key: string;
     version: string;
     timestamp: string;
-    config: {};
+    config: object;
     viewStages?: readonly string[];
   }
 
@@ -148,7 +148,7 @@ export namespace State {
   }
 
   export interface AnnotationRun extends Run {
-    config: {};
+    config: object;
   }
 
   export interface KeypointSkeleton {

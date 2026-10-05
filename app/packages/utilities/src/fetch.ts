@@ -650,7 +650,6 @@ class JSONStreamParser {
 }
 
 const isWorker =
-  // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 const hasWindow = typeof window !== "undefined" && !isWorker;
 
@@ -782,7 +781,7 @@ export const getEventSource = (
   }
 };
 
-export const sendEvent = async (data: {}) => {
+export const sendEvent = async (data: object) => {
   return await getFetchFunction()("POST", "event", data);
 };
 

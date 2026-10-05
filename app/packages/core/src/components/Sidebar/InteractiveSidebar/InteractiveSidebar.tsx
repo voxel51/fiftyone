@@ -245,7 +245,8 @@ const InteractiveSidebar = ({
             group = entry.name;
           }
 
-          const { shadow, ...springs } = items.current[key].controller.springs;
+          const { shadow: _shadow, ...springs } =
+            items.current[key].controller.springs;
 
           const { children } = render(
             key,

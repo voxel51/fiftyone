@@ -51,7 +51,7 @@ export class ToggleFeatureCommand extends Command<{ enabled: boolean }> {
  */
 export const Demo = () => {
   const bus = useCommandBus();
-  const [status, setStatus] = useState<string>("");
+  const [, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [lastUserId, setLastUserId] = useState<string>("");
 

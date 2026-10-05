@@ -96,13 +96,13 @@ export class Analytics {
     this._segment = null;
   }
 
-  page(name?: string, properties?: {}) {
+  page(name?: string, properties?: Record<string, unknown>) {
     if (!this._segment || this._disableUrlTracking) return;
     properties = this.redact(properties);
     this._segment.page(name, properties);
   }
 
-  track(name: string, properties?: {}) {
+  track(name: string, properties?: Record<string, unknown>) {
     const now = Date.now();
     const lastTimestamp = this._lastEventTimestamps[name] || 0;
     properties = this.redact(properties);
@@ -130,11 +130,11 @@ export class Analytics {
     this._segment.track(name, properties, opts);
   }
 
-  trackEvent(name: string, properties?: {}) {
+  trackEvent(name: string, properties?: Record<string, unknown>) {
     this.track(name, properties);
   }
 
-  identify(userId: string, traits?: {}) {
+  identify(userId: string, traits?: Record<string, unknown>) {
     if (!this._segment) return;
     traits = this.redact(traits);
     if (this._debug) {
@@ -143,7 +143,7 @@ export class Analytics {
     this._segment.identify(userId, traits);
   }
 
-  group(groupId: string, traits?: {}) {
+  group(groupId: string, traits?: Record<string, unknown>) {
     if (!this._segment) return;
     traits = this.redact(traits);
     this._segment.group(groupId, traits);

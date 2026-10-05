@@ -71,7 +71,7 @@ const createSourceData = (
   };
 };
 
-const Panel: React.FC<{}> = () => {
+const Panel: React.FC = () => {
   const theme = foc.useTheme();
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);

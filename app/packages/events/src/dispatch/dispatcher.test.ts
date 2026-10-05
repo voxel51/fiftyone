@@ -107,7 +107,7 @@ describe("EventDispatcher", () => {
 
       const unregister1 = dispatcher.on("test:eventA", handler1);
       const unregister2 = dispatcher.on("test:eventA", handler2);
-      const unregister3 = dispatcher.on("test:eventA", handler3);
+      dispatcher.on("test:eventA", handler3);
 
       // First dispatch - all handlers should be called
       dispatcher.dispatch("test:eventA", { id: "1", name: "test" });

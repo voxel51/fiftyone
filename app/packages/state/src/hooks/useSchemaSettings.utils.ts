@@ -105,7 +105,7 @@ export const getSubPaths = (
   return subPaths;
 };
 
-export const skipField = (rawPath: string, schema: {}) => {
+export const skipField = (rawPath: string, schema: Record<string, Field>) => {
   if (!rawPath) {
     throw new Error("path argument is required");
   }

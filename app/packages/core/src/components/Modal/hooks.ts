@@ -48,7 +48,7 @@ export const useLookerHelpers = () => {
 export const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (update: object, updater?: (updated: {}) => void) => {
+      async (update: object, updater?: (updated: object) => void) => {
         const currentOptions = await snapshot.getPromise(
           fos.savedLookerOptions,
         );

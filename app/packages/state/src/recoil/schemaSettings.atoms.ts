@@ -48,7 +48,7 @@ export const allFieldsCheckedState = atom<boolean>({
   default: true,
 });
 
-export const expandedPathsState = atom<{} | null>({
+export const expandedPathsState = atom<object | null>({
   key: "expandedPathsState",
   default: null,
 });

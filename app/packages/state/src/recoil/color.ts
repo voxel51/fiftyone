@@ -400,7 +400,7 @@ export function removeRgbProperty(input) {
   // Process the 'colorscales' array
   if (clonedInput.colorscales && Array.isArray(clonedInput.colorscales)) {
     clonedInput.colorscales = clonedInput.colorscales.map(
-      ({ rgb, ...rest }) => rest,
+      ({ rgb: _rgb, ...rest }) => rest,
     );
   }
 
@@ -409,7 +409,7 @@ export function removeRgbProperty(input) {
     clonedInput.defaultColorscale &&
     typeof clonedInput.defaultColorscale === "object"
   ) {
-    const { rgb, ...rest } = clonedInput.defaultColorscale;
+    const { rgb: _rgb, ...rest } = clonedInput.defaultColorscale;
     clonedInput.defaultColorscale = rest;
   }
 

@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { act, renderHook } from "@testing-library/react";
 import React, { useEffect } from "react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { RecoilRoot } from "recoil";
 import { expect, test } from "vitest";
 import {
   useBrainResult,
@@ -9,7 +9,7 @@ import {
 } from "../../src/useBrainResult";
 
 function Initializer({ initialValue }) {
-  const [selected, setSelected] = useBrainResult();
+  const [, setSelected] = useBrainResult();
   useEffect(() => {
     setSelected(initialValue);
   }, []);

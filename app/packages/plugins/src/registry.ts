@@ -271,7 +271,7 @@ type BasePluginComponentRegistration<
   activator?: PluginActivator;
 };
 
-export type PanelRegistration<T extends {} = {}> =
+export type PanelRegistration<T extends object = object> =
   BasePluginComponentRegistration<
     PluginComponentType.Panel,
     PluginComponentProps<T>
@@ -280,7 +280,7 @@ export type PanelRegistration<T extends {} = {}> =
     sampleRendererOptions?: never;
   };
 
-export type ComponentRegistration<T extends {} = {}> =
+export type ComponentRegistration<T extends object = object> =
   BasePluginComponentRegistration<
     PluginComponentType.Component,
     PluginComponentProps<T>
@@ -289,7 +289,7 @@ export type ComponentRegistration<T extends {} = {}> =
     sampleRendererOptions?: never;
   };
 
-export type PlotRegistration<T extends {} = {}> =
+export type PlotRegistration<T extends object = object> =
   BasePluginComponentRegistration<
     PluginComponentType.Plot,
     PluginComponentProps<T>

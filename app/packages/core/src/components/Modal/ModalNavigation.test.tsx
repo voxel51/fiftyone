@@ -6,11 +6,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 describe("ModalNavigation keyboard handler", () => {
   let mockNavigator: { navigate: ReturnType<typeof vi.fn> };
   let keyboardHandler: (e: KeyboardEvent) => void;
-  let originalActiveElement: Element | null;
+  let _originalActiveElement: Element | null;
 
   beforeEach(() => {
     // Save original activeElement
-    originalActiveElement = document.activeElement;
+    _originalActiveElement = document.activeElement;
 
     // Create mock navigators
     mockNavigator = {

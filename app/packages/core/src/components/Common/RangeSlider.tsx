@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import { Slider as SliderUnstyled } from "@mui/material";
 import React, {
-  ChangeEvent,
+  SyntheticEvent,
   useEffect,
   useLayoutEffect,
   useCallback,
@@ -119,8 +119,9 @@ type BaseSliderProps<T extends Range | number> = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   value: T;
-  onChange: (e: ChangeEvent<{}>, v: T) => void;
-  onCommit?: (e: ChangeEvent<{}>, v: T) => void;
+  // MUI's Slider passes a native Event on change and either kind on commit
+  onChange: (e: Event | SyntheticEvent, v: T) => void;
+  onCommit?: (e: Event | SyntheticEvent, v: T) => void;
   onMinCommit?: (v: number) => void;
   onMaxCommit?: (v: number) => void;
   persistValue?: boolean;

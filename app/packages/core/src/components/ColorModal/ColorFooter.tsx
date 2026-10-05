@@ -56,10 +56,10 @@ const ColorFooter: React.FC = () => {
           title={title}
           onClick={() => {
             // remove rgb list from defaultColorscale and colorscales
-            const { rgb, ...rest } = colorScheme.defaultColorscale;
+            const { rgb: _rgb, ...rest } = colorScheme.defaultColorscale;
             const newDefaultColorscale = rest;
             const newColorscales = colorScheme.colorscales?.length
-              ? colorScheme.colorscales?.map(({ rgb, ...rest }) => rest)
+              ? colorScheme.colorscales?.map(({ rgb: _rgb, ...rest }) => rest)
               : [];
 
             setDatasetColorScheme({
