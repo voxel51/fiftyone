@@ -88,7 +88,9 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sampleCanvas.click(0.6, 0.6);
     await modal.sampleCanvas.click(0.4, 0.6);
 
-    await modal.sampleCanvas.rightClick(0.5, 0.5);
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.rightClick(0.5, 0.5),
+    );
 
     // ── 3. The commit right-click also closes the edit form ─────────────────
     // One right-click commits the polygon AND returns to the label list with
@@ -103,11 +105,11 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sampleCanvas.click(0.8, 0.7);
     await modal.sampleCanvas.click(0.8, 0.8);
     await modal.sidebar.edit.assert.isOpen();
-    await modal.sampleCanvas.rightClick(0.5, 0.5);
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.rightClick(0.5, 0.5),
+    );
     await modal.sidebar.edit.assert.isClosed();
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
-
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     await modal.sampleCanvas.rightClick(0.5, 0.5);
     await modal.sidebar.annotate.assert.segmentationModeIsActive(false);

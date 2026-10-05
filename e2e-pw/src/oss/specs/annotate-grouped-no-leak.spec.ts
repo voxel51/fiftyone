@@ -217,9 +217,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // change the first of the image slice's two detections cat -> dog
     await modal.annotate3d.selectLabel("cat");
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the image sample changed (now one dog + one cat); 3D slices untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -246,13 +247,17 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     // then assign it a distinct class so the create is unambiguous
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sampleCanvas.move(0.6, 0.6, "crosshair");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.82, 0.82);
-    await modal.sampleCanvas.up();
+    // the draw saves on its own; it must land before the class change's save
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.82, 0.82);
+      await modal.sampleCanvas.up();
+    });
 
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the new "dog" detection lands on the image sample only — 3D slices untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -282,9 +287,10 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
 
     // select the mesh cuboid and change its class
     await modal.annotate3d.selectLabel("cat");
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the mesh sample changed; image + cloud untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -316,17 +322,21 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.looker3dControls.setTopView();
     await modal.annotate3d.toggleCreateCuboid();
     await modal.annotate3d.assert.createCuboidActive(true);
-    await modal.annotate3d.drawCuboid([
-      [0.4, 0.4],
-      [0.6, 0.4],
-      [0.6, 0.6],
-    ]);
+    // the draw saves on its own; it must land before the class change's save
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.drawCuboid([
+        [0.4, 0.4],
+        [0.6, 0.4],
+        [0.6, 0.6],
+      ]),
+    );
 
     // the freshly-drawn cuboid auto-selects with its edit form open; give it a
     // distinct class so the create is unambiguous, then let it autosave
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the created "dog" cuboid lands on the mesh sample only — the seeded "cat"
     // stays and image + cloud are untouched

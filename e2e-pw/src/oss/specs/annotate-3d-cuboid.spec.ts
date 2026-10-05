@@ -298,19 +298,20 @@ test.describe.serial("3d cuboid creation", () => {
     await modal.annotate3d.toggleCreateCuboid();
     await modal.annotate3d.assert.createCuboidActive(true);
 
-    // center -> orientation -> width
-    await modal.annotate3d.drawCuboid([
-      [0.4, 0.4],
-      [0.6, 0.4],
-      [0.6, 0.6],
-    ]);
+    // center -> orientation -> width; the draw's own save must land first,
+    // or it satisfies the class change's wait below
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.drawCuboid([
+        [0.4, 0.4],
+        [0.6, 0.4],
+        [0.6, 0.6],
+      ]),
+    );
 
     // the freshly-drawn cuboid is auto-selected with its edit form open (which
     // replaces the label list), so verify creation through the form, then
     // assign a distinct class and let it autosave
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
-    // the draw's own autosave must land first, or it satisfies the waiter below
-    await modal.sidebar.annotate.waitForSavesSettled();
     await modal.sidebar.annotate.afterSave(() =>
       modal.sidebar.edit.selectFieldChoice("label", "truck"),
     );

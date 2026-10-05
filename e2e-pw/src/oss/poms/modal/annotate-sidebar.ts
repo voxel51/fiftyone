@@ -101,17 +101,6 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Wait until every annotation edit has been persisted (no pending deltas,
-   * no in-flight patch). Call this before handing off to a fresh load (or
-   * ending a test whose edits a sibling depends on); a navigation that lands
-   * earlier destroys the pending save.
-   */
-  async waitForSavesSettled() {
-    // every autosave tick ends in this event once nothing is left to save
-    await this.eventUtils.next("annotation:persistenceSettled");
-  }
-
-  /**
    * Run `action` and resolve once the edit it makes has been written and
    * nothing is left to save: the write is the edit's cause-signal, and the
    * settled pass after it proves no later edit is still pending.

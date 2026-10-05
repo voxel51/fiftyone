@@ -347,16 +347,17 @@ test.describe("polyline track deletion on video", () => {
     // Backspace reads as "delete the track", not "remove a vertex"
     await clickOverlay(modal, id);
 
-    // received only if the first press deleted the track
-    await modal.videoAnnotate.afterTracksChange(() =>
-      modal.eventUtils.after(
-        "lighter:overlay-removed",
-        () => page.keyboard.press("Backspace"),
-        ofOverlay(id),
+    // received only if the first press deleted the track; the delete
+    // flushes before the test ends
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.videoAnnotate.afterTracksChange(() =>
+        modal.eventUtils.after(
+          "lighter:overlay-removed",
+          () => page.keyboard.press("Backspace"),
+          ofOverlay(id),
+        ),
       ),
     );
     await modal.videoAnnotate.assert.objectTrackCount(1);
-    // the delete flushes before the test ends
-    await modal.sidebar.annotate.waitForSavesSettled();
   });
 });

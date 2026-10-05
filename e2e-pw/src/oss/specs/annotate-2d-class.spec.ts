@@ -91,22 +91,25 @@ test.describe.serial("2D label class editing", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "cat");
     await modal.sidebar.edit.assert.undoIsEnabled(false);
 
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    // each step is saved before the next, so every step differs from the
+    // stored class and writes; unsaved steps that net back to the stored
+    // class would write nothing
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
     await modal.sidebar.edit.assert.undoIsEnabled();
 
-    await modal.sidebar.edit.undo();
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "cat");
 
-    await modal.sidebar.edit.redo();
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
 
-    // leave the seeded box at its baseline class for sibling tests — and
-    // wait for the trailing undo's autosave to land, or the next test's
-    // navigation destroys the pending save and the baseline never persists
-    await modal.sidebar.edit.undo();
+    // leave the seeded box at its baseline class for sibling tests; the next
+    // test's navigation would destroy an unsaved undo
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "cat");
-    await modal.sidebar.annotate.waitForSavesSettled();
   });
 
   test("a class change persists across a fresh load", async ({
@@ -116,9 +119,10 @@ test.describe.serial("2D label class editing", () => {
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the box is now a "dog" — select it by its new class in the fresh context
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {

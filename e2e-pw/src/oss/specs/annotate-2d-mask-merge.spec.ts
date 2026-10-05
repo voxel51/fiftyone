@@ -74,7 +74,8 @@ test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
     modalSample: "loaded",
   });
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  // the merge clicks land on the Lighter canvas, hidden until it reveals
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 });
 
 const inFreshContext = async (
@@ -116,10 +117,11 @@ test.describe.serial("2D annotation mask merge", () => {
     await modal.sampleCanvas.move(0.24, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.move(0.69, 0.5);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.up();
-    await modal.sidebar.annotate.waitForSavesSettled();
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas.move(0.69, 0.5);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.up();
+    });
 
     // The source detection is absorbed + deleted → one label remains, persisted.
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
@@ -139,16 +141,16 @@ test.describe.serial("2D annotation mask merge", () => {
     await modal.sampleCanvas.move(0.24, 0.5);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.move(0.69, 0.5);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.up();
-    await modal.sidebar.annotate.waitForSavesSettled();
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas.move(0.69, 0.5);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.up();
+    });
 
     // The target bbox + async mask re-encode + source delete coalesce under one
     // gestureId, so a SINGLE undo fully restores the source.
     await modal.sidebar.edit.assert.undoIsEnabled();
-    await modal.sidebar.edit.undo();
-    await modal.sidebar.annotate.waitForSavesSettled();
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
     await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(2);

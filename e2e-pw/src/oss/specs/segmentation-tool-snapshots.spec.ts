@@ -138,9 +138,9 @@ test.describe.serial("segmentation tool snapshots", () => {
     await modal.sampleCanvas.click(0.6, 0.4);
     await modal.sampleCanvas.click(0.6, 0.6);
     await modal.sampleCanvas.click(0.4, 0.6);
-    await modal.sampleCanvas.rightClick(0.5, 0.5);
-
-    await modal.sidebar.annotate.waitForSavesSettled();
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.rightClick(0.5, 0.5),
+    );
 
     // The commit right-click deselects the polygon and returns to the list.
     await modal.sidebar.edit.assert.isClosed();
@@ -160,9 +160,9 @@ test.describe.serial("segmentation tool snapshots", () => {
 
     // Single diagonal stroke. drag() generates intermediate moves so the
     // brush dabs continuously instead of only at the endpoints.
-    await modal.sampleCanvas.drag(0.35, 0.4, 0.65, 0.6);
-
-    await modal.sidebar.annotate.waitForSavesSettled();
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.35, 0.4, 0.65, 0.6),
+    );
 
     // A stroke leaves its new mask selected with the edit form open — unlike
     // pen and AI, the brush has no commit gesture that deselects.
@@ -230,9 +230,9 @@ test.describe.serial("segmentation tool snapshots", () => {
       // Click the first detection to set as merge target, then the second
       // detection to merge into the target.
       await modal.sampleCanvas.click(0.35, 0.5);
-      await modal.sampleCanvas.click(0.65, 0.5);
-
-      await modal.sidebar.annotate.waitForSavesSettled();
+      await modal.sidebar.annotate.afterSave(() =>
+        modal.sampleCanvas.click(0.65, 0.5),
+      );
 
       // The merge selects its target once the source delete lands, so the
       // union is on screen as a selected, masked detection.

@@ -99,15 +99,18 @@ const reopenSample = async (
   await modal.assert.isOpen();
 };
 
-/** Draw the single-vertex polyline and class it `lane`. */
-const drawAndClass = async (modal: ModalPom) => {
+/** Draw the single-vertex polyline, which takes the class `lane`. */
+const drawVertex = async (modal: ModalPom) => {
   await modal.sidebar.annotate.polylineMode();
   // the toolbar toggle installs the creation handler via an effect, so gate
   // the click on its crosshair — with exactly one click, a swallowed click
   // has no later vertex to self-heal on
   await modal.sampleCanvas.move(...VERTEX, "crosshair");
-  await modal.sampleCanvas.click(...VERTEX);
-  await modal.sidebar.edit.selectFieldChoice("label", "lane");
+  // a new polyline takes the field's first class, so the draw's own save
+  // carries "lane"
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sampleCanvas.click(...VERTEX),
+  );
   await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
 };
 
@@ -117,8 +120,7 @@ test("a single vertex persists on the first click", async ({
   page,
 }) => {
   await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.persist);
-  await drawAndClass(modal);
-  await modal.sidebar.annotate.waitForSavesSettled();
+  await drawVertex(modal);
 
   // true round-trip: re-navigating reloads the page, so the app rebuilds from
   // the server and the one-vertex label reads back. Pre-fix there was no
@@ -135,8 +137,7 @@ test("Backspace on the lone vertex deletes the label", async ({
   page,
 }) => {
   await openSample(fiftyoneLoader, page, modal, SAMPLE_IDS.delete);
-  await drawAndClass(modal);
-  await modal.sidebar.annotate.waitForSavesSettled();
+  await drawVertex(modal);
 
   // clicking the vertex is a point hit — it sub-selects the lone point, the
   // exact state where Backspace previously deferred to vertex removal. The
@@ -147,9 +148,10 @@ test("Backspace on the lone vertex deletes the label", async ({
   // a vertex — Backspace then removes that vertex instead of the label.
   await modal.sampleCanvas.move(...VERTEX, "grab");
   await modal.sampleCanvas.click(...VERTEX);
-  await page.keyboard.press("Backspace");
+  // the delete flushes before the test ends
+  await modal.sidebar.annotate.afterSave(() =>
+    page.keyboard.press("Backspace"),
+  );
 
   await modal.sidebar.annotate.assert.hasActiveLabelsCount(0);
-  // the delete flushes before the test ends
-  await modal.sidebar.annotate.waitForSavesSettled();
 });

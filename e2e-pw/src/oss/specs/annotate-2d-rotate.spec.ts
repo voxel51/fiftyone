@@ -139,12 +139,13 @@ test.describe("2D rotated bounding boxes", () => {
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    await modal.sidebar.edit.setFieldValue("rotation.rotation", TYPED_ROTATION);
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("rotation.rotation", TYPED_ROTATION),
+    );
     await modal.sidebar.edit.assert.hasFieldValue(
       "rotation.rotation",
       TYPED_ROTATION,
     );
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     await inFreshContext(
       browser,
@@ -168,9 +169,10 @@ test.describe("2D rotated bounding boxes", () => {
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
-    await modal.sidebar.edit.setFieldValue("rotation.rotation", "0");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("rotation.rotation", "0"),
+    );
     await modal.sidebar.edit.assert.hasFieldValue("rotation.rotation", "0");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     await inFreshContext(
       browser,
@@ -194,9 +196,10 @@ test.describe("2D rotated bounding boxes", () => {
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("dog", 0);
 
-    await modal.sidebar.edit.setFieldValue("position.x", "0.123");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.123"),
+    );
     await modal.sidebar.edit.assert.hasFieldValue("position.x", "0.123");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the form shows 0 for an absent attribute; that the geometry edit never
     // STAMPS `rotation` onto the box is pinned by the detectionAdapter tests
