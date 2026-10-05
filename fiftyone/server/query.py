@@ -464,9 +464,6 @@ class AppConfig:
     multicolor_keypoints: bool
     notebook_height: int
     plugins: t.Optional[JSON]
-    show_confidence: bool
-    show_index: bool
-    show_label: bool
     show_skeletons: bool
     show_tooltip: bool
     theme: Theme

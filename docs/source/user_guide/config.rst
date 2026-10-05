@@ -797,15 +797,6 @@ The FiftyOne App can be configured in the ways described below:
 | `proxy_url`                | `FIFTYONE_APP_PROXY_URL`                | `None`        | A URL string to override the default server URL. Useful for configuring the session        |
 |                            |                                         |               | through a reverse proxy in notebook environments.                                          |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_confidence`          | `FIFTYONE_APP_SHOW_CONFIDENCE`          | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
-|                            |                                         |               | App's sidebar.                                                                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_index`               | `FIFTYONE_APP_SHOW_INDEX`               | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
-|                            |                                         |               | App's sidebar.                                                                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_label`               | `FIFTYONE_APP_SHOW_LABEL`               | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
-|                            |                                         |               | App's sidebar.                                                                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `show_skeletons`           | `FIFTYONE_APP_SHOW_SKELETONS`           | `True`        | Whether to show keypoint skeletons, if available.                                          |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `show_tooltip`             | `FIFTYONE_APP_SHOW_TOOLTIP`             | `True`        | Whether to show the tooltip when hovering over labels in the App's expanded sample view.   |
@@ -867,9 +858,6 @@ You can print your App config at any time via the Python library and the CLI:
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
-            "show_confidence": true,
-            "show_index": true,
-            "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
             "sidebar_mode": "fast",
@@ -918,9 +906,6 @@ You can print your App config at any time via the Python library and the CLI:
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
-            "show_confidence": true,
-            "show_index": true,
-            "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
             "sidebar_mode": "fast",
@@ -1035,8 +1020,8 @@ issuing the following commands prior to launching your Python interpreter:
 
 .. code-block:: shell
 
-    export FIFTYONE_APP_SHOW_CONFIDENCE=false
-    export FIFTYONE_APP_SHOW_LABEL=false
+    export FIFTYONE_APP_SHOW_SKELETONS=false
+    export FIFTYONE_APP_LOOP_VIDEOS=true
 
 Modifying your App config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

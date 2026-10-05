@@ -562,8 +562,8 @@ class Session(object):
 
             dataset, session = fo.quickstart()
 
-            # change the show confidence setting and push the change to the App
-            session.config.show_confidence = False
+            # change the show skeletons setting and push the change to the App
+            session.config.show_skeletons = False
             session.refresh()
         """
         return self._state.config
