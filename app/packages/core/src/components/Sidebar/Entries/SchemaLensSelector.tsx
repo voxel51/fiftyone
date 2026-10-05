@@ -24,6 +24,7 @@
 import { useOperatorAvailability } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import {
+  cssVar,
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
@@ -94,11 +95,11 @@ const LensItem = styled(MenuCheckItem)`
   justify-content: space-between;
 
   &[aria-checked="true"] {
-    background-color: var(--color-content-bg-selected);
+    background-color: ${cssVar.color.bg.selected};
   }
 
   &[aria-checked="true"] svg {
-    color: var(--color-brand-primary);
+    color: ${cssVar.color.brand.primary};
   }
 `;
 

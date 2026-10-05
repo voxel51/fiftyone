@@ -434,11 +434,12 @@ export const inactiveLabelSchemas = atom((get) => {
   // Doc mode: the contract is closed — no add-field surface.
   if (get(taskLabelSchemaDoc)) return [];
   const policy = get(taskSchemaPolicy);
+  const active = new Set(get(activeLabelSchemas) ?? []);
   return Object.keys(get(labelSchemasData) ?? {})
     .sort()
     .filter(
       (field) =>
-        !(get(activeLabelSchemas) ?? []).includes(field) &&
+        !active.has(field) &&
         // Policy-hidden fields can't be surfaced via "add field" either.
         policyFieldAccess(policy, field) !== "hidden",
     );

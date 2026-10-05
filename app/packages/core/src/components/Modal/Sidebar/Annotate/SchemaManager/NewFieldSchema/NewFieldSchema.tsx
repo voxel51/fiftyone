@@ -314,15 +314,21 @@ const NewFieldSchema = () => {
           contentEntry,
           selectedDocId ?? null,
         );
-        if (selectedDocId) {
-          setLoadedDoc(await schemaDocs.getDoc(selectedDocId));
-        }
       } catch (err) {
         console.error("Failed to propagate the new field to schemas:", err);
         notify({
           msg: "Field created, but adding it to some schemas failed",
           variant: "error",
         });
+      }
+
+      if (selectedDocId) {
+        try {
+          setLoadedDoc(await schemaDocs.getDoc(selectedDocId));
+        } catch (err) {
+          // The schema is saved; the editor shows it again once reloaded
+          console.error("Failed to reload the schema:", err);
+        }
       }
 
       const { active_label_schemas, label_schemas } = await listSchemas({});

@@ -48,7 +48,8 @@ const Row = styled.div`
   &:hover {
     background: ${({ theme }) => theme.background.level1};
   }
-  &:hover .scan-action {
+  &:hover .scan-action,
+  &:focus-within .scan-action {
     opacity: 1;
   }
 `;

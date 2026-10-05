@@ -24,11 +24,6 @@ export type LocationState<T extends OperationType = OperationType> = {
    * cleared by view changes, not user-editable.
    */
   schemaExclusion?: string[];
-  /**
-   * Identity of the governing schema (lens/default doc id, or "task").
-   * Changing it forces a hard page-query reload even when the
-   * exclusion list is unchanged — schema switches always refetch.
-   */
   groupSlice?: string;
   modalSelector?: ModalSelector;
   savedViewSlug?: string;

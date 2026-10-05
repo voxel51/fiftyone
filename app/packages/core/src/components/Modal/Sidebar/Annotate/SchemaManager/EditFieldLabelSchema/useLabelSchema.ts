@@ -8,7 +8,7 @@ import {
 } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { isEqual } from "lodash";
+import { isEqual, omit } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   activeLabelSchemas,
@@ -129,12 +129,14 @@ const useVisibility = (field: string) => {
   const [pending, setPending] = useState<SchemaDocTier | null>(null);
   const [attributeTiers, setAttributeTiers] = useAtom(pendingAttributeTiers);
 
-  // Doc mode: the field's tier in THIS schema (annotate or hidden — a
-  // set-up field is never explore-only). The dataset default cannot
-  // hide, so its fields are always annotate.
-  const savedTier: SchemaDocTier = docMode
-    ? (docFieldTier(docMode.doc, field) as SchemaDocTier)
-    : "annotate";
+  // Doc mode: the field's tier in THIS schema, annotate or hidden — a
+  // set-up field is never explore-only, and saving makes it annotate
+  // (see useSave). The dataset default cannot hide, so its fields are
+  // always annotate.
+  const savedTier: SchemaDocTier =
+    docMode && docFieldTier(docMode.doc, field) === "hidden"
+      ? "hidden"
+      : "annotate";
   const fieldTier = pending ?? savedTier;
   const visibilityChanged = pending !== null && pending !== savedTier;
 
@@ -251,7 +253,13 @@ const useSavedLabelSchema = (field: string) => {
   return [
     data?.label_schema,
     (labelSchema: unknown) => {
-      setAtom({ ...(raw ?? data), label_schema: labelSchema });
+      // A field with no raw entry (it is only in an open or task schema
+      // doc) starts from the effective one without the policy stamps
+      const base = raw ?? {
+        ...omit(data, "bbox_read_only"),
+        read_only: false,
+      };
+      setAtom({ ...base, label_schema: labelSchema });
     },
   ] as const;
 };

@@ -278,8 +278,10 @@ const SchemaOverview = () => {
       } else if (naming === "rename") {
         const target = renameId ?? doc?.id;
         if (!target) return;
-        await api.updateDoc(target, { name });
-        if (doc?.id === target) setDoc({ ...doc, name });
+        // Adopt the saved doc: a rename bumps its version, and the next
+        // save must send the new one
+        const saved = await api.updateDoc(target, { name });
+        if (selectedIdRef.current === saved.id) setDoc(saved);
         await refreshDocs();
       }
       setNaming(null);
