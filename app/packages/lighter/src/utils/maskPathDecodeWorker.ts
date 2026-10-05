@@ -10,6 +10,10 @@
 
 import type { Coloring } from "@fiftyone/looker";
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
+
+// This module runs as a dedicated worker; the app compiles with the DOM lib,
+// whose `self` is the Window.
+declare const self: DedicatedWorkerGlobalScope;
 import { decodeMaskOnDisk } from "@fiftyone/looker/src/worker/mask-decoder";
 
 interface DecodeRequest {
@@ -63,7 +67,7 @@ const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
       ok: false,
       error: `invalid url: ${String(url)}`,
     };
-    (self as DedicatedWorkerGlobalScope).postMessage(payload);
+    self.postMessage(payload);
     return;
   }
 
@@ -76,7 +80,7 @@ const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
         error: `fetch ${url} → HTTP ${response.status}`,
       };
 
-      (self as DedicatedWorkerGlobalScope).postMessage(payload);
+      self.postMessage(payload);
       return;
     }
     const blob = await response.blob();
@@ -89,13 +93,13 @@ const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
         error: "decodeMaskOnDisk returned no mask",
       };
 
-      (self as DedicatedWorkerGlobalScope).postMessage(payload);
+      self.postMessage(payload);
       return;
     }
 
     const payload: DecodeSuccess = { uuid, ok: true, mask };
 
-    (self as DedicatedWorkerGlobalScope).postMessage(payload, [mask.buffer]);
+    self.postMessage(payload, [mask.buffer]);
   } catch (err) {
     const payload: DecodeFailure = {
       uuid,
@@ -103,7 +107,7 @@ const handleMessage = async (event: MessageEvent<DecodeRequest>) => {
       error: err instanceof Error ? err.message : String(err),
     };
 
-    (self as DedicatedWorkerGlobalScope).postMessage(payload);
+    self.postMessage(payload);
   }
 };
 

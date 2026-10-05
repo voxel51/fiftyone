@@ -82,7 +82,7 @@ export function getLabelColorFromContext(
       valueColors: field.valueColors ? [...field.valueColors] : undefined,
     }),
   );
-  const embeddedDocType = typedLabel["_cls"];
+  const embeddedDocType = typedLabel["_cls"] as string;
   const isPolyline3D =
     "points3d" in typedLabel &&
     Array.isArray(typedLabel["points3d"]) &&

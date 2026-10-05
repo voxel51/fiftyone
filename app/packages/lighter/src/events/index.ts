@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { Undoable } from "@fiftyone/commands";
+import type { Action } from "@fiftyone/commands";
 import type { SceneOptions } from "../core/SceneConfig";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -71,7 +71,7 @@ export type LighterEventGroup = {
   "lighter:command-executed": {
     commandId: string;
     isUndoable: boolean;
-    command: Undoable;
+    command: Action;
   };
   /** Emitted when a command is undone (reversed) */
   "lighter:undo": { commandId: string };

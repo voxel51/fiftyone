@@ -399,6 +399,12 @@ export abstract class BaseOverlay<
   onDoubleClick?(point: Point, event: PointerEvent): boolean;
 
   /**
+   * Re-creates resources released on destroy (e.g. a mask canvas) when the
+   * overlay is re-added to a scene. Optional.
+   */
+  rehydrateMask?(): void;
+
+  /**
    * Updates the field for this overlay.
    * @param field - The new field.
    */

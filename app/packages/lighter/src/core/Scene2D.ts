@@ -70,9 +70,9 @@ export const TypeGuards = {
   ): body is BaseOverlay & InteractionHandler & Selectable =>
     "id" in body && "isSelected" in body && "setSelected" in body,
 
-  isSpatial: (
-    body: BaseOverlay | InteractionHandler,
-  ): body is BaseOverlay & Spatial => "bounds" in body,
+  isSpatial: <T extends BaseOverlay | InteractionHandler>(
+    body: T,
+  ): body is T & Spatial => "bounds" in body,
 
   isRotatable: (
     body: BaseOverlay | InteractionHandler,

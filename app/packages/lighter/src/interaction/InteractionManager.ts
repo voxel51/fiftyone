@@ -167,6 +167,8 @@ export interface InteractionHandler {
   getRotation?(): number;
   /** Returns the overlay associated with the manager. */
   getOverlay?(): BaseOverlay | undefined;
+  /** Clears the overlay an interactive creation handler is building. */
+  resetOverlay?(): void;
   /** Called when a pointer-down occurs on this handler. */
   onPointerDown?(params: OverlayEvent): boolean;
   /** Called on pointer-move while this handler is active. */
@@ -1050,7 +1052,9 @@ export class InteractionManager {
           // ON the rotate handle) and a meaningful angle change can ride on a
           // sub-threshold pointer move, so it finalizes outside the spatial
           // drag gate — on any real angular delta instead.
-          const rotation = handler.getRotation?.() ?? 0;
+          const rotation = TypeGuards.isRotatable(handler)
+            ? handler.getRotation()
+            : 0;
           if (Math.abs((startRotation ?? 0) - rotation) > 1e-4) {
             this.eventBus.dispatch("lighter:overlay-rotate-end", {
               id: handler.id,
@@ -1310,14 +1314,19 @@ export class InteractionManager {
       const tool = segmentationModeBridge.getActiveTool();
 
       // Pen tool with an in-progress polygon: commit it
-      if (tool === SegmentationTool.Pen && handler?.hasPenPolygon?.()) {
+      // Only DetectionOverlay supports pen polygons.
+      if (
+        tool === SegmentationTool.Pen &&
+        handler instanceof DetectionOverlay &&
+        handler.hasPenPolygon()
+      ) {
         const segmentationToolState =
           segmentationModeBridge.getToolState(scale);
 
         // Read before commit: an overlay with no valid bounds yet is a
         // brand-new track whose first polygon establishes it. `commitPenPolygon`
         // fills the bounds, so this signal must be captured beforehand.
-        const establishingNewTrack = !handler.hasValidBounds?.();
+        const establishingNewTrack = !handler.hasValidBounds();
 
         handler.commitPenPolygon({
           point,
@@ -1339,10 +1348,10 @@ export class InteractionManager {
           // track's first polygon still needs `overlay-establish` to fire
           // (it's the only signal video annotation fans the track across frames
           // on). Re-emit it here for that first polygon.
-          if (establishingNewTrack && handler.hasValidBounds?.()) {
+          if (establishingNewTrack && handler.hasValidBounds()) {
             this.eventBus.dispatch("lighter:overlay-establish", {
               id: handler.id,
-              overlayId: handler.overlay?.id ?? handler.id,
+              overlayId: handler.id,
               handler: interactiveHandler,
               startBounds: handler.bounds,
               startPosition: { x: handler.bounds.x, y: handler.bounds.y },
@@ -1357,7 +1366,7 @@ export class InteractionManager {
           this.eventBus.dispatch("lighter:overlay-establish", {
             id: handler.id,
             // `handler` is the freshly-created overlay here (see above).
-            overlayId: handler.overlay?.id ?? handler.id,
+            overlayId: handler.id,
             handler: interactiveHandler,
             startBounds: handler.bounds,
             startPosition: { x: handler.bounds.x, y: handler.bounds.y },
@@ -1384,7 +1393,7 @@ export class InteractionManager {
           // the finalize handler re-arms a fresh session (deactivate→activate).
           // The re-armed keypoint overlay is non-selectable, so the tier 2
           // deselect below only ever closes the committed detection.
-          interactiveHandler.resetOverlay();
+          interactiveHandler.resetOverlay?.();
           this.removeHandler(interactiveHandler);
 
           this.eventBus.dispatch("lighter:point-selection-finalize", {

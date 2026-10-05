@@ -17,10 +17,7 @@ import type { Rect, Spatial } from "../types";
 function isInteractiveHandler(
   overlay: BaseOverlay | InteractionHandler,
 ): overlay is InteractionHandler & { getOverlay(): BaseOverlay } {
-  return (
-    "getOverlay" in overlay &&
-    typeof (overlay as Record<string, unknown>).getOverlay === "function"
-  );
+  return "getOverlay" in overlay && typeof overlay.getOverlay === "function";
 }
 
 /**

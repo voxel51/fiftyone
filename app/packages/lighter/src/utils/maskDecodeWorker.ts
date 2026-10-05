@@ -13,6 +13,10 @@ import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
 import { decodeMaskToRaster } from "./maskRaster";
 
+// This module runs as a dedicated worker; the app compiles with the DOM lib,
+// whose `self` is the Window.
+declare const self: DedicatedWorkerGlobalScope;
+
 export interface MaskDecodeRequest {
   uuid: string;
   maskData: string | OverlayMask;
@@ -46,7 +50,7 @@ const isWorkerScope = (): boolean => {
 
 const handleMessage = async (event: MessageEvent<MaskDecodeRequest>) => {
   const { uuid, maskData } = event.data;
-  const post = (self as DedicatedWorkerGlobalScope).postMessage.bind(self);
+  const post = self.postMessage.bind(self);
 
   try {
     const { rgba, width, height, rawPixels } = decodeMaskToRaster(maskData);
