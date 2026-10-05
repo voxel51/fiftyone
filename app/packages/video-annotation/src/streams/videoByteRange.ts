@@ -125,11 +125,11 @@ const RANGE_REQUIRED =
 
 /**
  * Fetches byte ranges of the source video through a {@link ByteRangeCache}.
- * Only a `206` answer is usable. Any other answer, or a request that fails
- * outright (network, CORS preflight), fails the fetch, and the failure sticks:
- * later fetches throw it without going back to the network, since chunks fetch
- * concurrently and a server that ignores `Range` sends each of them the whole
- * file.
+ * Only a `206` answer is usable. Any other answer fails the fetch, and that
+ * failure sticks: later fetches throw it without going back to the network,
+ * since chunks fetch concurrently and a server that ignores `Range` sends each
+ * of them the whole file. A request that fails outright (network, CORS
+ * preflight) fails only that fetch.
  */
 export class RangeFetcher {
   private failure: Error | null = null;
@@ -153,7 +153,11 @@ export class RangeFetcher {
     try {
       resp = await this.request(range);
     } catch (error) {
-      throw this.fail(`video range request failed (${String(error)})`);
+      // Not latched: a dropped request may succeed on retry, and a CORS
+      // rejection costs a preflight, not a download
+      throw new Error(
+        `video range request failed (${String(error)}): ${RANGE_REQUIRED}`,
+      );
     }
 
     const kind = classifyRangeResponse(resp.status);

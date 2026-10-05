@@ -169,17 +169,18 @@ describe("RangeFetcher", () => {
     await expect(ranges.fetch(RANGE)).rejects.toThrow(/HTTP 416/);
   });
 
-  it("fails when the request itself fails, and fails fast after", async () => {
-    const request = vi.fn(async () => {
-      throw new TypeError("Failed to fetch");
-    });
+  it("fails when the request itself fails, and tries again on the next fetch", async () => {
+    const request = vi
+      .fn<(range: ByteRange) => Promise<unknown>>()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(response(206, "bytes 100-109/500"));
     const ranges = fetcher(request);
 
     await expect(ranges.fetch(RANGE)).rejects.toThrow(
       /Failed to fetch.*must support HTTP range requests/,
     );
-    await expect(ranges.fetch(RANGE)).rejects.toThrow();
-    expect(request).toHaveBeenCalledTimes(1);
+    expect((await ranges.fetch(RANGE)).fileStart).toBe(100);
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });
 
