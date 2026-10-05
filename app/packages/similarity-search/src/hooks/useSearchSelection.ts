@@ -20,7 +20,7 @@ export const useSearchSelection = () => {
 
   const queryIds = useMemo(() => {
     if (selectedLabels && selectedLabels.length > 0) {
-      return selectedLabels.map((l: { label_id: string }) => l.label_id);
+      return selectedLabels.map((l) => l.labelId);
     }
     if (selectedSamples && selectedSamples.size > 0) {
       // Only include "default" (positive) selections as query IDs
