@@ -479,3 +479,65 @@ export interface PointCloudSpriteTslFacade {
   uv(): PointCloudSpriteNode;
   vec4(color: TSL.Node, alpha: number): TSL.Node;
 }
+
+/** Chainable node operations used by point-cloud compute culling. */
+export interface PointCloudComputeNode extends PointCloudChannelNode {
+  readonly w: PointCloudComputeNode;
+  readonly x: PointCloudComputeNode;
+  readonly xy: PointCloudComputeNode;
+  readonly xyz: PointCloudComputeNode;
+  readonly y: PointCloudComputeNode;
+  readonly z: PointCloudComputeNode;
+  abs(): PointCloudComputeNode;
+  add(value: TSL.Node | number): PointCloudComputeNode;
+  assign(value: TSL.Node | number): void;
+  div(value: TSL.Node | number): PointCloudComputeNode;
+  equal(value: TSL.Node | number): PointCloudComputeNode;
+  greaterThan(value: TSL.Node | number): PointCloudComputeNode;
+  lessThan(value: TSL.Node | number): PointCloudComputeNode;
+  lessThanEqual(value: TSL.Node | number): PointCloudComputeNode;
+  mod(value: TSL.Node | number): PointCloudComputeNode;
+  mul(value: TSL.Node | number): PointCloudComputeNode;
+  sub(value: TSL.Node | number): PointCloudComputeNode;
+}
+
+/** Mutable compute-cull uniform retaining its typed JavaScript value. */
+export interface PointCloudComputeUniformNode<T> extends PointCloudComputeNode {
+  value: T;
+}
+
+/** Storage binding read/written by point-cloud compute culling. */
+export interface PointCloudComputeStorageNode {
+  element(index: TSL.Node): PointCloudComputeNode;
+  toAtomic(): PointCloudComputeStorageNode;
+  toReadOnly(): PointCloudComputeStorageNode;
+}
+
+/** TSL namespace subset used by point-cloud compute culling. */
+export interface PointCloudComputeTslFacade {
+  Fn(callback: () => void): () => TSL.ComputeKernelCallNode;
+  If(condition: TSL.Node, body: () => void): unknown;
+  and(...conditions: readonly TSL.Node[]): PointCloudComputeNode;
+  atomicAdd(pointer: TSL.Node, value: TSL.Node | number): PointCloudComputeNode;
+  atomicLoad(pointer: TSL.Node): PointCloudComputeNode;
+  atomicMin(pointer: TSL.Node, value: TSL.Node | number): PointCloudComputeNode;
+  atomicStore(pointer: TSL.Node, value: TSL.Node | number): unknown;
+  clamp(
+    value: TSL.Node,
+    min: TSL.Node | number,
+    max: TSL.Node | number,
+  ): PointCloudComputeNode;
+  floor(value: TSL.Node | number): TSL.Node;
+  readonly instanceIndex: TSL.Node;
+  min(a: TSL.Node | number, b: TSL.Node | number): PointCloudComputeNode;
+  storage(
+    attribute: THREE.BufferAttribute,
+    type: "uint",
+    count: number,
+  ): PointCloudComputeStorageNode;
+  uint(value: TSL.Node | number): PointCloudComputeNode;
+  uniform<T extends number | THREE.Matrix4 | THREE.Vector2>(
+    value: T,
+  ): PointCloudComputeUniformNode<T>;
+  vec4(...values: readonly (TSL.Node | number)[]): PointCloudComputeNode;
+}
