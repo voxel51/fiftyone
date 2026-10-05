@@ -83,8 +83,6 @@ export const decodeOverlayOnDisk = async (
       decoded.bitmap = null;
 
       decoded.image = new ArrayBuffer(height * width * 4);
-      decoded.bitmap.close();
-      decoded.bitmap = null;
     }
     // nothing to be done
     return;
