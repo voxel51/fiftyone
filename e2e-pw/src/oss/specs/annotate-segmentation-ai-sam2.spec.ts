@@ -4,9 +4,8 @@
  * AI-assisted segmentation (SAM2) round-trip: pick the AI tool, place a
  * positive point, let the mocked worker return a deterministic mask, await its
  * autosave, and verify from a fresh browser context that the persisted
- * detection renders a non-empty mask. The worker is swapped in through the
- * `window.__FO_TEST_SAM2_WORKER_FACTORY` seam, so no weights download and no
- * inference runs.
+ * detection renders a non-empty mask. The mock is served in place of the
+ * worker script, so no weights download and no inference runs.
  */
 
 import { expect, test as base } from "src/oss/fixtures";
