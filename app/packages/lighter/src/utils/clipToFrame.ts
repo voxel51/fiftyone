@@ -105,16 +105,15 @@ const samePoint = (a: RelativePoint, b: RelativePoint) =>
   a[0] === b[0] && a[1] === b[1];
 
 /**
- * Clips an open path to the frame. A path that leaves and re-enters the frame
- * splits into one path per inside run.
+ * Clips an open path to the frame. Where the path leaves and re-enters, the
+ * exit and entry points are joined so the path stays one connected shape.
  */
 const clipOpenPath = (path: RelativePoint[]): RelativePoint[][] => {
   if (path.length === 1) {
     return isInside(path[0]) ? [path] : [];
   }
 
-  const runs: RelativePoint[][] = [];
-  let run: RelativePoint[] = [];
+  const result: RelativePoint[] = [];
 
   for (let i = 0; i < path.length - 1; i++) {
     const clipped = clipSegment(path[i], path[i + 1]);
@@ -123,34 +122,16 @@ const clipOpenPath = (path: RelativePoint[]): RelativePoint[][] => {
       continue;
     }
 
-    const [start, end] = clipped;
-    const last = run[run.length - 1];
+    for (const point of clipped) {
+      const last = result[result.length - 1];
 
-    if (!last || !samePoint(last, start)) {
-      if (run.length > 1) {
-        runs.push(run);
+      if (!last || !samePoint(last, point)) {
+        result.push(point);
       }
-      run = [start];
-    }
-
-    if (!samePoint(start, end)) {
-      run.push(end);
-    }
-
-    // the segment exits the frame, so the run ends here
-    if (!samePoint(end, path[i + 1])) {
-      if (run.length > 1) {
-        runs.push(run);
-      }
-      run = [];
     }
   }
 
-  if (run.length > 1) {
-    runs.push(run);
-  }
-
-  return runs;
+  return result.length > 1 ? [result] : [];
 };
 
 const clipClosedPath = (path: RelativePoint[]): RelativePoint[][] => {

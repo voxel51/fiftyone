@@ -93,7 +93,7 @@ describe("clipPolylineToFrame", () => {
     ]);
   });
 
-  test("splits an open path that leaves and re-enters the frame", () => {
+  test("joins an open path that leaves and re-enters the frame", () => {
     expect(
       clipPolylineToFrame(
         [
@@ -110,10 +110,31 @@ describe("clipPolylineToFrame", () => {
       [
         [0.5, 0.25],
         [1, 0.25],
-      ],
-      [
         [1, 0.75],
         [0.5, 0.75],
+      ],
+    ]);
+  });
+
+  test("joins exit and entry points on different edges", () => {
+    expect(
+      clipPolylineToFrame(
+        [
+          [
+            [0.5, 0.5],
+            [1.5, 0.5],
+            [1.5, -0.5],
+            [0.25, 0.25],
+          ],
+        ],
+        false,
+      ),
+    ).toEqual([
+      [
+        [0.5, 0.5],
+        [1, 0.5],
+        [1.5 + (-0.5 / -0.75) * -1.25, 0],
+        [0.25, 0.25],
       ],
     ]);
   });
