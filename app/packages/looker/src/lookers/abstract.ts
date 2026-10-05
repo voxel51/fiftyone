@@ -347,8 +347,10 @@ export abstract class AbstractLooker<
     }
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
-        // @ts-ignore
-        new detail.constructor(detail.type, detail),
+        new (detail.constructor as new (type: string, init: Event) => Event)(
+          detail.type,
+          detail,
+        ),
       );
       return;
     }
@@ -1060,7 +1062,7 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   return result;
 };
 
-const f = <T extends {}>({
+const f = <T extends object>({
   schema,
   filter,
   value,

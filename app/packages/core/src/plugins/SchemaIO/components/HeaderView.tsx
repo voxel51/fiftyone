@@ -3,10 +3,10 @@ import Header from "./Header";
 import { getErrorsForView } from "../utils";
 
 export default function HeaderView(props) {
-  const { schema, errors, nested, ...otherProps } = props;
+  const { schema, errors: _errors, nested, ...otherProps } = props;
   const { view = {} } = schema;
   const { componentsProps } = view;
-  const { sx, ...viewWithoutSx } = view;
+  const { sx: _sx, ...viewWithoutSx } = view;
 
   return (
     <Box>

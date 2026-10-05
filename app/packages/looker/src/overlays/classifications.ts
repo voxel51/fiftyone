@@ -338,7 +338,9 @@ export class ClassificationsOverlay<
   getLabelData() {
     return [];
   }
-  updateLabelData() {}
+  updateLabelData() {
+    // classifications have no label data to sync (needsLabelUpdate is false)
+  }
 
   getCls(field: string, state: Readonly<State>) {
     return getCls(field, state.config.fieldSchema);

@@ -431,7 +431,6 @@ const processSample = async ({
         labelTagColors,
         selectedLabelTags,
       },
-      // @ts-ignore
       transferables,
     );
   });
@@ -599,7 +598,6 @@ const getSendChunk =
           range: value.range,
           uuid,
         },
-        // @ts-ignore
         transferables,
       );
     }

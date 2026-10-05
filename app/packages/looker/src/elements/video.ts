@@ -286,7 +286,7 @@ export class SeekBarThumbElement extends BaseElement<
         "--progress",
         `${Math.max(0, value - 0.5)}%`,
       );
-      //@ts-ignore
+      // @ts-expect-error -- the thumb is a div; value is kept as an expando
       this.element.value = value;
     }
 
@@ -376,8 +376,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
       this.element.style.display = "block";
       this.element.style.setProperty("--progress", `${value}%`);
 
-      //@ts-ignore
-      this.element.value = value;
+      this.element.value = String(value);
     } else {
       this.element.style.display = "none";
     }

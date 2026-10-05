@@ -161,8 +161,9 @@ export abstract class CoordinateOverlay<
     return {
       id: this.label.id,
       field: this.field,
-      // @ts-ignore
-      frameNumber: state.frameNumber,
+      // only video and frame states carry a frame number
+      frameNumber: (state as Readonly<State> & { frameNumber?: number })
+        .frameNumber,
       instanceId: this.label.instance?._id,
     };
   }

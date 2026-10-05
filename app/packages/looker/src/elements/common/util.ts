@@ -59,9 +59,11 @@ export const dispatchTooltipEvent = <State extends BaseState>(
       selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
     }
 
-    if (state.frameNumber && detail) {
-      // @ts-ignore
-      detail.frameNumber = state.frameNumber;
+    // only video and frame states carry a frame number
+    const { frameNumber } = state as Readonly<State> & { frameNumber?: number };
+    if (frameNumber && detail) {
+      (detail as typeof detail & { frameNumber?: number }).frameNumber =
+        frameNumber;
     }
     dispatchEvent(
       "tooltip",

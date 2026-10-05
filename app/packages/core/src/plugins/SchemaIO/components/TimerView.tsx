@@ -14,8 +14,12 @@ export type TimerViewParams = {
 class Timer {
   protected _ref: NodeJS.Timeout | null = null;
 
-  start() {}
-  stop() {}
+  start() {
+    // overridden by IntervalTimer / TimeoutTimer
+  }
+  stop() {
+    // overridden by IntervalTimer / TimeoutTimer
+  }
 }
 
 class IntervalTimer extends Timer {

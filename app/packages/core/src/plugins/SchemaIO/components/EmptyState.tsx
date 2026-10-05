@@ -15,7 +15,7 @@ function DefaultComponent(props) {
     <>
       <Typography>No {label} added yet</Typography>
       <Typography variant="body2" color="text.secondary">
-        Click the "Add {label}" button to add an item
+        Click the &quot;Add {label}&quot; button to add an item
       </Typography>
     </>
   );

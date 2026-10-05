@@ -75,8 +75,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     this.element.style.display = "block";
     this.element.style.setProperty("--progress", `${value}%`);
 
-    //@ts-ignore
-    this.element.value = value;
+    this.element.value = String(value);
 
     return this.element;
   }

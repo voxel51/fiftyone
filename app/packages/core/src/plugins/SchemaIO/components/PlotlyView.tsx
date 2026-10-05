@@ -22,7 +22,7 @@ function getIdForTrace(
 ) {
   const { is2DArray = false } = options;
   const { data } = point;
-  const { x, y, z } = data;
+  const { x: _x, y: _y, z: _z } = data;
   if (trace?.ids) {
     if (is2DArray) {
       const [xIdx, yIdx] = point.pointIndex;
@@ -58,7 +58,7 @@ export default function PlotlyView(props: ViewPropsType) {
       let xBinsSize = null;
       for (const p of e.points) {
         const { data, fullData } = p;
-        const { x, y } = data;
+        const { x: _x, y: _y } = data;
         const { type } = fullData;
         if (type === "histogram") {
           xBinsSize = fullData.xbins.size;
@@ -279,8 +279,14 @@ function createPlotlyHandlers(handleEvent: any) {
 
 const EventDataMappers = {
   onClick: ({ points }) => {
-    const { data, fullData, xaxis, yaxis, ...pointdata } = points[0];
-    const { x, y, z, ...metadata } = data;
+    const {
+      data,
+      fullData,
+      xaxis: _xaxis,
+      yaxis: _yaxis,
+      ...pointdata
+    } = points[0];
+    const { x: _x, y: _y, z: _z, ...metadata } = data;
     const result = {
       ...pointdata,
       data: metadata,

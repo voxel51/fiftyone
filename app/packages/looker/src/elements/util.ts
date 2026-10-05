@@ -167,16 +167,14 @@ export function withEvents<
   Base: ElementConstructor<State, Element>,
   addEvents: () => Events<State>,
 ): ElementConstructor<State, Element> {
-  // @ts-ignore
-  class WithElement<State> extends Base {
+  // @ts-expect-error -- TS can't extend a generic ElementConstructor mixin base
+  class WithElement extends Base {
     getEvents(config) {
       const newEvents = super.getEvents(config);
       const events = addEvents();
 
       Object.entries(events).forEach(([eventType, handler]) => {
-        // @ts-ignore
         const parentHandler = newEvents[eventType];
-        // @ts-ignore
         newEvents[eventType] = (args) => {
           parentHandler && parentHandler(args);
           handler && handler(args);
@@ -186,7 +184,7 @@ export function withEvents<
     }
   }
 
-  // @ts-ignore
+  // @ts-expect-error -- the mixin class isn't seen as an ElementConstructor
   return WithElement;
 }
 
