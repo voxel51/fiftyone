@@ -111,11 +111,6 @@ def list_valid_annotation_fields(
             sample_collection,
             sample_collection.get_frame_field_schema(),
             require_app_support,
-            exclude_label_types=(
-                foac.APP_UNSUPPORTED_FRAME_LABEL_TYPES
-                if require_app_support
-                else ()
-            ),
         )
         result |= {f"frames.{field_name}" for field_name in frame_fields}
 
@@ -193,11 +188,7 @@ def _maybe_backfill_field_instances(sample_collection, samples, field):
 
 
 def _valid_annotation_fields(
-    collection,
-    schema,
-    require_app_support,
-    exclude_spatial_labels=False,
-    exclude_label_types=(),
+    collection, schema, require_app_support, exclude_spatial_labels=False
 ):
     result = set()
     for field_name, field in schema.items():
@@ -215,11 +206,6 @@ def _valid_annotation_fields(
 
         if exclude_spatial_labels and issubclass(
             field.document_type, foac.SPATIAL_LABEL_TYPES
-        ):
-            continue
-
-        if exclude_label_types and issubclass(
-            field.document_type, exclude_label_types
         ):
             continue
 

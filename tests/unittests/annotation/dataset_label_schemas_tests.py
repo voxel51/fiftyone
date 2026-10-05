@@ -652,6 +652,7 @@ class FrameLabelSchemaTests(unittest.TestCase):
     @drop_datasets
     def test_frame_level_classifications_not_app_supported(self):
         import fiftyone.core.annotation.utils as foau
+        from plugins.operators.annotation import _list_app_supported_fields
 
         dataset = _make_video_dataset()
         dataset.add_frame_field(
@@ -661,20 +662,67 @@ class FrameLabelSchemaTests(unittest.TestCase):
             "weather", fo.EmbeddedDocumentField, fo.Classification
         )
 
-        valid = foau.list_valid_annotation_fields(
-            dataset, flatten=True, include_frames=True
-        )
         supported = foau.list_valid_annotation_fields(
             dataset,
             require_app_support=True,
             flatten=True,
             include_frames=True,
         )
+        app_supported = _list_app_supported_fields(dataset)
 
         # the SDK can still annotate it; the App can't yet
-        self.assertIn("frames.events", valid)
-        self.assertNotIn("frames.events", supported)
-        self.assertIn("frames.weather", supported)
+        self.assertIn("frames.events", supported)
+        self.assertNotIn("frames.events", app_supported)
+        self.assertIn("frames.weather", app_supported)
+
+        schema = fo.generate_label_schemas(dataset, "frames.events")
+        self.assertEqual(schema["type"], "classifications")
+        self.assertIn("frames.events", fo.generate_label_schemas(dataset))
+
+    @drop_datasets
+    def test_app_reorder_keeps_unsupported_active_fields(self):
+        dataset = _make_video_dataset()
+        dataset.add_frame_field(
+            "events", fo.EmbeddedDocumentField, fo.Classifications
+        )
+        dataset.add_frame_field(
+            "weather", fo.EmbeddedDocumentField, fo.Classification
+        )
+        dataset.set_label_schemas(fo.generate_label_schemas(dataset))
+        dataset.active_label_schemas = [
+            "frames.detections",
+            "frames.events",
+            "frames.weather",
+        ]
+        dataset.save()
+
+        result = _execute_label_schemas_operator(dataset, "get")
+        self.assertEqual(
+            result["active_label_schemas"],
+            ["frames.detections", "frames.weather"],
+        )
+        self.assertTrue(
+            result["label_schemas"]["frames.events"]["unsupported"]
+        )
+
+        _execute_label_schemas_operator(
+            dataset, "set", fields=["frames.weather", "frames.detections"]
+        )
+        dataset.reload()
+        self.assertEqual(
+            dataset.active_label_schemas,
+            ["frames.weather", "frames.events", "frames.detections"],
+        )
+
+        # the App can still deactivate the fields it lists
+        _execute_label_schemas_operator(
+            dataset, "set", fields=["frames.detections"]
+        )
+        dataset.reload()
+        self.assertEqual(
+            dataset.active_label_schemas,
+            ["frames.detections", "frames.events"],
+        )
 
     @drop_datasets
     def test_backfill_instances_from_index(self):
@@ -1059,6 +1107,21 @@ def _execute_generate_label_schemas(dataset, view=None):
         request_params=request_params,
     )
     return GenerateLabelSchemas().execute(ctx)
+
+
+def _execute_label_schemas_operator(dataset, action, **params):
+    from fiftyone.operators.executor import ExecutionContext
+    from plugins.operators.annotation import (
+        GetLabelSchemas,
+        SetActiveLabelSchemas,
+    )
+
+    operator = {"get": GetLabelSchemas, "set": SetActiveLabelSchemas}[action]
+    ctx = ExecutionContext(
+        operator_uri=operator().config.name,
+        request_params={"dataset_name": dataset.name, "params": params},
+    )
+    return operator().execute(ctx)
 
 
 def _make_applied_ontology_test_dataset(ontology_name: str = "my_ontology"):
