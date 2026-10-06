@@ -18,7 +18,11 @@ from __future__ import annotations
 
 import logging
 
+import fiftyone.core.annotation as foa
 import fiftyone.core.label_schema_docs as docs
+from fiftyone.core.annotation.hydrate_label_schemas import (
+    hydrate_applied_ontology,
+)
 import fiftyone.operators.types as fo_types
 from fiftyone.operators.executor import ExecutionContext
 from fiftyone.operators.operator import Operator, OperatorConfig
@@ -47,14 +51,95 @@ class ListLabelSchemaDocsOperator(Operator):
         if not can_read(ctx):
             return {"ok": False, "error": "forbidden"}
 
-        # Schemas saved before their attributes were declared on write:
-        # the Explore schema row and the Schema Manager both list docs on
-        # open, so declare any that are still missing here. This writes
-        # the dataset's field schema, so only for viewers who manage it
-        if can_manage(ctx):
-            docs.declare_schema_attributes(ctx=ctx)
-
         return {"ok": True, "schemas": docs.list_(ctx=ctx)}
+
+
+def _schema_content(ctx: ExecutionContext):
+    """The label schemas of the doc ``schema_id`` names, or the dataset's
+    own (the dataset default schema), with applied ontologies' attributes
+    merged in. ``None`` when the doc does not exist."""
+    schema_id = ctx.params.get("schema_id")
+    if schema_id:
+        doc = docs.get(schema_id, ctx=ctx)
+        if doc is None:
+            return None
+        content = doc.get("label_schema") or {}
+    else:
+        content = ctx.dataset.label_schemas or {}
+
+    return {
+        path: hydrate_applied_ontology(label_schema)
+        for path, label_schema in content.items()
+        if isinstance(label_schema, dict)
+    }
+
+
+class ListUndeclaredLabelSchemaAttributesOperator(Operator):
+    """``{ok, undeclared: {path: [attribute names]}}``: the attributes a
+    schema defines that the dataset's field schema has not declared, so the
+    App's sidebar and filters do not show them. Reads the field schema
+    only; no samples are scanned."""
+
+    @property
+    def config(self):
+        return OperatorConfig(
+            name="list_undeclared_label_schema_attributes",
+            label="List undeclared label schema attributes",
+            unlisted=True,
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx: ExecutionContext):
+        inputs = fo_types.Object()
+        inputs.str("schema_id", required=False)
+        return fo_types.Property(inputs)
+
+    def execute(self, ctx: ExecutionContext):
+        if not can_manage(ctx):
+            return {"ok": False, "error": "forbidden"}
+        content = _schema_content(ctx)
+        if content is None:
+            return {"ok": False, "error": "not_found"}
+        return {
+            "ok": True,
+            "undeclared": foa.list_undeclared_label_schema_attributes(
+                ctx.dataset, content
+            ),
+        }
+
+
+class DeclareLabelSchemaAttributesOperator(Operator):
+    """Declares a schema's undeclared attributes on the dataset's field
+    schema. ``{ok, declared: [paths], skipped: {path: [attribute names]}}``;
+    skipped attributes hold values of mixed types and cannot be declared.
+    Scans the values of the attributes it declares."""
+
+    @property
+    def config(self):
+        return OperatorConfig(
+            name="declare_label_schema_attributes",
+            label="Declare label schema attributes",
+            unlisted=True,
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx: ExecutionContext):
+        inputs = fo_types.Object()
+        inputs.str("schema_id", required=False)
+        return fo_types.Property(inputs)
+
+    def execute(self, ctx: ExecutionContext):
+        if not can_manage(ctx):
+            return {"ok": False, "error": "forbidden"}
+        content = _schema_content(ctx)
+        if content is None:
+            return {"ok": False, "error": "not_found"}
+
+        declared = foa.declare_label_schema_attributes(ctx.dataset, content)
+        skipped = foa.list_undeclared_label_schema_attributes(
+            ctx.dataset, content
+        )
+        return {"ok": True, "declared": declared, "skipped": skipped}
 
 
 class GetLabelSchemaDocOperator(Operator):

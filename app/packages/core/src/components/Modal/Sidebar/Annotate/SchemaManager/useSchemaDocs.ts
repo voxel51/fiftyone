@@ -22,6 +22,8 @@ import {
 } from "../state";
 import { operatorAsPromise, type Operator } from "../useSchemaManager";
 import type {
+  AttributesByPath,
+  DeclareResponse,
   DocResponse,
   ListResponse,
   OkResponse,
@@ -29,6 +31,7 @@ import type {
   SchemaDoc,
   SchemaDocContentEntry,
   SchemaDocSummary,
+  UndeclaredResponse,
 } from "./schemaDocTypes";
 
 // The doc shapes and tier helpers live in `schemaDocTypes`; re-exported
@@ -87,6 +90,19 @@ export interface SchemaDocsApi {
     entry: SchemaDocContentEntry | null,
     sourceSchemaId: string | null,
   ): Promise<void>;
+  /**
+   * The attributes a schema (the doc, or the dataset default when
+   * `schemaId` is null) defines that the dataset's field schema has not
+   * declared. Reads the field schema only.
+   */
+  listUndeclared(schemaId: string | null): Promise<AttributesByPath>;
+  /**
+   * Declares them, scanning their values to pick each type. `skipped`
+   * holds attributes whose values have mixed types.
+   */
+  declareAttributes(
+    schemaId: string | null,
+  ): Promise<{ declared: string[]; skipped: AttributesByPath }>;
 }
 
 export const useSchemaDocs = (): SchemaDocsApi => {
@@ -111,6 +127,8 @@ export const useSchemaDocs = (): SchemaDocsApi => {
       { path: string; entry?: unknown; source_schema_id?: string },
       OkResponse
     >;
+    undeclared: Operator<{ schema_id?: string }, UndeclaredResponse>;
+    declare: Operator<{ schema_id?: string }, DeclareResponse>;
   }>();
   operatorsRef.current = {
     list: useOperatorExecutor(
@@ -137,6 +155,12 @@ export const useSchemaDocs = (): SchemaDocsApi => {
       { path: string; entry?: unknown; source_schema_id?: string },
       OkResponse
     >,
+    undeclared: useOperatorExecutor(
+      `${PLUGIN_PREFIX}/list_undeclared_label_schema_attributes`,
+    ) as Operator<{ schema_id?: string }, UndeclaredResponse>,
+    declare: useOperatorExecutor(
+      `${PLUGIN_PREFIX}/declare_label_schema_attributes`,
+    ) as Operator<{ schema_id?: string }, DeclareResponse>,
   };
 
   const listDocs = useCallback(async () => {
@@ -212,6 +236,22 @@ export const useSchemaDocs = (): SchemaDocsApi => {
     [],
   );
 
+  const listUndeclared = useCallback(async (schemaId: string | null) => {
+    const res = await operatorAsPromise(operatorsRef.current!.undeclared, {
+      schema_id: schemaId ?? undefined,
+    });
+    if (!res?.ok) fail(res, "check");
+    return res.undeclared ?? {};
+  }, []);
+
+  const declareAttributes = useCallback(async (schemaId: string | null) => {
+    const res = await operatorAsPromise(operatorsRef.current!.declare, {
+      schema_id: schemaId ?? undefined,
+    });
+    if (!res?.ok) fail(res, "declare the attributes of");
+    return { declared: res.declared ?? [], skipped: res.skipped ?? {} };
+  }, []);
+
   return useMemo(
     () => ({
       listDocs,
@@ -220,8 +260,19 @@ export const useSchemaDocs = (): SchemaDocsApi => {
       updateDoc,
       deleteDoc,
       propagateField,
+      listUndeclared,
+      declareAttributes,
     }),
-    [listDocs, getDoc, createDoc, updateDoc, deleteDoc, propagateField],
+    [
+      listDocs,
+      getDoc,
+      createDoc,
+      updateDoc,
+      deleteDoc,
+      propagateField,
+      listUndeclared,
+      declareAttributes,
+    ],
   );
 };
 

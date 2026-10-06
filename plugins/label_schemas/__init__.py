@@ -14,9 +14,11 @@ by id.
 
 from .operators import (
     CreateLabelSchemaDocOperator,
+    DeclareLabelSchemaAttributesOperator,
     DeleteLabelSchemaDocOperator,
     GetLabelSchemaDocOperator,
     ListLabelSchemaDocsOperator,
+    ListUndeclaredLabelSchemaAttributesOperator,
     PropagateLabelSchemaFieldOperator,
     UpdateLabelSchemaDocOperator,
 )
@@ -29,3 +31,5 @@ def register(p):
     p.register(UpdateLabelSchemaDocOperator)
     p.register(PropagateLabelSchemaFieldOperator)
     p.register(DeleteLabelSchemaDocOperator)
+    p.register(ListUndeclaredLabelSchemaAttributesOperator)
+    p.register(DeclareLabelSchemaAttributesOperator)

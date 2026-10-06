@@ -17,3 +17,5 @@ operators:
   - update_label_schema_doc
   - delete_label_schema_doc
   - propagate_label_schema_field
+  - list_undeclared_label_schema_attributes
+  - declare_label_schema_attributes

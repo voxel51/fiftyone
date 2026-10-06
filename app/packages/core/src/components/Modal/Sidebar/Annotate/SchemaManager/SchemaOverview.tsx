@@ -73,6 +73,7 @@ import {
   type SchemaDocContentEntry,
   type SchemaDocSummary,
 } from "./useSchemaDocs";
+import UndeclaredAttributesNotice from "./UndeclaredAttributesNotice";
 import { useShiftRangeSelection } from "./useShiftRangeSelection";
 
 const SchemaOverview = () => {
@@ -444,6 +445,13 @@ const SchemaOverview = () => {
       </div>
 
       {error ? <div style={styles.errorText}>{error}</div> : null}
+
+      {docsAvailable && !(selectedId && !doc) ? (
+        <UndeclaredAttributesNotice
+          schemaId={docMode ? selectedId : null}
+          contentVersion={docMode ? doc?.version : datasetSchemas}
+        />
+      ) : null}
 
       {tab === TAB_JSON ? (
         <OverviewJSON />

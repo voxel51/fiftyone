@@ -222,17 +222,13 @@ def _scope(*, ctx=None, dataset_id=None) -> ObjectId:
     return resolve_dataset_id(ctx=ctx, dataset_id=dataset_id)
 
 
-def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> bool:
+def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> None:
     """Declares the label attributes ``label_schema`` defines on the
     dataset's field schema (``declare_label_schema_attributes``), so the
     App's sidebar, filters and aggregations see them. Best-effort: a
-    failure is logged and never fails the schema write.
-
-    Returns:
-        whether the declaration completed without error
-    """
+    failure is logged and never fails the schema write."""
     if not label_schema:
-        return True
+        return
 
     try:
         import fiftyone.core.annotation as foa
@@ -248,68 +244,6 @@ def _declare_attributes(label_schema, *, ctx=None, dataset_id=None) -> bool:
         logger.warning(
             "Failed to declare label schema attributes", exc_info=True
         )
-        return False
-
-    return True
-
-
-#: ``(dataset_id, path, attribute name)`` the backfill already tried in
-#: this process. An attribute it cannot declare (mixed value types) would
-#: otherwise trigger a scan of its field on every listing.
-_BACKFILLED = set()
-
-
-def declare_schema_attributes(*, ctx=None, dataset_id=None) -> None:
-    """Declares the label attributes defined by the dataset's own label
-    schemas and by every schema doc of the dataset on its field schema
-    (see :func:`_declare_attributes`). Covers schemas saved before
-    declaration happened on write.
-
-    Each field is scanned at most once per call, and an attribute at most
-    once per process: one that could not be declared is not retried until
-    a schema write declares it. Best-effort, like
-    :func:`_declare_attributes`."""
-    try:
-        import fiftyone.core.odm as foo
-
-        dataset = getattr(ctx, "dataset", None)
-        if dataset is None:
-            dataset = foo.load_dataset(
-                id=_scope(ctx=ctx, dataset_id=dataset_id)
-            )
-
-        schemas = list(_stored_label_schemas(dataset).items())
-        query = {"dataset_id": dataset._doc.id}
-        for doc in _coll().find(query, {"label_schema": 1}):
-            schemas.extend((doc.get("label_schema") or {}).items())
-
-        # One label schema per path holding every attribute not yet tried
-        content = {}
-        keys = set()
-        for path, label_schema in schemas:
-            if not isinstance(label_schema, dict):
-                continue
-
-            for attr in label_schema.get("attributes") or []:
-                name = attr.get("name") if isinstance(attr, dict) else None
-                key = (str(dataset._doc.id), path, name)
-                if name is None or key in _BACKFILLED or key in keys:
-                    continue
-
-                keys.add(key)
-                content.setdefault(path, {"attributes": []})[
-                    "attributes"
-                ].append(attr)
-    except Exception:  # pylint: disable=broad-except
-        logger.warning(
-            "Failed to collect label schema attributes", exc_info=True
-        )
-        return
-
-    # Remember the attributes only once they were declared (or skipped, as
-    # mixed types are), so a failed declaration is retried next time
-    if _declare_attributes(content, ctx=ctx, dataset_id=dataset_id):
-        _BACKFILLED.update(keys)
 
 
 def _now_ms() -> int:

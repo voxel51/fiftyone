@@ -6,10 +6,14 @@ Annotation utils
 |
 """
 
+import logging
+
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_collection_is_supported(sample_collection):
@@ -312,6 +316,36 @@ def _is_supported_primitive(field):
     return False
 
 
+def list_undeclared_label_schema_attributes(sample_collection, label_schemas):
+    """Lists the label attributes that the given label schemas define but
+    the dataset's field schema has not declared.
+
+    Only the dataset's field schema is read; no samples are scanned.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_schemas: a dict mapping field paths to label schemas
+
+    Returns:
+        a dict mapping field paths to lists of undeclared attribute names
+    """
+    dataset = sample_collection._dataset
+    undeclared = {}
+    for path, base, attributes in _iter_schema_attributes(
+        dataset, label_schemas
+    ):
+        names = [
+            attr[foac.NAME]
+            for attr in attributes
+            if dataset.get_field("%s.%s" % (base, attr[foac.NAME])) is None
+        ]
+        if names:
+            undeclared[path] = names
+
+    return undeclared
+
+
 def declare_label_schema_attributes(sample_collection, label_schemas):
     """Declares on the dataset's field schema the label attributes that the
     given label schemas define but the dataset has not declared.
@@ -323,8 +357,10 @@ def declare_label_schema_attributes(sample_collection, label_schemas):
     then never sees those attributes. Declaring them fixes that.
 
     Attributes that already hold values are declared with the type of their
-    values (attributes whose values have mixed types are skipped).
-    Attributes without values are declared with their label schema type.
+    values; attributes whose values have mixed types are skipped, with a
+    warning, as :meth:`fiftyone.core.dataset.Dataset.add_dynamic_sample_fields`
+    does. Attributes without values are declared with their label schema
+    type.
 
     Args:
         sample_collection: a
@@ -338,6 +374,121 @@ def declare_label_schema_attributes(sample_collection, label_schemas):
     frames_prefix = dataset._FRAMES_PREFIX
     declared = []
 
+    for path, base, attributes in _iter_schema_attributes(
+        dataset, label_schemas
+    ):
+        missing = [
+            attr
+            for attr in attributes
+            if dataset.get_field("%s.%s" % (base, attr[foac.NAME])) is None
+        ]
+        if not missing:
+            continue
+
+        is_frame_field = path.startswith(frames_prefix)
+        if is_frame_field:
+            rel_path = path[len(frames_prefix) :]
+            rel_base = base[len(frames_prefix) :]
+            get_dynamic = dataset.get_dynamic_frame_field_schema
+            add_field = dataset.add_frame_field
+            add_dynamic = dataset.add_dynamic_frame_fields
+        else:
+            rel_path = path
+            rel_base = base
+            get_dynamic = dataset.get_dynamic_field_schema
+            add_field = dataset.add_sample_field
+            add_dynamic = dataset.add_dynamic_sample_fields
+
+        list_key = base[len(path) + 1 :] or None
+        names = [attr[foac.NAME] for attr in missing]
+
+        # One pass over the field reads just the missing attributes' value
+        # types. Past a handful of attributes, the full dynamic schema scan
+        # of the field is as fast, so it is used directly
+        if len(names) <= _MAX_TARGETED_ATTRIBUTES:
+            picks = {
+                name: _pick_attribute_field(*types)
+                for name, types in _scan_attribute_types(
+                    dataset, path, list_key, names
+                ).items()
+            }
+        else:
+            picks = {name: _FALLBACK for name in names}
+
+        if _FALLBACK in picks.values():
+            dynamic = get_dynamic(fields=rel_path) or {}
+            for name, pick in picks.items():
+                if pick is _FALLBACK:
+                    picks[name] = _field_from_dynamic(
+                        dynamic.get("%s.%s" % (rel_base, name))
+                    )
+
+        from_values = {}
+        for attr in missing:
+            name = attr[foac.NAME]
+            attr_path = "%s.%s" % (rel_base, name)
+            pick = picks[name]
+            if pick is _MIXED:
+                logger.warning(
+                    "Skipping label schema attribute '%s.%s': its values "
+                    "have mixed types",
+                    base,
+                    name,
+                )
+                continue
+
+            if pick is None:
+                attr_type = attr[foac.TYPE]
+                ftype = foac.TYPE_TO_FIELD[attr_type]
+                if attr_type in (
+                    foac.FLOAT_LIST,
+                    foac.INT_LIST,
+                    foac.STR_LIST,
+                ):
+                    add_field(attr_path, fof.ListField, subfield=ftype)
+                else:
+                    add_field(attr_path, ftype)
+
+                declared.append("%s.%s" % (base, name))
+                continue
+
+            from_values[attr_path] = pick
+
+        if from_values:
+            add_dynamic(fields=from_values)
+            declared.extend(
+                frames_prefix + p if is_frame_field else p for p in from_values
+            )
+
+    return declared
+
+
+#: The number of missing attributes of one field up to which a targeted scan
+#: of their values is faster than the full dynamic schema scan of the field
+_MAX_TARGETED_ATTRIBUTES = 8
+
+#: Value types that need the full dynamic schema scan (embedded documents,
+#: lists of documents or lists)
+_FALLBACK = "fallback"
+
+#: Values of mixed types, which are not declared
+_MIXED = "mixed"
+
+_SCALAR_FIELDS = {
+    "string": fof.StringField,
+    "bool": fof.BooleanField,
+    "date": fof.DateTimeField,
+    "objectId": fof.ObjectIdField,
+}
+_INT_TYPES = {"int", "long"}
+_FLOAT_TYPES = {"double", "decimal"}
+_NO_VALUE_TYPES = {"null", "missing"}
+
+
+def _iter_schema_attributes(dataset, label_schemas):
+    """Yields ``(path, path of its label list or label, attributes)`` for
+    the label fields of ``label_schemas`` whose attributes have a known
+    type."""
     for path, label_schema in (label_schemas or {}).items():
         if not isinstance(label_schema, dict):
             continue
@@ -360,51 +511,119 @@ def declare_label_schema_attributes(sample_collection, label_schemas):
 
         list_field = getattr(field.document_type, "_LABEL_LIST_FIELD", None)
         base = "%s.%s" % (path, list_field) if list_field else path
-        missing = [
-            attr
-            for attr in attributes
-            if dataset.get_field("%s.%s" % (base, attr[foac.NAME])) is None
-        ]
-        if not missing:
-            continue
+        yield path, base, attributes
 
-        is_frame_field = path.startswith(frames_prefix)
-        if is_frame_field:
-            rel_path = path[len(frames_prefix) :]
-            rel_base = base[len(frames_prefix) :]
-            dynamic = dataset.get_dynamic_frame_field_schema(fields=rel_path)
-            add_field = dataset.add_frame_field
-            add_dynamic = dataset.add_dynamic_frame_fields
-        else:
-            rel_base = base
-            dynamic = dataset.get_dynamic_field_schema(fields=path)
-            add_field = dataset.add_sample_field
-            add_dynamic = dataset.add_dynamic_sample_fields
 
-        dynamic = dynamic or {}
-        from_values = {}
-        for attr in missing:
-            name = attr[foac.NAME]
-            rel_path = "%s.%s" % (rel_base, name)
-            if rel_path in dynamic:
-                # mixed types are reported as a list of fields: skip them
-                if isinstance(dynamic[rel_path], fof.Field):
-                    from_values[rel_path] = dynamic[rel_path]
-                continue
+def _scan_attribute_types(dataset, path, list_key, names):
+    """Returns ``{name: (value types, array element types)}`` for the given
+    attributes of the label field ``path``, as BSON type names, in one
+    aggregation. ObjectId values are stored under ``_<name>``, so that key
+    is read too."""
+    frames_prefix = dataset._FRAMES_PREFIX
+    if path.startswith(frames_prefix):
+        coll = dataset._frame_collection
+        path = path[len(frames_prefix) :]
+    else:
+        coll = dataset._sample_collection
 
-            attr_type = attr[foac.TYPE]
-            ftype = foac.TYPE_TO_FIELD[attr_type]
-            if attr_type in (foac.FLOAT_LIST, foac.INT_LIST, foac.STR_LIST):
-                add_field(rel_path, fof.ListField, subfield=ftype)
-            else:
-                add_field(rel_path, ftype)
+    root = "$" + path + ("." + list_key if list_key else "")
+    pipeline = [{"$project": {"d": root}}]
+    if list_key:
+        pipeline.append({"$unwind": "$d"})
 
-            declared.append("%s.%s" % (base, name))
+    group = {"_id": None}
+    for i, name in enumerate(names):
+        value = "$d." + name
+        group["t%d" % i] = {"$addToSet": {"$type": value}}
+        group["e%d" % i] = {
+            "$addToSet": {
+                "$cond": [
+                    {"$isArray": value},
+                    {
+                        "$map": {
+                            "input": value,
+                            "as": "v",
+                            "in": {"$type": "$$v"},
+                        }
+                    },
+                    [],
+                ]
+            }
+        }
+        group["o%d" % i] = {"$addToSet": {"$type": "$d._" + name}}
 
-        if from_values:
-            add_dynamic(fields=from_values)
-            declared.extend(
-                frames_prefix + p if is_frame_field else p for p in from_values
-            )
+    pipeline.append({"$group": group})
+    results = list(coll.aggregate(pipeline, allowDiskUse=True))
+    result = results[0] if results else {}
 
-    return declared
+    types = {}
+    for i, name in enumerate(names):
+        value_types = set(result.get("t%d" % i, [])) - _NO_VALUE_TYPES
+        value_types |= set(result.get("o%d" % i, [])) & {"objectId"}
+        elem_types = {
+            t for types_ in result.get("e%d" % i, []) for t in types_
+        } - _NO_VALUE_TYPES
+        types[name] = (value_types, elem_types)
+
+    return types
+
+
+def _pick_attribute_field(value_types, elem_types):
+    """Returns the field to declare for an attribute's value types:
+    ``None`` when it has no values, :data:`_MIXED` for mixed types, or
+    :data:`_FALLBACK` when the full dynamic schema scan must decide."""
+    if not value_types:
+        return None
+
+    if value_types == {"array"}:
+        if not elem_types:
+            # only empty lists: no element type to declare
+            return _MIXED
+
+        field = _scalar_field(elem_types)
+        if field is _FALLBACK or field is _MIXED:
+            return field
+
+        return fof.ListField(field=field)
+
+    if "array" in value_types or "object" in value_types:
+        return _MIXED if len(value_types) > 1 else _FALLBACK
+
+    return _scalar_field(value_types)
+
+
+def _scalar_field(types):
+    if types <= _INT_TYPES:
+        return fof.IntField()
+
+    if types <= _INT_TYPES | _FLOAT_TYPES:
+        # ints and floats together are declared as floats
+        return fof.FloatField()
+
+    known = set(_SCALAR_FIELDS) | _INT_TYPES | _FLOAT_TYPES
+    if not types <= known:
+        return _FALLBACK
+
+    if len(types) > 1:
+        return _MIXED
+
+    (bson_type,) = types
+    return _SCALAR_FIELDS[bson_type]()
+
+
+def _field_from_dynamic(field):
+    """The field to declare from a full dynamic schema scan result."""
+    if field is None:
+        return None
+
+    # mixed types are reported as a list of fields, also as a list field's
+    # element type
+    if not isinstance(field, fof.Field):
+        return _MIXED
+
+    if isinstance(field, fof.ListField) and isinstance(
+        field.field, (list, tuple)
+    ):
+        return _MIXED
+
+    return field

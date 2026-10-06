@@ -99,6 +99,13 @@ export interface SchemaDoc {
 
 export type OkResponse = { ok: boolean; error?: string };
 export type ListResponse = OkResponse & { schemas?: SchemaDocSummary[] };
+/** Attribute names per label field path. */
+export type AttributesByPath = Record<string, string[]>;
+export type UndeclaredResponse = OkResponse & { undeclared?: AttributesByPath };
+export type DeclareResponse = OkResponse & {
+  declared?: string[];
+  skipped?: AttributesByPath;
+};
 export interface ResolvedSchemaDoc {
   id?: string;
   name?: string;
