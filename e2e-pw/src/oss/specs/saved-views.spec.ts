@@ -30,8 +30,6 @@ const updatedView: SaveViewParams = {
   slug: "test-updated-2",
 };
 
-const datasetName = getUniqueDatasetNameWithPrefix("saved-views");
-
 const test = base.extend<{ savedViews: SavedViewsPom }>({
   savedViews: async ({ page, eventUtils }, use) => {
     await use(new SavedViewsPom(page, eventUtils));
@@ -47,8 +45,10 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.describe.serial("saved views", () => {
-  // a fresh dataset per test starts each one without saved views
+  // a fresh, uniquely named dataset per test starts each one without saved
+  // views; recreating one name leaves the server holding the deleted dataset
   test.beforeEach(async ({ datasetFactory, fiftyoneLoader, page }) => {
+    const datasetName = getUniqueDatasetNameWithPrefix("saved-views");
     await datasetFactory.createDataset({ datasetName });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
@@ -126,8 +126,11 @@ test.describe.serial("saved views", () => {
     await savedViews.clickOptionEdit(testView.slug);
     await savedViews.clickDeleteBtn();
 
-    await savedViews.assert.verifyUnsavedView();
+    // the list stays open after the edit dialog deletes; it hides the
+    // selector's combobox until it closes
     await savedViews.assert.verifyListedSlugs([]);
+    await savedViews.closeSelect();
+    await savedViews.assert.verifyUnsavedView();
   });
 
   test("editing a saved view updates the view's name and description", async ({
@@ -167,6 +170,9 @@ test.describe.serial("saved views", () => {
     await savedViews.clickOptionEdit(testView.slug);
     await savedViews.editView(updatedView);
 
+    // the list stays open after the edit dialog saves; it hides the
+    // selector's combobox until it closes
+    await savedViews.closeSelect();
     await savedViews.assert.verifySavedView(updatedView);
   });
 });

@@ -117,9 +117,9 @@ export class SavedViewsPom {
 
   /** Close the saved view list; an edit opened from it leaves it open */
   async closeSelect() {
-    await this.afterList(VIEW_LIST, false, () =>
-      this.page.keyboard.press("Escape"),
-    );
+    // pressed on the list: a dialog that deleted or renamed the option it
+    // was opened from can return focus to the page instead of the list
+    await this.afterList(VIEW_LIST, false, () => this.viewList.press("Escape"));
   }
 
   /** Open the create dialog from the open view list, which closes the list */
