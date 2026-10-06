@@ -4,14 +4,8 @@ import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-/**
- * This test makes sure that a ragged group dataset with default video slice works as expected.
- * Video also has bounding box labels.
- */
-
 const datasetName = getUniqueDatasetNameWithPrefix("datetime-regression");
-const testImgPath = `/tmp/test-img-${datasetName}.jpg`;
-const testImgPath2 = `/tmp/test-img-2-${datasetName}.jpg`;
+const NUM_SAMPLES = 2;
 
 const test = base.extend<{
   grid: GridPom;
@@ -33,41 +27,20 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await mediaFactory.createImage({
-    outputPath: testImgPath,
-    width: 50,
-    height: 50,
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: NUM_SAMPLES,
+    schema: { dates: "DateTimeField", seconds: "DateTimeField" },
+    // a day and a second apart per sample
+    withSampleData: ({ index }) => ({
+      dates: { $date: new Date(Date.UTC(2021, 0, 1 - index)).toISOString() },
+      seconds: {
+        $date: new Date(Date.UTC(2021, 0, 1, 18, 58, -index)).toISOString(),
+      },
+    }),
   });
-
-  await mediaFactory.createImage({
-    outputPath: testImgPath2,
-    width: 50,
-    height: 50,
-  });
-
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    from datetime import date, datetime, timedelta
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    t1 = datetime.strptime("2021-01-01", "%Y-%m-%d")
-    t2 = datetime.strptime("2021-01-01 18:58:00", "%Y-%m-%d %H:%M:%S")
-
-    image_sample = fo.Sample(filepath="${testImgPath}")
-    image_sample2 = fo.Sample(filepath="${testImgPath2}")
-
-    dataset.add_samples([image_sample, image_sample2])
-
-    for idx, sample in enumerate(dataset):
-        sample["dates"] = t1 - timedelta(days=idx)
-        sample["seconds"] = t2 - timedelta(seconds=idx)
-        sample.save()
-  `);
 });
 
 test.describe
@@ -88,7 +61,7 @@ test.describe
       await sidebar.clickFieldCheckbox("dates");
       await sidebar.clickFieldDropdown("dates");
     });
-    expect(await page.getByTestId("tag-dates").count()).toBe(2);
+    expect(await page.getByTestId("tag-dates").count()).toBe(NUM_SAMPLES);
   });
 
   test("change datetime field visibility works", async ({
@@ -104,6 +77,6 @@ test.describe
       await sidebar.clickFieldDropdown("seconds");
     });
 
-    expect(await page.getByTestId("tag-seconds").count()).toBe(2);
+    expect(await page.getByTestId("tag-seconds").count()).toBe(NUM_SAMPLES);
   });
 });

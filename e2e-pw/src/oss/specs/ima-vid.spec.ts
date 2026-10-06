@@ -4,11 +4,11 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createImage } from "src/shared/media-factory/image";
 
 const NUM_VIDEOS = 2;
 const FRAME_COLORS = ["#ff0000", "#00ff00"];
-const NUM_FRAMES_PER_VIDEO = 150;
+const NUM_FRAMES_PER_VIDEO = 50;
+const frameText = (frame: number) => `${frame} / ${NUM_FRAMES_PER_VIDEO}`;
 
 const datasetName = getUniqueDatasetNameWithPrefix(`group-ima-vid`);
 const test = base.extend<{
@@ -31,62 +31,42 @@ const test = base.extend<{
   },
 });
 
-const writeFrames = async () => {
-  const start = performance.now();
-  const createPromises = [];
-  for (let i = 1; i <= NUM_VIDEOS; ++i) {
-    for (let j = 1; j <= NUM_FRAMES_PER_VIDEO; ++j) {
-      createPromises.push(
-        createImage({
-          outputPath: `/tmp/ima-vid-${i}-${j}.png`,
-          width: 50,
-          height: 50,
-          fillColor: FRAME_COLORS[i % 2],
-          watermarkString: `${j}`,
-          hideLogs: true,
-        }),
-      );
-    }
-  }
-  await Promise.all(createPromises);
-  const end = performance.now();
-  console.log(
-    `Wrote ${NUM_VIDEOS * NUM_FRAMES_PER_VIDEO} frames in ${
-      end - start
-    } milliseconds`,
-  );
-};
-
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await writeFrames();
-
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    samples = []
-
-    for i in range(1, ${NUM_VIDEOS + 1}):
-      for j in range(1, ${NUM_FRAMES_PER_VIDEO + 1}):
-        sample = fo.Sample(
-          filepath=f"/tmp/ima-vid-{i}-{j}.png",
-          frame_number=j,
-          video_id=i,
-          label=fo.Detection(
-                label=f"box-{i}-{j}",
-                bounding_box=[0.1, 0.1, 0.2, 0.2]
-              )
-        )
-        samples.append(sample)
-    dataset.add_samples(samples)
-    groups = dataset.group_by("video_id", order_by="frame_number")
-    dataset.save_view("groups", groups)
-    `);
+  // sample index = (video - 1) * NUM_FRAMES_PER_VIDEO + frame - 1
+  const video = (index: number) => Math.floor(index / NUM_FRAMES_PER_VIDEO) + 1;
+  const frame = (index: number) => (index % NUM_FRAMES_PER_VIDEO) + 1;
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: NUM_VIDEOS * NUM_FRAMES_PER_VIDEO,
+    imageOptions: (index) => ({
+      width: 50,
+      height: 50,
+      fillColor: FRAME_COLORS[video(index) % 2],
+      watermarkString: `${frame(index)}`,
+      hideLogs: true,
+    }),
+    schema: {
+      frame_number: "IntField",
+      video_id: "IntField",
+      label: "Detection",
+    },
+    withSampleData: ({ index }, { label }) => ({
+      frame_number: frame(index),
+      video_id: video(index),
+      label: label.detection({
+        label: `box-${video(index)}-${frame(index)}`,
+        bounding_box: [0.1, 0.1, 0.2, 0.2],
+      }),
+    }),
+    savedViews: {
+      groups: 'dataset.group_by("video_id", order_by="frame_number")',
+    },
+  });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
@@ -101,8 +81,8 @@ test.beforeEach(async ({ page, fiftyoneLoader, grid }) => {
     }),
   );
 
-  await grid.assert.isEntryCountTextEqualTo("2 groups");
-  await grid.assert.isTileCountEqualTo(2);
+  await grid.assert.isEntryCountTextEqualTo(`${NUM_VIDEOS} groups`);
+  await grid.assert.isTileCountEqualTo(NUM_VIDEOS);
 });
 
 // flaky: intermittently fails during modal playback
@@ -110,11 +90,11 @@ test.skip("check modal playback and tagging behavior", async ({
   modal,
   grid,
 }) => {
-  await modal.imavid.afterFrameText("1 / 150", () =>
+  await modal.imavid.afterFrameText(frameText(1), () =>
     modal.afterSampleLoaded(() => grid.openFirstSample()),
   );
 
-  const tagged = await modal.imavid.playUntilFrames("13 / 150");
+  const tagged = await modal.imavid.playUntilFrames(frameText(13));
 
   await modal.sidebar.assert.verifySidebarEntryTexts({
     frame_number: String(tagged),
@@ -134,7 +114,7 @@ test.skip("check modal playback and tagging behavior", async ({
   // skip a couple of frames and see that sample tag count is zero
   let untagged = 0;
   await modal.sidebar.afterEntries({ tags: "0" }, async () => {
-    untagged = await modal.imavid.playUntilFrames("20 / 150");
+    untagged = await modal.imavid.playUntilFrames(frameText(20));
   });
   await modal.sidebar.assert.verifySidebarEntryTexts({
     frame_number: String(untagged),

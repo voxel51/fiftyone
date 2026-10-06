@@ -2,7 +2,6 @@ import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createImage } from "src/shared/media-factory/image";
 
 const IMAGES = {
   grid: "#cccccc",
@@ -23,51 +22,24 @@ const test = base.extend<{
   },
 });
 
-const writeImages = async () => {
-  const createPromises: Promise<void>[] = [];
-
-  Object.entries(IMAGES).forEach(([key, color]) => {
-    createPromises.push(
-      createImage({
-        outputPath: `/tmp/${key}-media-field.png`,
-        width: 50,
-        height: 50,
-        fillColor: color,
-        hideLogs: true,
-      }),
-    );
-  });
-
-  await Promise.all(createPromises);
-};
-
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await writeImages();
-
-  await fiftyoneLoader.executePythonCode(`
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${datasetName}")
-
-  dataset.persistent = True
-  dataset.add_sample(
-      fo.Sample(
-          grid="/tmp/grid-media-field.png",
-          modal="/tmp/modal-media-field.png",
-          filepath="/tmp/empty.png"
-      )
-  )
-  
-  dataset.app_config.media_fields = ["grid", "modal"]
-  dataset.app_config.grid_media_field = "grid"
-  dataset.app_config.modal_media_field = "modal"
-  dataset.save()`);
+  await datasetFactory.createDataset({
+    datasetName,
+    mediaFields: {
+      grid: { width: 50, height: 50, fillColor: IMAGES.grid },
+      modal: { width: 50, height: 50, fillColor: IMAGES.modal },
+    },
+    appConfig: {
+      media_fields: ["grid", "modal"],
+      grid_media_field: "grid",
+      modal_media_field: "modal",
+    },
+  });
 });
 
 test.afterEach(async ({ modal, page }) => {

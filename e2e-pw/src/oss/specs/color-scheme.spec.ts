@@ -44,24 +44,30 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await createDetectionsDataset(datasetFactory, colorByFieldDataset);
-
-  await fiftyoneLoader.executePythonCode(`
-      import fiftyone as fo
-
-      dummy_color_by_instance = fo.Dataset("${dummyDatasetColorByInstance}")
-      dummy_color_by_instance.persistent = True
-      dummy_color_by_instance.add_sample(
-        fo.Sample(
-          filepath="dummy.png",
-          ground_truth=fo.Detections(detections=[fo.Detection(label="foo")])
-        )
-      )
-      dummy_color_by_instance.app_config.color_scheme = fo.ColorScheme(color_by="instance", color_pool=["red", "green", "blue", "yellow", "purple", "orange", "brown", "pink", "gray", "black", "white"])
-      dummy_color_by_instance.save()
-    `);
+  await datasetFactory.createDataset({
+    datasetName: dummyDatasetColorByInstance,
+    appConfig: {
+      color_scheme: {
+        color_by: "instance",
+        color_pool: [
+          "red",
+          "green",
+          "blue",
+          "yellow",
+          "purple",
+          "orange",
+          "brown",
+          "pink",
+          "gray",
+          "black",
+          "white",
+        ],
+      },
+    },
+  });
 });
 
 test.describe.serial("color scheme basic functionality", () => {

@@ -14,36 +14,39 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 
 const datasetName = getUniqueDatasetNameWithPrefix("summary-fields");
 
+const SUMMARY = { one: "two", three: "four" };
+const SUMMARIES = [{ five: "six", seven: "eight" }, { nine: "ten" }];
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.executePythonCode(`
-        import fiftyone as fo
-    
-        dataset = fo.Dataset("${datasetName}")
-        dataset.persistent = True
-        dataset.add_sample(
-            fo.Sample(
-                filepath=f"image.png",
-                summary=fo.DynamicEmbeddedDocument(one="two", three="four"),
-                summaries=[
-                    fo.DynamicEmbeddedDocument(five="six", seven="eight"),
-                    fo.DynamicEmbeddedDocument(nine="ten"),
-                ],
-            )
-        )
-        dataset.app_config.sidebar_groups = [
-            fo.SidebarGroupDocument(
-                name="summaries", paths=["summary", "summaries"], expanded=True
-            )
-        ]
-        dataset.save()
-        dataset.add_dynamic_sample_fields()
-      `);
+  await datasetFactory.createDataset({
+    datasetName,
+    schema: {
+      summary: "DynamicEmbeddedDocument",
+      "summary.one": "StringField",
+      "summary.three": "StringField",
+      summaries: "ListField<DynamicEmbeddedDocument>",
+      "summaries.five": "StringField",
+      "summaries.seven": "StringField",
+      "summaries.nine": "StringField",
+    },
+    withSampleData: () => ({
+      summary: { _cls: "DynamicEmbeddedDocument", ...SUMMARY },
+      summaries: SUMMARIES.map((summary) => ({
+        _cls: "DynamicEmbeddedDocument",
+        ...summary,
+      })),
+    }),
+    appConfig: {
+      sidebar_groups: [
+        { name: "summaries", paths: ["summary", "summaries"], expanded: true },
+      ],
+    },
+  });
 });
 
 test.describe.serial("summary fields", () => {
@@ -56,17 +59,13 @@ test.describe.serial("summary fields", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
-    await modal.sidebar.assert.verifyObject("summary", {
-      one: "two",
-      three: "four",
-    });
+    await modal.sidebar.assert.verifyObject("summary", SUMMARY);
     await eventUtils.after("animation-onRest", async () => {
       await modal.sidebar.clickFieldDropdown("summaries");
     });
-    await modal.sidebar.assert.verifyObject("summaries", {
-      five: "six",
-      seven: "eight",
-      nine: "ten",
-    });
+    await modal.sidebar.assert.verifyObject(
+      "summaries",
+      Object.assign({}, ...SUMMARIES),
+    );
   });
 });
