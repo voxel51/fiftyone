@@ -122,7 +122,7 @@ const ThemeProvider: React.FC<
 > = ({ children }) => {
   return (
     <LegacyTheme.Provider value={theme.colorSchemes["light"].palette}>
-      <CssVarsProvider theme={theme} defaultMode={theme.colorSchemes["light"]}>
+      <CssVarsProvider theme={theme} defaultMode="light">
         {children}
       </CssVarsProvider>
     </LegacyTheme.Provider>
