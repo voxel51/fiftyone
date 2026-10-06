@@ -14,12 +14,18 @@ ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
 E2E = os.path.join(ROOT, "e2e-pw", "src")
 APP = os.path.join(ROOT, "app", "packages")
 
+# web-first matchers that usually stand in for product events (a query's
+# count, a loaded sample); a plain component use carries `// component-only:`.
+# Form-control state (toHaveValue, toBeChecked, toBeFocused, toBeEnabled,
+# toBeDisabled, toBeEditable) is never filled by a product event, so it is
+# allowed without a marker.
 RETRYING = (
-    "BeVisible|BeHidden|HaveText|ContainText|HaveCount|HaveAttribute|HaveValue|"
-    "BeChecked|BeEnabled|BeDisabled|HaveClass|HaveCSS|BeAttached|BeFocused|HaveId|"
-    "BeEmpty|BeEditable|BeInViewport|HaveJSProperty|HaveAccessibleName|"
-    "HaveAccessibleDescription|HaveRole|HaveValues|HaveURL|HaveTitle|HaveScreenshot"
+    "BeVisible|BeHidden|HaveText|ContainText|HaveCount|HaveAttribute|"
+    "HaveClass|HaveCSS|BeAttached|HaveId|BeEmpty|BeInViewport|HaveJSProperty|"
+    "HaveAccessibleName|HaveAccessibleDescription|HaveRole|HaveURL|HaveTitle|"
+    "HaveScreenshot"
 )
+COMPONENT_ONLY = "// component-only:"
 
 E2E_RULES = [
     # expect(<not an awaited value>).to<retrying matcher>, across lines
@@ -151,9 +157,15 @@ def scan(files, rules, skip=None):
             continue
         raw = open(path).read()
         src = strip_comments(raw)
+        raw_lines = raw.split("\n")
         for name, rx in rules:
             for m in rx.finditer(src):
                 line = src.count("\n", 0, m.start()) + 1
+                if name == "retrying-assert" and any(
+                    COMPONENT_ONLY in raw_lines[i]
+                    for i in range(max(0, line - 2), line)
+                ):
+                    continue
                 text = " ".join(raw[m.start() : m.end()].split())[:110]
                 rel = os.path.relpath(path, ROOT)
                 if any(
@@ -185,7 +197,8 @@ for name, items in by_rule.items():
 print(f"TOTAL {len(findings)}")
 if findings:
     print(
-        "Each wait should name the app event its action causes, and app code"
-        " dispatches e2e: events without guards; see e2e-pw/CODING_STANDARDS.md"
+        "Run product-event actions through the e2e: event they cause, mark"
+        " plain component assertions `// component-only: <why>`, and dispatch"
+        " e2e: events without guards; see e2e-pw/CODING_STANDARDS.md"
     )
 sys.exit(1 if findings else 0)

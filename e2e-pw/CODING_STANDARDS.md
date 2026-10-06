@@ -44,13 +44,21 @@ anything.
 A plain component interaction doesn't. Filling an input, clicking a button that
 opens a menu, toggling a checkbox, and checking what that component itself
 renders use normal Playwright: its auto-waiting actions and web-first
-assertions.
+assertions. Form-control matchers (`toHaveValue`, `toBeChecked`, `toBeFocused`,
+`toBeEnabled`, `toBeDisabled`, `toBeEditable`) need nothing more. Any other
+web-first matcher (`toBeVisible`, `toHaveText`, `toHaveCount`, ...) is the
+usual stand-in for a product event, so a component-only use says why on its
+line or the line above with `// component-only: <why>`; CI rejects it
+otherwise.
 
 ```ts
-// component only: normal Playwright
+// a plain component: normal Playwright
 const search = page.getByPlaceholder("Search");
 await search.fill("cat");
 await expect(search).toHaveValue("cat");
+await menuButton.click();
+// component-only: the menu opens on click, nothing loads
+await expect(menu).toBeVisible();
 
 // product events: the filter queries the server and redraws the grid
 await grid.afterTilesDrawn(2, () => sidebar.applyFilter("cat"));

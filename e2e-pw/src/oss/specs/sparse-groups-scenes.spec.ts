@@ -73,9 +73,7 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
     modal.sampleCanvas3d.click(0.5, 0.5),
   );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.afterCarouselRendered(() =>
-    modal.afterGroupSampleLoaded(() => modal.navigateNextSample(true)),
-  );
+  await modal.afterCarouselRendered(() => modal.navigateNextSample(true));
   await modal.assert.verifyCarouselLength(1);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   await modal.sidebar.afterEntryChanged("group.name", "ego", () =>
