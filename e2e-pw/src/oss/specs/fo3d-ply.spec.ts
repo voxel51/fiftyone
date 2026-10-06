@@ -3,18 +3,9 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-import fs from "node:fs";
 import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
-import {
-  getPlyCube,
-  getPlyPointCloud,
-} from "./fo3d-ascii-asset-factory/ply-factory";
 
 const datasetName = getUniqueDatasetNameWithPrefix("fo3d-ply");
-
-const plyMeshPath = `/tmp/test-ply-mesh-${datasetName}.ply`;
-const plyPointCloudPath = `/tmp/test-ply-pointcloud-${datasetName}.ply`;
-const scenePath = `/tmp/test-scene-${datasetName}.fo3d`;
 
 const test = base.extend<{
   grid: GridPom;
@@ -36,42 +27,38 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  fs.writeFileSync(plyMeshPath, getPlyCube());
-  fs.writeFileSync(plyPointCloudPath, getPlyPointCloud());
-
-  await fiftyoneLoader.executePythonCode(
-    `
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    scene = fo.Scene()
-    
-    # Add PLY mesh
-    ply_mesh = fo.PlyMesh("ply_mesh", "${plyMeshPath}")
-    ply_mesh.default_material = fo.MeshBasicMaterial(color="blue", opacity=0.8)
-    ply_mesh.scale = 0.5
-    ply_mesh.position = [1, 1, 0]
-    scene.add(ply_mesh)
-
-    # Add PLY point cloud
-    ply_pointcloud = fo.PlyMesh("ply_pointcloud", "${plyPointCloudPath}", is_point_cloud=True)
-    ply_pointcloud.scale = 2
-    ply_pointcloud.position = [-1, 0, 0]
-    scene.add(ply_pointcloud)
-    
-    scene.write("${scenePath}")
-
-    sample1 = fo.Sample(filepath="${scenePath}", name="sample1")
-
-    dataset.add_samples([sample1])
-    `,
-  );
+  // a blue cube mesh and a PLY point cloud beside it
+  await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName,
+    sceneOptions: {
+      meshes: [
+        {
+          shape: "cube",
+          vertexColors: false,
+          name: "ply_mesh",
+          material: {
+            _type: "MeshBasicMaterial",
+            color: "blue",
+            opacity: 0.8,
+            wireframe: false,
+          },
+          scale: 0.5,
+          position: [1, 1, 0],
+        },
+        {
+          shape: "point-cloud",
+          numPoints: 125,
+          name: "ply_pointcloud",
+          isPointCloud: true,
+          scale: 0.5,
+          position: [-1, 0, 0],
+        },
+      ],
+    },
+  });
 });
 
 test.describe.serial("fo3d-ply", () => {

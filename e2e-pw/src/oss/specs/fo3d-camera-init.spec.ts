@@ -7,12 +7,6 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-import fs from "node:fs";
-import {
-  getPlyCube,
-  getPlyPointCloud,
-} from "./fo3d-ascii-asset-factory/ply-factory";
-
 /**
  * Camera initialization e2e tests.
  *
@@ -26,14 +20,10 @@ const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 5, -5];
 // ─── dataset: no camera props (bbox-based init) ────────────────────────────
 
 const basicDatasetName = getUniqueDatasetNameWithPrefix("cam-init-basic");
-const basicPlyMeshPath = `/tmp/cam-init-mesh-${basicDatasetName}.ply`;
-const basicPlyPcdPath = `/tmp/cam-init-pcd-${basicDatasetName}.ply`;
-const basicScenePath = `/tmp/cam-init-scene-${basicDatasetName}.fo3d`;
 
 // ─── dataset: explicit camera position in fo3d ─────────────────────────────
 
 const scenePosDatasetName = getUniqueDatasetNameWithPrefix("cam-init-scenepos");
-const scenePosScenePath = `/tmp/cam-init-scenepos-${scenePosDatasetName}.fo3d`;
 
 // Camera position and lookAt defined in the fo3d scene
 const SCENE_CAMERA_POSITION: [number, number, number] = [15, 10, 20];
@@ -55,53 +45,39 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  // Write PLY assets to disk (reused across both datasets)
-  fs.writeFileSync(basicPlyMeshPath, getPlyCube());
-  fs.writeFileSync(basicPlyPcdPath, getPlyPointCloud());
-
   // ── Dataset 1: no camera props → camera should init from bbox ──
+  await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName: basicDatasetName,
+    numSamples: 2,
+    sceneOptions: {
+      meshes: [
+        { shape: "cube", name: "mesh", scale: 2 },
+        {
+          shape: "point-cloud",
+          name: "pcd",
+          isPointCloud: true,
+          position: [-1, 0, 0],
+        },
+      ],
+    },
+  });
+
   // ── Dataset 2: explicit camera.position + camera.look_at in fo3d ──
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.Dataset("${basicDatasetName}")
-dataset.persistent = True
-
-scene = fo.Scene()
-mesh = fo.PlyMesh("mesh", "${basicPlyMeshPath}")
-mesh.scale = 2
-scene.add(mesh)
-
-pcd = fo.PlyMesh("pcd", "${basicPlyPcdPath}", is_point_cloud=True)
-pcd.position = [-1, 0, 0]
-scene.add(pcd)
-
-scene.write("${basicScenePath}")
-
-sample1 = fo.Sample(filepath="${basicScenePath}", name="sample1")
-sample2 = fo.Sample(filepath="${basicScenePath}", name="sample2")
-dataset.add_samples([sample1, sample2])
-
-dataset2 = fo.Dataset("${scenePosDatasetName}")
-dataset2.persistent = True
-
-scene = fo.Scene()
-mesh = fo.PlyMesh("mesh", "${basicPlyMeshPath}")
-scene.add(mesh)
-
-scene.camera = fo.PerspectiveCamera(
-    position=${JSON.stringify(SCENE_CAMERA_POSITION)},
-    look_at=${JSON.stringify(SCENE_CAMERA_LOOK_AT)},
-)
-
-scene.write("${scenePosScenePath}")
-
-sample = fo.Sample(filepath="${scenePosScenePath}", name="sample-with-cam")
-dataset2.add_samples([sample])
-  `);
+  await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName: scenePosDatasetName,
+    sceneOptions: {
+      meshes: [{ shape: "cube", name: "mesh" }],
+      camera: {
+        position: SCENE_CAMERA_POSITION,
+        lookAt: SCENE_CAMERA_LOOK_AT,
+      },
+    },
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {

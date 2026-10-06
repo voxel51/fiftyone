@@ -6,8 +6,6 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix(
   "pcd-orthographic-projection",
 );
-const normalPcd = `/tmp/test-pcd1-${datasetName}.pcd`;
-const pcdWithNaN = `/tmp/test-pcd2-${datasetName}.pcd`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -22,45 +20,31 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  mediaFactory.createPcd({
-    outputPath: normalPcd,
-    shape: "cube",
-    numPoints: 100,
+  // a cube, and the same cube with a NaN coordinate in three points
+  await datasetFactory.createDataset({
+    mediaType: "point-cloud",
+    datasetName,
+    numSamples: 2,
+    pcdOptions: (index) => ({
+      shape: "cube",
+      numPoints: 100,
+      ...(index === 1
+        ? {
+            imputeNaN: {
+              indices: [
+                [0, 0],
+                [1, 1],
+                [2, 2],
+              ],
+            },
+          }
+        : {}),
+    }),
+    // TODO: fix the underlying NaN handling in fiftyone.utils.utils3d.
+    orthographicProjections: { size: [-1, 64], skipFailures: true },
   });
-  mediaFactory.createPcd({
-    outputPath: pcdWithNaN,
-    shape: "cube",
-    numPoints: 100,
-    imputeNaN: {
-      indices: [
-        [0, 0],
-        [1, 1],
-        [2, 2],
-      ],
-    },
-  });
-
-  await fiftyoneLoader.executePythonCode(
-    `
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    sample1 = fo.Sample(filepath="${normalPcd}")
-    sample2 = fo.Sample(filepath="${pcdWithNaN}")
-    dataset.add_samples([sample1, sample2])
-
-    # TODO: fix the underlying NaN handling in fiftyone.utils.utils3d.
-    fou3d.compute_orthographic_projection_images(
-        dataset, (-1, 64), "/tmp/ortho", skip_failures=True
-    )
-    `,
-  );
 });
 
 test.describe.serial("orthographic projections", () => {
