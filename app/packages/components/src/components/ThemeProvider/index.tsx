@@ -308,9 +308,6 @@ let theme = extendMuiTheme({
   fontFamily: {
     body: "Palanquin, sans-serif",
   },
-  opacity: {
-    inputPlaceholder: 0.5,
-  },
 });
 
 export const useTheme = () => {
