@@ -88,8 +88,22 @@ class EmbeddingsV2RunsStatus(HTTPEndpoint):
 
     def _post_sync(self, data):
         db = foo.get_db_conn()
+        # The runs the dataset document references, exactly as the dataset
+        # query lists them: run documents a dataset no longer references
+        # still carry its id, and counting them would make the App's run
+        # list look permanently stale and refresh it on every check
+        dataset_doc = db.datasets.find_one(
+            {"_id": ObjectId(data["datasetId"])}, {"brain_methods": 1}
+        )
+        run_ids = [
+            run_id
+            for run_id in (
+                (dataset_doc or {}).get("brain_methods") or {}
+            ).values()
+            if isinstance(run_id, ObjectId)
+        ]
         run_docs = db.runs.find(
-            {"_dataset_id": ObjectId(data["datasetId"])},
+            {"_id": {"$in": run_ids}},
             {"key": 1, "config": 1, "results": 1},
         )
 

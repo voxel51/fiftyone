@@ -158,6 +158,15 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         )
         broken_doc.save()
 
+        orphan_doc = RunDocument(
+            dataset_id=viz_doc.dataset_id,
+            key="orphan",
+            version=viz_doc.version,
+            timestamp=viz_doc.timestamp,
+            config=viz_doc.config,
+        )
+        orphan_doc.save()
+
         dataset._doc.brain_methods["pending"] = pending_doc
         dataset._doc.brain_methods["broken"] = broken_doc
         dataset._doc.save()
@@ -173,6 +182,7 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertFalse(statuses["pending"]["ready"])
         self.assertIsNone(statuses["pending"]["error"])
         self.assertIn("not importable", statuses["broken"]["error"])
+        self.assertNotIn("orphan", statuses)
 
     def test_dataset_query_reports_run_readiness(self):
         # A run doc exists as soon as a computation registers, but its
