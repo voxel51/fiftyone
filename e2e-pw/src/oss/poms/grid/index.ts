@@ -94,7 +94,7 @@ export class GridPom {
     this.url = new UrlPom(page, eventUtils);
     this.actionsRow = new GridActionsRowPom(page);
     this.sliceSelector = new GridSliceSelectorPom(page);
-    this.tagger = new GridTaggerPom(page);
+    this.tagger = new GridTaggerPom(page, eventUtils);
 
     this.locator = page.getByTestId("fo-grid");
   }
@@ -126,29 +126,28 @@ export class GridPom {
   async toggleSelectNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the selection checkbox is revealed in the tile's top selection region
-      await tile.hover({ position: { x: 10, y: 5 } });
-      await tile.locator("[data-fo-selection-checkbox]").click();
+      // the selection checkbox is revealed on tile hover
+      await tile.hover();
+      await tile.getByRole("checkbox").click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
   }
 
-  async toggleSelectFirstSample() {
-    await this.toggleSelectNthSample(0);
+  /**
+   * Run `action` and resolve once the grid's selected count has rendered the
+   * selection it changed
+   */
+  afterSelectionChanged<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(
+      "e2e:actions:selected-shown",
+      action,
+      (e) => !(e.detail as { modal: boolean }).modal,
+    );
   }
 
-  async addNthSampleToBucket(n: number, bucketName: string) {
-    const tile = this.getNthTile(n);
-    const box = await tile.boundingBox();
-    if (!box) throw new Error(`grid tile ${n} has no bounds`);
-    // Bucket chips appear when hovering near the tile's top edge.
-    await tile.hover({
-      position: { x: box.width / 2, y: Math.min(20, box.height / 8) },
-    });
-    await this.page
-      .getByRole("button", { name: `Add to ${bucketName}` })
-      .click();
+  async toggleSelectFirstSample() {
+    await this.toggleSelectNthSample(0);
   }
 
   async openNthSample(n: number) {
@@ -537,20 +536,16 @@ class GridAsserter {
   }
 
   async isSelectionCountEqualTo(n: number) {
-    const tray = this.gridPom.page.getByRole("region", { name: "Selection" });
+    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
+      "action-manage-selected",
+    );
 
     if (n === 0) {
-      expect(await tray.textContent()).toContain(
-        "Act on all samples in the grid",
-      );
+      expect(await action.count()).toBe(0);
       return;
     }
 
-    expect(await tray.textContent()).toMatch(
-      new RegExp(
-        `${n.toLocaleString()}\\s*sample${n === 1 ? "" : "s"} selected`,
-      ),
-    );
+    expect(await action.first().textContent()).toBe(String(n));
   }
 
   /**

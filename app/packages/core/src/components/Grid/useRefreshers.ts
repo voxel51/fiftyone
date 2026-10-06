@@ -1,13 +1,11 @@
 import { getEventBus } from "@fiftyone/events";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useGridSelectionRequest } from "@fiftyone/state/src/selection";
 import { useEffect } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
-import { useGridJumpRevision } from "./useScrollLocation";
 
 /** e2e specs wait on the grid rebuild a requested refresh causes */
 type GridResetE2EEvents = {
@@ -15,11 +13,6 @@ type GridResetE2EEvents = {
 };
 
 export default function useRefreshers() {
-  // Keyed on the boundary the grid's pages are requested with; an extension's
-  // ranges landing after its stage commit must not rebuild an unchanged grid
-  const { key: selectionScopeKey } = useGridSelectionRequest({
-    rangeConstraint: false,
-  });
   const cropToContent = useRecoilValue(fos.cropToContent(false));
   const datasetName = useRecoilValue(fos.datasetName);
   const extendedStagesUnsorted = fos.stringifyObj(
@@ -33,7 +26,6 @@ export default function useRefreshers() {
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
   const queryPerformanceSetting = useRecoilValue(fos.queryPerformanceSetting);
   const refresher = useRecoilValue(fos.refresher);
-  const jump = useGridJumpRevision();
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false),
   );
@@ -43,12 +35,10 @@ export default function useRefreshers() {
   const sort = useRecoilValue(fos.gridSortBy);
   const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
-  // only reload, attempt to return to the last grid location (or the one
-  // a jump just wrote)
+  // only reload, attempt to return to the last grid location
   const layoutReset = useMemoOne(() => {
     cropToContent;
     fieldVisibilityStage;
-    jump;
     mediaField;
     queryPerformanceSetting;
     refresher;
@@ -56,7 +46,6 @@ export default function useRefreshers() {
   }, [
     cropToContent,
     fieldVisibilityStage,
-    jump,
     mediaField,
     queryPerformanceSetting,
     refresher,
@@ -73,7 +62,6 @@ export default function useRefreshers() {
     view;
     return uuid();
   }, [
-    selectionScopeKey,
     datasetName,
     extendedStagesUnsorted,
     filters,

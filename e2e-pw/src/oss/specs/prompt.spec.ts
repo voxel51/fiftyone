@@ -121,13 +121,14 @@ test.describe.serial("operator prompt", () => {
   });
 
   test("Prompt: Progress", async ({
+    fiftyoneLoader,
     operatorsBrowser,
     operatorsPrompt,
     operatorsPromptViewModal,
   }) => {
     await operatorsBrowser.show();
     await operatorsBrowser.search("E2E");
-    // the operator shows each step for half a second before the next
+    // the operator holds at its halfway step until the spec releases it
     await operatorsPromptViewModal.afterOutput(
       () => operatorsBrowser.choose("E2E: Progress"),
       "percent_complete",
@@ -135,8 +136,16 @@ test.describe.serial("operator prompt", () => {
     );
     await operatorsPrompt.assert.isExecuting();
     await operatorsPromptViewModal.assert.hasContent("Loading 1 of 2");
-    // the run closes its prompt once the last step has shown
-    await operatorsPrompt.untilClosed();
+    await operatorsPromptViewModal.afterOutput(
+      () =>
+        fiftyoneLoader.executePythonCode(`
+      import fiftyone.operators as foo
+
+      foo.ExecutionStore.create("e2e_progress_release").set("${datasetName}", 1)
+    `),
+      "percent_complete",
+      1,
+    );
     await operatorsPromptViewModal.assert.hasContent("Loading 2 of 2");
     await operatorsPromptViewModal.done();
     await operatorsPrompt.assert.isClosed();

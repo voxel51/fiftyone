@@ -1,5 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { EventCondition, EventUtils } from "src/shared/event-utils";
+import { EventUtils } from "src/shared/event-utils";
 import { afterPopout } from "../action-row/popout";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
@@ -86,54 +86,6 @@ export class ModalPom {
     return this.locator
       .getByTestId("panel-tab-fo-sample-modal-plugin")
       .textContent();
-  }
-
-  /** The saved subset's read-only range marks on the existing media timeline. */
-  get savedRangeTracks() {
-    return this.locator.locator('[data-track-id^="fiftyone:saved-segments"]');
-  }
-
-  get savedRangeBars() {
-    return this.savedRangeTracks
-      .first()
-      .locator("[data-event-index]:not([data-resize-handle])");
-  }
-
-  savedRangeBarsFor(sourceLabel: string) {
-    return this.savedRangeTracks
-      .filter({ hasText: sourceLabel })
-      .locator("[data-event-index]:not([data-resize-handle])");
-  }
-
-  /**
-   * A saved-subset timeline row for `sourceLabel` shows exactly `spans`
-   * (`"0.20-0.50"`, comma separated), pinned or not when `pinned` is given
-   */
-  savedRangeShown(
-    sourceLabel: string,
-    spans: string,
-    pinned?: boolean,
-  ): EventCondition {
-    return {
-      events: "e2e:playback:track-shown",
-      predicate: (e) => {
-        const track = e.detail as {
-          id: string;
-          label: string;
-          eventLabels: string;
-          pinned: boolean;
-          pinnable: boolean;
-          spans: string;
-        };
-        return (
-          track.id.startsWith("fiftyone:saved-segments") &&
-          (track.label.includes(sourceLabel) ||
-            track.eventLabels.includes(sourceLabel)) &&
-          track.spans === spans &&
-          (pinned === undefined || (track.pinnable && track.pinned === pinned))
-        );
-      },
-    };
   }
 
   get groupLooker() {
@@ -242,10 +194,15 @@ export class ModalPom {
     );
   }
 
+  /** Toggle the sample's selection; resolves once the modal's count shows it */
   async toggleSelection(isPcd = false) {
     await (isPcd ? this.sampleCanvas3d : this.sampleCanvas).move(0.5, 0.5);
 
-    await this.locator.getByTestId("select-sample-checkbox").click();
+    await this.eventUtils.after(
+      "e2e:actions:selected-shown",
+      () => this.locator.getByTestId("select-sample-checkbox").click(),
+      (e) => (e.detail as { modal: boolean }).modal,
+    );
   }
 
   /** Pick the media field in display options, which open and close again */
@@ -465,11 +422,7 @@ class ModalAsserter {
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
-    expect(collapseWhitespace(await action.first().textContent())).toBe(
-      n === 0
-        ? "0 samples · 0 labels"
-        : `${n.toLocaleString()} sample${n === 1 ? "" : "s"}`,
-    );
+    expect(await action.first().textContent()).toBe(String(n));
   }
 
   async verifyCarouselLength(expectedCount: number) {

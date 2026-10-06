@@ -3,7 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
-import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -41,7 +40,6 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
 });
 
 test("grid tagging refreshes visible tiles across pages without reloading", async ({
-  eventUtils,
   fiftyoneLoader,
   grid,
   page,
@@ -67,9 +65,12 @@ test("grid tagging refreshes visible tiles across pages without reloading", asyn
   expect(await tag(30).count()).toBe(0);
 
   const tagged = await grid.tagsRenderedMark();
-  await grid.run(() =>
-    new SelectionTrayPom(page, eventUtils).tagSamples("grid-test"),
-  );
+  await grid.run(async () => {
+    await grid.tagger.afterCountShown("sample", () =>
+      grid.actionsRow.toggleTagSamplesOrLabels(),
+    );
+    await grid.tagger.addNewTag("sample", "grid-test");
+  });
 
   // Check actual viewport contents, including previously cached later pages.
   for (const index of [0, 30, 47, 53]) {

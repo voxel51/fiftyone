@@ -1,22 +1,17 @@
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  tray: SelectionTrayPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  tray: async ({ page, eventUtils }, use) => {
-    await use(new SelectionTrayPom(page, eventUtils));
   },
 });
 
@@ -64,24 +59,23 @@ test.describe.serial("selection", () => {
       fiftyoneLoader,
       grid,
       modal,
-      tray,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
       await grid.assert.isEntryCountTextEqualTo("5 samples");
-      await tray.afterSelected(1, () => grid.toggleSelectFirstSample());
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isSelectionCountEqualTo(1);
-      await tray.afterSelected(2, () => grid.toggleSelectNthSample(4));
+      await grid.afterSelectionChanged(() => grid.toggleSelectNthSample(4));
       await grid.assert.isSelectionCountEqualTo(2);
-      await tray.afterSelected(1, () => grid.toggleSelectFirstSample());
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isSelectionCountEqualTo(1);
-      await tray.afterResults(() => grid.toggleSelectNthSample(4));
+      await grid.afterSelectionChanged(() => grid.toggleSelectNthSample(4));
       await grid.assert.isSelectionCountEqualTo(0);
 
       // verify selection clears on escape
-      await tray.afterSelected(1, () => grid.toggleSelectFirstSample());
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isSelectionCountEqualTo(1);
       page.once("dialog", (dialog) => dialog.accept());
-      await tray.afterResults(() => page.press("body", "Escape"));
+      await grid.afterSelectionChanged(() => page.press("body", "Escape"));
       await grid.assert.isSelectionCountEqualTo(0);
 
       // check modal
@@ -91,7 +85,7 @@ test.describe.serial("selection", () => {
       const settled = (action: () => Promise<void>) =>
         isPcd ? modal.afterLooker3dSettled(action) : action();
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-      await grid.toggleSelectFirstSample();
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isNthSampleSelected(0);
       await settled(() => grid.openNthSample(1));
       await modal.assert.verifySelectionCount(1);
@@ -104,7 +98,7 @@ test.describe.serial("selection", () => {
       await modal.assert.verifySelectionCount(0);
 
       // verify pressing escape clears modal but not selection
-      await tray.afterSelected(1, () => modal.toggleSelection(isPcd));
+      await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(1);
       await modal.close();
       await grid.assert.isSelectionCountEqualTo(1);
