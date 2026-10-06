@@ -3,7 +3,6 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createImage } from "src/shared/media-factory/image";
 
 const test = base.extend<{
   grid: GridPom;
@@ -25,93 +24,33 @@ const nestedDynamicGroupsDatasetName = getUniqueDatasetNameWithPrefix(
   "nested-dynamic-groups",
 );
 
-function* orderGenerator() {
-  while (true) {
-    yield 1;
-    yield 1;
-    yield 2;
-    yield 2;
-  }
-}
-
-const orderGen = orderGenerator();
-
-// file format: g{groupNum}sl{sliceName}sc{sceneNum}o{orderNum}.png
-const imagePaths = [1, 2, 3, 4]
-  .map((groupNum, idx) => [
-    `g${groupNum}sl1sc${idx > 1 ? "2" : "1"}`,
-    `g${groupNum}sl2sc${idx > 1 ? "2" : "1"}`,
-  ])
-  .flat()
-  .map((imgName) => `/tmp/${imgName}o${orderGen.next().value}.png`);
+// groups 0 and 1 are scene "1", groups 2 and 3 scene "2"; within a scene the
+// groups are ordered "1" then "2"
+const NUM_GROUPS = 4;
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  // create a dataset with two groups, each with 2 image samples
-  const imageCreatePromises = imagePaths.map(
-    async (imgPath) =>
-      await createImage({
-        outputPath: imgPath,
-        width: 100,
-        height: 100,
-        watermarkString: imgPath.split("/").pop().split(".")[0],
-      }),
-  );
-
-  await Promise.all(imageCreatePromises);
-
-  const pythonCode = `
-      import fiftyone as fo
-      import json
-
-      dataset = fo.Dataset("${nestedDynamicGroupsDatasetName}")
-      dataset.persistent = True
-  
-      samples = []
-
-      image_paths = ${JSON.stringify(imagePaths)}
-      
-      for i in range(1, 5):
-          group = fo.Group()
-
-          group_id = i
-
-          file1 = image_paths[(group_id - 1) * 2]
-          file2 = image_paths[(group_id - 1) * 2 + 1]
-
-          # extract scene_id from filename
-          file1_name = file1.split("/").pop().split(".")[0]
-          file2_name = file2.split("/").pop().split(".")[0]
-
-          scene_id = file1_name[-3]
-          order_id_1 = file1_name[-1]
-          order_id_2 = file2_name[-1]
-
-          s1 = fo.Sample(
-              filepath=file1,
-              group=group.element("1"),
-              scene_key=scene_id,
-              order_key=order_id_1,
-          )
-          s2 = fo.Sample(
-              filepath=file2,
-              group=group.element("2"),
-              scene_key=scene_id,
-              order_key=order_id_2,
-          )
-
-          samples.extend([s1, s2])
-
-      dataset.add_samples(samples)
-
-      groups = dataset.group_by("scene_key", order_by="order_key")
-      dataset.save_view("groups", groups)
-      `;
-  await fiftyoneLoader.executePythonCode(pythonCode);
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName: nestedDynamicGroupsDatasetName,
+    numGroups: NUM_GROUPS,
+    slices: [
+      { name: "1", mediaType: "image" },
+      { name: "2", mediaType: "image" },
+    ],
+    schema: { scene_key: "StringField", order_key: "StringField" },
+    withSampleData: ({ groupIndex }) => ({
+      scene_key: groupIndex < NUM_GROUPS / 2 ? "1" : "2",
+      order_key: String((groupIndex % 2) + 1),
+    }),
+    savedViews: {
+      groups: 'dataset.group_by("scene_key", order_by="order_key")',
+    },
+  });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -128,8 +67,8 @@ test(`dynamic groups of groups works`, async ({
   modal,
   sidebar,
 }) => {
-  await grid.assert.isTileCountEqualTo(4);
-  await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
+  await grid.assert.isTileCountEqualTo(NUM_GROUPS);
+  await grid.assert.isEntryCountTextEqualTo(`${NUM_GROUPS} groups with slice`);
 
   await sidebar.clickFieldCheckbox("scene_key");
   await sidebar.clickFieldCheckbox("order_key");
@@ -151,10 +90,12 @@ test(`dynamic groups of groups works`, async ({
     await grid.actionsRow.displayActions.toggleRenderFramesAsVideo();
   });
 
-  await grid.assert.isTileCountEqualTo(2);
+  await grid.assert.isTileCountEqualTo(NUM_GROUPS / 2);
   // rendering frames as video leaves the counts as loaded, so they do not
   // signal
-  await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+  await grid.assert.isEntryCountTextEqualTo(
+    `${NUM_GROUPS / 2} groups with slice`,
+  );
 
   await grid.assert.nthSampleHasTagValue(0, "scene_key", "1");
   await grid.assert.nthSampleHasTagValue(1, "scene_key", "2");

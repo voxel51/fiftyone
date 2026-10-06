@@ -21,34 +21,30 @@ const extensionDatasetNamePairs = ["pcd", "png"].map(
     ] as const,
 );
 
+// enough samples per group for a carousel and a ten-page pagination bar
+const NUM_GROUPS = 3;
+const GROUP_SIZE = 10;
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  let pythonCode = `
-      import fiftyone as fo
-  `;
-
-  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-    pythonCode += `
-      # ${extension} dataset
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-  
-      samples = []
-      for i in range(0, 100):
-          sample = fo.Sample(filepath=f"{i}.${extension}", dynamic_group=i % 10)
-          samples.append(sample)
-      
-      dataset.add_samples(samples)
-      view = dataset.group_by("dynamic_group")
-      dataset.save_view("dynamic-group", view)
-
-      `;
-  });
-  await fiftyoneLoader.executePythonCode(pythonCode);
+  for (const [extension, datasetName] of extensionDatasetNamePairs) {
+    const options = {
+      datasetName,
+      numSamples: NUM_GROUPS * GROUP_SIZE,
+      schema: { dynamic_group: "IntField" as const },
+      withSampleData: ({ index }: { index: number }) => ({
+        dynamic_group: index % NUM_GROUPS,
+      }),
+      savedViews: { "dynamic-group": 'dataset.group_by("dynamic_group")' },
+    };
+    await (extension === "pcd"
+      ? datasetFactory.createDataset({ mediaType: "point-cloud", ...options })
+      : datasetFactory.createDataset(options));
+  }
 });
 
 test.afterEach(async ({ modal, page }) => {
@@ -68,7 +64,7 @@ test.describe.serial("dynamic groups smoke test", () => {
         searchParams: new URLSearchParams({ view: "dynamic-group" }),
       });
 
-      await grid.assert.isEntryCountTextEqualTo("10 groups");
+      await grid.assert.isEntryCountTextEqualTo(`${NUM_GROUPS} groups`);
 
       await grid.openFirstSample();
       await modal.group.setDynamicGroupsNavigationMode("carousel");
@@ -87,7 +83,6 @@ test.describe.serial("dynamic groups smoke test", () => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
         searchParams: new URLSearchParams({ view: "dynamic-group" }),
       });
-      // the samples have no media files, so the modal shows an error tile
       await modal.group.dynamicGroupPagination.afterShown(() =>
         modal.afterSampleLoaded(() => grid.openFirstSample(), true),
       );
@@ -96,7 +91,7 @@ test.describe.serial("dynamic groups smoke test", () => {
       await modal.group.assert.assertIsCarouselNotVisible();
 
       await modal.group.dynamicGroupPagination.assert.verifyPage(1);
-      await modal.group.dynamicGroupPagination.assert.verifyPage(10);
+      await modal.group.dynamicGroupPagination.assert.verifyPage(GROUP_SIZE);
 
       await modal.group.setDynamicGroupsNavigationMode("carousel");
 
