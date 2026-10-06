@@ -182,24 +182,15 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   {
     /* TAGGING FUNCTIONALITY */
   }
+  const primaryParams = primaryButtonView.params;
   useEffect(() => {
-    if (
+    const disabled =
       (functionality === "tagging" || functionality === "Tagging") &&
-      (!primaryButtonView.params ||
-        !primaryButtonView.params.tags ||
-        primaryButtonView.params.tags.length === 0)
-    ) {
-      setPrimaryButtonView({
-        ...primaryButtonView,
-        disabled: true,
-      });
-    } else {
-      setPrimaryButtonView({
-        ...primaryButtonView,
-        disabled: false,
-      });
-    }
-  }, [primaryButtonView.params]);
+      (!primaryParams ||
+        !primaryParams.tags ||
+        primaryParams.tags.length === 0);
+    setPrimaryButtonView((prev) => ({ ...prev, disabled }));
+  }, [functionality, primaryParams]);
 
   const handleSaveTags = useCallback((tags: string[]) => {
     setPrimaryButtonView((prevButtonView) => ({

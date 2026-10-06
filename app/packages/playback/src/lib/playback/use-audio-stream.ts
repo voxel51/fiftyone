@@ -271,6 +271,9 @@ export function useAudioStream(
       setMetadataReady(false);
       setHasAudio(null);
     };
+    // the element is rebuilt for a new source, not for a new stream id; id is
+    // only read in teardown to clear this stream's error status
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [enabled, src, store]);
 
   // Register the blocking stream once the element can answer readiness
@@ -325,7 +328,7 @@ export function useAudioStream(
     }
     setSourceAudioAvailable(store, id, "available");
     return () => setSourceAudioAvailable(store, id, null);
-  }, [available, store]);
+  }, [available, store, id]);
 
   // Roster registration: this element is "just another audio source" in
   // the multi-track model — publish it so the Mixed dropdown / tile mute

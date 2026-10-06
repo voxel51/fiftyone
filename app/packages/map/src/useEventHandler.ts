@@ -13,7 +13,7 @@ const useEventHandler = (target, eventType, handler, useCapture = false) => {
     return () => {
       target && target.removeEventListener(eventType, wrapper);
     };
-  }, [target, eventType]);
+  }, [target, eventType, useCapture]);
 };
 
 export default useEventHandler;
