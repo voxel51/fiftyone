@@ -156,7 +156,7 @@ const useItemUpdater = (
         entry.updateOptions({}, shouldHardReload);
       };
     },
-    [cache, getNewFields, options, selected, style],
+    [cache, getNewFields, removeField, options, selected, style],
   );
 };
 

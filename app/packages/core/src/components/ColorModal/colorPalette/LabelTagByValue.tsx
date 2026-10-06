@@ -3,37 +3,38 @@ import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import ValueColorList from "../controls/ValueColorList";
-import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 
 const LabelTagByValue: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const activePath = useRecoilValue(activeColorPath);
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const initialValue = colorScheme.labelTags?.valueColors;
-  const setting = useMemo(
-    () => colorScheme.labelTags,
-    [activePath, colorScheme.labelTags],
-  );
+  const setting = useMemo(() => colorScheme.labelTags, [colorScheme.labelTags]);
   const values = useMemo(() => setting?.valueColors ?? [], [setting]);
-  const defaultValue = {
-    value: "",
-    color: getRandomColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = useMemo(
+    () => ({
+      value: "",
+      color: getRandomColorFromPool(colorScheme.colorPool),
+    }),
+    [colorScheme.colorPool],
+  );
   const shouldShowAddButton = Boolean(
     setting?.valueColors && setting.valueColors.length > 0,
   );
 
-  const onSyncUpdate = useCallback((copy: ValueColorInput[]) => {
-    if (copy) {
-      setColorScheme((cur) => ({
-        ...cur,
-        labelTags: { ...cur.labelTags, valueColors: copy },
-      }));
-    }
-  }, []);
+  const onSyncUpdate = useCallback(
+    (copy: ValueColorInput[]) => {
+      if (copy) {
+        setColorScheme((cur) => ({
+          ...cur,
+          labelTags: { ...cur.labelTags, valueColors: copy },
+        }));
+      }
+    },
+    [setColorScheme],
+  );
 
   useEffect(() => {
     if (!values) {
@@ -43,7 +44,7 @@ const LabelTagByValue: React.FC = () => {
         setColorScheme({ ...colorScheme, labelTags: copy });
       }
     }
-  }, [values]);
+  }, [colorScheme, defaultValue, setColorScheme, values]);
 
   return (
     <ValueColorList

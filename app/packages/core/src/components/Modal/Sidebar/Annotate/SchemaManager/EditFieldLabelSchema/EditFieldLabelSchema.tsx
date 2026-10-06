@@ -35,12 +35,13 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isLargeDataset, scanLimit } = useIsLargeDataset();
 
+  const { resetErrors } = labelSchema;
   const handleTabChange = useCallback(
     (index: number) => {
       setActiveTab(TAB_IDS[index]);
-      labelSchema.resetErrors();
+      resetErrors();
     },
-    [labelSchema.resetErrors],
+    [resetErrors],
   );
 
   return (

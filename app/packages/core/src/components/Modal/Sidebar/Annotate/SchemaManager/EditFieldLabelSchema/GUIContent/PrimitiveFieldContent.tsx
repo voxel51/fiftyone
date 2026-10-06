@@ -63,11 +63,17 @@ const PrimitiveFieldContent = ({
   const schemaType = getSchemaTypeFromFieldType(fieldType);
 
   // Get component options for this type
-  const componentOptions = COMPONENT_OPTIONS[schemaType] || [];
+  const componentOptions = useMemo(
+    () => COMPONENT_OPTIONS[schemaType] || [],
+    [schemaType],
+  );
 
   // Current values from config
   const component = config?.component || componentOptions[0]?.id || "text";
-  const values = config?.values?.map(String) || [];
+  const values = useMemo(
+    () => config?.values?.map(String) || [],
+    [config?.values],
+  );
 
   // Local state for range input (to allow typing partial values)
   const [range, setRange] = useState<{ min: string; max: string } | null>(

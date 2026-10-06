@@ -56,6 +56,7 @@ const useHover = (ref, delay, onHover, onHoverEnd) => {
       };
     }
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- attach once per node; the handlers only touch refs and stable setters
   }, [ref.current]);
 
   return hovering;
@@ -82,7 +83,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
 
   useEffect(() => {
     setOpen(selectedField === instanceId);
-  }, [selectedField]);
+  }, [instanceId, selectedField]);
 
   return {
     open,
@@ -268,7 +269,7 @@ function FieldInfoExpanded({
     setIsCustomizingColor({ path: path || field.path });
   };
 
-  useEffect(updatePosition, [field, isCollapsed]);
+  useEffect(updatePosition, [el, field, hoverTarget, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
   const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
 

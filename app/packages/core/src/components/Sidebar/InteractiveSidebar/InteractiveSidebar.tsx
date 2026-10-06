@@ -131,6 +131,7 @@ const InteractiveSidebar = ({
   // releases rows pruned during render, which the ref callback skips).
   useEffect(() => {
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- dispose whatever items are live at unmount
       disposeInteractiveItems(controller, items.current);
       observer.disconnect();
     };

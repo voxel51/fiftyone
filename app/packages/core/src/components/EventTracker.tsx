@@ -65,6 +65,7 @@ const useTrackViewChanges = () => {
       trackEvent("view_change", changes);
       setLastTracked(now);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- track only when the recorded changes change; re-running on lastTracked/trackEvent would resend the same event
   }, [changes]);
 };
 

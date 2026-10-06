@@ -42,12 +42,14 @@ function MainSpace() {
     if (!spaces.equals(sessionSpaces)) {
       updateSpaces(sessionSpaces);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply incoming session spaces only; re-running on local spaces would echo them back
   }, [sessionSpaces]);
 
   useEffect(() => {
     if (size(sessionPanelsState) && !isEqual(sessionPanelsState, panelsState)) {
       setPanelsState(sessionPanelsState);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply incoming session panel state only; local edits must not re-trigger it
   }, [sessionPanelsState]);
 
   useEffect(() => {

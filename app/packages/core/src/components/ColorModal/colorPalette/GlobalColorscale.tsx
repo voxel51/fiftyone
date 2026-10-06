@@ -36,16 +36,19 @@ const GlobalColorscale: React.FC = () => {
       : "name",
   );
 
-  const defaultValue = [
-    {
-      value: 0,
-      color: getRGBColorFromPool(colorScheme.colorPool),
-    },
-    {
-      value: 1,
-      color: getRGBColorFromPool(colorScheme.colorPool),
-    },
-  ];
+  const defaultValue = useMemo(
+    () => [
+      {
+        value: 0,
+        color: getRGBColorFromPool(colorScheme.colorPool),
+      },
+      {
+        value: 1,
+        color: getRGBColorFromPool(colorScheme.colorPool),
+      },
+    ],
+    [colorScheme.colorPool],
+  );
 
   const onBlurName = useCallback(
     (value: string) => {
@@ -62,7 +65,7 @@ const GlobalColorscale: React.FC = () => {
         }, 1000);
       }
     },
-    [setting],
+    [setColorScheme, setting],
   );
 
   const shouldShowAddButton = Boolean(
@@ -115,6 +118,7 @@ const GlobalColorscale: React.FC = () => {
         },
       }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed the default colorscale only when the tab changes
   }, [tab]);
 
   useEffect(() => {
@@ -136,7 +140,7 @@ const GlobalColorscale: React.FC = () => {
         });
       }
     }
-  }, [setting]);
+  }, [colorScheme, defaultValue, setColorScheme, setting]);
 
   return (
     <div>

@@ -340,7 +340,7 @@ export const TooltipInfo = React.memo(() => {
     return () => {
       document.removeEventListener("keyup", unlockTooltip);
     };
-  }, [isTooltipLocked]);
+  }, [isTooltipLocked, setIsTooltipLocked]);
 
   useLayoutEffect(() => {
     const lockTooltip = (e: KeyboardEvent) => {
@@ -354,7 +354,7 @@ export const TooltipInfo = React.memo(() => {
     return () => {
       document.removeEventListener("keydown", lockTooltip);
     };
-  }, []);
+  }, [setIsTooltipLocked]);
 
   const tooltipDiv = useMemo(() => {
     if (!detail) {

@@ -93,6 +93,7 @@ export const useImavidModalSelectiveRendering = (
     }
 
     (looker as ImaVidLooker).pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pause when the options change, not when a new looker mounts
   }, [lookerOptions]);
 };
 

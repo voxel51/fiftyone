@@ -23,6 +23,12 @@ import {
 } from "./hooks";
 import { hasSetDiff, hasSetInt, toIds } from "./utils";
 
+const useCloseAndCall = (close: () => void, callback: () => unknown) =>
+  useCallback(() => {
+    close();
+    callback();
+  }, [callback, close]);
+
 export default ({
   anchorRef,
   close,
@@ -86,12 +92,6 @@ export default ({
     }
   }, [isPlaying, close]);
 
-  const useCloseAndCall = (callback) => {
-    return useCallback(() => {
-      close();
-      callback();
-    }, [callback, close]);
-  };
   const elementNames = useRecoilValue(fos.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(
@@ -126,13 +126,17 @@ export default ({
       key: "select",
       text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
-      onClick: useCloseAndCall(useSelectVisible(null, visibleSampleLabels)),
+      onClick: useCloseAndCall(
+        close,
+        useSelectVisible(null, visibleSampleLabels),
+      ),
     },
     {
       key: "unselect",
       text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: useCloseAndCall(
+        close,
         useUnselectVisible(undefined, toIds(visibleSampleLabels)),
       ),
     },
@@ -141,12 +145,15 @@ export default ({
   // Frame actions only show for video, but their hooks run on every render so
   // the hook order can't change if the sample's media type does.
   const selectVisibleFrame = useCloseAndCall(
+    close,
     useSelectVisible(null, visibleFrameLabels),
   );
   const unselectVisibleFrame = useCloseAndCall(
+    close,
     useUnselectVisible(undefined, toIds(visibleFrameLabels)),
   );
   const hideOthersFrame = useCloseAndCall(
+    close,
     useHideOthers(undefined, visibleFrameLabels),
   );
 
@@ -172,19 +179,22 @@ export default ({
       key: "clear-labels",
       text: "Clear selected labels",
       hidden: !selectedLabels.size,
-      onClick: useCloseAndCall(useClearSelectedLabels(close)),
+      onClick: useCloseAndCall(close, useClearSelectedLabels(close)),
     },
     {
       key: "hide-labels",
       text: "Hide selected labels",
       hidden: !selectedLabels.size,
-      onClick: useCloseAndCall(useHideSelected()),
+      onClick: useCloseAndCall(close, useHideSelected()),
     },
     {
       key: "hide-unselected-labels",
       text: `Hide unselected labels (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
-      onClick: useCloseAndCall(useHideOthers(undefined, visibleSampleLabels)),
+      onClick: useCloseAndCall(
+        close,
+        useHideOthers(undefined, visibleSampleLabels),
+      ),
     },
   );
 

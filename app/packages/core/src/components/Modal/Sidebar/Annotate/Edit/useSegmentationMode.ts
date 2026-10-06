@@ -259,7 +259,7 @@ export const useSegmentationMode = () => {
     if (newLabel?.overlay instanceof DetectionOverlay) {
       newLabel.overlay.initMask();
     }
-  }, [closeOpenLabel, createNew, manualMode.tool]);
+  }, [closeOpenLabel, createNew]);
 
   /**
    * Finish the current AI point-selection session. Cycle deactivate→activate

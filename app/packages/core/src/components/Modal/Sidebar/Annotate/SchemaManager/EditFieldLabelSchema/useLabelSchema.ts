@@ -408,10 +408,11 @@ export default function useLabelSchema(field: string) {
 
   // Wrap discard to also revert visibility
   const originalDiscard = validate.discard;
+  const { discardVisibility } = visibility;
   const discard = useCallback(() => {
     originalDiscard();
-    visibility.discardVisibility();
-  }, [originalDiscard, visibility.discardVisibility]);
+    discardVisibility();
+  }, [originalDiscard, discardVisibility]);
 
   // The currentLabelSchema atom is typed as `object | undefined` because it
   // is fed into both <GUIContent> (which wants the looser SchemaConfigType)

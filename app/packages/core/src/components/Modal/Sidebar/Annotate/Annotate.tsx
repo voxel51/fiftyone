@@ -202,6 +202,7 @@ const Annotate = ({ disabledReason, loadSchemas }: AnnotateProps) => {
       contextManager.exit();
       clearUndo();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- enter the annotate context once per mount
   }, []);
 
   // Clear undo history on sample change; its commands pin the prior sample's

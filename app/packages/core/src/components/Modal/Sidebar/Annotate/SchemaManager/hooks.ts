@@ -496,7 +496,7 @@ export const useFullSchemaEditor = () => {
       setDraftJson(null);
       setErrors([]);
     };
-  }, []);
+  }, [setDraftJson, setErrors]);
 
   const originalJson = useMemo(
     () => JSON.stringify(schemasData, null, 2),
@@ -706,7 +706,7 @@ export const useSchemaManagerCleanup = () => {
       // Reset field editing state
       setCurrentFieldAtom(null);
     };
-  }, []);
+  }, [setCurrentFieldAtom]);
 };
 
 /**
@@ -722,5 +722,5 @@ export const useSelectionCleanup = () => {
       setSelectedActive(new Set());
       setSelectedHidden(new Set());
     };
-  }, []);
+  }, [setSelectedActive, setSelectedHidden]);
 };

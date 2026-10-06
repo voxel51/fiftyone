@@ -621,7 +621,7 @@ describe("GridCustomRendererItem", () => {
     // — unmounting the plugin's own root from there warned and raced the commit
     const rendererUnmounted = vi.fn();
     const TestRenderer = () => {
-      React.useEffect(() => () => rendererUnmounted(), [rendererUnmounted]);
+      React.useEffect(() => () => rendererUnmounted(), []);
       return <div data-testid="rendered" />;
     };
     const looker = new GridCustomRendererItem({

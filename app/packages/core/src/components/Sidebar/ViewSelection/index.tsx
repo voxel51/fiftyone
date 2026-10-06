@@ -84,6 +84,7 @@ export default function ViewSelection() {
 
   useEffect(() => {
     refetch({ name: datasetName });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch saved views when the dataset changes
   }, [datasetName]);
 
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function ViewSelection() {
         setSelected(potentialView as fos.DatasetViewOption);
       }
     }
-  }, [searchData, selected]);
+  }, [searchData, selected, setSelected]);
 
   const loadedView = useRecoilValue(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
@@ -148,6 +149,7 @@ export default function ViewSelection() {
         // do not reset view to [] again. The viewbar sets it once.
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve the selection only when the saved-view URL param changes
   }, [savedViewParam]);
 
   useEffect(() => {
@@ -167,7 +169,7 @@ export default function ViewSelection() {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView, disabled]);
+  }, [isEmptyView, disabled, setIsOpen]);
 
   return (
     <Suspense fallback="Loading saved views...">

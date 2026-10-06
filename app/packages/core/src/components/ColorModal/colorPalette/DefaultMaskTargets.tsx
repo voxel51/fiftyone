@@ -25,10 +25,13 @@ const DefaultMaskTargets: React.FC = () => {
     [values],
   );
 
-  const defaultValue = {
-    intTarget: 1,
-    color: getRandomColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = useMemo(
+    () => ({
+      intTarget: 1,
+      color: getRandomColorFromPool(colorScheme.colorPool),
+    }),
+    [colorScheme.colorPool],
+  );
   const shouldShowAddButton = Boolean(values?.length);
 
   const onSyncUpdate = useCallback(
@@ -50,11 +53,7 @@ const DefaultMaskTargets: React.FC = () => {
         defaultMaskTargetsColors: [defaultValue],
       });
     }
-  }, [
-    colorScheme.defaultMaskTargetsColors,
-    state.useMaskTargetsColors,
-    defaultValue,
-  ]);
+  }, [colorScheme, setColorScheme, state.useMaskTargetsColors, defaultValue]);
 
   return (
     <div>

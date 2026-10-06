@@ -170,18 +170,16 @@ function useSyncViewport<L extends fos.Lookers>(
   // so the position can be restored when EXPLORE mode (Looker) remounts.
   useLayoutEffect(() => {
     return () => {
-      if (
-        looker?.state?.loaded &&
-        looker.state.dimensions &&
-        sampleRef.current
-      ) {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately the latest sample at unmount
+      const sample = sampleRef.current;
+      if (looker?.state?.loaded && looker.state.dimensions && sample) {
         setViewportState({
-          sampleId: sampleRef.current.sample._id,
+          sampleId: sample.sample._id,
           ...looker.getViewportState(),
         });
       }
     };
-  }, [looker]);
+  }, [looker, sampleRef, setViewportState]);
 
   // Seed the saved viewport into the looker after mount. This runs after
   // unmounting component's useLayoutEffect cleanup has already written to the atom.
@@ -193,5 +191,5 @@ function useSyncViewport<L extends fos.Lookers>(
     ) {
       looker.updateOptions({ initialViewport: savedViewport }, true);
     }
-  }, [looker]);
+  }, [looker, sampleRef]);
 }

@@ -77,6 +77,7 @@ export const ImaVidLookerReact = React.memo(
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- recreate the looker only on reset or media change; sample updates go through updateSample below
       [reset, createLooker, selectedMediaField],
     ) as ImaVidLooker;
 
@@ -88,20 +89,22 @@ export const ImaVidLookerReact = React.memo(
       if (looker instanceof ImaVidLooker) {
         subscribeToImaVidStateChanges();
       }
-    }, [looker, subscribeToImaVidStateChanges]);
+    }, [looker, setModalLooker, subscribeToImaVidStateChanges]);
 
     useEffect(() => {
       if (looker) {
         setActiveLookerRef(looker);
       }
-    }, [looker]);
+    }, [looker, setActiveLookerRef]);
 
     useEffect(() => {
       !initialRef.current && looker.updateOptions(lookerOptions);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- a new looker is created with the current options
     }, [lookerOptions]);
 
     useEffect(() => {
       !initialRef.current && looker.updateSample(sample);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- a new looker is created with the current sample
     }, [sample, colorScheme]);
 
     useEffect(() => {
@@ -231,12 +234,16 @@ export const ImaVidLookerReact = React.memo(
           );
         });
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRange is subscribed to the timeline once; it reads the looker through its ref
       [],
     );
 
-    const renderFrame = React.useCallback((frameNumber: number) => {
-      imaVidLookerRef.current?.element.drawFrameNoAnimation(frameNumber);
-    }, []);
+    const renderFrame = React.useCallback(
+      (frameNumber: number) => {
+        imaVidLookerRef.current?.element.drawFrameNoAnimation(frameNumber);
+      },
+      [imaVidLookerRef],
+    );
 
     const { getName } = useDefaultTimelineNameImperative();
     const timelineName = React.useMemo(() => getName(), [getName]);
@@ -245,6 +252,7 @@ export const ImaVidLookerReact = React.memo(
 
     const totalFrameCountRef = useRef<number | null>(null);
 
+    const loop = (looker as ImaVidLooker).options.loop;
     const timelineCreationConfig = useMemo(() => {
       // todo: not working because it's resolved in a promise later
       // maybe emit event to update the total frames
@@ -253,11 +261,12 @@ export const ImaVidLookerReact = React.memo(
       }
 
       return {
-        loop: (looker as ImaVidLooker).options.loop,
+        loop,
         targetFrameRate: dynamicGroupsTargetFrameRate,
         totalFrames: totalFrameCount,
       } as FoTimelineConfig;
-    }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- the frame rate is read when the timeline config is first resolved (possible stale value, left as-is)
+    }, [totalFrameCount, loop]);
 
     const readyWhen = useCallback(async () => {
       return new Promise<void>((resolve) => {
@@ -273,7 +282,7 @@ export const ImaVidLookerReact = React.memo(
 
     const onAnimationStutter = useCallback(() => {
       imaVidLookerRef.current?.element.checkFetchBufferManager();
-    }, []);
+    }, [imaVidLookerRef]);
 
     const {
       isTimelineInitialized,
@@ -329,6 +338,7 @@ export const ImaVidLookerReact = React.memo(
           },
         });
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- subscribe and register the timeline callbacks once per initialization; re-running would stack duplicate handlers
     }, [isTimelineInitialized, loadRange, renderFrame, subscribe]);
 
     /**
@@ -347,7 +357,7 @@ export const ImaVidLookerReact = React.memo(
       }, 10);
 
       return () => clearInterval(intervalId);
-    }, [looker]);
+    }, [imaVidLookerRef, looker]);
 
     useImavidModalSelectiveRendering(id, looker);
 

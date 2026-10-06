@@ -206,14 +206,14 @@ const BaseSlider = <T extends Range | number>({
 
       labelElement.style.translate = `${shiftX}px 0`;
     });
-  }, []);
+  }, [containerRef]);
 
   // Adjust on mount after paint
   useEffect(() => {
     if (!sliderRef.current || !containerRef?.current) return;
 
     adjustLabelsPosition();
-  }, []);
+  }, [adjustLabelsPosition, containerRef]);
 
   // Adjust on value changes
   useLayoutEffect(() => {
@@ -221,7 +221,7 @@ const BaseSlider = <T extends Range | number>({
 
     const frameId = requestAnimationFrame(adjustLabelsPosition);
     return () => cancelAnimationFrame(frameId);
-  }, [value, adjustLabelsPosition]);
+  }, [value, adjustLabelsPosition, containerRef]);
 
   if (!isBoundsValid(bounds)) {
     return null;
@@ -355,6 +355,7 @@ export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
   useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from the atom only; re-running on localValue would snap back mid-drag
   }, [value]);
 
   return (
@@ -388,6 +389,7 @@ export const RangeSlider = ({
   useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from the atom only; re-running on localValue would snap back mid-drag
   }, [value]);
 
   const bounds = useRecoilValue(boundsAtom);

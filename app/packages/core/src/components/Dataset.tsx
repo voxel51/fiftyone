@@ -48,6 +48,7 @@ function Dataset() {
     return subscribe((_, { reset }) => {
       reset(activeColorEntry);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- track open_dataset and subscribe once per mount
   }, []);
 
   return (
