@@ -138,6 +138,14 @@ module.exports = {
   },
   overrides: [
     {
+      // Operator subclasses call hooks from their useHooks() method, which the
+      // operator runtime invokes as a hook (see packages/operators/.eslintrc)
+      files: ["packages/embeddings/src/operators.ts"],
+      rules: {
+        "react-hooks/rules-of-hooks": "off",
+      },
+    },
+    {
       // CommonJS config files and build scripts run in Node
       files: [
         "**/*.config.js",
