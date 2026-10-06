@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CONTAINS } from "./base";
 import DetectionOverlay, { DetectionLabel } from "./detection";
@@ -28,5 +28,69 @@ describe("a 3D detection has no 2D box to hit-test", () => {
 
   it("is infinitely far from the cursor", () => {
     expect(overlay.getMouseDistance(state)).toBe(Infinity);
+  });
+});
+
+describe("drawing a detection", () => {
+  const makeOverlay = () => {
+    const overlay = new DetectionOverlay("detections", {
+      _cls: "Detection",
+      id: "box",
+      label: "car",
+      tags: [],
+      bounding_box: [0.2, 0.2, 0.4, 0.4],
+    } as DetectionLabel);
+    vi.spyOn(overlay, "getColor").mockReturnValue("#ffffff");
+    return overlay;
+  };
+
+  const makeContext = () => ({
+    beginPath: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    measureText: vi.fn(() => ({ width: 40 })),
+    moveTo: vi.fn(),
+    setLineDash: vi.fn(),
+    stroke: vi.fn(),
+  });
+
+  // 100x100px canvas: the box spans 20..60px on each axis
+  const makeState = ({ selected = false }: { selected?: boolean } = {}) =>
+    ({
+      canvasBBox: [0, 0, 100, 100],
+      config: { thumbnail: false },
+      dashLength: 4,
+      dimensions: [100, 100],
+      fontSize: 10,
+      options: {
+        labelSelectionStyle: {},
+        selectedLabels: selected ? ["box"] : [],
+        selectedLabelTypes: {},
+        shownLabelAttributes: {},
+      },
+      strokeWidth: 2,
+      textPad: 2,
+    }) as never;
+
+  it("paints the label over the box lines", () => {
+    // selected: both the box stroke and the dashed outline come first
+    const ctx = makeContext();
+    makeOverlay().draw(ctx as never, makeState({ selected: true }));
+
+    const strokes = ctx.stroke.mock.invocationCallOrder;
+    expect(strokes).toHaveLength(2);
+    expect(ctx.fill.mock.invocationCallOrder[0]).toBeGreaterThan(
+      Math.max(...strokes),
+    );
+  });
+
+  it("anchors the label on the top-left corner", () => {
+    // header bottom-left at (20 - strokeWidth / 2, 20); text inset by
+    // textPad + strokeWidth
+    const ctx = makeContext();
+    makeOverlay().draw(ctx as never, makeState());
+    expect(ctx.fillText).toHaveBeenCalledWith("car", 23, 16);
   });
 });

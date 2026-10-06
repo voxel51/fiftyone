@@ -178,8 +178,6 @@ export default class DetectionOverlay<
       this.drawMask(ctx, state);
     }
 
-    !state.config.thumbnail && this.drawLabelText(ctx, state);
-
     if (this.label.convexHull) {
       // only fill 3d when 'convexHull' is defined
       this.fillRectFor3d(ctx, state, strokeColor);
@@ -190,6 +188,10 @@ export default class DetectionOverlay<
     if (overlayStrokeColor && overlayDash) {
       this.strokeRect(ctx, state, overlayStrokeColor, overlayDash);
     }
+
+    // drawn last so the header paints over the box lines, matching the
+    // annotate-mode (lighter) header
+    !state.config.thumbnail && this.drawLabelText(ctx, state);
   }
 
   getMouseDistance(state: Readonly<State>): number {
