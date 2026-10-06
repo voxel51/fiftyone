@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { createId } from "../utils";
-import { build } from "./build";
+import { indexToId } from "../utils";
+import { build, type BuildOptions } from "./build";
 import {
   frameSpecs,
   generateMedia,
@@ -11,12 +11,15 @@ import {
   makeHelpers,
   indices,
   mcapMedia,
+  mediaFieldValues,
   pcdMedia,
   resolve,
   sceneMedia,
   videoMedia,
 } from "./media";
 import type {
+  BaseDatasetOptions,
+  CreatedSample,
   Dataset3dOptions,
   DatasetOptions,
   GroupDatasetOptions,
@@ -24,14 +27,17 @@ import type {
   ImageDatasetOptions,
   MediaType,
   MultimodalDatasetOptions,
+  PointCloudDatasetOptions,
+  SampleSpec,
   VideoDatasetOptions,
 } from "./types";
 
 /**
  * Creates a FiftyOne dataset whose media kind is chosen by `mediaType`
  * (default `"image"`); every kind inserts fixed-id documents directly and
- * applies `schema`, `labelSchemas` and `savedViews`. See the per-media
- * creators below for the media each kind generates.
+ * applies `schema`, `labelSchemas`, `appConfig` and `savedViews`. See the
+ * per-media creators below for the media each kind generates. Resolves with
+ * the inserted samples' ids and filepaths, in insertion order.
  *
  * @example
  * await DatasetFactory.createDataset({
@@ -46,13 +52,15 @@ import type {
  */
 export const createDataset = async <M extends MediaType = "image">(
   options: DatasetOptions<M>,
-) => {
+): Promise<CreatedSample[]> => {
   const resolved = options as DatasetOptions<MediaType>;
   switch (resolved.mediaType) {
     case "video":
       return createVideoDataset(resolved);
     case "3d":
       return create3dDataset(resolved);
+    case "point-cloud":
+      return createPointCloudDataset(resolved);
     case "group":
       return createGroupDataset(resolved);
     case "multimodal":
@@ -63,23 +71,67 @@ export const createDataset = async <M extends MediaType = "image">(
 };
 
 /**
+ * Builds the dataset from its samples, with the options every kind shares,
+ * after generating the `mediaFields` images and declaring their fields.
+ */
+const buildWith = async (
+  options: BaseDatasetOptions<never>,
+  build_: Omit<BuildOptions, keyof BaseDatasetOptions | "datasetName"> &
+    Pick<BuildOptions, "schema">,
+): Promise<CreatedSample[]> => {
+  const {
+    appConfig,
+    datasetName,
+    indexes,
+    labelSchemas,
+    mediaFields = {},
+    promptableIndexes,
+    savedViews,
+    staticTransforms,
+  } = options;
+  const fieldValues = await mediaFieldValues(
+    datasetName,
+    build_.samples.length,
+    mediaFields,
+  );
+  await build({
+    ...build_,
+    samples: build_.samples.map((sample, index) => ({
+      ...sample,
+      data: { ...fieldValues[index], ...sample.data },
+    })),
+    schema: {
+      ...Object.fromEntries(
+        Object.keys(mediaFields).map((field) => [field, "StringField"]),
+      ),
+      ...build_.schema,
+    },
+    appConfig,
+    datasetName,
+    indexes,
+    labelSchemas,
+    promptableIndexes,
+    savedViews,
+    staticTransforms,
+  });
+  return build_.samples.map(({ id, filepath }) => ({ id, filepath }));
+};
+
+/**
  * Generated PNG samples at `<tmpdir>/<datasetName>/<index>.png`, with an
  * `index` field on every sample.
  *
  * @throws {Error} If `numSamples` is less than 1 or not an integer.
  */
-const createImageDataset = async ({
-  datasetName,
-  imageOptions,
-  labelSchemas,
-  numSamples = 1,
-  numbered = false,
-  promptableIndexes,
-  savedViews,
-  staticTransforms,
-  schema = {},
-  withSampleData = () => ({}),
-}: ImageDatasetOptions) => {
+const createImageDataset = async (options: ImageDatasetOptions) => {
+  const {
+    datasetName,
+    imageOptions,
+    numSamples = 1,
+    numbered = false,
+    schema = {},
+    withSampleData = () => ({}),
+  } = options;
   const helpers = makeHelpers();
   if (!Number.isInteger(numSamples)) {
     throw new Error(
@@ -99,8 +151,7 @@ const createImageDataset = async ({
     }),
   );
 
-  await build({
-    datasetName,
+  return buildWith(options, {
     mediaType: "image",
     samples: media.map(({ _id, filepath, index }) => ({
       id: _id,
@@ -108,10 +159,6 @@ const createImageDataset = async ({
       data: { index, ...withSampleData({ _id, filepath, index }, helpers) },
     })),
     schema: { index: "IntField", ...schema },
-    labelSchemas,
-    promptableIndexes,
-    savedViews,
-    staticTransforms,
   });
 };
 
@@ -123,8 +170,12 @@ const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
 
 /**
  * Group dataset: image slices are generated PNGs, 3D slices a PLY mesh wrapped
- * in a `.fo3d` scene, point-cloud slices a bare `.pcd`, video slices generated
- * clips. The default layout is `left` (image), `right` (image) and `3d`.
+ * in a `.fo3d` scene (or a bare asset), point-cloud slices a bare `.pcd`,
+ * video slices generated clips. The default layout is `left` (image), `right`
+ * (image) and `3d`, and the first slice is the default one. Group
+ * `groupIndex` has id `indexToId(groupIndex)` and a sample in every slice
+ * whose `groupIndices` include it. Slice-level media options take the group
+ * index.
  *
  * @example
  * await DatasetFactory.createDataset({
@@ -133,78 +184,79 @@ const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
  *   numGroups: 4,
  *   slices: [
  *     { name: "left", mediaType: "image" },
- *     { name: "pcd", mediaType: "3d" },
+ *     { name: "pcd", mediaType: "3d", groupIndices: [0, 2] },
  *   ],
  * });
  */
-const createGroupDataset = async ({
-  datasetName,
-  imageOptions = {
-    fillColor: "#22577a",
-    width: 128,
-    height: 128,
-    hideLogs: true,
-  },
-  labelSchemas,
-  numGroups = 3,
-  pcdOptions,
-  sampleFrames = false,
-  promptableIndexes,
-  savedViews,
-  staticTransforms,
-  sceneOptions = { meshes: [{ color: [96, 208, 255] }] },
-  schema,
-  slices = DEFAULT_GROUP_SLICES,
-  videoOptions,
-  withFrameData,
-  withSampleData = () => ({}),
-}: GroupDatasetOptions) => {
+const createGroupDataset = async (options: GroupDatasetOptions) => {
+  const {
+    datasetName,
+    imageOptions = {
+      fillColor: "#22577a",
+      width: 128,
+      height: 128,
+      hideLogs: true,
+    },
+    numGroups = 3,
+    pcdOptions,
+    sampleFrames = false,
+    sceneOptions = { meshes: [{ color: [96, 208, 255] }] },
+    schema,
+    slices = DEFAULT_GROUP_SLICES,
+    videoOptions,
+    withFrameData,
+    withSampleData = () => ({}),
+  } = options;
   const helpers = makeHelpers();
-  const entries = Array.from({ length: numGroups }, (_, groupIndex) => {
-    const groupId = createId().$oid;
-    return slices.map((slice) => ({ groupId, groupIndex, slice }));
-  }).flat();
+  const entries = Array.from({ length: numGroups }, (_, groupIndex) =>
+    slices
+      .filter(
+        ({ groupIndices }) =>
+          !groupIndices || groupIndices.includes(groupIndex),
+      )
+      .map((slice) => ({ groupIndex, slice })),
+  ).flat();
 
   const media = await generateMedia(
     datasetName,
     entries.map(({ slice, groupIndex }) => `${slice.name}-${groupIndex}`),
     (index) => {
-      const { slice } = entries[index];
+      const { groupIndex, slice } = entries[index];
       switch (slice.mediaType) {
         case "image":
           return imageMedia({
             ...resolve(imageOptions, index),
-            ...slice.imageOptions,
+            ...resolve(slice.imageOptions, groupIndex),
           });
         case "video":
           return videoMedia({
             ...resolve(videoOptions, index),
-            ...slice.videoOptions,
+            ...resolve(slice.videoOptions, groupIndex),
           });
         case "point-cloud":
           return pcdMedia({
             ...resolve(pcdOptions, index),
-            ...slice.pcdOptions,
+            ...resolve(slice.pcdOptions, groupIndex),
           });
         default:
-          return sceneMedia({
-            ...resolve(sceneOptions, index),
-            ...slice.sceneOptions,
-          });
+          return sceneMedia(
+            resolve(slice.sceneOptions, groupIndex) ??
+              resolve(sceneOptions, index),
+          );
       }
     },
   );
 
-  await build({
-    datasetName,
+  return buildWith(options, {
     mediaType: "group",
     groupSlices: slices,
-    samples: media.map(({ _id, filepath, index, numFrames }) => {
-      const { groupId, groupIndex, slice } = entries[index];
+    samples: media.map(({ _id, filepath, index, numFrames }): SampleSpec => {
+      const { groupIndex, slice } = entries[index];
       return {
         id: _id,
         filepath,
-        group: { id: groupId, name: slice.name },
+        group: { id: indexToId(groupIndex), name: slice.name },
+        ...(slice.mediaType === "3d" ? { mediaType: "3d" } : {}),
         data: withSampleData(
           { _id, filepath, index, groupIndex, slice: slice.name, numFrames },
           helpers,
@@ -218,10 +270,6 @@ const createGroupDataset = async ({
     ),
     sampleFrames,
     schema,
-    labelSchemas,
-    promptableIndexes,
-    savedViews,
-    staticTransforms,
   });
 };
 
@@ -241,26 +289,22 @@ const createGroupDataset = async ({
  *   sampleFrames: true,
  * });
  */
-const createVideoDataset = async ({
-  datasetName,
-  labelSchemas,
-  numSamples = 1,
-  sampleFrames = false,
-  promptableIndexes,
-  savedViews,
-  staticTransforms,
-  schema,
-  videoOptions,
-  withFrameData,
-  withSampleData = () => ({}),
-}: VideoDatasetOptions) => {
+const createVideoDataset = async (options: VideoDatasetOptions) => {
+  const {
+    datasetName,
+    numSamples = 1,
+    sampleFrames = false,
+    schema,
+    videoOptions,
+    withFrameData,
+    withSampleData = () => ({}),
+  } = options;
   const helpers = makeHelpers();
   const media = await generateMedia(datasetName, indices(numSamples), (index) =>
     videoMedia({ ...resolve(videoOptions, index) }),
   );
 
-  await build({
-    datasetName,
+  return buildWith(options, {
     mediaType: "video",
     samples: media.map(({ _id, filepath, index, numFrames }) => ({
       id: _id,
@@ -272,16 +316,13 @@ const createVideoDataset = async ({
     ),
     sampleFrames,
     schema,
-    labelSchemas,
-    promptableIndexes,
-    savedViews,
-    staticTransforms,
   });
 };
 
 /**
  * 3D dataset with one generated `.fo3d` scene (a PLY cube) per sample at
- * `<tmpdir>/<datasetName>/<index>.fo3d`.
+ * `<tmpdir>/<datasetName>/<index>.fo3d`, or the bare `.pcd`/`.ply` asset a
+ * sample's `sceneOptions` names.
  *
  * @example
  * await DatasetFactory.createDataset({
@@ -296,63 +337,96 @@ const createVideoDataset = async ({
  *   }),
  * });
  */
-const create3dDataset = async ({
-  datasetName,
-  labelSchemas,
-  numSamples = 1,
-  promptableIndexes,
-  savedViews,
-  staticTransforms,
-  sceneOptions,
-  schema,
-  withSampleData = () => ({}),
-}: Dataset3dOptions) => {
+const create3dDataset = async (options: Dataset3dOptions) => {
+  const {
+    datasetName,
+    numSamples = 1,
+    orthographicProjections,
+    sceneOptions,
+    schema,
+    withSampleData = () => ({}),
+  } = options;
   const helpers = makeHelpers();
   const media = await generateMedia(datasetName, indices(numSamples), (index) =>
-    sceneMedia({ ...resolve(sceneOptions, index) }),
+    sceneMedia(resolve(sceneOptions, index)),
   );
 
-  await build({
-    datasetName,
+  return buildWith(options, {
     mediaType: "3d",
+    samples: media.map(({ _id, filepath, index }) => ({
+      id: _id,
+      filepath,
+      mediaType: "3d",
+      data: withSampleData({ _id, filepath, index }, helpers),
+    })),
+    orthographicProjections,
+    schema,
+  });
+};
+
+/**
+ * Point cloud dataset with one generated `.pcd` per sample at
+ * `<tmpdir>/<datasetName>/<index>.pcd`.
+ *
+ * @example
+ * await DatasetFactory.createDataset({
+ *   mediaType: "point-cloud",
+ *   datasetName: "my-clouds",
+ *   pcdOptions: { shape: "diagonal", numPoints: 12 },
+ *   orthographicProjections: { size: [-1, 64] },
+ * });
+ */
+const createPointCloudDataset = async (options: PointCloudDatasetOptions) => {
+  const {
+    datasetName,
+    numSamples = 1,
+    orthographicProjections,
+    pcdOptions,
+    schema,
+    withSampleData = () => ({}),
+  } = options;
+  const helpers = makeHelpers();
+  const media = await generateMedia(datasetName, indices(numSamples), (index) =>
+    pcdMedia({ ...resolve(pcdOptions, index) }),
+  );
+
+  return buildWith(options, {
+    mediaType: "point-cloud",
     samples: media.map(({ _id, filepath, index }) => ({
       id: _id,
       filepath,
       data: withSampleData({ _id, filepath, index }, helpers),
     })),
+    orthographicProjections,
     schema,
-    labelSchemas,
-    promptableIndexes,
-    savedViews,
-    staticTransforms,
   });
 };
 
 /**
  * Multimodal dataset with one generated MCAP recording per sample at
- * `<tmpdir>/<datasetName>/<index>.mcap`.
+ * `<tmpdir>/<datasetName>/<fileName>.mcap`.
  *
  * @example
  * await DatasetFactory.createDataset({ mediaType: "multimodal", datasetName: "my-episodes" });
  */
-const createMultimodalDataset = async ({
-  datasetName,
-  labelSchemas,
-  mcapOptions,
-  numSamples = 1,
-  promptableIndexes,
-  savedViews,
-  staticTransforms,
-  schema,
-  withSampleData = () => ({}),
-}: MultimodalDatasetOptions) => {
+const createMultimodalDataset = async (options: MultimodalDatasetOptions) => {
+  const {
+    datasetName,
+    fileNames,
+    mcapOptions,
+    numSamples = 1,
+    schema,
+    withSampleData = () => ({}),
+  } = options;
   const helpers = makeHelpers();
-  const media = await generateMedia(datasetName, indices(numSamples), (index) =>
-    mcapMedia({ kind: "tiny-episode-a", ...resolve(mcapOptions, index) }),
+  const media = await generateMedia(
+    datasetName,
+    indices(numSamples).map((name, index) => resolve(fileNames, index) ?? name),
+    (index) =>
+      mcapMedia({ kind: "tiny-episode-a", ...resolve(mcapOptions, index) }),
   );
 
-  await build({
-    datasetName,
+  return buildWith(options, {
     mediaType: "multimodal",
     samples: media.map(({ _id, filepath, index }) => ({
       id: _id,
@@ -360,9 +434,5 @@ const createMultimodalDataset = async ({
       data: withSampleData({ _id, filepath, index }, helpers),
     })),
     schema,
-    labelSchemas,
-    promptableIndexes,
-    savedViews,
-    staticTransforms,
   });
 };

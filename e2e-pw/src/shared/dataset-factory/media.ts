@@ -16,7 +16,8 @@ import {
   DEFAULT_PCD_SPEC,
   type PcdSpec,
 } from "../media-factory/pcd";
-import { createScene, type SceneSpec } from "../media-factory/scene";
+import { createPly } from "../media-factory/ply";
+import { createScene } from "../media-factory/scene";
 import {
   createVideo,
   DEFAULT_VIDEO_SPEC,
@@ -30,6 +31,7 @@ import type {
   Helpers,
   JSONObject,
   PerSample,
+  ThreeDSpec,
 } from "./types";
 
 /** The helpers for one dataset build; instance identities do not leak across builds. */
@@ -86,9 +88,20 @@ export const pcdMedia =
     return { filepath };
   };
 
+/** A `.fo3d` scene, or the bare PCD or PLY asset the spec names. */
 export const sceneMedia =
-  (spec: SceneSpec): MediaGenerator<GeneratedMedia> =>
-  (outputPath) => ({ filepath: createScene({ outputPath, ...spec }) });
+  (spec: ThreeDSpec = {}): MediaGenerator<GeneratedMedia> =>
+  (outputPath) => {
+    if ("pcd" in spec) {
+      return pcdMedia(spec.pcd)(outputPath);
+    }
+    if ("ply" in spec) {
+      const filepath = `${outputPath}.ply`;
+      createPly({ outputPath: filepath, ...spec.ply });
+      return { filepath };
+    }
+    return { filepath: createScene({ outputPath, ...spec }) };
+  };
 
 export const mcapMedia =
   (spec: McapSpec): MediaGenerator<GeneratedMedia> =>
@@ -101,24 +114,64 @@ export const mcapMedia =
 export const indices = (count: number) =>
   Array.from({ length: count }, (_, index) => String(index));
 
+/** The directory a dataset's generated media lives in. */
+export const mediaDir = (datasetName: string) =>
+  path.join(os.tmpdir(), datasetName);
+
 /**
  * Generates every sample's media under `<tmpdir>/<datasetName>/<name>` and
- * returns each file with the sample's fixed id and index.
+ * returns each file with the sample's fixed id and index. Samples sharing a
+ * name share the first one's file.
  */
 export const generateMedia = async <M extends GeneratedMedia>(
   datasetName: string,
   names: string[],
   media: (index: number) => MediaGenerator<M>,
 ) => {
-  const outputDir = path.join(os.tmpdir(), datasetName);
+  const outputDir = mediaDir(datasetName);
   await ensureDirExists(outputDir);
+  const generated = new Map<string, Promise<M>>();
   return Promise.all(
-    names.map(async (name, index) => ({
-      _id: indexToId(index),
-      index,
-      ...(await media(index)(path.join(outputDir, name))),
-    })),
+    names.map(async (name, index) => {
+      if (!generated.has(name)) {
+        generated.set(
+          name,
+          Promise.resolve(media(index)(path.join(outputDir, name))),
+        );
+      }
+      return { _id: indexToId(index), index, ...(await generated.get(name)) };
+    }),
   );
+};
+
+/**
+ * Generates the `mediaFields` images of `count` samples at
+ * `<tmpdir>/<datasetName>/<field>-<index>.png` and returns each sample's
+ * field values.
+ */
+export const mediaFieldValues = async (
+  datasetName: string,
+  count: number,
+  mediaFields: { [field: string]: PerSample<ImageSpec> } = {},
+): Promise<JSONObject[]> => {
+  const values: JSONObject[] = Array.from({ length: count }, () => ({}));
+  await Promise.all(
+    Object.entries(mediaFields).flatMap(([field, spec]) =>
+      values.map(async (sampleValues, index) => {
+        const filepath = path.join(
+          mediaDir(datasetName),
+          `${field}-${index}.png`,
+        );
+        await createImage({
+          outputPath: filepath,
+          hideLogs: true,
+          ...resolve(spec, index),
+        });
+        sampleValues[field] = filepath;
+      }),
+    ),
+  );
+  return values;
 };
 
 /** The frame documents of one clip, one per frame number, from `withFrameData`. */

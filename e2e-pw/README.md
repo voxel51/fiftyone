@@ -201,10 +201,25 @@ await DatasetFactory.createDataset({
 });
 ```
 
-Group slices may be `image`, `3d` or `video` (with per-slice media options);
-video slices take `withFrameData` and `sampleFrames` too. Recipes shared by a
-spec family (the video-annotation and 3D seeds) live beside the specs in
-`src/oss/specs/annotate-*/`.
+Group slices may be `image`, `3d`, `point-cloud` or `video`, with per-slice
+media options that may be a function of the group index; video slices take
+`withFrameData` and `sampleFrames` too. A slice's `groupIndices` lists the
+groups that have a sample in it, for sparse groups, and group `i` has id
+`indexToId(i)`. Recipes shared by a spec family (the video-annotation and 3D
+seeds) live beside the specs in `src/oss/specs/annotate-*/`.
+
+A 3D sample's `sceneOptions` describe a `.fo3d` scene (PLY meshes, PCD point
+clouds and STL meshes, each with its own position, scale and material, plus the
+camera) or name a bare asset (`{ pcd: ... }` or `{ ply: ... }`). A
+`"point-cloud"` dataset holds bare `.pcd` samples. 3D and point-cloud datasets
+take `orthographicProjections` to compute grid projections.
+
+Dataset-level settings are declared too: `appConfig` (media fields, sidebar
+groups, color scheme, default visible labels), `mediaFields` (an extra
+generated image per sample, stored in a `StringField`) and `indexes`. Dates and
+non-finite floats use extended JSON in sample data: `{ $date: "..." }`,
+`{ $numberDouble: "NaN" }`. `createDataset` resolves with the inserted samples'
+`id` and `filepath`.
 
 Each sample is automatically assigned a stable, index-derived `_id` of the form
 `000000000000000000000000` (zero-padded 24-character hex). This makes it easy
