@@ -99,6 +99,7 @@ function useStateInitializer(props: ViewPropsType) {
     ) {
       onChange(path, defaultValue, computedSchema);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply a default only when it changes; unboundState is read without subscribing on purpose
   }, [defaultValue]);
 
   useEffect(() => {

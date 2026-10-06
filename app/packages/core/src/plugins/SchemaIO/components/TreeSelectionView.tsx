@@ -43,7 +43,10 @@ export default function TreeSelectionView(props: ViewPropsType) {
   }
 
   // [groupId, children] pairs
-  const structure = (view?.data || []) as Parameters<typeof getGroupIdx>[1];
+  const structure = React.useMemo(
+    () => (view?.data || []) as Parameters<typeof getGroupIdx>[1],
+    [view?.data],
+  );
 
   const initialCheckedState: CheckedState = React.useMemo(() => {
     const state: CheckedState = {
@@ -277,7 +280,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
         return updatedState;
       });
     }
-  }, [data, unboundState]);
+  }, [data, structure, unboundState]);
 
   // CheckboxView: Represents a single checkbox (either parent or child)
   function CheckboxView({

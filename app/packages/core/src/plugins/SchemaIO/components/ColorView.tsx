@@ -30,6 +30,7 @@ export default function ColorView(props) {
 
   useEffect(() => {
     setColor(data ?? fallbackColor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-sync from data only when the useKey key changes (external update), not on every keystroke
   }, [key]);
 
   return (

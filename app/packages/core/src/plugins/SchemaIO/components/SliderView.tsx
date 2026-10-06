@@ -114,7 +114,7 @@ export default function SliderView(
 
   // external data reset re-renders the inputs
   useEffect(() => {
-    return setFieldsRevision(fieldsRevision + 1);
+    setFieldsRevision((revision) => revision + 1);
   }, [data]);
 
   const [unit, _] = useState<ValueFormat>(valueFormat);

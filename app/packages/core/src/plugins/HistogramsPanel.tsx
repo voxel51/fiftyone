@@ -2,7 +2,7 @@ import { Loading, Selector } from "@fiftyone/components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { usePanelStatePartial, usePanelTitle } from "@fiftyone/spaces";
 import { distributionPaths } from "@fiftyone/state";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Histogram from "../components/Histogram";
@@ -61,9 +61,13 @@ const PlotSelector = () => {
 export default function Plots() {
   const [_, setTitle] = usePanelTitle();
   const { path } = usePlotPath();
+  // setTitle changes whenever any panel title does, so depending on it would
+  // re-run (and re-set the title) in a loop; read the latest one instead
+  const setTitleRef = useRef(setTitle);
+  setTitleRef.current = setTitle;
 
   useEffect(() => {
-    setTitle(path);
+    setTitleRef.current(path);
   }, [path]);
 
   return (

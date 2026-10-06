@@ -477,13 +477,15 @@ function Scenario(props) {
     if (!scenario) {
       loadScenario(id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadScenario is an inline prop; depending on it would re-request every render while missing
   }, [id, scenario]);
 
   useEffect(() => {
     if (compareKey && !compareScenario) {
       loadScenario(id, compareKey);
     }
-  }, [compareKey, compareScenario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadScenario is an inline prop; depending on it would re-request every render while missing
+  }, [id, compareKey, compareScenario]);
 
   if (loadError) {
     return (

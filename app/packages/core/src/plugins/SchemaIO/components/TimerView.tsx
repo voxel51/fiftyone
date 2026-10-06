@@ -115,6 +115,7 @@ function useTimer(params: TimerViewParams) {
     return () => {
       ref.current?.stop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- operator_params is a new object on every schema update; depending on it would restart the timer
   }, [on_interval, interval, on_timeout, timeout, triggerEvent, panelId]);
 }
 

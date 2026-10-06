@@ -15,6 +15,7 @@ export default function TabsView(props) {
 
   useEffect(() => {
     if (typeof onChange === "function") onChange(path, tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- report tab changes only; onChange is an inline prop
   }, [tab]);
 
   return (

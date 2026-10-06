@@ -37,6 +37,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
         detail: { localId: localIdRef.current },
       }),
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the signature identifies a new frames payload; frames itself is read only then
   }, [data?.signature]);
 
   const loadRange = React.useCallback(
@@ -72,7 +73,8 @@ export default function FrameLoaderView(props: ViewPropsType) {
         });
       }
     },
-    [triggerEvent, on_load_range, localIdRef.current],
+    // localIdRef is read when frames arrive, so it needn't be a dependency
+    [triggerEvent, on_load_range, panelId],
   );
 
   const [_currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
@@ -89,7 +91,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
       });
       setCurrentFrame(frameNumber);
     },
-    [data, setPanelState, panelId, target],
+    [setPanelState, panelId, path, target],
   );
 
   const { isTimelineInitialized, subscribe } = useTimeline(timeline_name);
@@ -105,7 +107,14 @@ export default function FrameLoaderView(props: ViewPropsType) {
       });
       setSubscribed(true);
     }
-  }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
+  }, [
+    isTimelineInitialized,
+    loadRange,
+    myRenderFrame,
+    panelId,
+    subscribe,
+    subscribed,
+  ]);
 
   return null;
 }

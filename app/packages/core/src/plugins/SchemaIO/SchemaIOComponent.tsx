@@ -33,6 +33,7 @@ export function SchemaIOComponent(props) {
         clearUseKeyStores(id);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount-only cleanup for the id this component mounted with
   }, []);
 
   const onIOChange = useCallback(

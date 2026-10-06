@@ -34,14 +34,19 @@ export default function FileDrop({
     setFileIds(new Set());
   };
 
+  // report file changes only; callers pass inline onChange handlers, so
+  // depending on it would re-report the same files on every parent render
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     const updatedFileIds = new Set();
     for (const file of files) {
       updatedFileIds.add(getFileId(file));
     }
     setFileIds(updatedFileIds);
-    if (onChange) {
-      onChange(files, clear);
+    if (onChangeRef.current) {
+      onChangeRef.current(files, clear);
     }
   }, [files]);
 
