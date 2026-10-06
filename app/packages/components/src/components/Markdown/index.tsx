@@ -15,6 +15,7 @@ import {
 import { useHover } from "react-laag";
 import ReactMarkdown from "react-markdown";
 import type {
+  CodeProps,
   LiProps,
   TableDataCellProps,
   TableHeaderCellProps,
@@ -69,6 +70,53 @@ const CodeHeader = styled.div`
 const defaultSx: SxProps = { color: "inherit", mb: 1 };
 const boldSx: SxProps = { ...defaultSx, fontWeight: "bold" };
 
+// react-markdown renders `code` as a component, so it can use hooks
+const MarkdownCode = ({
+  node: _node,
+  inline,
+  className,
+  children,
+  ...props
+}: CodeProps) => {
+  const theme = useTheme();
+  const [hovered, hoverProps] = useHover();
+  // react-markdown passes code blocks' text as children (strings), which is
+  // what CopyButton and SyntaxHighlighter have always received
+  const code = children as string;
+  const isDarkMode = theme.mode === "dark";
+  const highlightTheme = isDarkMode ? vs2015 : tomorrow;
+  const match = /language-(\w+)/.exec(className || "");
+  let language = match ? match[1] : "text";
+  if (language === "js") {
+    language = "javascript";
+  }
+  if (language === "ts") {
+    language = "typescript";
+  }
+  if (language === "py") {
+    language = "python";
+  }
+  return !inline && match ? (
+    <CodeContainer {...hoverProps}>
+      <CodeHeader>
+        <Typography component="span">{language}</Typography>
+        <CopyButton
+          text={code}
+          sx={{ visibility: hovered ? "visible" : "hidden" }}
+        />
+      </CodeHeader>
+
+      <SyntaxHighlighter language={language} style={highlightTheme}>
+        {code}
+      </SyntaxHighlighter>
+    </CodeContainer>
+  ) : (
+    <InlineCode className={className} {...props}>
+      {children}
+    </InlineCode>
+  );
+};
+
 const componentsMap = {
   a({ children, ...props }) {
     if (
@@ -106,42 +154,7 @@ const componentsMap = {
   tbody: TableBody,
   thead: TableHead,
   tr: TableRow,
-  code({ node: _node, inline, className, children, ...props }) {
-    const theme = useTheme();
-    const [hovered, hoverProps] = useHover();
-    const isDarkMode = theme.mode === "dark";
-    const highlightTheme = isDarkMode ? vs2015 : tomorrow;
-    const match = /language-(\w+)/.exec(className || "");
-    let language = match ? match[1] : "text";
-    if (language === "js") {
-      language = "javascript";
-    }
-    if (language === "ts") {
-      language = "typescript";
-    }
-    if (language === "py") {
-      language = "python";
-    }
-    return !inline && match ? (
-      <CodeContainer {...hoverProps}>
-        <CodeHeader>
-          <Typography component="span">{language}</Typography>
-          <CopyButton
-            text={children}
-            sx={{ visibility: hovered ? "visible" : "hidden" }}
-          />
-        </CodeHeader>
-
-        <SyntaxHighlighter language={language} style={highlightTheme}>
-          {children}
-        </SyntaxHighlighter>
-      </CodeContainer>
-    ) : (
-      <InlineCode className={className} {...props}>
-        {children}
-      </InlineCode>
-    );
-  },
+  code: MarkdownCode,
   p: ({ children }) => (
     <Typography
       sx={{

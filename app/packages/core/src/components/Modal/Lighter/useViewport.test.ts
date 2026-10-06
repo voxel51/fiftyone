@@ -80,13 +80,12 @@ vi.mock("@fiftyone/lighter", async () => {
         },
       },
     }),
-    useLighterEventHandler:
-      (_channelId: string) =>
-      (
+    useLighterEventHandler: (_channelId: string) =>
+      function useMockLighterEventHandler(
         event: string,
         handler: (...args: unknown[]) => unknown,
         { once = false } = {},
-      ) => {
+      ) {
         useEffect(() => {
           if (once) return mockBus.once(event, handler);
           mockBus.on(event, handler);

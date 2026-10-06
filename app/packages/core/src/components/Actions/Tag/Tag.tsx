@@ -434,7 +434,8 @@ const useLabelPlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string },
 ) => {
-  return (): [number, string] => {
+  // Section calls this as a hook during render
+  return function useLabelCountAndPlaceholder(): [number, string] {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     const selectedLabelCount = useRecoilValue(
@@ -459,7 +460,8 @@ const getUseSamplePlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string },
 ) => {
-  return (): [number, string] => {
+  // Section calls this as a hook during render
+  return function useSampleCountAndPlaceholder(): [number, string] {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const totalSamples = useRecoilValue(
       fos.count({ path: "", extended: false, modal }),
