@@ -927,7 +927,7 @@ function ConfidenceDistributionTable(props) {
           size="small"
           defaultValue={metric}
           onChange={(e) => {
-            setMetric(e.target.value);
+            setMetric(e.target.value as string);
           }}
           ghost
         >
@@ -1251,7 +1251,7 @@ function PredictionStatisticsChart(props) {
           size="small"
           value={metric}
           onChange={(e) => {
-            setMetric(e.target.value);
+            setMetric(e.target.value as string);
           }}
           ghost
         >
@@ -1679,7 +1679,7 @@ function ConfidenceDistributionChart(props) {
           size="small"
           value={mode}
           onChange={(e) => {
-            setMode(e.target.value);
+            setMode(e.target.value as string);
           }}
           ghost
         >
@@ -1779,7 +1779,7 @@ function MetricPerformanceChart(props) {
           size="small"
           defaultValue={metric}
           onChange={(e) => {
-            setMetric(e.target.value);
+            setMetric(e.target.value as string);
           }}
           ghost
         >

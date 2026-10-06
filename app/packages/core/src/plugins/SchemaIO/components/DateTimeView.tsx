@@ -20,7 +20,15 @@ export default function DateTimeView(props: ViewPropsType) {
   const { onChange, schema, path } = props;
   // epoch milliseconds from the backend
   const data = props.data as number | undefined;
-  const { compact, placeholder = "", readOnly } = schema.view;
+  const {
+    compact,
+    placeholder = "",
+    readOnly,
+  } = schema.view as {
+    compact?: boolean;
+    placeholder?: string;
+    readOnly?: boolean;
+  };
   const [key, setUserChanged] = useKey(path, schema, data, true);
 
   const dateOnly = schema.view.date_only;

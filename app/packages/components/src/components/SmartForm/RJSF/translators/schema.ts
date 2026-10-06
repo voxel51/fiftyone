@@ -1,8 +1,8 @@
 import type { RJSFSchema } from "@rjsf/utils";
 
-type JSONValue = NonNullable<RJSFSchema["default"]>;
 import {
   addWarning,
+  type JSONValue,
   type SchemaIONode,
   type TranslationContext,
 } from "./utils";

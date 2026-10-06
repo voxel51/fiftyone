@@ -278,7 +278,9 @@ type MatrixData = {
 };
 
 type MatrixOptions = {
-  sortBy: "az" | "za" | "mc" | "lc";
+  // "az" | "za" | "mc" | "lc"; anything else (e.g. "default") leaves the
+  // classes unsorted
+  sortBy?: string;
   limit?: number;
   classes?: string[];
   skipZeroCount?: boolean;

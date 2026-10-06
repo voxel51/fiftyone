@@ -4,10 +4,44 @@ import type {
   SchemaViewType,
 } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
+export type JSONValue = NonNullable<RJSFSchema["default"]>;
+
 /**
  * The parts of a SchemaIO schema the translators read. Views carry
  * component-specific keys, so they keep SchemaIO's open view type.
  */
+/** The SchemaIO view keys the SmartForm translators read. */
+export type SmartFormView = SchemaViewType & {
+  component?: string;
+  name?: string;
+  label?: string;
+  description?: string;
+  caption?: string;
+  placeholder?: string;
+  choices?: { value: JSONValue; label?: string }[];
+  taxonomy?: object;
+  multiple?: boolean;
+  multiSelect?: boolean;
+  compact?: boolean;
+  color?: string;
+  variant?: string;
+  orientation?: string;
+  align_x?: string;
+  align_y?: string;
+  gap?: number | string;
+  height?: number | string;
+  bare?: boolean;
+  labeled?: boolean;
+  date_only?: boolean;
+  allow_clearing?: boolean;
+  allow_duplicates?: boolean;
+  allow_user_input?: boolean;
+  minLabel?: string;
+  maxLabel?: string;
+  read_only?: boolean;
+  readOnly?: boolean;
+};
+
 export type SchemaIONode = {
   type?: string;
   default?: unknown;
@@ -19,7 +53,7 @@ export type SchemaIONode = {
   additionalProperties?: SchemaIONode;
   items?: SchemaIONode | SchemaIONode[];
   types?: SchemaIONode[];
-  view?: SchemaViewType;
+  view?: SmartFormView;
 };
 
 export interface TranslationResult {

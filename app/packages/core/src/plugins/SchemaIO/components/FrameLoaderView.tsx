@@ -81,10 +81,11 @@ export default function FrameLoaderView(props: ViewPropsType) {
 
   const myRenderFrame = React.useCallback(
     (frameNumber: number) => {
-      setPanelState(panelId, (current) => {
+      setPanelState<{ data?: Record<string, unknown> }>(panelId, (current) => {
         const currentData = current.data ? _.cloneDeep(current.data) : {}; // Clone the object
-        const currentFrameData = _.get(currentData, path, { frames: [] })
-          .frames[frameNumber];
+        const currentFrameData = (
+          _.get(currentData, path, { frames: [] }) as { frames: unknown[] }
+        ).frames[frameNumber];
         const updatedData = { ...currentData };
         _.set(updatedData, target, currentFrameData); // Use lodash set to update safely
         return { ...current, data: updatedData };

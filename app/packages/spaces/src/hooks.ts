@@ -21,6 +21,7 @@ import {
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
+  type SetterOrUpdater,
 } from "recoil";
 import SpaceTree from "./SpaceTree";
 import { PanelContext } from "./contexts";
@@ -64,7 +65,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
       new SpaceTree(state, (spaces: SpaceNodeJSON) => {
         setState(spaces);
       }),
-    [state],
+    [state, setState],
   );
 
   const clearSpaces = useCallback(() => {
@@ -85,7 +86,7 @@ export function useSpaces(id: string, defaultState?: SpaceNodeJSON) {
         setState(serializedTreeOrUpdater);
       }
     },
-    [],
+    [setState],
   );
 
   return {
@@ -162,7 +163,7 @@ export function usePanel(
         panel.name === name && predicate(panel);
     }
     return (panel: SpacePanelRegistration) => panel.name === name;
-  }, [predicate]);
+  }, [name, predicate]);
   const panels = usePanels(combinedPredicate);
   return panels.at(0);
 }
@@ -203,14 +204,14 @@ export function usePanelTitle(id?: string) {
       updatedPanelTitles.set(id || panelId, title);
       setPanelTitles(updatedPanelTitles);
     },
-    [panelTitles, panelId],
+    [panelTitles, panelId, setPanelTitles],
   );
 
   const resetPanelTitle = useCallback(() => {
     const updatedPanelTitles = new Map(panelTitles);
     updatedPanelTitles.delete(id || panelId);
     setPanelTitles(updatedPanelTitles);
-  }, [panelTitles, panelId]);
+  }, [id, panelTitles, panelId, setPanelTitles]);
 
   return [panelTitle, setPanelTitle, resetPanelTitle] as const;
 }
@@ -282,13 +283,17 @@ export function useSetPanelStateById(local?: boolean, scope?: string) {
   const panelScope = useScope(scope);
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (panelId: string, fn: (state: any) => any) => {
+      // panel state is untyped storage; callers type the state they read
+      async <S = Record<string, unknown>>(
+        panelId: string,
+        fn: (state: S) => S,
+      ) => {
         const panelIdToScope = await snapshot.getPromise(panelIdToScopeAtom);
         const computedScope = panelScope || panelIdToScope?.[panelId];
         const panelState = await snapshot.getPromise(
           panelStateSelector({ panelId, local, scope: computedScope }),
         );
-        const updatedValue = fn(panelState);
+        const updatedValue = fn(panelState as S);
         set(
           panelStateSelector({ panelId, local, scope: computedScope }),
           updatedValue,
@@ -419,10 +424,10 @@ export function usePanelStatePartial<T>(
     panelStatePartialSelector({ panelId, key, local, scope: panelScope }),
   );
   const computedState = useComputedState(state, defaultState);
-  return [computedState, setState];
+  return [computedState, setState] as [T, SetterOrUpdater<T>];
 }
 
-function useComputedState(state: any, defaultState: any) {
+function useComputedState<T>(state: T | undefined, defaultState?: T): T {
   const defaultRef = useRef(defaultState);
   return state === undefined ? defaultRef.current : state;
 }

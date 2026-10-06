@@ -55,7 +55,8 @@ interface ModalBaseProps {
   props: ModalTriggerProps;
 }
 
-interface ModalButtonView {
+// a type alias (not an interface) so it's assignable to SchemaViewType
+type ModalButtonView = {
   disabled?: boolean;
   variant: string;
   label: string;
@@ -63,7 +64,7 @@ interface ModalButtonView {
   iconPosition?: string;
   title?: string;
   componentsProps: { button: { sx: Record<string, unknown> } };
-}
+};
 
 const ModalBase: React.FC<ModalBaseProps> = ({
   modal,

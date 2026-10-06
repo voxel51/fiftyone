@@ -103,7 +103,8 @@ export namespace State {
     lastModifiedAt?: DateTime;
   }
 
-  export interface Evaluation {}
+  // unused placeholder for evaluation run results
+  export type Evaluation = Record<string, unknown>;
 
   export interface Run {
     key: string;

@@ -1,7 +1,16 @@
-// Server-configured view options. SchemaIO views type the keys they read
-// locally; moving this to `unknown` also needs components' RJSF translators
-// (SmartForm/RJSF/translators) to type theirs.
-export type SchemaViewType = { [key: string]: any };
+// Server-configured view options. Keys every view shares are declared here;
+// each view types its own component-specific keys where it reads them.
+export type SchemaViewType = { [key: string]: unknown } & {
+  component?: string;
+  composite_view?: boolean;
+  name?: string;
+  label?: string;
+  description?: string;
+  caption?: string;
+  placeholder?: string;
+  readOnly?: boolean;
+  read_only?: boolean;
+};
 
 export type BaseSchemaType = {
   type: string;

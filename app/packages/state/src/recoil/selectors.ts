@@ -118,8 +118,9 @@ export const timeZone = selector<string>({
   },
 });
 
+// app config values vary by key; consumers type the key they read
 export const appConfigDefault = selectorFamily<
-  any,
+  unknown,
   { key: string; modal: boolean }
 >({
   key: "appConfigDefault",
@@ -134,12 +135,13 @@ export const appConfigDefault = selectorFamily<
     },
 });
 
-export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
-  {
-    key: "appConfigOptions",
-    default: appConfigDefault,
-  },
-);
+export const appConfigOption = atomFamily<
+  unknown,
+  { key: string; modal: boolean }
+>({
+  key: "appConfigOptions",
+  default: appConfigDefault,
+});
 
 export const datasetAppConfig = graphQLSyncFragmentAtom<
   datasetAppConfigFragment$key,

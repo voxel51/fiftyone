@@ -29,7 +29,8 @@ export function parseSize(
   return value;
 }
 
-export function spaceToHeight(space?: number, max?: number) {
+// both are checked at runtime, so callers may pass raw view values
+export function spaceToHeight(space?: unknown, max?: unknown) {
   if (typeof space === "number" && typeof max === "number") {
     return space * (max / 12);
   }
