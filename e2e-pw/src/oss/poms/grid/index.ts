@@ -34,9 +34,6 @@ export const isSettledDraw = (detail: unknown) => {
   return !draw.labelsPending && !draw.mediaPending;
 };
 
-/** Each tile's drawn labels (sorted `field:label` pairs), by file name */
-export type TileLabels = Record<string, string[]>;
-
 /**
  * Track tiles' latest draws: settled once `tiles` tiles have drawn and none
  * has media, a reload or label painting still to draw
@@ -58,15 +55,6 @@ class TileDraws {
       tiles !== null &&
       this.latest.size === tiles &&
       [...this.latest.values()].every(isSettledDraw)
-    );
-  }
-
-  labels(): TileLabels {
-    return Object.fromEntries(
-      [...this.latest].map(([file, { labels }]) => [
-        file,
-        labels ? labels.split(",") : [],
-      ]),
     );
   }
 }
@@ -345,10 +333,10 @@ export class GridPom {
 
   /**
    * Run `action`, which changes the shown tiles' options in place, and resolve
-   * with each updated tile's labels once the grid's update pass is done and
-   * every updated tile's draws have settled
+   * once the grid's update pass is done and every updated tile's draws have
+   * settled
    */
-  async afterTilesUpdated(action: () => Promise<unknown>): Promise<TileLabels> {
+  async afterTilesUpdated(action: () => Promise<unknown>): Promise<void> {
     const draws = new TileDraws();
     let tiles: number | null = null;
     await this.eventUtils.after(
@@ -363,18 +351,15 @@ export class GridPom {
         return draws.settled(tiles);
       },
     );
-    return draws.labels();
   }
 
   /**
-   * Run `action`, which refreshes the grid, and resolve with each new tile's
-   * labels once the remounted grid's tiles have settled. Only draws after the
+   * Run `action`, which refreshes the grid, and resolve once the remounted
+   * grid's tiles have settled. Only draws after the
    * old grid unmounts count, so the old tiles' draws cannot satisfy the wait.
    * Entry counts that change go through {@link afterEntryCounts}
    */
-  async afterGridRefreshed(
-    action: () => Promise<unknown>,
-  ): Promise<TileLabels> {
+  async afterGridRefreshed(action: () => Promise<unknown>): Promise<void> {
     const draws = new TileDraws();
     let unmounted = false;
     let tiles: number | null = null;
@@ -397,7 +382,6 @@ export class GridPom {
         return draws.settled(tiles);
       },
     );
-    return draws.labels();
   }
 
   /**
