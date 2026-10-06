@@ -130,7 +130,8 @@ export class OperatorsPromptPom {
     );
   }
 
-  private afterClosed(action: () => Promise<void>) {
+  /** Run `action` and resolve once the prompt closes because of it */
+  afterClosed<T>(action: () => Promise<T>): Promise<T> {
     return this.eventUtils.after(
       PROMPT_EVENT,
       action,

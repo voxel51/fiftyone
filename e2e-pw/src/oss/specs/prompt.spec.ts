@@ -136,15 +136,13 @@ test.describe.serial("operator prompt", () => {
     );
     await operatorsPrompt.assert.isExecuting();
     await operatorsPromptViewModal.assert.hasContent("Loading 1 of 2");
-    await operatorsPromptViewModal.afterOutput(
-      () =>
-        fiftyoneLoader.executePythonCode(`
+    // the released run shows its last step and closes its prompt
+    await operatorsPrompt.afterClosed(() =>
+      fiftyoneLoader.executePythonCode(`
       import fiftyone.operators as foo
 
       foo.ExecutionStore.create("e2e_progress_release").set("${datasetName}", 1)
     `),
-      "percent_complete",
-      1,
     );
     await operatorsPromptViewModal.assert.hasContent("Loading 2 of 2");
     await operatorsPromptViewModal.done();

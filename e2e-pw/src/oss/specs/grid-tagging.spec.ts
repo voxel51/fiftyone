@@ -72,8 +72,9 @@ test("grid tagging refreshes visible tiles across pages without reloading", asyn
     await grid.tagger.addNewTag("sample", "grid-test");
   });
 
-  // Check actual viewport contents, including previously cached later pages.
-  for (const index of [0, 30, 47, 53]) {
+  // Tagging keeps the scroll position: check the tile in view and the later
+  // pages Relay cached before tagging.
+  for (const index of [30, 47, 53]) {
     await tile(index).scrollIntoViewIfNeeded();
     await grid.untilTagsRenderedSince(tagged, filepath(index));
     expect(await tag(index).isVisible()).toBe(true);
