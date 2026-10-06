@@ -57,6 +57,8 @@ E2E_RULES = [
     # locator.waitFor and the removed DOM-mutation wait are DOM polls
     ("locator-wait-for", re.compile(r"\.waitFor\(")),
     ("until-dom", re.compile(r"\buntilDom\(")),
+    # datasets come from DatasetFactory, built from data the spec controls
+    ("raw-dataset", re.compile(r"\bfo\.Dataset\(|load_zoo_dataset\(")),
     # the sample canvas POM is the only authority over the modal canvas: its
     # primitives drive the pointer, and its asserter takes the screenshots
     (
@@ -120,6 +122,7 @@ ALLOW = {
     "app/packages/playback/src/lib/timeline/use-timeline.ts:new CustomEvent(": "play/pause; timeline/use-create-timeline.ts listens (useEventHandler on window)",
     "app/packages/playback/src/lib/timeline/utils.ts:new CustomEvent(": "set-frame-number; timeline/use-create-timeline.ts listens",
     "e2e-pw/src/oss/poms/modal/annotate-sidebar.ts:waitForResponse(": "waitForPatch: the grouped-video specs assert which sample the PATCH URL targets, so the request itself is the subject; saves wait on afterSave",
+    "e2e-pw/src/shared/dataset-factory/build.ts:fo.Dataset(": "the factory itself creates the dataset",
     "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:.mouse.": "the sample canvas POM: its primitives are the only pointer input to the canvas",
     "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:expectScreenshot(": "the sample canvas asserter",
     "e2e-pw/src/oss/poms/grid/index.ts:expectScreenshot(": "the grid asserter: each tile's canvas, in grid order",
