@@ -4,26 +4,30 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("direct3d-flat-parity");
+// a bare PCD, a bare PLY and another bare PCD, each loaded as "3d" media
 const sampleSpecs = [
   {
     name: "flat-pcd-1",
-    filepath: `/tmp/direct3d-flat-${datasetName}-1.pcd`,
     kind: "pcd",
+    asset: { pcd: { shape: "cube", numPoints: 216 } },
     offset: 0.0,
   },
   {
     name: "flat-ply-2",
-    filepath: `/tmp/direct3d-flat-${datasetName}-2.ply`,
     kind: "ply",
+    asset: { ply: { shape: "cube" } },
     offset: 0.35,
   },
   {
     name: "flat-pcd-3",
-    filepath: `/tmp/direct3d-flat-${datasetName}-3.pcd`,
     kind: "pcd",
+    asset: { pcd: { shape: "diagonal", numPoints: 12 } },
     offset: 0.7,
   },
-];
+] as const;
+
+// each sample's file, set once the dataset exists
+let filepaths: string[];
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -34,58 +38,39 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  mediaFactory.createPcd({
-    outputPath: sampleSpecs[0].filepath,
-    shape: "cube",
-    numPoints: 216,
+  const samples = await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName,
+    numSamples: sampleSpecs.length,
+    sceneOptions: (index) => sampleSpecs[index].asset,
+    schema: {
+      name: "StringField",
+      shape_kind: "StringField",
+      detections: "Detections",
+      "detections.detections.location": "ListField<FloatField>",
+      "detections.detections.dimensions": "ListField<FloatField>",
+      "detections.detections.rotation": "ListField<FloatField>",
+    },
+    withSampleData: ({ index }, { label }) => {
+      const { name, kind, offset } = sampleSpecs[index];
+      return {
+        name,
+        shape_kind: kind,
+        detections: label.detections([
+          label.detection({
+            label: `${name}-detection`,
+            location: [offset, 0.0, 0.15],
+            dimensions: [0.8, 0.6, 0.5],
+            rotation: [0.0, offset, 0.0],
+            confidence: 0.95,
+          }),
+        ]),
+      };
+    },
   });
-  mediaFactory.createPly({
-    outputPath: sampleSpecs[1].filepath,
-    shape: "cube",
-  });
-  mediaFactory.createPcd({
-    outputPath: sampleSpecs[2].filepath,
-    shape: "diagonal",
-    numPoints: 12,
-  });
-
-  await fiftyoneLoader.executePythonCode(`
-import json
-
-import fiftyone as fo
-
-specs = json.loads(r'''${JSON.stringify(sampleSpecs)}''')
-
-def make_detection(label, offset):
-    return fo.Detection(
-        label=label,
-        location=[offset, 0.0, 0.15],
-        dimensions=[0.8, 0.6, 0.5],
-        rotation=[0.0, offset, 0.0],
-        confidence=0.95,
-    )
-
-dataset = fo.Dataset("${datasetName}")
-dataset.persistent = True
-
-samples = []
-for spec in specs:
-    sample = fo.Sample(
-        filepath=spec["filepath"],
-        media_type="3d",
-        name=spec["name"],
-        shape_kind=spec["kind"],
-    )
-    sample["detections"] = fo.Detections(
-        detections=[make_detection(f'{spec["name"]}-detection', spec["offset"])]
-    )
-    samples.append(sample)
-
-dataset.add_samples(samples)
-  `);
+  filepaths = samples.map(({ filepath }) => filepath);
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -125,7 +110,7 @@ test.describe.serial("flat direct 3d parity", () => {
       });
       await modal.sidebar.assert.verifySidebarFieldCount("detections", 1);
       expect(await modal.sidebar.getSampleFilepath(false)).toBe(
-        spec.filepath.split("/").at(-1),
+        filepaths[specIndex].split("/").at(-1),
       );
     };
 

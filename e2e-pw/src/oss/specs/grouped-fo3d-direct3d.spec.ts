@@ -4,14 +4,8 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("grouped-fo3d-direct3d");
-const sharedFo3dMeshPath = `/tmp/grouped-fo3d-direct3d-${datasetName}-mesh.ply`;
-const sharedFo3dPointCloudPath = `/tmp/grouped-fo3d-direct3d-${datasetName}-cloud.ply`;
 const groupSpecs = [1, 2, 3].map((index) => ({
   scene: `scene-${index}`,
-  imagePath: `/tmp/grouped-fo3d-direct3d-${datasetName}-${index}.png`,
-  fo3dLeftPath: `/tmp/grouped-fo3d-direct3d-${datasetName}-${index}-left.fo3d`,
-  fo3dRightPath: `/tmp/grouped-fo3d-direct3d-${datasetName}-${index}-right.fo3d`,
-  pcdAs3dPath: `/tmp/grouped-fo3d-direct3d-${datasetName}-${index}.pcd`,
   imageName: `scene-${index}-image`,
   fo3dLeftName: `scene-${index}-fo3d-left`,
   fo3dRightName: `scene-${index}-fo3d-right`,
@@ -28,165 +22,111 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  mediaFactory.createPly({
-    outputPath: sharedFo3dMeshPath,
-    shape: "cube",
-    color: [255, 196, 96],
+  const cuboid = (label: string, offset: number) => ({
+    label,
+    location: [offset, 0.1, 0.0],
+    dimensions: [0.85, 0.65, 0.55],
+    rotation: [0.0, offset, 0.12],
+    confidence: 0.97,
   });
-  mediaFactory.createPly({
-    outputPath: sharedFo3dPointCloudPath,
-    shape: "point-cloud",
-    numPoints: 216,
-    color: [96, 208, 255],
-  });
-
-  await Promise.all(
-    groupSpecs.map((spec, index) =>
-      mediaFactory.createImage({
-        outputPath: spec.imagePath,
-        width: 320,
-        height: 240,
-        fillColor: ["#3d405b", "#264653", "#6d597a"][index],
-        watermarkString: spec.scene,
-        hideLogs: true,
-      }),
-    ),
-  );
-
-  groupSpecs.forEach((spec, index) => {
-    mediaFactory.createPcd({
-      outputPath: spec.pcdAs3dPath,
-      shape: index === 2 ? "diagonal" : "cube",
-      numPoints: index === 2 ? 15 : 216,
-    });
-  });
-
-  await fiftyoneLoader.executePythonCode(`
-import json
-
-import fiftyone as fo
-import fiftyone.core.media as fom
-
-specs = json.loads(r'''${JSON.stringify(groupSpecs)}''')
-
-def seed_group_media_types(dataset, group_media_types):
-    current = dict(dataset._doc.group_media_types or {})
-    current.update(group_media_types)
-    dataset._doc.group_media_types = current
-    dataset.save()
-
-def make_image_detection(label):
-    return fo.Detection(
-        label=label,
-        bounding_box=[0.18, 0.22, 0.38, 0.42],
-        confidence=0.9,
-    )
-
-def make_3d_detection(label, offset):
-    return fo.Detection(
-        label=label,
-        location=[offset, 0.1, 0.0],
-        dimensions=[0.85, 0.65, 0.55],
-        rotation=[0.0, offset, 0.12],
-        confidence=0.97,
-    )
-
-dataset = fo.Dataset("${datasetName}")
-dataset.add_group_field("group", default="image")
-seed_group_media_types(
-    dataset,
-    {
-        "image": fom.IMAGE,
-        "fo3d_left": fom.THREE_D,
-        "fo3d_right": fom.THREE_D,
-        "pcd_as_3d": fom.THREE_D,
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: groupSpecs.length,
+    slices: [
+      {
+        name: "image",
+        mediaType: "image",
+        imageOptions: (index) => ({
+          width: 320,
+          height: 240,
+          fillColor: ["#3d405b", "#264653", "#6d597a"][index],
+          watermarkString: groupSpecs[index].scene,
+          hideLogs: true,
+        }),
+      },
+      {
+        name: "fo3d_left",
+        mediaType: "3d",
+        sceneOptions: (index) => ({
+          meshes: [
+            {
+              shape: "cube",
+              color: [255, 196, 96],
+              name: "left_mesh",
+              position: [groupSpecs[index].offset, 0.0, 0.0],
+              scale: 0.8,
+            },
+          ],
+        }),
+      },
+      {
+        name: "fo3d_right",
+        mediaType: "3d",
+        sceneOptions: (index) => ({
+          meshes: [
+            {
+              shape: "point-cloud",
+              numPoints: 216,
+              color: [96, 208, 255],
+              name: "right_cloud",
+              isPointCloud: true,
+              position: [groupSpecs[index].offset + 0.4, 0.0, 0.0],
+            },
+          ],
+        }),
+      },
+      {
+        name: "pcd_as_3d",
+        mediaType: "3d",
+        sceneOptions: (index) => ({
+          pcd:
+            index === 2
+              ? { shape: "diagonal", numPoints: 15 }
+              : { shape: "cube", numPoints: 216 },
+        }),
+      },
+    ],
+    schema: {
+      name: "StringField",
+      scene: "StringField",
+      detections: "Detections",
+      "detections.detections.location": "ListField<FloatField>",
+      "detections.detections.dimensions": "ListField<FloatField>",
+      "detections.detections.rotation": "ListField<FloatField>",
     },
-)
-dataset.persistent = True
-
-samples = []
-for spec in specs:
-    left_scene = fo.Scene()
-    left_mesh = fo.PlyMesh("left_mesh", "${sharedFo3dMeshPath}")
-    left_mesh.position = [spec["offset"], 0.0, 0.0]
-    left_mesh.scale = 0.8
-    left_scene.add(left_mesh)
-    left_scene.write(spec["fo3dLeftPath"])
-
-    right_scene = fo.Scene()
-    right_cloud = fo.PlyMesh(
-        "right_cloud",
-        "${sharedFo3dPointCloudPath}",
-        is_point_cloud=True,
-    )
-    right_cloud.position = [spec["offset"] + 0.4, 0.0, 0.0]
-    right_scene.add(right_cloud)
-    right_scene.write(spec["fo3dRightPath"])
-
-    group = fo.Group()
-
-    image = fo.Sample(
-        filepath=spec["imagePath"],
-        group=group.element("image"),
-        name=spec["imageName"],
-        scene=spec["scene"],
-        detections=fo.Detections(
-            detections=[make_image_detection(f'{spec["scene"]}-image')]
-        ),
-    )
-    fo3d_left = fo.Sample(
-        filepath=spec["fo3dLeftPath"],
-        media_type="3d",
-        group=group.element("fo3d_left"),
-        name=spec["fo3dLeftName"],
-        scene=spec["scene"],
-        detections=fo.Detections(
-            detections=[
-                make_3d_detection(
-                    f'{spec["scene"]}-fo3d-left',
-                    spec["offset"],
-                )
-            ]
-        ),
-    )
-    fo3d_right = fo.Sample(
-        filepath=spec["fo3dRightPath"],
-        media_type="3d",
-        group=group.element("fo3d_right"),
-        name=spec["fo3dRightName"],
-        scene=spec["scene"],
-        detections=fo.Detections(
-            detections=[
-                make_3d_detection(
-                    f'{spec["scene"]}-fo3d-right',
-                    spec["offset"] + 0.15,
-                )
-            ]
-        ),
-    )
-    pcd_as_3d = fo.Sample(
-        filepath=spec["pcdAs3dPath"],
-        media_type="3d",
-        group=group.element("pcd_as_3d"),
-        name=spec["pcdAs3dName"],
-        scene=spec["scene"],
-        detections=fo.Detections(
-            detections=[
-                make_3d_detection(
-                    f'{spec["scene"]}-pcd-as-3d',
-                    spec["offset"] + 0.3,
-                )
-            ]
-        ),
-    )
-
-    samples.extend([image, fo3d_left, fo3d_right, pcd_as_3d])
-
-dataset.add_samples(samples)
-  `);
+    withSampleData: ({ groupIndex, slice }, { label }) => {
+      const spec = groupSpecs[groupIndex];
+      const { scene, offset } = spec;
+      const samples: Record<string, [string, object]> = {
+        image: [
+          spec.imageName,
+          {
+            label: `${scene}-image`,
+            bounding_box: [0.18, 0.22, 0.38, 0.42],
+            confidence: 0.9,
+          },
+        ],
+        fo3d_left: [spec.fo3dLeftName, cuboid(`${scene}-fo3d-left`, offset)],
+        fo3d_right: [
+          spec.fo3dRightName,
+          cuboid(`${scene}-fo3d-right`, offset + 0.15),
+        ],
+        pcd_as_3d: [
+          spec.pcdAs3dName,
+          cuboid(`${scene}-pcd-as-3d`, offset + 0.3),
+        ],
+      };
+      const [name, detection] = samples[slice];
+      return {
+        name,
+        scene,
+        detections: label.detections([label.detection({ ...detection })]),
+      };
+    },
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {

@@ -4,8 +4,8 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("video-label-regression");
-const testVideoPath1 = `/tmp/test-video1-${datasetName}.webm`;
-const testVideoPath2 = `/tmp/test-video2-${datasetName}.webm`;
+// the v2 slice's video, set once the dataset exists
+let v2Filepath: string;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -20,47 +20,40 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await Promise.all(
-    [testVideoPath1, testVideoPath2].map((outputPath) =>
-      mediaFactory.createVideo({
-        outputPath,
-        duration: 3,
-        width: 100,
-        height: 100,
-        frameRate: 5,
-        color: "#000000",
-      }),
-    ),
-  );
-
-  await fiftyoneLoader.executePythonCode(
-    `
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_group_field("group", default="v1")
-
-    group = fo.Group()
-    sample1 = fo.Sample(filepath="${testVideoPath1}", group=group.element("v1"))
-    sample2 = fo.Sample(filepath="${testVideoPath2}", group=group.element("v2"))
-    dataset.add_samples([sample1, sample2])
-
-    dataset.ensure_frames()
-
-    for _, frame in sample1.frames.items():
-      d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2], label="s1d1")
-      frame["d1"] = d1
-    sample1.save()
-
-    for _, frame in sample2.frames.items():
-      d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
-      frame["d2"] = d2
-    sample2.save() 
-    `,
-  );
+  const video = {
+    duration: 3,
+    width: 100,
+    height: 100,
+    frameRate: 5,
+    color: "#000000",
+  };
+  const samples = await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 1,
+    slices: [
+      { name: "v1", mediaType: "video", videoOptions: video },
+      { name: "v2", mediaType: "video", videoOptions: video },
+    ],
+    schema: { "frames.d1": "Detection", "frames.d2": "Detection" },
+    withFrameData: ({ sampleIndex }, { label }) =>
+      sampleIndex === 0
+        ? {
+            d1: label.detection({
+              bounding_box: [0.1, 0.1, 0.2, 0.2],
+              label: "s1d1",
+            }),
+          }
+        : {
+            d2: label.detection({
+              bounding_box: [0.2, 0.2, 0.25, 0.25],
+              label: "s1d2",
+            }),
+          },
+  });
+  v2Filepath = samples[1].filepath;
 });
 
 test.describe.serial("groups video labels", () => {
@@ -116,7 +109,7 @@ test.describe.serial("groups video labels", () => {
       () => modal.group.selectNthItemFromCarousel(1),
       (e) =>
         (e.detail as { sampleFilepath?: string })?.sampleFilepath ===
-        testVideoPath2,
+        v2Filepath,
     );
 
     await checkVideo("v2");
