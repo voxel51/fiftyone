@@ -53,12 +53,17 @@ export const MODAL_CAPTURE: CanvasCapture = {
 };
 
 /**
- * The 3D viewer's scene canvas, without the render preferences panel floating
- * over it
+ * The 3D viewer's scene canvas, without the DOM floating over it (the render
+ * preferences panel, the tips card, the action bar, the modal's arrows)
  */
 export const LOOKER3D_CAPTURE: CanvasCapture = {
   target: (root) => root.locator("canvas").first(),
-  style: "[data-cy=looker3d-leva-container] { visibility: hidden !important; }",
+  style: [
+    "[data-cy=looker3d] * { visibility: hidden !important; }",
+    "[data-cy=looker3d] canvas { visibility: visible !important; }",
+    // the modal's arrows: the icons and the buttons around them
+    ":has(> [data-cy=nav-left-button]), :has(> [data-cy=nav-right-button]) { visibility: hidden !important; }",
+  ].join("\n"),
 };
 
 /**
