@@ -57,9 +57,10 @@ if ((stats.flaky ?? 0) > 0) {
   );
 }
 
-// Burn-in is report-only; enforce its outcome here. Fail
-// closed: when specs were selected, anything short of a clean 10/10 across
-// all of them — including a dead job or a missing report — is a red verdict.
+// Enforce the burn-in outcome here, from its report as well as its job
+// result. Fail closed: when specs were selected, anything short of a clean
+// 10/10 across all of them — including a dead job or a missing report — is a
+// red verdict.
 const burnInCount = Number(process.env.BURN_IN_COUNT || "0");
 if (burnInCount > 0) {
   const burnInResult = process.env.BURN_IN_RESULT ?? "";
