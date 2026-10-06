@@ -5,10 +5,10 @@
 import type { BrowserContext, Page } from "@playwright/test";
 
 /**
- * Mock SAM2 inference worker for e2e specs, run in a real Worker from a Blob
- * URL. It speaks the production `worker.ts` protocol and answers every decode
- * with a deterministic 8x8 all-foreground mask + bbox, so no weights download
- * and the saved detection renders a non-empty mask.
+ * Mock SAM2 inference worker for e2e specs, served as the worker script. It
+ * speaks the production `worker.ts` protocol and answers every decode with a
+ * deterministic 8x8 all-foreground mask + bbox, so no weights download and the
+ * saved detection renders a non-empty mask.
  */
 export const SAM2_MOCK_WORKER_SRC = `
   self.onmessage = (e) => {
@@ -40,15 +40,21 @@ export const SAM2_MOCK_WORKER_SRC = `
 `;
 
 /**
- * Installs the mock worker through the `window.__FO_TEST_SAM2_WORKER_FACTORY`
- * seam before any page in `target` mounts `BrowserAnnotationProvider`.
+ * The SAM2 worker script `BrowserAnnotationProvider` loads: the hashed
+ * `assets/worker-*.js` chunk of a build, or the source module under the dev
+ * server
+ */
+const SAM2_WORKER_URL =
+  /\/(assets\/worker-[\w-]+\.js|annotation\/src\/providers\/worker\.ts)(\?|$)/;
+
+/**
+ * Serves the mock in place of the SAM2 worker script for every page in
+ * `target`; install before the page mounts `BrowserAnnotationProvider`.
  */
 export const installSam2MockWorker = (target: Page | BrowserContext) =>
-  target.addInitScript((workerSrc: string) => {
-    (
-      window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
-    ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-      const blob = new Blob([workerSrc], { type: "text/javascript" });
-      return new Worker(URL.createObjectURL(blob));
-    };
-  }, SAM2_MOCK_WORKER_SRC);
+  target.route(SAM2_WORKER_URL, (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: SAM2_MOCK_WORKER_SRC,
+    }),
+  );

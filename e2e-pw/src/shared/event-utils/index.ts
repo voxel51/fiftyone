@@ -96,7 +96,13 @@ interface PendingWait {
   /** Where the page's event record stood at arming; -1 if it has none */
   recordFrom: number;
   caller: string;
+  /** The last few events its predicate rejected, on any channel */
+  rejected: ObservedEvent[];
+  rejectedCount: number;
 }
+
+/** Rejected events a pending wait keeps for its report */
+const REJECTED_KEPT = 5;
 
 /** Every pending wait on a page, whichever EventUtils armed it */
 const pendingWaits = new WeakMap<Page, Map<string, PendingWait>>();
@@ -174,7 +180,14 @@ export class EventUtils {
     });
 
     const pending = pendingFor(this.page);
-    const caller = armingCaller();
+    const wait: PendingWait = {
+      names,
+      armedAt: Date.now(),
+      recordFrom: -1,
+      caller: armingCaller(),
+      rejected: [],
+      rejectedCount: 0,
+    };
 
     // the return value tells the page to detach once the wait is satisfied
     dispatcher.handlers.set(id, (e) => {
@@ -183,13 +196,17 @@ export class EventUtils {
         dispatcher.handlers.delete(id);
         pending.delete(id);
         resolveReceived();
+      } else {
+        wait.rejectedCount += 1;
+        wait.rejected.push(e);
+        if (wait.rejected.length > REJECTED_KEPT) wait.rejected.shift();
       }
       return matched;
     });
 
     // the listener is attached in its own evaluate — not inside the promise
     // that carries the wait — so attachment is complete when `arm` returns
-    const recordFrom = await this.page.evaluate(
+    wait.recordFrom = await this.page.evaluate(
       ({ names_, dispatcher_, id_ }) => {
         let detach = () => {};
         const deliver = (event: string, detail: unknown) => {
@@ -238,7 +255,7 @@ export class EventUtils {
       },
       { names_: names, dispatcher_: dispatcher.name, id_: id },
     );
-    pending.set(id, { names, armedAt: Date.now(), recordFrom, caller });
+    pending.set(id, wait);
 
     return new ArmedEvent(received, async () => {
       dispatcher.handlers.delete(id);
@@ -343,7 +360,8 @@ export class EventUtils {
 
   /**
    * Explain each wait still pending on this page: what it waits for, where it
-   * was armed, and the `e2e:` events the page sent since. Null if none.
+   * was armed, the events its predicate rejected, and the `e2e:` events the
+   * page sent since. Null if none.
    */
   public async describePending(): Promise<string | null> {
     const waits = [...(pendingWaits.get(this.page)?.values() ?? [])];
@@ -358,20 +376,19 @@ export class EventUtils {
         `still waiting ${Date.now() - wait.armedAt}ms for ` +
           `${wait.names.join(" | ")} (armed at ${wait.caller})`,
       );
+      lines.push(
+        wait.rejectedCount
+          ? `  arrived but rejected by its predicate (last ${wait.rejected.length} of ${wait.rejectedCount}):`
+          : "  never arrived",
+      );
+      for (const { event, detail } of wait.rejected) {
+        lines.push(`    ${event} ${JSON.stringify(detail)}`);
+      }
       if (!records || wait.recordFrom < 0) {
         lines.push("  no event record for this document");
         continue;
       }
       const since = records.slice(wait.recordFrom);
-      const matching = since.filter(({ event }) => wait.names.includes(event));
-      lines.push(
-        matching.length
-          ? `  arrived but rejected by its predicate (last ${Math.min(5, matching.length)} of ${matching.length}):`
-          : "  never arrived",
-      );
-      for (const { event, detail } of matching.slice(-5)) {
-        lines.push(`    ${event} ${JSON.stringify(detail)}`);
-      }
       const counts = new Map<string, number>();
       for (const { event } of since) {
         if (!wait.names.includes(event)) {
