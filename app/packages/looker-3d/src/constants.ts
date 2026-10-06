@@ -43,7 +43,8 @@ export type Looker3dE2EEvents = {
   /** the saved `{ position, target }` as JSON */
   [CAMERA_SAVED_EVENT]: { pose: string };
   [CAMERA_POSITION_EVENT]: { x: number; y: number; z: number };
-  [SCENE_READY_EVENT]: { sceneKey: string };
+  /** `slices`: the revealed active slices, sorted and comma-joined */
+  [SCENE_READY_EVENT]: { sceneKey: string; slices: string };
   [CANVAS_LOADED_EVENT]: { thumbnail: boolean };
   [ERROR_SHOWN_EVENT]: { thumbnail: boolean };
   [DRAFT_VERTICES_EVENT]: { count: number };

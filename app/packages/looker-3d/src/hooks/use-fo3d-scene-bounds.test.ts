@@ -61,4 +61,46 @@ describe("useFo3dSceneBounds", () => {
 
     expect(result.current.isBoundsResolved).toBe(false);
   });
+
+  it("does not resolve with an earlier box before the new assets are measured", () => {
+    const earlierBox = {} as never;
+    const nextBox = {} as never;
+    useFo3dBoundsMock.mockReturnValue({
+      boundingBox: earlierBox,
+      recomputeBounds: vi.fn(),
+      isComputing: false,
+    });
+
+    const { result, rerender } = renderHook(
+      ({ isThreeJsLoading }: { isThreeJsLoading: boolean }) =>
+        useFo3dSceneBounds({
+          assetsGroupRef: { current: null },
+          foScene: {} as never,
+          isParsingFo3d: false,
+          rootAssetCount: 2,
+          isThreeJsLoading,
+        }),
+      { initialProps: { isThreeJsLoading: true } },
+    );
+
+    // the added slice finished loading; measuring starts after this render
+    rerender({ isThreeJsLoading: false });
+    expect(result.current.isBoundsResolved).toBe(false);
+
+    useFo3dBoundsMock.mockReturnValue({
+      boundingBox: earlierBox,
+      recomputeBounds: vi.fn(),
+      isComputing: true,
+    });
+    rerender({ isThreeJsLoading: false });
+    expect(result.current.isBoundsResolved).toBe(false);
+
+    useFo3dBoundsMock.mockReturnValue({
+      boundingBox: nextBox,
+      recomputeBounds: vi.fn(),
+      isComputing: false,
+    });
+    rerender({ isThreeJsLoading: false });
+    expect(result.current.isBoundsResolved).toBe(true);
+  });
 });

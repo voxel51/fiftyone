@@ -77,9 +77,19 @@ test("renders both point-cloud slices aligned in the world frame", async ({
     await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
   });
 
-  await eventUtils.after(SCENE_REVEALED, async () => {
-    await modal.toggleLooker3dSlice("lidar_right");
-  });
+  // the toggle remounts the canvas with a fresh camera, so only the reveal of
+  // the scene holding lidar_right comes after it; an earlier one may still
+  // arrive from the open
+  await eventUtils.after(
+    SCENE_REVEALED,
+    async () => {
+      await modal.toggleLooker3dSlice("lidar_right");
+    },
+    (e) =>
+      (e.detail as { slices: string }).slices
+        .split(",")
+        .includes("lidar_right"),
+  );
 
   // the reveal above means bounds are resolved and the camera is mounted, so
   // the top view frames both slices and its settle signal is dispatched

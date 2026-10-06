@@ -238,8 +238,12 @@ export const Looker3d = () => {
     if (revealed) {
       getEventBus<Looker3dE2EEvents>().dispatch(SCENE_READY_EVENT, {
         sceneKey: looker3dSceneKey,
+        slices: Object.keys(sampleMap).sort().join(","),
       });
     }
+    // a slice toggle keeps the replaced scene revealed until it unmounts, so
+    // only a reveal announces the slices
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealed, looker3dSceneKey]);
 
   if (!sample) return null;
