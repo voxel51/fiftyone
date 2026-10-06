@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { indexToId } from "../utils";
+import { groupIndexToId } from "../utils";
 import { build, type BuildOptions } from "./build";
 import {
   frameSpecs,
@@ -173,7 +173,7 @@ const DEFAULT_GROUP_SLICES: GroupSliceConfig[] = [
  * in a `.fo3d` scene (or a bare asset), point-cloud slices a bare `.pcd`,
  * video slices generated clips. The default layout is `left` (image), `right`
  * (image) and `3d`, and the first slice is the default one. Group
- * `groupIndex` has id `indexToId(groupIndex)` and a sample in every slice
+ * `groupIndex` has id `groupIndexToId(groupIndex)` and a sample in every slice
  * whose `groupIndices` include it. Slice-level media options take the group
  * index.
  *
@@ -255,7 +255,7 @@ const createGroupDataset = async (options: GroupDatasetOptions) => {
       return {
         id: _id,
         filepath,
-        group: { id: indexToId(groupIndex), name: slice.name },
+        group: { id: groupIndexToId(groupIndex), name: slice.name },
         ...(slice.mediaType === "3d" ? { mediaType: "3d" } : {}),
         data: withSampleData(
           { _id, filepath, index, groupIndex, slice: slice.name, numFrames },

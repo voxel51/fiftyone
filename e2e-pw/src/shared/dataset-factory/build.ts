@@ -131,13 +131,16 @@ export const build = (() => {
       groupSlices.some((slice) => slice.mediaType === "video");
     const mediaTypeCode =
       mediaType === "group"
-        ? [
-            `dataset.add_group_field("group", default="${groupSlices[0]?.name}")`,
-            ...groupSlices.map(
-              (slice) =>
-                `dataset.add_group_slice("${slice.name}", "${slice.mediaType}")`,
-            ),
-          ].join("\n")
+        ? `dataset.add_group_field("group", default="${groupSlices[0]?.name}")
+for name, media_type in ${JSON.stringify(
+            groupSlices.map((slice) => [slice.name, slice.mediaType]),
+          )}:
+    if media_type == "3d" and "3d" in dataset._doc.group_media_types.values():
+        # add_group_slice() allows one 3d slice; the App renders several
+        dataset._doc.group_media_types[name] = media_type
+        dataset.save()
+    else:
+        dataset.add_group_slice(name, media_type)`
         : `dataset.media_type = "${mediaType}"`;
 
     await loader.executePythonCode(`

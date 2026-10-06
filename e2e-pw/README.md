@@ -205,8 +205,8 @@ Group slices may be `image`, `3d`, `point-cloud` or `video`, with per-slice
 media options that may be a function of the group index; video slices take
 `withFrameData` and `sampleFrames` too. A slice's `groupIndices` lists the
 groups that have a sample in it, for sparse groups, and group `i` has id
-`indexToId(i)`. Recipes shared by a spec family (the video-annotation and 3D
-seeds) live beside the specs in `src/oss/specs/annotate-*/`.
+`groupIndexToId(i)`. Recipes shared by a spec family (the video-annotation and
+3D seeds) live beside the specs in `src/oss/specs/annotate-*/`.
 
 A 3D sample's `sceneOptions` describe a `.fo3d` scene (PLY meshes, PCD point
 clouds and STL meshes, each with its own position, scale and material, plus the

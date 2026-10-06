@@ -1,7 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { indexToId } from "src/shared/utils";
+import { groupIndexToId, indexToId } from "src/shared/utils";
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -12,8 +12,8 @@ const test = base.extend<{ modal: ModalPom }>({
 const datasetName = getUniqueDatasetNameWithPrefix("linking");
 const groupDatasetName = getUniqueDatasetNameWithPrefix("group-linking");
 
-// the first sample's id, and the first group's
 const id = indexToId(0);
+const groupId = groupIndexToId(0);
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
@@ -43,11 +43,11 @@ test.describe.serial("modal linking", () => {
 
   test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
-      searchParams: new URLSearchParams({ groupId: id }),
+      searchParams: new URLSearchParams({ groupId }),
       modalSample: "loaded-or-error",
     });
 
     await modal.assert.isOpen();
-    await modal.sidebar.assert.verifySidebarEntryText("group.id", id);
+    await modal.sidebar.assert.verifySidebarEntryText("group.id", groupId);
   });
 });

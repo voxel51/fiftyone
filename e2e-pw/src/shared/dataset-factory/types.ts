@@ -29,7 +29,7 @@ export interface SampleScaffold {
 export interface GroupSampleScaffold extends SampleScaffold {
   /**
    * The zero-based index of the sample's group. The group's id is
-   * `indexToId(groupIndex)`.
+   * `groupIndexToId(groupIndex)`.
    */
   groupIndex: number;
 
