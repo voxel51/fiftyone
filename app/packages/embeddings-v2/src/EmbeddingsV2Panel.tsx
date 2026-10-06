@@ -22,6 +22,7 @@ import { useExtensionGeneration } from "./extensions";
 import PlotView from "./PlotView";
 import { fetchRunsStatus, type RunStatus } from "./protocol";
 import RunsList from "./RunsList";
+import { useClearSelectionOnClose } from "./useClearSelectionOnClose";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
 const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
@@ -45,6 +46,9 @@ export default function EmbeddingsV2Panel() {
   // registration (the edition entrypoint is dynamically imported) must
   // remount it rather than swap hooks under it
   const extensionGeneration = useExtensionGeneration();
+  // Closing the tab clears the plot's selection: the grid would otherwise
+  // stay narrowed by a lasso with nothing left in the UI to clear it
+  useClearSelectionOnClose();
   // Shared, not local: workspaces and the session persist only shared
   // panel state (see the header for the key names)
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
