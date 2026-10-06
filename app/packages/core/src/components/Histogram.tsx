@@ -258,7 +258,6 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
           <Bar
             dataKey="count"
             fill="rgb(255, 109, 4)"
-            barCategoryGap={0}
             barSize={barWidth}
             isAnimationActive={false}
           />

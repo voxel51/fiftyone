@@ -10,6 +10,12 @@ import { ActionToolbar } from "@fiftyone/components";
 import { Orientation } from "@voxel51/voodo";
 import { useSegmentationActions } from "./useSegmentationActions";
 
+// voodoo types the offsets as px numbers, but it handles CSS strings at
+// runtime (they go straight to left/top); drop the casts once voodoo widens
+// xOffset/yOffset to number | string
+const X_OFFSET = "5%" as unknown as number;
+const Y_OFFSET = "25%" as unknown as number;
+
 export const SegmentationToolbar = () => {
   const { groups, visible } = useSegmentationActions();
 
@@ -18,8 +24,8 @@ export const SegmentationToolbar = () => {
       className="segmentation-toolbar"
       groups={groups}
       orientation={Orientation.Column}
-      xOffset="5%"
-      yOffset="25%"
+      xOffset={X_OFFSET}
+      yOffset={Y_OFFSET}
       visible={visible}
     />
   );

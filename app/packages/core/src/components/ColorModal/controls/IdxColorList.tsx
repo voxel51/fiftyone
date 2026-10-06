@@ -212,11 +212,6 @@ const IdxColorList: React.FC<IdxColorProp> = ({
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   ref={pickerRef}
                   disableAlpha
-                  onBlur={() =>
-                    setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _)),
-                    )
-                  }
                   className={colorPicker}
                 />
               </ChromePickerWrapper>

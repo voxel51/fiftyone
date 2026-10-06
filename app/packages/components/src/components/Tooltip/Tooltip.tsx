@@ -1,8 +1,16 @@
 import { AnimatePresence, motion } from "framer-motion";
 import * as React from "react";
-import { Arrow, useHover, useLayer } from "react-laag";
+import { Arrow as LaagArrow, useHover, useLayer } from "react-laag";
+import type { ArrowProps } from "react-laag/dist/Arrow";
 import { PlacementType } from "react-laag/dist/PlacementType";
 import { useTheme } from "../..";
+
+// react-laag's Arrow type is a Pick over SVG props computed against older
+// @types/react, which now reports picked keys as required; it takes its own
+// ArrowProps at runtime
+const Arrow = LaagArrow as unknown as React.ForwardRefExoticComponent<
+  ArrowProps & React.RefAttributes<SVGSVGElement>
+>;
 import style from "./Tooltip.module.css";
 
 const Tooltip: React.FC<{

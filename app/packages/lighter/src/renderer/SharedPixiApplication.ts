@@ -58,7 +58,9 @@ class SharedPixiApplication {
 
     try {
       await this.app.init({
-        canvas,
+        // pixi's ICanvas is typed against a newer DOM lib than TS 4.9's;
+        // an HTMLCanvasElement is what it expects at runtime
+        canvas: canvas as unknown as PIXI.ICanvas,
         antialias: true,
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,

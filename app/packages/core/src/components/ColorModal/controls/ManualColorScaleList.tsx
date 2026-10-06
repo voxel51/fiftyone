@@ -152,10 +152,12 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
   // on changing tabs, sync local state with new session values
   useEffect(() => {
     setInput(values ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resync only when the active path changes; value changes are synced below
   }, [activePath]);
 
   useEffect(() => {
     setInput(initialValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset to the initial value when the session values change
   }, [values]);
 
   fos.useOutsideClick(wrapperRef, () => {
@@ -213,11 +215,6 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   ref={pickerRef}
                   disableAlpha={true}
-                  onBlur={() =>
-                    setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _)),
-                    )
-                  }
                   className={colorPicker}
                 />
               </ChromePickerWrapper>

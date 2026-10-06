@@ -29,7 +29,7 @@ export const decodeOverlayOnDisk = async (
   field: string,
   label: DiskLabel,
   coloring: Coloring,
-  customizeColorSetting: CustomizeColor[],
+  customizeColorSetting: readonly CustomizeColor[],
   colorscale: Colorscale,
   sources: { [path: string]: string },
   cls: string,
