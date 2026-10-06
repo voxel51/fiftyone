@@ -120,7 +120,7 @@ export const prettify = (
 };
 
 function findColorSetting(
-  customizeColorSetting: CustomizeColor[],
+  customizeColorSetting: readonly CustomizeColor[],
   path: string,
 ) {
   return customizeColorSetting.find((s) => s.path === path);
@@ -261,7 +261,7 @@ type ColorParams = {
   fallbackLabel?: string;
   // if primitive fields
   value?: string | number | boolean;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   labelTagColors?: LabelTagColor;
   isValidColor: (string) => boolean;
 };

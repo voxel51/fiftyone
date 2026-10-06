@@ -163,7 +163,7 @@ type LabelColorProps = {
   label: RegularLabel;
   isTagged: boolean;
   labelTagColors: LabelTagColor;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   is3D?: boolean;
   embeddedDocType: string;
 };

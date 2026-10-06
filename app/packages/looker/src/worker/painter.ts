@@ -22,7 +22,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     _colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[],
@@ -150,7 +150,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     labels,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[],
@@ -181,7 +181,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     colorscale: Colorscale,
     _selectedLabelTags: string[],
     _labelTagColors: LabelTagColor,
@@ -259,7 +259,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     _colorscale: Colorscale,
     _selectedLabelsTags: string[],
     _labelTagColors: LabelTagColor,
@@ -423,7 +423,7 @@ const getRgbFromMaskData = (
 export const convertToHex = (color: string) =>
   colorString.to.hex(colorString.get.rgb(color));
 
-const convertMaskColorsToObject = (array: MaskColorInput[]) => {
+const convertMaskColorsToObject = (array: readonly MaskColorInput[]) => {
   const result = {};
   if (!array) return {};
   for (const item of array) {

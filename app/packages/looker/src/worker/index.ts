@@ -323,7 +323,7 @@ export interface ProcessSample {
   uuid: string;
   sample: Sample | FrameSample;
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   labelTagColors: LabelTagColor;
   colorscale: Colorscale;
   selectedLabelTags: string[];
@@ -452,7 +452,7 @@ interface FrameStream {
 interface FrameChunkResponse extends FrameChunk {
   activePaths: string[];
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
@@ -478,7 +478,7 @@ const createReader = ({
   activePaths: string[];
   chunkSize: number;
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
@@ -623,7 +623,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 interface SetStream {
   activePaths: string[];
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];

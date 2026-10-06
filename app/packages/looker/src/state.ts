@@ -23,7 +23,7 @@ export interface Coloring {
   seed: number;
   defaultMaskTargets?: MaskTargets;
   // absent until a color scheme provides it
-  defaultMaskTargetsColors?: MaskColorInput[];
+  defaultMaskTargetsColors?: readonly MaskColorInput[];
   maskTargets: {
     [field: string]: MaskTargets;
   };
@@ -34,7 +34,7 @@ export interface Coloring {
 export type ColorscaleInput = {
   path?: string;
   name?: string;
-  list?: Array<{
+  list?: ReadonlyArray<{
     value: number;
     color: string;
   }>;
@@ -42,7 +42,7 @@ export type ColorscaleInput = {
 };
 
 export type Colorscale = {
-  fields: ColorscaleInput[];
+  fields: readonly ColorscaleInput[];
   default: ColorscaleInput;
 };
 
@@ -62,7 +62,7 @@ export interface LabelTagColor {
 export interface CustomizeColor extends LabelTagColor {
   path: string;
   colorByAttribute?: string;
-  maskTargetsColors?: MaskColorInput[];
+  maskTargetsColors?: readonly MaskColorInput[];
 }
 
 export type OrthogrpahicProjectionMetadata = {
@@ -187,7 +187,7 @@ export interface BaseOptions {
   fontSize?: number;
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   // absent from the defaults until the app supplies them
   colorscale?: Colorscale;
   labelTagColors?: LabelTagColor;

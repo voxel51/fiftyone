@@ -6,6 +6,7 @@ import {
   VideoLooker,
   VideoOptions,
 } from "@fiftyone/looker";
+import type { Colorscale } from "@fiftyone/looker/src/state";
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import type { StringFilter } from "./pathFilters/string";
 import * as atoms from "./atoms";
@@ -57,10 +58,12 @@ export const lookerOptions = selectorFamily<
         : {};
       const activeVisibility = get(attributeVisibility);
       const isLabelTagActive = activePaths.includes("_label_tags");
+      // relay's colorscale list values are optional; looker colors from
+      // rgb and never reads list values
       const colorscale = {
         default: get(atoms.colorScheme).defaultColorscale ?? {},
         fields: get(atoms.colorScheme).colorscales ?? [],
-      };
+      } as Colorscale;
 
       let extra = {};
 

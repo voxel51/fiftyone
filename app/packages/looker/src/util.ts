@@ -585,8 +585,8 @@ export const isFloatArray = (arr) =>
 
 // go through customizedColor array and check if any item.fieldColor has changed;
 export const hasColorChanged = (
-  prevColorScheme: object[],
-  nextColorScheme: object[],
+  prevColorScheme: readonly object[],
+  nextColorScheme: readonly object[],
 ) => {
   if (prevColorScheme?.length !== nextColorScheme?.length) {
     return true;
@@ -600,7 +600,10 @@ export const hasColorChanged = (
 };
 
 // order does not matter
-function compareObjectArr(arr1: object[], arr2: object[]): boolean {
+function compareObjectArr(
+  arr1: readonly object[],
+  arr2: readonly object[],
+): boolean {
   const sortedArr1 = arr1
     .map((el) => JSON.stringify(el, Object.keys(el).sort()))
     .sort();

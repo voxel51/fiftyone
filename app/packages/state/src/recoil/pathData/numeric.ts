@@ -76,8 +76,9 @@ export const nonfiniteData = selectorFamily({
  */
 export type Nonfinite = "nan" | "ninf" | "inf" | "none";
 
+// counts, or presence booleans in lightning (query performance) mode
 export const nonfiniteCount = selectorFamily<
-  number,
+  number | boolean,
   { extended: boolean; path: string; modal: boolean; key: Nonfinite }
 >({
   key: "nonfiniteCount",
