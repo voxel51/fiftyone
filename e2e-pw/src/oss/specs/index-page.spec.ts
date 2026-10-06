@@ -16,14 +16,9 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${datasetName}")
-
-  dataset.persistent = True`);
+  await datasetFactory.createDataset({ datasetName });
 });
 
 test.describe.serial("index page", () => {

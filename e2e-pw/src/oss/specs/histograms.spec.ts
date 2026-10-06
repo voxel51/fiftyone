@@ -17,31 +17,43 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
+const NUM_SAMPLES = 10;
 
-    samples = []
-    for i in range(0, 10):
-        sample = fo.Sample(
-            filepath=f"{i}.png",
-            detections=fo.Detections(detections=[fo.Detection(label=f"label-{i}")]),
-            classification=fo.Classification(label=f"label-{i}"),
-            bool=i % 2 == 0,
-            str=f"{i}",
-            int=i % 2,
-            float=i / 2,
-            list_str=[f"{i}"],
-            list_int=[i % 2],
-            list_float=[i / 2],
-            list_bool=[i % 2 == 0],
-        )
-        samples.append(sample)
-    
-    dataset.add_samples(samples)`);
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: NUM_SAMPLES,
+    schema: {
+      detections: "Detections",
+      classification: "Classification",
+      bool: "BooleanField",
+      str: "StringField",
+      int: "IntField",
+      float: "FloatField",
+      list_str: "ListField<StringField>",
+      list_int: "ListField<IntField>",
+      list_float: "ListField<FloatField>",
+      list_bool: "ListField<BooleanField>",
+    },
+    withSampleData: ({ index }, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: `label-${index}`,
+          bounding_box: [0.1, 0.1, 0.2, 0.2],
+        }),
+      ]),
+      classification: label.classification({ label: `label-${index}` }),
+      bool: index % 2 === 0,
+      str: `${index}`,
+      int: index % 2,
+      float: index / 2,
+      list_str: [`${index}`],
+      list_int: [index % 2],
+      list_float: [index / 2],
+      list_bool: [index % 2 === 0],
+    }),
+  });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -53,7 +65,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     () => panel.open("Histograms"),
     "bool",
   );
-  expect(boolBars).toBe("True:5 False:5");
+  expect(boolBars).toBe(`True:${NUM_SAMPLES / 2} False:${NUM_SAMPLES / 2}`);
 
   await histogram.assert.verifyField("bool");
 
@@ -70,6 +82,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "detections.detections.mask_path",
     "detections.detections.tags",
     "float",
+    "index",
     "int",
     "last_modified_at",
     "list_bool",

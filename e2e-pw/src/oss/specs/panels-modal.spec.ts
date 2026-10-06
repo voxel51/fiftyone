@@ -25,19 +25,9 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    samples = []
-    for i in range(0, 5):
-        sample = fo.Sample(filepath=f"{i}.png", count=i)
-        samples.append(sample)
-    
-    dataset.add_samples(samples)`);
+  await datasetFactory.createDataset({ datasetName });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
