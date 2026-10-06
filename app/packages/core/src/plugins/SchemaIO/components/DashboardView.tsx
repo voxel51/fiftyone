@@ -598,7 +598,14 @@ export default function DashboardView(props: ViewPropsType) {
   // dashboard item data keyed by item id
   const data = props.data as Record<string, unknown> | undefined;
   const { properties } = schema as ObjectSchemaType;
-  const propertiesAsArray = [];
+  // memoized so the callbacks and effects below don't see a new array every render
+  const propertiesAsArray = useMemo(() => {
+    const items = [];
+    for (const property in properties) {
+      items.push({ id: property, ...properties[property] });
+    }
+    return items;
+  }, [properties]);
   const allow_addition = schema.view.allow_addition;
   const allow_deletion = schema.view.allow_deletion;
   const allow_edit = schema.view.allow_edit;
@@ -611,10 +618,6 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Notification hook for user feedback
   const showNotification = useNotification();
-
-  for (const property in properties) {
-    propertiesAsArray.push({ id: property, ...properties[property] });
-  }
 
   const panelId = usePanelId();
   const triggerPanelEvent = usePanelEvent();
@@ -634,7 +637,7 @@ export default function DashboardView(props: ViewPropsType) {
         });
       }
     },
-    [panelId, props, schema.view.on_edit_item, triggerPanelEvent],
+    [panelId, schema.view.on_edit_item, triggerPanelEvent],
   );
 
   const onCloseItem = useCallback(
@@ -647,7 +650,7 @@ export default function DashboardView(props: ViewPropsType) {
         });
       }
     },
-    [panelId, props, schema.view.on_remove_item, triggerPanelEvent],
+    [panelId, schema.view.on_remove_item, triggerPanelEvent],
   );
 
   const onAddItem = useCallback(() => {
@@ -658,7 +661,7 @@ export default function DashboardView(props: ViewPropsType) {
         params: {},
       });
     }
-  }, [panelId, props, schema.view.on_add_item, triggerPanelEvent]);
+  }, [panelId, schema.view.on_add_item, triggerPanelEvent]);
 
   const safeParseJSON = (jsonString: string) => {
     try {
@@ -1100,8 +1103,8 @@ export default function DashboardView(props: ViewPropsType) {
       clipboardData,
       selectedItemIds,
       customLayout,
-      propertiesAsArray,
       showNotification,
+      autoLayout,
     ],
   );
 
@@ -1245,7 +1248,7 @@ export default function DashboardView(props: ViewPropsType) {
     };
   }, [
     isEditMode,
-    propertiesAsArray.length,
+    propertiesAsArray,
     handleItemDeselect,
     selectedItemIds,
     onCloseItem,

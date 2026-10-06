@@ -56,15 +56,15 @@ export default function Evaluation(props: EvaluationProps) {
       | LoadedEvaluation
       | undefined;
     return evaluation;
-  }, [data]);
+  }, [data, name]);
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
-  }, [data]);
+  }, [data, compareKey]);
   const evaluationError = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}_error`];
     return evaluation;
-  }, [data]);
+  }, [data, name]);
 
   const compareKeys = useMemo(() => {
     const currentEval = data.evaluations.find((item) => item.key === name);
@@ -96,6 +96,7 @@ export default function Evaluation(props: EvaluationProps) {
     if (!evaluation) {
       loadEvaluation();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per missing evaluation; loadEvaluation is an inline prop and would re-trigger the load every render
   }, [evaluation]);
 
   useEffect(() => {
@@ -103,6 +104,7 @@ export default function Evaluation(props: EvaluationProps) {
       setLoadingCompare(true);
       loadEvaluation(compareKey);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingCompare only guards the request; re-running when it clears would retry failed loads in a loop
   }, [compareEvaluation, compareKey]);
 
   if (evaluationError) {
