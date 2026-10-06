@@ -321,15 +321,30 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Park the mouse on the modal backdrop beside its content, where nothing
-   * reacts to hover, so tooltips and hover highlights stay out of screenshots
+   * Park the mouse off the canvas, where nothing on it reacts to hover, so
+   * tooltips and hover highlights stay out of screenshots: on the modal
+   * backdrop, or beside the canvas when the modal is fullscreen
    */
   async parkMouse() {
     const content = await this.page.getByTestId("modal-content").boundingBox();
-    await this.page.mouse.move(content.x / 2, content.y + content.height / 2);
-    expect(
-      await this.page.locator(":hover").last().getAttribute("data-cy"),
-    ).toBe("modal");
+    const box = await this.locator.boundingBox();
+    if (!content || !box) {
+      throw new Error("the modal is not on screen");
+    }
+    const y = content.y + content.height / 2;
+    if (content.x >= 2) {
+      await this.page.mouse.move(content.x / 2, y);
+    } else {
+      const right = box.x + box.width;
+      const end = content.x + content.width;
+      await this.page.mouse.move(
+        box.x - content.x >= 2 ? (content.x + box.x) / 2 : (right + end) / 2,
+        y,
+      );
+    }
+    expect(await this.locator.evaluate((el) => el.matches(":hover"))).toBe(
+      false,
+    );
   }
 
   /**

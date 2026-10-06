@@ -302,8 +302,10 @@ export class ModalPom {
   }
 
   async enterFullscreen() {
+    // the documented shortcut: clicking the button leaves its tooltip fading
+    // over the modal
     if (!(await this.isFullscreen())) {
-      await this.locator.getByTestId("action-toggle-fullscreen").click();
+      await this.page.keyboard.press("f");
     }
     await this.assert.isFullscreen();
   }
