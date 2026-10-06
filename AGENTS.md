@@ -9,4 +9,4 @@ Python core (`fiftyone/`) plus a React App (`app/`).
   (`@voxel51/voodo`); do not add Material UI.
 - Any change under `e2e-pw/`, or an `e2e:` event in the App: **read
   `e2e-pw/CODING_STANDARDS.md` first** and treat it as binding. CI's
-  `e2e-waits` job enforces its wait rules.
+  `e2e-events` job enforces its rules.

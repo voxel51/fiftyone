@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Find every wait/assert pattern the e2e cause-wait rule forbids.
+"""Find every pattern the e2e coding standards forbid.
 
-Usage: check-e2e-waits.py <repo-root>
+Usage: check-e2e-events.py <repo-root>
 Exit status 1 if anything is found. Each finding is `file:line  RULE  text`.
 """
 

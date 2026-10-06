@@ -1,8 +1,10 @@
 # e2e coding standards
 
-Binding for every spec, POM and App `e2e:` event. The core rule: every wait
-names the app event its action causes, then reads the result once. CI's
-`e2e-waits` job enforces the wait rules with `scripts/check-e2e-waits.py`.
+Binding for every spec, POM and App `e2e:` event. The core rule: when an
+expectation depends on product events (a load, a save, a render, a query), the
+spec runs the action through the app event it causes, then reads the result
+once. Plain component interactions use normal Playwright. CI's `e2e-events` job
+enforces these rules with `scripts/check-e2e-events.py`.
 
 ## Why not Playwright's auto-waiting
 
@@ -13,13 +15,14 @@ only a timeout when it doesn't.
 
 - **Retries hide bugs.** A save that repeats forever, a mask that paints only
   after a second reload, or a video that starts behind a dialog all eventually
-  look right to a poll. A cause-wait followed by one exact read fails on them.
+  look right to a poll. The event pattern followed by one exact read fails on
+  them.
 - **Failures should name their cause.** A timed-out poll says the page never
-  matched. A hung event wait says which event never arrived and which events
+  matched. A missing event says which event never arrived and which events
   arrived instead, which points at the code that didn't run.
 - **Timing should not matter.** A polled test passes or fails depending on how
-  fast the machine is. A wait on the event an action causes behaves the same on
-  a laptop and on a loaded CI runner, so a result reproduces.
+  fast the machine is. An action run through the event it causes behaves the
+  same on a laptop and on a loaded CI runner, so a result reproduces.
 - **Specs are written by coding agents.** An agent can't tell a slow page from
   a broken one by watching it, and given retries and timeouts it tunes them
   until the test passes. A strict, checkable pattern — name the cause, read
@@ -30,10 +33,34 @@ rendered. That instrumentation is the usual argument for polling, but an agent
 writes the component and its spec together, so the event costs a line in the
 same change. The events also document what each piece of UI considers done.
 
-## The rule
+## When the event pattern applies
 
-1. **Cause-wait.** Arm a listener for the event, run the action that causes it,
-   and resolve when it arrives:
+The event pattern covers product events: what an action sets off in the App
+beyond the element it touched, such as a sample loading, a save, a render, a
+query or a mode switch. If any expectation after an action depends on product
+events having happened, the spec uses the event pattern before asserting
+anything.
+
+A plain component interaction doesn't. Filling an input, clicking a button that
+opens a menu, toggling a checkbox, and checking what that component itself
+renders use normal Playwright: its auto-waiting actions and web-first
+assertions.
+
+```ts
+// component only: normal Playwright
+const search = page.getByPlaceholder("Search");
+await search.fill("cat");
+await expect(search).toHaveValue("cat");
+
+// product events: the filter queries the server and redraws the grid
+await grid.afterTilesDrawn(2, () => sidebar.applyFilter("cat"));
+await grid.assert.isEntryCountTextEqualTo("2 samples");
+```
+
+## The event pattern
+
+1. **Run the action through its event.** `after` arms a listener for the event,
+   runs the action that causes it, and resolves when it arrives:
 
     ```ts
     await eventUtils.after("e2e:modal:opened", () => grid.openFirstSample());
@@ -49,8 +76,8 @@ Not allowed:
 
 - polls: `expect.poll`, `toPass`, retry loops
 - timeouts: `waitForTimeout`, explicit `timeout:` options, `setTimeout`
-- retrying assertions: `toBeVisible`, `toHaveText`, `toHaveCount` and the other
-  web-first matchers
+- web-first assertions standing in for product events, such as `toHaveText` on
+  a count a query fills or `toBeVisible` on a sample that loads
 - DOM waits: `waitForSelector`, `waitForFunction`, `locator.waitFor`
 - force clicks, and app code guarded by `if (isE2E())`
 
@@ -112,8 +139,7 @@ See the README's POM template.
 ## Timing
 
 Speed is tested on purpose, not through waits. When a spec should hold the App
-to a time budget, measure it after the cause-wait resolves, as its own
-assertion:
+to a time budget, measure it after the event resolves, as its own assertion:
 
 ```ts
 // counters install before navigating, and record from document start
@@ -128,8 +154,8 @@ expect(draw.t - open.t).toBeLessThan(MODAL_DRAW_BUDGET_MS);
 
 `initCounter` records each event's `performance.now()` at dispatch. The budget
 is the claim the spec makes, so name it and explain where it comes from. A
-timing assertion never decides when a spec proceeds, and a wait never carries a
-timeout.
+timing assertion never decides when a spec proceeds, and an event never carries
+a timeout.
 
 ## Datasets
 
@@ -152,8 +178,8 @@ where, in what color, at which frame. Don't stand in for it with app events
 that describe the drawing, or with window or DOM probes.
 
 - Screenshot only canvases; check DOM with exact reads.
-- Take the screenshot after the cause-wait of the step it checks, one per state
-  that matters.
+- Take the screenshot after the event of the step it checks, one per state that
+  matters.
 - Capture through a POM's screenshot asserter (`hasScreenshot`), which compares
   exactly: `maxDiffPixelRatio: 0, threshold: 0`. Masking, cropping in other UI,
   or loosening a threshold is not allowed.
@@ -170,9 +196,9 @@ A `SampleCanvasPom` is the only authority over a canvas in the modal: every
 input to it and every assertion on it goes through one. `modal.sampleCanvas`
 spans the modal's sample, `modal.sampleCanvas3d` the 3D viewer,
 `modal.groupSampleCanvas` a group modal's 2D pane, and
-`modal.episode.canvas(tile)` a multimodal episode surface. CI's `e2e-waits` job
-fails on raw mouse input, clicks or hovers on canvas locators, and screenshots
-taken outside the asserters.
+`modal.episode.canvas(tile)` a multimodal episode surface. CI's `e2e-events`
+job fails on raw mouse input, clicks or hovers on canvas locators, and
+screenshots taken outside the asserters.
 
 - Drive the canvas only with its primitives: `move`, `movePixels`, `down`,
   `up`, `click`, `dblclick`, `drag`, `wheel` and `press`. No `page.mouse`, no
@@ -192,7 +218,7 @@ taken outside the asserters.
 
 ## When a test hangs
 
-A failed or timed-out test prints "pending event waits": each wait still armed,
+A failed or timed-out test prints "pending events": each event still expected,
 where it was armed, and the events the page sent instead. A wait that "never
 arrived" usually means the action didn't change the state (so nothing
 re-rendered) or the event fired before the wait armed (wrap the earlier action

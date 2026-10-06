@@ -37,7 +37,7 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
 
 `CODING_STANDARDS.md` is binding for every spec, POM and App `e2e:` event:
 waits, POM structure, test size, datasets, canvas testing and screenshots. CI's
-`e2e-waits` job enforces its wait rules.
+`e2e-events` job enforces its rules.
 
 #### Check for flakiness
 

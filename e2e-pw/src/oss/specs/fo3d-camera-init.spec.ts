@@ -112,7 +112,7 @@ test.afterAll(async ({ foWebServer }) => {
 
 // Quarantined (was test.describe.serial): entering annotate reveals the scene
 // (e2e:looker3d:scene-ready) before its camera attaches, so the mode-switch test
-// reads no camera; the other tests pass on their event waits
+// reads no camera; the other tests pass on their events
 test.describe.skip("camera initialization", () => {
   test.afterEach(async ({ page, modal }) => {
     await modal.close({ ignoreError: true });

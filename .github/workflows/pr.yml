@@ -125,7 +125,7 @@ jobs:
       needs.modified-files.outputs.format-changes == 'true'
     uses: ./.github/workflows/lint-app.yml
 
-  e2e-waits:
+  e2e-events:
     needs: modified-files
     # specs wait on the app event an action causes, then read once (see
     # e2e-pw/CODING_STANDARDS.md); no build needed, so it gates drafts and light PRs too
@@ -139,7 +139,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Check e2e waits
-        run: python3 e2e-pw/scripts/check-e2e-waits.py .
+        run: python3 e2e-pw/scripts/check-e2e-events.py .
 
   lint-python:
     needs: modified-files
@@ -261,7 +261,7 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [modified-files, build, lint, lint-python, e2e-waits, test, e2e]
+    needs: [modified-files, build, lint, lint-python, e2e-events, test, e2e]
     # not `always()`: a run displaced by a newer push must conclude
     # cancelled, not turn the failed gate into a red `all-tests` on a SHA it
     # never tested.
@@ -289,6 +289,6 @@ jobs:
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
           (needs.lint-python.result == 'success' || needs.lint-python.result == 'skipped') &&
-          (needs.e2e-waits.result == 'success' || needs.e2e-waits.result == 'skipped') &&
+          (needs.e2e-events.result == 'success' || needs.e2e-events.result == 'skipped') &&
           (needs.test.result == 'success' || needs.test.result == 'skipped') &&
           (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}

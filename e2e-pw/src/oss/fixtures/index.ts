@@ -103,12 +103,12 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     const eventUtils = new EventUtils(page);
     await eventUtils.recordLoads();
     await use(eventUtils);
-    // a hung event wait fails as a bare timeout; say what it was waiting for
+    // a missing event fails as a bare timeout; say which events were expected
     if (testInfo.status !== testInfo.expectedStatus) {
       const report = await eventUtils.describePending();
       if (report) {
-        console.log(`pending event waits:\n${report}`);
-        await testInfo.attach("pending event waits", {
+        console.log(`pending events:\n${report}`);
+        await testInfo.attach("pending events", {
           body: report,
           contentType: "text/plain",
         });
