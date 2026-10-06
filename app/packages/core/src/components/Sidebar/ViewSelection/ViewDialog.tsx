@@ -48,7 +48,11 @@ const {
 
 /** e2e specs wait on the dialog opening with its inputs filled, and closing */
 type ViewDialogE2EEvents = {
-  "e2e:saved-views:dialog": { open: boolean; name: string };
+  "e2e:saved-views:dialog": {
+    open: boolean;
+    name: string;
+    description: string;
+  };
 };
 
 export const viewDialogContent = atom({
@@ -141,8 +145,9 @@ export default function ViewDialog(props: Props) {
     getEventBus<ViewDialogE2EEvents>().dispatch("e2e:saved-views:dialog", {
       open: isOpen,
       name: nameValue,
+      description: descriptionValue,
     });
-  }, [isOpen, nameValue]);
+  }, [isOpen, nameValue, descriptionValue]);
 
   const view = useRecoilValue(fos.view);
   const extendedStagesExists = useRecoilValue(extendedStages);
