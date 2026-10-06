@@ -197,7 +197,7 @@ test.describe("MCAP playback", () => {
         episode.seekToFraction(
           fractionOfLongRecording(longExpectation.lidarAfterGapSecond),
         ),
-      [episode.raw("/lidar/points")],
+      [episode.raw("/lidar/points", "2024-01-01 00:30:12.000")],
     );
     await episode.expectRawMeta(
       relativeSecond(longExpectation.lidarAfterGapSecond),

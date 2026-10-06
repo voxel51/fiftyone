@@ -711,7 +711,8 @@ export class EpisodePom {
       (e) => (e.detail as { rateHz: number }).rateHz === rateHz,
     );
     await playback.click();
-    expect(await playback.textContent()).toContain(`Custom · ${rateHz} Hz`);
+    // the collapsed header shows its title and summary in the click's render
+    expect(await playback.textContent()).toBe(`PlaybackCustom · ${rateHz} Hz`);
   }
 
   async seekToFraction(fraction: number): Promise<void> {
@@ -858,13 +859,12 @@ export class EpisodePom {
     }
   }
 
-  async expectRawMeta(value: string | RegExp): Promise<void> {
-    const text = (await this.rawMeta.textContent()) ?? "";
-    if (typeof value === "string") {
-      expect(text).toContain(value);
-    } else {
-      expect(text).toMatch(value);
-    }
+  /** The raw tile's message time relative to the recording start */
+  async expectRawMeta(relativeTime: string): Promise<void> {
+    const shownTime = this.rawMeta.locator(
+      'span[title="Message log time relative to the recording start"]',
+    );
+    expect(await shownTime.textContent()).toBe(relativeTime);
   }
 
   async expectLogs(
