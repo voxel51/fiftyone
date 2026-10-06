@@ -52,9 +52,9 @@ const SAM2_WORKER_URL =
  * `target`; install before the page mounts `BrowserAnnotationProvider`.
  */
 export const installSam2MockWorker = (target: Page | BrowserContext) =>
-  target.route(SAM2_WORKER_URL, (route) =>
-    route.fulfill({
-      contentType: "text/javascript",
-      body: SAM2_MOCK_WORKER_SRC,
-    }),
-  );
+  target.route(SAM2_WORKER_URL, async (route) => {
+    // keep the real response's headers: the page is cross-origin isolated, and
+    // a worker script without them is refused without an error
+    const response = await route.fetch();
+    await route.fulfill({ response, body: SAM2_MOCK_WORKER_SRC });
+  });
