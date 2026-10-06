@@ -24,6 +24,14 @@ repos:
         exclude: (^docs/theme/|app/|(^|.*/)__generated__/)
   - repo: local
     hooks:
+      - id: async-blocking
+        name: async-blocking
+        language: system
+        files: ^(fiftyone/server/.*\.py|tools/check_async_blocking\.py)$
+        entry: python tools/check_async_blocking.py
+        pass_filenames: false
+  - repo: local
+    hooks:
       - id: ipynb-strip
         name: ipynb-strip
         language: system
