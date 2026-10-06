@@ -36,3 +36,24 @@ describe("supportsTemporalTags", () => {
     expect(testSupportsTemporalTags(false)).toBe(false);
   });
 });
+
+describe("isDatasetChange", () => {
+  it("is false for the first page", () => {
+    expect(atoms.isDatasetChange({ datasetId: "a" }, null)).toBe(false);
+  });
+
+  it("is false for a reload of the same dataset, whatever the fetch id", () => {
+    // `id` is minted per fetch when a view argument is sent: a layout write
+    // or a refresh brings a new one, and must not read as a dataset switch
+    // (it dropped a plot lasso's grid scope on every panel tab switch)
+    const first = { id: "fetch-1", datasetId: "a" };
+    const reload = { id: "fetch-2", datasetId: "a" };
+    expect(atoms.isDatasetChange(reload, first)).toBe(false);
+  });
+
+  it("is true for another dataset", () => {
+    expect(atoms.isDatasetChange({ datasetId: "b" }, { datasetId: "a" })).toBe(
+      true,
+    );
+  });
+});

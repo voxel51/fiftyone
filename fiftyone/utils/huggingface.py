@@ -1390,8 +1390,15 @@ def _get_files_to_download(sample_collection):
             )
         )
 
-    filepaths = sample_collection.values("filepath")
-    filepaths = [fp for fp in filepaths if not os.path.exists(fp)]
+    if sample_collection._contains_media_references():
+        # Reference-backed samples (e.g., LeRobot episodes) have no
+        # `filepath`. Their media lives under the bundle's `media_sources/`
+        # directories, which are not covered by the `data/*` ignore pattern,
+        # so they were already downloaded along with the dataset metadata
+        filepaths = []
+    else:
+        filepaths = sample_collection.values("filepath")
+        filepaths = [fp for fp in filepaths if not os.path.exists(fp)]
 
     media_fields = _get_media_fields(sample_collection)
 

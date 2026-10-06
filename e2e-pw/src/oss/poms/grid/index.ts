@@ -63,11 +63,9 @@ export class GridPom {
   async toggleSelectNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the selection checkbox is revealed in the tile's top selection region
-      await tile.hover({ position: { x: 10, y: 5 } });
-      const checkbox = tile.locator("[data-fo-selection-checkbox]");
-      await expect(checkbox).toBeVisible();
-      await checkbox.click();
+      // the selection checkbox is revealed on tile hover
+      await tile.hover();
+      await tile.getByRole("checkbox").click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
@@ -75,21 +73,6 @@ export class GridPom {
 
   async toggleSelectFirstSample() {
     await this.toggleSelectNthSample(0);
-  }
-
-  async addNthSampleToBucket(n: number, bucketName: string) {
-    const tile = this.getNthTile(n);
-    const box = await tile.boundingBox();
-    if (!box) throw new Error(`grid tile ${n} has no bounds`);
-    // Bucket chips appear when hovering near the tile's top edge.
-    await tile.hover({
-      position: { x: box.width / 2, y: Math.min(20, box.height / 8) },
-    });
-    const button = this.page.getByRole("button", {
-      name: `Add to ${bucketName}`,
-    });
-    await expect(button).toBeVisible();
-    await button.click();
   }
 
   async openNthSample(n: number) {
@@ -224,7 +207,8 @@ class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
   async isTileCountEqualTo(n: number) {
-    await expect(this.gridPom.locator.locator(TILE_SELECTOR)).toHaveCount(n);
+    const tileCount = await this.gridPom.locator.locator(TILE_SELECTOR).count();
+    expect(tileCount).toBe(n);
   }
 
   async isNthSampleSelected(n: number) {
@@ -247,18 +231,16 @@ class GridAsserter {
   }
 
   async isSelectionCountEqualTo(n: number) {
-    const tray = this.gridPom.page.getByRole("region", { name: "Selection" });
+    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
+      "action-manage-selected",
+    );
 
     if (n === 0) {
-      await expect(tray).toContainText("Act on all samples in the grid");
+      await expect(action).toBeHidden();
       return;
     }
 
-    await expect(tray).toContainText(
-      new RegExp(
-        `${n.toLocaleString()}\\s*sample${n === 1 ? "" : "s"} selected`,
-      ),
-    );
+    await expect(action.first()).toHaveText(String(n));
   }
 
   async isEntryCountTextEqualTo(text: string) {
