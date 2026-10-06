@@ -29,35 +29,26 @@ export type SceneOptions = MediaOptions & SceneSpec;
 
 export const DEFAULT_SCENE_SPEC: SceneSpec = { meshes: [{}] };
 
-const nodeSpec = ({
-  name,
-  position,
-  quaternion,
-  scale,
-  material,
-  isPointCloud,
-}: SceneNodeSpec): SceneNodeSpec => ({
-  name,
-  position,
-  quaternion,
-  scale,
-  material,
-  isPointCloud,
-});
+const NODE_KEYS: (keyof SceneNodeSpec)[] = [
+  "name",
+  "position",
+  "quaternion",
+  "scale",
+  "material",
+  "isPointCloud",
+];
+
+/** The placement of a scene entry. */
+const nodeSpec = (entry: SceneNodeSpec): SceneNodeSpec =>
+  Object.fromEntries(NODE_KEYS.map((key) => [key, entry[key]]));
 
 /** The asset spec of a scene entry, without its placement. */
-const assetSpec = <T extends SceneNodeSpec>(entry: T) => {
-  const {
-    name: _name,
-    position: _position,
-    quaternion: _quaternion,
-    scale: _scale,
-    material: _material,
-    isPointCloud: _isPointCloud,
-    ...asset
-  } = entry;
-  return asset;
-};
+const assetSpec = <T extends SceneNodeSpec>(entry: T) =>
+  Object.fromEntries(
+    Object.entries(entry).filter(
+      ([key]) => !NODE_KEYS.includes(key as keyof SceneNodeSpec),
+    ),
+  ) as Omit<T, keyof SceneNodeSpec>;
 
 /**
  * Writes each asset as `<outputPath>-<i>.ply` / `.pcd` / `.stl` and a
