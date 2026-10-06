@@ -46,8 +46,9 @@ const GroupPlayback = lazy(() => import("./playback/GroupPlayback"));
  * annotate mode) hosts the existing sample view as one sample tile, with
  * the dynamic-group paginator moved into the host footer. No timeline:
  * group elements are switched with the paginator, not scrubbed — except
- * for ordered dynamic groups in "video" view mode, which play back on the
- * episode playback shell instead (see `GroupPlayback`).
+ * for ordered dynamic groups in the "timeline" view mode (behind the
+ * `VFF_GROUP_TIMELINE` feature flag), which play back on the episode
+ * playback shell instead (see `GroupPlayback`).
  */
 export const SampleTilingHost = () => {
   const playsBack = useShowsGroupPlayback();

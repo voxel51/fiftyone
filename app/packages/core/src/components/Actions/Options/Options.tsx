@@ -23,6 +23,7 @@ import {
 import Checkbox from "../../Common/Checkbox";
 import RadioGroup from "../../Common/RadioGroup";
 import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
+import { useGroupTimelineAvailable } from "../../Modal/Tiles/playback/use-group-playback";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
 import MultimodalGridFitSetting from "./MultimodalGridFitSetting";
@@ -124,6 +125,7 @@ const GroupStatistics = ({ modal }) => {
 
 const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
+  const timelineAvailable = useGroupTimelineAvailable();
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
 
   const [mode, setMode] = useRecoilState(fos.dynamicGroupsViewMode(modal));
@@ -165,8 +167,17 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
       });
     }
 
+    if (timelineAvailable) {
+      options.push({
+        text: "timeline",
+        title: "Timeline",
+        onClick: () => setMode("timeline"),
+      });
+    }
+
     return options;
   }, [
+    timelineAvailable,
     isOrderedDynamicGroup,
     hasGroupSlices,
     setIsCarouselVisible,
@@ -187,6 +198,13 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
           name={"Render frames as video"}
           value={mode === "video"}
           setValue={(value) => setMode(value ? "video" : "pagination")}
+        />
+      )}
+      {timelineAvailable && !modal && (
+        <Checkbox
+          name={"Play on a timeline"}
+          value={mode === "timeline"}
+          setValue={(value) => setMode(value ? "timeline" : "pagination")}
         />
       )}
     </>

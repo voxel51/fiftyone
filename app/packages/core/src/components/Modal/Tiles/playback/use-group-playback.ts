@@ -1,3 +1,4 @@
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 
@@ -20,15 +21,26 @@ export function usePlaybackSliceNames(): (string | null)[] {
 }
 
 /**
- * Whether the sample view plays the dynamic group instead of paging it: an
- * ordered dynamic group in "video" view mode with at least one image slice,
- * outside annotate mode. Otherwise the existing views (ImaVid included)
- * stay in charge.
+ * Whether the "timeline" display option is offered for the current view:
+ * the group timeline feature is on (`VFF_GROUP_TIMELINE`), the dynamic group
+ * is ordered, and it has at least one image slice to play.
+ */
+export function useGroupTimelineAvailable(): boolean {
+  const { isEnabled } = useFeature({ feature: FeatureFlag.GROUP_TIMELINE });
+  const ordered = fos.useDynamicGroupOrderBy() !== null;
+  const slices = usePlaybackSliceNames();
+  return isEnabled && ordered && slices.length > 0;
+}
+
+/**
+ * Whether the sample view plays the dynamic group on a timeline instead of
+ * paging it: the timeline is available and chosen as the view mode, outside
+ * annotate mode.
  */
 export function useShowsGroupPlayback(): boolean {
+  const available = useGroupTimelineAvailable();
   const dynamic = fos.useIsDynamicGroup();
-  const video = fos.useShouldRenderImaVidLooker(true);
+  const mode = fos.useDynamicGroupsViewMode(true);
   const annotate = fos.useModalMode() === fos.ModalMode.ANNOTATE;
-  const slices = usePlaybackSliceNames();
-  return dynamic && video && !annotate && slices.length > 0;
+  return available && dynamic && mode === "timeline" && !annotate;
 }

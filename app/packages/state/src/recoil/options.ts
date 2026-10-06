@@ -56,7 +56,7 @@ export const selectedMediaField = selectorFamily<string, boolean>({
 });
 
 export const dynamicGroupsViewModeStore = atomFamily<
-  "carousel" | "pagination" | "video" | null,
+  "carousel" | "pagination" | "timeline" | "video" | null,
   boolean
 >({
   key: "dynamicGroupsViewModeStore",
