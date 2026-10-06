@@ -12,6 +12,8 @@ function Initializer({ initialValue }) {
   const [, setSelected] = useBrainResult();
   useEffect(() => {
     setSelected(initialValue);
+    // seed the initial value once
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, []);
   return null;
 }

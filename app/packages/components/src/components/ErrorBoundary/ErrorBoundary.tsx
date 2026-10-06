@@ -133,6 +133,8 @@ const ErrorsDisplayWithSideEffects = (
     const clearModal = useClearModal();
     useLayoutEffect(() => {
       clearModal();
+      // once, when the fallback mounts
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     }, []);
 
     return (
@@ -168,6 +170,8 @@ const TrackFallback = (
         stack: error?.stack,
         messages: error?.errors?.map((e) => e.message),
       });
+      // report each error once, when its fallback mounts
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     }, []);
 
     return <ActualFallback {...props} />;

@@ -30,8 +30,11 @@ function computeSelectChangeValue(
 export default function SelectWidget(props: WidgetProps) {
   const { value, onChange, schema, disabled, readonly, label } = props;
 
-  const enumValues = schema.enum || [];
-  const enumNames = schema.enumNames || enumValues;
+  const enumValues = useMemo(() => schema.enum || [], [schema.enum]);
+  const enumNames = useMemo(
+    () => schema.enumNames || enumValues,
+    [schema.enumNames, enumValues],
+  );
 
   const options = useMemo(
     () =>
@@ -43,9 +46,8 @@ export default function SelectWidget(props: WidgetProps) {
   );
 
   const multiple = schema.type === "array";
-  const rawValue = value ?? (multiple ? [] : "");
-
   const selectValue = useMemo(() => {
+    const rawValue = value ?? (multiple ? [] : "");
     if (multiple && !Array.isArray(rawValue)) {
       return rawValue != null && rawValue !== ""
         ? String(rawValue)
@@ -55,7 +57,7 @@ export default function SelectWidget(props: WidgetProps) {
     }
     // Option IDs are always strings (String(enumValue)); coerce to match.
     return String(rawValue);
-  }, [multiple, rawValue]);
+  }, [multiple, value]);
 
   const handleChange = useCallback(
     (newValue: string | string[] | null) => {

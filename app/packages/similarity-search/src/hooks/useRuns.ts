@@ -149,7 +149,7 @@ export const useRuns = (): UseRunsResult => {
 
     inFlightRef.current = promise;
     return promise;
-  }, [fetchRuns, setRuns]);
+  }, [fetchRuns, setRuns, setLoaded]);
 
   useEffect(() => {
     if (

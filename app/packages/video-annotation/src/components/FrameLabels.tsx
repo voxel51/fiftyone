@@ -555,6 +555,8 @@ function useTrackDecorator({
         Track,
         { base: BaseTrackDecoration; built: TrackDecoration }
       >(),
+    // these deps invalidate the cache; they aren't read by the factory
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     [
       fps,
       snapStepSec,

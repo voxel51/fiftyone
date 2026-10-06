@@ -89,7 +89,8 @@ export const useCreateTimeline = (
     // because it's not guaranteed to be referentially stable.
     // that would require caller to memoize the passed config object.
     // instead use constituent properties of the config object that are primitives
-    // or referentially stable
+    // or referentially stable; pause only runs in cleanup
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [
     addTimeline,
     timelineName,
@@ -117,6 +118,8 @@ export const useCreateTimeline = (
     }
 
     playHeadStateRef.current = playHeadState;
+    // driven by playhead state only; start/cancel are read when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [
     isTimelineInitialized,
     playHeadState,
@@ -158,6 +161,13 @@ export const useCreateTimeline = (
   const playHeadStateRef = useRef(playHeadState);
   const updateFreqRef = useRef(updateFreq);
 
+  // declared before the callbacks that list it as a dependency
+  const cancelAnimation = useCallback(() => {
+    cancelAnimationFrame(animationId.current);
+    isAnimationActiveRef.current = false;
+    lastDrawTime.current = -1;
+  }, []);
+
   const play = useCallback(() => {
     if (!isTimelineInitialized) {
       return;
@@ -171,7 +181,7 @@ export const useCreateTimeline = (
     if (onPlayListenerRef.current) {
       onPlayListenerRef.current();
     }
-  }, [timelineName, isTimelineInitialized]);
+  }, [timelineName, isTimelineInitialized, setPlayHeadState]);
 
   const pause = useCallback(() => {
     setPlayHeadState({ name: timelineName, state: "paused" });
@@ -179,7 +189,7 @@ export const useCreateTimeline = (
     if (onPauseListenerRef.current) {
       onPauseListenerRef.current();
     }
-  }, [timelineName]);
+  }, [timelineName, setPlayHeadState, cancelAnimation]);
 
   const onPlayEvent = useCallback(
     (e: CustomEvent) => {
@@ -309,7 +319,7 @@ export const useCreateTimeline = (
         });
     },
     // updateFreq is read via updateFreqRef.current.
-    [pause, timelineName],
+    [pause, timelineName, cancelAnimation, setFrameNumber],
   );
 
   const startAnimation = useCallback(() => {
@@ -323,13 +333,7 @@ export const useCreateTimeline = (
     lastDrawTime.current = performance.now();
 
     animate(lastDrawTime.current);
-  }, [playHeadState]);
-
-  const cancelAnimation = useCallback(() => {
-    cancelAnimationFrame(animationId.current);
-    isAnimationActiveRef.current = false;
-    lastDrawTime.current = -1;
-  }, []);
+  }, [playHeadState, animate, cancelAnimation]);
 
   useEventHandler(window, "play", onPlayEvent);
   useEventHandler(window, "pause", onPauseEvent);

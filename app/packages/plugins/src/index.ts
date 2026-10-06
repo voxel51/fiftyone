@@ -165,6 +165,8 @@ export function usePlugins() {
       .then(() => {
         setState("ready");
       });
+    // load plugins once; notify is only used to report a failure
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [setState]);
 
   return {

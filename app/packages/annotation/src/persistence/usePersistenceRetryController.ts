@@ -59,7 +59,7 @@ export const usePersistenceRetryController = (): AnnotationRetryController => {
       resetInternal();
     }
     return undefined;
-  }, [canAttempt]);
+  }, [canAttempt, resetInternal]);
 
   // reset internal and controlled state
   const resetController = useCallback(() => {

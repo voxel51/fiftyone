@@ -130,15 +130,17 @@ export const useKeypointRippleEffect = (
   }, []);
 
   useEffect(() => {
+    // the map itself is never replaced, so capturing it here is equivalent
+    const states = statesRef.current;
     return () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      for (const state of statesRef.current.values()) {
+      for (const state of states.values()) {
         state.overlay.unregisterEffect(RIPPLE_EFFECT_ID);
       }
-      statesRef.current.clear();
+      states.clear();
     };
   }, []);
 

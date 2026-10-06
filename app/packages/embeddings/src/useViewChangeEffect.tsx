@@ -94,5 +94,8 @@ export function useViewChangeEffect() {
         setPointsField(res.points_field);
       })
       .finally(() => setLoadingPlot(false));
+    // reload the plot only when its inputs change; panel-state setters and
+    // warnings are not triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [datasetName, brainKey, labelField, view, colorSeed, slices, filters]);
 }

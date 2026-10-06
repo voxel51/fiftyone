@@ -83,7 +83,10 @@ export const useRegisterAnnotationToolEventHandlers = () => {
         cancelled = true;
       };
     },
-    // trigger inference every time the input context changes
+    // trigger inference every time the input context changes; the agent and
+    // selection are read at that moment, and changing them alone must not
+    // re-run inference
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     [toolsContext],
   );
 
@@ -94,5 +97,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
     resetToolsState();
 
     return resetToolsState;
+    // reset on scene changes only, not whenever the reset callback changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [scene]);
 };

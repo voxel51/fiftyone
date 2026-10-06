@@ -120,6 +120,8 @@ export function useActivePlugins<TType extends PluginComponentType>(
       usingRegistry()
         .getByType(type)
         .filter((plugin) => safePluginActivator(plugin, ctx)),
+    // version invalidates the list when the registry changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     [type, ctx, version],
   );
 }

@@ -32,6 +32,8 @@ export function useColorByChoices() {
           setIsLoading(false);
         });
     }
+    // refetch when the plot's patches field changes, not on every loadedPlot update
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [datasetName, brainKey, view, slices, loadedPlot?.patches_field]);
   return {
     availableFields,

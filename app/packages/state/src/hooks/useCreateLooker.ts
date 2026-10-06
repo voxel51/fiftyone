@@ -108,9 +108,11 @@ export default <T extends AbstractLooker<BaseState>>(
   );
 
   useEffect(() => {
+    // the controller is never replaced, so capturing it here is equivalent
+    const abortController = abortControllerRef.current;
     return () => {
       // sending abort signal to clean up all event handlers
-      return abortControllerRef.current.abort();
+      return abortController.abort();
     };
   }, []);
 

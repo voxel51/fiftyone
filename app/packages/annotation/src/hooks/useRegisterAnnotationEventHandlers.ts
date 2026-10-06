@@ -21,16 +21,13 @@ export const useRegisterAnnotationEventHandlers = () => {
 
   // mirror the retry controller's health onto the shared save status the
   // indicator reads; the toasts above and this light share one controller
+  const { canAttempt, isUnhealthy } = retryController;
   useEffect(() => {
     publishSaveStatus((prev) => ({
       ...prev,
-      health: deriveSaveHealth(retryController),
+      health: deriveSaveHealth({ canAttempt, isUnhealthy }),
     }));
-  }, [
-    publishSaveStatus,
-    retryController.canAttempt,
-    retryController.isUnhealthy,
-  ]);
+  }, [publishSaveStatus, canAttempt, isUnhealthy]);
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",

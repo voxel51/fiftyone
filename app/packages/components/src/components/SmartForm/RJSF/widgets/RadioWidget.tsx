@@ -19,8 +19,11 @@ export default function RadioWidget(props: WidgetProps) {
   } = props;
 
   // Extract choices from schema.enum/enumNames
-  const enumValues = schema.enum || [];
-  const enumNames = schema.enumNames || enumValues;
+  const enumValues = useMemo(() => schema.enum || [], [schema.enum]);
+  const enumNames = useMemo(
+    () => schema.enumNames || enumValues,
+    [schema.enumNames, enumValues],
+  );
 
   // Build options array in RadioGroup format
   const options = useMemo(
@@ -29,7 +32,7 @@ export default function RadioWidget(props: WidgetProps) {
         value: String(val),
         label: String(enumNames[index] || val),
       })),
-    [schema?.enum, schema?.enumNames],
+    [enumValues, enumNames],
   );
   const isDisabled = disabled || readonly;
 
@@ -54,7 +57,7 @@ export default function RadioWidget(props: WidgetProps) {
     // Check if the string value exists in enumValues
     const exists = enumValues.some((v) => String(v) === stringVal);
     return exists ? stringVal : "";
-  }, [value, schema?.enum, schema?.enumNames]);
+  }, [value, enumValues]);
 
   const radioComponent = (
     <div

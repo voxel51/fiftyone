@@ -113,7 +113,7 @@ export const useTimeline = (name?: TimelineName) => {
     (newState: PlayheadState) => {
       setPlayheadStateWrapper({ name: timelineName, state: newState });
     },
-    [timelineName],
+    [timelineName, setPlayheadStateWrapper],
   );
 
   const setSpeed = useCallback(

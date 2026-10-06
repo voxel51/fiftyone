@@ -33,10 +33,12 @@ export const useLighter = () => {
 
   // Cleanup registered callbacks when scene changes or component unmounts
   useEffect(() => {
+    // the set itself is never replaced, so capturing it here is equivalent
+    const callbacks = registeredCallbacks.current;
     return () => {
       // Unregister all callbacks when component unmounts or scene changes
-      registeredCallbacks.current.forEach((unregister) => unregister());
-      registeredCallbacks.current.clear();
+      callbacks.forEach((unregister) => unregister());
+      callbacks.clear();
     };
   }, [scene]);
 

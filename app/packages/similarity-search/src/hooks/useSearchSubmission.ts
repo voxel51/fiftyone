@@ -84,6 +84,7 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
     ],
   );
 
+  const { onSubmitted } = input;
   const handleSuccess = useCallback(
     (result: OperatorResult) => {
       setSubmitting(false);
@@ -94,13 +95,13 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         const operatorRunId = resultObj?.id?.$oid;
         initRun(
           { ...executionParams, operator_run_id: operatorRunId },
-          { callback: () => input.onSubmitted() },
+          { callback: () => onSubmitted() },
         );
       } else {
-        input.onSubmitted();
+        onSubmitted();
       }
     },
-    [initRun, executionParams, input.onSubmitted],
+    [initRun, executionParams, onSubmitted],
   );
 
   const handleError = useCallback((error: unknown) => {

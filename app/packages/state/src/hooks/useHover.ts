@@ -22,7 +22,9 @@ function useHover<T extends HTMLElement = HTMLDivElement>(): [
       }
       return undefined;
     },
-    [ref.current], // Recall only if ref changes
+    // re-attach when the ref's node has changed by the next render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    [ref.current],
   );
   return [ref, value];
 }

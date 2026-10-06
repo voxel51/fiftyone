@@ -50,6 +50,9 @@ export function useSelectionEffect() {
         });
       }
     }
+    // refetch on view/selection changes only; the plot object, extended stages
+    // and setter are read at fetch time
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [
     datasetName,
     brainKey,

@@ -49,6 +49,9 @@ export default function useExtendedStageEffect() {
         });
       });
     }
+    // refetch on these inputs only; slices, the spatial selection and the plot
+    // object are read at fetch time
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [
     datasetName,
     loadedPlot?.patches_field,

@@ -95,14 +95,15 @@ export default function NewSearch({
     [brainKeys],
   );
 
+  const { setBrainKey } = form;
   const handleBrainKeyChange = useCallback(
     (value: string | string[] | null) => {
       const key = (value as string) ?? "";
       const config = brainKeys.find((bk) => bk.key === key);
       if (config && !config.compatible) return;
-      form.setBrainKey(key);
+      setBrainKey(key);
     },
-    [brainKeys, form.setBrainKey],
+    [brainKeys, setBrainKey],
   );
 
   // Guard against setting state after unmount — `fileToBase64` resolves

@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { debounce } from "lodash";
-import React, { useCallback, useState, useRef } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { CustomBox, LastOption } from "./styledComponents";
@@ -89,10 +89,11 @@ export default function Selection(props: SelectionProps) {
   const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
   const { id: selectedId, color: selectedColor } = selected || {};
 
-  const debouncedSearch = useCallback(
-    debounce((term: string) => {
-      onSearch?.(term?.toLowerCase());
-    }, 300),
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((term: string) => {
+        onSearch?.(term?.toLowerCase());
+      }, 300),
     [onSearch],
   );
 
