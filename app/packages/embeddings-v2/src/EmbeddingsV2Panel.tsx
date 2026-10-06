@@ -93,12 +93,34 @@ export default function EmbeddingsV2Panel() {
   const openRun =
     runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
 
-  // The list polls the server for as long as it is showing. A pending
-  // run is not the only thing that can change: a new run (from the
-  // create action, the SDK, or another user) is absent from `runs` until
-  // it registers, and a set-backed run registers only once its results
-  // are written, so it never shows as pending first. The plot has
-  // nothing to poll for, and a backgrounded tab skips its ticks.
+  // The runs the page loaded can be stale whenever the server's runs
+  // change: a new run (from the create action, the SDK, or another user)
+  // is absent from `runs` until it registers, and a set-backed run
+  // registers only once its results are written, so it never shows as
+  // pending first. The panel checks once when it opens, on either view,
+  // and the list then polls for as long as it is showing.
+  const latestSignature = useRef(knownSignature);
+  useEffect(() => {
+    latestSignature.current = knownSignature;
+  }, [knownSignature]);
+
+  // Keyed by dataset, so a dataset switch checks again. The response is
+  // compared with the runs loaded when it lands, not when it was sent: a
+  // reload in between already brought the page up to date
+  const openCheckedDataset = useRef<string | null>(null);
+  useEffect(() => {
+    if (!datasetId || knownSignature === null) return;
+    if (openCheckedDataset.current === datasetId) return;
+    openCheckedDataset.current = datasetId;
+
+    fetchRunsStatus(datasetId)
+      .then((statuses) => {
+        if (openCheckedDataset.current !== datasetId) return;
+        if (statusSignature(statuses) !== latestSignature.current) refresh();
+      })
+      .catch(() => undefined);
+  }, [datasetId, knownSignature, refresh]);
+
   useEffect(() => {
     if (openRun || !datasetId || knownSignature === null) return undefined;
 
@@ -110,10 +132,8 @@ export default function EmbeddingsV2Panel() {
     let active = true;
     let inFlight = false;
 
-    // The first check ignores the hidden-tab gate, so a panel opened in a
-    // background tab isn't stuck showing a stale list once it is looked at
-    const check = (force = false) => {
-      if ((!force && document.hidden) || inFlight) return;
+    const check = () => {
+      if (document.hidden || inFlight) return;
       inFlight = true;
       fetchRunsStatus(datasetId)
         .then((statuses) => {
@@ -126,7 +146,6 @@ export default function EmbeddingsV2Panel() {
         });
     };
 
-    check(true);
     const id = window.setInterval(check, RUNS_POLL_MS);
     return () => {
       active = false;
