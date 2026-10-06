@@ -19,7 +19,7 @@ export const jsonFoxgloveCompressedAudioDecoder: Decoder = {
 
   decode(bytes, context) {
     const decoded = decodeJsonMediaMessage(bytes, "CompressedAudio");
-    if (!decoded.ok) {
+    if (decoded.ok === false) {
       return {
         attributes: { decodeError: decoded.reason },
         timing: timingFromContext(context, undefined),

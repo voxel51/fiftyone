@@ -165,7 +165,7 @@ export const useDraggable = ({
   );
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isDragging) return undefined;
     const handleMouseUp = (): void => setIsDragging(false);
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);

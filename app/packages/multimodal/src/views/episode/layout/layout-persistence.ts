@@ -226,9 +226,11 @@ export function sanitizeModalLayout(
         ? candidate.leftSidebarOpen
         : undefined,
     layout:
-      candidate.layout === null || isValidMosaicLayout(candidate.layout)
-        ? candidate.layout
-        : undefined,
+      candidate.layout === null
+        ? null
+        : isValidMosaicLayout(candidate.layout)
+          ? candidate.layout
+          : undefined,
     logSettings: sanitizeLogSettings(candidate.logSettings),
     mapSettings: sanitizeMapSettings(candidate.mapSettings),
     plotSeries: sanitizePlotSeries(candidate.plotSeries),
@@ -284,7 +286,8 @@ function sanitizeExtensionJsonValue(
   ) {
     return undefined;
   }
-  if (value === null || typeof value === "boolean") return value;
+  if (value === null) return null;
+  if (typeof value === "boolean") return value;
   if (typeof value === "number")
     return Number.isFinite(value) ? value : undefined;
   if (typeof value === "string") {

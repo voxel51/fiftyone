@@ -145,7 +145,7 @@ function IntervalLane({
   // rectangle is then what decides whether the pointer counts as being over
   // it — hovering the preview itself is not an inspection and gets no ghost.
   useEffect(() => {
-    if (!tile) return;
+    if (!tile) return undefined;
 
     const onMove = (event: globalThis.MouseEvent) => {
       const container = containerRef.current;
@@ -342,7 +342,7 @@ function useElementSize(
   useLayoutEffect(() => {
     if (!element) {
       setSize(null);
-      return;
+      return undefined;
     }
 
     const commit = (width: number, height: number) => {
@@ -356,7 +356,7 @@ function useElementSize(
     const rect = element.getBoundingClientRect();
     commit(rect.width, rect.height);
 
-    if (typeof ResizeObserver === "undefined") return;
+    if (typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver((entries) => {
       const box = entries[entries.length - 1]?.contentRect;
       if (box) commit(box.width, box.height);

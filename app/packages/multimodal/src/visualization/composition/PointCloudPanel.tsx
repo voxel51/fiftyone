@@ -88,7 +88,7 @@ import {
 } from "../scene-3d/utils";
 
 const EMPTY_GPU_RENDER_ARRAY = new Float32Array(0);
-const EMPTY_ARRAY: readonly never[] = [];
+const EMPTY_ARRAY: readonly never[] = [] as never[];
 
 interface PreparedPointCloudPanelLayer {
   readonly data: PointCloudRenderData;
@@ -432,7 +432,7 @@ export function PointCloudPanel({
   );
   // This effect reports scene render statistics after React commits the frame.
   useEffect(() => {
-    if (!onRenderStats || !hasSceneLayers) return;
+    if (!onRenderStats || !hasSceneLayers) return undefined;
 
     const frame = requestAnimationFrame(() => {
       onRenderStats({

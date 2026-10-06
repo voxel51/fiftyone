@@ -448,12 +448,12 @@ function transferablesForResponse(response: McapPlaybackWorkerResponse) {
     return [];
   }
 
-  if (!response.ok) {
+  if (response.ok === false) {
     return [];
   }
 
   if ("stream" in response) {
-    if (response.done) {
+    if (response.done === true) {
       return [];
     }
     return transferablesForMcapResult(

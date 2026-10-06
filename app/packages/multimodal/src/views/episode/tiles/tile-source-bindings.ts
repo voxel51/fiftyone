@@ -227,7 +227,7 @@ export function usePersistAudioTileBinding(
  * tile's content). The 3D tile highlights the matching camera frustum,
  * answering "which camera is this?" from either direction.
  */
-export const hoveredImageStreamAtom = atom<string | null>(null);
+export const hoveredImageStreamAtom = atom(null as string | null);
 
 /** Subscribe to the hovered image source id. */
 export function useHoveredImageStream(): string | null {
@@ -235,7 +235,7 @@ export function useHoveredImageStream(): string | null {
 }
 
 /** Image stream whose textured 3D camera frustum is currently hovered. */
-const hoveredFrustumImageStreamAtom = atom<string | null>(null);
+const hoveredFrustumImageStreamAtom = atom(null as string | null);
 
 /** Subscribe to the image stream hovered from the 3D camera surface. */
 export function useHoveredFrustumImageStream(): string | null {

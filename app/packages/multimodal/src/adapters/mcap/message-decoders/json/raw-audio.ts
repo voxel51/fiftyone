@@ -23,7 +23,7 @@ export const jsonFoxgloveRawAudioDecoder: Decoder = {
 
   decode(bytes, context) {
     const decoded = decodeJsonMediaMessage(bytes, "RawAudio");
-    if (!decoded.ok) {
+    if (decoded.ok === false) {
       return {
         attributes: { decodeError: decoded.reason },
         timing: timingFromContext(context, undefined),

@@ -72,7 +72,7 @@ function cameraPoseAtomForScope(scopeKey: string) {
     return existing.atom;
   }
 
-  const poseAtom = atom<PointCloudCameraPose | null>(null);
+  const poseAtom = atom(null as PointCloudCameraPose | null);
   cameraPoseAtomsByScope.set(scopeKey, {
     activeMounts: 0,
     atom: poseAtom,

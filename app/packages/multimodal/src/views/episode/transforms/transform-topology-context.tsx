@@ -183,9 +183,10 @@ function retainTopologyStore(
   sourceKey: string | null,
   store: TransformTopologyStore,
 ): (() => void) | undefined {
-  if (!capability || !sourceKey || store === UNAVAILABLE_STORE) return;
+  if (!capability || !sourceKey || store === UNAVAILABLE_STORE)
+    return undefined;
   const stores = STORES_BY_CAPABILITY.get(capability);
-  if (!stores || stores.get(sourceKey) !== store) return;
+  if (!stores || stores.get(sourceKey) !== store) return undefined;
   STORE_MOUNT_COUNTS.set(store, (STORE_MOUNT_COUNTS.get(store) ?? 0) + 1);
   stores.delete(sourceKey);
   stores.set(sourceKey, store);

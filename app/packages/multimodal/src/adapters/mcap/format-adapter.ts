@@ -595,7 +595,11 @@ export function createMcapRawRecordCapability({
               parseRawChannelStreamId(request.stream) ?? {
                 topic: sourceNameFor(request.stream),
               };
-            const anchor =
+            // annotated so the two shapes stay distinct (an inferred union
+            // adds `anchorTimeNs?: undefined`, which the request type forbids)
+            const anchor:
+              | { readonly anchorCursor: string }
+              | { readonly anchorTimeNs: bigint } =
               request.anchorCursor !== undefined
                 ? { anchorCursor: request.anchorCursor }
                 : { anchorTimeNs: request.anchorTimestampNs };

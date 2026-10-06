@@ -5,7 +5,11 @@ import type {
 } from "../../../../ir";
 import type { ReadWorkUsage } from "../../../../ports";
 import type { DecodeClient } from "../../../../query/decoding";
-import type { McapIndexedReaderLike, McapReadContinuation } from "../../reader";
+import type {
+  McapBoundedMessageReadResult,
+  McapIndexedReaderLike,
+  McapReadContinuation,
+} from "../../reader";
 import { consumeMcapBoundedGrant } from "../../reader/consume-bounded-grant";
 import type {
   McapReadTransformTopologyRequest,
@@ -95,7 +99,7 @@ export async function readMcapTransformTopology({
     endTimeNs: request.endTimeNs,
     startTimeNs: request.startTimeNs,
   });
-  const result = await readBoundedMessages({
+  const result: McapBoundedMessageReadResult = await readBoundedMessages({
     absoluteBudget: request.absoluteBudget,
     absoluteMaxChunks: request.absoluteMaxChunks,
     budget: request.budget,
