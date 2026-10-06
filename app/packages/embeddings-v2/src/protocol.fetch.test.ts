@@ -19,6 +19,7 @@ import {
   HEADER_BYTES,
   MAGIC,
   fetchColor,
+  fetchColorByChoices,
   fetchGeometry,
   fetchIds,
   fetchMasks,
@@ -90,6 +91,20 @@ describe("fetchIds", () => {
       brainKey: "k",
       kind: "samples",
     });
+  });
+});
+
+describe("fetchColorByChoices", () => {
+  it("asks the v2 route for the run's choices by brain key", async () => {
+    fetchMock.mockResolvedValue({ fields: ["label", "gt.detections.label"] });
+
+    const fields = await fetchColorByChoices("d", "k");
+    expect(fetchMock.mock.calls[0]).toEqual([
+      "POST",
+      "/embeddings/v2/color-by-choices",
+      { datasetName: "d", brainKey: "k" },
+    ]);
+    expect(fields).toEqual(["label", "gt.detections.label"]);
   });
 });
 
