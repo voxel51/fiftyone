@@ -98,7 +98,13 @@ export const useValidAnnotationFields = (): UseValidAnnotationFields => {
 
       initializeSample(datasetId, listValidAnnotationFields);
     }
-  }, [datasetId]);
+  }, [
+    datasetId,
+    initializeSample,
+    listValidAnnotationFields,
+    setResolvedMap,
+    setValidFieldsMap,
+  ]);
 
   // Fetch data on dataset change.
   // Note that if the schema is updated via the schema manager, the cached
@@ -107,6 +113,7 @@ export const useValidAnnotationFields = (): UseValidAnnotationFields => {
     if (datasetId) {
       initializeSample(datasetId, listValidAnnotationFields);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per dataset; the operator-backed lister changes identity between renders
   }, [datasetId]);
 
   return {

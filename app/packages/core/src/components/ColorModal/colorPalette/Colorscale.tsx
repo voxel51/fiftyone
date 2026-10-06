@@ -137,18 +137,13 @@ const Colorscale: React.FC = () => {
         }, 1000);
       }
     },
-    [colorscaleValues],
+    [colorscaleValues, setSetting],
   );
 
   const shouldShowAddButton = Boolean(
     colorscaleValues?.list &&
     colorscaleValues?.list?.length &&
     colorscaleValues?.list?.length > 0,
-  );
-
-  const index = useMemo(
-    () => colorScheme.colorscales?.findIndex((s) => s.path == activePath),
-    [activePath],
   );
 
   const onSyncUpdate = useCallback(
@@ -180,7 +175,7 @@ const Colorscale: React.FC = () => {
         }
       }
     },
-    [index, setColorScheme, activePath],
+    [colorScheme, setColorScheme, activePath],
   );
 
   useEffect(() => {
@@ -198,6 +193,7 @@ const Colorscale: React.FC = () => {
         list: [],
       }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed the setting only when the tab changes; defaultValue is rebuilt (with random colors) every render
   }, [tab]);
 
   useEffect(() => {
