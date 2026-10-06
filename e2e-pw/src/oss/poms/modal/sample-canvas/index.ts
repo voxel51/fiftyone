@@ -57,6 +57,7 @@ export const MODAL_CAPTURE: CanvasCapture = {
  * preferences panel, the tips card, the action bar, the modal's arrows)
  */
 export const LOOKER3D_CAPTURE: CanvasCapture = {
+  park: true,
   target: (root) => root.locator("canvas").first(),
   style: [
     "[data-cy=looker3d] * { visibility: hidden !important; }",
