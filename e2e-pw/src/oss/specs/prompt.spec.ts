@@ -138,7 +138,6 @@ test.describe.serial("operator prompt", () => {
     await operatorsBrowser.search("E2E");
     await operatorsBrowser.choose("E2E: Progress");
     await operatorsPrompt.assert.isExecuting();
-    // e2e_progress holds step 1 until released below, so this can't miss it
     await expect(operatorsPromptViewModal.content).toContainText(
       "Loading 1 of 2",
     );
