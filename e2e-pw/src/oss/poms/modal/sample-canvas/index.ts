@@ -52,8 +52,12 @@ export const MODAL_CAPTURE: CanvasCapture = {
     ".segmentation-toolbar, .notistack-SnackbarContainer { display: none !important; }",
 };
 
-/** A 3D canvas, without the render preferences panel floating over it */
+/**
+ * The 3D viewer's scene canvas, without the render preferences panel floating
+ * over it
+ */
 export const LOOKER3D_CAPTURE: CanvasCapture = {
+  target: (root) => root.locator("canvas").first(),
   style: "[data-cy=looker3d-leva-container] { visibility: hidden !important; }",
 };
 

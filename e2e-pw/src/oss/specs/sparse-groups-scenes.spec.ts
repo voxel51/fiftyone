@@ -60,19 +60,27 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await grid.assert.isEntryCountTextEqualTo("50 groups with slice");
-  await grid.openFirstSample();
+  await modal.afterGroupSampleLoaded(() => grid.openFirstSample());
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.groupSampleCanvas.click(0.5, 0.5);
+  await modal.sidebar.afterEntryChanged("group.name", "ego", () =>
+    modal.groupSampleCanvas.click(0.5, 0.5),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.navigateSlice("group.name", "right", true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
-  await modal.sampleCanvas3d.click(0.5, 0.5);
+  await modal.sidebar.afterEntryChanged("group.name", "right", () =>
+    modal.sampleCanvas3d.click(0.5, 0.5),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.afterCarouselRendered(() => modal.navigateNextSample(true));
+  await modal.afterCarouselRendered(() =>
+    modal.afterGroupSampleLoaded(() => modal.navigateNextSample(true)),
+  );
   await modal.assert.verifyCarouselLength(1);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.groupSampleCanvas.click(0.5, 0.5);
+  await modal.sidebar.afterEntryChanged("group.name", "ego", () =>
+    modal.groupSampleCanvas.click(0.5, 0.5),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.afterCarouselRendered(() => modal.navigateNextSample(true));
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");

@@ -33,7 +33,7 @@ export class ModalPom {
   readonly looker3dControls: Looker3DControlsPom;
   readonly panel: ModalPanelPom;
   readonly sampleCanvas: SampleCanvasPom;
-  /** The 3D viewer's canvas: a 3D sample's, or a group modal's 3D pane */
+  /** The 3D viewer: a 3D sample's, or a group modal's 3D pane */
   readonly sampleCanvas3d: SampleCanvasPom;
   /** A group modal's 2D pane */
   readonly groupSampleCanvas: SampleCanvasPom;
@@ -65,7 +65,7 @@ export class ModalPom {
     this.sampleCanvas3d = new SampleCanvasPom(
       page,
       eventUtils,
-      this.looker3d.locator("canvas").first(),
+      this.looker3d,
       LOOKER3D_CAPTURE,
     );
     this.groupSampleCanvas = new SampleCanvasPom(

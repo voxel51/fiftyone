@@ -66,7 +66,8 @@ test("does not show when opening or navigating the modal for a group dataset", a
   await modal.navigateNextSample();
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
-  await modal.navigateNextSample();
+  // the 3D pane is clicked next, so its scene must be ready too
+  await modal.afterGroupSampleLoaded(() => modal.navigateNextSample());
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   // the 3D slice becomes the modal's sample; its scene is already loaded
