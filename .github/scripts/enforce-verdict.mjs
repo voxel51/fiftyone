@@ -21,9 +21,9 @@ if (!jsonPath || !blobDir) {
 
 const failures = [];
 
-// Shard jobs are report-only for spec failures, so a red shard means infra
-// death — a timed-out or crashed shard produces partial blobs that must not
-// merge into a green verdict.
+// Failing specs also turn a shard red, but so do timeouts, crashes, and lint
+// failures — a timed-out or crashed shard produces partial blobs that must
+// not merge into a green verdict.
 const shardJobsResult = process.env.TEST_E2E_RESULT;
 if (shardJobsResult && shardJobsResult !== "success") {
   failures.push(`shard jobs concluded '${shardJobsResult}'`);
@@ -57,7 +57,7 @@ if ((stats.flaky ?? 0) > 0) {
   );
 }
 
-// Burn-in is report-only like the shards; enforce its outcome here. Fail
+// Burn-in is report-only; enforce its outcome here. Fail
 // closed: when specs were selected, anything short of a clean 10/10 across
 // all of them — including a dead job or a missing report — is a red verdict.
 const burnInCount = Number(process.env.BURN_IN_COUNT || "0");

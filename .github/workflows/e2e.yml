@@ -158,7 +158,9 @@ jobs:
         with:
           name: e2e-app-static
           path: e2e-app-static.tgz
-          retention-days: 1
+          # matches the blob reports so "Re-run failed jobs" can still
+          # restore it for the shards it re-runs
+          retention-days: 3
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
@@ -192,7 +194,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
       # Chromium needs more than Docker's default 64MB /dev/shm
       options: --shm-size=2gb
-    name: Run e2e shard ${{ matrix.shard }}/8 (report-only, Mongo ${{ matrix.mongodb-version }})
+    name: Run e2e shard ${{ matrix.shard }}/8 (Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -277,18 +279,18 @@ jobs:
         working-directory: e2e-pw
 
       - name: Run Playwright tests
-        # Report-only: failed specs are surfaced by the e2e verdict job from
-        # the merged blob reports. A red shard means infra death (timeout,
-        # lost runner), not a test failure. Specs are assigned to shards by
-        # duration (.github/scripts/pack-shards.mjs), not Playwright's count-based
+        id: playwright
+        # Failing specs fail the shard in the last step, after the blob report
+        # uploads, so "Re-run failed jobs" re-runs exactly the failing shards
+        # and the verdict re-merges. Specs are assigned to shards by duration
+        # (.github/scripts/pack-shards.mjs), not Playwright's count-based
         # sharding, so no shard is bottlenecked by the heavy spec families.
         run: |
           FILES=$(node ../.github/scripts/pack-shards.mjs ${{ matrix.shard }} 8)
           if [ -z "$FILES" ]; then
             echo "no specs assigned to shard ${{ matrix.shard }}"
           else
-            yarn e2e $FILES ||
-              echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
+            yarn e2e $FILES || echo "failed=true" >> "$GITHUB_OUTPUT"
           fi
         working-directory: e2e-pw
 
@@ -304,6 +306,12 @@ jobs:
           path: e2e-pw/blob-report/
           # 3 days so reports from Friday/weekend runs survive into Monday.
           retention-days: 3
+
+      - name: Fail on failing specs
+        if: steps.playwright.outputs.failed == 'true'
+        run: |
+          echo "::error::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
+          exit 1
 
   burn-in:
     needs: prepare-e2e
@@ -427,10 +435,9 @@ jobs:
 
   e2e-verdict:
     needs: [prepare-e2e, test-e2e, burn-in]
-    # The single authoritative e2e check: shard and burn-in jobs are
-    # report-only, so this job alone decides pass/fail from the merged
-    # reports. Runs on 'cancelled' too — timeout-minutes kills report as
-    # cancelled, and those runs still need a comment and a red verdict. A
+    # The single authoritative e2e check: this job decides pass/fail from
+    # the merged reports of all shards and burn-in. Runs on 'cancelled' too —
+    # timeout-minutes kills report as cancelled, and those runs still need a comment and a red verdict. A
     # run-level cancellation force-cancels this job anyway. (burn-in being
     # skipped is the normal no-new-specs case, so it must not gate here.)
     if: always() && needs.test-e2e.result != 'skipped'
