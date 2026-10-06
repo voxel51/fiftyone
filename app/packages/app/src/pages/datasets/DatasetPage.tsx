@@ -5,7 +5,6 @@
 import {
   ActivityToast,
   Dataset,
-  EmptyDatasetSelection,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
@@ -126,14 +125,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
             depend on `datasetQueryContext.Provider`. */}
         <SchemaManagerOutlet />
         {isEmpty ? (
-          <div
-            style={{ display: "flex", flexDirection: "column", height: "100%" }}
-          >
-            <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-              <Starter mode="ADD_SAMPLE" />
-            </div>
-            <EmptyDatasetSelection />
-          </div>
+          <Starter mode="ADD_SAMPLE" />
         ) : (
           <datasetQueryContext.Provider value={data}>
             <OperatorCore />

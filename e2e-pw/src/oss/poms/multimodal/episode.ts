@@ -21,20 +21,6 @@ export class EpisodePom {
     return byDataTestId(this.shell, "timeline-controls-root");
   }
 
-  savedRangePin(sourceLabel: string): Locator {
-    return this.shell
-      .locator('[data-track-id^="fiftyone:saved-segments"]')
-      .filter({ hasText: sourceLabel })
-      .locator('[data-testid^="timeline-track-pin-"]')
-      .first();
-  }
-
-  async toggleTracksDrawer(): Promise<void> {
-    await byDataTestId(this.controls, "timeline-controls-toggle")
-      .first()
-      .click();
-  }
-
   get timelineRuler(): Locator {
     return byDataTestId(this.shell, "timeline-ruler");
   }
@@ -65,11 +51,9 @@ export class EpisodePom {
     return root.locator("[data-cy=episode-raw-meta]");
   }
 
-  async waitForReady(sourceLabel: string | RegExp): Promise<void> {
+  async waitForReady(fileName: string): Promise<void> {
     await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(
-      this.scope.getByText(sourceLabel, { exact: true }),
-    ).toBeVisible({
+    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
       timeout: READY_TIMEOUT,
     });
     await expect
