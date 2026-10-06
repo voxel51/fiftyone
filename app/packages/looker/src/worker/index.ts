@@ -38,6 +38,8 @@ import {
   RENDER_STATUS_DECODED,
   RENDER_STATUS_PAINTED,
   RENDER_STATUS_PENDING,
+  sampleFrames,
+  sampleMediaType,
 } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
 
@@ -95,6 +97,21 @@ const isFulfilled = <T>(
   result: PromiseSettledResult<T>,
 ): result is PromiseFulfilledResult<T> => result.status === "fulfilled";
 
+/** A label as it arrives in sample/frame JSON; its shape depends on its class. */
+type RawLabel = { [key: string]: unknown };
+
+/**
+ * The labels in a sample or frame field, as a list: list fields as-is, any
+ * other value wrapped.
+ */
+const fieldLabels = (
+  sample: Sample | FrameSample,
+  field: string,
+): RawLabel[] => {
+  const value: unknown = sample[field];
+  return (Array.isArray(value) ? value : [value]) as RawLabel[];
+};
+
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
@@ -114,10 +131,7 @@ const processLabels = async (
 
   // mask deserialization / on-disk overlay decoding loop
   for (const field in sample) {
-    let labels = sample[field];
-    if (!Array.isArray(labels)) {
-      labels = [labels];
-    }
+    const labels = fieldLabels(sample, field);
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
 
     if (!cls) {
@@ -165,7 +179,8 @@ const processLabels = async (
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
         const [moreBitmapPromises, moreMaskTargetsBuffers] =
           await processLabels(
-            label,
+            // an embedded document's fields are processed like a frame's
+            label as FrameSample,
             coloring,
             `${prefix ? prefix : ""}${field}.`,
             sources,
@@ -182,8 +197,9 @@ const processLabels = async (
 
       if (ALL_VALID_LABELS.has(cls)) {
         if (cls in LABEL_LIST) {
-          if (Array.isArray(label[LABEL_LIST[cls]])) {
-            label[LABEL_LIST[cls]].forEach(mapId);
+          const list = label[LABEL_LIST[cls]];
+          if (Array.isArray(list)) {
+            list.forEach(mapId);
           }
         } else {
           mapId(label);
@@ -196,11 +212,7 @@ const processLabels = async (
 
   // overlay painting loop
   for (const field in sample) {
-    let labels = sample[field];
-
-    if (!Array.isArray(labels)) {
-      labels = [labels];
-    }
+    const labels = fieldLabels(sample, field);
 
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
 
@@ -242,11 +254,7 @@ const processLabels = async (
 
   // bitmap generation loop
   for (const field in sample) {
-    let labels = sample[field];
-
-    if (!Array.isArray(labels)) {
-      labels = [labels];
-    }
+    const labels = fieldLabels(sample, field);
 
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
 
@@ -363,7 +371,7 @@ const processSample = async ({
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
   const maskTargetsBuffers: ArrayBuffer[] = [];
 
-  if (is3d(sample?._media_type)) {
+  if (is3d(sampleMediaType(sample))) {
     // we process all 3d labels regardless of active paths; a 3D media type
     // means this is a sample, not a frame
     process3DLabels(schema, sample as Sample);
@@ -393,11 +401,12 @@ const processSample = async ({
   // this usually only applies to thumbnail frame
   // sample.frames, if defined, should have only one frame
   // other frames are processed in the stream (see `getSendChunk`)
-  if (sample.frames?.length > 0) {
+  const frames = sampleFrames(sample);
+  if (frames?.length > 0) {
     const allFramePromises: ReturnType<typeof processLabels>[] = [];
     allFramePromises.push(
       processLabels(
-        sample.frames[0],
+        frames[0],
         coloring,
         "frames.",
         sources,

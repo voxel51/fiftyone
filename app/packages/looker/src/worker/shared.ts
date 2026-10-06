@@ -1,4 +1,5 @@
 import { HEATMAP } from "@fiftyone/utilities";
+import type { FrameSample, Sample } from "../state";
 
 export const RENDER_STATUS_PENDING = "pending";
 export const RENDER_STATUS_PAINTING = "painting";
@@ -31,3 +32,18 @@ export const getOverlayFieldFromCls = (cls: string) => {
       return { canonical: "mask", disk: "mask_path" };
   }
 };
+
+/**
+ * A sample's frames. Only samples carry `frames` (a frame list); on a
+ * FrameSample the key is absent, so this reads undefined.
+ */
+export const sampleFrames = (
+  sample: Sample | FrameSample,
+): FrameSample[] | undefined =>
+  (sample as Partial<Pick<Sample, "frames">>).frames;
+
+/** A sample's media type; frames have none. */
+export const sampleMediaType = (
+  sample: Sample | FrameSample,
+): Sample["_media_type"] | undefined =>
+  (sample as Partial<Pick<Sample, "_media_type">>)?._media_type;

@@ -543,7 +543,7 @@ export const DEFAULT_3D_OPTIONS: ThreeDOptions = {
 };
 
 export interface FrameSample {
-  [key: string]: any;
+  [key: string]: unknown;
   frame_number: number;
 }
 
