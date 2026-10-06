@@ -73,17 +73,13 @@ test.describe.serial("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await grid.assert.hasScreenshot("slice-v1.png", {
-      target: grid.getNthLooker(0),
-    });
+    await grid.assert.hasTileScreenshots("slice-v1", 1);
 
     // compare screenshot for another slice (v2)
     await grid.afterTilesDrawn(1, () =>
       grid.run(() => grid.sliceSelector.selectSlice("v2")),
     );
-    await grid.assert.hasScreenshot("slice-v2.png", {
-      target: grid.getNthLooker(0),
-    });
+    await grid.assert.hasTileScreenshots("slice-v2", 1);
   });
 
   test("video plays with correct label for each slice", async ({
@@ -109,7 +105,7 @@ test.describe.serial("groups video labels", () => {
       // an exact reading: a stale one from the previous slice resets on load
       await modal.video.playUntilDuration("0:00.20");
 
-      await modal.sampleCanvas.assert.hasScreenshot(`${slice}-played.png`);
+      await modal.groupSampleCanvas.assert.hasScreenshot(`${slice}-played.png`);
     };
 
     await checkVideo("v1");

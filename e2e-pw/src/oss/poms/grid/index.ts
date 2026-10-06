@@ -12,6 +12,10 @@ import { UrlPom } from "../url";
  * for looker internals (canvas screenshots, looker checkbox markup).
  */
 const TILE_SELECTOR = "[data-cy=looker], [data-cy=grid-custom-renderer]";
+
+/** Hide the DOM drawn over tiles (tag bubbles, timeline lanes) for a capture */
+const TILE_CANVAS_ONLY =
+  "[data-cy=fo-grid] *:not(:has(canvas)):not(canvas) { visibility: hidden !important; }";
 const CUSTOM_RENDERER_TEST_ID = "grid-custom-renderer";
 const LANE_SHOWN = "e2e:multimodal:grid-lane-shown";
 const TILE_DRAWN = "e2e:looker:canvas-loaded";
@@ -488,12 +492,20 @@ class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
   /**
-   * One capture of `target` (the forward section by default); draw it first
-   * with {@link GridPom.afterTilesDrawn}
+   * The grid shows exactly `count` tiles, and each tile's canvas, in grid
+   * order, matches its own baseline: `<name>-1.png`, `<name>-2.png`, ...
+   * Draw them first with {@link GridPom.afterTilesDrawn}
    */
-  async hasScreenshot(name: string, options: { target?: Locator } = {}) {
-    const target = options.target ?? this.gridPom.getForwardSection();
-    await expectScreenshot(target, name);
+  async hasTileScreenshots(name: string, count: number) {
+    const tiles = this.gridPom.getForwardSection().locator(TILE_SELECTOR);
+    expect(await tiles.count()).toBe(count);
+    for (let i = 0; i < count; i++) {
+      await expectScreenshot(
+        tiles.nth(i).locator("canvas").first(),
+        `${name}-${i + 1}.png`,
+        { style: TILE_CANVAS_ONLY },
+      );
+    }
   }
 
   async isTileCountEqualTo(n: number) {

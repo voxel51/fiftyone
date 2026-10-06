@@ -55,13 +55,13 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await grid.afterTilesDrawn(5, () =>
       sidebar.applyLabelFromList(["cat"], "show-label"),
     );
-    await grid.assert.hasScreenshot("visible-cat.png");
+    await grid.assert.hasTileScreenshots("visible-cat", 5);
 
     // test case: visibility mode - hide label
     await grid.afterTilesDrawn(5, () =>
       sidebar.applyLabelFromList([], "hide-label"),
     );
-    await grid.assert.hasScreenshot("not-visible-cat.png");
+    await grid.assert.hasTileScreenshots("not-visible-cat", 5);
   });
 
   test("In classification grid, show samples with a label filter works", async ({
@@ -84,7 +84,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
-    await grid.assert.hasScreenshot("show-frog.png");
+    await grid.assert.hasTileScreenshots("show-frog", 3);
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
@@ -93,13 +93,13 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList(["frog"], "show-label"),
     );
-    await grid.assert.hasScreenshot("show-frog-ship-visible-frog.png");
+    await grid.assert.hasTileScreenshots("show-frog-ship-visible-frog", 3);
 
     // test case: visibility mode - hide label
     await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList([], "hide-label"),
     );
-    await grid.assert.hasScreenshot("show-frog-ship-invisible-frog.png");
+    await grid.assert.hasTileScreenshots("show-frog-ship-invisible-frog", 3);
   });
 
   test("In classification grid, omit samples with a label filter works", async ({
@@ -115,7 +115,7 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
       sidebar.applyLabelFromList(["ship"], "omit-samples-with-label"),
     );
 
-    await grid.assert.hasScreenshot("hide-ship.png");
+    await grid.assert.hasTileScreenshots("hide-ship", 3);
 
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
@@ -124,12 +124,12 @@ test.describe.serial("classification-sidebar-filter-visibility", () => {
     await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList(["cat"], "show-label"),
     );
-    await grid.assert.hasScreenshot("hide-ship-visible-cat.png");
+    await grid.assert.hasTileScreenshots("hide-ship-visible-cat", 3);
 
     // test case: visibility mode - hide label
     await grid.afterTilesDrawn(3, () =>
       sidebar.applyLabelFromList([], "hide-label"),
     );
-    await grid.assert.hasScreenshot("hide-ship-invisible-cat.png");
+    await grid.assert.hasTileScreenshots("hide-ship-invisible-cat", 3);
   });
 });

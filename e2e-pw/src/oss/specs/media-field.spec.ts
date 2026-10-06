@@ -78,9 +78,7 @@ test.afterEach(async ({ modal, page }) => {
 test.describe.serial("media field", () => {
   test("grid media field", async ({ fiftyoneLoader, grid, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 1 });
-    await grid.assert.hasScreenshot("grid-media-field.png", {
-      target: grid.getNthLooker(0),
-    });
+    await grid.assert.hasTileScreenshots("grid-media-field", 1);
   });
 
   test("modal media field", async ({ grid, fiftyoneLoader, modal, page }) => {

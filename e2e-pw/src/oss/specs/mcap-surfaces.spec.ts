@@ -96,9 +96,7 @@ test.describe("MCAP surfaces", () => {
     }) => {
       const tile = grid.getNthTile(0);
       expect(await tile.getAttribute("data-cy")).toBe("looker");
-      await grid.assert.hasScreenshot("alternate-media-tile.png", {
-        target: tile,
-      });
+      await grid.assert.hasTileScreenshots("alternate-media-tile", 2);
 
       await modal.episode.afterReady(tinyA.fileName, () =>
         openMcapModal(grid, modal, 0),

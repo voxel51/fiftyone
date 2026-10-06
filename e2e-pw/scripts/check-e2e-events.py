@@ -122,7 +122,7 @@ ALLOW = {
     "e2e-pw/src/oss/poms/modal/annotate-sidebar.ts:waitForResponse(": "waitForPatch: the grouped-video specs assert which sample the PATCH URL targets, so the request itself is the subject; saves wait on afterSave",
     "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:.mouse.": "the sample canvas POM: its primitives are the only pointer input to the canvas",
     "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:expectScreenshot(": "the sample canvas asserter",
-    "e2e-pw/src/oss/poms/grid/index.ts:expectScreenshot(": "the grid asserter: tiles are grid DOM, not the modal canvas",
+    "e2e-pw/src/oss/poms/grid/index.ts:expectScreenshot(": "the grid asserter: each tile's canvas, in grid order",
     "e2e-pw/src/oss/utils/screenshot.ts:screenshot(": "the capture under the POM asserters",
     "e2e-pw/src/oss/utils/screenshot.ts:toMatchSnapshot(": "the exact comparison under the POM asserters",
     "e2e-pw/src/oss/poms/modal/video-annotate.ts:.mouse.": "drags on the timeline's DOM (tag range overlay, interval resize handle), not the canvas",

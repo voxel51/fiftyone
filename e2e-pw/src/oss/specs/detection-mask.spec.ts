@@ -115,6 +115,6 @@ test.describe.serial("detection-mask", () => {
     // close modal and assert grid screenshot (compares all detections)
     await modal.close();
 
-    await grid.assert.hasScreenshot("grid-detections.png");
+    await grid.assert.hasTileScreenshots("grid-detections", 3);
   });
 });

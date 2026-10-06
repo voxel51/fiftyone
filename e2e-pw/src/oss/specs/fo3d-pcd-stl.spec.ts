@@ -102,7 +102,10 @@ test.describe.serial("fo3d", () => {
     grid,
     modalSidebar,
   }) => {
-    await grid.assert.hasScreenshot("orthographic-projection-grid-cuboids.png");
+    await grid.assert.hasTileScreenshots(
+      "orthographic-projection-grid-cuboids",
+      2,
+    );
 
     await page.evaluate(() =>
       localStorage.setItem("fo-3d-annotation-tips-dismissed", "true"),

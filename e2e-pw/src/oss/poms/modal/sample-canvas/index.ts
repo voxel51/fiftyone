@@ -42,14 +42,22 @@ export interface CanvasCapture {
 const MODAL_RADIUS = 8;
 
 /**
- * The modal's sample: its rounded corners antialias differently run to run,
- * and a toast over the media comes and goes on its own timer
+ * The modal's sample, canvas and media pixels only: every element in the
+ * modal that holds no canvas or media (controls, timeline, toolbars, arrows,
+ * toasts) is hidden for the capture, over the modal's own background.
+ * Inset past the modal's rounded corners, which antialias differently run to
+ * run
  */
 export const MODAL_CAPTURE: CanvasCapture = {
   park: true,
   inset: MODAL_RADIUS,
-  style:
-    ".segmentation-toolbar, .notistack-SnackbarContainer { display: none !important; }",
+  style: [
+    // elements holding no canvas or media (Lighter draws its image as an
+    // <img> under the canvas); the containers keep painting their
+    // backgrounds, so nothing behind the modal shows through
+    "[data-cy=modal] *:not(:has(canvas, img, video)):not(canvas, img, video) { visibility: hidden !important; }",
+    ".notistack-SnackbarContainer { display: none !important; }",
+  ].join("\n"),
 };
 
 /**

@@ -186,6 +186,16 @@ where, in what color, at which frame. Don't stand in for it with app events
 that describe the drawing, or with window or DOM probes.
 
 - Screenshot only canvases; check DOM with exact reads.
+- A capture holds the canvas and the media drawn under it (Lighter's image is
+  an `<img>`) on the surface's own background, nothing else: no DOM drawn over
+  the canvas (controls, timelines, toolbars, checkboxes, arrows, tooltips,
+  toasts), no page behind it, no background between canvases. The asserters
+  hide that DOM for the capture and park the pointer first; never widen a
+  capture to include it.
+- Capture grid tiles one at a time:
+  `grid.assert.hasTileScreenshots(name, count)` checks the exact tile count,
+  then gives each tile's canvas its own baseline in grid order (`<name>-1.png`,
+  `<name>-2.png`, ...). Never capture a grid section whole.
 - Take the screenshot after the event of the step it checks, one per state that
   matters.
 - Capture through a POM's screenshot asserter (`hasScreenshot`), which compares
