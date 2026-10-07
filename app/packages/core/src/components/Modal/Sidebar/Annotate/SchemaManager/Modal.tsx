@@ -32,6 +32,7 @@ import {
   useHideSelectedFields,
   useUnhideSelectedFields,
 } from "./useVisibilityMoves";
+import { useBackdropDismiss } from "./useBackdropDismiss";
 import { useOpenOnCurrentSchema } from "./useSchemaDocs";
 import {
   BackButton,
@@ -175,6 +176,7 @@ const Modal = () => {
   useOpenOnCurrentSchema();
 
   const { closeSchemaManager } = useSchemaManagerModal();
+  const backdropHandlers = useBackdropDismiss(closeSchemaManager);
 
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
@@ -193,9 +195,11 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => closeSchemaManager()}>
+    <ModalBackground {...backdropHandlers}>
       <ModalContainer
         data-cy="schema-manager"
+        // React events bubble through the portal to the components that
+        // render this modal; clicks inside it are not theirs
         onClick={(e) => e.stopPropagation()}
       >
         <ModalHeader>
