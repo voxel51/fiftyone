@@ -7418,9 +7418,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@voxel51/voodo@npm:2.0.0"
+"@voxel51/voodo@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "@voxel51/voodo@npm:2.1.0"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7437,7 +7437,9 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/67ecd523839dc6c4f5544d2d6c537cf465d4a49d45bc84a798051004c4ce0064df490375de333b2a219fac525a24cdcbbbf659c8568fc3dac9b04b065d7690b9
+  bin:
+    voodo: bin/voodo.mjs
+  checksum: 10/52c2f45405b0b86d68286acdac29a9de5966d77a77678d39f2368ac6411982c5b3562980826893fb531824ff5d2606005a7376e2197226a520d152ac07521d0a
   languageName: node
   linkType: hard
 
@@ -15052,9 +15054,9 @@ __metadata:
   linkType: hard
 
 "moment@npm:^2.29.4":
-  version: 2.30.1
-  resolution: "moment@npm:2.30.1"
-  checksum: 10/ae42d876d4ec831ef66110bdc302c0657c664991e45cf2afffc4b0f6cd6d251dde11375c982a5c0564ccc0fa593fc564576ddceb8c8845e87c15f58aa6baca69
+  version: 2.31.0
+  resolution: "moment@npm:2.31.0"
+  checksum: 10/fd3708d46f820c64fe1e064a60747533a55ee0aefd944490e18f08b2a83a5b6418bb4f42e1de47ef1f1a29f450c7ac41edd1fa6f940db30ded247c9717301b9f
   languageName: node
   linkType: hard
 

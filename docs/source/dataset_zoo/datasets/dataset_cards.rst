@@ -55,6 +55,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: CitrusFarm Sample
+    :description: A robot driving the rows of a citrus farm in native MCAP format, with monochrome, thermal, red-green-near-infrared and stereo cameras, stereo depth, LiDAR and GPS-RTK on one clock.
+    :link: datasets/citrusfarm_sample.html
+    :image: ../_images/citrusfarm-sample.png
+    :tags: multimodal,mcap,agriculture,thermal,multispectral,lidar
+
+.. customcarditem::
     :header: Cityscapes
     :description: Urban scene understanding dataset with stereo video sequences from 50 cities. Features 5,000 high-quality pixel-level annotations and 20,000 weakly annotated frames.
     :link: datasets/cityscapes.html
@@ -74,6 +81,13 @@
     :link: datasets/coco_2017.html
     :image: ../_images/coco-2017-validation.png
     :tags: image,detection,segmentation
+
+.. customcarditem::
+    :header: ColoRadar Sample
+    :description: Seven handheld sequences in native MCAP format pairing a cascaded imaging radar and a single-chip radar with a 64-beam LiDAR and an inertial unit, from hallways and a lab to an underground mine.
+    :link: datasets/coloradar_sample.html
+    :image: ../_images/coloradar-sample.png
+    :tags: multimodal,mcap,radar,lidar,robotics
 
 .. customcarditem::
     :header: Egocentric EMG-Force
@@ -104,6 +118,13 @@
     :tags: multimodal,mcap,tactile,manipulation,robotics
 
 .. customcarditem::
+    :header: Edged-USLAM Event Camera
+    :description: 13 quadrotor flights in native MCAP format with a DAVIS346 event camera, carrying every event beside a render of it, the grayscale frames, an inertial unit and the Vicon pose on one clock.
+    :link: datasets/edged_uslam_event_camera.html
+    :image: ../_images/edged-uslam-event-camera.png
+    :tags: multimodal,mcap,event-camera,uav,robotics
+
+.. customcarditem::
     :header: Fashion MNIST
     :description: A modern alternative to MNIST featuring 70,000 28x28 grayscale images of fashion items (shirts, shoes, bags, etc.). More complex than digit recognition.
     :link: datasets/fashion_mnist.html
@@ -116,6 +137,13 @@
     :link: datasets/fiw.html
     :image: ../_images/fiw.png
     :tags: image,classification
+
+.. customcarditem::
+    :header: HapTile
+    :description: 1,699 teleoperated contact-rich manipulation episodes in native MCAP format, pairing front and wrist RGB-D cameras with two vision-based tactile fingertips and the operator's haptic feedback on one clock.
+    :link: datasets/haptile.html
+    :image: ../_images/haptile.png
+    :tags: multimodal,mcap,tactile,haptics,manipulation
 
 .. customcarditem::
     :header: HMDB51
@@ -193,6 +221,13 @@
     :link: datasets/mnist.html
     :image: ../_images/mnist-test.png
     :tags: image,classification
+
+.. customcarditem::
+    :header: NTNU Underwater Multi-Camera
+    :description: 8 piloted underwater robot runs in native MCAP format, from the Trondheim Fjord and a lab pool, pairing five cameras with a 200 Hz inertial unit, depth, a rangefinder and a reference trajectory on one clock.
+    :link: datasets/ntnu_underwater_multicam.html
+    :image: ../_images/ntnu-underwater-multicam.png
+    :tags: multimodal,mcap,underwater,robotics,slam
 
 .. customcarditem::
     :header: Open Images V6

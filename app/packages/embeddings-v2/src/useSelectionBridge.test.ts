@@ -360,6 +360,28 @@ describe("useSelectionBridge", () => {
     expect(opts.publishSelection).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores a lasso response that arrives after unmount", async () => {
+    const stage = { _cls: "S", kwargs: { n: 1 }, count: 1 };
+    let resolveLasso: (v: typeof stage) => void = () => undefined;
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveLasso = resolve)),
+      );
+    // Partially loaded, so the gesture resolves server-side
+    const opts = options({ loaded: { ...LOADED, total: 5 } });
+    const { result, unmount } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0], null));
+    unmount();
+    await act(async () => {
+      resolveLasso(stage);
+    });
+    // The plot is gone (a tab switch, or a close whose effect just cleared
+    // the grid); the late response must not narrow it again
+    expect(opts.publishSelection).not.toHaveBeenCalled();
+  });
+
   // A failure banner describes the gesture that failed; it must not
   // linger over a newer pending lasso or survive an explicit clear
   it("drops a stale failure banner when a new lasso begins", async () => {
