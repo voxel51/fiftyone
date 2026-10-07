@@ -2,13 +2,12 @@ import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import type { GroupTileFacts } from "./group-tile-catalog";
 import { GROUP_TILE_TYPE } from "./tile-types";
+import { useGroupTilesOwnVisibility } from "./use-sample-tiles-active";
 
 /** Reads what the current dataset makes available as tiles. */
 export function useGroupTileFacts(): GroupTileFacts {
-  const isGroup = fos.useIsGroupDataset();
-  const dynamic = fos.useIsDynamicGroup();
-  const annotate = fos.useModalMode() === fos.ModalMode.ANNOTATE;
-  const sampleOnly = !isGroup || dynamic || annotate;
+  // Anything not laid out as group tiles hosts the sample view as one tile
+  const sampleOnly = !useGroupTilesOwnVisibility();
   const only3d = fos.useOnly3d();
   const has3dSlice = fos.useHas3dSlice();
   const mediaTypes = fos.useGroupMediaTypesSet();
