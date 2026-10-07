@@ -55,6 +55,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: CitrusFarm Sample
+    :description: A robot driving the rows of a citrus farm in native MCAP format, with monochrome, thermal, red-green-near-infrared and stereo cameras, stereo depth, LiDAR and GPS-RTK on one clock.
+    :link: datasets/citrusfarm_sample.html
+    :image: ../_images/citrusfarm-sample.png
+    :tags: multimodal,mcap,agriculture,thermal,multispectral,lidar
+
+.. customcarditem::
     :header: Cityscapes
     :description: Urban scene understanding dataset with stereo video sequences from 50 cities. Features 5,000 high-quality pixel-level annotations and 20,000 weakly annotated frames.
     :link: datasets/cityscapes.html

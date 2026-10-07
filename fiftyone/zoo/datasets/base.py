@@ -3657,6 +3657,82 @@ class EgocentricEMGForceDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class CitrusFarmSampleDataset(FiftyOneDataset):
+    """A sample of the CitrusFarm multimodal agricultural robotics dataset,
+    as a native ``.mcap`` episode.
+
+    A Clearpath Jackal drives the rows of citrus trees at the University of
+    California Riverside's Agricultural Experimental Station carrying a
+    monochrome camera, a thermal camera, a camera that sees red, green and
+    near-infrared, a ZED 2i stereo camera with its depth, a Velodyne LiDAR,
+    an inertial unit and a GPS-RTK receiver. The episode carries every
+    camera, the stereo depth, the LiDAR scans, the GPS-RTK fixes, the wheel
+    and visual odometry and the ground-truth trajectory on one clock.
+
+    One sequence, 5 minutes of driving over 357 m: 3,026 monochrome, 3,024
+    thermal, 3,025 red-green-NIR and 3,022 stereo frames and 2,998 LiDAR
+    scans.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("citrusfarm-sample")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        2.50 GB
+    """
+
+    _REPO_ID = "Voxel51/CitrusFarm-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "7c4d2138ff587ea782aed8c3a0e22819008f2ed3"
+
+    @property
+    def name(self):
+        return "citrusfarm-sample"
+
+    @property
+    def license(self):
+        return "CC-BY-SA-4.0"
+
+    @property
+    def tags(self):
+        return (
+            "multimodal",
+            "mcap",
+            "agriculture",
+            "thermal",
+            "multispectral",
+            "lidar",
+        )
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class RoboLabDataset(FiftyOneDataset):
     """Policy rollouts recorded on NVIDIA's RoboLab manipulation benchmark,
     as native ``.mcap`` episodes.
@@ -4347,6 +4423,7 @@ AVAILABLE_DATASETS = {
     "boilingbench-multimodal": BoilingBenchMultimodalDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
+    "citrusfarm-sample": CitrusFarmSampleDataset,
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
