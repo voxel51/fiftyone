@@ -17,7 +17,6 @@ import styles from "./VideoLookerSurface.module.css";
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
-import { useVideoTimelineDisplay } from "./useVideoTimelineDisplay";
 
 const CARD_BACKGROUND: React.CSSProperties = {
   background: getColorCssVar(BackgroundColor.Card),
@@ -87,7 +86,7 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
   const playbackKey =
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
-  const { defaultDisplay, onDisplayChange } = useVideoTimelineDisplay();
+  const { defaultDisplay, onDisplayChange } = fos.useVideoTimelineDisplay();
 
   return (
     <PlaybackProvider

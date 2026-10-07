@@ -17,6 +17,7 @@ import type { AnnotationSurface, ModalViewportState } from "../../jotai/modal";
 import {
   __unsafeAnnotationSurfaceAtom,
   __unsafeModalViewportAtom,
+  __unsafeVideoTimelineDisplayAtom,
 } from "../../jotai/modal";
 import type { ModalSample } from "../../recoil";
 import type { Sample } from "@fiftyone/looker";
@@ -210,6 +211,17 @@ export const useModalMediaPath = (): string | null => {
     ? (sample.urls.find((u) => u.field === mediaField)?.url ??
         sample.urls[0]?.url)
     : sample.urls[mediaField];
+};
+
+/**
+ * The modal video timeline's frame-number vs. elapsed-time choice, shaped for
+ * `PlaybackProvider`'s `defaultDisplay` and `onDisplayChange`.
+ */
+export const useVideoTimelineDisplay = () => {
+  const [defaultDisplay, onDisplayChange] = useAtom(
+    __unsafeVideoTimelineDisplayAtom,
+  );
+  return { defaultDisplay, onDisplayChange };
 };
 
 /** The annotation surface currently mounted in the modal, if any. */
