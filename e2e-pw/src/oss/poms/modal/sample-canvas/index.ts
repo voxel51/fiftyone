@@ -57,6 +57,9 @@ export const MODAL_CAPTURE: CanvasCapture = {
     // backgrounds, so nothing behind the modal shows through
     "[data-cy=modal] *:not(:has(canvas, img, video)):not(canvas, img, video) { visibility: hidden !important; }",
     ".notistack-SnackbarContainer { display: none !important; }",
+    // the shared Tooltip renders in a layer outside the modal and fades out
+    // after the pointer leaves
+    '[data-cy^="tooltip-"] { visibility: hidden !important; }',
   ].join("\n"),
 };
 
