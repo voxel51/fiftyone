@@ -13,6 +13,9 @@ import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
 import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 
+/** The e2e signal a modal sidebar field's counts load under, with its path */
+const MODAL_FIELD_COUNT_SIGNAL = "modal-sidebar-field";
+
 const PATH_OVERRIDES = {
   tags: "sample tags",
   _label_tags: "label tags",
@@ -167,7 +170,13 @@ const useTitleTemplate = ({
           </Suspense>
         )}
         {enabled && isFilterMode && (
-          <PathEntryCounts key="count" modal={modal} path={expandedPath} />
+          <PathEntryCounts
+            key="count"
+            modal={modal}
+            path={expandedPath}
+            signal={modal ? MODAL_FIELD_COUNT_SIGNAL : undefined}
+            label={path}
+          />
         )}
         {enabled && <Icon modal={modal} path={path} />}
       </NameAndCountContainer>

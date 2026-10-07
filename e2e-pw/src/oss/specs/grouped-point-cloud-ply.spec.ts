@@ -141,7 +141,11 @@ test.describe.serial("grouped point-cloud and ply", () => {
       };
 
       await modal.sidebar.afterEntries(entries, () =>
-        sceneLoads ? modal.looker3dControls.afterAllAssetsLoaded(step) : step(),
+        modal.sidebar.afterFieldCount("detections", 1, () =>
+          sceneLoads
+            ? modal.looker3dControls.afterAllAssetsLoaded(step)
+            : step(),
+        ),
       );
 
       await modal.assert.verifyModalSamplePluginTitle(expectedSlice, {
@@ -162,7 +166,9 @@ test.describe.serial("grouped point-cloud and ply", () => {
         scene: spec.scene,
       };
 
-      await modal.sidebar.afterEntries(entries, step);
+      await modal.sidebar.afterEntries(entries, () =>
+        modal.sidebar.afterFieldCount("detections", 1, step),
+      );
       await modal.assert.verifyModalSamplePluginTitle("image", {
         pinned: true,
       });
@@ -179,8 +185,10 @@ test.describe.serial("grouped point-cloud and ply", () => {
       "ply-scene": groupSpecs[0].scene,
     };
 
-    await modal.looker3dControls.afterAllAssetsLoaded(() =>
-      modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+    await modal.sidebar.afterFieldCount("detections", 1, () =>
+      modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(() => grid.openFirstSample(), true),
+      ),
     );
 
     await modal.assert.verifyModalSamplePluginTitle("image", { pinned: true });
@@ -202,8 +210,10 @@ test.describe.serial("grouped point-cloud and ply", () => {
     await modal.looker3dControls.closeSliceSelector();
 
     await modal.sidebar.afterEntries(bothSlices, () =>
-      modal.looker3dControls.afterAllAssetsLoaded(() =>
-        modal.toggleLooker3dSlice("ply"),
+      modal.sidebar.afterFieldCount("detections", 2, () =>
+        modal.looker3dControls.afterAllAssetsLoaded(() =>
+          modal.toggleLooker3dSlice("ply"),
+        ),
       ),
     );
     await modal.assert.verifyModalSamplePluginTitle("pcd and ply", {
@@ -223,7 +233,9 @@ test.describe.serial("grouped point-cloud and ply", () => {
       modal.groupSampleCanvas.click(0.5, 0.5),
     );
     await modal.sidebar.afterEntries(bothSlices, () =>
-      modal.sampleCanvas3d.click(0.5, 0.5),
+      modal.sidebar.afterFieldCount("detections", 2, () =>
+        modal.sampleCanvas3d.click(0.5, 0.5),
+      ),
     );
     await modal.assert.verifyModalSamplePluginTitle("pcd and ply", {
       pinned: true,

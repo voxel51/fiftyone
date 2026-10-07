@@ -6,6 +6,9 @@ import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
 
 /** Dispatched as a sidebar entry shows its loaded value, with its text */
 const SIDEBAR_ENTRY = "e2e:modal:sidebar-entry";
+/** Dispatched as loaded counts render; a modal field's carry its path as `label` */
+const COUNT_SHOWN = "e2e:components:entry-count-shown";
+const MODAL_FIELD_COUNT_SIGNAL = "modal-sidebar-field";
 
 /**
  * The modal sidebar in 'Explore' mode
@@ -192,6 +195,40 @@ export class ModalSidebarPom {
   }
 
   /**
+   * Run `action` and resolve once the sidebar field `field` shows `count` as
+   * its whole count. A count already showing it counts: an unchanged count
+   * need not render again.
+   */
+  async afterFieldCount<T>(
+    field: string,
+    count: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const shown = this.getSidebarField(field).getByTestId("entry-count-all");
+    if (
+      (await shown.count()) > 0 &&
+      collapseWhitespace(await shown.textContent()) === String(count)
+    ) {
+      return action();
+    }
+
+    return this.eventUtils.after(COUNT_SHOWN, action, (e) => {
+      const detail = e.detail as {
+        signal: string;
+        label: string;
+        count: number | null;
+        subcount: number | null;
+      };
+      return (
+        detail.signal === MODAL_FIELD_COUNT_SIGNAL &&
+        detail.label === field &&
+        detail.count === count &&
+        (detail.subcount === null || detail.subcount === count)
+      );
+    });
+  }
+
+  /**
    * Run `action` and resolve once the entry `key` shows a value other than
    * `current`, e.g. the sample id after a navigation
    */
@@ -286,7 +323,7 @@ class ModalSidebarAsserter {
 
   /**
    * Asserts that the count displayed for a sidebar field matches the expected
-   * value
+   * value; wait on {@link ModalSidebarPom.afterFieldCount} first
    *
    * @param field - The field identifier whose count should be checked
    * @param count - The expected count value for the field
