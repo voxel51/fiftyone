@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
+import { useGroupTimelineAvailable } from "../../Tiles/playback/use-group-playback";
 
 export const DynamicGroup = () => {
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
@@ -12,6 +13,7 @@ export const DynamicGroup = () => {
     fos.dynamicGroupsViewMode(true),
   );
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
+  const timelineAvailable = useGroupTimelineAvailable();
 
   const setDynamicGroupCurrentElementIndex = useSetRecoilState(
     fos.dynamicGroupCurrentElementIndex,
@@ -31,10 +33,22 @@ export const DynamicGroup = () => {
   useEffect(() => {
     // if dynamic group view mode is video but dynamic group is not ordered,
     // we want to set view mode back to pagination (default)
-    if (dynamicGroupsViewMode === "video" && !isOrderedDynamicGroup) {
+    if (
+      (dynamicGroupsViewMode === "video" ||
+        dynamicGroupsViewMode === "timeline") &&
+      !isOrderedDynamicGroup
+    ) {
       setDynamicGroupsViewMode("pagination");
     }
   }, [dynamicGroupsViewMode, isOrderedDynamicGroup, setDynamicGroupsViewMode]);
+
+  useEffect(() => {
+    // a stored "timeline" choice outlives the feature flag and the view it
+    // was made for; page instead when the timeline is not offered here
+    if (dynamicGroupsViewMode === "timeline" && !timelineAvailable) {
+      setDynamicGroupsViewMode("pagination");
+    }
+  }, [dynamicGroupsViewMode, setDynamicGroupsViewMode, timelineAvailable]);
 
   return hasGroupSlices ? <NestedGroup /> : <NonNestedDynamicGroup />;
 };

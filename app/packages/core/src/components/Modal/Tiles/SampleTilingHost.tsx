@@ -7,7 +7,7 @@ import {
   useTileRegistry,
   useTiling,
 } from "@fiftyone/tiling";
-import { useCallback, useEffect, useMemo } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
 import EnsureGroupSample from "../Group/EnsureGroupSample";
 import {
   DynamicGroupPaginator,
@@ -31,7 +31,11 @@ import { footerHost, main, root } from "./SampleTilingHost.module.css";
 import { GROUP_TILE_TYPES } from "./tile-types";
 import { useGroupSampleLayout } from "./use-group-sample-layout";
 import { useGroupTileFacts } from "./use-group-tile-facts";
+import { useShowsGroupPlayback } from "./playback/use-group-playback";
 import { useGroupTilesOwnVisibility } from "./use-sample-tiles-active";
+
+// Loaded on first use: it pulls in the episode playback shell.
+const GroupPlayback = lazy(() => import("./playback/GroupPlayback"));
 
 /**
  * The sample view on the tiling system: a header with the Layout menu, a
@@ -41,9 +45,26 @@ import { useGroupTilesOwnVisibility } from "./use-sample-tiles-active";
  * tile kinds. Everything else (plain samples, dynamic groups, groups in
  * annotate mode) hosts the existing sample view as one sample tile, with
  * the dynamic-group paginator moved into the host footer. No timeline:
- * group elements are switched with the paginator, not scrubbed.
+ * group elements are switched with the paginator, not scrubbed — except
+ * for ordered dynamic groups in the "timeline" view mode (behind the
+ * `VFF_GROUP_TIMELINE` feature flag), which play back on the episode
+ * playback shell instead (see `GroupPlayback`).
  */
 export const SampleTilingHost = () => {
+  const playsBack = useShowsGroupPlayback();
+  if (playsBack) {
+    return (
+      <div className={root} data-cy="sample-tiles">
+        <Suspense fallback={null}>
+          <GroupPlayback />
+        </Suspense>
+      </div>
+    );
+  }
+  return <SampleTiles />;
+};
+
+const SampleTiles = () => {
   const facts = useGroupTileFacts();
   const datasetId = fos.useCurrentDatasetId();
   const datasetName = fos.useCurrentDatasetName();

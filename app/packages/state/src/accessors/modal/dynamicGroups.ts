@@ -10,10 +10,11 @@ import {
   isNonNestedDynamicGroup,
   shouldRenderImaVidLooker,
 } from "../../recoil/dynamicGroups";
-import { hasGroupSlices } from "../../recoil/groups";
+import { hasGroupSlices, modalGroupSlice } from "../../recoil/groups";
 import { dynamicGroupsViewMode } from "../../recoil/options";
 import { isQueryPerformantDynamicGroup } from "../../recoil/queryPerformance";
 import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
+import { dynamicGroupsTargetFrameRate } from "../../recoil/selectors";
 
 /**
  * Returns the last settled groupByFieldValue without ever suspending.
@@ -82,3 +83,11 @@ export const useShouldRenderImaVidLooker = (modal: boolean): boolean =>
 /** The dynamic-group view mode: `pagination`, `carousel` or `video`. */
 export const useDynamicGroupsViewMode = (modal: boolean): string =>
   useRecoilValue(dynamicGroupsViewMode(modal));
+
+/** Frames per second an ordered dynamic group plays at (app config, default 30). */
+export const useDynamicGroupsTargetFrameRate = (): number =>
+  useRecoilValue(dynamicGroupsTargetFrameRate);
+
+/** The group slice shown in the sample view, or null before it settles. */
+export const useModalGroupSlice = (): string | null =>
+  useRecoilValue(modalGroupSlice);
