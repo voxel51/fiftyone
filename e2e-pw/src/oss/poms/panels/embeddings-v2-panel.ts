@@ -1,3 +1,4 @@
+import path from "node:path";
 import { Locator, Page, expect } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { GridPanelPom } from "./grid-panel";
@@ -20,6 +21,18 @@ const drewPoints =
     e.detail !== null &&
     "points" in e.detail &&
     e.detail.points === n;
+
+/** ...and how many points it emphasizes, null when nothing is selected */
+const drewEmphasis =
+  (n: number | null) =>
+  (e: { detail?: unknown }): boolean =>
+    typeof e.detail === "object" &&
+    e.detail !== null &&
+    "emphasized" in e.detail &&
+    e.detail.emphasized === n;
+
+/** Hides the DOM over the plot's canvas for a screenshot */
+const CANVAS_ONLY = path.resolve(__dirname, "embeddings-canvas-only.css");
 
 export class EmbeddingsV2Pom {
   readonly assert: EmbeddingsV2Asserter;
@@ -70,6 +83,31 @@ export class EmbeddingsV2Pom {
       () => this.run(brainKey).click(),
       drewPoints(points),
     );
+  }
+
+  /**
+   * Runs `action` and resolves once the chart draws a frame emphasizing
+   * `points` points (null: no selection). Screenshot after this, not after
+   * the action alone: a selection reaches the canvas a frame or more later,
+   * and the frame before it is just as stable.
+   */
+  async afterEmphasisDrawn<T>(
+    points: number | null,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after(
+      "embeddings-chart-drawn",
+      action,
+      drewEmphasis(points),
+    );
+  }
+
+  /**
+   * {@link afterEmphasisDrawn} for a wait that spans assertions: arm before
+   * the action, assert, then await `received` before the screenshot
+   */
+  async armEmphasisDrawn(points: number | null) {
+    return this.eventUtils.arm("embeddings-chart-drawn", drewEmphasis(points));
   }
 
   async setMode(mode: EmbeddingsMode) {
@@ -207,14 +245,6 @@ class EmbeddingsV2Asserter {
     );
   }
 
-  /** The drawn frame highlights `points` points; "none" = no selection */
-  async emphasizes(points: number | "none") {
-    await expect(this.pom.canvas).toHaveAttribute(
-      "data-emphasized-points",
-      String(points),
-    );
-  }
-
   async isColoredBy(field: string) {
     await expect(
       this.pom.plot.getByRole("button", { name: "Color by" }),
@@ -245,8 +275,16 @@ class EmbeddingsV2Asserter {
     ).toBeVisible();
   }
 
-  async canvasMatchesScreenshot(name: string) {
-    await expect(this.pom.canvas).toHaveScreenshot(name);
+  /**
+   * The canvas matches its baseline exactly. Only the drawing is captured
+   * (see CANVAS_ONLY), so a baseline changes only when the drawing does.
+   */
+  async hasScreenshot(name: string) {
+    await expect(this.pom.canvas).toHaveScreenshot(name, {
+      maxDiffPixelRatio: 0,
+      threshold: 0,
+      stylePath: CANVAS_ONLY,
+    });
   }
 
   async legendRowIsOff(label: string, off = true) {

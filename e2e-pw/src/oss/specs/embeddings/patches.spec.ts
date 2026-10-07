@@ -122,9 +122,9 @@ test.describe("across samples and patches", () => {
     await embeddings.openInSplit();
     await embeddings.openRun(BRAIN_KEY, PAIR_SAMPLES);
 
-    await grid.toggleSelectNthSample(0);
+    await embeddings.afterEmphasisDrawn(1, () => grid.toggleSelectNthSample(0));
 
-    await embeddings.assert.emphasizes(1);
+    await embeddings.assert.hasScreenshot("patch-lights-its-sample.png");
   });
 
   test("selecting a sample lights every one of its patches", async ({
@@ -138,9 +138,9 @@ test.describe("across samples and patches", () => {
     await embeddings.openInSplit();
     await embeddings.openRun(PATCHES_BRAIN_KEY, PAIR_PATCHES);
 
-    await grid.toggleSelectNthSample(0);
+    await embeddings.afterEmphasisDrawn(2, () => grid.toggleSelectNthSample(0));
 
-    await embeddings.assert.emphasizes(2);
+    await embeddings.assert.hasScreenshot("sample-lights-its-patches.png");
   });
 
   test("another panel's sample selection lights those samples' patches", async ({
@@ -158,10 +158,12 @@ test.describe("across samples and patches", () => {
     await operatorsBrowser.choose("E2E: Set extended selection");
     await embeddings.openInSplit();
 
-    await embeddings.openRun(PATCHES_BRAIN_KEY, PAIR_PATCHES);
-
     // three samples, two patches each
-    await embeddings.assert.emphasizes(6);
+    await embeddings.afterEmphasisDrawn(6, () =>
+      embeddings.openRun(PATCHES_BRAIN_KEY, PAIR_PATCHES),
+    );
+
+    await embeddings.assert.hasScreenshot("another-panels-patches.png");
   });
 
   test("a samples run can color by a label-list path", async ({

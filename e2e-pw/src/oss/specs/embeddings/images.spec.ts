@@ -291,9 +291,7 @@ test.describe("on the whole dataset", () => {
     await embeddings.colorBy("cluster");
     await embeddings.assert.legendRowIsOff("a", false);
 
-    await embeddings.assert.canvasMatchesScreenshot(
-      "two-clusters-by-cluster.png",
-    );
+    await embeddings.assert.hasScreenshot("two-clusters-by-cluster.png");
   });
 });
 
@@ -313,7 +311,10 @@ test.describe("after another panel selects samples", () => {
       await operatorsBrowser.search("E2E");
       await operatorsBrowser.choose("E2E: Set extended selection");
       await embeddings.openInSplit();
-      await embeddings.openRun(BRAIN_KEY, TOTAL);
+      // The run opens onto the other panel's 3 samples, lit
+      await embeddings.afterEmphasisDrawn(3, () =>
+        embeddings.openRun(BRAIN_KEY, TOTAL),
+      );
     },
   );
 
@@ -323,7 +324,7 @@ test.describe("after another panel selects samples", () => {
   }) => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     // Focus, not scope: the plot highlights the selection and hides nothing
-    await embeddings.assert.emphasizes(3);
+    await embeddings.assert.hasScreenshot("another-panels-three.png");
     await embeddings.assert.hasDrawn(TOTAL);
   });
 
@@ -331,15 +332,17 @@ test.describe("after another panel selects samples", () => {
     embeddings,
     grid,
   }) => {
-    await embeddings.assert.emphasizes(3);
+    await embeddings.assert.hasScreenshot("another-panels-three.png");
 
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await embeddings.afterEmphasisDrawn(CLUSTER_A, () =>
+      embeddings.lasso(LEFT_HALF),
+    );
 
     // The grid shows the lasso INSTEAD of the foreign selection, so the
     // plot must light the lasso's points, not the foreign ones
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
-    await embeddings.assert.emphasizes(CLUSTER_A);
+    await embeddings.assert.hasScreenshot("left-cluster-lassoed.png");
   });
 });
 
@@ -411,13 +414,16 @@ test.describe("on a wide screen", () => {
     // The e2e plugin's operator sets a `limit(3)` view
     await operatorsBrowser.show();
     await operatorsBrowser.search("E2E");
+    const cleared = await embeddings.armEmphasisDrawn(null);
     await operatorsBrowser.choose("E2E: Set view");
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     await embeddings.assert.hasNoSelection();
-    await embeddings.assert.emphasizes("none");
     // "in view" shows only once no selection outranks it in the counter
     await embeddings.assert.hasCounter(`${TOTAL} points · 3 in view`);
+    // The view's 3 points, none of them lit
+    await cleared.received;
+    await embeddings.assert.hasScreenshot("view-of-three.png");
   });
 });
 
@@ -516,10 +522,12 @@ test.describe("on a probe point at the canvas center", () => {
     grid,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.clickCanvas(PROBE.x, PROBE.y);
+    await embeddings.afterEmphasisDrawn(1, () =>
+      embeddings.clickCanvas(PROBE.x, PROBE.y),
+    );
 
     await embeddings.assert.hasSelectionChip("1 sample");
-    await embeddings.assert.emphasizes(1);
+    await embeddings.assert.hasScreenshot("probe-clicked.png");
     await grid.assert.isEntryCountTextEqualTo("1 sample");
   });
 });

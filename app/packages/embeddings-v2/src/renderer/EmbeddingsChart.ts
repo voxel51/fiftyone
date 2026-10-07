@@ -646,30 +646,27 @@ export class EmbeddingsChart {
   }
 
   /**
-   * Readiness for hosts and tests, like the looker's `canvas-loaded`: once a
-   * frame with a new point count has DRAWN, the canvas says so. Handing the
-   * chart data is not enough — the chunk loads lazily and the camera frames
-   * on setData, so only a drawn frame proves points are visible and
-   * hit-testable where the camera put them. The emphasized count says what
-   * the frame highlights — "none" when nothing is selected, since a
-   * selection of zero points dims every point.
+   * Readiness for hosts and tests, like the looker's `canvas-loaded`: every
+   * DRAWN frame says so. Handing the chart data is not enough — the chunk
+   * loads lazily and the camera frames on setData, so only a drawn frame
+   * proves points are visible and hit-testable where the camera put them.
+   * The detail names the frame, so a wait can pick the one it needs: its
+   * point count, and how many points it emphasizes (null when nothing is
+   * selected, since a selection of zero points dims every point).
    */
   private announceDrawn(): void {
-    const emphasized = this.hasSelection
-      ? String(this.emphasizedPoints)
-      : "none";
-    if (this.canvas.getAttribute("data-emphasized-points") !== emphasized) {
-      this.canvas.setAttribute("data-emphasized-points", emphasized);
-    }
-
     const n = this.cols?.n ?? 0;
-    if (n === this.drawnPoints) return;
-    this.drawnPoints = n;
-    this.canvas.setAttribute("data-drawn-points", String(n));
+    if (n !== this.drawnPoints) {
+      this.drawnPoints = n;
+      this.canvas.setAttribute("data-drawn-points", String(n));
+    }
     this.canvas.dispatchEvent(
       new CustomEvent("embeddings-chart-drawn", {
         bubbles: true,
-        detail: { points: n },
+        detail: {
+          points: n,
+          emphasized: this.hasSelection ? this.emphasizedPoints : null,
+        },
       }),
     );
   }
