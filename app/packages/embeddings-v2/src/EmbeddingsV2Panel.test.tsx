@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EmbeddingsV2Panel from "./EmbeddingsV2Panel";
 import { fetchRunsStatus } from "./protocol";
@@ -8,6 +8,7 @@ const panel = vi.hoisted(() => ({
   openKey: null as string | null,
   runs: [] as Array<Record<string, unknown>>,
   refresh: (() => undefined) as () => void,
+  clearSelection: (() => undefined) as () => void,
 }));
 
 vi.mock("@fiftyone/state", () => ({
@@ -25,13 +26,22 @@ vi.mock("@fiftyone/operators", () => ({
   useOperatorExecutor: () => ({ execute: vi.fn() }),
 }));
 vi.mock("./extensions", () => ({ useExtensionGeneration: () => 0 }));
+vi.mock("./state", () => ({
+  useClearPublishedSelection: () => panel.clearSelection,
+}));
 vi.mock("./useClearSelectionOnClose", () => ({
   useClearSelectionOnClose: () => undefined,
 }));
 vi.mock("./useVisualizationRuns", () => ({
   useVisualizationRuns: () => ({ runs: panel.runs }),
 }));
-vi.mock("./PlotView", () => ({ default: () => <div>plot</div> }));
+vi.mock("./PlotView", () => ({
+  default: ({ onBack }: { onBack: () => void }) => (
+    <button type="button" onClick={onBack}>
+      plot
+    </button>
+  ),
+}));
 vi.mock("./RunsList", () => ({ default: () => <div>list</div> }));
 vi.mock("./protocol", () => ({ fetchRunsStatus: vi.fn() }));
 
@@ -99,5 +109,29 @@ describe("EmbeddingsV2Panel runs polling", () => {
     render(<EmbeddingsV2Panel />);
     await advance(0);
     expect(panel.refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("EmbeddingsV2Panel back", () => {
+  beforeEach(() => {
+    panel.runs = [RUN];
+    panel.clearSelection = vi.fn();
+    vi.mocked(fetchRunsStatus).mockResolvedValue([RUN]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("clears the plot's selection when going back to the runs list", () => {
+    // The runs list shows no selection, so the grid must not keep the
+    // lasso narrowing it
+    panel.openKey = "viz";
+    // Scoped to this render: the polling tests above leave theirs mounted
+    const { container } = render(<EmbeddingsV2Panel />);
+
+    fireEvent.click(within(container).getByText("plot"));
+
+    expect(panel.clearSelection).toHaveBeenCalledTimes(1);
   });
 });
