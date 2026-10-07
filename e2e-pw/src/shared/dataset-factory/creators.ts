@@ -3,7 +3,7 @@
  */
 
 import { createId } from "../utils";
-import { build } from "./build";
+import { build, type BuildVisualization } from "./build";
 import {
   frameSpecs,
   generateMedia,
@@ -78,6 +78,8 @@ const createImageDataset = async ({
   savedViews,
   staticTransforms,
   schema = {},
+  visualizations = [],
+  workspaces,
   withSampleData = () => ({}),
 }: ImageDatasetOptions) => {
   const helpers = makeHelpers();
@@ -112,6 +114,17 @@ const createImageDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
+    visualizations: visualizations.map(
+      ({ brainKey, patchesField, points }): BuildVisualization => ({
+        brainKey,
+        patchesField: patchesField ?? null,
+        slice: null,
+        points: Object.fromEntries(
+          media.map(({ _id, index }) => [_id, points(index)]),
+        ),
+      }),
+    ),
+    workspaces,
   });
 };
 
@@ -156,6 +169,7 @@ const createGroupDataset = async ({
   schema,
   slices = DEFAULT_GROUP_SLICES,
   videoOptions,
+  visualizations = [],
   withFrameData,
   withSampleData = () => ({}),
 }: GroupDatasetOptions) => {
@@ -222,6 +236,18 @@ const createGroupDataset = async ({
     promptableIndexes,
     savedViews,
     staticTransforms,
+    visualizations: visualizations.map(
+      ({ brainKey, slice, points }): BuildVisualization => ({
+        brainKey,
+        patchesField: null,
+        slice,
+        points: Object.fromEntries(
+          media
+            .filter(({ index }) => entries[index].slice.name === slice)
+            .map(({ _id, index }) => [_id, points(entries[index].groupIndex)]),
+        ),
+      }),
+    ),
   });
 };
 

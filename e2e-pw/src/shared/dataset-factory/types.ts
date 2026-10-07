@@ -298,6 +298,66 @@ export interface ImageDatasetOptions extends BaseDatasetOptions {
    * @default { fillColor: "white", width: 50, height: 50 }
    */
   imageOptions?: PerSample<ImageSpec>;
+
+  /**
+   * Visualization runs to compute, each from precomputed points. No model
+   * or reducer runs, so every point lands exactly where the spec puts it.
+   *
+   * @example
+   * visualizations: [{ brainKey: "viz", points: (index) => [index, 0] }]
+   */
+  visualizations?: VisualizationSpec[];
+
+  /**
+   * Named workspaces, each a Python expression building an `fo.Space`,
+   * saved with `dataset.save_workspace(name, <expression>)`. A spec opens
+   * one with the `workspace` URL param.
+   *
+   * @example
+   * { plot: 'fo.Space(children=[fo.Panel(type="Embeddings")])' }
+   */
+  workspaces?: { [name: string]: string };
+}
+
+/**
+ * A visualization run over samples, computed with
+ * `compute_visualization(points=...)`: one point per sample.
+ */
+export interface SampleVisualizationSpec {
+  brainKey: string;
+  // `undefined`, not `never`: an array literal mixing both kinds of run
+  // infers this member as `patchesField?: undefined`
+  patchesField?: undefined;
+  /** The low-dimensional point (2D or 3D) for the sample at `index` */
+  points: (index: number) => number[];
+}
+
+/**
+ * A visualization run over the labels of a label-list field (e.g.
+ * `Detections`): one point per label.
+ */
+export interface PatchVisualizationSpec {
+  brainKey: string;
+  /** The label-list field whose labels are the run's points */
+  patchesField: string;
+  /** One point per label of the sample at `index`, in label order */
+  points: (index: number) => number[][];
+}
+
+export type VisualizationSpec =
+  | SampleVisualizationSpec
+  | PatchVisualizationSpec;
+
+/**
+ * A visualization run over one slice of a group dataset: one point per
+ * sample of that slice.
+ */
+export interface GroupVisualizationSpec {
+  brainKey: string;
+  /** The slice whose samples the run embeds */
+  slice: string;
+  /** The point for the slice's sample in group `groupIndex` */
+  points: (groupIndex: number) => number[];
 }
 
 /**
@@ -350,6 +410,9 @@ export interface GroupDatasetOptions extends BaseDatasetOptions<GroupSampleScaff
    * @default false
    */
   sampleFrames?: boolean;
+
+  /** Visualization runs, each over one slice's samples */
+  visualizations?: GroupVisualizationSpec[];
 }
 
 /**

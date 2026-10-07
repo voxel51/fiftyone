@@ -56,6 +56,20 @@ export interface BuildOptions extends Pick<
   frames?: FrameSpec[];
   sampleFrames?: boolean;
   groupSlices?: GroupSliceConfig[];
+  visualizations?: BuildVisualization[];
+  /** Named workspaces, each a Python expression building an `fo.Space` */
+  workspaces?: { [name: string]: string };
+}
+
+/** A visualization run, with points keyed by sample id */
+export interface BuildVisualization {
+  brainKey: string;
+  /** Embed this label-list field's labels; null embeds samples */
+  patchesField: string | null;
+  /** Embed only this group slice's samples; null embeds the dataset */
+  slice: string | null;
+  /** One point per sample, or one per label (in label order) */
+  points: { [sampleId: string]: number[] | number[][] };
 }
 
 /** `ListField<ListField<FloatField>>` → `fo.ListField(fo.ListField(fo.FloatField()))`. */
@@ -96,9 +110,17 @@ export const build = (() => {
     savedViews = {},
     schema = {},
     staticTransforms = [],
+    visualizations = [],
+    workspaces = {},
   }: BuildOptions) => {
     const payload = writeToTmpFile(
-      JSON.stringify({ samples, frames, labelSchemas, staticTransforms }),
+      JSON.stringify({
+        samples,
+        frames,
+        labelSchemas,
+        staticTransforms,
+        visualizations,
+      }),
       "json",
     );
     const hasVideo =
@@ -216,6 +238,10 @@ ${Object.entries(savedViews)
   .map(([name, view]) => `dataset.save_view("${name}", ${view})`)
   .join("\n")}
 
+${Object.entries(workspaces)
+  .map(([name, space]) => `dataset.save_workspace("${name}", ${space})`)
+  .join("\n")}
+
 ${
   promptableIndexes.length
     ? `import numpy as np
@@ -233,6 +259,39 @@ for _key in ${JSON.stringify(promptableIndexes)}:
     _run_doc = dataset._doc.brain_methods[_key]
     _run_doc.config["supports_prompts"] = True
     _run_doc.save()`
+    : ""
+}
+
+${
+  visualizations.length
+    ? `import numpy as np
+import fiftyone.brain as fob
+
+# points keyed by sample (or label) id, so alignment never depends on
+# iteration order
+for _viz in payload["visualizations"]:
+    _samples = (
+        dataset.select_group_slices(_viz["slice"])
+        if _viz["slice"]
+        else dataset
+    )
+    _patches = _viz["patchesField"]
+    if _patches:
+        _points = {}
+        for _id, _label_points in _viz["points"].items():
+            _labels = _samples[_id][_patches]
+            _items = getattr(_labels, _labels._LABEL_LIST_FIELD)
+            for _label, _p in zip(_items, _label_points):
+                _points[_label.id] = np.array(_p)
+    else:
+        _points = {_id: np.array(_p) for _id, _p in _viz["points"].items()}
+
+    fob.compute_visualization(
+        _samples,
+        patches_field=_patches,
+        points=_points,
+        brain_key=_viz["brainKey"],
+    )`
     : ""
 }
 `);
