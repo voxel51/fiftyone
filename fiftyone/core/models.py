@@ -37,6 +37,7 @@ fous = fou.lazy_import("fiftyone.utils.super_gradients")
 fout = fou.lazy_import("fiftyone.utils.torch")
 foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
+foz = fou.lazy_import("fiftyone.zoo")
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,8 @@ def apply_model(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
-            model, SuperGradients model, or Lightning Flash model
+            model, SuperGradients model, Lightning Flash model, or the name of
+            a zoo model to load via :func:`fiftyone.zoo.models.load_zoo_model`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -129,6 +131,7 @@ def apply_model(
         )
 
     model = _convert_model_if_necessary(model)
+    model = _load_zoo_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -345,6 +348,13 @@ def _convert_model_if_necessary(model):
 
     if _is_super_gradients_models(model):
         return fous.convert_super_gradients_model(model)
+
+    return model
+
+
+def _load_zoo_model_if_necessary(model):
+    if etau.is_str(model):
+        return foz.load_zoo_model(model)
 
     return model
 
@@ -1051,7 +1061,8 @@ def compute_embeddings(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
-            model, SuperGradients model, or Lightning Flash model
+            model, SuperGradients model, Lightning Flash model, or the name of
+            a zoo model to load via :func:`fiftyone.zoo.models.load_zoo_model`
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
@@ -1100,6 +1111,7 @@ def compute_embeddings(
         )
 
     model = _convert_model_if_necessary(model)
+    model = _load_zoo_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -1755,7 +1767,8 @@ def compute_patch_embeddings(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
-            model, SuperGradients model, or Lightning Flash model
+            model, SuperGradients model, Lightning Flash model, or the name of
+            a zoo model to load via :func:`fiftyone.zoo.models.load_zoo_model`
         patches_field: the name of the field defining the image patches in each
             sample to embed. Must be of type
             :class:`fiftyone.core.labels.Detection`,
@@ -1808,6 +1821,7 @@ def compute_patch_embeddings(
             missing or ``None`` values to indicate uncomputable embeddings
     """
     model = _convert_model_if_necessary(model)
+    model = _load_zoo_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
