@@ -4,7 +4,9 @@ Binding for every spec, POM and App `e2e:` event. The core rule: when an
 expectation depends on product events (a load, a save, a render, a query), the
 spec runs the action through the app event it causes, then reads the result
 once. Plain component interactions use normal Playwright. CI's `e2e-events` job
-enforces these rules with `scripts/check-e2e-events.py`.
+enforces these rules, the App-side ones included, with
+`scripts/check-e2e-events.py`; the App's ESLint config also flags the App-side
+ones in the editor.
 
 ## Why not Playwright's auto-waiting
 
@@ -28,10 +30,11 @@ only a timeout when it doesn't.
   until the test passes. A strict, checkable pattern — name the cause, read
   once — is a guardrail it can follow and CI can enforce.
 
-The App dispatches an `e2e:` event wherever a spec needs to know a state has
-rendered. That instrumentation is the usual argument for polling, but an agent
-writes the component and its spec together, so the event costs a line in the
-same change. The events also document what each piece of UI considers done.
+The App dispatches an `e2e:` event wherever a spec needs to know an App
+transition has rendered. That instrumentation is the usual argument for
+polling, but an agent writes the component and its spec together, so the event
+costs a line in the same change. The events also document what each piece of UI
+considers done.
 
 ## When the event pattern applies
 
@@ -44,12 +47,20 @@ anything.
 A plain component interaction doesn't. Filling an input, clicking a button that
 opens a menu, toggling a checkbox, and checking what that component itself
 renders use normal Playwright: its auto-waiting actions and web-first
-assertions. Form-control matchers (`toHaveValue`, `toBeChecked`, `toBeFocused`,
-`toBeEnabled`, `toBeDisabled`, `toBeEditable`) need nothing more. Any other
-web-first matcher (`toBeVisible`, `toHaveText`, `toHaveCount`, ...) is the
-usual stand-in for a product event, so a component-only use says why on its
-line or the line above with `// component-only: <why>`; CI rejects it
-otherwise.
+assertions. Plain UI state (where focus lands, whether a popover or menu shows,
+the text a click puts on screen) is checked the way a user sees it, with
+visible-state and form-control matchers such as `toBeVisible` or `toBeFocused`.
+Don't add an App event for state these can see. Other web-first matchers (such
+as `toHaveCount`) are the usual stand-in for a product event, so a
+component-only use says why on its line or the line above with
+`// component-only: <why>`. The checker's retrying-matcher list is the
+authority on which matchers need the marker.
+
+Larger App transitions stay events, even when something visible follows them: a
+sample or timeline loading, a surface revealing, a save settling, a canvas
+drawing a frame, a query refilling a list. A visible-state matcher on those
+retries until the page happens to match, which is what the event pattern exists
+to avoid.
 
 ```ts
 // a plain component: normal Playwright
@@ -57,7 +68,6 @@ const search = page.getByPlaceholder("Search");
 await search.fill("cat");
 await expect(search).toHaveValue("cat");
 await menuButton.click();
-// component-only: the menu opens on click, nothing loads
 await expect(menu).toBeVisible();
 
 // product events: the filter queries the server and redraws the grid
@@ -82,20 +92,36 @@ await grid.assert.isEntryCountTextEqualTo("2 samples");
     expect(await modal.sidebar.entryText("filepath")).toBe("/data/0.png");
     ```
 
+**An event payload decides when to read, never what to assert.** A predicate on
+the payload picks which event ends the wait (the sample that loaded, the frame
+that drew, the readout reaching the step's target), and the spec then reads
+what the user sees: DOM text, or a canvas screenshot. Never `expect` on a
+payload, return one from a POM for a spec to assert, or use one as an expected
+value; that is the App grading itself, and it passes while the screen is wrong.
+Timing an event (a time budget) or counting how often it fires (a second
+loading screen, a remount) never reads a payload, so the rule doesn't apply to
+them.
+
+A mode switch (Explore to Annotate and back) remounts the modal's sidebar and
+renderer, so it always runs through the event that remount sends, never as a
+bare `await modal.sidebar.switchMode(...)`: wrap it in the modal POM's wait for
+the surface it lands on (for example `modal.afterLighterReady`). CI rejects a
+bare one.
+
 Not allowed:
 
-- loose matchers: `toContain`, `toMatch`, `toMatchObject`,
-  `toBeGreaterThan(OrEqual)`, `toBeLessThan(OrEqual)`, `toBeCloseTo`,
-  `toBeTruthy`, `toBeFalsy`, `toBeDefined`, "anything but" reads (`not.toBe`,
-  `not.toBeNull`), and substring or regex checks inside `expect(...)`
-  (`.includes(...)`, `.endsWith(...)`, `/re/.test(...)`). The one exception is
-  a named time budget (see Timing)
-- polls: `expect.poll`, `toPass`, retry loops
-- timeouts: `waitForTimeout`, explicit `timeout:` options, `setTimeout`
+- loose matchers, which accept a range of values (such as `toContain` or
+  `toBeGreaterThan`), "anything but" reads, and substring or regex checks
+  inside `expect(...)`, except a named time budget (see Timing)
+- polls (such as `expect.poll`) and retry loops
+- timeouts and sleeps (such as `waitForTimeout` or an explicit `timeout:`)
 - web-first assertions standing in for product events, such as `toHaveText` on
   a count a query fills or `toBeVisible` on a sample that loads
-- DOM waits: `waitForSelector`, `waitForFunction`, `locator.waitFor`
-- force clicks, and app code guarded by `if (isE2E())`
+- assertions on event payloads (see the event pattern above)
+- DOM waits (such as `waitForSelector`)
+- force clicks, and App code guarded on automation
+
+`scripts/check-e2e-events.py` holds the exact patterns.
 
 ## App events
 
@@ -112,24 +138,30 @@ useEffect(() => {
 ```
 
 - Use primitive payload fields only, since the test sees primitives only.
+- A payload that costs work to build (a scan over overlays, a joined string) is
+  passed as a function, `dispatch("e2e:foo:drawn", () => ({ ... }))`; the bus
+  calls it only under automation.
 - Name the state, not the action: `e2e:annotate:editing { editing }`.
-- If the state a spec needs has no event, add one where the state commits.
+- If the App transition a spec needs has no event, add one where the state
+  commits. Plain UI state needs none (see above).
+- Every `e2e:` event the App dispatches has a spec or POM listening for it; CI
+  fails on one nothing waits for, so delete it with its last listener.
+- Never guard App code on automation (such as `isE2E()`) and never dispatch a
+  DOM `CustomEvent`. CI's `e2e-events` job fails on either, and the App's
+  ESLint config flags them in the editor. The only exemptions are inside
+  `@fiftyone/events`: the bus's own automation check, and a deprecated module
+  that mirrors a closed set of bus events to the DOM events plugins used to
+  listen for. The checker pins that set, so it never grows.
 - A plugin bundles its own copy of the bus, so it sends through
   `window.__FO_EVENTS__.dispatch` instead.
 
-## Helpers (`src/shared/event-utils`)
+## Helpers
 
-- `after(event, action, predicate?)`: resolve on the event the action causes.
-- `afterAll(conditions, action)`: several events, in any order.
-- `afterSequence(events, action)`: events that arrive in order.
-- `untilState(event, holds, predicate?)`: for state the app settles into on its
-  own (no test action causes it). It reads once, then waits.
-- `recorded(event)` and `latest(events)`: read the document's event record,
-  kept from page load.
-
-POMs wrap these. For example, `modal.afterSampleLoaded(action)`,
-`grid.afterTilesDrawn(n, action)` and `episode.afterReady(file, action)`. Reuse
-them before adding new ones.
+`src/shared/event-utils` holds the waits, documented in place: `after` for the
+event an action causes, variants for several events or events in order, and
+`untilState` for state the App settles into on its own (it reads once, then
+waits). POMs wrap them (for example `modal.afterSampleLoaded(action)`); reuse a
+POM's wait before adding a new one.
 
 ## POMs
 
@@ -185,37 +217,41 @@ an event never carries a timeout.
   couple a spec to data it doesn't control.
 - Build only what the spec asserts on, and derive each expected value from the
   data the spec builds.
-- Data shared by a spec family lives beside the specs, as in
-  `detections-data.ts`.
+- Data shared by a spec family lives in a module beside the specs.
 - Check persistence the way a user would: wrap the edit in
   `modal.sidebar.annotate.afterSave(...)`, then read what the App renders in a
   fresh browser context.
 
 ## Screenshots
 
-Canvases (the looker, Lighter, 3D, video and grid tiles) draw pixels, not DOM.
-An exact screenshot is how a spec checks what a canvas draws: which overlays,
+Canvases (the looker, Lighter, 3D, video, grid tiles) draw pixels, not DOM. An
+exact screenshot is how a spec checks what a canvas draws: which overlays,
 where, in what color, at which frame. Don't stand in for it with app events
-that describe the drawing, or with window or DOM probes.
+that describe the drawing, or with window or DOM probes. SVG charts (the
+histograms) count as drawn surfaces too: their geometry is not text a user
+reads, so a screenshot is fair there.
 
-- Screenshot only canvases; check DOM with exact reads.
+- Screenshot only canvases and charts; check other DOM with exact reads.
 - A capture holds the canvas and the media drawn under it (Lighter's image is
   an `<img>`) on the surface's own background, nothing else: no DOM drawn over
   the canvas (controls, timelines, toolbars, checkboxes, arrows, tooltips,
   toasts), no page behind it, no background between canvases. The asserters
   hide that DOM for the capture and park the pointer first; never widen a
   capture to include it.
-- Capture grid tiles one at a time:
-  `grid.assert.hasTileScreenshots(name, count)` checks the exact tile count,
-  then gives each tile's canvas its own baseline in grid order (`<name>-1.png`,
-  `<name>-2.png`, ...). Never capture a grid section whole.
+- Capture grid tiles one at a time, through the grid asserter, which checks the
+  exact tile count and gives each tile its own baseline in grid order. Never
+  capture a grid section whole.
 - Take the screenshot after the event of the step it checks, one per state that
   matters.
-- Capture through a POM's screenshot asserter (`hasScreenshot`), which compares
-  exactly: `maxDiffPixelRatio: 0, threshold: 0`. Masking, cropping in other UI,
-  or loosening a threshold is not allowed.
+- Capture through a POM's screenshot asserter, which compares exactly. Masking,
+  cropping in other UI, or loosening a threshold is not allowed.
+- CI rejects every other capture. The checker's allowlist admits only the
+  canvas, media and chart asserters; a new entry needs a human reviewer's
+  approval, and an agent never adds one to get CI green.
 - Rendering is deterministic: Chromium runs at 1x, the e2e server defaults to a
-  one-color pool, and the App renders once its bundled fonts load.
+  one-color pool (a spec covering distinct default field colors sets its own
+  pool and pins the order fields ask for colors), and the App renders once its
+  bundled fonts load.
 - Record macOS baselines with `--update-snapshots`; harvest Linux baselines
   from CI (see the README).
 - Accept a new baseline only after reviewing the diff. A size change or a
@@ -224,28 +260,24 @@ that describe the drawing, or with window or DOM probes.
 ## Canvases
 
 A `SampleCanvasPom` is the only authority over a canvas in the modal: every
-input to it and every assertion on it goes through one. `modal.sampleCanvas`
-spans the modal's sample, `modal.sampleCanvas3d` the 3D viewer,
-`modal.groupSampleCanvas` a group modal's 2D pane, and
-`modal.episode.canvas(tile)` a multimodal episode surface. CI's `e2e-events`
-job fails on raw mouse input, clicks or hovers on canvas locators, and
-screenshots taken outside the asserters.
+input to it and every assertion on it goes through one. The modal POMs expose
+one per surface (for example `modal.sampleCanvas`). CI's `e2e-events` job fails
+on raw mouse input, clicks or hovers on canvas locators, and screenshots taken
+outside the asserters.
 
-- Drive the canvas only with its primitives: `move`, `movePixels`, `down`,
-  `up`, `click`, `dblclick`, `drag`, `wheel` and `press`. No `page.mouse`, no
-  `hover` or `click` on a canvas or looker locator, and no bounding-box math
-  outside the POM.
-- Assert only through its `assert`: `hasScreenshot`, `hasMediaScreenshot`,
-  `hasCursor` (or a cursor passed to `move`) and `is`. Never screenshot a
-  canvas any other way, and never compare one capture to another instead of a
-  baseline.
+- Drive the canvas only with its primitives (for example `move` or `drag`). No
+  `page.mouse`, no `hover` or `click` on a canvas or looker locator, and no
+  bounding-box math outside the POM.
+- Assert only through its `assert` (for example `hasScreenshot`). Never
+  screenshot a canvas any other way, and never compare one capture to another
+  instead of a baseline.
 - Never query canvas elements with locators or accessibility queries; the
   canvas is opaque to the DOM.
-- `hasScreenshot` parks the pointer off the canvas and waits for hover
+- The screenshot asserter parks the pointer off the canvas and waits for hover
   affordances to hide before it captures, so specs don't park it themselves.
-- Gestures live in the spec. Neither `SampleCanvasPom` nor any other POM wraps
-  a feature gesture (`drawBox`, `drawCuboid`, `clickDetectionHandle`); the spec
-  writes out the primitives, so every media type is tested the same way.
+- Gestures live in the spec. No POM wraps a feature gesture (such as drawing a
+  box); the spec writes out the primitives, so every media type is tested the
+  same way.
 
 ## When a test hangs
 
@@ -253,4 +285,9 @@ A failed or timed-out test prints "pending events": each event still expected,
 where it was armed, and the events the page sent instead. A wait that "never
 arrived" usually means the action didn't change the state (so nothing
 re-rendered) or the event fired before the wait armed (wrap the earlier action
-instead).
+instead). A wait on a page with no event bus fails at once, and one whose page
+loads a new document while it waits says so.
+
+Run local specs on macOS under `caffeinate -i`: a Mac that sleeps mid-test
+drops the App's `/events` stream, which fails the test with a false "Suspense
+re-activated" error.

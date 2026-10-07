@@ -116,6 +116,7 @@ test.describe.serial("video temporal tags", () => {
       sidebar.clickFieldCheckbox("_temporal_tags"),
     );
     expect(await grid.temporalTagMarkCount()).toBe(1);
+    const markStyle = await grid.temporalTagMarkStyle();
 
     expect(
       await (
@@ -124,12 +125,12 @@ test.describe.serial("video temporal tags", () => {
     ).toBe("1");
 
     // A reload keeps nothing client-side, so a mark that comes back was read
-    // from the tag routes.
-    // On the clip's axis, not the tags': a lane scaled to its only tag would
-    // run that tag's mark all the way to the right edge.
+    // from the tag routes. It comes back on the clip's axis, not the tags': a
+    // lane scaled to its only tag would run that tag's mark all the way to
+    // the right edge, instead of where it was drawn before the reload.
     await fiftyoneLoader.waitUntilGridVisible(page, videoDataset);
     await grid.untilTemporalTagMarks(1, CLIP_NS);
     expect(await grid.temporalTagMarkCount()).toBe(1);
-    expect(await grid.temporalTagLaneDomainNs()).toBe(CLIP_NS);
+    expect(await grid.temporalTagMarkStyle()).toBe(markStyle);
   });
 });

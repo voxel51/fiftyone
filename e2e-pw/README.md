@@ -7,6 +7,10 @@
 - Run tests directly from VSCode or from the command line with `yarn e2e`, or
   start the UI mode using `yarn e2e:ui` command. If you're using a local dev
   build, read the following section.
+- On macOS, run from the command line under `caffeinate -i` (e.g.
+  `caffeinate -i npx playwright test src/oss/specs/<spec>.spec.ts`). A Mac that
+  sleeps mid-test drops the App's `/events` stream, which fails the test with a
+  false "Suspense re-activated" error.
 - If Playwright version was upgraded, you'll need to run
   `yarn playwright install` to update the browser binaries.
 
@@ -37,7 +41,16 @@ are named `<short-description>.spec.ts`, e.g. `my-regression-test.spec.ts`.
 
 `CODING_STANDARDS.md` is binding for every spec, POM and App `e2e:` event:
 waits, POM structure, test size, datasets, canvas testing and screenshots. CI's
-`e2e-events` job enforces its rules.
+`e2e-events` job enforces its rules. In short:
+
+- An action that sets off an App transition (a load, a save, a render, a query,
+  a mode switch) runs through the `e2e:` event it causes, then the spec reads
+  the result once with an exact matcher.
+- Plain UI state (focus, a popover showing, text a click puts on screen) uses
+  Playwright's visible-state matchers (such as `toBeVisible`) instead of an
+  event.
+- An event's payload decides when to read, never what to assert: the spec
+  asserts on what the user sees, DOM text or a canvas screenshot.
 
 #### Check for flakiness
 
@@ -109,10 +122,10 @@ class MyPOMAsserter {
 1. Read [Playwright docs](https://playwright.dev/docs/test-snapshots) on this
    subject.
 2. Baseline screenshots are platform dependent. CI compares the
-   `*-chromium-linux.png` baselines rendered inside the CI container image
-   (`ghcr.io/voxel51/fiftyone-e2e`); other environments' font stacks differ by
-   pixels, so only that image's renders are canonical. To update a linux
-   baseline, harvest the render from a CI run of your PR:
+   `*-chromium-linux.png` baselines rendered inside its e2e container image
+   (see the e2e workflow); other environments' font stacks differ by pixels, so
+   only that image's renders are canonical. To update a linux baseline, harvest
+   the render from a CI run of your PR:
 
 ```
 # download the failing run's blob reports and merge them to JSON
@@ -132,10 +145,10 @@ so delete a spec's stale linux baselines to collect them all in one round.
 
 #### Creating Datasets
 
-`DatasetFactory.createDataset` is discriminated on `mediaType` (`"image"` by
-default, or `"video"`, `"3d"`, `"group"`, `"multimodal"`), generates the media
-for that kind, inserts samples directly into the underlying MongoDB collection
-for performance, and applies any additional schema fields and saved views.
+`DatasetFactory.createDataset` is discriminated on `mediaType` (an image
+dataset by default), generates the media for that kind, inserts samples
+directly into the underlying MongoDB collection for performance, and applies
+any additional schema fields and saved views.
 
 ```ts
 import { DatasetFactory } from "src/shared/dataset-factory";
@@ -148,8 +161,7 @@ await DatasetFactory.createDataset({
         ground_truth: "Detection",
         uniqueness: "FloatField",
     },
-    // Optional: customize generated image size and fill color.
-    // Defaults to { fillColor: "white", width: 50, height: 50 }.
+    // Optional: customize the generated images
     imageOptions: {
         fillColor: "#ff0000",
         width: 100,
@@ -168,63 +180,15 @@ await DatasetFactory.createDataset({
 });
 ```
 
-Every `mediaType` takes the same `schema`, `labelSchemas`, `withSampleData` and
-`savedViews` options; they differ in the media generated per sample
-(`videoOptions`, `sceneOptions`, `imageOptions` — each an object or a function
-of the sample index) and in the scaffold `withSampleData` receives. The
-`mediaType` literal narrows the accepted options, so `videoOptions` on an image
-dataset is a type error. A video dataset declares frame fields with a `frames.`
-prefix in `schema`, populates frames through `withFrameData(frame, helpers)`
-(called once per sample and frame number) and materializes frame images with
-`sampleFrames: true`. `helpers.mask(width, height)` serializes an all-ones
-numpy mask.
+The options are typed in `src/shared/dataset-factory`, documented there, and
+narrowed by `mediaType`: video frames, group slices, 3D scenes, app config and
+indexes are all declared the same way. Every attribute a sample or frame
+document carries must be declared in `schema`; seeding fails with the
+undeclared paths otherwise. Data shared by a spec family lives in a module
+beside the specs.
 
-Every attribute a `withSampleData`/`withFrameData` document carries must be
-declared in `schema`, including dynamic label attributes such as a cuboid's
-`detections.detections.location` (`"ListField<FloatField>"`) or a polyline's
-`points3d` (`"ListField<ListField<ListField<FloatField>>>"`); seeding fails
-with the undeclared paths and their inferred types otherwise.
-
-```ts
-await DatasetFactory.createDataset({
-    mediaType: "video",
-    datasetName: "my-video-dataset",
-    videoOptions: { duration: 4 },
-    schema: { "frames.detections": "Detections" },
-    withFrameData: (_, { createId }) => ({
-        detections: {
-            _cls: "Detections",
-            detections: [{ _id: createId(), _cls: "Detection", label: "cat" }],
-        },
-    }),
-    sampleFrames: true,
-});
-```
-
-Group slices may be `image`, `3d`, `point-cloud` or `video`, with per-slice
-media options that may be a function of the group index; video slices take
-`withFrameData` and `sampleFrames` too. A slice's `groupIndices` lists the
-groups that have a sample in it, for sparse groups, and group `i` has id
-`groupIndexToId(i)`. Recipes shared by a spec family (the video-annotation and
-3D seeds) live beside the specs in `src/oss/specs/annotate-*/`.
-
-A 3D sample's `sceneOptions` describe a `.fo3d` scene (PLY meshes, PCD point
-clouds and STL meshes, each with its own position, scale and material, plus the
-camera) or name a bare asset (`{ pcd: ... }` or `{ ply: ... }`). A
-`"point-cloud"` dataset holds bare `.pcd` samples. 3D and point-cloud datasets
-take `orthographicProjections` to compute grid projections.
-
-Dataset-level settings are declared too: `appConfig` (media fields, sidebar
-groups, color scheme, default visible labels), `mediaFields` (an extra
-generated image per sample, stored in a `StringField`) and `indexes`. Dates and
-non-finite floats use extended JSON in sample data: `{ $date: "..." }`,
-`{ $numberDouble: "NaN" }`. `createDataset` resolves with the inserted samples'
-`id` and `filepath`.
-
-Each sample is automatically assigned a stable, index-derived `_id` of the form
-`000000000000000000000000` (zero-padded 24-character hex). This makes it easy
-to reference samples by ID in assertions. Use the `indexToId` helper to derive
-an ID from a sample's index.
+Each sample is assigned a stable, index-derived `_id`, so assertions can name
+samples by ID. Use the `indexToId` helper to derive one from a sample's index.
 
 ```ts
 import { indexToId } from "src/shared/utils";
@@ -246,44 +210,13 @@ await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
 
 #### Canvas Testing
 
-`modal.sampleCanvas` spans the modal's sample; `modal.sampleCanvas3d`,
-`modal.groupSampleCanvas` and `modal.episode.canvas(tile)` are the same POM
-rooted at the 3D viewer, a group modal's 2D pane and an episode surface.
+Every canvas input and assertion goes through a `SampleCanvasPom`
+(`src/oss/poms/modal/sample-canvas`); the modal POMs expose one per surface.
+Its primitives and asserters are documented in place.
 
 ```ts
-// Move the pointer to a canvas-relative position (0–1 in both axes)
-await modal.sampleCanvas.move(0.5, 0.5);
-
-// Optionally, assert a cursor value change on move
-await modal.sampleCanvas.move(0.9, 0.9, "grab");
-
-// Move the pointer by a pixel offset relative to its current position
-await modal.sampleCanvas.movePixels(10, -5);
-await modal.sampleCanvas.movePixels(10, -5, "grab"); // with optional cursor assertion
-
-// Press and release the mouse button
-await modal.sampleCanvas.down();
-await modal.sampleCanvas.up();
-
-// Press a key with the canvas focused
-await modal.sampleCanvas3d.press("Enter");
-
-// Click or double-click at a position
-await modal.sampleCanvas.click(0.9, 0.9);
-await modal.sampleCanvas.dblclick(0.9, 0.9);
-
-// Assert the CSS cursor at the current pointer position
-await modal.sampleCanvas.assert.hasCursor("default");
-await modal.sampleCanvas.assert.hasCursor("nwse-resize");
-
-// Assert the canvas state via screenshot
+await modal.sampleCanvas.move(0.5, 0.5); // canvas-relative, 0–1 on both axes
 await modal.sampleCanvas.assert.hasScreenshot("my-test-state.png");
-
-// Assert the canvas type
-import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
-await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER3D);
 ```
 
 ### Known Issues

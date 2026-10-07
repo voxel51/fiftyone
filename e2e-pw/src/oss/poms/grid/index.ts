@@ -214,12 +214,9 @@ export class GridPom {
     );
   }
 
-  /** The time axis, in ns, the last drawn temporal-tag lane lays marks on */
-  async temporalTagLaneDomainNs(): Promise<number> {
-    const lanes = (await this.eventUtils.recorded(LANE_SHOWN)).filter(
-      (detail) => (detail as LaneShown).sources === "fiftyone:temporal-tags",
-    );
-    return (lanes.at(-1) as LaneShown).domainNs;
+  /** Where the only temporal-tag mark sits on its lane, as its inline style */
+  async temporalTagMarkStyle(): Promise<string | null> {
+    return this.temporalTagMarks().getAttribute("style");
   }
 
   async getEntryCountText() {

@@ -147,20 +147,6 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Resolves on the next successful PATCH to the per-sample dataset
-   * endpoint. Only for asserting on the request itself (which sample it
-   * targets); to wait for an edit to persist, use {@link afterSave}.
-   */
-  waitForPatch() {
-    return this.page.waitForResponse(
-      (resp) =>
-        resp.request().method() === "PATCH" &&
-        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
-        resp.status() < 400,
-    );
-  }
-
-  /**
    * Click the Select action button
    */
   async selectAction() {

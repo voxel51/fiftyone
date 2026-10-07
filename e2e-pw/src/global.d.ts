@@ -15,7 +15,4 @@ interface Window {
 
   /** The CSS cursor under the pointer, updated on every pointer move. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;
-
-  /** Hides the shared-session banner: the harness opens several clients. */
-  IS_PLAYWRIGHT: boolean;
 }

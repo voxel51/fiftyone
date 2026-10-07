@@ -24,7 +24,6 @@ test.beforeAll(async ({ datasetFactory, foWebServer }) => {
 test.describe.serial("index page", () => {
   test("index page", async ({ pagePom, page }) => {
     await page.addInitScript(() => {
-      window.IS_PLAYWRIGHT = true;
       // a user who has dismissed the one-time Enterprise intro and the
       // query performance toast
       window.localStorage.setItem("fiftyone-enterprise-tooltip-seen", "true");

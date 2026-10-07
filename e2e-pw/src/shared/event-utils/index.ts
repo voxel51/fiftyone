@@ -51,7 +51,7 @@ declare global {
 const recordingPages = new WeakSet<Page>();
 
 /**
- * Handle for counting occurrences of a document CustomEvent. Created by
+ * Handle for counting occurrences of an app event. Created by
  * {@link EventUtils.initCounter}; counts accumulate from document start.
  */
 export class EventCounter {
@@ -155,11 +155,11 @@ export class EventUtils {
 
   /**
    * Arm a listener for an app event (or the first of several): an
-   * `@fiftyone/events` bus event on any channel (the `e2e:` signals), or a
-   * document or window CustomEvent the app dispatches for its own use. Resolves only after the
-   * in-page listener is attached, so an event fired any time after arming is
-   * guaranteed to be observed — arm BEFORE the action that fires the event,
-   * then await the handle's `received` after it:
+   * `@fiftyone/events` bus event on any channel, an `e2e:` signal or one the
+   * App sends for its own use. Resolves only after the in-page listener is
+   * attached, so an event fired any time after arming is guaranteed to be
+   * observed — arm BEFORE the action that fires the event, then await the
+   * handle's `received` after it:
    *
    *   const armed = await eventUtils.arm("grid-mount");
    *   await actionThatRemountsGrid();
@@ -206,8 +206,11 @@ export class EventUtils {
 
     // the listener is attached in its own evaluate — not inside the promise
     // that carries the wait — so attachment is complete when `arm` returns
-    wait.recordFrom = await this.page.evaluate(
+    const armedAt = await this.page.evaluate(
       ({ names_, dispatcher_, id_ }) => {
+        if (!window.__FO_EVENTS__) {
+          return null;
+        }
         let detach = () => {};
         const deliver = (event: string, detail: unknown) => {
           // @ts-expect-error - the function is exposed at runtime
@@ -216,18 +219,8 @@ export class EventUtils {
           );
         };
 
-        // CustomEvent instances don't serialize across the boundary;
-        // forward only the detail. A document event bubbles on to window, so
-        // the window listener takes only events dispatched on window itself.
-        const onDom = (e: Event) => deliver(e.type, (e as CustomEvent).detail);
-        const onWindow = (e: Event) => e.target === window && onDom(e);
-        names_.forEach((name) => {
-          document.addEventListener(name, onDom);
-          window.addEventListener(name, onWindow);
-        });
-
         // bus payloads can hold live objects; forward only primitive fields
-        const offBus = window.__FO_EVENTS__?.tap((event, data) => {
+        const offBus = window.__FO_EVENTS__.tap((event, data) => {
           if (!names_.includes(event)) return;
           deliver(
             event,
@@ -243,11 +236,7 @@ export class EventUtils {
 
         const armed = (window.__FO_ARMED__ ??= {});
         detach = () => {
-          names_.forEach((name) => {
-            document.removeEventListener(name, onDom);
-            window.removeEventListener(name, onWindow);
-          });
-          offBus?.();
+          offBus();
           delete armed[id_];
         };
         armed[id_] = detach;
@@ -255,6 +244,14 @@ export class EventUtils {
       },
       { names_: names, dispatcher_: dispatcher.name, id_: id },
     );
+    if (armedAt === null) {
+      dispatcher.handlers.delete(id);
+      throw new Error(
+        `no event bus on this page to wait for ${names.join(" | ")} ` +
+          `(armed at ${wait.caller}); has the App loaded?`,
+      );
+    }
+    wait.recordFrom = armedAt;
     pending.set(id, wait);
 
     return new ArmedEvent(received, async () => {
@@ -345,27 +342,38 @@ export class EventUtils {
     // test's teardown navigates away before the report is written
     pending.set(id, wait);
     for (let from = 0; ; ) {
-      const record = await this.page.evaluate(
-        ({ names_, from_ }) =>
-          new Promise<{ index: number; event: string; detail: unknown }>(
-            (resolve) => {
-              const log = window.__FO_EVENT_LOG__!;
-              const find = () => {
-                for (let i = from_; i < log.records.length; i += 1) {
-                  const { event, detail } = log.records[i];
-                  if (names_.includes(event)) {
-                    log.waiters.delete(find);
-                    resolve({ index: i, event, detail });
-                    return;
+      const record = await this.page
+        .evaluate(
+          ({ names_, from_ }) =>
+            new Promise<{ index: number; event: string; detail: unknown }>(
+              (resolve) => {
+                const log = window.__FO_EVENT_LOG__!;
+                const find = () => {
+                  for (let i = from_; i < log.records.length; i += 1) {
+                    const { event, detail } = log.records[i];
+                    if (names_.includes(event)) {
+                      log.waiters.delete(find);
+                      resolve({ index: i, event, detail });
+                      return;
+                    }
                   }
-                }
-              };
-              log.waiters.add(find);
-              find();
-            },
-          ),
-        { names_: names, from_: from },
-      );
+                };
+                log.waiters.add(find);
+                find();
+              },
+            ),
+          { names_: names, from_: from },
+        )
+        .catch((error: Error) => {
+          // the wait lives in one document; a second load strands it
+          if (/Execution context was destroyed/.test(error.message)) {
+            throw new Error(
+              `the page loaded a new document while waiting for ` +
+                `${names.join(" | ")} (armed at ${wait.caller})`,
+            );
+          }
+          throw error;
+        });
       if (predicate(record)) {
         pending.delete(id);
         return result;
@@ -555,9 +563,9 @@ export class EventUtils {
   }
 
   /**
-   * Install a counter for an app event (a document CustomEvent such as
-   * `grid-mount`, or a bus event) at document start, before any application
-   * code runs, so events fired during the initial page load are observed.
+   * Install a counter for an app event (a bus event such as `grid-mount`) at
+   * document start, before any application code runs, so events fired during
+   * the initial page load are observed.
    * Create the counter BEFORE the navigation whose load it should watch; each
    * navigation starts a fresh document, resetting the records to empty.
    */
@@ -570,10 +578,6 @@ export class EventUtils {
         const records: { t: number; detail?: unknown }[] = (store[key_] = []);
         const record = (detail: unknown) =>
           records.push({ t: performance.now(), detail });
-        document.addEventListener(eventName_, (e: Event) =>
-          record((e as CustomEvent).detail),
-        );
-
         const counters = (window.__FO_BUS_COUNTERS__ ??= []);
         counters.push((event, data) => event === eventName_ && record(data));
         if (counters.length > 1) return;

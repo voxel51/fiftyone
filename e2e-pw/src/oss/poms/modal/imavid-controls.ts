@@ -6,6 +6,7 @@ export class ModalImaAsVideoControlsPom {
   readonly controls: Locator;
   readonly lookerControls: Locator;
   readonly playPauseButton: Locator;
+  readonly status: Locator;
   readonly settingsButton: Locator;
 
   private readonly modal: ModalPom;
@@ -16,6 +17,7 @@ export class ModalImaAsVideoControlsPom {
     this.controls = this.modal.locator.getByTestId("imavid-timeline-controls");
     this.lookerControls = this.modal.locator.getByTestId("looker-controls");
     this.playPauseButton = this.controls.getByTestId("imavid-playhead");
+    this.status = this.controls.getByTestId("imavid-status-indicator");
     this.settingsButton = this.lookerControls.getByTestId(
       "looker-controls-settings",
     );
@@ -45,7 +47,7 @@ export class ModalImaAsVideoControlsPom {
       "data-playhead-state",
     );
     await this.modal.eventUtils.after(
-      state === "paused" ? "play" : "pause",
+      state === "paused" ? "timeline:play" : "timeline:pause",
       () => this.playPauseButton.click(),
     );
   }
@@ -79,16 +81,11 @@ export class ModalImaAsVideoControlsPom {
       () => this.togglePlay(),
       matchBeginning,
     );
-    let landed = 0;
-    await this.modal.eventUtils.after(
-      "e2e:playback:paused",
-      () => this.togglePlay(),
-      (e) => {
-        landed = (e.detail as { frameNumber: number }).frameNumber;
-        return true;
-      },
+    await this.modal.eventUtils.after("e2e:playback:paused", () =>
+      this.togglePlay(),
     );
-    return landed;
+    // the status shows `<frame> / <total>`
+    return Number((await this.status.textContent())?.split(" / ")[0]);
   }
 
   async toggleSettings() {

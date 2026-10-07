@@ -52,6 +52,7 @@ test.describe("view bar quick search", () => {
 
     // Three matches, set through the magnifier's settings
     await viewBar.setSearchMatches(3);
+    await viewBar.assert.searchSettingsAreClosed();
 
     const input = viewBar.searchInput;
     await input.click();

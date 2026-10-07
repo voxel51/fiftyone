@@ -1,26 +1,8 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 
-/** The bar moves the keyboard a frame after an edit, then dispatches this */
-const FOCUS_PLACED = "e2e:view-bar:focus-placed";
-const STAGE_EDITOR = "e2e:view-bar:stage-editor";
+/** The code editor loads on its own after the stage editor opens */
 const EXPRESSION_MOUNTED = "e2e:view-bar:expression-mounted";
-
-/** Run `action`, resolving once a stage editor has opened or closed */
-const afterStageEditor = <T>(
-  eventUtils: EventUtils,
-  open: boolean,
-  action: () => Promise<T>,
-) =>
-  eventUtils.after(
-    STAGE_EDITOR,
-    action,
-    (e) => (e.detail as { open: boolean }).open === open,
-  );
-
-/** Whether `locator` holds the keyboard, read once */
-const isFocused = (locator: Locator) =>
-  locator.evaluate((element) => element === document.activeElement);
 
 /**
  * The view bar: a search row in the header, with the stage cards in a
@@ -43,7 +25,7 @@ export class ViewBarPom {
     this.page = page;
     this.assert = new ViewBarAsserter(this);
     this.locator = this.page.getByTestId("view-bar");
-    this.stageEditor = new StageEditorPom(page, eventUtils);
+    this.stageEditor = new StageEditorPom(page);
   }
 
   /** The stages row: the bar's second row, present while open. */
@@ -100,29 +82,27 @@ export class ViewBarPom {
     return this.page.getByTestId("view-bar-search-settings");
   }
 
-  /** Sets the search's match count through the magnifier's settings. */
+  /**
+   * Sets the search's match count through the magnifier's settings, closing
+   * them again; check they closed with `assert.searchSettingsAreClosed`
+   */
   async setSearchMatches(k: number) {
     await this.searchSettingsTrigger.click();
     await this.searchSettings.getByTestId("search-settings-k").fill(String(k));
-    await this.eventUtils.after(
-      "e2e:view-bar:search-settings",
-      () => this.searchSettingsTrigger.click(),
-      (e) => !(e.detail as { open: boolean }).open,
-    );
+    await this.searchSettingsTrigger.click();
   }
 
   /**
    * Makes the stages row visible. A bar holding stages opens it on its own;
    * an empty bar needs the toggle, which also lands the keyboard in the row
-   * a frame later. The toggle's aria-expanded reflects the open state
-   * synchronously and the row mounts in that commit, so this never races it.
+   * a frame later (check it with `assert.insertTypeaheadIsFocused`). The
+   * toggle's aria-expanded reflects the open state synchronously and the row
+   * mounts in that commit, so this never races it.
    */
   async openStages() {
     const expanded = await this.stagesToggle.getAttribute("aria-expanded");
     if (expanded !== "true") {
-      await this.eventUtils.after(FOCUS_PLACED, () =>
-        this.stagesToggle.click(),
-      );
+      await this.stagesToggle.click();
     }
   }
 
@@ -150,9 +130,7 @@ export class ViewBarPom {
    */
   async typeStage(name: string) {
     await this.page.keyboard.type(name);
-    await afterStageEditor(this.eventUtils, true, () =>
-      this.page.keyboard.press("Enter"),
-    );
+    await this.page.keyboard.press("Enter");
     return this.stageEditor;
   }
 
@@ -166,20 +144,16 @@ export class ViewBarPom {
       .last()
       .or(this.insertTypeahead)
       .click();
-    await afterStageEditor(this.eventUtils, true, () =>
-      this.page
-        .getByRole("listbox")
-        .getByRole("option", { name, exact: true })
-        .click(),
-    );
+    await this.page
+      .getByRole("listbox")
+      .getByRole("option", { name, exact: true })
+      .click();
     return this.stageEditor;
   }
 
   /** Reopens an already-applied stage's editor and returns it. */
   async editStage(index: number) {
-    await afterStageEditor(this.eventUtils, true, () =>
-      this.viewStages.nth(index).getByLabel("Edit stage").click(),
-    );
+    await this.viewStages.nth(index).getByLabel("Edit stage").click();
     return this.stageEditor;
   }
 
@@ -188,15 +162,8 @@ export class ViewBarPom {
    * expression editor has mounted too, which happens after the editor opens
    */
   async editExpressionStage(index: number) {
-    await this.eventUtils.afterAll(
-      [
-        {
-          events: STAGE_EDITOR,
-          predicate: (e) => (e.detail as { open: boolean }).open,
-        },
-        { events: EXPRESSION_MOUNTED },
-      ],
-      () => this.viewStages.nth(index).getByLabel("Edit stage").click(),
+    await this.eventUtils.after(EXPRESSION_MOUNTED, () =>
+      this.viewStages.nth(index).getByLabel("Edit stage").click(),
     );
     return this.stageEditor;
   }
@@ -215,10 +182,7 @@ export class StageEditorPom {
   readonly locator: Locator;
   readonly assert: StageEditorAsserter;
 
-  constructor(
-    page: Page,
-    private readonly eventUtils: EventUtils,
-  ) {
+  constructor(page: Page) {
     this.page = page;
     this.assert = new StageEditorAsserter(this);
     this.locator = page.getByTestId("view-stage-editor");
@@ -241,40 +205,33 @@ export class StageEditorPom {
 
   /**
    * Commits the stage from a param's input — Enter finishes AND applies,
-   * closing the editor and moving the keyboard to the next insert slot.
+   * closing the editor and moving the keyboard to the next insert slot a
+   * frame later.
    */
   async commit(param: string) {
-    await this.closing(() =>
-      this.param(param).getByRole("textbox").press("Enter"),
-    );
+    await this.param(param).getByRole("textbox").press("Enter");
   }
 
   /** Enter wherever the keyboard is in the editor: finishes and applies. */
   async finish() {
-    await this.closing(() => this.page.keyboard.press("Enter"));
-  }
-
-  /** Escape closes the editor and puts the keyboard back on its pill. */
-  async dismiss() {
-    await this.closing(() => this.page.keyboard.press("Escape"));
+    await this.page.keyboard.press("Enter");
   }
 
   /**
-   * Accept the suggestion row showing `text`, by click or by Enter; the
-   * editor puts the caret back after the completion a frame later.
+   * Escape closes the editor and puts the keyboard back on its pill a frame
+   * later (check it with `ViewBarPom.assert.stageIsFocused`)
    */
-  async acceptSuggestion(text: string, gesture: "mouse" | "keyboard") {
-    await this.eventUtils.after(FOCUS_PLACED, () =>
-      gesture === "mouse"
-        ? this.suggestions.filter({ hasText: text }).first().click()
-        : this.page.keyboard.press("Enter"),
-    );
+  async dismiss() {
+    await this.page.keyboard.press("Escape");
   }
 
-  private async closing(action: () => Promise<void>) {
-    await afterStageEditor(this.eventUtils, false, () =>
-      this.eventUtils.after(FOCUS_PLACED, action),
-    );
+  /** Accept the suggestion row showing `text`, by click or by Enter */
+  async acceptSuggestion(text: string, gesture: "mouse" | "keyboard") {
+    if (gesture === "mouse") {
+      await this.suggestions.filter({ hasText: text }).first().click();
+    } else {
+      await this.page.keyboard.press("Enter");
+    }
   }
 
   /** Picks an option in a param's picker, e.g. a field param's path. */
@@ -304,41 +261,40 @@ class ViewBarAsserter {
    * the state an opened empty stages row lands in.
    */
   async stageTypeaheadIsReady() {
-    expect(await isFocused(this.viewBar.insertTypeahead)).toBe(true);
-    expect(
-      await this.viewBar.page
-        .getByRole("listbox")
-        .getByRole("option")
-        .first()
-        .isVisible(),
-    ).toBe(true);
+    await expect(this.viewBar.insertTypeahead).toBeFocused();
+    await expect(
+      this.viewBar.page.getByRole("listbox").getByRole("option").first(),
+    ).toBeVisible();
   }
 
   /** The insert typeahead holds the keyboard. */
   async insertTypeaheadIsFocused() {
-    expect(await isFocused(this.viewBar.insertTypeahead)).toBe(true);
+    await expect(this.viewBar.insertTypeahead).toBeFocused();
   }
 
   /** The keyboard is back on the pill of the stage at `index`. */
   async stageIsFocused(index: number) {
-    expect(
-      await isFocused(
-        this.viewBar.viewStages.nth(index).getByLabel("Edit stage"),
-      ),
-    ).toBe(true);
+    await expect(
+      this.viewBar.viewStages.nth(index).getByLabel("Edit stage"),
+    ).toBeFocused();
   }
 
   async stagesRowIsHidden() {
-    expect(await this.viewBar.stagesRow.isVisible()).toBe(false);
+    await expect(this.viewBar.stagesRow).toBeHidden();
+  }
+
+  async searchSettingsAreClosed() {
+    await expect(this.viewBar.searchSettings).toBeHidden();
   }
 
   /** The history dropdown offers `query` as a previous search. */
   async searchHistoryOffers(query: string) {
-    expect(
-      await this.viewBar.searchHistory
-        .getByRole("option", { name: query, exact: true })
-        .isVisible(),
-    ).toBe(true);
+    await expect(
+      this.viewBar.searchHistory.getByRole("option", {
+        name: query,
+        exact: true,
+      }),
+    ).toBeVisible();
   }
 }
 
@@ -346,11 +302,18 @@ class StageEditorAsserter {
   constructor(private readonly editor: StageEditorPom) {}
 
   async isOpen() {
-    expect(await this.editor.locator.isVisible()).toBe(true);
+    await expect(this.editor.locator).toBeVisible();
   }
 
   async isClosed() {
-    expect(await this.editor.locator.isVisible()).toBe(false);
+    await expect(this.editor.locator).toBeHidden();
+  }
+
+  /** The expression editor offers a suggestion row showing `text` */
+  async offersSuggestion(text: string) {
+    await expect(
+      this.editor.suggestions.filter({ hasText: text }).first(),
+    ).toBeVisible();
   }
 
   /** The value a control is showing, whatever kind of control it is. */
@@ -394,8 +357,6 @@ class StageEditorAsserter {
 
   /** The control for `param` holds the keyboard. */
   async paramIsFocused(param: string) {
-    expect(await isFocused(this.editor.param(param).getByRole("textbox"))).toBe(
-      true,
-    );
+    await expect(this.editor.param(param).getByRole("textbox")).toBeFocused();
   }
 }

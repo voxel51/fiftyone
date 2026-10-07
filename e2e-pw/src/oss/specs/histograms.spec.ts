@@ -1,4 +1,4 @@
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -61,11 +61,9 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test("histograms panel", async ({ histogram, panel }) => {
-  const boolBars = await histogram.afterLoad(
-    () => panel.open("Histograms"),
-    "bool",
-  );
-  expect(boolBars).toBe(`True:${NUM_SAMPLES / 2} False:${NUM_SAMPLES / 2}`);
+  // bool: half True, half False
+  await histogram.afterLoad(() => panel.open("Histograms"), "bool");
+  await histogram.assert.hasScreenshot("bool", "histogram-bool.png");
 
   await histogram.assert.verifyField("bool");
 
@@ -99,10 +97,8 @@ test("histograms panel", async ({ histogram, panel }) => {
   ]);
   await histogram.selector.closeResults();
 
-  // float = i / 2 for i in 0..9, across 25 bins of width 0.18 on [0, 4.5]
-  expect(await histogram.selectField("float")).toBe(
-    "0.09:1 0.27:0 0.45:1 0.63:0 0.81:0 0.99:1 1.17:0 1.35:0 1.53:1 1.71:0 " +
-      "1.89:0 2.07:1 2.25:0 2.43:1 2.61:0 2.79:0 2.97:1 3.15:0 3.33:0 3.51:1 " +
-      "3.69:0 3.87:0 4.05:1 4.23:0 4.41:1",
-  );
+  // float = i / 2 for i in 0..9, across 25 bins of width 0.18 on [0, 4.5]:
+  // one sample in each of bins 0, 2, 5, 8, 11, 13, 16, 19, 22 and 24
+  await histogram.selectField("float");
+  await histogram.assert.hasScreenshot("float", "histogram-float.png");
 });

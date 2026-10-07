@@ -84,14 +84,14 @@ test.describe("view bar keyboard", () => {
 
     // Type to filter, Enter inserts (typed text is the intent Enter needs)
     const skip = await viewBar.typeStage("Skip");
-    await skip.assert.isOpen();
+    await skip.assert.paramIsFocused("skip");
     await page.keyboard.type("2");
     // Enter commits AND applies the stage; the keyboard lands in the next
     // insert slot's typeahead, where the second stage begins
     await grid.afterEntryCounts(() => grid.run(() => skip.finish()));
     await viewBar.assert.insertTypeaheadIsFocused();
     const limit = await viewBar.typeStage("Limit");
-    await limit.assert.isOpen();
+    await limit.assert.paramIsFocused("limit");
     await page.keyboard.type("3");
     await grid.afterEntryCounts(() => grid.run(() => limit.finish()));
 
@@ -176,16 +176,23 @@ test.describe("view bar keyboard", () => {
     // what it needs, and the row keeps its slots on either side of it
     await editor.dismiss();
     await editor.assert.isClosed();
+    // the dismissal puts the keyboard back on the pill a frame later; move
+    // it only once it has landed
+    await viewBar.assert.stageIsFocused(0);
 
     const slots = viewBar.stagesRow.getByLabel("Insert stage");
-    const holdsKeyboard = (slot: typeof slots) =>
-      slot.evaluate((el) => el === document.activeElement);
     await slots.first().focus();
-    expect(await holdsKeyboard(slots.first())).toBe(true);
+    await expect(slots.first()).toBeFocused();
 
     // Forward: through the stage's own controls, ending on the last slot
+    const stops = [
+      "Edit stage",
+      "Limit API documentation",
+      "Remove stage",
+      "Insert stage",
+    ];
     const forward: string[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < stops.length; i++) {
       await page.keyboard.press("Tab");
       forward.push(
         await page.evaluate(
@@ -196,22 +203,15 @@ test.describe("view bar keyboard", () => {
             "",
         ),
       );
-      if (await holdsKeyboard(slots.last())) break;
     }
-    expect(forward).toEqual([
-      "Edit stage",
-      "Limit API documentation",
-      "Remove stage",
-      "Insert stage",
-    ]);
-    expect(await holdsKeyboard(slots.last())).toBe(true);
+    expect(forward).toEqual(stops);
+    await expect(slots.last()).toBeFocused();
 
     // Backward returns through the same stops to the first slot
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < stops.length; i++) {
       await page.keyboard.press("Shift+Tab");
-      if (await holdsKeyboard(slots.first())) break;
     }
-    expect(await holdsKeyboard(slots.first())).toBe(true);
+    await expect(slots.first()).toBeFocused();
   });
 
   //
@@ -258,6 +258,7 @@ test.describe("view bar keyboard", () => {
     page,
   }) => {
     const editor = await viewBar.addStage("Limit");
+    await editor.assert.paramIsFocused("limit");
 
     await page.keyboard.press("Enter");
 

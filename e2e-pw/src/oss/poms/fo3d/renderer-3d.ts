@@ -1,4 +1,4 @@
-import { Page } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 
 export type CameraPosition = [number, number, number];
@@ -40,20 +40,45 @@ export function positionsAreClose(
 }
 
 export class Renderer3dPom {
+  readonly modalLookerContainer: Locator;
+  readonly statusBar: Locator;
+  readonly statusBarToggle: Locator;
+  readonly statusBarClose: Locator;
+  readonly statusBarCameraPosition: Locator;
+
   constructor(
     private readonly page: Page,
     private readonly eventUtils: EventUtils,
-  ) {}
+  ) {
+    this.modalLookerContainer = this.page.getByTestId("modal-looker-container");
+    this.statusBar =
+      this.modalLookerContainer.getByTestId("looker3d-statusbar");
+    this.statusBarToggle = this.modalLookerContainer.getByTestId(
+      "looker3d-statusbar-toggle",
+    );
+    this.statusBarClose = this.modalLookerContainer.getByTestId(
+      "looker3d-statusbar-close",
+    );
+    this.statusBarCameraPosition = this.modalLookerContainer.getByTestId(
+      "looker3d-statusbar-camera-position",
+    );
+  }
 
-  /** The camera position the canvas last rendered (the status bar lags it). */
+  /**
+   * The camera position the status bar shows. An open status bar trails a
+   * moving camera by a frame, so each read opens it afresh, reads the
+   * position it shows as it opens, and closes it again.
+   */
   async getCameraPosition(): Promise<CameraPosition> {
-    const position = (await this.eventUtils.latest([CAMERA_POSITION]))[
-      CAMERA_POSITION
-    ];
-    if (!position) {
-      throw new Error("no 3D camera has rendered on the page");
+    if (await this.statusBar.isVisible()) {
+      await this.statusBarClose.click();
     }
-    return [position.x, position.y, position.z] as CameraPosition;
+    await this.eventUtils.after(CAMERA_POSITION, () =>
+      this.statusBarToggle.click(),
+    );
+    const text = await this.statusBarCameraPosition.textContent();
+    await this.statusBarClose.click();
+    return parseCameraPosition(text ?? "");
   }
 
   /**
@@ -84,4 +109,12 @@ export class Renderer3dPom {
       localStorage.removeItem(`${name}-fo3d-camera-position`);
     }, datasetName);
   }
+}
+
+function parseCameraPosition(text: string): CameraPosition {
+  const match = /^(-?\d+\.\d{2}), (-?\d+\.\d{2}), (-?\d+\.\d{2})$/.exec(text);
+  if (!match) {
+    throw new Error(`the status bar shows no camera position: "${text}"`);
+  }
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
 }

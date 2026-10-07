@@ -84,8 +84,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
       document.addEventListener("global-loading-screen", () => {
         window.__FO_GLOBAL_LOADING_SCREEN__?.(documentId);
       });
-
-      window.IS_PLAYWRIGHT = true;
     });
 
     const forceDatasetFromSelector = async () => {

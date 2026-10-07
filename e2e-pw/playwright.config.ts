@@ -11,7 +11,8 @@ export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
   // The slowest legitimate test is ~30s; a tight cap bounds what a hung
-  // test can burn across retries. Slow specs set their own timeout.
+  // test can burn across retries. Every test runs under it: split a slow
+  // test rather than raising its timeout.
   timeout: Duration.Seconds(90),
 
   /* Run tests in files in parallel */

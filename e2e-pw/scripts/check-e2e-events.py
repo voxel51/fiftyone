@@ -16,14 +16,14 @@ APP = os.path.join(ROOT, "app", "packages")
 
 # web-first matchers that usually stand in for product events (a query's
 # count, a loaded sample); a plain component use carries `// component-only:`.
-# Form-control state (toHaveValue, toBeChecked, toBeFocused, toBeEnabled,
-# toBeDisabled, toBeEditable) is never filled by a product event, so it is
-# allowed without a marker.
+# Visible-state matchers on plain UI (toBeVisible, toBeHidden, toBeFocused,
+# toHaveText) and form-control state (toHaveValue, toBeChecked, toBeEnabled,
+# toBeDisabled, toBeEditable) are allowed without a marker; whether one stands
+# in for a product event is a review call.
 RETRYING = (
-    "BeVisible|BeHidden|HaveText|ContainText|HaveCount|HaveAttribute|"
+    "ContainText|HaveCount|HaveAttribute|"
     "HaveClass|HaveCSS|BeAttached|HaveId|BeEmpty|BeInViewport|HaveJSProperty|"
-    "HaveAccessibleName|HaveAccessibleDescription|HaveRole|HaveURL|HaveTitle|"
-    "HaveScreenshot"
+    "HaveAccessibleName|HaveAccessibleDescription|HaveRole|HaveURL|HaveTitle"
 )
 COMPONENT_ONLY = "// component-only:"
 
@@ -96,7 +96,10 @@ E2E_RULES = [
     # a mode switch remounts the modal's sidebar and renderer: run it through
     # the event that remount sends
     ("bare-mode-switch", re.compile(r"(?m)^\s*await [\w.]+\.switchMode\(")),
-    ("raw-screenshot", re.compile(r"\.screenshot\(|\.toMatchSnapshot\(")),
+    (
+        "raw-screenshot",
+        re.compile(r"\.screenshot\(|\.toMatchSnapshot\(|\.toHaveScreenshot\("),
+    ),
     ("direct-expect-screenshot", re.compile(r"\bexpectScreenshot\(")),
     (
         "retry-loop",
@@ -106,59 +109,83 @@ E2E_RULES = [
     ),
 ]
 
+# files whose matches are infrastructure, not waits in the page
+# App code sends events on the @fiftyone/events bus and never branches on
+# browser automation; the App ESLint config flags the same for editors
 APP_RULES = [
-    # test signals are e2e: bus events, not DOM CustomEvents
     ("app-custom-event", re.compile(r"new CustomEvent\(")),
-    # app code never branches on automation: e2e: events are dispatched
-    # unconditionally and the bus drops them outside it
     (
         "app-e2e-guard",
         re.compile(r"\bisE2E\b|\bIS_PLAYWRIGHT\b|navigator\.webdriver"),
     ),
 ]
+# App unit tests stand in for the App's events and the automation flag
+APP_SKIP = re.compile(r"/(node_modules|dist|__generated__)/|\.test\.tsx?$")
 
-# files whose matches are infrastructure, not waits in the page
 E2E_SKIP = re.compile(
     # test plugin sources run inside the App; their timers are not test waits
     r"(shared/network-utils/|shared/media-factory/|oss/fixtures/fo-server\.ts|shared/python-runner/|shared/assets/plugins/)"
 )
 
-# accepted sites, as "relative/path:substring of the matched text" -> reason.
-# app-custom-event entries must name the app code that listens (a test-only
-# CustomEvent is never allowed: it becomes an e2e: bus event).
+# accepted sites, as "relative/path:substring of the matched text" -> reason
 ALLOW = {
-    "app/packages/utilities/src/e2e.ts:isE2E": "defines isE2E() for the event bus below",
-    "app/packages/utilities/src/e2e.ts:navigator.webdriver": "defines isE2E() for the event bus below",
+    "app/packages/events/src/dispatch/legacyDomEvents.ts:new CustomEvent(": "deprecated plugin compatibility: mirrors the closed LEGACY_DOM_EVENTS list below to the DOM events main sent",
     "app/packages/events/src/dispatch/dispatcher.ts:isE2E": "the bus itself: drops e2e: events outside automation",
-    "app/packages/events/src/dispatch/registry.ts:isE2E": "the bus itself: exposes __FO_EVENTS__ for the harness to tap only under automation",
-    "app/packages/app/src/components/SharedSessionBanner.tsx:IS_PLAYWRIGHT": "environment, like the polling and no-state exclusions beside it: the harness runs several clients against one server on purpose, which the banner would report",
-    "app/packages/app/src/vite-env.d.ts:IS_PLAYWRIGHT": "the type of the SharedSessionBanner flag above",
-    "app/packages/core/src/components/Grid/GridCustomRendererItem.tsx:new CustomEvent(": "item events (refresh, selectthumbnail); Grid/useRenderer.ts listens via item.addEventListener",
-    "app/packages/core/src/components/Grid/useEvents.ts:new CustomEvent(": "grid-mount; Grid/useResize.ts listens (document.addEventListener) to sync the grid width",
-    "app/packages/core/src/components/Modal/TooltipInfo.tsx:new CustomEvent(": "fo-hide-label-change; TooltipInfo.tsx itself listens (window.addEventListener) to refresh hidden labels",
-    "app/packages/core/src/components/Modal/VideoTimelineSurface.tsx:new CustomEvent(": "dead file, removed in its own PR",
-    "app/packages/core/src/components/Sidebar/InteractiveSidebar/InteractiveSidebar.tsx:new CustomEvent(": "animation-onRest; InteractiveSidebar/useRegisterSidebarCommandHandlers.ts listens",
-    "app/packages/core/src/plugins/SchemaIO/components/FrameLoaderView.tsx:new CustomEvent(": "frames-loaded; FrameLoaderView.tsx itself listens (window.addEventListener)",
-    "app/packages/looker-3d/src/action-bar/index.tsx:new CustomEvent(": "fo-action-set-top/ego-view; hooks/use-fo3d-camera-view-events.ts listens (useEventHandler on window)",
-    "app/packages/looker-3d/src/hooks/use-camera-views.ts:new CustomEvent(": "fo-action-set-top/ego-view and zoom-to-selected; use-fo3d-camera-view-events.ts and use-fo3d-interaction-lifecycle.ts listen",
-    "app/packages/looker-3d/src/hooks/use-fo3d-camera-look-at.ts:new CustomEvent(": "looker3d-camera-look-at-settled; Looker3d.tsx listens (document.addEventListener)",
-    "app/packages/looker/src/lookers/abstract.ts:new CustomEvent(": "looker events (play, pause, select, clear, ...); Modal/ImaVidLooker.tsx, Modal/useLookerPlaybackBridge.ts and Actions/Tag listen via useEventHandler(looker, ...)",
-    "app/packages/looker/src/lookers/imavid/controller.ts:new CustomEvent(": "fetchMore; core Modal/ImaVidLooker.tsx listens (fetchMoreListener)",
-    "app/packages/playback/src/lib/timeline/use-timeline.ts:new CustomEvent(": "play/pause; timeline/use-create-timeline.ts listens (useEventHandler on window)",
-    "app/packages/playback/src/lib/timeline/utils.ts:new CustomEvent(": "set-frame-number; timeline/use-create-timeline.ts listens",
-    "e2e-pw/src/oss/poms/modal/annotate-sidebar.ts:waitForResponse(": "waitForPatch: the grouped-video specs assert which sample the PATCH URL targets, so the request itself is the subject; saves wait on afterSave",
+    "app/packages/events/src/dispatch/dispatcher.ts:navigator.webdriver": "the bus's automation check",
+    "app/packages/events/src/dispatch/registry.ts:isE2E": "the bus itself: exposes its tap only under automation",
     "e2e-pw/src/shared/dataset-factory/build.ts:fo.Dataset(": "the factory itself creates the dataset",
     "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:.mouse.": "the sample canvas POM: its primitives are the only pointer input to the canvas",
     "e2e-pw/src/oss/poms/modal/sample-canvas/index.ts:expectScreenshot(": "the sample canvas asserter",
     "e2e-pw/src/oss/poms/grid/index.ts:expectScreenshot(": "the grid asserter: each tile's canvas, in grid order",
+    "e2e-pw/src/oss/poms/panels/histogram-panel.ts:expectScreenshot(": "the histogram asserter: the chart's SVG",
     "e2e-pw/src/oss/utils/screenshot.ts:screenshot(": "the capture under the POM asserters",
     "e2e-pw/src/oss/utils/screenshot.ts:toMatchSnapshot(": "the exact comparison under the POM asserters",
     "e2e-pw/src/oss/poms/modal/video-annotate.ts:.mouse.": "drags on the timeline's DOM (tag range overlay, interval resize handle), not the canvas",
     "e2e-pw/src/oss/poms/multimodal/episode.ts:.mouse.": "seeks and scrubs on the episode timeline's DOM, not a canvas",
-    "e2e-pw/src/oss/poms/fo3d/assets-panel/index.ts:.mouse.": "drags a leva slider, which is DOM",
     "e2e-pw/src/oss/poms/modal/index.ts:looker.click(": "a group carousel thumbnail, which navigates like a grid tile; not the sample canvas",
-    "app/packages/playback/src/views/Timeline/Timeline.tsx:new CustomEvent(": "seek; timeline/use-create-timeline.ts listens (useEventHandler on window)",
 }
+
+
+# The DOM events the App still sends for plugins, as main sent them. The
+# compatibility module may mirror exactly these; a new name is a new DOM event,
+# which App code must not add, so changing this set needs a reviewer.
+LEGACY_DOM_EVENTS_FILE = os.path.join(
+    ROOT, "app", "packages", "events", "src", "dispatch", "legacyDomEvents.ts"
+)
+LEGACY_DOM_EVENTS = {
+    "play",
+    "pause",
+    "seek",
+    "set-frame-number-",
+    "fetchMore",
+    "fo-hide-label-change",
+    "frames-loaded",
+    "fo-action-set-top-view",
+    "fo-action-set-ego-view",
+    "fo-action-zoom-to-selected",
+    "grid-mount",
+    "looker3d-camera-look-at-settled",
+    "animation-onRest",
+}
+
+
+def legacy_dom_events():
+    """The compatibility module's mirrored names must be the pinned set"""
+    src = strip_comments(open(LEGACY_DOM_EVENTS_FILE).read())
+    names = re.findall(r"""\bname:\s*["']([^"']+)["']""", src)
+    rel = os.path.relpath(LEGACY_DOM_EVENTS_FILE, ROOT)
+    found = []
+    for name in sorted(set(names) - LEGACY_DOM_EVENTS):
+        found.append(
+            (rel, 1, "legacy-dom-event", f"{name}: not a DOM event main sent")
+        )
+    for name in sorted(LEGACY_DOM_EVENTS - set(names)):
+        found.append(
+            (rel, 1, "legacy-dom-event", f"{name}: pinned but not mirrored")
+        )
+    if len(names) != len(set(names)):
+        found.append((rel, 1, "legacy-dom-event", "a name is listed twice"))
+    return found
 
 
 def strip_comments(src: str) -> str:
@@ -180,8 +207,6 @@ def scan(files, rules, skip=None):
     found = []
     for path in files:
         if skip and skip.search(path):
-            continue
-        if re.search(r"\.(test|spec)\.tsx?$", path) and rules is APP_RULES:
             continue
         # unit tests of e2e helpers assert on helper internals, not the App
         if re.search(r"\.test\.ts$", path):
@@ -208,15 +233,53 @@ def scan(files, rules, skip=None):
     return found
 
 
+EVENT_NAME = re.compile(r"""["'`](e2e:[\w:-]+)["'`]""")
+# a name built from a prefix, as in `e2e:multimodal:${event}`
+EVENT_PREFIX = re.compile(r"`(e2e:[\w:-]*)\$\{")
+STRING = re.compile(r"""["']([\w-]+)["']""")
+
+
+def unused_app_events(e2e_files):
+    """`e2e:` events the App names that no spec, POM or fixture listens for"""
+    listened = set()
+    for path in e2e_files:
+        src = strip_comments(open(path).read())
+        listened.update(EVENT_NAME.findall(src))
+        for prefix in EVENT_PREFIX.findall(src):
+            listened.update(prefix + name for name in STRING.findall(src))
+
+    found = []
+    app_files = glob.glob(os.path.join(APP, "**", "*.ts*"), recursive=True)
+    for path in sorted(app_files):
+        if re.search(
+            r"/(node_modules|dist|__generated__)/|\.test\.tsx?$", path
+        ):
+            continue
+        raw = open(path).read()
+        src = strip_comments(raw)
+        for m in EVENT_NAME.finditer(src):
+            if m.group(1) in listened:
+                continue
+            line = src.count("\n", 0, m.start()) + 1
+            found.append(
+                (
+                    os.path.relpath(path, ROOT),
+                    line,
+                    "unused-app-event",
+                    f"{m.group(1)}: no spec or POM waits for it; delete it",
+                )
+            )
+    return found
+
+
 e2e_files = glob.glob(os.path.join(E2E, "**", "*.ts"), recursive=True)
-app_files = [
-    f
-    for f in glob.glob(os.path.join(APP, "**", "*.ts*"), recursive=True)
-    if "/node_modules/" not in f
-    and "/__generated__/" not in f
-    and "/dist/" not in f
-]
-findings = scan(e2e_files, E2E_RULES, E2E_SKIP) + scan(app_files, APP_RULES)
+app_files = glob.glob(os.path.join(APP, "**", "*.ts*"), recursive=True)
+findings = (
+    scan(e2e_files, E2E_RULES, E2E_SKIP)
+    + scan(app_files, APP_RULES, APP_SKIP)
+    + unused_app_events(e2e_files)
+    + legacy_dom_events()
+)
 
 by_rule = {}
 for rel, line, name, text in sorted(findings):
@@ -230,8 +293,9 @@ if findings:
     print(
         "Run product-event actions through the e2e: event they cause, read"
         " the result once with an exact matcher (a time budget carries"
-        " `// time-budget: <why>`), mark plain component assertions"
-        " `// component-only: <why>`, and dispatch e2e: events without guards;"
-        " see e2e-pw/CODING_STANDARDS.md"
+        " `// time-budget: <why>`), mark other web-first matchers on plain"
+        " components `// component-only: <why>`, delete App e2e: events"
+        " nothing waits for, and in App code send events on the bus without"
+        " automation guards; see e2e-pw/CODING_STANDARDS.md"
     )
 sys.exit(1 if findings else 0)

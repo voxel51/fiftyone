@@ -9,20 +9,16 @@
  * the PATCH be checked against its slice, and the dataset is re-seeded per
  * test.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { Browser, expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { DatasetFactory, JSONObject } from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
 import { createId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-video");
-const videoId = "000000000000000000000000";
-const imageId = "000000000000000000000001";
-
-/** The sample a `/dataset/<id>/sample/<sample id>[/...]` PATCH targets */
-const patchedSampleId = (url: string) =>
-  new URL(url).pathname.split("/sample/")[1].split("/")[0];
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
@@ -184,6 +180,31 @@ const enterVideoAnnotate = async (grid: GridPom, modal: ModalPom) => {
   );
 };
 
+/**
+ * Enter annotate on the video slice in a brand-new browser context, which
+ * reads only what the server stored, and run `verify` there. The session's
+ * open modal would carry over to the new page, so `modal` closes first.
+ */
+const inFreshContext = async (
+  browser: Browser,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  modal: ModalPom,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  await modal.close();
+  const context = await browser.newContext();
+  const freshPage = await context.newPage();
+  try {
+    const eventUtils = new EventUtils(freshPage);
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+    const freshModal = new ModalPom(freshPage, eventUtils);
+    await enterVideoAnnotate(new GridPom(freshPage, eventUtils), freshModal);
+    await verify(freshModal);
+  } finally {
+    await context.close();
+  }
+};
+
 test.describe.serial("grouped video annotation", () => {
   test("the video slice mounts the video annotation surface", async ({
     grid,
@@ -241,13 +262,16 @@ test.describe.serial("grouped video annotation", () => {
   });
 
   test("editing on the video slice writes to the video sample", async ({
+    browser,
+    fiftyoneLoader,
     grid,
     modal,
     page,
   }) => {
     // the sample-scope guard: selecting + editing a track on a grouped video
     // slice drives the exact path that regressed (surface actions resolving the
-    // sample), and the autosave must PATCH the VIDEO sample — not the image one.
+    // sample), and the autosave must store the edit on the VIDEO sample — not
+    // the image one.
     const pageErrors: string[] = [];
     page.on("pageerror", (e) => pageErrors.push(e.message));
 
@@ -258,18 +282,23 @@ test.describe.serial("grouped video annotation", () => {
     // the editor opened => select() didn't throw resolving its sample scope
     await modal.sidebar.edit.assert.isOpen();
 
-    const patch = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.setFieldValue("position.x", "0.5");
-    const response = await patch;
-
-    // scoped to the video sample
-    expect(patchedSampleId(response.url())).toBe(videoId);
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.5"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     expect(pageErrors).toEqual([]);
+
+    // stored on the video sample: a fresh context shows it on the video slice
+    await inFreshContext(browser, fiftyoneLoader, modal, async (fresh) => {
+      await fresh.videoAnnotate.selectLabel("vehicle");
+      await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
+    });
   });
 
   test("editing on the image slice writes to the image sample", async ({
+    browser,
+    fiftyoneLoader,
     grid,
     modal,
   }) => {
@@ -283,11 +312,17 @@ test.describe.serial("grouped video annotation", () => {
     await modal.videoAnnotate.selectLabel("vehicle");
     await modal.sidebar.edit.assert.isOpen();
 
-    const patch = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.setFieldValue("position.x", "0.5");
-    const response = await patch;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.5"),
+    );
 
-    // scoped to the image sample
-    expect(patchedSampleId(response.url())).toBe(imageId);
+    // stored on the image sample: a fresh context shows it on the image slice
+    await inFreshContext(browser, fiftyoneLoader, modal, async (fresh) => {
+      await fresh.afterLighterReady(() =>
+        fresh.sidebar.annotate.selectAnnotationSlice("image"),
+      );
+      await fresh.videoAnnotate.selectLabel("vehicle");
+      await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
+    });
   });
 });

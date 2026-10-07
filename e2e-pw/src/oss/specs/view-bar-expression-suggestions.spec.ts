@@ -1,4 +1,4 @@
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import type { Page } from "src/oss/fixtures";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -58,14 +58,12 @@ const completeFieldAndExpectOperators = async (
   await filter.locator(".monaco-editor").click();
   await page.keyboard.type('F("l');
 
-  expect(await editor.suggestions.first().isVisible()).toBe(true);
+  await editor.assert.offersSuggestion("label");
   await editor.acceptSuggestion("label", accept);
 
   // the completed receiver should immediately offer operators
+  await editor.assert.offersSuggestion("==");
   await editor.assert.paramText("filter", 'F("label")');
-  expect(
-    await editor.suggestions.filter({ hasText: "==" }).first().isVisible(),
-  ).toBe(true);
 };
 
 test("operator suggestions follow a mouse-completed field", async ({

@@ -5,7 +5,6 @@ import { MediaFactory } from "src/shared/media-factory";
 import { reserveWorkerPort } from "src/shared/network-utils/port";
 import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
-import { AggregationWatcher } from "./aggregation-watcher";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
 
@@ -23,7 +22,6 @@ export type CustomFixturesWithoutPage = {
 // these fixtures have access to the {page} fixture
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
-  aggregationWatcher: AggregationWatcher;
   /**
    * Installs a deterministic mock SAM2 worker via `page.addInitScript` so
    * the page's `BrowserAnnotationProvider` constructs the mock instead of
@@ -114,9 +112,6 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
         });
       }
     }
-  },
-  aggregationWatcher: async ({ page }, use) => {
-    await use(new AggregationWatcher(page));
   },
   mockSam2Worker: async ({ page }, use) => {
     await installSam2MockWorker(page);

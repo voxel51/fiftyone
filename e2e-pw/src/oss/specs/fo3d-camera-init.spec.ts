@@ -14,6 +14,9 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
  * sources, and that the camera position persists across sample navigations and explore/annotate mode changes.
  */
 
+/** The status bar shows each coordinate to 2 places */
+const STATUS_BAR_PRECISION = 0.01;
+
 /** The default fallback camera position when no other source is available. */
 const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 5, -5];
 
@@ -142,7 +145,13 @@ test.describe.skip("camera initialization", () => {
 
     const cameraBefore = await renderer3d.getCameraPosition();
     const saved = await renderer3d.getSavedCameraState(basicDatasetName);
-    expect(saved?.position).toEqual(cameraBefore);
+    expect(
+      positionsAreClose(
+        saved?.position as [number, number, number],
+        cameraBefore,
+        STATUS_BAR_PRECISION,
+      ),
+    ).toBe(true);
 
     // Navigate to next sample, then come back
     await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
@@ -278,6 +287,12 @@ test.describe.skip("camera initialization", () => {
       `Expected camera to have moved from ${initialPosition}, but it's still at ${newPosition}`,
     ).toBe(false);
 
-    expect(savedState?.position).toEqual(newPosition);
+    expect(
+      positionsAreClose(
+        savedState?.position as [number, number, number],
+        newPosition,
+        STATUS_BAR_PRECISION,
+      ),
+    ).toBe(true);
   });
 });
