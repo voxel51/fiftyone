@@ -59,12 +59,8 @@ export const __unsafeAnnotationSurfaceAtom = atom<AnnotationSurface | null>(
   null as AnnotationSurface | null,
 );
 
-/**
- * Whether the modal video timeline reads in frame numbers ("configured") or
- * elapsed time ("duration"). Surfaces remount their playback provider per
- * sample, so the user's choice is held here and seeds each new mount.
- */
-export type VideoTimelineDisplay = "configured" | "duration";
+/** Whether the modal video timeline reads in frame numbers or elapsed time. */
+export type VideoTimelineDisplay = "frames" | "time";
 
 export const __unsafeVideoTimelineDisplayAtom =
-  atom<VideoTimelineDisplay>("duration");
+  atom<VideoTimelineDisplay>("time");

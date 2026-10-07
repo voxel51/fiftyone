@@ -3,7 +3,7 @@ export * from "./dynamicGroups";
 export * from "./use-active-modal-sample-value";
 
 import type { Schema } from "@fiftyone/utilities";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useRecoilState,
@@ -215,13 +215,29 @@ export const useModalMediaPath = (): string | null => {
 
 /**
  * The modal video timeline's frame-number vs. elapsed-time choice, shaped for
- * `PlaybackProvider`'s `defaultDisplay` and `onDisplayChange`.
+ * `PlaybackProvider`'s `defaultDisplay` and `onDisplayChange`. The video
+ * surfaces configure the provider in frame numbers, so its "configured"
+ * display is frames.
+ *
+ * The provider reads `defaultDisplay` only at mount and surfaces remount per
+ * sample, so the value is read without subscribing: a toggle doesn't
+ * re-render the surface.
  */
 export const useVideoTimelineDisplay = () => {
-  const [defaultDisplay, onDisplayChange] = useAtom(
-    __unsafeVideoTimelineDisplayAtom,
+  const store = useStore();
+  const setDisplay = useSetAtom(__unsafeVideoTimelineDisplayAtom);
+  const onDisplayChange = useCallback(
+    (next: "configured" | "duration") =>
+      setDisplay(next === "configured" ? "frames" : "time"),
+    [setDisplay],
   );
-  return { defaultDisplay, onDisplayChange };
+  return {
+    defaultDisplay:
+      store.get(__unsafeVideoTimelineDisplayAtom) === "frames"
+        ? ("configured" as const)
+        : ("duration" as const),
+    onDisplayChange,
+  };
 };
 
 /** The annotation surface currently mounted in the modal, if any. */
