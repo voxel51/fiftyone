@@ -136,15 +136,22 @@ export async function fetchGeometry(
   return { n, columns };
 }
 
+/** Which id a point reports: its own identity (label ids for patches runs,
+ * sample ids otherwise), or the sample that owns it. The two differ only
+ * for patches runs. */
+export type IdKind = "points" | "samples";
+
 export async function fetchIds(
   datasetName: string,
   brainKey: string,
   slice?: Slice,
+  kind: IdKind = "points",
 ): Promise<IdColumn> {
   const buffer = await fetchColumn("/embeddings/v2/ids", {
     datasetName,
     brainKey,
     ...slice,
+    kind,
   });
   const header = parseHeader(buffer);
   if (header.dtype !== DTYPE_BYTES12) {
@@ -188,19 +195,18 @@ export type ColorValues =
   | { style: "categorical"; indices: Uint16Array }
   | { style: "continuous"; values: Float32Array };
 
-/** Fields eligible for color-by (via the legacy schema-only endpoint) */
+/** Fields eligible for color-by: exactly the paths `fetchColor` resolves
+ * for the run's points */
 export async function fetchColorByChoices(
   datasetName: string,
-  patchesField: string | null,
+  brainKey: string,
 ): Promise<string[]> {
   const response = await getFetchFunction()<
     Record<string, unknown>,
     { fields: string[] }
-  >("POST", "/embeddings/color-by-choices", {
+  >("POST", "/embeddings/v2/color-by-choices", {
     datasetName,
-    view: [],
-    slices: null,
-    patchesField,
+    brainKey,
   });
   return response.fields;
 }
@@ -272,6 +278,10 @@ export async function fetchMasks(
   brainKey: string,
   view: unknown[],
   filters: unknown,
+  /** Extended stages (`{ [_cls]: kwargs }`) folded into the match mask.
+   * The server resolves them in the view's own vocabulary and maps a
+   * patches view's matches back to their samples for a sample-keyed run */
+  extended: Record<string, unknown> | null = null,
 ): Promise<Masks> {
   const buffer = await fetchColumn("/embeddings/v2/masks", {
     datasetName,
@@ -279,6 +289,7 @@ export async function fetchMasks(
     view,
     filters,
     slices: null,
+    extended,
   });
   const header = parseHeader(buffer);
   if (header.dtype !== DTYPE_BITMASK) {
@@ -340,6 +351,11 @@ export interface SampleInfo {
   /** Feed through the App's getSampleSrc(); null = no hover media */
   media: string | null;
   value: unknown;
+  /** Relative [x, y, w, h] of the hovered patch within its sample's media,
+   * for cropping the hover card to the patch. Null for sample-level runs —
+   * and for a patch whose label no longer exists, which falls back to the
+   * whole sample rather than failing */
+  bounds: [number, number, number, number] | null;
 }
 
 export async function fetchSampleInfo(

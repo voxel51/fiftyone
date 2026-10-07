@@ -7,7 +7,7 @@ import { episodeDisplayName } from "../../session/episode-label";
 import {
   AnnotationStreamsProvider,
   TimelineExtensionHost,
-  useSampleRendererFirstMatch,
+  useSampleFocus,
   type TimelineSection,
 } from "../../../extensions/timeline";
 import {
@@ -98,9 +98,8 @@ const EpisodeModal: React.FC<
     [intervalSources, tagTracks],
   );
 
-  // Opening a tile the embeddings panel matched lands the playhead on the same
-  // window the tile postered at, rather than the recording start.
-  const firstMatch = useSampleRendererFirstMatch(ctx);
+  // Opens at the published focus, the same time the tile postered at
+  const focus = useSampleFocus(ctx);
 
   return (
     <AnnotationStreamsProvider>
@@ -126,7 +125,7 @@ const EpisodeModal: React.FC<
             timelineRulerOverlay={rulerOverlay}
             episodeContext={{ datasetId, sampleId }}
             fileName={fileName}
-            initialSeekTimeNs={firstMatch?.startNs ?? null}
+            initialSeekTimeNs={focus?.startNs ?? null}
             layoutScopeKey={datasetId}
             cameraPreferenceField={ctx.media.field}
             existingTags={existingTags}

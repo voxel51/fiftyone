@@ -42,6 +42,29 @@ describe("useColorColumn", () => {
     expect(fetchColor).not.toHaveBeenCalled();
   });
 
+  it("asks for choices by brain key, and only with one", async () => {
+    vi.mocked(fetchColorByChoices).mockResolvedValue(["a"]);
+    const { result, rerender } = renderHook(
+      ({ brainKey }: { brainKey: string | null }) =>
+        useColorColumn("ds", brainKey, RUN, null),
+      { initialProps: { brainKey: "viz" as string | null } },
+    );
+    await waitFor(() => expect(result.current.choices).toEqual(["a"]));
+    expect(fetchColorByChoices).toHaveBeenLastCalledWith("ds", "viz");
+
+    // Another run's menu is another request
+    rerender({ brainKey: "viz2" });
+    await waitFor(() =>
+      expect(fetchColorByChoices).toHaveBeenLastCalledWith("ds", "viz2"),
+    );
+
+    // No brain key: no request, and the previous run's choices clear
+    vi.mocked(fetchColorByChoices).mockClear();
+    rerender({ brainKey: null });
+    expect(result.current.choices).toEqual([]);
+    expect(fetchColorByChoices).not.toHaveBeenCalled();
+  });
+
   it("falls back to no choices when the endpoint fails", async () => {
     vi.mocked(fetchColorByChoices).mockResolvedValueOnce(["a"]);
     const { result, rerender } = renderHook(

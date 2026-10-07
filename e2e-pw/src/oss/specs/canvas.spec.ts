@@ -38,16 +38,10 @@ test.beforeAll(async ({ foWebServer }) => {
 
 test.describe.serial("Canvas Rendering Regressions", () => {
   /**
-   * Verifies that the `image-rendering: pixelated` CSS property is applied
-   * correctly in both canvas modes:
-   *
-   * 1. **Explore mode (Looker canvas)** — the default view when opening a
-   *    sample. Asserts the canvas type is `LOOKER` and compares a screenshot
-   *    against the `pixelated.png` baseline.
-   *
-   * 2. **Annotate mode (Lighter canvas)** — activated by switching the sidebar
-   *    mode to "annotate". Compares a screenshot against the
-   *    `pixelated.png` baseline.
+   * Verifies `image-rendering: pixelated` is applied in both canvas modes by
+   * comparing each against the `pixelated.png` baseline: Explore mode (the
+   * Looker canvas, asserted to be `LOOKER`) and Annotate mode (the Lighter
+   * canvas).
    */
   test("Explore and Annotate canvases have pixelated image rendering", async ({
     datasetName,
@@ -69,6 +63,7 @@ test.describe.serial("Canvas Rendering Regressions", () => {
 
     // Switch to Annotate mode and assert pixelated rendering there as well
     await modal.sidebar.switchMode("annotate");
+    await modal.waitForLighterReady();
     await modal.sampleCanvas.assert.hasScreenshot("pixelated.png");
   });
 });

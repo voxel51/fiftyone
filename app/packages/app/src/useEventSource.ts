@@ -11,6 +11,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRecoilState, useRecoilValue } from "recoil";
 import type { Queries } from "./makeRoutes";
 import type { RoutingContext } from "./routing";
+import { useSetAppCount } from "./sharedSession/hooks";
 import useEvents from "./useEvents";
 import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
@@ -33,6 +34,7 @@ const useEventSource = (
   );
   const handleError = useErrorHandler();
   const clearModal = useClearModal();
+  const setAppCount = useSetAppCount();
 
   useEffect(() => {
     getEventSource(
@@ -53,6 +55,8 @@ const useEventSource = (
         onerror: (e) => handleError(e),
         onclose: () => {
           clearModal();
+          // the count is stale until the reopened stream reports a new one
+          setAppCount(null);
           setReadyState(AppReadyState.CLOSED);
         },
       },
@@ -79,6 +83,7 @@ const useEventSource = (
     controller,
     handleError,
     handler,
+    setAppCount,
     setReadyState,
     subscription,
     subscriptions,

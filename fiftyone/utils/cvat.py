@@ -6577,10 +6577,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "attributes": attributes,
                 }
 
-                if det.has_attribute("rotation") and isinstance(
-                    det["rotation"], (int, float)
+                rotation = det.get_attribute_value("rotation", None)
+                if (
+                    shape_type == "rectangle"
+                    and isinstance(rotation, (int, float))
+                    and not isinstance(rotation, bool)
                 ):
-                    shape["rotation"] = det["rotation"] or 0.0
+                    # FiftyOne stores 2D rotation in radians; CVAT expects
+                    # degrees in ``[0, 360)``
+                    shape["rotation"] = math.degrees(rotation) % 360
 
                 curr_shapes.append(shape)
             elif label_type in ("instance", "instances"):
@@ -7282,8 +7287,12 @@ class CVATShape(CVATLabel):
             self.skeleton_elements = None
             self.skeleton_node_order = None
 
-        if "rotation" in label_dict and int(label_dict["rotation"]) != 0:
-            self.attributes["rotation"] = label_dict["rotation"]
+        # CVAT reports rectangle rotation in degrees (clockwise about the box
+        # center); FiftyOne stores 2D ``Detection.rotation`` in radians with the
+        # same sense, so convert at the boundary
+        rotation = label_dict.get("rotation", None)
+        if rotation is not None and float(rotation) != 0:
+            self.attributes["rotation"] = math.radians(float(rotation))
 
         # Parse occluded attribute, if necessary
         self._parse_named_attribute(label_dict, "occluded", occluded_attrs)
@@ -7920,13 +7929,30 @@ def _parse_occlusion_value(value):
 # Track interpolation code sourced from CVAT:
 # https://github.com/opencv/cvat/blob/31f6234b0cdc656c9dde4294c1008560611c6978/cvat/apps/dataset_manager/annotation.py#L431-L730
 def _get_interpolated_shapes(track_shapes):
-    def copy_shape(source, frame, points=None):
+    def copy_shape(source, frame, points=None, rotation=None):
         copied = deepcopy(source)
         copied["keyframe"] = False
         copied["frame"] = frame
         if points is not None:
             copied["points"] = points
+        if rotation is not None:
+            copied["rotation"] = rotation
         return copied
+
+    def interpolate_rotation(shape0, shape1, offset):
+        # Rectangle rotation (degrees) interpolates along the shortest
+        # angular path, matching CVAT's own track interpolation
+        r0 = shape0.get("rotation", None)
+        r1 = shape1.get("rotation", None)
+        if r0 is None or r1 is None:
+            return None
+
+        diff = ((r1 - r0 + 180) % 360) - 180
+        if diff == -180:
+            # exactly opposite angles: CVAT turns clockwise (+180) on the tie
+            diff = 180
+
+        return (r0 + diff * offset) % 360
 
     def simple_interpolation(shape0, shape1):
         shapes = []
@@ -7936,8 +7962,9 @@ def _get_interpolated_shapes(track_shapes):
         for frame in range(shape0["frame"] + 1, shape1["frame"]):
             offset = (frame - shape0["frame"]) / distance
             points = shape0["points"] + diff * offset
+            rotation = interpolate_rotation(shape0, shape1, offset)
 
-            shapes.append(copy_shape(shape0, frame, points.tolist()))
+            shapes.append(copy_shape(shape0, frame, points.tolist(), rotation))
 
         return shapes
 
@@ -8345,3 +8372,97 @@ def _get_next_frame(next_frame_idx, frame_step):
         frame_step = 1
 
     return next_frame_idx + frame_step
+
+
+def convert_rotations_to_radians(sample_collection, field, degrees=True):
+    """Converts the 2D ``rotation`` attribute of the
+    :class:`fiftyone.core.labels.Detection` labels in the given field of the
+    collection from degrees to radians, in-place.
+
+    The CVAT integration used to store the rotation of
+    rectangles imported via :func:`import_annotations` or
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    verbatim in **degrees**. FiftyOne now stores 2D ``Detection.rotation`` in
+    **radians**, so datasets populated via CVAT before this
+    change must be converted once with this method::
+
+        import fiftyone.utils.cvat as fouc
+
+        fouc.convert_rotations_to_radians(dataset, "ground_truth")
+
+    Only scalar (2D) rotations are converted; 3D ``[x, y, z]`` rotations are
+    left untouched. Frame-level fields (``"frames.<field>"``) are supported.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        field: the name of a :class:`fiftyone.core.labels.Detection` or
+            :class:`fiftyone.core.labels.Detections` field
+        degrees (True): whether the stored values are currently in degrees.
+            Pass ``False`` to convert radians back to degrees instead
+
+    Returns:
+        the number of labels whose rotation was converted
+    """
+    _, path = sample_collection._get_label_field_path(field, "rotation")
+
+    label_type = sample_collection._get_label_field_type(field)
+    is_list = issubclass(label_type, fol._HasLabelList)
+    is_frame_field = sample_collection._is_frame_field(field)
+
+    # ``values()`` nests one list level per sample, plus one per frame for
+    # frame-level fields, plus one for label lists; below that sits the
+    # rotation itself, which is a scalar (2D) or an ``[x, y, z]`` list (3D)
+    depth = int(is_frame_field) + int(is_list)
+
+    # Rotations may be stored as a dynamic field (``label.rotation``) or in
+    # the deprecated ``attributes`` dict (``label.attributes["rotation"]``).
+    # Read both before writing either so a failure cannot leave the
+    # collection half-converted. ``values()`` yields ``None`` for a path that
+    # does not exist, so an absent legacy path is simply skipped below.
+    _, dict_path = sample_collection._get_label_field_path(
+        field, "attributes.rotation.value"
+    )
+    values = sample_collection.values(path)
+    dict_values = sample_collection.values(dict_path)
+
+    convert = math.radians if degrees else math.degrees
+
+    num_converted = 0
+
+    def _convert(value, level):
+        nonlocal num_converted
+
+        if value is None:
+            return None
+
+        if level < depth:
+            return [_convert(v, level + 1) for v in value]
+
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            num_converted += 1
+            return convert(value)
+
+        # 3D ``[x, y, z]`` rotations are untouched
+        return value
+
+    new_values = [_convert(v, 0) for v in values]
+    num_direct = num_converted
+
+    new_dict_values = [_convert(v, 0) for v in dict_values]
+    num_dict = num_converted - num_direct
+
+    if num_direct > 0:
+        sample_collection.set_values(path, new_values)
+
+    if num_dict > 0:
+        sample_collection.set_values(dict_path, new_dict_values)
+
+    logger.info(
+        "Converted %d rotation value(s) in field '%s' to %s",
+        num_converted,
+        field,
+        "radians" if degrees else "degrees",
+    )
+
+    return num_converted

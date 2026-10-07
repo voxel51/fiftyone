@@ -36,7 +36,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
     for i in range(1, 511):
         filepath = f"/tmp/{i}-${datasetName}.png"
         filepaths.append((i, filepath))
-    
+
     dataset = fo.Dataset("${datasetName}")
     dataset.persistent = True
     dataset.add_samples(

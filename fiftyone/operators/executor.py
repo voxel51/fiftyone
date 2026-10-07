@@ -817,6 +817,24 @@ class ExecutionContext(contextlib.AbstractContextManager):
             # the selection
             target = self.request_params.get("view_target")
 
+        target, media_type = constants.split_view_target(target)
+        if media_type is not None:
+            # scoping bypasses the selection handling of the other targets,
+            # so a selection would be silently dropped
+            if target not in (
+                constants.ViewTarget.DATASET,
+                constants.ViewTarget.CURRENT_VIEW,
+            ):
+                raise ValueError(
+                    "View target '%s' cannot be scoped to a media type"
+                    % target
+                )
+
+            sample_collection, _ = self._get_target_collection(target)
+            return self.flatten_group_slices(
+                sample_collection, media_type=media_type
+            )
+
         return self._resolve_target_view(target, require_flat=require_flat)
 
     def _get_target_collection(self, target):
@@ -1037,6 +1055,44 @@ class ExecutionContext(contextlib.AbstractContextManager):
             return f"in the current slice ({slice_name})", "in all slices"
 
         return "in all slices", "in all slices"
+
+    def get_group_media_scopes(
+        self, sample_collection=None, require_flat=False
+    ):
+        """Returns the group slice media types that the dataset and view
+        targets can be scoped to, for operations that require a flattened
+        collection of a grouped dataset.
+
+        Args:
+            sample_collection (None): the
+                :class:`fiftyone.core.collections.SampleCollection` to
+                describe. By default, the current view is used
+            require_flat (False): whether the operation requires a
+                flattened (non-grouped) collection. An operation that does
+                not works on grouped collections, choosing its own slices,
+                so it is offered no scopes
+
+        Returns:
+            a list of ``(media_type, slice_names)`` tuples, sorted by media
+            type, or an empty list if the collection is not grouped, already
+            selects its own slices, or ``require_flat`` is ``False``
+        """
+        if not require_flat:
+            return []
+
+        view_scope, _ = self.get_group_slice_scopes(
+            sample_collection=sample_collection, require_flat=True
+        )
+        if view_scope is None:
+            return []
+
+        slices = collections.defaultdict(list)
+        for name, media_type in (self.dataset.group_media_types or {}).items():
+            slices[media_type].append(name)
+
+        return sorted(
+            (media_type, sorted(names)) for media_type, names in slices.items()
+        )
 
     @property
     def has_custom_view(self):

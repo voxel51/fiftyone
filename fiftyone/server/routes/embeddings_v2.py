@@ -25,6 +25,7 @@ determines where the column ends, so no delimiter is needed.
 
 import json
 import logging
+import math
 import struct
 import threading
 from collections import OrderedDict
@@ -36,6 +37,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
@@ -65,6 +67,13 @@ FLAG_ALL_MATCH = 2
 MAX_CATEGORIES = 100
 MISSING_CATEGORY = 0xFFFF
 
+_COLOR_BY_TYPES = (
+    fof.StringField,
+    fof.BooleanField,
+    fof.IntField,
+    fof.FloatField,
+)
+
 # Lasso selections at or below this size become explicit id stages
 SELECT_STAGE_MAX = 10000
 
@@ -86,8 +95,22 @@ class EmbeddingsV2RunsStatus(HTTPEndpoint):
 
     def _post_sync(self, data):
         db = foo.get_db_conn()
+        # The runs the dataset document references, exactly as the dataset
+        # query lists them: run documents a dataset no longer references
+        # still carry its id, and counting them would make the App's run
+        # list look permanently stale and refresh it on every check
+        dataset_doc = db.datasets.find_one(
+            {"_id": ObjectId(data["datasetId"])}, {"brain_methods": 1}
+        )
+        run_ids = [
+            run_id
+            for run_id in (
+                (dataset_doc or {}).get("brain_methods") or {}
+            ).values()
+            if isinstance(run_id, ObjectId)
+        ]
         run_docs = db.runs.find(
-            {"_dataset_id": ObjectId(data["datasetId"])},
+            {"_id": {"$in": run_ids}},
             {"key": 1, "config": 1, "results": 1},
         )
 
@@ -245,6 +268,23 @@ class EmbeddingsV2Color(HTTPEndpoint):
             _color_cache_put(key, body)
 
         return Response(content=body, media_type="application/octet-stream")
+
+
+class EmbeddingsV2ColorByChoices(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """The field paths a run's points can be colored by: exactly the
+        paths ``/v2/color`` resolves, in schema order.
+
+        Reads the run's config only, never its results blob.
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset = fosu.load_and_cache_dataset(data["datasetName"])
+        config = dataset.get_brain_info(data["brainKey"]).config
+        choices = _color_by_choices(_all_slices(dataset), config.patches_field)
+        return {"fields": choices}
 
 
 class EmbeddingsV2Masks(HTTPEndpoint):
@@ -426,7 +466,8 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
 
         sample_id = str(results.sample_ids[index])
         point_id = sample_id
-        if results.config.patches_field is not None:
+        patches_field = results.config.patches_field
+        if patches_field is not None:
             point_id = str(results.label_ids[index])
 
         try:
@@ -439,6 +480,7 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
                 "filepath": None,
                 "media": None,
                 "value": None,
+                "bounds": None,
             }
 
         value = None
@@ -448,12 +490,23 @@ class EmbeddingsV2SampleInfo(HTTPEndpoint):
             except (AttributeError, KeyError, ValueError):
                 value = None
 
+        media = _hover_media(sample)
+
+        # Only an image preview can be cropped: samples with no hover media
+        # (video, 3D) get no box either
+        bounds = (
+            _patch_bounds(sample, patches_field, point_id)
+            if patches_field is not None and media is not None
+            else None
+        )
+
         return {
             "id": point_id,
             "sampleId": sample_id,
             "filepath": sample.filepath,
-            "media": _hover_media(sample),
+            "media": media,
             "value": value,
+            "bounds": bounds,
         }
 
 
@@ -463,6 +516,7 @@ EmbeddingsV2Routes = [
     ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
     ("/embeddings/v2/ids", EmbeddingsV2Ids),
     ("/embeddings/v2/color", EmbeddingsV2Color),
+    ("/embeddings/v2/color-by-choices", EmbeddingsV2ColorByChoices),
     ("/embeddings/v2/masks", EmbeddingsV2Masks),
     ("/embeddings/v2/lasso-stage", EmbeddingsV2LassoStage),
     ("/embeddings/v2/sample-info", EmbeddingsV2SampleInfo),
@@ -603,6 +657,19 @@ def _first_value(value):
     return value
 
 
+def _all_slices(dataset):
+    """The samples a run's points can come from.
+
+    A grouped dataset covers only its default slice, but a run can be
+    computed on any slice, so grouped datasets are flattened across all of
+    them.
+    """
+    if dataset.media_type == fom.GROUP:
+        return dataset.select_group_slices(_allow_mixed=True)
+
+    return dataset
+
+
 def _color_data(dataset, results, field_path):
     """Resolves per-point color-by values (wire order) and the style
     decision.
@@ -625,13 +692,14 @@ def _color_data(dataset, results, field_path):
     patches_field = results.config.patches_field
     is_patches = patches_field is not None
 
+    samples = _all_slices(dataset)
     ids = results.label_ids if is_patches else results.sample_ids
-    values = dataset._get_values_by_id(
+    values = samples._get_values_by_id(
         field_path, _as_list(ids), link_field=patches_field
     )
 
     exact = True
-    field = dataset.get_field(field_path)
+    field = samples.get_field(field_path)
     if isinstance(field, fof.ListField):
         field = field.field
 
@@ -665,6 +733,51 @@ def _color_data(dataset, results, field_path):
     return "categorical", values, classes, truncated, exact
 
 
+def _color_by_choices(samples, patches_field):
+    """The field paths ``/v2/color`` can resolve for a run's points.
+
+    A color column holds one value per point and collapses at most one
+    list level to its first element (see ``_color_data``). So a path
+    qualifies when its leaf is a ``_COLOR_BY_TYPES`` field, or a list of
+    one, and it crosses at most one list in total. That admits paths
+    through label lists such as ``ground_truth.detections.label``.
+
+    A patches run's points are its labels, so only paths within the label
+    qualify. ``_get_values_by_id`` already unwinds the label list for each
+    point, so that list does not count.
+    """
+    schema = samples.get_field_schema(flat=True)
+    list_paths = {
+        path
+        for path, field in schema.items()
+        if isinstance(field, fof.ListField)
+    }
+
+    prefix = ""
+    if patches_field is not None:
+        _, label_path = samples._get_label_field_path(patches_field)
+        list_paths.discard(label_path)
+        prefix = label_path + "."
+
+    choices = []
+    for path, field in schema.items():
+        if not path.startswith(prefix):
+            continue
+
+        is_list = isinstance(field, fof.ListField)
+        leaf = field.field if is_list else field
+        if not isinstance(leaf, _COLOR_BY_TYPES):
+            continue
+
+        keys = path.split(".")
+        parents = (".".join(keys[:i]) for i in range(1, len(keys)))
+        depth = int(is_list) + sum(p in list_paths for p in parents)
+        if depth <= 1:
+            choices.append(path)
+
+    return choices
+
+
 def _match_mask(
     dataset_name,
     results,
@@ -681,12 +794,8 @@ def _match_mask(
 
     matched_ids = None
     if filters or extended_stages:
-        extended_view = fosv.get_view(
-            dataset_name,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended_stages,
-            sample_filter=get_sample_filter(slices),
+        extended_view = _match_view(
+            dataset_name, stages, filters, slices, extended_stages
         )
         is_patches_view = extended_view._is_patches
 
@@ -717,6 +826,35 @@ def _match_mask(
     )
 
 
+def _match_view(dataset_name, stages, filters, slices, extended_stages):
+    """The filtered/extended view that run points are matched against.
+
+    A grouped view evaluates filters against its default slice only, but a
+    run can be computed on any slice. When the view is still grouped, it is
+    rebuilt flattened across its slices so each point is matched against
+    its own sample. The flattening must precede the filters: a flat
+    ``select_group_slices()`` emits unfiltered samples.
+    """
+
+    def build(sample_filter):
+        return fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            # get_view() pops SortBy out of the extended stages
+            extended_stages=(
+                dict(extended_stages) if extended_stages else None
+            ),
+            sample_filter=sample_filter,
+        )
+
+    view = build(get_sample_filter(slices))
+    if view.media_type != fom.GROUP:
+        return view
+
+    return build(get_sample_filter(view.group_slices))
+
+
 def _hover_media(sample):
     """Resolves what the hover card should load for a sample: a filepath
     the client passes through the App's ``getSampleSrc()``, or None when
@@ -741,6 +879,111 @@ def _hover_media(sample):
             pass
 
     return filepath
+
+
+def _patch_bounds(sample, patches_field, label_id):
+    """Resolves a patch point's label to its containing box within the
+    sample's media, as relative ``[x, y, w, h]``.
+
+    Returns None when the label carries no usable geometry, or when it no
+    longer exists — a run outlives edits to the field it was computed on,
+    and a hover for a deleted label falls back to the whole sample rather
+    than failing.
+
+    Boxes are deliberately not clamped to ``[0, 1]``: a label may extend
+    past the media's edge, and the client's crop handles that the same way
+    the grid's crop-to-content does.
+    """
+    try:
+        container = sample.get_field(patches_field)
+    except (AttributeError, KeyError, ValueError):
+        return None
+
+    if container is None:
+        return None
+
+    # Detections/Polylines/Keypoints name their list field; a patches run
+    # can also be computed on a single-label field, which is its own entry
+    list_field = getattr(type(container), "_LABEL_LIST_FIELD", None)
+    if list_field is not None:
+        labels = getattr(container, list_field, None) or []
+    else:
+        labels = [container]
+
+    for label in labels:
+        if str(label.id) == label_id:
+            return _label_bounds(label)
+
+    return None
+
+
+def _label_bounds(label):
+    """Relative ``[x, y, w, h]`` containing box for one patch label.
+
+    Covers the label types a patches run can be built from
+    (``fiftyone.core.patches._PATCHES_TYPES``).
+    """
+    if isinstance(label, fol.Detection):
+        bounding_box = label.bounding_box
+        if not bounding_box or len(bounding_box) != 4:
+            return None
+
+        try:
+            box = [float(coord) for coord in bounding_box]
+        except (TypeError, ValueError):
+            return None
+
+        if any(math.isnan(coord) for coord in box):
+            return None
+
+        return box
+
+    if isinstance(label, fol.Polyline):
+        # Polylines nest their points one level deeper: a list of shapes
+        points = [p for shape in (label.points or []) for p in shape]
+    elif isinstance(label, fol.Keypoint):
+        points = label.points or []
+    else:
+        return None
+
+    return _containing_box(points)
+
+
+def _containing_box(points):
+    """The relative ``[x, y, w, h]`` box containing ``points``.
+
+    Mirrors the App's ``getContainingBox()``, which derives the same
+    quantity client-side to drive the grid's crop-to-content. Missing
+    coordinates — keypoints encode them as None or NaN — are skipped
+    rather than poisoning the extent.
+    """
+    coords = []
+    for point in points:
+        if point is None or len(point) < 2:
+            continue
+
+        x, y = point[0], point[1]
+        if x is None or y is None:
+            continue
+
+        try:
+            x, y = float(x), float(y)
+        except (TypeError, ValueError):
+            continue
+
+        if math.isnan(x) or math.isnan(y):
+            continue
+
+        coords.append((x, y))
+
+    if not coords:
+        return None
+
+    xs = [x for x, _ in coords]
+    ys = [y for _, y in coords]
+    x, y = min(xs), min(ys)
+
+    return [x, y, max(xs) - x, max(ys) - y]
 
 
 def _resolve_selection(data, results):

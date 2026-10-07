@@ -82,7 +82,18 @@ describe("PlayheadTime", () => {
   it("renders frame numbers in sequence mode", () => {
     // 10fps -> step 0.1s; playhead 0.5s = frame 5, duration 1s = frame 10.
     renderTime(1, 0.5, { kind: "sequence", fps: 10 });
-    expect(screen.getByText("#5 / #10")).toBeTruthy();
+    // the current frame pads to the total's width (non-breaking space)
+    expect(screen.getByText("# 5 / #10")).toBeTruthy();
+  });
+
+  it("counts frames from 1 when the mode asks, with the total as the frame count", () => {
+    renderTime(1, 0.5, { kind: "sequence", fps: 10, firstFrame: 1 });
+    expect(screen.getByText("# 6 / #10")).toBeTruthy();
+  });
+
+  it("reads the last frame, not the boundary after it, at the very end", () => {
+    renderTime(1, 1, { kind: "sequence", fps: 10, firstFrame: 1 });
+    expect(screen.getByText("#10 / #10")).toBeTruthy();
   });
 
   it("renders date-qualified wall-clock time in absolute mode", () => {
@@ -115,13 +126,13 @@ describe("PlayheadTime", () => {
 
     it("swaps frame numbers for elapsed time and back", () => {
       renderTime(1, 0.5, { kind: "sequence", fps: 10 });
-      expect(screen.getByText("#5 / #10")).toBeTruthy();
+      expect(screen.getByText("# 5 / #10")).toBeTruthy();
 
       fireEvent.click(screen.getByRole("button"));
       expect(screen.getByText("0:00.50 / 0:01.00")).toBeTruthy();
 
       fireEvent.click(screen.getByRole("button"));
-      expect(screen.getByText("#5 / #10")).toBeTruthy();
+      expect(screen.getByText("# 5 / #10")).toBeTruthy();
     });
 
     it("opens on timecode when defaultDisplay is duration", () => {
@@ -130,7 +141,7 @@ describe("PlayheadTime", () => {
 
       // Still swappable: the CONFIGURED mode is still `sequence`.
       fireEvent.click(screen.getByRole("button"));
-      expect(screen.getByText("#5 / #10")).toBeTruthy();
+      expect(screen.getByText("# 5 / #10")).toBeTruthy();
     });
 
     it("leaves the step interval alone across a toggle", () => {

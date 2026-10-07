@@ -15,13 +15,13 @@
 }
 
 .fieldList {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-content-border-default);
   display: flex;
   flex-direction: column;
 }
 
 .fieldNode {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-content-border-default);
   min-width: 0;
 }
 
@@ -42,7 +42,7 @@
 }
 
 .fieldValue {
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   font-size: 12px;
   line-height: 1.4;
   min-width: 0;
@@ -110,7 +110,7 @@
 }
 
 .children {
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-content-border-default);
   margin: 0 0 8px 3px;
   padding-left: 10px;
 }

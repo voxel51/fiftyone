@@ -27,7 +27,7 @@ export const InsetLoop: Story = {
           position: "relative",
           width: 600,
           height: 120,
-          background: "var(--color-content-bg-card-1)",
+          background: "var(--color-content-bg-card)",
           border: "1px solid var(--color-content-border-default)",
         }}
       >

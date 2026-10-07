@@ -56,6 +56,12 @@ export function useEmptyCanvasInteraction({
 
     const handleDown = (ev: PointerEvent) => {
       if (!isButtonMatch(ev, button)) return;
+      // a press on the canvas takes keyboard ownership from a focused control,
+      // as it would if the camera controls did not preventDefault
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active !== el) {
+        active.blur();
+      }
       onPointerDownRef.current?.();
     };
 

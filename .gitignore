@@ -6,6 +6,8 @@ node_modules
 __pycache__
 *.py[cod]
 
+*.local.md
+
 *.egg-info
 .project
 .pydevproject

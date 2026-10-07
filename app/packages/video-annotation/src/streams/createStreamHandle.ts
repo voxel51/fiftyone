@@ -8,7 +8,7 @@ import { useEffect } from "react";
 /**
  * A published "active stream" handle: a module-private jotai atom paired with
  * a reader hook and a publisher hook. The video surface registers a single
- * live instance of each stream (frame labels, imavid images) so external code
+ * live instance of each stream (frame labels, dynamic group images) so external code
  * can read the active one, while only the stream's registrar can publish it.
  *
  * The atom is **closure-private** — it can't be imported even by accident,
