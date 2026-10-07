@@ -142,18 +142,7 @@ test.describe.skip("camera initialization", () => {
 
     const cameraBefore = await renderer3d.getCameraPosition();
     const saved = await renderer3d.getSavedCameraState(basicDatasetName);
-    expect(
-      positionsAreClose(
-        saved?.position as [number, number, number],
-        cameraBefore,
-        1.0,
-      ),
-    ).toBe(true);
-
-    const savedBefore = await renderer3d.getSavedCameraState(basicDatasetName);
-    expect(savedBefore).not.toBeNull();
-    expect(savedBefore?.position).toHaveLength(3);
-    expect(savedBefore?.target).toHaveLength(3);
+    expect(saved?.position).toEqual(cameraBefore);
 
     // Navigate to next sample, then come back
     await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
@@ -285,7 +274,6 @@ test.describe.skip("camera initialization", () => {
 
     const newPosition = await renderer3d.getCameraPosition();
     const savedState = await renderer3d.getSavedCameraState(basicDatasetName);
-    expect(savedState).not.toBeNull();
 
     // Camera should have moved from its initial position.
     expect(
@@ -293,15 +281,6 @@ test.describe.skip("camera initialization", () => {
       `Expected camera to have moved from ${initialPosition}, but it's still at ${newPosition}`,
     ).toBe(false);
 
-    expect(
-      positionsAreClose(
-        savedState!.position as [number, number, number],
-        newPosition,
-        1.0,
-      ),
-      `Expected localStorage to have ${newPosition}, but got ${
-        savedState!.position
-      }`,
-    ).toBe(true);
+    expect(savedState?.position).toEqual(newPosition);
   });
 });

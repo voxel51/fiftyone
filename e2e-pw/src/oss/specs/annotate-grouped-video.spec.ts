@@ -20,6 +20,10 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-video");
 const videoId = "000000000000000000000000";
 const imageId = "000000000000000000000001";
 
+/** The sample a `/dataset/<id>/sample/<sample id>[/...]` PATCH targets */
+const patchedSampleId = (url: string) =>
+  new URL(url).pathname.split("/sample/")[1].split("/")[0];
+
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
   modal: async ({ page, eventUtils }, use) =>
@@ -197,15 +201,13 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    for (const path of ["frames.detections", "classification", "events"]) {
-      await modal.videoAnnotate.assert.listsPath(path);
-    }
-
     // the sample-level `detections` field is filtered out on a video slice
     // (spatial sample-level labels live in `frames.*` on video)
-    expect(await modal.videoAnnotate.listedLabelPaths()).not.toContain(
-      "detections",
-    );
+    expect(await modal.videoAnnotate.listedLabelPaths()).toEqual([
+      "frames.detections",
+      "classification",
+      "events",
+    ]);
   });
 
   test("the image slice offers sample detections + classification, not frame or temporal schemas", async ({
@@ -232,11 +234,10 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    const slices = (
-      await modal.sidebar.annotate.getAvailableAnnotationSlices()
-    ).map((s) => s.trim());
-    expect(slices).toContain("image");
-    expect(slices).toContain("video");
+    await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices([
+      "video",
+      "image",
+    ]);
   });
 
   test("editing on the video slice writes to the video sample", async ({
@@ -262,8 +263,7 @@ test.describe.serial("grouped video annotation", () => {
     const response = await patch;
 
     // scoped to the video sample
-    expect(response.url()).toContain(videoId);
-    expect(response.url()).not.toContain(imageId);
+    expect(patchedSampleId(response.url())).toBe(videoId);
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     expect(pageErrors).toEqual([]);
@@ -288,7 +288,6 @@ test.describe.serial("grouped video annotation", () => {
     const response = await patch;
 
     // scoped to the image sample
-    expect(response.url()).toContain(imageId);
-    expect(response.url()).not.toContain(videoId);
+    expect(patchedSampleId(response.url())).toBe(imageId);
   });
 });

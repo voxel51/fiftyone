@@ -167,12 +167,8 @@ const expectSplitPersisted = async (
   const cut = toFrame(tailSpan.start);
 
   expect(toFrame(headSpan.start)).toBe(1);
-  expect(headSpan.end, "head ends right before the cut").toBeCloseTo(
-    (cut - 1) / fps,
-  );
-  expect(tailSpan.end, "tail runs to the last frame").toBeCloseTo(
-    totalFrames / fps,
-  );
+  expect(headSpan.end, "head ends right before the cut").toBe((cut - 1) / fps);
+  expect(tailSpan.end, "tail runs to the last frame").toBe(totalFrames / fps);
 
   // a keyframe on a track's last frame draws at the bar's end, one on its
   // first frame at the bar's start

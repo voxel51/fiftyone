@@ -73,6 +73,19 @@ const setSignal = async (modal: ModalPom, choice: string) => {
   );
 };
 
+/** The seeded clip: the media factory's default 2s at 10fps. */
+const FPS = 10;
+const FRAMES = 20;
+
+/** A value segment's title: its value, then its span in seconds. */
+const segmentTitle = (value: string, first: number, last: number) =>
+  `${value}  (${((first - 1) / FPS).toFixed(2)}-${(last / FPS).toFixed(2)}s)`;
+
+const segmentTitles = (modal: ModalPom, subId: string) =>
+  modal.videoAnnotate
+    .segmentBars(subId)
+    .evaluateAll((bars) => bars.map((bar) => bar.getAttribute("title")));
+
 /** Assert the selected track's `turn_signal` value at the current frame. */
 const assertSignal = async (modal: ModalPom, expected: string) =>
   modal.sidebar.edit.assert.verifyFieldValue(ATTR, expected);
@@ -183,14 +196,11 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
 
     await va.toggleTrackExpansion(parentId);
 
-    // Two value segments now, labelled by their values.
-    expect(await va.segmentBars(subId).count()).toBe(2);
-    expect(await va.segmentBars(subId).nth(0).getAttribute("title")).toMatch(
-      /off/,
-    );
-    expect(await va.segmentBars(subId).nth(1).getAttribute("title")).toMatch(
-      /left/,
-    );
+    // Two value segments now, labelled by their values and spans.
+    expect(await segmentTitles(modal, subId)).toEqual([
+      segmentTitle("off", 1, 3),
+      segmentTitle("left", 4, FRAMES),
+    ]);
   });
 
   test("undo collapses the two segments back to one", async ({
@@ -221,10 +231,9 @@ test.describe.serial("video annotation dynamic attribute sub-tracks", () => {
     await va.afterTracksRendered(await va.trackIds(), () =>
       modal.sidebar.edit.undo(),
     );
-    expect(await va.segmentBars(subId).count()).toBe(1);
-    expect(await va.segmentBars(subId).nth(0).getAttribute("title")).toMatch(
-      /off/,
-    );
+    expect(await segmentTitles(modal, subId)).toEqual([
+      segmentTitle("off", 1, FRAMES),
+    ]);
   });
 
   test("clicking a value segment seeks to its start", async ({

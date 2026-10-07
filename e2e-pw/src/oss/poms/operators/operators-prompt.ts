@@ -152,7 +152,7 @@ class OperatorsPromptAsserter {
   }
 
   async isExecuting() {
-    expect(await this.panelPom.locator.textContent()).toContain("Executing...");
+    expect(await this.panelPom.content.textContent()).toBe("Executing...");
   }
 
   async canExecute() {
@@ -166,7 +166,7 @@ class OperatorsPromptAsserter {
   }
 
   async hasContent(text: string) {
-    expect(await this.panelPom.content.textContent()).toContain(text);
+    expect(await this.panelPom.content.textContent()).toBe(text);
   }
 }
 

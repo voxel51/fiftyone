@@ -74,7 +74,9 @@ await grid.assert.isEntryCountTextEqualTo("2 samples");
     await eventUtils.after("e2e:modal:opened", () => grid.openFirstSample());
     ```
 
-2. **Read once, exactly.** Make a single read with an exact expectation:
+2. **Read once, exactly.** Make a single read with an exact expectation
+   (`toBe`, `toEqual`, `toHaveLength`): the exact text, count, list or number
+   the spec's data determines.
 
     ```ts
     expect(await modal.sidebar.entryText("filepath")).toBe("/data/0.png");
@@ -82,6 +84,12 @@ await grid.assert.isEntryCountTextEqualTo("2 samples");
 
 Not allowed:
 
+- loose matchers: `toContain`, `toMatch`, `toMatchObject`,
+  `toBeGreaterThan(OrEqual)`, `toBeLessThan(OrEqual)`, `toBeCloseTo`,
+  `toBeTruthy`, `toBeFalsy`, `toBeDefined`, "anything but" reads (`not.toBe`,
+  `not.toBeNull`), and substring or regex checks inside `expect(...)`
+  (`.includes(...)`, `.endsWith(...)`, `/re/.test(...)`). The one exception is
+  a named time budget (see Timing)
 - polls: `expect.poll`, `toPass`, retry loops
 - timeouts: `waitForTimeout`, explicit `timeout:` options, `setTimeout`
 - web-first assertions standing in for product events, such as `toHaveText` on
@@ -157,13 +165,15 @@ const drawn = await eventUtils.initCounter("e2e:looker:canvas-loaded");
 await modal.afterSampleLoaded(() => grid.openFirstSample());
 const [open] = await opened.timeline();
 const draw = (await drawn.timeline()).at(-1);
+// time-budget: the modal draws within one frame budget of opening
 expect(draw.t - open.t).toBeLessThan(MODAL_DRAW_BUDGET_MS);
 ```
 
 `initCounter` records each event's `performance.now()` at dispatch. The budget
-is the claim the spec makes, so name it and explain where it comes from. A
-timing assertion never decides when a spec proceeds, and an event never carries
-a timeout.
+is the claim the spec makes, so name it and explain where it comes from in a
+`// time-budget: <why>` comment on its line or the line above; CI rejects any
+other range matcher. A timing assertion never decides when a spec proceeds, and
+an event never carries a timeout.
 
 ## Datasets
 

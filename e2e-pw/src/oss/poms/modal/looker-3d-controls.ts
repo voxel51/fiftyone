@@ -100,9 +100,9 @@ class Looker3DControlsAsserter {
   constructor(private readonly looker3dControlsPom: Looker3DControlsPom) {}
 
   async verifySliceSelectorLabel(expectedLabel: string) {
-    expect(
-      await this.looker3dControlsPom.sliceSelector.textContent(),
-    ).toContain(expectedLabel);
+    expect(await this.looker3dControlsPom.sliceSelector.textContent()).toBe(
+      expectedLabel,
+    );
   }
 
   async verifySliceSelectorHidden() {

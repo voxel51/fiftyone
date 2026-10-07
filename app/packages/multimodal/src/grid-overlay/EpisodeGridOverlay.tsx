@@ -97,6 +97,8 @@ type GridLaneE2EEvents = {
     sampleId: string;
     marks: number;
     sources: string;
+    /** The lane's time axis: the recording's duration once it is known */
+    domainNs: number;
   };
 };
 
@@ -105,13 +107,14 @@ function LaneShown({
   sampleId,
   marks,
   sources,
+  domainNs,
 }: GridLaneE2EEvents["e2e:multimodal:grid-lane-shown"]) {
   useEffect(() => {
     getEventBus<GridLaneE2EEvents>().dispatch(
       "e2e:multimodal:grid-lane-shown",
-      { sampleId, marks, sources },
+      { sampleId, marks, sources, domainNs },
     );
-  }, [sampleId, marks, sources]);
+  }, [sampleId, marks, sources, domainNs]);
   return null;
 }
 
@@ -296,6 +299,7 @@ function IntervalLane({
         sources={[
           ...new Set(levels.flat().map((interval) => interval.sourceId)),
         ].join(",")}
+        domainNs={domainSpan}
       />
       {fitsReadout && (
         <Readout

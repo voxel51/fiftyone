@@ -118,10 +118,10 @@ test.describe.serial("2D annotation field move", () => {
   }) => {
     await reselect(modal);
 
-    // Read the current field; move to the other one (relative → order-safe).
+    // The seeded label starts in `detections`; move it to the other field.
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
-    expect(FIELDS).toContain(from);
+    expect(from).toBe("detections");
 
     // Count sample patches from a CLEAN baseline (selection doesn't dirty), so
     // the single engine transaction should be the only one that hits the wire.

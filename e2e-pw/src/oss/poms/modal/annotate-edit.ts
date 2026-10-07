@@ -320,13 +320,9 @@ class ModalAnnotateEditAsserter {
    * @param path The field path
    * @param expectedValue The expected field value
    */
-  async verifyFieldValue(path: string, expectedValue: string | RegExp) {
+  async verifyFieldValue(path: string, expectedValue: string) {
     const value = await this.modalAnnotateEdit.getFieldValue(path);
-    if (typeof expectedValue === "string") {
-      expect(value).toBe(expectedValue);
-    } else {
-      expect(value).toMatch(expectedValue);
-    }
+    expect(value).toBe(expectedValue);
   }
 
   /**
@@ -406,9 +402,9 @@ class ModalAnnotateEditAsserter {
    * @param enabled Whether the redo button is enabled or not
    */
   async redoIsEnabled(enabled = true) {
-    const classes =
-      await this.modalAnnotateEdit.redoButton.getAttribute("class");
-    expect(/disabled/.test(classes ?? "")).toBe(!enabled);
+    expect(
+      await this.modalAnnotateEdit.redoButton.getAttribute("aria-disabled"),
+    ).toBe(String(!enabled));
   }
 
   /**
@@ -417,9 +413,9 @@ class ModalAnnotateEditAsserter {
    * @param enabled Whether the undo button is enabled or not
    */
   async undoIsEnabled(enabled = true) {
-    const classes =
-      await this.modalAnnotateEdit.undoButton.getAttribute("class");
-    expect(/disabled/.test(classes ?? "")).toBe(!enabled);
+    expect(
+      await this.modalAnnotateEdit.undoButton.getAttribute("aria-disabled"),
+    ).toBe(String(!enabled));
   }
 }
 

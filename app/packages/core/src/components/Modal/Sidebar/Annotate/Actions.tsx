@@ -316,6 +316,7 @@ export const Undo = () => {
       <Round
         onClick={undo}
         className={undoEnabled ? "" : "disabled"}
+        aria-disabled={!undoEnabled}
         data-cy="undo-button"
       >
         <UndoIcon />
@@ -332,6 +333,7 @@ export const Redo = () => {
       <Round
         onClick={redo}
         className={redoEnabled ? "" : "disabled"}
+        aria-disabled={!redoEnabled}
         data-cy="redo-button"
       >
         <RedoIcon />

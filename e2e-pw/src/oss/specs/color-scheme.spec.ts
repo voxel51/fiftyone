@@ -100,9 +100,11 @@ test.describe.serial("color scheme basic functionality", () => {
     const tagBubble = page.getByTestId("tag-validation").first();
 
     // verify validation tag has yellow green as background color
-    expect(await tagBubble.getAttribute("style")).toContain(
-      "rgb(154, 205, 50)",
-    );
+    expect(
+      await tagBubble.evaluate(
+        (el) => (el as HTMLElement).style.backgroundColor,
+      ),
+    ).toBe("rgb(154, 205, 50)");
 
     // switch dataset to dummy_color_by_instance, and verify that color_by mode is "instance"
     // we're asserting that when dataset is switched, session color settings are reset to default from app config

@@ -141,14 +141,15 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     await va.assert.temporalTrackCount(4);
 
     // find the new TD row and open its editor from the timeline
-    const newTrack = (await va.temporalTrackIds()).find((t) => !before.has(t));
-    expect(newTrack).toBeTruthy();
+    const created = (await va.temporalTrackIds()).filter((t) => !before.has(t));
+    expect(created).toHaveLength(1);
+    const [newTrack] = created;
 
     // the tracks drawer starts closed; pin the new TD row so the timeline click
     // has a visible target
-    await va.pinTrack(newTrack as string);
+    await va.pinTrack(newTrack);
 
-    await va.clickTrack(newTrack as string);
+    await va.clickTrack(newTrack);
     await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.annotate.afterSave(() =>
       modal.sidebar.edit.selectFieldChoice("label", "depart"),

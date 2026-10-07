@@ -4,6 +4,13 @@ import { OperatorsPromptPom } from "src/oss/poms/operators/operators-prompt";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("operators-prompt");
+
+/** The hello operators' output: the "Message" label, then their greeting */
+const GREETING = "Message:Hi E2E!";
+
+/** E2E: Progress at `step` of 2: its percent, then its label */
+const progressText = (step: number) =>
+  `${Math.round((step / 2) * 100)}%Loading ${step} of 2`;
 const test = base.extend<{
   operatorsBrowser: OperatorsBrowserPom;
   operatorsPrompt: OperatorsPromptPom;
@@ -63,7 +70,7 @@ test.describe.serial("operator prompt", () => {
     await operatorsPrompt.assert.isValidated();
     await operatorsPrompt.assert.canExecute();
     await operatorsPrompt.execute();
-    await operatorsPrompt.assert.hasContent("Message:Hi E2E!");
+    await operatorsPrompt.assert.hasContent(GREETING);
     await operatorsPrompt.close();
     await operatorsPrompt.assert.isClosed();
   });
@@ -93,7 +100,7 @@ test.describe.serial("operator prompt", () => {
     await operatorsPromptDrawer.assert.isValidated();
     await operatorsPromptDrawer.assert.canExecute();
     await operatorsPromptDrawer.execute();
-    await operatorsPromptDrawer.assert.hasContent("Message:Hi E2E!");
+    await operatorsPromptDrawer.assert.hasContent(GREETING);
     await operatorsPromptDrawer.close();
     await operatorsPromptDrawer.assert.isClosed();
   });
@@ -113,7 +120,7 @@ test.describe.serial("operator prompt", () => {
       0.5,
     );
     await operatorsPrompt.assert.isExecuting();
-    await operatorsPromptViewModal.assert.hasContent("Loading 1 of 2");
+    await operatorsPromptViewModal.assert.hasContent(progressText(1));
     // the released run shows its last step and closes its prompt
     await operatorsPrompt.afterClosed(() =>
       fiftyoneLoader.executePythonCode(`
@@ -122,7 +129,7 @@ test.describe.serial("operator prompt", () => {
       foo.ExecutionStore.create("e2e_progress_release").set("${datasetName}", 1)
     `),
     );
-    await operatorsPromptViewModal.assert.hasContent("Loading 2 of 2");
+    await operatorsPromptViewModal.assert.hasContent(progressText(2));
     await operatorsPromptViewModal.done();
     await operatorsPrompt.assert.isClosed();
     await operatorsPromptViewModal.assert.isClosed();

@@ -308,10 +308,9 @@ class ViewBarAsserter {
     expect(await this.viewBar.locator.isVisible()).toBe(true);
   }
 
-  async hasViewStage(text: string) {
-    expect(
-      (await this.viewBar.viewStages.allTextContents()).join(" "),
-    ).toContain(text);
+  /** Each pill's text, in order: the stage name, then its first param's preview */
+  async viewStages(texts: string[]) {
+    expect(await this.viewBar.viewStages.allTextContents()).toEqual(texts);
   }
 
   async stageCount(n: number) {
@@ -405,11 +404,6 @@ class StageEditorAsserter {
     expect(
       await this.editor.param(param).getByRole("checkbox").isChecked(),
     ).toBe(checked);
-  }
-
-  /** A field param shows its path in the picker rather than anywhere else. */
-  async paramField(param: string, path: string) {
-    expect(await this.editor.param(param).textContent()).toContain(path);
   }
 
   /** Which editor a hydrated param opened in. */

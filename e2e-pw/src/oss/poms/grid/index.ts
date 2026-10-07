@@ -64,9 +64,19 @@ class TileDraws {
 }
 
 /** A lane showing exactly `marks` marks, all of them temporal tags */
-const isTemporalTagLane = (detail: unknown, marks: number) => {
-  const lane = detail as { marks: number; sources: string };
-  return lane.marks === marks && lane.sources === "fiftyone:temporal-tags";
+type LaneShown = { marks: number; sources: string; domainNs: number };
+
+const isTemporalTagLane = (
+  detail: unknown,
+  marks: number,
+  domainNs?: number,
+) => {
+  const lane = detail as LaneShown;
+  return (
+    lane.marks === marks &&
+    lane.sources === "fiftyone:temporal-tags" &&
+    (domainNs === undefined || lane.domainNs === domainNs)
+  );
 };
 
 export class GridPom {
@@ -194,32 +204,26 @@ export class GridPom {
   }
 
   /**
-   * Resolve once a tile's interval lane has drawn `marks` temporal-tag marks,
-   * which it does on its own as the page loads
+   * Resolve once a tile's interval lane has drawn `marks` temporal-tag marks
+   * on a `domainNs` axis, which it does on its own as the page loads
    */
-  async untilTemporalTagMarks(marks: number) {
+  async untilTemporalTagMarks(marks: number, domainNs?: number) {
     await this.eventUtils.untilState(
       LANE_SHOWN,
       async () =>
         (await this.eventUtils.recorded(LANE_SHOWN)).some((detail) =>
-          isTemporalTagLane(detail, marks),
+          isTemporalTagLane(detail, marks, domainNs),
         ),
-      (e) => isTemporalTagLane(e.detail, marks),
+      (e) => isTemporalTagLane(e.detail, marks, domainNs),
     );
   }
 
-  /**
-   * The first mark's position on its lane, as the percentages the lane lays it
-   * out with — the tag's own time over the lane's time axis.
-   */
-  async temporalTagMarkGeometry(): Promise<{ left: number; width: number }> {
-    const mark = this.temporalTagMarks().first();
-    const [left, width] = await Promise.all([
-      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.left)),
-      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.width)),
-    ]);
-
-    return { left, width };
+  /** The time axis, in ns, the last drawn temporal-tag lane lays marks on */
+  async temporalTagLaneDomainNs(): Promise<number> {
+    const lanes = (await this.eventUtils.recorded(LANE_SHOWN)).filter(
+      (detail) => (detail as LaneShown).sources === "fiftyone:temporal-tags",
+    );
+    return (lanes.at(-1) as LaneShown).domainNs;
   }
 
   async getEntryCountText() {

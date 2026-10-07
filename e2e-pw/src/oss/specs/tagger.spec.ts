@@ -114,9 +114,9 @@ test.describe.serial("tag", () => {
     // if it ever appears in an aggregations form. Full-view label-tag counts
     // come from per-label-field `.tags` aggregations (via cumulativeCounts).
     expect(
-      aggregationWatcher.allPaths(),
+      aggregationWatcher.allPaths().filter((path) => path === "_label_tags"),
       "aggregationsQuery must never request '_label_tags'",
-    ).not.toContain("_label_tags");
+    ).toEqual([]);
   });
 
   test("In modal, I can add a label tag to a filtered sample", async ({

@@ -27,6 +27,16 @@ RETRYING = (
 )
 COMPONENT_ONLY = "// component-only:"
 
+# matchers that accept a range of values instead of one; the read after an
+# event is exact. A named time budget (`draw.t - open.t < BUDGET_MS`) carries
+# `// time-budget:` on its line or the line above.
+LOOSE = (
+    "Contain|ContainEqual|Match|MatchObject|BeGreaterThan|BeGreaterThanOrEqual|"
+    "BeLessThan|BeLessThanOrEqual|BeCloseTo|BeTruthy|BeFalsy|BeDefined"
+)
+TIME_BUDGET = "// time-budget:"
+MARKERS = {"retrying-assert": COMPONENT_ONLY, "loose-assert": TIME_BUDGET}
+
 E2E_RULES = [
     # expect(<not an awaited value>).to<retrying matcher>, across lines
     (
@@ -35,6 +45,18 @@ E2E_RULES = [
             r"expect(?:\.soft)?\(\s*(?!await\b)[^;]*?\)\s*\.\s*(?:not\s*\.\s*)?to(?:"
             + RETRYING
             + r")\b",
+            re.S,
+        ),
+    ),
+    (
+        "loose-assert",
+        re.compile(
+            r"\.\s*(?:not\s*\.\s*)?to(?:" + LOOSE + r")\("
+            # "anything but": not.toBe(x), not.toBeNull(), ...
+            + r"|\.\s*not\s*\.\s*to(?:Be|Equal|StrictEqual|BeNull|BeUndefined)\("
+            # a substring or regex check folded into the expected value
+            + r"|\bexpect(?:\.soft)?\((?:(?!\bexpect\b)[^;])*?\.(?:includes|startsWith|"
+            + r"endsWith|test|match|search|indexOf|some)\(",
             re.S,
         ),
     ),
@@ -158,14 +180,17 @@ def scan(files, rules, skip=None):
             continue
         if re.search(r"\.(test|spec)\.tsx?$", path) and rules is APP_RULES:
             continue
+        # unit tests of e2e helpers assert on helper internals, not the App
+        if re.search(r"\.test\.ts$", path):
+            continue
         raw = open(path).read()
         src = strip_comments(raw)
         raw_lines = raw.split("\n")
         for name, rx in rules:
             for m in rx.finditer(src):
                 line = src.count("\n", 0, m.start()) + 1
-                if name == "retrying-assert" and any(
-                    COMPONENT_ONLY in raw_lines[i]
+                if name in MARKERS and any(
+                    MARKERS[name] in raw_lines[i]
                     for i in range(max(0, line - 2), line)
                 ):
                     continue
@@ -200,8 +225,10 @@ for name, items in by_rule.items():
 print(f"TOTAL {len(findings)}")
 if findings:
     print(
-        "Run product-event actions through the e2e: event they cause, mark"
-        " plain component assertions `// component-only: <why>`, and dispatch"
-        " e2e: events without guards; see e2e-pw/CODING_STANDARDS.md"
+        "Run product-event actions through the e2e: event they cause, read"
+        " the result once with an exact matcher (a time budget carries"
+        " `// time-budget: <why>`), mark plain component assertions"
+        " `// component-only: <why>`, and dispatch e2e: events without guards;"
+        " see e2e-pw/CODING_STANDARDS.md"
     )
 sys.exit(1 if findings else 0)

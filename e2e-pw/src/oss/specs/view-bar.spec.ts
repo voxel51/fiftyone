@@ -83,8 +83,14 @@ test.describe("view bar", () => {
       const scroller = element.querySelector<HTMLElement>(
         "[data-cy='view-bar-scroller']",
       );
+      const pills = element.querySelectorAll(
+        "[data-cy='view-stage-container']",
+      );
       return {
-        rowHeight: element.getBoundingClientRect().height,
+        pillRows: new Set(
+          [...pills].map((pill) => pill.getBoundingClientRect().top),
+        ).size,
+        pillsSpillVertically: scroller.scrollHeight > scroller.clientHeight,
         pillsOverflow: scroller.scrollWidth > scroller.clientWidth,
         pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
       };
@@ -94,7 +100,8 @@ test.describe("view bar", () => {
     expect(layout.pillsOverflow).toBe(true);
     expect(layout.pageOverflow).toBe(false);
     // One-row stages row: nothing wrapped or spilled vertically
-    expect(layout.rowHeight).toBeLessThan(48);
+    expect(layout.pillRows).toBe(1);
+    expect(layout.pillsSpillVertically).toBe(false);
 
     // Removing a stage is a finished edit: it applies on its own, no Apply
     // stop — the grid reload is the proof the removal ran
@@ -126,7 +133,7 @@ test.describe("view bar", () => {
     const stages = await getSessionView(request, baseURL, datasetName);
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("Limit");
-    expect(kwargsOf(stages[0])).toMatchObject({ limit: 3 });
+    expect(kwargsOf(stages[0])).toEqual({ limit: 3 });
   });
 
   //
@@ -172,8 +179,7 @@ test.describe("view bar", () => {
 
     // A hydrated view stays folded behind the toggle's count badge
     await viewBar.expand();
-    await viewBar.assert.stageCount(1);
-    await viewBar.assert.hasViewStage("Match");
+    await viewBar.assert.viewStages(["MatchF('index') > 4"]);
 
     // An expression is an expression whoever wrote it, so it opens as Python
     const editor = await viewBar.editExpressionStage(0);

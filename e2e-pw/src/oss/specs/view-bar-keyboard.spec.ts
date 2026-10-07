@@ -62,7 +62,7 @@ test.describe("view bar keyboard", () => {
 
     const stages = await getSessionView(request, baseURL, datasetName);
     expect(clsOf(stages[0])).toBe("Limit");
-    expect(kwargsOf(stages[0])).toMatchObject({ limit: 3 });
+    expect(kwargsOf(stages[0])).toEqual({ limit: 3 });
   });
 
   //
@@ -99,9 +99,9 @@ test.describe("view bar keyboard", () => {
     const stages = await getSessionView(request, baseURL, datasetName);
     expect(stages).toHaveLength(2);
     expect(clsOf(stages[0])).toBe("Skip");
-    expect(kwargsOf(stages[0])).toMatchObject({ skip: 2 });
+    expect(kwargsOf(stages[0])).toEqual({ skip: 2 });
     expect(clsOf(stages[1])).toBe("Limit");
-    expect(kwargsOf(stages[1])).toMatchObject({ limit: 3 });
+    expect(kwargsOf(stages[1])).toEqual({ limit: 3 });
   });
 
   //
@@ -198,8 +198,12 @@ test.describe("view bar keyboard", () => {
       );
       if (await holdsKeyboard(slots.last())) break;
     }
-    expect(forward).toContain("Edit stage");
-    expect(forward).toContain("Remove stage");
+    expect(forward).toEqual([
+      "Edit stage",
+      "Limit API documentation",
+      "Remove stage",
+      "Insert stage",
+    ]);
     expect(await holdsKeyboard(slots.last())).toBe(true);
 
     // Backward returns through the same stops to the first slot

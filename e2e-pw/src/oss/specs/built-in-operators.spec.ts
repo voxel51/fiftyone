@@ -45,5 +45,5 @@ test("Built-in operators: set view", async ({
   await viewBar.afterStagesShown(() =>
     url.pageChange(() => operatorsBrowser.choose("E2E: Set view")),
   );
-  await viewBar.assert.hasViewStage("Limit3");
+  await viewBar.assert.viewStages(["Limit3"]);
 });

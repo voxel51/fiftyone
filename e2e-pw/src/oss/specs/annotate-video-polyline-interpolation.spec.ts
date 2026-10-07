@@ -174,12 +174,12 @@ const drawPolyline = async (modal: ModalPom): Promise<string> => {
   await modal.sampleCanvas.rightClick(0.9, 0.1);
   await modal.sidebar.annotate.polylineMode();
 
-  const drawnId = (await modal.videoAnnotate.objectTrackIds()).find(
+  const drawn = (await modal.videoAnnotate.objectTrackIds()).filter(
     (id) => !before.has(id),
   );
-  expect(drawnId, "the drawn polyline should be a new overlay").toBeTruthy();
+  expect(drawn, "the drawn polyline should be one new overlay").toHaveLength(1);
 
-  return drawnId as string;
+  return drawn[0];
 };
 
 /**

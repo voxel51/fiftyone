@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import {
   alternateMediaDatasetName,
+  episodeCount,
   expect,
   fixturePaths,
   openMcapModal,
@@ -61,7 +62,8 @@ test.describe("MCAP surfaces", () => {
         );
       },
     );
-    expect(await sourceFactsEntryCount(page)).toBeGreaterThan(0);
+    // the grid's tiles persist every episode's source facts
+    expect(await sourceFactsEntryCount(page)).toBe(episodeCount);
 
     await modal.close();
     await page.evaluate(async () => {
@@ -114,7 +116,7 @@ test.describe("MCAP surfaces", () => {
       );
       await modal.sampleCanvas.assert.hasScreenshot("alternate-media-1.png");
 
-      await modal.afterSampleLoaded(() =>
+      await modal.afterSampleFileLoaded(tinyB.fileName, () =>
         modal.afterLookerAttached(() =>
           modal.getSampleNavigation("forward").click(),
         ),
@@ -277,7 +279,7 @@ test.describe("MCAP surfaces", () => {
         "Requested backend",
         "WebGL2 (diagnostic override)",
       );
-      await expectStatsRow(modal.episode.scope, "WebGPU devices", /^0 \/ \d+$/);
+      await expectStatsRow(modal.episode.scope, "WebGPU devices", "0 / 16");
       await expectStatsRow(
         modal.episode.scope,
         "Surface · modal-3d",
@@ -332,15 +334,11 @@ async function sourceFactsEntryCount(page: Page): Promise<number> {
 async function expectStatsRow(
   scope: Locator,
   label: string,
-  value: string | RegExp,
+  value: string,
 ): Promise<void> {
   const row = scope.locator(`[data-stats-row=${JSON.stringify(label)}]`);
   const text = collapseWhitespace(
     await row.locator("span").last().textContent(),
   );
-  if (typeof value === "string") {
-    expect(text).toBe(value);
-  } else {
-    expect(text).toMatch(value);
-  }
+  expect(text).toBe(value);
 }

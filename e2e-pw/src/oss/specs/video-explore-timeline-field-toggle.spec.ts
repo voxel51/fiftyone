@@ -105,13 +105,12 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
     .first()
     .elementHandle();
   const rowsBefore = await page.locator("[data-track-id]").elementHandles();
-  expect(root).not.toBeNull();
-  expect(drawer).not.toBeNull();
-  expect(rowsBefore.length).toBeGreaterThan(0);
+  // one row per field: the detection track, then the polyline track
+  expect(rowsBefore.length).toBe(2);
 
   const attached = async () => ({
-    root: await root!.evaluate((el) => el.isConnected),
-    drawer: await drawer!.evaluate((el) => el.isConnected),
+    root: await root.evaluate((el) => el.isConnected),
+    drawer: await drawer.evaluate((el) => el.isConnected),
     rows: await Promise.all(
       rowsBefore.map((row) => row.evaluate((el) => el.isConnected)),
     ),
@@ -130,10 +129,9 @@ test("toggling a frame field keeps the timeline drawer and its rows mounted", as
   let after = await attached();
   expect(after.root, "timeline root was replaced").toBe(true);
   expect(after.drawer, "timeline drawer was replaced").toBe(true);
-  expect(
-    after.rows.filter(Boolean).length,
-    "the row for the still-active field was replaced",
-  ).toBeGreaterThan(0);
+  expect(after.rows, "the row for the still-active field was replaced").toEqual(
+    [true, false],
+  );
   const survivors = rowsBefore.filter((_, i) => after.rows[i]);
 
   // and back on: the stream rebuilds again, still without a remount, and the

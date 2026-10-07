@@ -136,6 +136,22 @@ export class ModalPom {
   }
 
   /**
+   * Run `action` and resolve once the modal's sample surface has drawn the
+   * sample stored as `fileName` because of it
+   */
+  afterSampleFileLoaded<T>(
+    fileName: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after(SAMPLE_LOADED, action, (e) => {
+      const detail = e.detail as { thumbnail: boolean; sampleFilepath: string };
+      return (
+        !detail.thumbnail && detail.sampleFilepath.endsWith(`/${fileName}`)
+      );
+    });
+  }
+
+  /**
    * Run `action` and resolve on the modal looker's first settled draw whose
    * labels differ from its previous one
    */

@@ -19,6 +19,13 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
 
+/** The seeded detection's bounding box width */
+const SEED_WIDTH = 0.2;
+/** The persisted width after the Add stroke, as the editor renders it */
+const GROWN_WIDTH = "0.4971774193548387";
+/** The persisted mask's covered fraction after the Remove stroke */
+const ERASED_COVERAGE = 0.8824259440104166;
+
 /** Open the seeded detection's editor in a brand-new browser context. */
 const inFreshContext = async (
   browser: Browser,
@@ -107,10 +114,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
-    const before = Number(
-      await modal.sidebar.edit.getFieldValue("dimensions.width"),
+    expect(await modal.sidebar.edit.getFieldValue("dimensions.width")).toBe(
+      String(SEED_WIDTH),
     );
-    expect(before).toBeGreaterThan(0);
 
     await modal.sidebar.annotate.pickTool("Brush");
     await modal.sidebar.annotate.pickMaskMode("Add");
@@ -124,9 +130,9 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     // the persisted mask reaches past the seeded box: its bounding box widened
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      expect(
-        Number(await fresh.sidebar.edit.getFieldValue("dimensions.width")),
-      ).toBeGreaterThan(before);
+      expect(await fresh.sidebar.edit.getFieldValue("dimensions.width")).toBe(
+        GROWN_WIDTH,
+      );
     });
   });
 
@@ -141,8 +147,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
     // seed mask is fully set within its bbox → coverage starts at 1.0.
-    const before = await modal.sidebar.edit.maskPreviewCoverage();
-    expect(before).toBeGreaterThan(0);
+    expect(await modal.sidebar.edit.maskPreviewCoverage()).toBe(1);
 
     await modal.sidebar.annotate.pickTool("Brush");
     await modal.sidebar.annotate.pickMaskMode("Remove");
@@ -155,8 +160,8 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     // coverage drops — raw pixel count is unreliable across the commit's mask
     // re-rasterization, the covered FRACTION is not.
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBeLessThan(
-        before,
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(
+        ERASED_COVERAGE,
       );
     });
 
@@ -165,7 +170,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(before);
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(1);
     });
   });
 });

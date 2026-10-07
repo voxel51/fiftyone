@@ -29,6 +29,8 @@ const ID_ATTRIBUTE = {
 };
 
 const TAG = "review";
+const CLIP_SECONDS = 2;
+const CLIP_NS = CLIP_SECONDS * 1e9;
 
 const test = base.extend<{
   grid: GridPom;
@@ -47,7 +49,7 @@ const seedVideoDataset = (datasetFactory: typeof DatasetFactory) =>
     datasetName: videoDataset,
     numSamples: 1,
     sampleFrames: true,
-    videoOptions: { frameRate: 5 },
+    videoOptions: { frameRate: 5, duration: CLIP_SECONDS },
     schema: { "frames.detections": "Detections" },
     labelSchemas: {
       "frames.detections": {
@@ -90,7 +92,7 @@ test.describe.serial("video temporal tags", () => {
     );
     expect(
       await page.getByTestId("categorical-filter-_temporal_tags").textContent(),
-    ).toContain("No results");
+    ).toBe("No results");
 
     await modal.afterSampleLoaded(() => grid.openFirstSample());
     await modal.videoAnnotate.afterSurface(() =>
@@ -123,13 +125,11 @@ test.describe.serial("video temporal tags", () => {
 
     // A reload keeps nothing client-side, so a mark that comes back was read
     // from the tag routes.
-    await fiftyoneLoader.waitUntilGridVisible(page, videoDataset);
-    await grid.untilTemporalTagMarks(1);
-    expect(await grid.temporalTagMarkCount()).toBe(1);
-
     // On the clip's axis, not the tags': a lane scaled to its only tag would
     // run that tag's mark all the way to the right edge.
-    const { left, width } = await grid.temporalTagMarkGeometry();
-    expect(left + width).toBeLessThan(99);
+    await fiftyoneLoader.waitUntilGridVisible(page, videoDataset);
+    await grid.untilTemporalTagMarks(1, CLIP_NS);
+    expect(await grid.temporalTagMarkCount()).toBe(1);
+    expect(await grid.temporalTagLaneDomainNs()).toBe(CLIP_NS);
   });
 });

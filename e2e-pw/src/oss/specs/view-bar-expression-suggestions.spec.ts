@@ -64,7 +64,7 @@ const completeFieldAndExpectOperators = async (
   await editor.acceptSuggestion("label", accept);
 
   // the completed receiver should immediately offer operators
-  expect(await filter.textContent()).toContain('F("label")');
+  await editor.assert.paramText("filter", 'F("label")');
   expect(
     await editor.suggestions.filter({ hasText: "==" }).first().isVisible(),
   ).toBe(true);

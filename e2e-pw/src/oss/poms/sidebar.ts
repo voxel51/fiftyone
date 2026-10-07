@@ -330,6 +330,6 @@ class SidebarAsserter {
       await this.sb
         .sidebarEntryDraggableArea(fieldName)
         .getAttribute("data-draggable"),
-    ).not.toBe("true");
+    ).toBe("false");
   }
 }

@@ -62,10 +62,10 @@ test.describe("view bar quick search", () => {
     );
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
-    // A static run applies its results as a Select over the ranked ids;
-    // the row stays folded until the toggle opens it
+    // A static run applies its results as a Select over the ranked ids, the
+    // query's own sample first; the row stays folded until the toggle opens it
     await viewBar.expand();
-    await viewBar.assert.hasViewStage("Select");
+    await viewBar.assert.viewStages([`Select${query} +2`]);
 
     // The query was remembered at submit time: refocusing the box offers it
     await viewBar.clearSearch();

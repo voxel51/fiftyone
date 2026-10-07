@@ -100,7 +100,7 @@ class ModalVideoControlsAsserter {
 
   async isTimeTextEqualTo(text: string) {
     const time = await this.videoControlsPom.time.textContent();
-    expect(time).toContain(text);
+    expect(time).toBe(text);
   }
 }
 

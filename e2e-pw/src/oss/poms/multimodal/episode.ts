@@ -466,9 +466,10 @@ export class EpisodePom {
     await this.shell
       .getByRole("button", { name: "Layout", exact: true })
       .click();
+    const before = await this.tileTitle(title).count();
     // the layout adds the tile, and its header, in the click's render
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
-    expect(await this.tileTitle(title).count()).toBeGreaterThan(0);
+    expect(await this.tileTitle(title).count()).toBe(before + 1);
   }
 
   async selectMessageSource(
@@ -823,10 +824,7 @@ export class EpisodePom {
     return byDataTestId(this.rawTree, "episode-raw-node-" + path);
   }
 
-  async expectRawField(
-    path: string,
-    value: number | string | RegExp,
-  ): Promise<void> {
+  async expectRawField(path: string, value: number | string): Promise<void> {
     const segments = path.split(".");
     for (let depth = 1; depth < segments.length; depth++) {
       const parentPath = segments.slice(0, depth).join(".");
@@ -843,17 +841,8 @@ export class EpisodePom {
     }
     const renderedValue = this.rawField(path).locator("span").last();
     const expected =
-      typeof value === "number"
-        ? String(value)
-        : typeof value === "string"
-          ? JSON.stringify(value)
-          : value;
-    const text = (await renderedValue.textContent()) ?? "";
-    if (typeof expected === "string") {
-      expect(text).toBe(expected);
-    } else {
-      expect(text).toMatch(expected);
-    }
+      typeof value === "number" ? String(value) : JSON.stringify(value);
+    expect(await renderedValue.textContent()).toBe(expected);
   }
 
   /** The raw tile's message time relative to the recording start */
