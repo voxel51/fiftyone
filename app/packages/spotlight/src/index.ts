@@ -340,8 +340,10 @@ export default class Spotlight<K, V> extends EventTarget {
           return;
         }
 
+        // A render during the initial fill does not complete the load
+        const filling = this.#filling;
         await Promise.allSettled(promises);
-        if (!this.#loaded) {
+        if (!this.#loaded && !filling) {
           this.#loaded = true;
           this.dispatchEvent(new Load(this.#config.key));
         }
@@ -453,21 +455,24 @@ export default class Spotlight<K, V> extends EventTarget {
     // Paint as soon as the first page arrives, then keep filling the
     // viewport. #render does not chain page requests until filling is done
     this.#filling = true;
-    await this.#next(false);
-    await this.#previous(false);
-    this.#render({
-      at: this.#config.at,
-      offset: -this.#pivot,
-      zooming: false,
-    });
-    this.dispatchEvent(new Render(this.#config.key));
-
-    while (!this.#forward.finished && this.#forward.height < this.#height) {
+    try {
       await this.#next(false);
-      this.#render({ go: false, offset: false, zooming: false });
+      await this.#previous(false);
+      this.#render({
+        at: this.#config.at,
+        offset: -this.#pivot,
+        zooming: false,
+      });
+      this.dispatchEvent(new Render(this.#config.key));
+
+      while (!this.#forward.finished && this.#forward.height < this.#height) {
+        await this.#next(false);
+        this.#render({ go: false, offset: false, zooming: false });
+      }
+    } finally {
+      this.#filling = false;
     }
 
-    this.#filling = false;
     this.#render({
       go: false,
       offset: false,

@@ -31,6 +31,8 @@ interface Harness<V> {
   resolve: (key: number) => Promise<void>;
   /** resolve every request, including ones made while resolving, in order */
   resolveAll: () => Promise<void>;
+  /** end a user scroll on the spotlight and let its render settle */
+  scroll: () => Promise<void>;
   /** run queued animation frames and let promises settle */
   settle: () => Promise<void>;
   spotlight: Spotlight<number, V>;
@@ -154,7 +156,21 @@ export const createHarness = <V>(options: {
   document.body.appendChild(element);
   spotlight.attach(element);
 
-  return { events, requested, resolve, resolveAll, settle, shown, spotlight };
+  const scroll = async () => {
+    element.firstElementChild.dispatchEvent(new Event("scrollend"));
+    await settle();
+  };
+
+  return {
+    events,
+    requested,
+    resolve,
+    resolveAll,
+    scroll,
+    settle,
+    shown,
+    spotlight,
+  };
 };
 
 const keys = (harness: Harness<unknown>) =>
@@ -223,6 +239,25 @@ describe("Spotlight fill", () => {
 
     expect(harness.events).toEqual(["render", "load"]);
     expect(harness.spotlight.loaded).toBe(true);
+  });
+
+  test("a scroll during fill does not load with maxItemsSizeBytes", async () => {
+    const harness = createHarness({
+      itemsPerPage: 20,
+      totalItems: 400,
+      maxItemsSizeBytes: 1e9,
+    });
+    await harness.settle();
+    await harness.resolve(0);
+    await harness.scroll();
+
+    expect(harness.events).toEqual(["render"]);
+    expect(harness.spotlight.loaded).toBe(false);
+
+    await harness.resolveAll();
+    await harness.settle();
+
+    expect(harness.events).toEqual(["render", "load"]);
   });
 
   test("restoring `at` in the middle paints at that item", async () => {
