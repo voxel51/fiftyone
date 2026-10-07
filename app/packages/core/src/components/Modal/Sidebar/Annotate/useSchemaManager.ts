@@ -147,6 +147,8 @@ export type UpdateSchemaRequest = {
 
 export type UpdateSchemaResponse = {
   label_schema: FieldSchema;
+  /** Set (and nothing saved) when the label schema was rejected. */
+  error?: string;
 };
 
 export type LabelSchemaConfig = {
@@ -456,8 +458,14 @@ export const useSchemaManager = (): SchemaManager => {
   );
 
   const updateSchema = useCallback(
-    (request: UpdateSchemaRequest): Promise<UpdateSchemaResponse> => {
-      return operatorAsPromise(updateSchemaOperator, request);
+    async (request: UpdateSchemaRequest): Promise<UpdateSchemaResponse> => {
+      const response = await operatorAsPromise(updateSchemaOperator, request);
+      // The operator reports an invalid schema in its result (and notifies
+      // the user) rather than failing: nothing was saved
+      if (response?.error) {
+        throw new Error(response.error);
+      }
+      return response;
     },
     [updateSchemaOperator],
   );

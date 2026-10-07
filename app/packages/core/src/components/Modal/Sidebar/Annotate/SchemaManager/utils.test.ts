@@ -274,6 +274,38 @@ describe("reconcileComponent", () => {
     ).toBe("dropdown");
   });
 
+  it("keeps a primitive field's radio or dropdown when it has values", () => {
+    const scanned = {
+      type: "str",
+      component: "radio",
+      values: ["ego_vehicle", "other_vehicle"],
+    };
+    expect(reconcileComponent(scanned)).toEqual(scanned);
+    expect(
+      reconcileComponent({ ...scanned, component: "dropdown" }).component,
+    ).toBe("dropdown");
+  });
+
+  it("derives radio or dropdown for a text primitive field with values", () => {
+    expect(
+      reconcileComponent({ type: "int", component: "text", values: [1, 2] })
+        .component,
+    ).toBe("radio");
+    expect(
+      reconcileComponent({
+        type: "str",
+        component: "text",
+        values: classes(6),
+      }).component,
+    ).toBe("dropdown");
+  });
+
+  it("resets a primitive field to text and strips values when none remain", () => {
+    expect(
+      reconcileComponent({ type: "str", component: "radio", values: [] }),
+    ).toEqual({ type: "str", component: "text" });
+  });
+
   it("resets to text and strips classes when none remain", () => {
     expect(reconcileComponent({ component: "radio", classes: [] })).toEqual({
       component: "text",

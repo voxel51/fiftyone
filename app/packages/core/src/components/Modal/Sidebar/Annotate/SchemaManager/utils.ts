@@ -671,25 +671,29 @@ export const defaultClassesComponent = (classes: string[]): ClassesComponent =>
   classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio";
 
 /**
- * Auto-adjust the component type to match the current classes.
- * - Classes present + component is "text" (or unset) → "radio" or "dropdown"
- *   by class count
- * - Classes present + explicit "radio"/"dropdown" → preserved as chosen
- * - Classes removed + component is "radio"/"dropdown" → switch to "text"
+ * Auto-adjust the component type to match the current choices: `classes`
+ * for label fields, `values` for primitive fields.
+ * - Choices present + component is "text" (or unset) → "radio" or "dropdown"
+ *   by choice count
+ * - Choices present + explicit "radio"/"dropdown" → preserved as chosen
+ * - Choices removed + component is "radio"/"dropdown" → switch to "text"
  */
 export const reconcileComponent = (
   config: SchemaConfigType,
 ): SchemaConfigType => {
-  const { classes, component } = config;
-  const hasClasses = classes && classes.length > 0;
+  const { classes, values, component } = config;
+  const choices = classes?.length ? classes : values;
 
-  if (hasClasses) {
+  if (choices && choices.length > 0) {
     if (!component || component === "text") {
-      return { ...config, component: defaultClassesComponent(classes) };
+      return {
+        ...config,
+        component: defaultClassesComponent(choices.map(String)),
+      };
     }
   } else {
-    // Strip empty classes key and reset component to text
-    const { classes: _, ...rest } = config;
+    // Strip empty choice keys and reset component to text
+    const { classes: _classes, values: _values, ...rest } = config;
     if (component === "radio" || component === "dropdown") {
       return { ...rest, component: "text" };
     }

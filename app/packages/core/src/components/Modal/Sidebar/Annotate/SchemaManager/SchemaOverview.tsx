@@ -177,21 +177,30 @@ const SchemaOverview = () => {
   // Dataset default: "scanned ⇒ annotate" — a set-up field that is
   // still deactivated (a legacy explore-only demotion) is activated so
   // the Annotate sidebar matches what this surface shows.
-  const activatedRef = useRef<string>("");
+  // Each field is tried once per mount: a failed activation (or the field
+  // editor activating the same field) must not retrigger it, which once
+  // flooded the server with activation requests.
+  const attemptedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (docMode || search.trim()) return;
     const stale = [...sections.scanned, ...sections.unhideable]
-      .filter((r) => r.setUp && !activeSet.has(r.path))
+      .filter(
+        (r) =>
+          r.setUp &&
+          !activeSet.has(r.path) &&
+          !attemptedRef.current.has(r.path),
+      )
       .map((r) => r.path);
     if (!stale.length) return;
-    const key = stale.join(",");
-    if (activatedRef.current === key) return;
-    activatedRef.current = key;
+    for (const path of stale) attemptedRef.current.add(path);
     const paths = new Set(stale);
     addActive(paths);
-    activateSchemas({ fields: stale }).catch(() => {
+    activateSchemas({ fields: stale }).catch((err) => {
       removeActive(paths);
-      setError(`Failed to activate ${stale.join(", ")}`);
+      const names = stale.map((p) => `"${p}"`).join(", ");
+      setError(
+        `Failed to activate ${stale.length === 1 ? "field" : "fields"} ${names}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     });
   }, [
     docMode,
