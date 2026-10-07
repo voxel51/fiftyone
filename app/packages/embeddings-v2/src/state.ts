@@ -25,6 +25,17 @@ export const selectionSampleCountState = atom<number | null>({
   default: null,
 });
 
+// Any reset of the App's extended selection drops this panel's stage (a
+// view change resets it, for one), so the counts describing that stage
+// drop in the same commit, whether or not a plot view is mounted to notice.
+// Without it the chip and the tab pill keep counting a selection nothing
+// applies. A fast refresh may register a second copy; it resets the same
+// two atoms, so it is harmless
+fos.registerExtendedSelectionResetParticipant(({ reset }) => {
+  reset(selectionCountState);
+  reset(selectionSampleCountState);
+});
+
 /**
  * Clear-selection requests from outside the plot view (the tab pill's
  * dismiss). A monotonic nonce rather than a boolean: the plot view

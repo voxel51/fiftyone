@@ -628,6 +628,7 @@ export function useRunPlotData(
     selectedSamples,
     setSelectedSamples,
     foreignSelection,
+    ownStage,
     serverIds: !source.ownsGeometry,
     isPatchesView,
     decorateSelection: features.decorateSelection,

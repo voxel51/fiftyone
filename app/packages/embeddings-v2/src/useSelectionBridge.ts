@@ -47,6 +47,10 @@ export interface SelectionBridgeOptions {
    * layer. Null when there is none, or when this panel's own stage outranks
    * it. */
   foreignSelection: readonly string[] | null;
+  /** This panel's live stage (fos.extendedSelectionOverrideStage). The App
+   * can drop it without the panel's say — a view change resets the
+   * extended selection — and the plot's own layers then drop with it. */
+  ownStage: unknown;
   /** Whether the server's ids column can answer for this run. False for an
    * extension-owned run, whose points are not sample-keyed. */
   serverIds: boolean;
@@ -107,6 +111,7 @@ export function useSelectionBridge({
   selectedSamples,
   setSelectedSamples,
   foreignSelection,
+  ownStage,
   serverIds,
   isPatchesView,
   decorateSelection,
@@ -192,6 +197,31 @@ export function useSelectionBridge({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
+
+  // The App can drop this panel's stage on its own: a view change resets
+  // the extended selection. The grid then applies no selection, so the
+  // plot's picture of one (lasso and click layers, the chart's dim, the
+  // chip's counts) drops too, or it describes a selection nothing applies.
+  // Grid checkboxes are the reader's and stay. Only a stage that was live
+  // and then vanished counts: a lasso still resolving has no stage yet
+  const hadStage = useRef(ownStage != null);
+  useEffect(() => {
+    const had = hadStage.current;
+    hadStage.current = ownStage != null;
+    if (!had || ownStage != null) return;
+    lassoSeq.current++;
+    clickSeq.current++;
+    clickedPoints.current.clear();
+    clickedSamples.current.clear();
+    setClickIndices(null);
+    setLassoIndices(null);
+    publishSelection({
+      count: null,
+      sampleCount: null,
+      decorate: decorateSelection?.(null) ?? null,
+    });
+    chart.current?.clearSelection();
+  }, [ownStage, publishSelection, decorateSelection, chart]);
 
   // A response landing after unmount (a tab switch, a close) must not
   // publish for a plot that is gone — the close effect may have just

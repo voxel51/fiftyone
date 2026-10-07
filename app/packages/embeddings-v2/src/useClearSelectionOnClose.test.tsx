@@ -21,6 +21,8 @@ vi.mock("@fiftyone/spaces", () => ({
 // counts clear in
 vi.mock("@fiftyone/state", () => ({
   resetExtendedSelectionTransaction: vi.fn(),
+  // state.ts registers its counts at import
+  registerExtendedSelectionResetParticipant: () => () => undefined,
 }));
 
 describe("useClearSelectionOnClose", () => {
