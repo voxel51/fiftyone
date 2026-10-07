@@ -24,6 +24,36 @@ const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
 const DEFAULT_MODE: TimelineMode = { kind: "duration" };
 
+type Display = "configured" | "duration";
+
+/**
+ * The display domain the user last picked on any timeline, persisted so
+ * every provider after it — each sample mounts a fresh one — opens on the
+ * same choice, across reloads too. Only a mount-time seed and a write on
+ * toggle: nothing reacts to it while a provider is mounted.
+ */
+const DISPLAY_STORAGE_KEY = "fo-playback-timeline-display";
+
+// SSR has no `window`, and restricted browsers (sandboxed iframes, blocked
+// cookies) throw on the storage accessor itself or on access; either way
+// the preference just isn't remembered.
+const readStoredDisplay = (): Display | null => {
+  try {
+    const value = window.localStorage.getItem(DISPLAY_STORAGE_KEY);
+    return value === "configured" || value === "duration" ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredDisplay = (display: Display) => {
+  try {
+    window.localStorage.setItem(DISPLAY_STORAGE_KEY, display);
+  } catch {
+    // not remembered; the toggle itself still applies
+  }
+};
+
 /**
  * Falls back to `duration` mode when a caller-provided `TimelineMode`'s
  * numeric fields can't produce a sane conversion — a non-finite/non-positive
@@ -159,7 +189,6 @@ export function PlaybackProvider({
   snapToFrameOnSettle,
   mode,
   defaultDisplay = "configured",
-  onDisplayChange,
   seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
@@ -176,41 +205,37 @@ export function PlaybackProvider({
   }
   const resolvedMode = resolvedModeRef.current;
 
-  // What the ruler / readouts render in. Seeded from the configured mode —
-  // or from plain elapsed time when the surface asks for that — and then
+  // What the ruler / readouts render in. Seeded from the user's last pick
+  // on any timeline, else from the surface's `defaultDisplay`, and then
   // owned by the user; the engine never reads it. Frozen at mount like
   // `resolvedMode`, so this only ever picks the opening domain.
   const initialDisplayModeRef = useRef<TimelineMode>();
   if (initialDisplayModeRef.current === undefined) {
+    const display = readStoredDisplay() ?? defaultDisplay;
     initialDisplayModeRef.current =
-      defaultDisplay === "duration" ? DEFAULT_MODE : resolvedMode;
+      display === "duration" ? DEFAULT_MODE : resolvedMode;
   }
   const [displayMode, setDisplayMode] = useState<TimelineMode>(
     initialDisplayModeRef.current,
   );
   const canToggleMode = resolvedMode.kind !== "duration";
-  const applyDisplayMode = useCallback(
-    (next: TimelineMode) => {
-      setDisplayMode(next);
-      onDisplayChange?.(next.kind === "duration" ? "duration" : "configured");
-    },
-    [onDisplayChange],
-  );
+  // Only the user's toggle is remembered; a programmatic `setMode` changes
+  // this timeline alone.
   const toggleMode = useCallback(() => {
     if (!canToggleMode) return;
-    applyDisplayMode(
-      displayMode.kind === "duration" ? resolvedMode : DEFAULT_MODE,
-    );
-  }, [canToggleMode, displayMode, resolvedMode, applyDisplayMode]);
+    const toDuration = displayMode.kind !== "duration";
+    setDisplayMode(toDuration ? DEFAULT_MODE : resolvedMode);
+    writeStoredDisplay(toDuration ? "duration" : "configured");
+  }, [canToggleMode, displayMode, resolvedMode]);
   const modeControl = useMemo<TimelineModeControl>(
     () => ({
       mode: displayMode,
       configuredMode: resolvedMode,
       canToggle: canToggleMode,
       toggle: toggleMode,
-      setMode: applyDisplayMode,
+      setMode: setDisplayMode,
     }),
-    [displayMode, resolvedMode, canToggleMode, toggleMode, applyDisplayMode],
+    [displayMode, resolvedMode, canToggleMode, toggleMode],
   );
   const { store, contextValue } = usePlaybackEngine({
     duration,

@@ -13,7 +13,6 @@ import {
 import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
-import { useModalVideoDisplay } from "./useModalVideoDisplay";
 import styles from "./VideoLookerSurface.module.css";
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
@@ -72,9 +71,6 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
 
   const frameRate = getModalSampleFrameRate(sample);
 
-  // Opens on whichever of frames/timecode the user last picked.
-  const display = useModalVideoDisplay();
-
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the ruler can count them; elapsed seconds if not.
   const mode = useMemo<TimelineMode>(
@@ -91,7 +87,7 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
   return (
-    <PlaybackProvider key={playbackKey} mode={mode} {...display}>
+    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
       {/* Registers the label stream the tracks read. A SIBLING of the media:
           it re-keys on the resolved frame count, and nesting the looker under
           it would rebuild the looker on the way to ready. */}

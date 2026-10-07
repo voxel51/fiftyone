@@ -43,7 +43,11 @@ function renderTime(
 }
 
 describe("PlayheadTime", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    // a toggle persists the display choice, which would seed later tests
+    localStorage.clear();
+  });
 
   it("renders the initial playhead and duration formatted as 0:SS.cs", () => {
     renderTime(12);
@@ -142,6 +146,16 @@ describe("PlayheadTime", () => {
       // Still swappable: the CONFIGURED mode is still `sequence`.
       fireEvent.click(screen.getByRole("button"));
       expect(screen.getByText("# 5 / #10")).toBeTruthy();
+    });
+
+    it("opens a fresh provider on the last display the user picked", () => {
+      renderTime(1, 0.5, { kind: "sequence", fps: 10 });
+      fireEvent.click(screen.getByRole("button"));
+      cleanup();
+
+      // the next sample's provider, whose own default is frame numbers
+      renderTime(1, 0.5, { kind: "sequence", fps: 10 });
+      expect(screen.getByText("0:00.50 / 0:01.00")).toBeTruthy();
     });
 
     it("leaves the step interval alone across a toggle", () => {

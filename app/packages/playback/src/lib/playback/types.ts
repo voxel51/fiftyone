@@ -313,18 +313,13 @@ export interface PlaybackConfig {
    * timecode readout unless the user asks for frame numbers (the looker's
    * `UseFrameNumberOptionElement` was likewise opt-in).
    *
+   * Only a first-run default: once the user toggles any timeline, their
+   * choice is persisted and seeds every provider after it.
+   *
    * Ignored when `mode` is already `duration` — there is nothing to seed.
    * @default "configured"
    */
   defaultDisplay?: "configured" | "duration";
-  /**
-   * Called when the user swaps the display domain, with the domain it now
-   * shows (`"configured"` for anything other than plain elapsed time).
-   * Pairs with {@link defaultDisplay} for surfaces that remount the provider
-   * per sample but want the choice to carry over: persist it here, seed it
-   * back on the next mount.
-   */
-  onDisplayChange?: (display: "configured" | "duration") => void;
   /**
    * Trailing delay before a seek asks missing blocking streams to prefetch.
    * The visual playhead and commits into already-buffered data stay immediate.
