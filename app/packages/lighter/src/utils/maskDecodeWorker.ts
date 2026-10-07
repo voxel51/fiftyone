@@ -11,7 +11,7 @@
 
 import type { OverlayMask } from "@fiftyone/looker/src/numpy";
 
-import { decodeHeatmapIndices, type DecodedHeatmap } from "./heatmapIndices";
+import { decodeHeatmap, type DecodedHeatmap } from "./heatmapValues";
 import { decodeMaskToRaster } from "./maskRaster";
 import {
   decodeSegmentationIndices,
@@ -36,20 +36,19 @@ export interface MaskIndicesRequest {
 }
 
 /**
- * Quantize a heatmap to 16-bit indices over its range, for the same palette
- * lookup. The exact values ride along for the tooltip.
+ * Decode a heatmap to its values. No quantize and no range: the renderer maps
+ * the values to color at draw time.
  */
-export interface HeatmapIndicesRequest {
+export interface HeatmapValuesRequest {
   uuid: string;
   kind: "heatmap";
   maskData: string | OverlayMask;
-  range?: [number, number];
 }
 
 export type MaskDecodeRequest =
   | MaskRasterRequest
   | MaskIndicesRequest
-  | HeatmapIndicesRequest;
+  | HeatmapValuesRequest;
 
 export interface MaskDecodeSuccess {
   uuid: string;
@@ -77,7 +76,7 @@ interface MaskDecodeFailure {
   error: string;
 }
 
-export interface HeatmapIndicesSuccess extends DecodedHeatmap {
+export interface HeatmapValuesSuccess extends DecodedHeatmap {
   uuid: string;
   ok: true;
   kind: "heatmap";
@@ -86,7 +85,7 @@ export interface HeatmapIndicesSuccess extends DecodedHeatmap {
 export type MaskDecodeResponse =
   | MaskDecodeSuccess
   | MaskIndicesSuccess
-  | HeatmapIndicesSuccess
+  | HeatmapValuesSuccess
   | MaskDecodeFailure;
 
 /** True only when this module is running as a dedicated worker. */
@@ -119,16 +118,16 @@ const handleMessage = async (event: MessageEvent<MaskDecodeRequest>) => {
     }
 
     if (event.data.kind === "heatmap") {
-      const decoded = decodeHeatmapIndices(maskData, event.data.range);
-      const payload: HeatmapIndicesSuccess = {
+      const decoded = decodeHeatmap(maskData);
+      const payload: HeatmapValuesSuccess = {
         ...decoded,
         uuid,
         ok: true,
         kind: "heatmap",
       };
 
-      // The values are a view over the decoded payload; both go zero-copy.
-      post(payload, [decoded.indices.buffer, decoded.values.buffer]);
+      // The values are (a view over) the decoded payload; zero-copy.
+      post(payload, [decoded.values.buffer]);
       return;
     }
 

@@ -161,9 +161,9 @@ export type { MaskSource } from "./utils/maskBitmapCache";
 export { maskSourceOf } from "./utils/maskSource";
 export {
   DecodedIndexCache,
-  heatmapIndexCache,
+  heatmapValueCache,
   segmentationIndexCache,
-  warmHeatmapIndices,
+  warmHeatmapValues,
   warmSegmentationIndices,
 } from "./utils/decodedIndexCache";
 

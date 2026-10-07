@@ -14,9 +14,9 @@
 
 import { LRUCache } from "lru-cache";
 
-import type { DecodedHeatmap } from "./heatmapIndices";
+import type { DecodedHeatmap } from "./heatmapValues";
 import {
-  decodeHeatmapIndicesAsync,
+  decodeHeatmapAsync,
   decodeSegmentationIndicesAsync,
 } from "./maskDecoding";
 import type { DecodedSegmentation } from "./segmentationIndices";
@@ -115,18 +115,13 @@ export const segmentationIndexCache =
     (entry) => entry.indices.byteLength,
   );
 
-export const heatmapIndexCache = new DecodedIndexCache<DecodedHeatmap>(
-  (entry) => entry.indices.byteLength + entry.values.byteLength,
-);
-
 /**
- * A heatmap's indices depend on the range they were quantized over, so the
- * same map under two ranges is two entries.
+ * A heatmap's decoded values do not depend on its range or palette — those
+ * are uniforms at draw time — so one entry per source serves every scheme.
  */
-export const heatmapIndexKey = (
-  source: string,
-  range: readonly [number, number] | undefined,
-): string => `${range ? `${range[0]},${range[1]}` : ""}|${source}`;
+export const heatmapValueCache = new DecodedIndexCache<DecodedHeatmap>(
+  (entry) => entry.values.byteLength,
+);
 
 /** Decode an inline segmentation's indices ahead of its paint. */
 export const warmSegmentationIndices = (source: string): Promise<void> =>
@@ -134,11 +129,6 @@ export const warmSegmentationIndices = (source: string): Promise<void> =>
     decodeSegmentationIndicesAsync(source),
   );
 
-/** Decode an inline heatmap's indices ahead of its paint. */
-export const warmHeatmapIndices = (
-  source: string,
-  range: readonly [number, number] | undefined,
-): Promise<void> =>
-  heatmapIndexCache.warm(heatmapIndexKey(source, range), () =>
-    decodeHeatmapIndicesAsync(source, range),
-  );
+/** Decode an inline heatmap's values ahead of its paint. */
+export const warmHeatmapValues = (source: string): Promise<void> =>
+  heatmapValueCache.warm(source, () => decodeHeatmapAsync(source));

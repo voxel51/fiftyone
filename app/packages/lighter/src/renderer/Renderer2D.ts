@@ -2,6 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { TypedArray } from "@fiftyone/looker/src/numpy";
+
 import type {
   DrawStyle,
   Point,
@@ -20,7 +22,8 @@ export type ImageSourceType =
   | "image-data"
   | "bitmap"
   | "custom"
-  | "indexed";
+  | "indexed"
+  | "scalar";
 
 /**
  * A raster whose pixels are palette indices rather than colors, colored on
@@ -47,6 +50,30 @@ export interface IndexedImage {
 }
 
 /**
+ * A raster of continuous values, mapped to color in a fragment shader. A
+ * heatmap is this shape: the values upload as they were decoded — bytes as
+ * bytes, wider integers as their bytes, floats as 32-bit floats — and the
+ * range mapping, the 0 / non-finite background test and the colorscale index
+ * all happen per fragment, so neither a new frame nor a new range costs any
+ * per-pixel work on the CPU.
+ */
+export interface ScalarImage {
+  /** One value per pixel, row-major, `width * height` long. */
+  values: TypedArray;
+  width: number;
+  height: number;
+  /** The `[start, stop]` the values are mapped over. */
+  range: readonly [number, number];
+  /**
+   * `field`: `ramp[0]` with opacity proportional to |value| over the range.
+   * `value`: the ramp indexed across the range, as looker's `clampedIndex`.
+   */
+  mode: "field" | "value";
+  /** RGBA8 colors, straight alpha, one entry per scale stop (field: one). */
+  ramp: Uint8Array;
+}
+
+/**
  * Generic image source that can be any image-like object.
  * This is intentionally generic to avoid coupling to specific libraries.
  */
@@ -59,6 +86,7 @@ export interface ImageSource {
   bitmap?: ImageBitmap; // For ImageBitmap objects
   custom?: any; // For custom image implementations
   indexed?: IndexedImage; // For palette-indexed rasters colored on the GPU
+  scalar?: ScalarImage; // For continuous-valued rasters colored on the GPU
 }
 
 /**

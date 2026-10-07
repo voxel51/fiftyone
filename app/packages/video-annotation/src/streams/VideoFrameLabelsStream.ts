@@ -10,7 +10,7 @@ import {
 import {
   maskBitmapCache,
   maskSourceOf,
-  warmHeatmapIndices,
+  warmHeatmapValues,
   warmSegmentationIndices,
   type MaskSource,
 } from "@fiftyone/lighter";
@@ -72,16 +72,7 @@ interface DenseLabelDoc {
   _cls?: string;
   mask?: SerializedMask;
   map?: SerializedMask;
-  range?: number[] | null;
 }
-
-/** A heatmap's declared range as a pair, or undefined to infer at decode. */
-const heatmapRangeOf = (
-  range: number[] | null | undefined,
-): [number, number] | undefined =>
-  range && range.length === 2
-    ? [Number(range[0]), Number(range[1])]
-    : undefined;
 const DEFAULT_FRAME_FIELD = "detections";
 
 /** localStorage key + Vite env var for the mask gate toggle (see below). */
@@ -783,7 +774,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
           const source = maskSourceOf(label.map);
 
           if (typeof source === "string") {
-            void warmHeatmapIndices(source, heatmapRangeOf(label.range));
+            void warmHeatmapValues(source);
           }
         }
       }

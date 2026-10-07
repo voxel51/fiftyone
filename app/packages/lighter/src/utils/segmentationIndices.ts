@@ -8,6 +8,8 @@
  * when it changed.
  */
 
+import { LRUCache } from "lru-cache";
+
 import {
   ARRAY_TYPES,
   deserialize,
@@ -17,7 +19,8 @@ import { convertToHex } from "@fiftyone/looker/src/worker/painter";
 import { hexToRgb } from "@fiftyone/utilities";
 import { INDEXED_LUT_SIDE } from "../renderer/Renderer2D";
 import {
-  colorForTarget,
+  paletteKey,
+  targetColorer,
   type SegmentationPalette,
 } from "./segmentationPalette";
 
@@ -109,23 +112,6 @@ export const decodeSegmentationIndices = (
   return { indices, width, height };
 };
 
-/** Every target index that occurs in the mask, background excluded. */
-const targetsIn = (indices: SegmentationIndices): Iterable<number> => {
-  if (indices instanceof Uint8Array) {
-    // 255 lookups beat a scan of the pixels, and the table has room anyway
-    return Array.from({ length: 255 }, (_, i) => i + 1);
-  }
-
-  const present = new Set<number>();
-  for (let i = 0; i < indices.length; i++) {
-    const value = indices[i];
-    if (value !== 0) {
-      present.add(value);
-    }
-  }
-  return present;
-};
-
 const rgbOf = (color: string): [number, number, number] => {
   try {
     return hexToRgb(convertToHex(color));
@@ -135,32 +121,73 @@ const rgbOf = (color: string): [number, number, number] => {
 };
 
 /**
- * The palette as the shader reads it: RGBA8 for every index, laid out as an
- * {@link INDEXED_LUT_SIDE}-square texture in index order. Targets the palette
- * does not paint (background, filtered-out targets) stay transparent.
+ * The palette as the shader reads it: RGBA8 for every index a `Uint16Array`
+ * can hold, laid out as an {@link INDEXED_LUT_SIDE}-square texture in index
+ * order. Targets the palette does not paint (background, filtered-out
+ * targets) stay transparent.
  *
- * Which entries are filled depends on the mask: an 8-bit mask fills all 255
- * possible targets, so the table is reusable across frames of the same
- * palette; a 16-bit mask fills the targets it actually contains.
+ * A function of the palette alone — every target is filled, whether or not a
+ * given mask contains it — so one table serves every frame, 8-bit or 16-bit,
+ * until the color scheme changes. Filling all 65,535 entries is cheap because
+ * the colors repeat: a uniform color, a handful of explicit target colors and
+ * a pool-sized ramp, so each distinct color is resolved and parsed once.
+ *
+ * Targets are visited in ascending order. That matters only for the ramp:
+ * `getColor` assigns pool colors to values in the order they are first asked
+ * for, so a fixed visiting order is what keeps the ramp from depending on
+ * which pixels a frame happened to scan first.
  */
 export const buildSegmentationLut = (
-  indices: SegmentationIndices,
   palette: SegmentationPalette,
 ): Uint8Array => {
   const lut = new Uint8Array(LUT_ENTRIES * 4);
+  const parsed = new Map<string, [number, number, number]>();
+  const colorOf = targetColorer(palette);
 
-  for (const target of targetsIn(indices)) {
-    const color = colorForTarget(target, palette);
+  for (let target = 1; target < LUT_ENTRIES; target++) {
+    const color = colorOf(target);
     if (color === undefined) {
       continue;
     }
-    const [r, g, b] = rgbOf(color);
+    let rgb = parsed.get(color);
+    if (rgb === undefined) {
+      rgb = rgbOf(color);
+      parsed.set(color, rgb);
+    }
     const at = target * 4;
-    lut[at] = r;
-    lut[at + 1] = g;
-    lut[at + 2] = b;
+    lut[at] = rgb[0];
+    lut[at + 1] = rgb[1];
+    lut[at + 2] = rgb[2];
     lut[at + 3] = 255;
   }
 
+  return lut;
+};
+
+/**
+ * Tables by palette key. A table is 256 KB; a handful covers flipping
+ * between color schemes, and between the fields of a multi-field view,
+ * without rebuilding.
+ */
+const lutCache = new LRUCache<string, Uint8Array>({ max: 8 });
+
+/**
+ * The table for a palette, built once per {@link paletteKey} and shared by
+ * every overlay and frame that paints under it. Shared tables are never
+ * written after they are built, so the renderer's identity check (re-upload
+ * only when the table object changes) stays correct.
+ */
+export const segmentationLutFor = (
+  palette: SegmentationPalette,
+): Uint8Array => {
+  const key = paletteKey(palette);
+  const cached = lutCache.get(key);
+
+  if (cached) {
+    return cached;
+  }
+
+  const lut = buildSegmentationLut(palette);
+  lutCache.set(key, lut);
   return lut;
 };

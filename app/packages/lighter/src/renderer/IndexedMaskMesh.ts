@@ -10,7 +10,7 @@ import { INDEXED_LUT_SIDE as LUT_SIDE, type IndexedImage } from "./Renderer2D";
  * projection / world transform, and the mesh's own transform and color.
  * Declaring only what this shader reads is fine — the sync skips the rest.
  */
-const VERTEX = /* glsl */ `
+export const MASK_VERTEX = /* glsl */ `
   in vec2 aPosition;
   in vec2 aUV;
 
@@ -66,7 +66,7 @@ interface PackedIndices {
   uvScaleX: number;
 }
 
-const alignUp = (value: number, to: number): number =>
+export const alignUp = (value: number, to: number): number =>
   Math.ceil(value / to) * to;
 
 /**
@@ -121,20 +121,28 @@ export const packIndices = (image: IndexedImage): PackedIndices => {
 const UNIT_POSITIONS = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
 const UNIT_INDICES = new Uint32Array([0, 1, 2, 0, 2, 3]);
 
+/** A fresh unit quad; each mesh owns its geometry, since it rewrites the UVs. */
+export const createUnitQuad = (): PIXI.MeshGeometry =>
+  new PIXI.MeshGeometry({
+    positions: new Float32Array(UNIT_POSITIONS),
+    uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+    indices: new Uint32Array(UNIT_INDICES),
+  });
+
 /**
  * `Mesh` types its shader as one that carries a `texture`, because its own
  * material samples one. This shader samples two, so the property is a stub:
  * the mesh never reads it for anything but the default material path.
  */
-class PaletteShader extends PIXI.Shader implements PIXI.TextureShader {
+export class PaletteShader extends PIXI.Shader implements PIXI.TextureShader {
   texture: PIXI.Texture = PIXI.Texture.EMPTY;
 }
 
-const bufferSource = (
-  data: Uint8Array,
+export const bufferSource = (
+  data: Uint8Array | Float32Array,
   width: number,
   height: number,
-  format: PackedIndices["format"] | "rgba8unorm",
+  format: PIXI.TEXTURE_FORMATS,
 ): PIXI.BufferImageSource =>
   new PIXI.BufferImageSource({
     resource: data,
@@ -162,13 +170,12 @@ export class IndexedMaskMesh extends PIXI.Mesh<
   readonly #uvs = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
 
   constructor() {
-    const geometry = new PIXI.MeshGeometry({
-      positions: new Float32Array(UNIT_POSITIONS),
-      uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
-      indices: new Uint32Array(UNIT_INDICES),
-    });
+    const geometry = createUnitQuad();
     const shader = new PaletteShader({
-      glProgram: PIXI.GlProgram.from({ vertex: VERTEX, fragment: FRAGMENT }),
+      glProgram: PIXI.GlProgram.from({
+        vertex: MASK_VERTEX,
+        fragment: FRAGMENT,
+      }),
       resources: {
         uIndices: PIXI.Texture.EMPTY.source,
         uPalette: PIXI.Texture.EMPTY.source,

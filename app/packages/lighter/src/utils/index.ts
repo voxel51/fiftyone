@@ -1,19 +1,18 @@
 export { createMaskCanvas } from "./createMaskCanvas";
 export {
-  decodeHeatmapIndicesAsync,
+  decodeHeatmapAsync,
   decodeMask,
   decodeSegmentationIndicesAsync,
 } from "./maskDecoding";
 export {
   DecodedIndexCache,
-  heatmapIndexCache,
-  heatmapIndexKey,
+  heatmapValueCache,
   segmentationIndexCache,
-  warmHeatmapIndices,
+  warmHeatmapValues,
   warmSegmentationIndices,
 } from "./decodedIndexCache";
-export { buildHeatmapLut, decodeHeatmapIndices } from "./heatmapIndices";
-export type { DecodedHeatmap } from "./heatmapIndices";
+export { buildHeatmapShading, decodeHeatmap } from "./heatmapValues";
+export type { DecodedHeatmap, HeatmapShading } from "./heatmapValues";
 export { MaskBitmapCache, maskBitmapCache } from "./maskBitmapCache";
 export type { MaskSource } from "./maskBitmapCache";
 export { maskSourceOf } from "./maskSource";
