@@ -1,7 +1,6 @@
 import { PlaybackProvider, type TimelineMode } from "@fiftyone/playback";
 import * as fos from "@fiftyone/state";
 import {
-  FrameLabelsTracks,
   RegisterFrameLabels,
   RegisterVideoExploreLabels,
   LighterVideo,
@@ -10,6 +9,7 @@ import {
 } from "@fiftyone/video-annotation";
 import React, { useCallback, useMemo, useState } from "react";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
+import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
 
@@ -189,7 +189,9 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
-        ? { kind: "sequence", fps: frameRate }
+        ? // FiftyOne frame numbers start at 1, matching the annotation
+          // surface and the `support` values on temporal detections
+          { kind: "sequence", fps: frameRate, firstFrame: 1 }
         : { kind: "duration" },
     [frameRate],
   );
@@ -247,7 +249,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
             render an empty, inert transport under the error. */}
         {!mediaFailed && (
           <div className={styles.timeline}>
-            <FrameLabelsTracks
+            <VideoTimelineExtensions
               sample={sample}
               maxSize={timelineMaxSize}
               mode="explore"

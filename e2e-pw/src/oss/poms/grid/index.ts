@@ -99,6 +99,34 @@ export class GridPom {
     return this.openNthSample(0);
   }
 
+  /**
+   * Temporal-tag marks drawn on the tiles' interval lanes. One per interval on
+   * a tagged sample; tiles whose sample carries no tag draw no lane at all.
+   */
+  temporalTagMarks(): Locator {
+    return this.page.locator(
+      '[data-testid="episode-grid-overlay"] [data-source="fiftyone:temporal-tags"]',
+    );
+  }
+
+  async temporalTagMarkCount(): Promise<number> {
+    return this.temporalTagMarks().count();
+  }
+
+  /**
+   * The first mark's position on its lane, as the percentages the lane lays it
+   * out with — the tag's own time over the lane's time axis.
+   */
+  async temporalTagMarkGeometry(): Promise<{ left: number; width: number }> {
+    const mark = this.temporalTagMarks().first();
+    const [left, width] = await Promise.all([
+      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.left)),
+      mark.evaluate((el) => Number.parseFloat((el as HTMLElement).style.width)),
+    ]);
+
+    return { left, width };
+  }
+
   async getEntryCountText() {
     return this.page.getByTestId("entry-counts").textContent();
   }

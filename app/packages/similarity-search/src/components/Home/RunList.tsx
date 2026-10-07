@@ -264,7 +264,7 @@ export default function RunList({
                   : ""}
               </Text>
               {run.status === RunStatus.Failed && run.status_details && (
-                <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+                <Text variant={TextVariant.Md} color={TextColor.Failure}>
                   {run.status_details}
                 </Text>
               )}

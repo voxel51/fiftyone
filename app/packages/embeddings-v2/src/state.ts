@@ -1,4 +1,5 @@
-import { atom } from "recoil";
+import * as fos from "@fiftyone/state";
+import { atom, useRecoilCallback } from "recoil";
 
 /**
  * The active plot selection's size, published by the plot view for
@@ -33,3 +34,23 @@ export const clearSelectionNonceState = atom<number>({
   key: "embeddings-v2/clear-selection-nonce",
   default: 0,
 });
+
+/**
+ * Clears the plot's published selection from outside the plot view: every
+ * extended-selection layer through the App's own reset, then the counts
+ * above, in one commit. Inside the plot view `clearAll` is the one to
+ * call, since it also tears down the local layers (lasso indices, the
+ * chart's dim); this serves the panel root, where the plot view may
+ * already be unmounted (spaces renders only the active tab).
+ */
+export function useClearPublishedSelection(): () => void {
+  return useRecoilCallback(
+    ({ set, reset }) =>
+      () => {
+        fos.resetExtendedSelectionTransaction({ set, reset });
+        reset(selectionCountState);
+        reset(selectionSampleCountState);
+      },
+    [],
+  );
+}

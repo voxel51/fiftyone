@@ -36,6 +36,17 @@ describe("resolveFrameCount", () => {
     ).toBe(60);
   });
 
+  it("resolves total_frame_count without a frame rate", () => {
+    expect(
+      resolveFrameCount(sampleWith({ total_frame_count: 120, duration: 4 })),
+    ).toBe(120);
+  });
+
+  it("returns null when only duration is present and the frame rate is unknown", () => {
+    expect(resolveFrameCount(sampleWith({ duration: 4 }))).toBeNull();
+    expect(resolveFrameCount(sampleWith({ duration: 4 }), 0)).toBeNull();
+  });
+
   it("returns null when neither total_frame_count nor duration is present", () => {
     expect(resolveFrameCount(sampleWith({}), 30)).toBeNull();
   });

@@ -298,7 +298,8 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
 
 def _generate_field_label_schema(collection, field_name, scan_samples):
     field = collection.get_field(field_name)
-    read_only = field.read_only
+    # a frame's number is the video's clock; it is never edited
+    read_only = field.read_only or isinstance(field, fof.FrameNumberField)
     _type = foau.get_type(field)
 
     if _type == foac.LABEL:

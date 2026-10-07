@@ -77,7 +77,6 @@ import { isFieldVisibilityActive } from "./schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
-  isMultimodalDataset,
   isVideoDataset,
   stateSubscription,
 } from "./selectors";
@@ -541,10 +540,9 @@ export const sidebarGroups = selectorFamily<
       }
 
       const tagGroupIndex = groupNames.indexOf("tags");
-      // Temporal tags are a multimodal-only concept for now, so only surface
-      // the filter for `multimodal` datasets (e.g. not `quickstart`). We may
-      // extend this to videos later.
-      groups[tagGroupIndex].paths = get(isMultimodalDataset)
+      // Temporal tags need a playhead to hang an interval on, so the filter is
+      // only offered where one exists (e.g. not `quickstart`).
+      groups[tagGroupIndex].paths = get(atoms.supportsTemporalTags(modal))
         ? ["_label_tags", "_temporal_tags", "tags"]
         : ["_label_tags", "tags"];
 

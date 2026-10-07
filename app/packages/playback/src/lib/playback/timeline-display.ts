@@ -36,10 +36,9 @@ export interface TimelineDisplayConversion {
  * dependency, so this is unit-testable directly and reusable outside a
  * component (e.g. a non-React track-label formatter).
  *
- * Note: `sequence` mode's frame numbering is 0-indexed (frame 0, 1, 2, ...),
- * per the FOEPD-3811 ticket's own example. This is deliberately unrelated
- * to `utils.ts::frameAt`, which is 1-indexed for the existing `/frames`
- * server-query convention — different domain, don't conflate the two.
+ * Note: `sequence` mode counts frames from `mode.firstFrame` (0 by default,
+ * per the FOEPD-3811 ticket's own example). A host whose users know frames
+ * by their FiftyOne `frame_number` passes `firstFrame: 1`.
  */
 export function createTimelineDisplayConversion(
   mode: TimelineMode,
@@ -47,13 +46,14 @@ export function createTimelineDisplayConversion(
   switch (mode.kind) {
     case "sequence": {
       const step = 1 / mode.fps;
+      const firstFrame = mode.firstFrame ?? 0;
       return {
-        toDisplay: (seconds) => Math.round(seconds / step),
+        toDisplay: (seconds) => Math.round(seconds / step) + firstFrame,
         fromDisplay: (value) => {
           const frame = typeof value === "number" ? value : Number(value);
           // Round defensively — even if a caller passes a fractional
           // "frame", there's no such thing as frame 2.5.
-          return Math.round(frame) * step;
+          return (Math.round(frame) - firstFrame) * step;
         },
         quantizeDuringScrub: true,
       };

@@ -777,6 +777,8 @@ The FiftyOne App can be configured in the ways described below:
 | `enable_query_performance` | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
 |                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `follow_static_symlinks`   | `FIFTYONE_APP_FOLLOW_STATIC_SYMLINKS`   | `True`        | Whether the App server follows symlinks when serving the App's static files.               |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
 |                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
@@ -842,19 +844,16 @@ You can print your App config at any time via the Python library and the CLI:
         {
             "color_by": "field",
             "color_pool": [
-                "#ee0000",
-                "#ee6600",
-                "#993300",
-                "#996633",
-                "#999900",
-                "#009900",
-                "#003300",
-                "#009999",
-                "#000099",
-                "#0066ff",
-                "#6600ff",
-                "#cc33cc",
-                "#777799"
+                "#4F8BEF",
+                "#4CA05A",
+                "#AB81FB",
+                "#EF5793",
+                "#ECAB2E",
+                "#32ADA0",
+                "#FF6767",
+                "#6FA512",
+                "#DB64E6",
+                "#9C9896"
             ],
             "colorscale": "viridis",
             "frame_stream_size": 1000,
@@ -864,6 +863,7 @@ You can print your App config at any time via the Python library and the CLI:
             "default_query_performance": true,
             "disable_frame_filtering": false,
             "enable_query_performance": true,
+            "follow_static_symlinks": true,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -895,19 +895,16 @@ You can print your App config at any time via the Python library and the CLI:
         {
             "color_by": "field",
             "color_pool": [
-                "#ee0000",
-                "#ee6600",
-                "#993300",
-                "#996633",
-                "#999900",
-                "#009900",
-                "#003300",
-                "#009999",
-                "#000099",
-                "#0066ff",
-                "#6600ff",
-                "#cc33cc",
-                "#777799"
+                "#4F8BEF",
+                "#4CA05A",
+                "#AB81FB",
+                "#EF5793",
+                "#ECAB2E",
+                "#32ADA0",
+                "#FF6767",
+                "#6FA512",
+                "#DB64E6",
+                "#9C9896"
             ],
             "colorscale": "viridis",
             "frame_stream_size": 1000,
@@ -915,6 +912,7 @@ You can print your App config at any time via the Python library and the CLI:
             "default_query_performance": true,
             "disable_frame_filtering": false,
             "enable_query_performance": true,
+            "follow_static_symlinks": true,
             "loop_videos": false,
             "media_fallback": false,
             "multicolor_keypoints": false,
@@ -1076,7 +1074,7 @@ For example, you may add the following to your JSON App config
 (`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your
 system:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "plugins": {

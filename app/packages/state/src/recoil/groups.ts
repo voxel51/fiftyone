@@ -6,6 +6,7 @@ import {
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
+import { MEDIA_TYPE_VIDEO } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
 import {
@@ -33,6 +34,7 @@ import {
   isNestedDynamicGroup,
   shouldRenderImaVidLooker,
 } from "./dynamicGroups";
+import { filters } from "./filters";
 import { ModalSample, modalLooker, modalSample, modalSelector } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import {
@@ -46,6 +48,7 @@ import {
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
+import { TEMPORAL_TAGS_FIELD } from "./sidebar";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
 
@@ -128,6 +131,18 @@ export const groupSlice = selector<string>({
       : null;
   },
   set: ({ get, reset, set }, slice) => {
+    const next = slice instanceof DefaultValue ? get(defaultGroupSlice) : slice;
+    const current = get(filters);
+    // The temporal tags filter is withdrawn from the sidebar on a slice that
+    // cannot carry temporal tags, so it must not stay applied there unseen.
+    if (
+      TEMPORAL_TAGS_FIELD in current &&
+      !isTemporalTagSlice(get(groupMediaTypesMap), next)
+    ) {
+      const { [TEMPORAL_TAGS_FIELD]: _, ...rest } = current;
+      set(filters, rest);
+    }
+
     if (!get(similarityParameters)) {
       set(
         sessionGroupSlice,
@@ -193,6 +208,12 @@ export const groupMediaTypesMap = selector({
       get(groupMediaTypes).map(({ name, mediaType }) => [name, mediaType]),
     ),
 });
+
+/** Whether a grouped dataset's slice can carry temporal tags. */
+export const isTemporalTagSlice = (
+  mediaTypes: Record<string, string>,
+  slice: string | null,
+): boolean => slice !== null && mediaTypes[slice] === MEDIA_TYPE_VIDEO;
 
 export const groupSlices = selector({
   key: "groupSlices",

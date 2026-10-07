@@ -1,20 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Undo/redo on the video-annotation surface, driven through the global command
- * stack (the engine is a producer/applicator of value-based entries, not the
- * undo authority). This exercises the parts unique to that wiring:
- *
- *  - a freshly-drawn track is ONE undo unit: the box plus its auto-extended
- *    frames coalesce, so a single undo removes the whole track (not one frame),
- *    and redo restores it;
- *  - undo/redo route through the KEYBOARD (Ctrl+Z / Ctrl+Shift+Z), proving the
- *    default command-context bindings reach the annotate stack;
- *  - a track-wide class edit is one undo unit (the fan-out reverts together);
- *  - a whole-track delete undoes to a restored track.
- *
- * Re-seeded per test (one tracked instance, class `vehicle`, on every frame) so a
- * persisting edit in one test can't leak into the next.
+ * Undo/redo on the video surface through the global command stack: a
+ * freshly-drawn track (box plus auto-extended frames) is one undo unit,
+ * keyboard Ctrl+Z / Ctrl+Shift+Z reach the annotate stack, a track-wide class
+ * edit reverts together, and a whole-track delete undoes to a restored track.
+ * Re-seeded per test with one tracked `vehicle` on every frame.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -24,7 +15,6 @@ import type { Page } from "src/oss/fixtures";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-undo");
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -32,17 +22,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — a drawn box auto-extends ~30, clamped to the clip.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -85,12 +66,42 @@ const savedResponse = (page: Page) =>
   );
 
 // re-seed per test: one tracked instance (vehicle) present on every frame.
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+// 20 frames @ 10fps — a drawn box auto-extends ~30, clamped to the clip.
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    trackedSampleIndices: [0],
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+      ]),
+    }),
   });
 });
 

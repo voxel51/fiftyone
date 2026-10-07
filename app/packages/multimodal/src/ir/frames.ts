@@ -43,6 +43,26 @@ interface BaseEncodedVideoVisualization {
   readonly decodeTimestampNs?: bigint;
   readonly format: string;
   readonly keyframe?: boolean;
+  /**
+   * Payloads a decoder takes, in decode order, immediately before this unit's
+   * own. On a unit marked `keyframe` whose own payload is a delta, they run
+   * from the stream keyframe at or before the timeline start, which makes the
+   * unit a random access point on this timeline. On any other unit they are
+   * helpers outside the timeline that later pictures reference.
+   */
+  readonly preroll?: readonly EncodedVideoPrerollUnit[];
+  readonly timestampNs?: bigint;
+}
+
+/** One payload decoded ahead of the unit that carries it. */
+export interface EncodedVideoPrerollUnit {
+  readonly bytes: Uint8Array;
+  readonly keyframe: boolean;
+  /**
+   * Presentation time of a payload that is also a unit of its own on the
+   * timeline: its picture is kept when decoded here. Absent for a payload
+   * outside the timeline, whose picture is discarded.
+   */
   readonly timestampNs?: bigint;
 }
 

@@ -1,15 +1,20 @@
 import { test as base } from "src/oss/fixtures";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
+import { UrlPom } from "src/oss/poms/url";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("built-in-operators");
 const test = base.extend<{
   operatorsBrowser: OperatorsBrowserPom;
+  url: UrlPom;
   viewBar: ViewBarPom;
 }>({
   operatorsBrowser: async ({ page }, use) => {
     await use(new OperatorsBrowserPom(page));
+  },
+  url: async ({ page, eventUtils }, use) => {
+    await use(new UrlPom(page, eventUtils));
   },
   viewBar: async ({ page }, use) => {
     await use(new ViewBarPom(page));
@@ -51,11 +56,14 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("Built-in operators: set view", async ({ viewBar, operatorsBrowser }) => {
+test("Built-in operators: set view", async ({
+  operatorsBrowser,
+  url,
+  viewBar,
+}) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
-  await operatorsBrowser.choose("E2E: Set view");
-  // The applied view lands as the collapsed summary chip
-  await viewBar.expand();
+  await url.pageChange(() => operatorsBrowser.choose("E2E: Set view"));
+  // A view set by an operator opens the stages row on its own
   await viewBar.assert.hasViewStage("Limit3");
 });

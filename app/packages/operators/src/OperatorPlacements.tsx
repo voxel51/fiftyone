@@ -184,21 +184,25 @@ function ComponentPlacement(props: OperatorPlacementProps) {
 }
 
 export function usePlacementControls(props: OperatorPlacementProps) {
-  const { operator, placement } = props;
+  const { operator, placement, adaptiveMenuItemProps } = props;
   const { prompt = true } = placement?.view?.options || {};
   const { uri } = operator;
   const canExecute = operator?.config?.canExecute;
 
   const promptForInput = usePromptOperatorInput();
   const { execute } = useOperatorExecutor(uri);
+  const closeOverflow = adaptiveMenuItemProps?.closeOverflow;
 
   const handleClick = useCallback(() => {
+    // The action row's overflow popout outranks the operator palette, so one
+    // left open covers the prompt this click just opened
+    closeOverflow?.();
     if (prompt) {
       promptForInput(uri);
     } else {
       execute({});
     }
-  }, [prompt, promptForInput, uri, execute]);
+  }, [closeOverflow, prompt, promptForInput, uri, execute]);
 
   return { canExecute, execute: handleClick };
 }

@@ -68,7 +68,7 @@ class PerfTracker {
 }
 
 export interface Keyframe {
-  /** Frame index in the caller's chosen base (the ImaVid agent uses the
+  /** Frame index in the caller's chosen base (the dynamic group agent uses the
    *  1-based frame number). */
   frameIdx: number;
   /** Point prompts that seed the mask at this keyframe. */

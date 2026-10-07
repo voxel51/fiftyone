@@ -6,6 +6,10 @@ Brain method runs framework.
 |
 """
 
+from bson import ObjectId
+
+import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 from fiftyone.core.runs import (
     BaseRun,
     BaseRunConfig,
@@ -77,4 +81,50 @@ class BrainMethod(BaseRun):
 class BrainResults(BaseRunResults):
     """Base class for brain method results."""
 
-    pass
+    def get_meta(self):
+        meta = super().get_meta()
+        group_slices = _similarity_group_slices(self)
+        if group_slices is not None:
+            meta["group_slices"] = group_slices
+
+        return meta
+
+
+def _similarity_group_slices(results):
+    """Returns the group slices that a sample-level similarity index on a
+    grouped dataset holds samples from, in the dataset's slice order, or None
+    for any other run or when the index's samples cannot be determined.
+    """
+    config = results.config
+    if getattr(config, "type", None) != "similarity" or getattr(
+        config, "patches_field", None
+    ):
+        return None
+
+    samples = results.samples
+    if samples is None or samples._dataset.media_type != fom.GROUP:
+        return None
+
+    dataset = samples._dataset
+    flat = dataset.select_group_slices(_allow_mixed=True)
+    name_path = dataset.group_field + ".name"
+    sample_ids = getattr(results, "sample_ids", None)
+    embeddings_field = getattr(config, "embeddings_field", None)
+    if sample_ids is not None:
+        # Batched so that no single ``$in`` exceeds MongoDB's 16MB document
+        # limit, which one covering a large index would
+        all_slices = set(dataset.group_slices)
+        batch_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+        present = set()
+        for batch_ids in fou.iter_batches(sample_ids, batch_size):
+            present.update(flat.select(batch_ids).distinct(name_path))
+            if present >= all_slices:
+                break
+    elif embeddings_field and dataset.has_field(embeddings_field):
+        present = set(flat.exists(embeddings_field).distinct(name_path))
+    else:
+        return None
+
+    return [name for name in dataset.group_slices if name in present]

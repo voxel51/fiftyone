@@ -129,6 +129,7 @@ test.describe.serial("operator prompt", () => {
   });
 
   test("Prompt: Progress", async ({
+    fiftyoneLoader,
     operatorsBrowser,
     operatorsPrompt,
     operatorsPromptViewModal,
@@ -140,6 +141,11 @@ test.describe.serial("operator prompt", () => {
     await expect(operatorsPromptViewModal.content).toContainText(
       "Loading 1 of 2",
     );
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone.operators as foo
+
+      foo.ExecutionStore.create("e2e_progress_release").set("${datasetName}", 1)
+    `);
     await expect(operatorsPromptViewModal.content).toContainText(
       "Loading 2 of 2",
     );
