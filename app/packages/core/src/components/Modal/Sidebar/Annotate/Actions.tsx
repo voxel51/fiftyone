@@ -140,7 +140,7 @@ const Container = styled.div<{ $active?: boolean }>`
 `;
 
 export const Round = styled(Container)`
-  border-radius: var(--radius-full);
+  border-radius: 9999px;
   width: 2rem;
   height: 2rem;
   &:hover {
