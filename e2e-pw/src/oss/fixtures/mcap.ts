@@ -76,7 +76,6 @@ const recordings: Recording[] = [
     recording({ fileName, kind: sidebar.kind }, index % 2 === 0 ? 0 : 3),
   ),
 ];
-export const episodeCount = recordings.length;
 export const sampleIndex = {
   episodeA: 0,
   episodeB: 1,

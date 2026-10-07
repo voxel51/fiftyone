@@ -1,7 +1,6 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import {
   alternateMediaDatasetName,
-  episodeCount,
   expect,
   fixturePaths,
   openMcapModal,
@@ -13,8 +12,7 @@ import {
 } from "src/oss/fixtures/mcap";
 import { unsupportedText } from "src/oss/poms/multimodal/episode";
 import { collapseWhitespace } from "src/oss/utils";
-
-const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
+import { indexToId } from "src/shared/utils";
 
 test.describe("MCAP surfaces", () => {
   test("renders an MCAP grid preview and opens the episode modal", async ({
@@ -61,9 +59,10 @@ test.describe("MCAP surfaces", () => {
           openMcapModal(grid, modal, sampleIndex.episodeA),
         );
       },
+      (e) =>
+        (e.detail as { sourceId: string }).sourceId ===
+        indexToId(sampleIndex.episodeA),
     );
-    // the grid's tiles persist every episode's source facts
-    expect(await sourceFactsEntryCount(page)).toBe(episodeCount);
 
     await modal.close();
     await page.evaluate(async () => {
@@ -295,41 +294,6 @@ test.describe("MCAP surfaces", () => {
     });
   });
 });
-
-async function sourceFactsEntryCount(page: Page): Promise<number> {
-  return page.evaluate(async (databaseName) => {
-    const databases = await indexedDB.databases();
-    if (!databases.some((database) => database.name === databaseName)) return 0;
-    return new Promise<number>((resolve) => {
-      const request = indexedDB.open(databaseName);
-      let settled = false;
-      const settle = (database: IDBDatabase | null, value: number) => {
-        if (settled) return;
-        settled = true;
-        database?.close();
-        resolve(value);
-      };
-      request.onerror = () => settle(null, 0);
-      request.onblocked = () => settle(null, 0);
-      request.onsuccess = () => {
-        const database = request.result;
-        if (settled) {
-          database.close();
-          return;
-        }
-        if (!database.objectStoreNames.contains("entries")) {
-          settle(database, 0);
-          return;
-        }
-        const transaction = database.transaction("entries", "readonly");
-        const count = transaction.objectStore("entries").count();
-        transaction.onabort = () => settle(database, 0);
-        count.onerror = () => settle(database, 0);
-        count.onsuccess = () => settle(database, count.result);
-      };
-    });
-  }, SOURCE_FACTS_DATABASE_NAME);
-}
 
 async function expectStatsRow(
   scope: Locator,

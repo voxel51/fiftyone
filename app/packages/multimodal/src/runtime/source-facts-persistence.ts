@@ -12,7 +12,7 @@ import { getEventBus } from "@fiftyone/events";
 
 /** e2e specs wait on a source-facts write */
 type SourceFactsE2EEvents = {
-  "e2e:multimodal:source-facts-saved": undefined;
+  "e2e:multimodal:source-facts-saved": { sourceId: string };
 };
 
 const MIB = 1024 * 1024;
@@ -159,6 +159,10 @@ export function createIndexedDbSourceFactsPersistence(
           await writeEntry(database, key, encoded, Date.now());
           await enforceBudget(database, maxEntries, maxTotalBytes);
         });
+        getEventBus<SourceFactsE2EEvents>().dispatch(
+          "e2e:multimodal:source-facts-saved",
+          { sourceId: entry.identity.sourceId },
+        );
         return { byteLength: encoded.byteLength, stored: true };
       } catch {
         return { stored: false };
@@ -257,10 +261,6 @@ async function writeEntry(
     lastAccessedAt,
   } satisfies StoredSourceFactsRecency);
   await transactionDone(transaction);
-
-  getEventBus<SourceFactsE2EEvents>().dispatch(
-    "e2e:multimodal:source-facts-saved",
-  );
 }
 
 async function touchEntry(
