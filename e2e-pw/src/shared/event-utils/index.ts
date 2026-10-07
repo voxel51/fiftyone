@@ -331,6 +331,19 @@ export class EventUtils {
     const names = typeof events === "string" ? [events] : [...events];
     const result = await navigate();
 
+    const pending = pendingFor(this.page);
+    const id = getFunctionNameWithRandomSuffix(names.join("|"));
+    const wait: PendingWait = {
+      names,
+      armedAt: Date.now(),
+      recordFrom: 0,
+      caller: armingCaller(),
+      rejected: [],
+      rejectedCount: 0,
+    };
+    // left in place on a throw: only a failed test reports it, and a timed-out
+    // test's teardown navigates away before the report is written
+    pending.set(id, wait);
     for (let from = 0; ; ) {
       const record = await this.page.evaluate(
         ({ names_, from_ }) =>
@@ -353,7 +366,13 @@ export class EventUtils {
           ),
         { names_: names, from_: from },
       );
-      if (predicate(record)) return result;
+      if (predicate(record)) {
+        pending.delete(id);
+        return result;
+      }
+      wait.rejectedCount += 1;
+      wait.rejected.push(record);
+      if (wait.rejected.length > REJECTED_KEPT) wait.rejected.shift();
       from = record.index + 1;
     }
   }
