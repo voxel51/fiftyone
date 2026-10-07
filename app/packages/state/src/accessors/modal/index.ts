@@ -25,6 +25,7 @@ import {
   State,
   activeFields,
   activeModalSample,
+  appConfigOption,
   currentSampleId,
   fieldSchema,
   lookerOptions,
@@ -217,14 +218,18 @@ export const useModalMediaPath = (): string | null => {
  * The modal video timeline's frame-number vs. elapsed-time choice, shaped for
  * `PlaybackProvider`'s `defaultDisplay` and `onDisplayChange`. The video
  * surfaces configure the provider in frame numbers, so its "configured"
- * display is frames.
+ * display is frames. Until the user toggles, the App config's
+ * `use_frame_number` picks it.
  *
  * The provider reads `defaultDisplay` only at mount and surfaces remount per
- * sample, so the value is read without subscribing: a toggle doesn't
+ * sample, so the choice is read without subscribing: a toggle doesn't
  * re-render the surface.
  */
 export const useVideoTimelineDisplay = () => {
   const store = useStore();
+  const useFrameNumber = useRecoilValue(
+    appConfigOption({ modal: true, key: "useFrameNumber" }),
+  );
   const setDisplay = useSetAtom(__unsafeVideoTimelineDisplayAtom);
   const onDisplayChange = useCallback(
     (next: "configured" | "duration") =>
@@ -233,7 +238,8 @@ export const useVideoTimelineDisplay = () => {
   );
   return {
     defaultDisplay:
-      store.get(__unsafeVideoTimelineDisplayAtom) === "frames"
+      (store.get(__unsafeVideoTimelineDisplayAtom) ??
+        (useFrameNumber ? "frames" : "time")) === "frames"
         ? ("configured" as const)
         : ("duration" as const),
     onDisplayChange,
