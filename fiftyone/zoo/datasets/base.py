@@ -4626,6 +4626,78 @@ class SpectralWasteSegmentationDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class M3EDSampleDataset(FiftyOneDataset):
+    """A sample of M3ED, the multi-robot, multi-sensor, multi-environment
+    event camera dataset, as native ``.mcap`` episodes.
+
+    A car, a quadrotor and a Boston Dynamics Spot carry the same sensor
+    head: a stereo pair of Prophesee event cameras at 1280x720, a stereo
+    pair of grayscale cameras and a color camera at 1280x800, an inertial
+    unit and an Ouster OS1-64 LiDAR. Each episode carries every event of
+    both event cameras as point clouds, one per 1/30 s window, beside a
+    render of each window, with the cameras, the LiDAR scans and the
+    ground-truth poses and depth.
+
+    3 sequences, one per platform: a city street by day, a quadrotor flight
+    outdoors at night and an indoor stairwell, 192 seconds in all with
+    3,631,437,863 events, 4,802 image triplets and 1,921 LiDAR scans.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("m3ed-sample")
+
+        # The sequences with the busiest event streams
+        view = dataset.sort_by("peak_event_rate_mev_s", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        22.13 GB
+    """
+
+    _REPO_ID = "Voxel51/M3ED-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "ad03785807030616508f7b437450f1e436f4b1e9"
+
+    @property
+    def name(self):
+        return "m3ed-sample"
+
+    @property
+    def license(self):
+        return "CC-BY-SA-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "event-camera", "stereo", "lidar")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class DreamTacDataset(FiftyOneDataset):
     """Contact-rich Franka manipulation with vision-based tactile
     fingertips, as native ``.mcap`` episodes.
@@ -4799,6 +4871,7 @@ AVAILABLE_DATASETS = {
     "kitti": KITTIDataset,
     "kitti-multiview": KITTIMultiviewDataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "m3ed-sample": M3EDSampleDataset,
     "ntnu-underwater-multicam": NTNUUnderwaterMulticamDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,

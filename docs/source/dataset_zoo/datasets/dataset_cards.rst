@@ -216,6 +216,13 @@
     :tags: image,classification,facial-recognition
 
 .. customcarditem::
+    :header: M3ED Sample
+    :description: A car, a quadrotor and a legged robot in native MCAP format, pairing a stereo pair of event cameras, carrying every event, with grayscale and color cameras, LiDAR and ground-truth poses and depth.
+    :link: datasets/m3ed_sample.html
+    :image: ../_images/m3ed-sample.png
+    :tags: multimodal,mcap,event-camera,stereo,lidar
+
+.. customcarditem::
     :header: MNIST
     :description: The iconic MNIST database of handwritten digits (0-9). Contains 70,000 28x28 grayscale images - the "hello world" dataset for machine learning and neural networks.
     :link: datasets/mnist.html
