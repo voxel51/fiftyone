@@ -139,7 +139,7 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom],
+    [environment, handleError, handleTimeout, pager, pages, store, zoom],
   );
 
   const pending = useMemo(() => {

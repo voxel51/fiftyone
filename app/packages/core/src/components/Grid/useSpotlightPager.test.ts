@@ -5,21 +5,31 @@ import useSpotlightPager from "./useSpotlightPager";
 
 interface Call {
   page: number;
+  fetchPolicy: string;
   next: (data: unknown) => void;
 }
 
 const calls: Call[] = [];
 
-vi.mock("react-relay", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react-relay")>()),
-  fetchQuery: (_, __, variables: { page: number }) => ({
-    subscribe: ({ next }: { next: Call["next"] }) => {
-      calls.push({ page: variables.page, next });
-      return { unsubscribe: () => undefined };
-    },
-  }),
-  useRelayEnvironment: () => ({}),
-}));
+vi.mock("react-relay", async (importOriginal) => {
+  // One environment across renders, as in the app
+  const environment = {};
+  return {
+    ...(await importOriginal<typeof import("react-relay")>()),
+    fetchQuery: (
+      _,
+      __,
+      variables: { page: number },
+      { fetchPolicy }: { fetchPolicy: string },
+    ) => ({
+      subscribe: ({ next }: { next: Call["next"] }) => {
+        calls.push({ page: variables.page, fetchPolicy, next });
+        return { unsubscribe: () => undefined };
+      },
+    }),
+    useRelayEnvironment: () => environment,
+  };
+});
 
 vi.mock("recoil", async (importOriginal) => ({
   ...(await importOriginal<typeof import("recoil")>()),
@@ -40,7 +50,11 @@ vi.mock("@fiftyone/state", () => ({
   State: { SPACE: { SAMPLE: "SAMPLE" } },
 }));
 
-vi.mock("./useTimeout", () => ({ default: () => () => undefined }));
+vi.mock("./useTimeout", () => {
+  // Memoised in the app, so one handler across renders
+  const handleTimeout = () => undefined;
+  return { default: () => handleTimeout };
+});
 
 const pager = (page: number) => ({ page });
 
@@ -115,5 +129,22 @@ describe("useSpotlightPager", () => {
     result.current.page(1);
 
     expect(await requested()).toEqual([0, 1, 1, 2]);
+  });
+
+  it("requests a page from the network again after records are cleared", async () => {
+    const { result, rerender } = render();
+    result.current.page(0);
+    await requested();
+
+    rerender({ clearRecords: "two" });
+    result.current.page(0);
+    await requested();
+
+    expect(calls.map(({ fetchPolicy }) => fetchPolicy)).toEqual([
+      "network-only",
+      "network-only",
+      "network-only",
+      "network-only",
+    ]);
   });
 });
