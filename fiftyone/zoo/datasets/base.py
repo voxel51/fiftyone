@@ -3873,6 +3873,76 @@ class RoboLabDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class GrandTourSampleDataset(FiftyOneDataset):
+    """A sample of the GrandTour legged robotics dataset, as native ``.mcap``
+    episodes.
+
+    An ANYmal D quadruped from ETH Zurich's Robotic Systems Lab carries the
+    Boxi sensor payload through cities, buildings, forests, mountains and
+    ice: HDR and depth cameras, a Hesai LiDAR, a tactical-grade inertial
+    unit, a GNSS/INS receiver and the robot's own joint sensing, with a
+    total station tracking a prism on the payload for reference.
+
+    The sample carries three of the release's 49 missions, one episode
+    each, chosen to contrast: ice on the Jungfraujoch, the main hall of ETH
+    Zurich and a muddy forest slope on the Uetliberg.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("grandtour-sample")
+
+        # The longest walk
+        view = dataset.sort_by("lidar_odometry_path_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        15.92 GB
+    """
+
+    _REPO_ID = "Voxel51/GrandTour-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "4f72a1e1939f73ab22f91113c0868806d8b3d468"
+
+    @property
+    def name(self):
+        return "grandtour-sample"
+
+    @property
+    def license(self):
+        return "MIT"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "robotics", "legged", "lidar")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class BoilingBenchMultimodalDataset(FiftyOneDataset):
     """Pool-boiling and immersion-cooling experiments pairing high-speed or
     infrared video with thermal and acoustic sensing, as native ``.mcap``
@@ -4716,6 +4786,7 @@ AVAILABLE_DATASETS = {
     "edged-uslam-event-camera": EdgedUSLAMEventCameraDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
+    "grandtour-sample": GrandTourSampleDataset,
     "haptile": HapTileDataset,
     "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
     "hilti-trimble-slam-challenge-2026": HiltiTrimbleSLAMChallenge2026Dataset,
