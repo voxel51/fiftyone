@@ -288,16 +288,16 @@ test.describe.serial("3d polyline creation", () => {
       await modal.annotate3d.startSegment();
     }
     await modal.annotate3d.assert.newSegmentActive(true);
+    // each click registers as a vertex before the next lands; the last stays
+    // clear of the first so the line doesn't close into a loop
+    const points: Array<[number, number]> = [
+      [0.4, 0.4],
+      [0.6, 0.4],
+      [0.6, 0.6],
+    ];
     // the draw's own save must land first, or it satisfies the class
     // change's wait below
     await modal.sidebar.annotate.afterSave(async () => {
-      // each click registers as a vertex before the next lands; the last
-      // stays clear of the first so the line doesn't close into a loop
-      const points: Array<[number, number]> = [
-        [0.4, 0.4],
-        [0.6, 0.4],
-        [0.6, 0.6],
-      ];
       for (const [index, [x, y]] of points.entries()) {
         await modal.annotate3d.afterDraftVertices(index + 1, () =>
           modal.sampleCanvas3d.click(x, y),
@@ -317,15 +317,15 @@ test.describe.serial("3d polyline creation", () => {
     );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
 
-    // the drawn polyline persists as a single label carrying the class and a
-    // non-empty points3d geometry
+    // the drawn polyline persists as a single label carrying the class and
+    // one vertex per click
     await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
       await fresh.annotate3d.assert.labelCount(1);
       await fresh.annotate3d.assert.labelListed("barrier");
-      await fresh.annotate3d.selectLabel("barrier");
-      expect(
-        await fresh.annotate3d.selectedVertexCount(),
-      ).toBeGreaterThanOrEqual(2);
+      await fresh.annotate3d.afterSelectedVertices(points.length, () =>
+        fresh.annotate3d.selectLabel("barrier"),
+      );
+      expect(await fresh.annotate3d.selectedVertexCount()).toBe(points.length);
     });
   });
 });

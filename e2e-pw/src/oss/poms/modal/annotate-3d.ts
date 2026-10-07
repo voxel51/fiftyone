@@ -108,7 +108,22 @@ export class ModalAnnotate3dPom {
     await this.geometryField(axis).fill(value);
   }
 
-  /** Vertex count of the selected 3D polyline, read off the looker3d container. */
+  /**
+   * Run `action` (a label selection) and resolve once the selected polyline
+   * the 3D viewer commits has `count` vertices
+   */
+  async afterSelectedVertices<T>(count: number, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:selected-vertices",
+      action,
+      (e) => (e.detail as { count: number }).count === count,
+    );
+  }
+
+  /**
+   * Vertex count of the selected 3D polyline, read off the looker3d
+   * container; select through {@link afterSelectedVertices} first
+   */
   async selectedVertexCount(): Promise<number> {
     return Number(
       await this.container.getAttribute("data-cy-selected-vertex-count"),

@@ -29,6 +29,8 @@ export const CANVAS_LOADED_EVENT = "e2e:looker:canvas-loaded";
 export const ERROR_SHOWN_EVENT = "e2e:looker:error-shown";
 /** Dispatched with the draft polyline's vertex count as each vertex lands. */
 export const DRAFT_VERTICES_EVENT = "e2e:looker3d:draft-vertices";
+/** Dispatched with the selected polyline's vertex count (0 for none) as it commits. */
+export const SELECTED_VERTICES_EVENT = "e2e:looker3d:selected-vertices";
 /** Dispatched with the cuboid and polyline line widths the labels render with. */
 export const LINE_WIDTHS_EVENT = "e2e:looker3d:line-widths";
 /** Dispatched as the grid helper turns on or off. */
@@ -48,6 +50,7 @@ export type Looker3dE2EEvents = {
   [CANVAS_LOADED_EVENT]: { thumbnail: boolean };
   [ERROR_SHOWN_EVENT]: { thumbnail: boolean };
   [DRAFT_VERTICES_EVENT]: { count: number };
+  [SELECTED_VERTICES_EVENT]: { count: number };
   [GRID_TOGGLED_EVENT]: { on: boolean };
   [LINE_WIDTHS_EVENT]: { cuboid: number; polyline: number };
   [SLICE_SELECTOR_EVENT]: { open: boolean };

@@ -9,6 +9,7 @@ import {
   DRAFT_VERTICES_EVENT,
   type Looker3dE2EEvents,
   SCENE_READY_EVENT,
+  SELECTED_VERTICES_EVENT,
 } from "./constants";
 import { LoadingDots } from "@fiftyone/components";
 import { Container, LoadingCover } from "./containers";
@@ -90,6 +91,12 @@ export const Looker3d = () => {
       count: draftVertexCount,
     });
   }, [draftVertexCount]);
+
+  useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(SELECTED_VERTICES_EVENT, {
+      count: selectedVertexCount ?? 0,
+    });
+  }, [selectedVertexCount]);
 
   useEffect(() => {
     return () => {
