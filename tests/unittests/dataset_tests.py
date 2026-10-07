@@ -3199,6 +3199,88 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_merge_labels_null_lists(self):
+        def make_dataset(null_field):
+            dataset = fo.Dataset()
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="image.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[fo.Detection(label="gt")]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(label="pred")]
+                    ),
+                )
+            )
+            dataset._sample_collection.update_one(
+                {}, {"$set": {null_field + ".detections": None}}
+            )
+            return dataset
+
+        # null list in the input field
+        dataset = make_dataset("predictions")
+        dataset.merge_labels("predictions", "ground_truth")
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label"), [["gt"]]
+        )
+        self.assertFalse(dataset.has_sample_field("predictions"))
+
+        # null list in the output field
+        dataset = make_dataset("ground_truth")
+        dataset.merge_labels("predictions", "ground_truth")
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label"), [["pred"]]
+        )
+        self.assertFalse(dataset.has_sample_field("predictions"))
+
+        # null list in the existing field, without overwriting
+        dataset = make_dataset("ground_truth")
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(
+            fo.Sample(
+                filepath="image.jpg",
+                ground_truth=fo.Detections(
+                    detections=[fo.Detection(label="other")]
+                ),
+            )
+        )
+        dataset.merge_samples(
+            dataset2, key_field="filepath", merge_lists=True, overwrite=False
+        )
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label"), [["other"]]
+        )
+
+        # a view whose input field is None on some samples
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[fo.Detection(label="gt", tags=["ok"])]
+                    ),
+                    predictions=fo.Detections(
+                        detections=[fo.Detection(label="pred", tags=["ok"])]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="image2.jpg",
+                    ground_truth=fo.Detections(
+                        detections=[fo.Detection(label="gt2", tags=["ok"])]
+                    ),
+                ),
+            ]
+        )
+        view = dataset.select_labels(tags=["ok"])
+        view.merge_labels("predictions", "ground_truth")
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label"),
+            [["gt", "pred"], ["gt2"]],
+        )
+
+    @drop_datasets
     def test_merge_samples_embedded_docs(self):
         sample1 = fo.Sample(
             filepath="image.jpg",
