@@ -222,6 +222,7 @@ export default function HoverCard({
     <div
       ref={cardRef}
       className="emb-hover-card"
+      data-cy="embeddings-hover-card"
       data-interactive={action || onClose ? "true" : "false"}
       onMouseEnter={onKeepHover}
       onMouseLeave={onLeave}
@@ -244,6 +245,7 @@ export default function HoverCard({
           <svg
             key={loaded.src}
             className="emb-hover-crop"
+            data-cy="embeddings-hover-crop"
             viewBox={rect.join(" ")}
             preserveAspectRatio="xMidYMid meet"
             aria-hidden="true"

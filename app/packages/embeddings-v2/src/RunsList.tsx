@@ -225,6 +225,7 @@ export default function RunsList({
             {runs.map((run) => (
               <RunCard
                 key={run.brainKey}
+                testId={`embeddings-run-${run.brainKey}`}
                 icon={IconName.Embeddings}
                 title={run.brainKey}
                 badge={run.dims ? `${run.dims}D` : undefined}

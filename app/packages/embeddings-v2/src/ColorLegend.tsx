@@ -109,6 +109,7 @@ export function ColorLegend({
                 key={label}
                 className="emb-legend-row"
                 disabled={!interactive}
+                data-cy={`embeddings-legend-row-${label}`}
                 data-off={offLabels?.has(label) ? "true" : "false"}
                 onClick={(event) => handleRowClick(label, event.detail)}
               >

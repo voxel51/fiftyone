@@ -151,6 +151,10 @@ export class EmbeddingsChart {
   private renderQueued = false;
   private rafHandle: number | null = null;
   private disposed = false;
+  /** Point count of the last drawn frame, or -1 before the first */
+  private drawnPoints = -1;
+  /** Distinct points the current selection emphasizes */
+  private emphasizedPoints = 0;
 
   constructor(
     container: HTMLElement,
@@ -167,6 +171,7 @@ export class EmbeddingsChart {
 
     // Sized by CSS; the drawing buffer follows in resize()
     this.canvas = document.createElement("canvas");
+    this.canvas.setAttribute("data-cy", "embeddings-chart-canvas");
     Object.assign(this.canvas.style, {
       position: "absolute",
       inset: "0",
@@ -408,12 +413,17 @@ export class EmbeddingsChart {
     const { cols, emphasisAttribute } = this;
     if (!cols || !emphasisAttribute) return;
     this.emphasisMask.fill(0);
+    let emphasized = 0;
     if (indices) {
       for (let i = 0; i < indices.length; i++) {
         const index = indices[i];
-        if (index >= 0 && index < cols.n) this.emphasisMask[index] = 1;
+        if (index >= 0 && index < cols.n && this.emphasisMask[index] === 0) {
+          this.emphasisMask[index] = 1;
+          emphasized++;
+        }
       }
     }
+    this.emphasizedPoints = emphasized;
     this.hasSelection = indices !== null;
     this.material.uniforms.uHasSelection.value = this.hasSelection ? 1 : 0;
     emphasisAttribute.needsUpdate = true;
@@ -632,5 +642,35 @@ export class EmbeddingsChart {
       this.renderer.render(this.overlayScene, camera);
       this.renderer.autoClear = true;
     }
+    this.announceDrawn();
+  }
+
+  /**
+   * Readiness for hosts and tests, like the looker's `canvas-loaded`: once a
+   * frame with a new point count has DRAWN, the canvas says so. Handing the
+   * chart data is not enough — the chunk loads lazily and the camera frames
+   * on setData, so only a drawn frame proves points are visible and
+   * hit-testable where the camera put them. The emphasized count says what
+   * the frame highlights — "none" when nothing is selected, since a
+   * selection of zero points dims every point.
+   */
+  private announceDrawn(): void {
+    const emphasized = this.hasSelection
+      ? String(this.emphasizedPoints)
+      : "none";
+    if (this.canvas.getAttribute("data-emphasized-points") !== emphasized) {
+      this.canvas.setAttribute("data-emphasized-points", emphasized);
+    }
+
+    const n = this.cols?.n ?? 0;
+    if (n === this.drawnPoints) return;
+    this.drawnPoints = n;
+    this.canvas.setAttribute("data-drawn-points", String(n));
+    this.canvas.dispatchEvent(
+      new CustomEvent("embeddings-chart-drawn", {
+        bubbles: true,
+        detail: { points: n },
+      }),
+    );
   }
 }
