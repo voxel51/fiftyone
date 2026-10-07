@@ -7,6 +7,7 @@ for the FiftyOne Model Zoo.
 |
 """
 
+import dataclasses
 import hashlib
 import importlib.util
 import logging
@@ -109,6 +110,165 @@ def _option_order(question):
     return [str(level) for level in range(len(question["criteria"]))]
 
 
+def _import_release(path):
+    """Imports the model code of the Clef release in the given directory."""
+    module_path = os.path.join(path, _RELEASE_MODULE)
+    if not os.path.isfile(module_path):
+        raise ValueError(
+            "%s holds no %s; it is not a Clef release"
+            % (path, _RELEASE_MODULE)
+        )
+
+    # One module per release, registered before it runs, since the release's
+    # dataclasses resolve their annotations through sys.modules. Data loader
+    # workers that import it themselves use the same name, so the records
+    # they encode unpickle in the main process
+    digest = hashlib.sha1(os.path.abspath(module_path).encode("utf-8"))
+    name = "fiftyone_clef_release_%s" % digest.hexdigest()[:16]
+    if name in sys.modules:
+        return sys.modules[name]
+
+    spec = importlib.util.spec_from_file_location(name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        del sys.modules[name]
+        raise
+
+    return module
+
+
+def _prepare_image(img):
+    """Converts image-like input to an RGB PIL image for the processor.
+
+    ``fout.to_rgb_pil`` expects channel-last layout and reads float arrays as
+    0-1, wrapping anything above it, so tensors are converted and
+    channel-first or 0-255 float input is normalized first.
+    """
+    if isinstance(img, torch.Tensor):
+        img = img.detach().cpu().numpy()
+
+    if isinstance(img, np.ndarray):
+        # Transpose CHW to HWC when the first dim is channels and the last
+        # cannot be
+        if (
+            img.ndim == 3
+            and img.shape[0] in (1, 3, 4)
+            and img.shape[2] not in (1, 3, 4)
+        ):
+            img = np.transpose(img, (1, 2, 0))
+
+        if np.issubdtype(img.dtype, np.floating):
+            scale = 255.0 if img.max() <= 1.0 else 1.0
+            img = np.clip(img * scale, 0, 255).astype(np.uint8)
+
+    return fout.to_rgb_pil(img)
+
+
+class ClefGetItem(fout.GetItem):
+    """A :class:`fiftyone.utils.torch.GetItem` that loads an image and encodes
+    it with the question schema into a Clef record.
+
+    Data loader workers call it, so image decoding, the processor's image
+    preprocessing and tokenization run in parallel with inference.
+
+    Args:
+        release_path: the local directory of a Clef release
+        processor: the release's processor
+        questions: a dict mapping question ID to question
+        state ("Answer each question about the attached image."): the text
+            or JSON value describing the situation, given with every image
+        max_length (16384): the maximum number of tokens per image,
+            including the image tokens and the question schema
+        media_kwargs (None): optional keyword arguments for the image
+            processor
+        field_mapping (None): the user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that
+            contain the required values
+    """
+
+    def __init__(
+        self,
+        release_path,
+        processor,
+        questions,
+        state=DEFAULT_STATE,
+        max_length=16384,
+        media_kwargs=None,
+        field_mapping=None,
+        **kwargs,
+    ):
+        self.release_path = release_path
+        self.processor = processor
+        self.questions = questions
+        self.state = state
+        self.max_length = max_length
+        self.media_kwargs = media_kwargs
+        super().__init__(field_mapping=field_mapping, **kwargs)
+
+    @property
+    def required_keys(self):
+        return ["filepath"]
+
+    def __call__(self, d):
+        return self.encode(d["filepath"])
+
+    def encode(self, img):
+        """Encodes an image with the question schema.
+
+        Args:
+            img: an image path, PIL image, numpy array or Torch tensor
+
+        Returns:
+            the release's encoded record of the image
+        """
+        record = {
+            "state": self.state,
+            "images": [_prepare_image(img)],
+            "questions": self.questions,
+        }
+        if self.media_kwargs:
+            record["media_kwargs"] = self.media_kwargs
+
+        release = _import_release(self.release_path)
+        return release.encode_record(
+            self.processor.tokenizer,
+            record,
+            max_length=self.max_length,
+            processor=self.processor,
+        )
+
+
+class _ClefCollate(object):
+    """Pads encoded records into a batch with the release's own collation.
+
+    Args:
+        release_path: the local directory of a Clef release
+        pad_token_id: the ID of the tokenizer's padding token
+    """
+
+    def __init__(self, release_path, pad_token_id):
+        self.release_path = release_path
+        self.pad_token_id = pad_token_id
+
+    def __call__(self, records):
+        # Built on the CPU, since collation runs in the data loader's workers
+        release = _import_release(self.release_path)
+        batch = release.collate_records(
+            list(records), self.pad_token_id, torch.device("cpu")
+        )
+
+        # The batch holds the records' image tensors, so the records drop
+        # their own copies rather than send them from the workers twice
+        batch["records"] = [
+            dataclasses.replace(record, media=None)
+            for record in batch["records"]
+        ]
+        return batch
+
+
 class ClefOutputProcessor(fout.OutputProcessor):
     """Output processor for Clef decision models.
 
@@ -135,18 +295,23 @@ class ClefOutputProcessor(fout.OutputProcessor):
         frame_size,
         confidence_thresh=None,
         classes=None,
+        records=None,
+        questions=None,
         **kwargs,
     ):
         """Processes model output into labels.
 
         Args:
-            output: a list with, for each image, a dict mapping question ID
-                to a dict with the question's ``type``, its ``options`` in
-                the order the caller gave them and the matching ``logits``
+            output: the model output, a list with, for each image, a list
+                with, for each question, a tensor of its options' logits
             frame_size: unused
             confidence_thresh (None): an optional confidence below which a
                 classification is omitted
             classes (None): unused
+            records (None): the batch's encoded records, whose questions give
+                the ID and option IDs behind each tensor of ``output``
+            questions (None): the question schema, a dict mapping question
+                ID to question
             **kwargs: unused
 
         Returns:
@@ -154,10 +319,15 @@ class ClefOutputProcessor(fout.OutputProcessor):
             dicts of them when the schema has several questions
         """
         results = []
-        for answers in output:
+        for record, record_logits in zip(records, output):
             labels = {
-                question_id: self._to_label(answer, confidence_thresh)
-                for question_id, answer in answers.items()
+                question.question_id: self._to_label(
+                    questions[question.question_id],
+                    question.option_ids,
+                    logits,
+                    confidence_thresh,
+                )
+                for question, logits in zip(record.questions, record_logits)
             }
             if len(labels) == 1:
                 results.append(next(iter(labels.values())))
@@ -170,24 +340,29 @@ class ClefOutputProcessor(fout.OutputProcessor):
 
         return results
 
-    def _to_label(self, answer, confidence_thresh):
-        logits = np.asarray(answer["logits"], dtype=np.float64)
+    def _to_label(self, question, option_ids, logits, confidence_thresh):
+        # The release orders choice options by ID; report them in the
+        # caller's order
+        options = _option_order(question)
+        values = logits.float().cpu().numpy()
+        logits = np.array(
+            [values[option_ids.index(o)] for o in options], dtype=np.float64
+        )
+
         probabilities = np.exp(logits - logits.max())
         probabilities /= probabilities.sum()
 
         best = int(np.argmax(probabilities))
         confidence = float(probabilities[best])
 
-        if answer["type"] == "score":
+        if question["type"] == "score":
             value = float(np.dot(np.arange(len(probabilities)), probabilities))
             return fol.Regression(value=value, confidence=confidence)
 
         if confidence_thresh is not None and confidence < confidence_thresh:
             return None
 
-        label = fol.Classification(
-            label=answer["options"][best], confidence=confidence
-        )
+        label = fol.Classification(label=options[best], confidence=confidence)
         if self.store_logits:
             label.logits = logits
 
@@ -336,7 +511,7 @@ class ClefModel(fout.TorchImageModel):
 
     def __init__(self, config):
         self._questions = config.get_questions()
-        self._release = None
+        self._release_path = None
         self._processor = None
         super().__init__(config)
 
@@ -349,123 +524,74 @@ class ClefModel(fout.TorchImageModel):
         """The question schema answered for each image."""
         return self._questions
 
+    @property
+    def ragged_batches(self):
+        # Records of different lengths are padded together by collate_fn
+        return False
+
+    @property
+    def has_collate_fn(self):
+        return True
+
+    @property
+    def collate_fn(self):
+        return _ClefCollate(
+            self._release_path, self._processor.tokenizer.pad_token_id
+        )
+
+    def build_get_item(self, field_mapping=None):
+        return ClefGetItem(
+            self._release_path,
+            self._processor,
+            self._questions,
+            state=self.config.state,
+            max_length=self.config.max_length,
+            media_kwargs=self.config.media_kwargs,
+            field_mapping=field_mapping,
+        )
+
     def _download_model(self, config):
         pass
 
     def _load_model(self, config):
         _ensure_clef()
 
-        path = hfh.snapshot_download(
+        self._release_path = hfh.snapshot_download(
             config.name_or_path, revision=config.revision
         )
-        self._release = self._import_release(path)
+        release = _import_release(self._release_path)
 
-        model, self._processor = self._release.load_release_model(
-            path, device=self._device, dtype=torch.bfloat16
+        model, self._processor = release.load_release_model(
+            self._release_path, device=self._device, dtype=torch.bfloat16
         )
         return model.eval()
 
-    @staticmethod
-    def _import_release(path):
-        module_path = os.path.join(path, _RELEASE_MODULE)
-        if not os.path.isfile(module_path):
-            raise ValueError(
-                "%s holds no %s; it is not a Clef release"
-                % (path, _RELEASE_MODULE)
-            )
+    def _predict_all(self, imgs):
+        if self._preprocess:
+            # Images given directly rather than through a data loader are
+            # encoded and padded here
+            encode = self.build_get_item().encode
+            imgs = self.collate_fn([encode(img) for img in imgs])
 
-        # One module per snapshot, registered before it runs, since the
-        # release's dataclasses resolve their annotations through sys.modules
-        digest = hashlib.sha1(os.path.abspath(module_path).encode("utf-8"))
-        name = "fiftyone_clef_release_%s" % digest.hexdigest()[:16]
-        if name in sys.modules:
-            return sys.modules[name]
-
-        spec = importlib.util.spec_from_file_location(name, module_path)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[name] = module
-        try:
-            spec.loader.exec_module(module)
-        except BaseException:
-            del sys.modules[name]
-            raise
-
-        return module
-
-    def _build_record(self, img):
-        record = {
-            "state": self.config.state,
-            "images": [self._prepare_image(img)],
-            "questions": self._questions,
-        }
-        if self.config.media_kwargs:
-            record["media_kwargs"] = self.config.media_kwargs
-
-        return record
-
-    def _forward_pass(self, imgs):
-        tokenizer = self._processor.tokenizer
-        encoded = [
-            self._release.encode_record(
-                tokenizer,
-                self._build_record(img),
-                max_length=self.config.max_length,
-                processor=self._processor,
-            )
-            for img in imgs
-        ]
-        batch = self._release.collate_records(
-            encoded, tokenizer.pad_token_id, self._device
+        batch = dict(
+            imgs,
+            input_ids=imgs["input_ids"].to(self._device),
+            attention_mask=imgs["attention_mask"].to(self._device),
+            media={k: v.to(self._device) for k, v in imgs["media"].items()},
         )
 
+        output = self._forward_pass(batch)
+
+        self._output_processor.store_logits = self.store_logits
+        return self._output_processor(
+            output,
+            None,
+            confidence_thresh=self.config.confidence_thresh,
+            classes=self.config.filter_classes,
+            records=batch["records"],
+            questions=self._questions,
+        )
+
+    def _forward_pass(self, batch):
         with torch.inference_mode():
-            logits = self._model(batch)
-
-        results = []
-        for record, record_logits in zip(encoded, logits):
-            answers = {}
-            for question, question_logits in zip(
-                record.questions, record_logits
-            ):
-                question_id = question.question_id
-                options = _option_order(self._questions[question_id])
-
-                # The release orders choice options by ID; report them in the
-                # caller's order
-                position = {o: i for i, o in enumerate(question.option_ids)}
-                values = question_logits.float().cpu().numpy()
-                answers[question_id] = {
-                    "type": self._questions[question_id]["type"],
-                    "options": options,
-                    "logits": np.array([values[position[o]] for o in options]),
-                }
-
-            results.append(answers)
-
-        return results
-
-    def _prepare_image(self, img):
-        """Converts image-like input to an RGB PIL image for the processor.
-
-        ``fout.to_rgb_pil`` expects channel-last layout and reads float
-        arrays as 0-1, wrapping anything above it, so tensors are converted
-        and channel-first or 0-255 float input is normalized first.
-        """
-        if isinstance(img, torch.Tensor):
-            img = img.detach().cpu().numpy()
-
-        if isinstance(img, np.ndarray):
-            # Transpose CHW to HWC when the first dim is channels and the
-            # last cannot be
-            if (
-                img.ndim == 3
-                and img.shape[0] in (1, 3, 4)
-                and img.shape[2] not in (1, 3, 4)
-            ):
-                img = np.transpose(img, (1, 2, 0))
-
-            if np.issubdtype(img.dtype, np.floating):
-                scale = 255.0 if img.max() <= 1.0 else 1.0
-                img = np.clip(img * scale, 0, 255).astype(np.uint8)
-
-        return fout.to_rgb_pil(img)
+            return self._model(batch)
