@@ -7,11 +7,8 @@ export {
   type IndexedSequencePage,
   type IndexedSequenceSessionOptions,
   type IndexedSequenceStream,
-} from "../../adapters/sequence/indexed-sequence-session";
-export {
-  SourcePlayback,
-  type SourcePlaybackProps,
-} from "../episode/shell/SourcePlayback";
+} from "../../runtime/sequence/indexed-sequence-session";
+export { SourcePlayback, type SourcePlaybackProps } from "../episode";
 export {
   SCENE_SOURCE_TYPE,
   STREAM_KIND,
