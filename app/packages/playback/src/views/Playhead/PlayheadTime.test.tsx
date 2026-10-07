@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   PlaybackProvider,
   usePlayback,
@@ -43,11 +43,10 @@ function renderTime(
 }
 
 describe("PlayheadTime", () => {
-  afterEach(() => {
-    cleanup();
-    // a toggle persists the display choice, which would seed later tests
-    localStorage.clear();
-  });
+  // A toggle persists the display choice and every provider reads it at
+  // mount, so each test starts from empty storage regardless of order.
+  beforeEach(() => localStorage.clear());
+  afterEach(() => cleanup());
 
   it("renders the initial playhead and duration formatted as 0:SS.cs", () => {
     renderTime(12);
@@ -156,6 +155,18 @@ describe("PlayheadTime", () => {
       // the next sample's provider, whose own default is frame numbers
       renderTime(1, 0.5, { kind: "sequence", fps: 10 });
       expect(screen.getByText("0:00.50 / 0:01.00")).toBeTruthy();
+    });
+
+    it("keeps a frame-number pick from changing how a wall-clock timeline opens", () => {
+      renderTime(1, 0.5, { kind: "sequence", fps: 10 });
+      fireEvent.click(screen.getByRole("button"));
+      cleanup();
+
+      // "configured" means wall-clock time here, still its own default
+      renderTime(2, 1, { kind: "absolute", epochAnchorMs: 10_000 });
+      expect(
+        screen.getByText("1970-01-01 00:00:11.000 / 1970-01-01 00:00:12.000"),
+      ).toBeTruthy();
     });
 
     it("leaves the step interval alone across a toggle", () => {

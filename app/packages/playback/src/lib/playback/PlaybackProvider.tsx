@@ -27,28 +27,34 @@ const DEFAULT_MODE: TimelineMode = { kind: "duration" };
 type Display = "configured" | "duration";
 
 /**
- * The display domain the user last picked on any timeline, persisted so
- * every provider after it — each sample mounts a fresh one — opens on the
- * same choice, across reloads too. Only a mount-time seed and a write on
- * toggle: nothing reacts to it while a provider is mounted.
+ * The display domain the user last picked, persisted so every provider
+ * after it — each sample mounts a fresh one — opens on the same choice,
+ * across reloads too. Only a mount-time seed and a write on toggle: nothing
+ * reacts to it while a provider is mounted.
+ *
+ * Kept per configured mode kind, because "configured" means a different
+ * readout in each: frame numbers for `sequence`, wall-clock timestamps for
+ * `absolute`. Picking frames on a video must not change how a wall-clock
+ * timeline opens.
  */
-const DISPLAY_STORAGE_KEY = "fo-playback-timeline-display";
+const displayStorageKey = (kind: TimelineMode["kind"]) =>
+  `fo-playback-timeline-display:${kind}`;
 
 // SSR has no `window`, and restricted browsers (sandboxed iframes, blocked
 // cookies) throw on the storage accessor itself or on access; either way
 // the preference just isn't remembered.
-const readStoredDisplay = (): Display | null => {
+const readStoredDisplay = (kind: TimelineMode["kind"]): Display | null => {
   try {
-    const value = window.localStorage.getItem(DISPLAY_STORAGE_KEY);
+    const value = window.localStorage.getItem(displayStorageKey(kind));
     return value === "configured" || value === "duration" ? value : null;
   } catch {
     return null;
   }
 };
 
-const writeStoredDisplay = (display: Display) => {
+const writeStoredDisplay = (kind: TimelineMode["kind"], display: Display) => {
   try {
-    window.localStorage.setItem(DISPLAY_STORAGE_KEY, display);
+    window.localStorage.setItem(displayStorageKey(kind), display);
   } catch {
     // not remembered; the toggle itself still applies
   }
@@ -206,12 +212,13 @@ export function PlaybackProvider({
   const resolvedMode = resolvedModeRef.current;
 
   // What the ruler / readouts render in. Seeded from the user's last pick
-  // on any timeline, else from the surface's `defaultDisplay`, and then
+  // on a timeline of the same mode kind, else from the surface's
+  // `defaultDisplay`, and then
   // owned by the user; the engine never reads it. Frozen at mount like
   // `resolvedMode`, so this only ever picks the opening domain.
   const initialDisplayModeRef = useRef<TimelineMode>();
   if (initialDisplayModeRef.current === undefined) {
-    const display = readStoredDisplay() ?? defaultDisplay;
+    const display = readStoredDisplay(resolvedMode.kind) ?? defaultDisplay;
     initialDisplayModeRef.current =
       display === "duration" ? DEFAULT_MODE : resolvedMode;
   }
@@ -225,7 +232,10 @@ export function PlaybackProvider({
     if (!canToggleMode) return;
     const toDuration = displayMode.kind !== "duration";
     setDisplayMode(toDuration ? DEFAULT_MODE : resolvedMode);
-    writeStoredDisplay(toDuration ? "duration" : "configured");
+    writeStoredDisplay(
+      resolvedMode.kind,
+      toDuration ? "duration" : "configured",
+    );
   }, [canToggleMode, displayMode, resolvedMode]);
   const modeControl = useMemo<TimelineModeControl>(
     () => ({

@@ -313,8 +313,9 @@ export interface PlaybackConfig {
    * timecode readout unless the user asks for frame numbers (the looker's
    * `UseFrameNumberOptionElement` was likewise opt-in).
    *
-   * Only a first-run default: once the user toggles any timeline, their
-   * choice is persisted and seeds every provider after it.
+   * Only a first-run default: once the user toggles a timeline, their choice
+   * is persisted and seeds every later provider whose `mode` is the same
+   * kind.
    *
    * Ignored when `mode` is already `duration` — there is nothing to seed.
    * @default "configured"
