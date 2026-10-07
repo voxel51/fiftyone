@@ -22,7 +22,7 @@ import {
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import type { EventCallback, RowChange } from "./events";
-import { Load, Rejected } from "./events";
+import { Load, Rejected, Render } from "./events";
 import Section from "./section";
 import tile from "./tile";
 import type {
@@ -42,7 +42,7 @@ import {
   sum,
 } from "./utilities";
 
-export { Load, Rejected, RowChange } from "./events";
+export { Load, Rejected, Render, RowChange } from "./events";
 export * from "./types";
 
 export default class Spotlight<K, V> extends EventTarget {
@@ -52,6 +52,7 @@ export default class Spotlight<K, V> extends EventTarget {
   readonly #keys = new WeakMap<ID, K>();
 
   #backward: Section<K, V>;
+  #filling = false;
   #focused?: ID;
   #forward: Section<K, V>;
   #loaded = false;
@@ -83,6 +84,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
   addEventListener(type: "rejected", callback: EventCallback<Rejected>): void;
+  addEventListener(type: "render", callback: EventCallback<Render<K>>): void;
   addEventListener(
     type: "rowchange",
     callback: EventCallback<RowChange<K>>,
@@ -99,6 +101,7 @@ export default class Spotlight<K, V> extends EventTarget {
     type: "rejected",
     callback: EventCallback<Rejected>,
   ): void;
+  removeEventListener(type: "render", callback: EventCallback<Render<K>>): void;
   removeEventListener(
     type: "rowchange",
     callback: EventCallback<RowChange<K>>,
@@ -423,6 +426,7 @@ export default class Spotlight<K, V> extends EventTarget {
     scrollToPosition({ at, el: this.#element, offset, top, ...this.#sections });
     this.#attachScrollReader();
     close?.();
+    if (this.#filling) return;
     if (!zooming && backwardResult.more) this.#previous();
     if (!zooming && forwardResult.more) this.#next();
   }
@@ -446,15 +450,27 @@ export default class Spotlight<K, V> extends EventTarget {
     });
     this.#forward.attach(this.#element);
 
+    // Paint as soon as the first page arrives, then keep filling the
+    // viewport. #render does not chain page requests until filling is done
+    this.#filling = true;
     await this.#next(false);
-    while (!this.#forward.finished && this.#forward.height < this.#height) {
-      await this.#next(false);
-    }
-
     await this.#previous(false);
     this.#render({
       at: this.#config.at,
       offset: -this.#pivot,
+      zooming: false,
+    });
+    this.dispatchEvent(new Render(this.#config.key));
+
+    while (!this.#forward.finished && this.#forward.height < this.#height) {
+      await this.#next(false);
+      this.#render({ go: false, offset: false, zooming: false });
+    }
+
+    this.#filling = false;
+    this.#render({
+      go: false,
+      offset: false,
       zooming: false,
       ...this.#measure(),
     });

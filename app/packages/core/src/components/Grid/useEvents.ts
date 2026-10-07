@@ -51,10 +51,13 @@ export default ({
       width: element?.parentElement?.getBoundingClientRect().width,
     });
 
+    const reveal = () => {
+      document.getElementById(pixels)?.classList.add(styles.hidden);
+    };
+
     const mount = () => {
       cache.unfreeze();
       clearTimeout(timeout);
-      document.getElementById(pixels)?.classList.add(styles.hidden);
       document.dispatchEvent(
         new CustomEvent("grid-mount", { detail: detail() }),
       );
@@ -71,6 +74,7 @@ export default ({
     };
 
     element && spotlight.attach(element);
+    spotlight.addEventListener("render", reveal);
     spotlight.addEventListener("load", mount);
     spotlight.addEventListener("rejected", rejected);
     spotlight.addEventListener("rowchange", set);
@@ -82,6 +86,7 @@ export default ({
         new CustomEvent("grid-unmount", { detail: detail() }),
       );
       document.getElementById(pixels)?.classList.remove(styles.hidden);
+      spotlight.removeEventListener("render", reveal);
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
