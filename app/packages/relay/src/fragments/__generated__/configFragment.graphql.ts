@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ef5889b53febd6a04edda592f5ef3b86>>
+ * @generated SignedSource<<8a820c1fb5f6804cb2cdf0e403d339c2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,9 +28,6 @@ export type configFragment$data = {
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
     readonly plugins: object | null;
-    readonly showConfidence: boolean;
-    readonly showIndex: boolean;
-    readonly showLabel: boolean;
     readonly showSkeletons: boolean;
     readonly showTooltip: boolean;
     readonly theme: Theme;
@@ -155,27 +152,6 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "showConfidence",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "showIndex",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "showLabel",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
           "name": "showSkeletons",
           "storageKey": null
         },
@@ -217,6 +193,6 @@ return {
 };
 })();
 
-(node as any).hash = "4f870401f70cf2ffe311e044193912b1";
+(node as any).hash = "c7f4a5551f122ec0450ea9989c389911";
 
 export default node;

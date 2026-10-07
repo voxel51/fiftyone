@@ -65,9 +65,6 @@ export namespace State {
     loopVideos: boolean;
     notebookHeight: number;
     plugins?: PluginConfig;
-    showConfidence: boolean;
-    showIndex: boolean;
-    showLabel: boolean;
     showTooltip: boolean;
     timezone: string | null;
     theme: "browser" | "dark" | "light";

@@ -18,9 +18,6 @@ export default r(graphql`
       multicolorKeypoints
       notebookHeight
       plugins
-      showConfidence
-      showIndex
-      showLabel
       showSkeletons
       showTooltip
       theme

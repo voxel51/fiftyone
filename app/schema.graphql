@@ -55,9 +55,6 @@ type AppConfig {
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
   plugins: JSON
-  showConfidence: Boolean!
-  showIndex: Boolean!
-  showLabel: Boolean!
   showSkeletons: Boolean!
   showTooltip: Boolean!
   theme: Theme!

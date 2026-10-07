@@ -1,6 +1,5 @@
 export * from "./__generated__/aggregateQuery.graphql";
 export * from "./__generated__/aggregationsQuery.graphql";
-export * from "./__generated__/configQuery.graphql";
 export * from "./__generated__/countValuesQuery.graphql";
 export * from "./__generated__/datasetQuery.graphql";
 export * from "./__generated__/histogramValuesQuery.graphql";

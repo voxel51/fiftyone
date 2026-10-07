@@ -491,24 +491,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_PROXY_URL",
             default=None,
         )
-        self.show_confidence = self.parse_bool(
-            d,
-            "show_confidence",
-            env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
-            default=True,
-        )
-        self.show_index = self.parse_bool(
-            d,
-            "show_index",
-            env_var="FIFTYONE_APP_SHOW_INDEX",
-            default=True,
-        )
-        self.show_label = self.parse_bool(
-            d,
-            "show_label",
-            env_var="FIFTYONE_APP_SHOW_LABEL",
-            default=True,
-        )
         for key, env_var in (
             ("show_confidence", "FIFTYONE_APP_SHOW_CONFIDENCE"),
             ("show_index", "FIFTYONE_APP_SHOW_INDEX"),
