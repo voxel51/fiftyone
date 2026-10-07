@@ -105,7 +105,7 @@
 
 .. customcarditem::
     :header: DSEC Sample
-    :description: Six driving sequences in native MCAP format pairing a stereo pair of event cameras, carrying every event, with a stereo pair of color cameras and LiDAR-derived disparity and optical flow ground truth.
+    :description: Six driving sequences in native MCAP format pairing a stereo pair of event cameras, carrying every event, with a stereo pair of color cameras, LiDAR-derived disparity ground truth and, where available, optical flow ground truth.
     :link: datasets/dsec_sample.html
     :image: ../_images/dsec-sample.png
     :tags: multimodal,mcap,event-camera,stereo,driving
