@@ -75,6 +75,9 @@ class OperatorConfig(object):
             this operator is mainly used by guardrail systems of an agent to
             classify tool calls. If ``None``, the operator defaults to
             :attr:`RiskLevel.DANGEROUS`
+        tracked_params (None): an optional list of parameter names whose
+            values are included in the App's usage analytics event when the
+            operator is executed. Only names are sent by default
     """
 
     def __init__(
@@ -100,6 +103,7 @@ class OperatorConfig(object):
         rerunnable=True,
         risk_level=RiskLevel.DANGEROUS,
         view_target=True,
+        tracked_params=None,
         **kwargs
     ):
         self.name = name
@@ -121,6 +125,7 @@ class OperatorConfig(object):
         self.allow_distributed_execution = False  # Enterprise only
         self.rerunnable = rerunnable
         self.view_target = view_target
+        self.tracked_params = tracked_params or []
         self._risk_level = _normalize_risk_level(risk_level)
         if resolve_execution_options_on_change is None:
             self.resolve_execution_options_on_change = dynamic
@@ -157,6 +162,7 @@ class OperatorConfig(object):
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
             "allow_distributed_execution": self.allow_distributed_execution,
             "risk_level": self.risk_level.value,
+            "tracked_params": self.tracked_params,
         }
 
 

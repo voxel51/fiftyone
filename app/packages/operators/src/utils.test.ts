@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { OperatorPromptType } from "./types";
-import { getOperatorPromptConfigs } from "./utils";
+import { getOperatorPromptConfigs, pickTrackedParams } from "./utils";
 
 describe("getOperatorPromptConfigs", () => {
   it("show is false when nothing is active", () => {
@@ -313,3 +313,18 @@ type OperatorPromptForConfig = Pick<
   | "inputFields"
   | "outputFields"
 >;
+
+describe("pickTrackedParams", () => {
+  it("returns only the values of tracked params that were provided", () => {
+    expect(
+      pickTrackedParams(["model", "source"], {
+        model: "clip-vit-base32-torch",
+        label_field: "predictions",
+      }),
+    ).toEqual({ model: "clip-vit-base32-torch" });
+  });
+
+  it("returns an empty object when nothing is tracked", () => {
+    expect(pickTrackedParams([], { model: "yolo11n-coco-torch" })).toEqual({});
+  });
+});
