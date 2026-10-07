@@ -154,7 +154,11 @@ export class EpisodePom {
     };
   }
 
-  /** The raw tile for `stream` shows a newly settled record ("" for none) */
+  /**
+   * The raw tile for `stream` shows a newly settled record ("" for none): the
+   * one valid from `validFrom` (a UTC time) when given. A tile keeps its
+   * previous record through a failed read, so a wait on a change pins it
+   */
   raw(stream: string, validFrom?: string): EventCondition {
     const validFromNs =
       validFrom === undefined ? undefined : utcDateTimeToNanoseconds(validFrom);
@@ -163,23 +167,6 @@ export class EpisodePom {
       (d) =>
         d.stream === stream &&
         (validFromNs === undefined || d.validFromNs === String(validFromNs)),
-    );
-  }
-
-  /**
-   * The raw tile for `stream` shows the record it settled on for the
-   * playhead at `time`, to the millisecond the readout shows; a scrub settles
-   * each time it passes
-   */
-  rawAt(stream: string, time: string): EventCondition {
-    const targetMs = BigInt(utcDateTimeToNanoseconds(time)) / 1_000_000n;
-    return shown(
-      "raw-shown",
-      (d) =>
-        d.stream === stream &&
-        typeof d.targetNs === "string" &&
-        d.targetNs !== "" &&
-        BigInt(d.targetNs) / 1_000_000n === targetMs,
     );
   }
 
@@ -204,9 +191,19 @@ export class EpisodePom {
     );
   }
 
-  /** The image tile titled `title` shows the frame it asked for */
-  imageShown(title: string): EventCondition {
-    return shown("image-shown", (d) => d.title === title);
+  /**
+   * The image tile titled `title` shows the frame it asked for: the one
+   * captured at `at` (a UTC time) when given
+   */
+  imageShown(title: string, at?: string): EventCondition {
+    const contentTimeNs =
+      at === undefined ? undefined : utcDateTimeToNanoseconds(at);
+    return shown(
+      "image-shown",
+      (d) =>
+        d.title === title &&
+        (contentTimeNs === undefined || d.contentTimeNs === contentTimeNs),
+    );
   }
 
   get controls(): Locator {

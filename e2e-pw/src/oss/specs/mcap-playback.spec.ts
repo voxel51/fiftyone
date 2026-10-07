@@ -27,7 +27,7 @@ test.describe("MCAP playback", () => {
     await episode.afterReady(
       tinyA.fileName,
       () => openMcapModal(grid, modal, sampleIndex.episodeA),
-      [episode.imageShown("camera/front")],
+      [episode.imageShown("camera/front", utcSecond(0))],
     );
     await episode.addTile("log", "Logs / Diagnostics");
     await episode.setSamplingRate(1);
@@ -43,9 +43,9 @@ test.describe("MCAP playback", () => {
       [
         episode.utcTime(second),
         episode.playhead(playhead),
-        episode.raw("/pose"),
+        episode.raw("/pose", second),
         episode.logs(["A log 1"]),
-        episode.imageShown("camera/front"),
+        episode.imageShown("camera/front", second),
       ],
       () => episode.stepForward(),
     );
@@ -58,8 +58,9 @@ test.describe("MCAP playback", () => {
       .assert.hasScreenshot("tiny-a-front-2.png");
 
     const first = "2024-01-01 00:00:00.000";
-    await episode.after([episode.utcTime(first), episode.raw("/pose")], () =>
-      episode.stepBack(),
+    await episode.after(
+      [episode.utcTime(first), episode.raw("/pose", first)],
+      () => episode.stepBack(),
     );
     await episode.expectUtcTime(first);
     await episode.expectRawField("position.x", tinyA.poseX[0]);
@@ -83,7 +84,7 @@ test.describe("MCAP playback", () => {
 
     await episode.navigateDatasetSample("forward", tinyB.fileName, [
       episode.playhead("0:00.00 / 0:01.50"),
-      episode.imageShown("camera/rear"),
+      episode.imageShown("camera/rear", episodeBSecond(0)),
     ]);
     await episode.expectStreams(
       ["/camera/rear", "/camera/side", "/scan/rear", "/status"],
@@ -103,7 +104,10 @@ test.describe("MCAP playback", () => {
       .assert.hasScreenshot("tiny-b-rear-1.png");
 
     await episode.after(
-      [episode.playhead("0:00.50 / 0:01.50"), episode.raw("/status")],
+      [
+        episode.playhead("0:00.50 / 0:01.50"),
+        episode.raw("/status", episodeBSecond(0.5)),
+      ],
       () => episode.stepForward(),
     );
     await episode.expectPlayhead("0:00.50 / 0:01.50");
@@ -114,7 +118,7 @@ test.describe("MCAP playback", () => {
     await episode.navigateDatasetSample("backward", tinyA.fileName, [
       episode.utcTime(first),
       episode.playhead(playhead),
-      episode.imageShown("camera/front"),
+      episode.imageShown("camera/front", utcSecond(0)),
     ]);
     await episode.expectTileTitleCount("camera/front", 2);
     await episode.expectTileTitles(
@@ -235,8 +239,8 @@ test.describe("MCAP playback", () => {
     await episode.setSamplingRate(1);
     await episode.after(
       [
-        episode.utcTime("2024-01-01 00:00:01.000"),
-        episode.imageShown("camera/front"),
+        episode.utcTime(utcSecond(1)),
+        episode.imageShown("camera/front", utcSecond(1)),
       ],
       () => episode.stepForward(),
     );
@@ -250,7 +254,7 @@ test.describe("MCAP playback", () => {
     const longStart = "2024-01-01 00:00:00.000 / 2024-01-01 01:00:00.000";
     await episode.navigateDatasetSample("forward", long.fileName, [
       episode.playhead(longStart),
-      episode.imageShown("camera/front"),
+      episode.imageShown("camera/front", utcSecond(0)),
     ]);
     await episode.expectPaused();
     await episode.expectPlayhead(longStart);
@@ -266,7 +270,10 @@ test.describe("MCAP playback", () => {
       .assert.hasScreenshot("long-front-phase-0.png");
 
     await episode.after(
-      [episode.utcTime("2024-01-01 00:45:00.000"), episode.raw("/status")],
+      [
+        episode.utcTime("2024-01-01 00:45:00.000"),
+        episode.raw("/status", "2024-01-01 00:45:00.000"),
+      ],
       () => episode.seekToFraction(0.75),
     );
     await episode.expectUtcTime("2024-01-01 00:45:00.000");
@@ -279,7 +286,7 @@ test.describe("MCAP playback", () => {
     await episode.navigateDatasetSample("forward", tinyA.fileName, [
       episode.playhead(tinyStart),
       episode.raw(""),
-      episode.imageShown("camera/front"),
+      episode.imageShown("camera/front", utcSecond(0)),
     ]);
     await episode.expectPaused();
     await episode.expectPlayhead(tinyStart);
@@ -326,7 +333,7 @@ test.describe("MCAP playback", () => {
       500,
       () =>
         episode.scrubToFraction(fractionOfLongRecording(long.rearFirstSecond)),
-      [episode.imageShown("camera/rear")],
+      [episode.imageShown("camera/rear", utcSecond(long.rearFirstSecond))],
     );
     await episode
       .canvas(episode.image("camera/rear"))
@@ -337,7 +344,7 @@ test.describe("MCAP playback", () => {
       500,
       () =>
         episode.seekToFraction(fractionOfLongRecording(long.rearLastSecond)),
-      [episode.imageShown("camera/rear")],
+      [episode.imageShown("camera/rear", utcSecond(long.rearLastSecond))],
     );
     await episode
       .canvas(episode.image("camera/rear"))
@@ -373,7 +380,12 @@ test.describe("MCAP playback", () => {
         episode.seekToFraction(
           fractionOfLongRecording(long.midpointSecond - 0.5),
         ),
-      [episode.imageShown("camera/front")],
+      [
+        episode.imageShown(
+          "camera/front",
+          utcSecond(long.midpointSecond - 0.5),
+        ),
+      ],
     );
     await episode.inspectStream("/diagnostics");
     await episode.expectRawMeta(
@@ -393,10 +405,10 @@ test.describe("MCAP playback", () => {
       () =>
         episode.scrubToFraction(fractionOfLongRecording(long.midpointSecond)),
       [
-        episode.rawAt("/diagnostics", "2024-01-01 00:30:00.000"),
-        episode.rawAt("/rosout", "2024-01-01 00:30:00.000"),
+        episode.raw("/diagnostics", utcSecond(long.midpointSecond)),
+        episode.raw("/rosout", utcSecond(long.midpointSecond)),
         episode.logs(["LONG midpoint warning"]),
-        episode.imageShown("camera/front"),
+        episode.imageShown("camera/front", utcSecond(long.midpointSecond)),
       ],
     );
     episode.focusRawTile("/diagnostics");
@@ -431,8 +443,11 @@ test.describe("MCAP playback", () => {
           fractionOfLongRecording(long.midpointSecond - 0.5),
         ),
       [
-        episode.rawAt("/diagnostics", "2024-01-01 00:29:59.500"),
-        episode.rawAt("/rosout", "2024-01-01 00:29:59.500"),
+        episode.raw(
+          "/diagnostics",
+          utcSecond(longExpectation.diagnosticBeforeMidpointSecond),
+        ),
+        episode.raw("/rosout", utcSecond(long.logBeforeMidpointSecond)),
       ],
     );
     episode.focusRawTile("/diagnostics");
@@ -448,6 +463,23 @@ test.describe("MCAP playback", () => {
 
 function fractionOfLongRecording(second: number): number {
   return second / long.durationSeconds;
+}
+
+/** The UTC time `second` seconds into episode A or the long recording */
+function utcSecond(second: number): string {
+  return utcTime(Date.UTC(2024, 0, 1), second);
+}
+
+/** The time `second` seconds into episode B, whose log times start at 0 */
+function episodeBSecond(second: number): string {
+  return utcTime(0, second);
+}
+
+function utcTime(startMs: number, second: number): string {
+  return new Date(startMs + second * 1000)
+    .toISOString()
+    .replace("T", " ")
+    .slice(0, 23);
 }
 
 function relativeSecond(second: number): string {
