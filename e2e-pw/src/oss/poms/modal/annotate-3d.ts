@@ -1,6 +1,9 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
+const POSITION_SHOWN = "e2e:annotate:position3d-shown";
+type PositionShown = { labelId: string; x: string; y: string; z: string };
+
 /**
  * The 3D annotation surface: the `looker3d` viewer in annotate mode plus its
  * floating annotation toolbar, composing with the shared modal POMs. Toolbar
@@ -101,6 +104,35 @@ export class ModalAnnotate3dPom {
       .getByTestId("modal")
       .getByTestId("sidebar")
       .getByTestId(`position3d-${axis}`);
+  }
+
+  /**
+   * Select a listed cuboid and resolve once the position inputs show its
+   * values; reselecting the shown cuboid sends no new event, so the inputs
+   * are read once after arming
+   */
+  async selectCuboid(labelText: string): Promise<void> {
+    await this.selectLabel(labelText);
+    await this.modal.eventUtils.untilState(
+      POSITION_SHOWN,
+      async () => (await this.geometryField("x").inputValue()) !== "",
+      (e) => (e.detail as PositionShown).x !== "",
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the position inputs show values that
+   * differ from the last ones they showed
+   */
+  async afterPositionChanged<T>(action: () => Promise<T>): Promise<T> {
+    const key = (p: PositionShown) => `${p.labelId} ${p.x} ${p.y} ${p.z}`;
+    const before = (
+      (await this.modal.eventUtils.recorded(POSITION_SHOWN)) as PositionShown[]
+    ).at(-1);
+    return this.modal.eventUtils.after(POSITION_SHOWN, action, (e) => {
+      const position = e.detail as PositionShown;
+      return position.x !== "" && (!before || key(position) !== key(before));
+    });
   }
 
   /** Set a Position3d geometry value (commits an undoable engine write). */

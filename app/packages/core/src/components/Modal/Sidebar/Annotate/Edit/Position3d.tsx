@@ -8,6 +8,7 @@ import {
   useSignalValue,
 } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
   computeCuboidHeadingAndUpRelabel,
@@ -58,6 +59,16 @@ const hasValidBounds = (coordinates: Coordinates3d): boolean => {
     Number.isFinite(ly) &&
     Number.isFinite(lz)
   );
+};
+
+/** e2e specs wait on the position inputs showing a cuboid's values */
+type Position3dE2EEvents = {
+  "e2e:annotate:position3d-shown": {
+    labelId: string;
+    x: string;
+    y: string;
+    z: string;
+  };
 };
 
 export interface Position3dProps {
@@ -318,6 +329,16 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
     },
     [data, transformState, updateCuboid, readOnly],
   );
+
+  const shownX = formatValue(transformState.position.x);
+  const shownY = formatValue(transformState.position.y);
+  const shownZ = formatValue(transformState.position.z);
+  useEffect(() => {
+    getEventBus<Position3dE2EEvents>().dispatch(
+      "e2e:annotate:position3d-shown",
+      { labelId, x: shownX, y: shownY, z: shownZ },
+    );
+  }, [labelId, shownX, shownY, shownZ]);
 
   return (
     <Box sx={{ width: "100%" }}>
