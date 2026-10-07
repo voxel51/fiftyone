@@ -13573,7 +13573,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "vlm", "torch", "transformer", "zero-shot"],
+            "tags": [
+                "classification",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
             "training_data": [],
             "date_added": "2026-10-07 12:00:00"
         }
