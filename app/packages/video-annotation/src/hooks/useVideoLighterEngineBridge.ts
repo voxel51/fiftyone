@@ -12,7 +12,12 @@ import {
   useIsImageDynamicGroupVideo,
 } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
+import {
+  useDatasetId,
+  useDiscardDraft,
+  useShouldClipToFrame,
+  useVisibleLabelSchemas,
+} from "../state/accessors";
 import { isFrameScopedPath } from "../state/framePaths";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { stashEstablishKey } from "../sync/establishKeyRelay";
@@ -43,6 +48,8 @@ export const useVideoLighterEngineBridge = (
   const engine = useAnnotationEngine();
   // skeleton edges drive keypoint connections; stable across renders
   const getSkeleton = useGetKeypointSkeleton();
+  const shouldClip = useShouldClipToFrame();
+  const onDiscardDraft = useDiscardDraft();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
 
@@ -93,5 +100,7 @@ export const useVideoLighterEngineBridge = (
     onEstablishCommit: stashEstablishKey,
     onEditCommit,
     getSkeleton,
+    shouldClip,
+    onDiscardDraft,
   });
 };

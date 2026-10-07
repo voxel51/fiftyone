@@ -1,5 +1,5 @@
 import { atom, useAtom, useAtomValue } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily, useAtomCallback } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
 import { useCallback, useMemo } from "react";
@@ -261,6 +261,27 @@ export const schemaManagerDisplayedAtom = atom(false);
 export const isFieldReadOnly = (data: LabelSchemaMeta | undefined): boolean => {
   return !!data?.label_schema?.read_only || !!data?.read_only;
 };
+
+/**
+ * Whether spatial labels in a field are clipped to the media frame. Clipping
+ * is on unless the schema turns it off.
+ */
+export const isFieldClipToFrame = (
+  data: LabelSchemaMeta | undefined,
+): boolean => data?.label_schema?.clip_to_frame !== false;
+
+/**
+ * Referentially stable resolver for whether a label path clips to the media
+ * frame, read from the current schemas at call time.
+ */
+export const useShouldClipToFrame = (): ((path: string) => boolean) =>
+  useAtomCallback(
+    useCallback(
+      (get, _set, path: string) =>
+        isFieldClipToFrame(get(labelSchemasData)?.[path]),
+      [],
+    ),
+  );
 
 /**
  * Public API for the current annotation schema context.

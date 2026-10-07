@@ -36,6 +36,7 @@ import {
   type SegmentationToolState,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 import type { OverlayEvent } from "../interaction/InteractionManager";
+import { clipRectToFrame, type FrameClipResult } from "../utils/clipToFrame";
 import { distanceFromLineSegment } from "../utils/geometry";
 import { BaseOverlay } from "./BaseOverlay";
 import { MaskCanvas } from "./MaskCanvas";
@@ -563,6 +564,30 @@ export class DetectionOverlay
       this.#rotation = normalized;
       this.markDirty();
     }
+  }
+
+  /**
+   * Clips the box to the media frame. Rotated and masked boxes are left as-is
+   * because neither keeps its shape when clipped.
+   */
+  clipToFrame(): FrameClipResult {
+    if (this.hasMask() || this.maskKeypoints || this.getRotation() !== 0) {
+      return "unchanged";
+    }
+
+    const bounds = this.#relativeBounds;
+    const clipped = clipRectToFrame(bounds);
+
+    if (!clipped) {
+      return "empty";
+    }
+
+    if (clipped === bounds) {
+      return "unchanged";
+    }
+
+    this.relativeBounds = clipped;
+    return "clipped";
   }
 
   getMoveStartRotation(): number | undefined {

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { encodeEntityId } from "../../identity/entityId";
 import { LABEL_PATCH_SIGNAL } from "../../signals/labelPatch";
-import { makeEngine, ref } from "../../testing/fixtures";
+import { makeDet, makeEngine, ref } from "../../testing/fixtures";
 import { useLighterPreviewSync } from "./useLighterPreviewSync";
 
 const overlay = (label: Record<string, unknown>) => ({
@@ -42,6 +42,29 @@ describe("useLighterPreviewSync", () => {
       label: "car",
       confidence: 0.9,
     });
+  });
+
+  it("merges over the committed label, not the overlay's stale copy", () => {
+    const committed = {
+      ...makeDet("d1", "car"),
+      bounding_box: [0.1, 0.1, 0.2, 0.2],
+    };
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [committed] },
+    });
+    const d1 = overlay({ ...committed, bounding_box: [0.5, 0.5, 0.2, 0.2] });
+    renderHook(() =>
+      useLighterPreviewSync(engine, "ds", "sample-1", scene({ d1 })),
+    );
+
+    publish(engine, "d1", { confidence: 0.9 });
+
+    expect(d1.applyLabel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bounding_box: [0.1, 0.1, 0.2, 0.2],
+        confidence: 0.9,
+      }),
+    );
   });
 
   it("ignores a patch for a different sample", () => {

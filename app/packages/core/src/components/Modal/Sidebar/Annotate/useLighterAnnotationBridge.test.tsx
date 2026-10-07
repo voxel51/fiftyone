@@ -27,8 +27,14 @@ vi.mock("@fiftyone/state/src/utils", () => ({
 }));
 vi.mock("./state", async () => {
   const { atom } = await vi.importActual<typeof import("jotai")>("jotai");
-  return { visibleLabelSchemas: atom(new Set<string>()) };
+  return {
+    useShouldClipToFrame: () => () => true,
+    visibleLabelSchemas: atom(new Set<string>()),
+  };
 });
+vi.mock("./Edit/useDiscardDraft", () => ({
+  default: () => () => undefined,
+}));
 vi.mock("./useLighterInteractionPolicy", () => ({
   useLighterInteractionPolicy: () => ({}),
 }));
