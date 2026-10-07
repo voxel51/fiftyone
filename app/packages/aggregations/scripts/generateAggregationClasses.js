@@ -15,7 +15,6 @@ async function main() {
   let currentClass = null;
   let parsingArgs = false;
   let parsingComment = false;
-  let results = {};
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     // console.log(line)
@@ -41,13 +40,13 @@ async function main() {
         line.startsWith("        ") &&
         !line.startsWith("          ")
       ) {
-        const [full, argName] = line.trim().match(/^(\w+)\s*[\:|\(]/);
+        const [, argName] = line.trim().match(/^(\w+)\s*[:|(]/);
         console.log("  ", argName);
         currentClass.args[argName] = line.trim();
       }
     } else {
       if (line.startsWith("class") && line.trim().endsWith("(Aggregation):")) {
-        const [full, m1] = line.trim().match(/class (\w+)\(Aggregation\)\:/);
+        const [, m1] = line.trim().match(/class (\w+)\(Aggregation\):/);
         currentClass = { name: m1, args: [] };
         classes.push(currentClass);
       }
@@ -87,17 +86,8 @@ ${printArgs(cls.args)}
 }
 
 function printArgs(args) {
-  const output = Object.keys(args).map((a) => `  ${fromPyToJS(a)}?: any`);
+  const output = Object.keys(args).map((a) => `  ${fromPyToJS(a)}?: unknown`);
   return output.join(",\n");
-}
-
-function printToJSON(args) {
-  const output = Object.keys(args).map(
-    (a) => `      ['${a}', this.params.${fromPyToJS(a)}]`,
-  );
-  return `[
-${output.join(",\n")}
-    ]`;
 }
 
 function printNameMap(args) {

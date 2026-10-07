@@ -1,9 +1,12 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-import { Slider as SliderUnstyled } from "@mui/material";
+import {
+  Slider as SliderUnstyled,
+  type SliderProps as MuiSliderProps,
+} from "@mui/material";
 import React, {
-  ChangeEvent,
+  SyntheticEvent,
   useEffect,
   useLayoutEffect,
   useCallback,
@@ -109,7 +112,16 @@ const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
       opacity: 1;
     }
   `}
-` as typeof SliderUnstyled;
+` as unknown as React.ComponentType<
+  // MUI's polymorphic Slider overloads drop styled's extra props, so spell
+  // out what the styled component accepts
+  MuiSliderProps &
+    SliderStyledProps & {
+      ref?: React.Ref<HTMLSpanElement>;
+      // styled-components' per-instance theme override
+      theme?: object;
+    }
+>;
 
 type SliderValue = number | undefined | null;
 
@@ -119,8 +131,9 @@ type BaseSliderProps<T extends Range | number> = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
   value: T;
-  onChange: (e: ChangeEvent<{}>, v: T) => void;
-  onCommit?: (e: ChangeEvent<{}>, v: T) => void;
+  // MUI's Slider passes a native Event on change and either kind on commit
+  onChange: (e: Event | SyntheticEvent, v: T) => void;
+  onCommit?: (e: Event | SyntheticEvent, v: T) => void;
   onMinCommit?: (v: number) => void;
   onMaxCommit?: (v: number) => void;
   persistValue?: boolean;
@@ -162,9 +175,11 @@ const BaseSlider = <T extends Range | number>({
   const dirtyMax = useRef(false);
   const sliderRef = useRef<HTMLSpanElement>(null);
 
+  // read unconditionally so the hook order can't depend on fieldType
+  const appTimeZone = useRecoilValue(fos.timeZone);
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
-      ? useRecoilValue(fos.timeZone)
+      ? appTimeZone
       : null;
   const [clicking, setClicking] = useState(false);
 
@@ -191,22 +206,22 @@ const BaseSlider = <T extends Range | number>({
 
       labelElement.style.translate = `${shiftX}px 0`;
     });
-  }, []);
+  }, [containerRef]);
 
   // Adjust on mount after paint
   useEffect(() => {
     if (!sliderRef.current || !containerRef?.current) return;
 
     adjustLabelsPosition();
-  }, []);
+  }, [adjustLabelsPosition, containerRef]);
 
   // Adjust on value changes
   useLayoutEffect(() => {
-    if (!sliderRef.current || !containerRef?.current) return;
+    if (!sliderRef.current || !containerRef?.current) return undefined;
 
     const frameId = requestAnimationFrame(adjustLabelsPosition);
     return () => cancelAnimationFrame(frameId);
-  }, [value, adjustLabelsPosition]);
+  }, [value, adjustLabelsPosition, containerRef]);
 
   if (!isBoundsValid(bounds)) {
     return null;
@@ -340,6 +355,7 @@ export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
   useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from the atom only; re-running on localValue would snap back mid-drag
   }, [value]);
 
   return (
@@ -373,6 +389,7 @@ export const RangeSlider = ({
   useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync from the atom only; re-running on localValue would snap back mid-drag
   }, [value]);
 
   const bounds = useRecoilValue(boundsAtom);

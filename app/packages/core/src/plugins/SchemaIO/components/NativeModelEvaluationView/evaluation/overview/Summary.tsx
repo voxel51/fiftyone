@@ -231,7 +231,7 @@ export default function Summary(props) {
           };
 
           return (
-            <TableRow key={rowId}>
+            <TableRow key={String(rowId)}>
               <TableCell scope="row">{property}</TableCell>
               <TableCell>
                 <Stack
@@ -353,8 +353,8 @@ export default function Summary(props) {
 
 type CustomMetric = {
   label: string;
-  key: any;
-  value: any;
+  key: string;
+  value: number | null;
   lower_is_better: boolean;
 };
 
@@ -365,8 +365,8 @@ type CustomMetrics = {
 type SummaryRow = {
   id: string;
   property: string;
-  value: any;
-  compareValue: any;
+  value: number | string | null;
+  compareValue: number | string | null;
   lesserIsBetter: boolean;
   filterable: boolean;
   active: boolean;

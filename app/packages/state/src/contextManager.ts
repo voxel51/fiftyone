@@ -61,7 +61,7 @@ export interface ContextManager {
 export class DefaultContextManager implements ContextManager {
   private enterCallbacks: CallbackConfig[] = [];
   private exitCallbacks: CallbackConfig[] = [];
-  private isContextActive: boolean = false;
+  private isContextActive = false;
 
   enter(): void {
     if (!this.isContextActive) {

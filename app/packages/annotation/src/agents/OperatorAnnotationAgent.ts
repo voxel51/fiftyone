@@ -7,7 +7,7 @@ import type {
   AnnotationAgentLifecycleStatus,
   AnnotationContext,
   InferenceCapability,
-  InferenceResult,
+  AgentInferenceResult,
   InferenceResultProxy,
   ModelMetadata,
   SyncInferenceResult,
@@ -57,7 +57,7 @@ export class OperatorAnnotationAgent<
    * @throws Error If the server returns a top-level error or a result-level error.
    * @throws Error If the operator returns a delegated result but no executor ID.
    */
-  async infer(context: AnnotationContext): Promise<InferenceResult<T>> {
+  async infer(context: AnnotationContext): Promise<AgentInferenceResult<T>> {
     this.setLifecycleStatus("inferring");
 
     try {
@@ -147,8 +147,8 @@ export class OperatorAnnotationAgent<
    * Subscribes to updates for an in-progress async inference session.
    */
   async subscribe(
-    sessionId: string,
-    callback: (result: SyncInferenceResult<T>) => void,
+    _sessionId: string,
+    _callback: (result: SyncInferenceResult<T>) => void,
   ): Promise<void> {
     // todo
   }

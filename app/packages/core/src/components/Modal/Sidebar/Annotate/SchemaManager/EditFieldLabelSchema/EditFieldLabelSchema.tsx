@@ -26,7 +26,7 @@ import ApplyOntologySection from "./ApplyOntologySection";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
-import JSONEditor from "./JSONEditor";
+import JSONEditor, { type JSONValue } from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
@@ -35,12 +35,13 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isLargeDataset, scanLimit } = useIsLargeDataset();
 
+  const { resetErrors } = labelSchema;
   const handleTabChange = useCallback(
     (index: number) => {
       setActiveTab(TAB_IDS[index]);
-      labelSchema.resetErrors();
+      resetErrors();
     },
-    [labelSchema.resetErrors],
+    [resetErrors],
   );
 
   return (
@@ -65,7 +66,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           />
         </div>
         <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          When enabled, annotators can view this field but can't edit its
+          When enabled, annotators can view this field but can&apos;t edit its
           values.
         </Text>
       </div>
@@ -95,9 +96,10 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             size={Size.Md}
             defaultIndex={0}
             onChange={handleTabChange}
+            // the panels below render the content; the switch only toggles
             tabs={[
-              { id: TAB_GUI, data: { label: "GUI" } },
-              { id: TAB_JSON, data: { label: "JSON" } },
+              { id: TAB_GUI, data: { label: "GUI", content: null } },
+              { id: TAB_JSON, data: { label: "JSON", content: null } },
             ]}
           />
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -144,7 +146,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           <JSONEditor
             key={labelSchema.editorKey}
             errors={!!labelSchema.errors.length}
-            data={labelSchema.currentLabelSchema}
+            // label schemas are JSON documents
+            data={labelSchema.currentLabelSchema as JSONValue}
             onChange={labelSchema.validate}
             scanning={labelSchema.isScanning}
             onCancelScan={labelSchema.cancelScan}

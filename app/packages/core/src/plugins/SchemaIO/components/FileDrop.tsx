@@ -3,14 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { FileDrop as ReactFileDrop } from "react-file-drop";
 import { CloudUpload } from "@mui/icons-material";
 import autoFocus from "../utils/auto-focus";
+import type { ViewPropsType } from "../utils/types";
 
 type FileDropProps = {
   label?: string;
   caption?: string;
-  onChange: (files: Array<File>) => void;
+  onChange: (files: Array<File>, clear: () => void) => void;
   /** comma separated file types. i.e. .png,.jpg,.svg */
   types?: string;
   allowMultiple?: boolean;
+  autoFocused?: ViewPropsType["autoFocused"];
 };
 
 export default function FileDrop({
@@ -32,14 +34,19 @@ export default function FileDrop({
     setFileIds(new Set());
   };
 
+  // report file changes only; callers pass inline onChange handlers, so
+  // depending on it would re-report the same files on every parent render
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     const updatedFileIds = new Set();
     for (const file of files) {
       updatedFileIds.add(getFileId(file));
     }
     setFileIds(updatedFileIds);
-    if (onChange) {
-      onChange(files, clear);
+    if (onChangeRef.current) {
+      onChangeRef.current(files, clear);
     }
   }, [files]);
 
@@ -151,9 +158,10 @@ function FileList({ files, onUpdateFiles }: FileListProps) {
   if (files.length === 0) return null;
   return (
     <Box sx={{ mb: 1, display: "flex", flexWrap: "wrap" }}>
-      {files.map(({ name }) => {
+      {files.map(({ name }, i) => {
         return (
           <Chip
+            key={i}
             sx={{ m: 0.25 }}
             size="small"
             label={name}

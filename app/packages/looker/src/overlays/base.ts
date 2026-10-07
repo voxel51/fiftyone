@@ -44,7 +44,8 @@ export interface PointInfo<Label extends BaseLabel = BaseLabel> {
   point?: {
     index: number;
     attributes: [string, unknown][];
-    coordinates: Coordinates;
+    // keypoints can report non-finite coordinates
+    coordinates: Coordinates | [number | NONFINITE, number | NONFINITE];
   };
   target?: number;
   type: string;
@@ -75,7 +76,7 @@ export interface RegularLabel extends BaseLabel {
   confidence?: number | NONFINITE;
 }
 
-export const isShown = <State extends BaseState, Label extends RegularLabel>(
+export const isShown = <State extends BaseState, Label extends BaseLabel>(
   state: Readonly<State>,
   field: string,
   label: Label,
@@ -94,11 +95,12 @@ export interface Overlay<State extends Partial<BaseState>> {
   label?: BaseLabel;
   containsPoint(state: Readonly<State>): CONTAINS;
   getMouseDistance(state: Readonly<State>): number;
-  getPointInfo(state: Readonly<State>): any;
+  // segmentation overlays report a partial point info
+  getPointInfo(state: Readonly<State>): Partial<PointInfo>;
   getPoints(state: Readonly<State>): Coordinates[];
   getSelectData(state: Readonly<State>): SelectData;
   getSizeBytes(): number;
-  cleanup?(setTargetsToNull: boolean): void;
+  cleanup?(setTargetsToNull?: boolean): void;
 }
 
 export abstract class CoordinateOverlay<
@@ -161,8 +163,9 @@ export abstract class CoordinateOverlay<
     return {
       id: this.label.id,
       field: this.field,
-      // @ts-ignore
-      frameNumber: state.frameNumber,
+      // only video and frame states carry a frame number
+      frameNumber: (state as Readonly<State> & { frameNumber?: number })
+        .frameNumber,
       instanceId: this.label.instance?._id,
     };
   }

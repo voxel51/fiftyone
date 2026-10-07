@@ -4,11 +4,10 @@
  *
  * @benjaminpkane not fully understood
  */
-export default <T extends unknown>(module: T): T => {
-  // @ts-ignore
-  if (module.default) {
-    // @ts-ignore
-    return module.default;
+export default <T>(module: T): T => {
+  const resolved = (module as { default?: T }).default;
+  if (resolved) {
+    return resolved;
   }
 
   return module;

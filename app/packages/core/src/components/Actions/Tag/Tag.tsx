@@ -40,7 +40,7 @@ const TaggingContainerInput = styled.div`
   margin: 0.5rem 0;
 `;
 
-const TaggingInput = styled.input`
+const TaggingInput = styled.input<{ focused?: boolean }>`
   background-color: transparent;
   border: none;
   color: ${({ theme }) => theme.text.primary};
@@ -344,7 +344,10 @@ const useTagCallback = (
           fos.currentSlices(modal),
         );
         const slices = await snapshot.getPromise(fos.groupSlices);
-        const { samples } = await getFetchFunction()("POST", "/tag", {
+        const { samples } = await getFetchFunction()<
+          unknown,
+          { samples?: fos.ModalSample["sample"][] }
+        >("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
               fos.activeLabelFields({ modal }),
@@ -376,7 +379,10 @@ const useTagCallback = (
               ? await snapshot.getPromise(fos.extendedStages)
               : null,
           }),
-          current_frame: lookerRef?.current?.frameNumber,
+          // only video lookers have a frame number
+          current_frame: (
+            lookerRef?.current as { frameNumber?: number } | undefined
+          )?.frameNumber,
           changes,
         });
         set(refresher, (i) => i + 1);
@@ -404,7 +410,13 @@ const useTagCallback = (
               samples[0],
             );
 
-            lookerRef?.current?.updateSample(samples[0]);
+            // the /tag response is the same sample JSON the looker holds;
+            // each looker type declares its own sample type
+            (
+              lookerRef?.current as
+                | { updateSample: (sample: unknown) => void }
+                | undefined
+            )?.updateSample(samples[0]);
           }
         }
 
@@ -422,7 +434,8 @@ const useLabelPlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string },
 ) => {
-  return (): [number, string] => {
+  // Section calls this as a hook during render
+  return function useLabelCountAndPlaceholder(): [number, string] {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     const selectedLabelCount = useRecoilValue(
@@ -447,7 +460,8 @@ const getUseSamplePlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string },
 ) => {
-  return (): [number, string] => {
+  // Section calls this as a hook during render
+  return function useSampleCountAndPlaceholder(): [number, string] {
     const selectedSamples = useRecoilValue(fos.selectedSamples).size;
     const totalSamples = useRecoilValue(
       fos.count({ path: "", extended: false, modal }),

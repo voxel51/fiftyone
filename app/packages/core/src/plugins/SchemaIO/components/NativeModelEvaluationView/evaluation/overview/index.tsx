@@ -47,16 +47,16 @@ export default function Overview(props) {
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
-  }, [data]);
+  }, [data, name]);
 
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
-  }, [data]);
+  }, [data, compareKey]);
   const evaluationError = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}_error`];
     return evaluation;
-  }, [data]);
+  }, [data, name]);
 
   const evaluationNotes = useMemo(() => {
     return notes[id];
@@ -72,6 +72,7 @@ export default function Overview(props) {
     if (!evaluation) {
       loadEvaluation();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per missing evaluation; loadEvaluation is an inline prop and would re-trigger the load every render
   }, [evaluation]);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export default function Overview(props) {
       setLoadingCompare(true);
       loadEvaluation(compareKey);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingCompare only guards the request; re-running when it clears would retry failed loads in a loop
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerPanelEvent();

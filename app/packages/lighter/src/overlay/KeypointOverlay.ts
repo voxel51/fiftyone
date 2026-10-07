@@ -27,6 +27,7 @@ import type {
   Rect,
   RenderMeta,
   Spatial,
+  TooltipInfo,
 } from "../types";
 import {
   distance,
@@ -1106,12 +1107,7 @@ export class KeypointOverlay
   // Hoverable interface
   // ---------------------------------------------------------------------------
 
-  getTooltipInfo(): {
-    color: string;
-    field: string;
-    label: any;
-    type: string;
-  } | null {
+  getTooltipInfo(): TooltipInfo | null {
     return {
       color: this.currentStyle?.strokeStyle ?? "#ffffff",
       field: this.field || "unknown",

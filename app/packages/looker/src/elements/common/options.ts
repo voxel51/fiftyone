@@ -11,7 +11,7 @@ import { makeCheckboxRow } from "./util";
 export class OptionsPanelElement<
   State extends BaseState,
 > extends BaseElement<State> {
-  private showOptions: boolean = false;
+  private showOptions = false;
   getEvents(): Events<State> {
     return {
       click: ({ event }) => {
@@ -83,7 +83,6 @@ export class LoopVideoOptionElement<
   }
 
   renderSelf({ options: { loop } }: Readonly<State>) {
-    //@ts-ignore
     this.checkbox.checked = loop;
     return this.element;
   }
@@ -116,7 +115,6 @@ export class OnlyShowHoveredOnLabelOptionElement<
   }
 
   renderSelf({ options: { onlyShowHoveredLabel } }: Readonly<State>) {
-    //@ts-ignore
     this.checkbox.checked = onlyShowHoveredLabel;
     return this.element;
   }
@@ -149,7 +147,6 @@ export class ShowTooltipOptionElement<
   }
 
   renderSelf({ options: { showTooltip } }: Readonly<State>) {
-    // @ts-ignore
     this.checkbox.checked = showTooltip;
     return this.element;
   }
@@ -189,7 +186,6 @@ export class UseFrameNumberOptionElement extends BaseElement<VideoState> {
   }
 
   renderSelf({ options: { useFrameNumber } }: Readonly<VideoState>) {
-    // @ts-ignore
     this.checkbox.checked = useFrameNumber;
     return this.element;
   }

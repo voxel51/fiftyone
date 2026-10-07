@@ -9,7 +9,7 @@ import {
 } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
-import type { ObjAsset } from "../../hooks";
+import type { ObjAsset } from "../render-types";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { getColorFromPoolBasedOnHash } from "../../utils";

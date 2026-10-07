@@ -1,7 +1,7 @@
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import { fieldColorSetting } from "../FieldSetting";
@@ -16,18 +16,26 @@ import {
 
 const FieldsMaskTargets: React.FC = () => {
   const maskTargets = useRecoilValue(fos.targets).fields;
-  const isRGBMask = isRgbMaskTargets(maskTargets);
 
   const colorScheme = useRecoilValue(fos.colorScheme);
   const activePath = useRecoilValue(activeColorPath);
+  // check the active field's targets, not the map of every field's targets
+  const fieldTargets = maskTargets?.[activePath];
+  const isRGBMask = fieldTargets ? isRgbMaskTargets(fieldTargets) : false;
   const [setting, setSetting] = useRecoilState(fieldColorSetting(activePath));
 
-  const values = setting?.maskTargetsColors ?? [];
+  const values = useMemo(
+    () => setting?.maskTargetsColors ?? [],
+    [setting?.maskTargetsColors],
+  );
 
-  const defaultValue = {
-    intTarget: 1,
-    color: getRandomColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = useMemo(
+    () => ({
+      intTarget: 1,
+      color: getRandomColorFromPool(colorScheme.colorPool),
+    }),
+    [colorScheme.colorPool],
+  );
 
   const useFieldMaskColors = Boolean(setting?.maskTargetsColors?.length);
   // Utility function to update the color scheme

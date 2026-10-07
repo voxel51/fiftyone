@@ -62,14 +62,14 @@ export const extractNestedField = <T>(
 ): T | undefined => {
   const parts = path.split(".");
 
-  let current = data;
+  let current: unknown = data;
 
   for (const part of parts) {
     if (typeof current === "object" && current[part]) {
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     } else {
       // missing field
-      return;
+      return undefined;
     }
   }
 

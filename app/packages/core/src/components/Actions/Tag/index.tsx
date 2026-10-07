@@ -51,7 +51,7 @@ export default ({
       ref={ref}
     >
       <PillButton
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? "bottom-center" : "top-center"}
         style={{
           cursor: disableTag
             ? "not-allowed"

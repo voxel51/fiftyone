@@ -28,8 +28,8 @@ export type InferenceProgress = {
 export type InferenceError = ProviderError | null;
 
 const inferenceStatusAtom = atom<InferenceStatus>("idle");
-const inferenceProgressAtom = atom<InferenceProgress>(null);
-const inferenceErrorAtom = atom<InferenceError>(null);
+const inferenceProgressAtom = atom(null as InferenceProgress | null);
+const inferenceErrorAtom = atom(null as InferenceError);
 
 /**
  * Read-only hook for the current inference status, any in-flight progress,

@@ -6,7 +6,7 @@ import { Selectable } from "../selection/Selectable";
 import { BaseOverlay } from "./BaseOverlay";
 
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
+import type { Point, RawLookerLabel, RenderMeta } from "../types";
 
 import {
   LABEL_ARCHETYPE_PRIORITY,
@@ -210,7 +210,7 @@ export class TemporalOverlay
       ? style.fillStyle || style.strokeStyle || "#000"
       : "#808080";
 
-    this.textBounds = renderer.drawText(
+    renderer.drawText(
       textToDraw,
       labelPosition,
       {
@@ -283,6 +283,4 @@ export class TemporalOverlay
   static _resetRegistry(): void {
     channelRegistry.clear();
   }
-
-  private textBounds?: Rect;
 }

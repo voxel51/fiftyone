@@ -71,7 +71,8 @@ export class MetadataThumbnailElement extends BaseElement<BaseState> {
     );
 
     this.#container.style.scale = `${scaleFactor}`;
-    if (!("scale" in this.#container.style)) {
+    // Reflect.has, not `in`: TS narrows the style to never once `scale` is absent
+    if (!Reflect.has(this.#container.style, "scale")) {
       // Fallback for browsers that do not support the `scale` property
       this.#container.style.transform = `scale(${scaleFactor})`;
     }

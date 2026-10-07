@@ -302,10 +302,10 @@ function TransformGraphCanvasContent({
   }, [fitView]);
   const frameIdByNodeId = useMemo(
     () =>
-      new Map(
+      new Map<string, string>(
         nodes.flatMap((node) =>
           node.type === "transform-frame"
-            ? [[node.id, node.data.frameId] as const]
+            ? [[node.id, (node as FrameFlowNode).data.frameId] as const]
             : [],
         ),
       ),
@@ -334,10 +334,10 @@ function TransformGraphCanvasContent({
 
   // This effect keeps every component fitted after layout or tile-size changes.
   useEffect(() => {
-    if (!nodesInitialized) return;
+    if (!nodesInitialized) return undefined;
     fit();
     const element = canvasRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
+    if (!element || typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(fit);
     observer.observe(element);
     return () => observer.disconnect();

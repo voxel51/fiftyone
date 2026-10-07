@@ -26,12 +26,9 @@ export * from "./types";
 export * from "./validation";
 export * from "./videoLabels";
 
-interface O {
-  [key: string]: O | any;
-}
-
-export const toCamelCase = (obj: O): O =>
-  _.transform(obj, (acc, value, key, target) => {
+// keys change, so the result is no longer the input's type; callers cast
+export const toCamelCase = (obj: object): unknown =>
+  _.transform(obj as Record<string, unknown>, (acc, value, key, target) => {
     const camelKey = _.isArray(target) ? key : safeCamelCase(key);
 
     acc[
@@ -44,8 +41,8 @@ function safeCamelCase(key) {
   return _.camelCase(key);
 }
 
-export const toSnakeCase = (obj: O): O =>
-  _.transform(obj, (acc, value, key, target) => {
+export const toSnakeCase = (obj: object): unknown =>
+  _.transform(obj as Record<string, unknown>, (acc, value, key, target) => {
     const snakeKey = _.isArray(target) ? key : _.snakeCase(key);
 
     acc[snakeKey] = _.isObject(value) ? toSnakeCase(value) : value;
@@ -512,15 +509,18 @@ export const isNotebook = () => {
   );
 };
 
-export const useExternalLink = (_href) => {
-  return (e) => e.stopPropagation();
+/** Click handler for an external link; safe to use outside React. */
+export const externalLinkHandler = (_href: string) => {
+  return (e: Event | { stopPropagation: () => void }) => e.stopPropagation();
 };
+
+export const useExternalLink = (href: string) => externalLinkHandler(href);
 
 const isURL = (() => {
   const protocolAndDomainRE = /^(?:\w+:)?\/\/(\S+)$/;
 
-  const localhostDomainRE = /^localhost[\:?\d]*(?:[^\:?\d]\S*)?$/;
-  const nonLocalhostDomainRE = /^[^\s\.]+\.\S{2,}$/;
+  const localhostDomainRE = /^localhost[:?\d]*(?:[^:?\d]\S*)?$/;
+  const nonLocalhostDomainRE = /^[^\s.]+\.\S{2,}$/;
 
   return (string) => {
     if (string.startsWith("gs://")) {
@@ -563,7 +563,9 @@ export const prettify = (
     if (isURL(v)) {
       try {
         return new URL(v);
-      } catch {}
+      } catch {
+        // not parseable as a URL; fall through to the plain string
+      }
     }
 
     return v;
@@ -600,7 +602,7 @@ const buildDateTimeOpts = (timeZone: string): Intl.DateTimeFormatOptions => {
 
 export const formatDateTime = (
   timeStamp: number,
-  timeZone: string = "local",
+  timeZone = "local",
 ): string => {
   const MS = 1000;
   const S = 60 * MS;
@@ -637,7 +639,7 @@ export const formatDateTime = (
 
 export const formatLongDateTime = (
   timeStamp: number,
-  timeZone: string = "local",
+  timeZone = "local",
 ): string => {
   const options = buildDateTimeOpts(timeZone);
 
@@ -695,7 +697,7 @@ export const formatPrimitive = ({
     }
   }
 
-  // @ts-ignore
+  // @ts-expect-error Primitive is wider than prettify's parameter type
   return prettify(value);
 };
 

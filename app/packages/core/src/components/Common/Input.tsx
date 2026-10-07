@@ -66,7 +66,7 @@ interface NumberInputProps extends BaseProps {
 }
 
 const Input = React.memo(
-  forwardRef(
+  forwardRef<HTMLInputElement, InputProps>(
     (
       {
         color = undefined,
@@ -132,7 +132,7 @@ const Input = React.memo(
 export default Input;
 
 export const NumberInput = React.memo(
-  forwardRef(
+  forwardRef<HTMLInputElement, NumberInputProps>(
     (
       {
         color = undefined,
@@ -157,14 +157,14 @@ export const NumberInput = React.memo(
       color = color ?? theme.primary.plainColor;
       const display = [null, undefined].includes(value) ? "" : Number(value);
       const [error, setError] = useState<string | null>(null);
-      let errorMsg: string[] | string = [];
+      const errorParts: string[] = [];
       if (typeof min === "number") {
-        errorMsg.push(`Min: ${min}.`);
+        errorParts.push(`Min: ${min}.`);
       }
       if (typeof max === "number") {
-        errorMsg.push(`Max: ${max}.`);
+        errorParts.push(`Max: ${max}.`);
       }
-      errorMsg = errorMsg.join(" ");
+      const errorMsg = errorParts.join(" ");
 
       const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         onBlur && onBlur();
@@ -181,7 +181,7 @@ export const NumberInput = React.memo(
         } else {
           setError(`Invalid input. ${errorMsg}`);
         }
-      }, [validator, value]);
+      }, [errorMsg, validator, value]);
 
       return (
         <div>

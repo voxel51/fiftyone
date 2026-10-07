@@ -68,12 +68,10 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
     hour12: false,
     minute: twoDigit,
     second: twoDigit,
-    // @ts-ignore
     fractionalSecondDigits: 3,
   };
 
   if (!(timeStamp % MS)) {
-    // @ts-ignore
     delete options.fractionalSecondDigits;
   }
 

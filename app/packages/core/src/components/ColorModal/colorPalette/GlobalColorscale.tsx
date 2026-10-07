@@ -29,25 +29,26 @@ const GlobalColorscale: React.FC = () => {
 
   const [input, setInput] = React.useState(setting?.name ?? "");
   const [tab, setTab] = React.useState(
-    Boolean(
-      (setting?.name || setting?.name !== "") &&
+    (setting?.name || setting?.name !== "") &&
       setting?.list &&
-      setting?.list.length > 0,
-    )
+      setting?.list.length > 0
       ? "list"
       : "name",
   );
 
-  const defaultValue = [
-    {
-      value: 0,
-      color: getRGBColorFromPool(colorScheme.colorPool),
-    },
-    {
-      value: 1,
-      color: getRGBColorFromPool(colorScheme.colorPool),
-    },
-  ];
+  const defaultValue = useMemo(
+    () => [
+      {
+        value: 0,
+        color: getRGBColorFromPool(colorScheme.colorPool),
+      },
+      {
+        value: 1,
+        color: getRGBColorFromPool(colorScheme.colorPool),
+      },
+    ],
+    [colorScheme.colorPool],
+  );
 
   const onBlurName = useCallback(
     (value: string) => {
@@ -64,7 +65,7 @@ const GlobalColorscale: React.FC = () => {
         }, 1000);
       }
     },
-    [setting],
+    [setColorScheme, setting],
   );
 
   const shouldShowAddButton = Boolean(
@@ -117,6 +118,7 @@ const GlobalColorscale: React.FC = () => {
         },
       }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed the default colorscale only when the tab changes
   }, [tab]);
 
   useEffect(() => {
@@ -138,7 +140,7 @@ const GlobalColorscale: React.FC = () => {
         });
       }
     }
-  }, [setting]);
+  }, [colorScheme, defaultValue, setColorScheme, setting]);
 
   return (
     <div>
@@ -157,7 +159,7 @@ const GlobalColorscale: React.FC = () => {
             <a
               href="https://plotly.com/python/colorscales/"
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
               title="what is named colorscale"
             >
               <InfoOutlinedIcon

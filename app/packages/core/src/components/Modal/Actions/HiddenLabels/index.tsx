@@ -14,7 +14,7 @@ const HiddenLabels = ({ modal }: { modal?: boolean }) => {
   return (
     <PillButton
       icon={<VisibilityOff />}
-      tooltipPlacement={modal ? "bottom" : "top"}
+      tooltipPlacement={modal ? "bottom-center" : "top-center"}
       open={true}
       onClick={() => setHiddenObjects({})}
       highlight={true}

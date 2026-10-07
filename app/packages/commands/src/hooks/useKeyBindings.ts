@@ -81,5 +81,8 @@ export const useKeyBindings = (
         context.unregisterCommand(id);
       }
     };
+    // re-register only when the caller's deps change; handlers and enablement
+    // are read through keyBindingsRef at call time
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [context, ...deps]);
 };

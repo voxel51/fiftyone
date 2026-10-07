@@ -6,7 +6,7 @@ import {
 } from "@mui/material/styles";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
-let theme = extendMuiTheme({
+const theme = extendMuiTheme({
   colorSchemes: {
     light: createTheme({
       palette: {
@@ -122,7 +122,7 @@ const ThemeProvider: React.FC<
 > = ({ children }) => {
   return (
     <LegacyTheme.Provider value={theme.colorSchemes["light"].palette}>
-      <CssVarsProvider theme={theme} defaultMode={theme.colorSchemes["light"]}>
+      <CssVarsProvider theme={theme} defaultMode="light">
         {children}
       </CssVarsProvider>
     </LegacyTheme.Provider>

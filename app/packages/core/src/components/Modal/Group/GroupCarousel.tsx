@@ -66,12 +66,13 @@ const Column: React.FC = () => {
     [currentSlice, groupField],
   );
 
-  const createLooker = fos.useCreateLooker(
+  const createLooker = fos.useCreateLooker<fos.Lookers>(
     true,
     true,
     {
       ...opts,
-      thumbnailTitle: (sample) => get(sample, groupField).name,
+      // the group's slice name
+      thumbnailTitle: (sample) => get(sample, groupField).name as string,
     },
     highlight,
   );

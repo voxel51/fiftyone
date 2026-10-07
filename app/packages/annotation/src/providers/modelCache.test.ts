@@ -11,8 +11,8 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
     get: (key: string) => {
       const req = {
         result: undefined as ArrayBuffer | undefined,
-        onsuccess: null as any,
-        onerror: null as any,
+        onsuccess: null as (() => void) | null,
+        onerror: null as (() => void) | null,
         error: failOn === "get" ? new Error("read failed") : null,
       };
       setTimeout(() => {
@@ -36,9 +36,9 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
       const shouldFailPut = failOn === "put" && mode === "readwrite";
       const tx = {
         objectStore: () => os,
-        onerror: null as any,
+        onerror: null as (() => void) | null,
         error: shouldFailPut ? new Error("write failed") : null,
-        set oncomplete(fn: any) {
+        set oncomplete(fn: (() => void) | null) {
           if (!shouldFailPut) setTimeout(() => fn?.());
         },
       };
@@ -55,9 +55,9 @@ function createMockIDB(options?: { failOn?: "get" | "put" }) {
     open: () => {
       const req = {
         result: mockDB,
-        onupgradeneeded: null as any,
-        onsuccess: null as any,
-        onerror: null as any,
+        onupgradeneeded: null as (() => void) | null,
+        onsuccess: null as (() => void) | null,
+        onerror: null as (() => void) | null,
       };
       setTimeout(() => {
         req.onupgradeneeded?.();

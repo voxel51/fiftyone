@@ -1,3 +1,4 @@
+import type { OperatorResult } from "@fiftyone/operators/src/operators";
 import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -83,8 +84,9 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
     ],
   );
 
+  const { onSubmitted } = input;
   const handleSuccess = useCallback(
-    (result: Record<string, unknown>) => {
+    (result: OperatorResult) => {
       setSubmitting(false);
       if (result?.delegated) {
         const resultObj = result?.result as
@@ -93,13 +95,13 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
         const operatorRunId = resultObj?.id?.$oid;
         initRun(
           { ...executionParams, operator_run_id: operatorRunId },
-          { callback: () => input.onSubmitted() },
+          { callback: () => onSubmitted() },
         );
       } else {
-        input.onSubmitted();
+        onSubmitted();
       }
     },
-    [initRun, executionParams, input.onSubmitted],
+    [initRun, executionParams, onSubmitted],
   );
 
   const handleError = useCallback((error: unknown) => {

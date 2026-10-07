@@ -18,7 +18,7 @@ export default function MediaPlayerView(props) {
   const handleEvent =
     (event) =>
     (...args) => {
-      let params: any = {};
+      let params: Record<string, unknown> = {};
       const eventKey = snakeCase(event);
       if (event === "onReady") {
         params.duration = args[0];

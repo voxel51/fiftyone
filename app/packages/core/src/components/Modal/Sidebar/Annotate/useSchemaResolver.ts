@@ -49,7 +49,11 @@ export type SchemaManagementOps = Pick<
  * Atom holding management operations. Populated by {@link useRegisterSchemaManagement}
  * when the user has schema management permissions.
  */
-export const schemaManagementOpsAtom = atom<SchemaManagementOps | null>(null);
+// Without strictNullChecks a bare null/undefined matches jotai's read-only
+// atom(read) overload; typing the initial value selects the writable one.
+export const schemaManagementOpsAtom = atom<SchemaManagementOps | null>(
+  null as SchemaManagementOps | null,
+);
 
 /**
  * Hook to register schema management operations into the shared atom.

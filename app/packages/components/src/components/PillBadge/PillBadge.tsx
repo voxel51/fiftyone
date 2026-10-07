@@ -17,7 +17,8 @@ const PillBadge = ({
   color?: string;
   variant?: "filled" | "outlined";
   showIcon?: boolean;
-  operator?: () => void;
+  // URI of the operator to trigger when the selection changes
+  operator?: string;
   readOnly?: boolean;
   tooltipTitle?: string;
 }) => {
@@ -115,7 +116,8 @@ const PillBadge = ({
                     variant={"standard"}
                     disableUnderline={true}
                     onChange={(event) => {
-                      const selectedText = text.find(
+                      // this branch only renders for [label, color] pairs
+                      const selectedText = (text as [string, string][]).find(
                         (t) => t[0] === event.target.value,
                       );
                       setChipSelection(event.target.value);

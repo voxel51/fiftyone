@@ -1,12 +1,22 @@
 import { Box } from "@mui/material";
 import { getComponentProps } from "../utils";
 import PillBadge from "@fiftyone/components/src/components/PillBadge/PillBadge";
+import type { ComponentProps } from "react";
 import { ViewPropsType } from "../utils/types";
 
 export default function PillBadgeView(props: ViewPropsType) {
   const { schema } = props;
   const { view = {}, onChange } = schema;
-  const { text, color, variant, showIcon, read_only: readOnly } = view;
+  const {
+    text,
+    color,
+    variant,
+    showIcon,
+    read_only: readOnly,
+  } = view as Pick<
+    ComponentProps<typeof PillBadge>,
+    "text" | "color" | "variant" | "showIcon"
+  > & { read_only?: boolean };
 
   return (
     <Box {...getComponentProps(props, "container")}>

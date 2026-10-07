@@ -31,7 +31,7 @@ describe("useBrowserStorage", () => {
       expect(localStorage.getItem("test-key")).toBe('"test-value"');
 
       act(() => {
-        result.current.setState(undefined as any);
+        result.current.setState(undefined);
       });
       expect(localStorage.getItem("test-key")).toBeNull();
     });
@@ -39,7 +39,7 @@ describe("useBrowserStorage", () => {
     it("should remove item from storage when setting undefined (with parseFn)", () => {
       const parseFn = {
         parse: (value: string) => JSON.parse(value),
-        stringify: (value: any) => JSON.stringify(value),
+        stringify: (value: unknown) => JSON.stringify(value),
       };
 
       const { result } = renderHook(() =>
@@ -52,7 +52,7 @@ describe("useBrowserStorage", () => {
       expect(localStorage.getItem("test-key")).toBe('{"test":"data"}');
 
       act(() => {
-        result.current.setState(undefined as any);
+        result.current.setState(undefined);
       });
       expect(localStorage.getItem("test-key")).toBeNull();
     });
@@ -67,7 +67,7 @@ describe("useBrowserStorage", () => {
       expect(localStorage.getItem("test-key")).toBe("1");
 
       act(() => {
-        result.current.setState(() => undefined as any);
+        result.current.setState(() => undefined);
       });
       expect(localStorage.getItem("test-key")).toBeNull();
     });
@@ -88,7 +88,7 @@ describe("useBrowserStorage", () => {
 
       const parseFn = {
         parse: (value: string) => JSON.parse(value),
-        stringify: (value: any) => JSON.stringify(value),
+        stringify: (value: unknown) => JSON.stringify(value),
       };
 
       const { result } = renderHook(() =>
@@ -111,7 +111,7 @@ describe("useBrowserStorage", () => {
       expect(sessionStorage.getItem("test-key")).toBe('"test-value"');
 
       act(() => {
-        result.current.setState(undefined as any);
+        result.current.setState(undefined);
       });
       expect(sessionStorage.getItem("test-key")).toBeNull();
     });
@@ -138,7 +138,7 @@ describe("useBrowserStorage", () => {
       expect(localStorage.getItem("test-key")).toBe('"test-value"');
 
       act(() => {
-        result.current.setState(null as any);
+        result.current.setState(null);
       });
       expect(localStorage.getItem("test-key")).toEqual("null");
     });

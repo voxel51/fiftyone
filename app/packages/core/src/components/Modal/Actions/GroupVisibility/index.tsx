@@ -16,7 +16,7 @@ export default () => {
   return (
     <ActionDiv ref={ref} data-cy="action-toggle-group-media-visibility">
       <PillButton
-        tooltipPlacement={"bottom"}
+        tooltipPlacement={"bottom-center"}
         icon={
           <ViewComfyIcon classes={{ root: style.groupMediaVisibilityIcon }} />
         }

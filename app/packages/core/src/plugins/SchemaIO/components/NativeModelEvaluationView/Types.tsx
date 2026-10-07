@@ -35,8 +35,9 @@ export type EvaluationCardProps = {
   pending?: boolean;
   status?: string;
   onRename: OverviewProps["onRename"];
-  hasRenamePermission: boolean;
-  hasDeletePermission: boolean;
+  // pending evaluations render without permissions
+  hasRenamePermission?: boolean;
+  hasDeletePermission?: boolean;
 };
 
 export type ConcreteEvaluationType =

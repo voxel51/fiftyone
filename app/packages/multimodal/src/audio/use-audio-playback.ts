@@ -217,7 +217,7 @@ export function useAudioPlayback({
       const result = await load(controller.signal);
       if (cancelled) return;
 
-      if (!result.ok) {
+      if (result.ok === false) {
         setHasAudio(result.reason !== "empty");
         setStatus(result.reason === "empty" ? "idle" : result.reason);
         return;

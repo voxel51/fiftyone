@@ -8,12 +8,14 @@ vi.mock("@fiftyone/utilities", () => ({
 import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
 import { BrowserAnnotationProvider } from "./BrowserAnnotationProvider";
 
+type MockWorkerMessage = { type: string; id?: unknown };
+
 // Mock Worker
 class MockWorker {
-  onmessage: any = null;
-  onerror: any = null;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  onerror: ((event: unknown) => void) | null = null;
   terminate = vi.fn();
-  postMessage = vi.fn((msg: any) => {
+  postMessage = vi.fn((msg: MockWorkerMessage) => {
     if (msg.type === "loadModel") {
       setTimeout(() => {
         this.onmessage?.({
@@ -51,11 +53,11 @@ describe("BrowserAnnotationProvider", () => {
     vi.mocked(getFetchParameters).mockReturnValue(params);
     vi.mocked(mergeHeaders).mockReturnValue(params.headers);
 
-    let instance: any;
+    const created: MockWorker[] = [];
     class TrackedWorker extends MockWorker {
       constructor() {
         super();
-        instance = this;
+        created.push(this);
       }
     }
     vi.stubGlobal("Worker", TrackedWorker);
@@ -63,6 +65,7 @@ describe("BrowserAnnotationProvider", () => {
     const provider = new BrowserAnnotationProvider();
     await provider.initialize();
 
+    const [instance] = created;
     expect(instance.postMessage.mock.calls[0][0]).toEqual({
       type: "init",
       payload: params,
@@ -79,14 +82,16 @@ describe("BrowserAnnotationProvider", () => {
       pathPrefix: "",
     };
     const flat = { Auth: "x" };
-    vi.mocked(getFetchParameters).mockReturnValue(params as any);
+    vi.mocked(getFetchParameters).mockReturnValue(
+      params as unknown as ReturnType<typeof getFetchParameters>,
+    );
     vi.mocked(mergeHeaders).mockReturnValue(flat);
 
-    let instance: any;
+    const created: MockWorker[] = [];
     class TrackedWorker extends MockWorker {
       constructor() {
         super();
-        instance = this;
+        created.push(this);
       }
     }
     vi.stubGlobal("Worker", TrackedWorker);
@@ -95,6 +100,7 @@ describe("BrowserAnnotationProvider", () => {
     await provider.initialize();
 
     expect(mergeHeaders).toHaveBeenCalledWith(headersInstance);
+    const [instance] = created;
     expect(instance.postMessage.mock.calls[0][0].payload.headers).toEqual(flat);
     expect(
       instance.postMessage.mock.calls[0][0].payload.headers,
@@ -115,10 +121,10 @@ describe("BrowserAnnotationProvider", () => {
 
   it("Calls onStatus with failure when worker loadModel rejects", async () => {
     class MockWorker {
-      onmessage: any = null;
-      onerror: any = null;
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
       terminate = vi.fn();
-      postMessage = vi.fn((msg: any) => {
+      postMessage = vi.fn((msg: MockWorkerMessage) => {
         setTimeout(() => {
           this.onmessage?.({
             data: {
@@ -207,10 +213,10 @@ describe("BrowserAnnotationProvider", () => {
 
   it("Forwards all worker notification types to callbacks", async () => {
     class MockWorker {
-      onmessage: any = null;
-      onerror: any = null;
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
       terminate = vi.fn();
-      postMessage = vi.fn((msg: any) => {
+      postMessage = vi.fn((msg: MockWorkerMessage) => {
         if (msg.type === "loadModel") {
           setTimeout(() => {
             this.onmessage?.({ data: { type: "status", result: "loading" } });
@@ -307,10 +313,10 @@ describe("BrowserAnnotationProvider", () => {
 
   it("Worker onerror rejects all pending promises and emits failure", async () => {
     class MockWorker {
-      onmessage: any = null;
-      onerror: any = null;
+      onmessage: ((event: { data: unknown }) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
       terminate = vi.fn();
-      postMessage = vi.fn((msg: any) => {
+      postMessage = vi.fn((msg: MockWorkerMessage) => {
         if (msg.type === "loadModel") {
           setTimeout(() => {
             this.onmessage?.({

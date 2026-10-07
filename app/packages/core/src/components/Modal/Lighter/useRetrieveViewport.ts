@@ -21,7 +21,7 @@ const useRetrieveViewport = (
         });
       }
     };
-  }, [scene, sampleId]);
+  }, [scene, sampleId, setViewportState]);
 };
 
 export default useRetrieveViewport;

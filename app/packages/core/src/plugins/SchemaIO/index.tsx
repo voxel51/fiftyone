@@ -2,7 +2,7 @@ import { FormProps } from "@rjsf/core";
 import SmartForm from "../../../../components/src/components/SmartForm";
 import { SmartFormProps } from "../../../../components/src/components/SmartForm/types";
 import { SchemaIOComponent as SchemaIO } from "./SchemaIOComponent";
-import type { SchemaType } from "./utils/types";
+import type { SchemaType, ViewPropsType } from "./utils/types";
 
 export interface SchemaIOComponentProps {
   schema: SchemaType;
@@ -20,6 +20,13 @@ export interface SchemaIOComponentProps {
     updatedState?: unknown,
     liteValue?: unknown,
   ) => void;
+
+  // Forwarded to the rendered views
+  errors?: Record<string, unknown[]>;
+  initialData?: unknown;
+  layout?: ViewPropsType["layout"];
+  onValidationErrors?: ViewPropsType["onValidationErrors"];
+  otherProps?: Record<string, unknown>;
 
   // SmartForm only
   onSubmit?: (data: unknown) => void;

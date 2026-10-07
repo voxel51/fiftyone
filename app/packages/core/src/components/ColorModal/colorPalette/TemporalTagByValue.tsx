@@ -16,22 +16,28 @@ const TemporalTagByValue: React.FC = () => {
     [colorScheme.temporalTags],
   );
   const values = useMemo(() => setting?.valueColors ?? [], [setting]);
-  const defaultValue = {
-    value: "",
-    color: getRandomColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = useMemo(
+    () => ({
+      value: "",
+      color: getRandomColorFromPool(colorScheme.colorPool),
+    }),
+    [colorScheme.colorPool],
+  );
   const shouldShowAddButton = Boolean(
     setting?.valueColors && setting.valueColors.length > 0,
   );
 
-  const onSyncUpdate = useCallback((copy: ValueColorInput[]) => {
-    if (copy) {
-      setColorScheme((cur) => ({
-        ...cur,
-        temporalTags: { ...cur.temporalTags, valueColors: copy },
-      }));
-    }
-  }, []);
+  const onSyncUpdate = useCallback(
+    (copy: ValueColorInput[]) => {
+      if (copy) {
+        setColorScheme((cur) => ({
+          ...cur,
+          temporalTags: { ...cur.temporalTags, valueColors: copy },
+        }));
+      }
+    },
+    [setColorScheme],
+  );
 
   useEffect(() => {
     if (!values) {
@@ -41,7 +47,7 @@ const TemporalTagByValue: React.FC = () => {
         setColorScheme({ ...colorScheme, temporalTags: copy });
       }
     }
-  }, [values]);
+  }, [colorScheme, defaultValue, setColorScheme, values]);
 
   return (
     <ValueColorList

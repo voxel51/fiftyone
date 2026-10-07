@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, type ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 
 import Checkbox from "@mui/material/Checkbox";
@@ -36,7 +36,8 @@ interface Props {
   pathLabelFinal: string;
   docTypeLabel: string;
   isExpandable: boolean;
-  info: any;
+  // a field's free-form `info` (any JSON value)
+  info: unknown;
   description: string;
 }
 
@@ -64,25 +65,24 @@ export const SchemaSelectionRow = (props: Props) => {
 
   const renderInfo = useCallback(() => {
     if (info) {
-      const infoType = typeof info;
-      if (infoType === "number") {
+      if (typeof info === "number") {
         const value = Number.isInteger(info) ? info : info.toFixed(3);
         return <MetaInfoBlock key={path + value}>{value}</MetaInfoBlock>;
       }
-      if (infoType === "string") {
+      if (typeof info === "string") {
         return (
           <MetaInfoBlock key={info}>{info.length ? info : '""'}</MetaInfoBlock>
         );
       }
-      if (infoType === "boolean") {
+      if (typeof info === "boolean") {
         const boolLabel: string = info ? "True" : "False";
         return (
           <MetaInfoBlock key={path + boolLabel}>{boolLabel}</MetaInfoBlock>
         );
       }
-      if (infoType === "object") {
+      if (typeof info === "object") {
         try {
-          const obj = info;
+          const obj = info as Record<string, unknown> | unknown[];
           if (Array.isArray(obj)) {
             return obj.map((key) => {
               return <InfoCell key={key}>{key}</InfoCell>;
@@ -102,11 +102,12 @@ export const SchemaSelectionRow = (props: Props) => {
             });
           }
         } catch (e) {
-          return <InfoCell>{info}</InfoCell>;
+          return <InfoCell>{info as ReactNode}</InfoCell>;
         }
       }
       return <InfoCell>None</InfoCell>;
     }
+    return undefined;
   }, [info, path]);
 
   return (

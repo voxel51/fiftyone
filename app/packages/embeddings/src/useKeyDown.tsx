@@ -12,5 +12,7 @@ export function useKeyDown(key, handler, deps = []) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
+    // callers pass the deps their handler depends on
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [key, ...deps]);
 }

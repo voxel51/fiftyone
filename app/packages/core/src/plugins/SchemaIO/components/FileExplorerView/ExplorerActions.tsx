@@ -33,7 +33,7 @@ function ExplorerActions({
         defaultValue={currentPath}
         onKeyDown={(ev) => {
           if (ev.key === "Enter") {
-            onPathChange(ev.target.value);
+            onPathChange((ev.target as HTMLInputElement).value);
             ev.preventDefault();
           }
         }}

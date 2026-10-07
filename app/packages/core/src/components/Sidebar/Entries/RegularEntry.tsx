@@ -36,7 +36,7 @@ type RegularEntryProps = React.PropsWithChildren<{
   ) => void;
 }>;
 
-const RegularEntry = React.forwardRef(
+const RegularEntry = React.forwardRef<HTMLDivElement, RegularEntryProps>(
   (
     {
       backgroundColor,
@@ -53,7 +53,7 @@ const RegularEntry = React.forwardRef(
     }: RegularEntryProps,
     ref,
   ) => {
-    const headerRef = useRef();
+    const headerRef = useRef<HTMLDivElement>(null);
 
     return (
       <Container
@@ -67,19 +67,14 @@ const RegularEntry = React.forwardRef(
         onMouseUp={(event) => {
           if (!onHeaderClick) return;
           const validTarget =
-            headerRef.current.contains(event.target) ||
+            headerRef.current.contains(event.target as Node) ||
             event.target === headerRef.current;
           if (validTarget) {
             onHeaderClick(event);
           }
         }}
       >
-        <Draggable
-          color={color}
-          entryKey={entryKey}
-          trigger={trigger}
-          onMouseUp={(e) => e.stopPropagation()}
-        >
+        <Draggable color={color} entryKey={entryKey} trigger={trigger}>
           <Header
             ref={headerRef}
             style={{ justifyContent: left ? "left" : "space-between" }}

@@ -3,7 +3,7 @@ export type ViewStage = {
 };
 
 export type Filters = {
-  [key: string]: {};
+  [key: string]: unknown;
 } | null;
 
 const PATCHES_VIEW_STAGE = "fiftyone.core.stages.ToPatches";

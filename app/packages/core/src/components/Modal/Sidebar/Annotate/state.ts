@@ -10,20 +10,24 @@ export const activeSchemaTab = atom<"gui" | "json">("gui");
 
 export const currentField = atom<null | string>();
 
+// Without strictNullChecks a bare null/undefined matches jotai's read-only
+// atom(read) overload; typing the initial value selects the writable one.
 export const labelSchemasData = atom<Record<string, LabelSchemaMeta> | null>(
-  null,
+  null as Record<string, LabelSchemaMeta> | null,
 );
 
 export const labelSchemaData = atomFamily((field: string) => {
   return atom(
     (get) => get(labelSchemasData)?.[field],
-    (get, set, value) => {
+    (get, set, value: LabelSchemaMeta) => {
       set(labelSchemasData, { ...get(labelSchemasData), [field]: value });
     },
   );
 });
 
-export const activeLabelSchemas = atom<string[] | null>(null);
+export const activeLabelSchemas = atom<string[] | null>(
+  null as string[] | null,
+);
 
 /**
  * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
@@ -32,7 +36,9 @@ export const activeLabelSchemas = atom<string[] | null>(null);
  * visibleLabelSchemas treats the explore set as empty (only primitive fields
  * pass through).
  */
-export const exploreActiveFields = atom<string[] | null>(null);
+export const exploreActiveFields = atom<string[] | null>(
+  null as string[] | null,
+);
 
 /**
  * Media type of the group slice currently being annotated, mirrored from Recoil
@@ -41,7 +47,9 @@ export const exploreActiveFields = atom<string[] | null>(null);
  * read from inside a Jotai getter, so the slice media type is bridged in (same
  * pattern as exploreActiveFields).
  */
-export const annotationSliceMediaType = atom<string | null>(null);
+export const annotationSliceMediaType = atom<string | null>(
+  null as string | null,
+);
 
 const FRAMES_PREFIX = "frames.";
 const CLASSIFICATION_TYPES = new Set(["classification", "classifications"]);
@@ -135,7 +143,7 @@ export const inactiveLabelSchemas = atom((get) =>
 // =============================================================================
 
 // Custom order for active paths (null means use default sorted order)
-export const activePathsOrder = atom<string[] | null>(null);
+export const activePathsOrder = atom<string[] | null>(null as string[] | null);
 
 // Active paths with drag-drop ordering support
 export const activePaths = atom(

@@ -1,6 +1,8 @@
 import type { PaginateSamplesNode } from "@fiftyone/relay";
 
-export const handleNode = (node: PaginateSamplesNode) => {
+export const handleNode = (
+  node: PaginateSamplesNode | { readonly __typename: "%other" },
+) => {
   if (node.__typename === "%other") {
     throw new Error("unexpected sample type");
   }

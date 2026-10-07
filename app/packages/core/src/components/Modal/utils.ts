@@ -12,6 +12,13 @@ interface ShortcutItem {
 
 type Shortcuts = { [key: string]: ShortcutItem };
 
+/** Detail of a looker "panels" event: which panel to open/close/toggle. */
+export type PanelsEventDetail = {
+  showJSON?: "open" | "close" | "toggle";
+  showHelp?: "open" | "close" | "toggle";
+  SHORTCUTS: Shortcuts;
+};
+
 export function shortcutToHelpItems(SHORTCUTS: Shortcuts) {
   const uniqueItems = {};
   for (const item of Object.values(SHORTCUTS)) {

@@ -105,7 +105,7 @@ const useFetchGeoLocations = ({
         geoLocationsCache.delete(key);
         setLoading(false);
       });
-  }, [key, dataset, filters, view, path, extended]);
+  }, [key, dataset, filters, view, path, extended, setSampleLocationMap]);
 
   return {
     loading,

@@ -10,9 +10,9 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export const BIG_ENDIAN = (() => {
-  let buf = new ArrayBuffer(4);
-  let u32data = new Uint32Array(buf);
-  let u8data = new Uint8Array(buf);
+  const buf = new ArrayBuffer(4);
+  const u32data = new Uint32Array(buf);
+  const u8data = new Uint8Array(buf);
   u32data[0] = 0xcafebabe;
   return u8data[0] === 0xca;
 })();
@@ -25,7 +25,7 @@ export const getRGB = (color: string): RGB => {
   if (color.startsWith("#")) {
     [r, g, b] = hexToRGB(color);
   } else if (color.startsWith("rgb")) {
-    let sep = color.indexOf(",") > -1 ? "," : " ";
+    const sep = color.indexOf(",") > -1 ? "," : " ";
     [r, g, b] = color.slice(4).split(")")[0].split(sep).map(Number);
   } else if (color.startsWith("hsl")) {
     [r, g, b] = hslToRGB(color);
@@ -34,7 +34,7 @@ export const getRGB = (color: string): RGB => {
   return [r, g, b];
 };
 
-export const get32BitColor = (color: string | RGB, alpha: number = 1) => {
+export const get32BitColor = (color: string | RGB, alpha = 1) => {
   alpha = Math.round(alpha * 255);
   const key = `${color}${alpha}`;
   if (key in bitColorCache) {
@@ -125,7 +125,7 @@ export const applyAlpha = (color: string, alpha: number): string => {
   return getRGBAColor([...getRGB(color), alpha]);
 };
 
-let rawColorscale = new Uint32Array(256);
+const rawColorscale = new Uint32Array(256);
 
 let cachedColorscale = null;
 
@@ -162,7 +162,7 @@ const hexToRGB = (hex: string): RGB => {
 };
 
 const hslToRGB = (hsl): RGB => {
-  let sep = hsl.indexOf(",") > -1 ? "," : " ";
+  const sep = hsl.indexOf(",") > -1 ? "," : " ";
   let [h, s, l] = hsl.slice(4).split(")")[0].split(sep);
 
   h /= 360;
@@ -236,7 +236,7 @@ export const createColorGenerator = (() => {
       colorPool = shuffle([...colorPool], seed);
     }
 
-    let map = {};
+    const map = {};
     let i = 0;
 
     colorMaps[seed] = (val) => {

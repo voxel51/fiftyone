@@ -15,7 +15,7 @@ export const getDims = (
   let { width, height } = element.getBoundingClientRect();
 
   if (horizontal) {
-    let tmp = width;
+    const tmp = width;
     width = height;
     height = tmp;
   }

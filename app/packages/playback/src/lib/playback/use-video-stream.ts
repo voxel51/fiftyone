@@ -138,7 +138,7 @@ export function useVideoStream(
       },
     };
     return registerStream(stream);
-  }, [id, duration, blocking, registerStream, videoRef]);
+  }, [id, duration, blocking, registerStream, videoRef, presentedMediaTimeRef]);
 }
 
 function isFiniteDuration(d: number): boolean {

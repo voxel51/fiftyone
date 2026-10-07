@@ -17,7 +17,9 @@ export enum QueryType {
   Upload = "upload",
 }
 
-export { ViewTarget } from "@fiftyone/operators/src/types";
+import { ViewTarget } from "@fiftyone/operators/src/types";
+
+export { ViewTarget };
 
 /**
  * Configuration for a brain similarity key.
@@ -156,7 +158,7 @@ export type SimilaritySearchSchemaView = {
   component: "SimilaritySearchView";
   composite_view?: boolean;
 } & Partial<Record<SimilaritySearchEventName, string>> &
-  Record<string, any>;
+  Record<string, unknown>;
 
 /**
  * Props passed to the SimilaritySearchView component.
@@ -165,7 +167,7 @@ export type SimilaritySearchViewProps = {
   data?: SimilaritySearchPanelData;
   schema: {
     view: SimilaritySearchSchemaView;
-    [key: string]: any;
+    [key: string]: unknown;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 };

@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
+import { BaseLabel, PointInfo } from "@fiftyone/looker/src/overlays/base";
 
 /**
  * 2D rectangle with position and size.
@@ -180,17 +180,15 @@ export interface CanonicalMedia {
   updateBounds(): void;
 }
 
+/** What a hovered overlay hands the app's tooltip (a looker PointInfo subset). */
+export type TooltipInfo = Pick<PointInfo, "color" | "field" | "label" | "type">;
+
 /**
  * Interface for overlays that can be hovered and show tooltips.
  */
 export interface Hoverable {
   /** Get tooltip information for this overlay */
-  getTooltipInfo(): {
-    color: string;
-    field: string;
-    label: any;
-    type: string;
-  } | null;
+  getTooltipInfo(): TooltipInfo | null;
 
   /** Handle hover enter event */
   onHoverEnter?(point: Point | null, event: PointerEvent | null): boolean;
@@ -213,7 +211,7 @@ export class BoundingBoxPersistence {
     public readonly sampleId: string,
     public readonly label: string,
     public readonly bounds: Rect,
-    public readonly misc: Record<string, any> = {},
+    public readonly misc: Record<string, unknown> = {},
   ) {}
 }
 

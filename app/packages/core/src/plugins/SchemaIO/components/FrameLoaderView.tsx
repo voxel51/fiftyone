@@ -9,10 +9,19 @@ import _ from "lodash";
 
 const FRAME_LOADED_EVENT = "frames-loaded";
 
+// the loaded frames and a signature that changes when they're reloaded
+type FrameLoaderData = { frames?: unknown; signature?: string };
+
 export default function FrameLoaderView(props: ViewPropsType) {
-  const { schema, path, data } = props;
+  const { schema, path } = props;
+  const data = props.data as FrameLoaderData | undefined;
   const { view = {} } = schema;
-  const { on_load_range, target, timeline_name } = view;
+  const { on_load_range, target, timeline_name } = view as {
+    on_load_range: string;
+    // path in the panel data to write the current frame's data to
+    target: string;
+    timeline_name?: string;
+  };
   const panelId = usePanelId();
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);
@@ -28,6 +37,7 @@ export default function FrameLoaderView(props: ViewPropsType) {
         detail: { localId: localIdRef.current },
       }),
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the signature identifies a new frames payload; frames itself is read only then
   }, [data?.signature]);
 
   const loadRange = React.useCallback(
@@ -63,24 +73,26 @@ export default function FrameLoaderView(props: ViewPropsType) {
         });
       }
     },
-    [triggerEvent, on_load_range, localIdRef.current],
+    // localIdRef is read when frames arrive, so it needn't be a dependency
+    [triggerEvent, on_load_range, panelId],
   );
 
   const [_currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
 
   const myRenderFrame = React.useCallback(
     (frameNumber: number) => {
-      setPanelState(panelId, (current) => {
+      setPanelState<{ data?: Record<string, unknown> }>(panelId, (current) => {
         const currentData = current.data ? _.cloneDeep(current.data) : {}; // Clone the object
-        const currentFrameData = _.get(currentData, path, { frames: [] })
-          .frames[frameNumber];
-        let updatedData = { ...currentData };
+        const currentFrameData = (
+          _.get(currentData, path, { frames: [] }) as { frames: unknown[] }
+        ).frames[frameNumber];
+        const updatedData = { ...currentData };
         _.set(updatedData, target, currentFrameData); // Use lodash set to update safely
         return { ...current, data: updatedData };
       });
       setCurrentFrame(frameNumber);
     },
-    [data, setPanelState, panelId, target],
+    [setPanelState, panelId, path, target],
   );
 
   const { isTimelineInitialized, subscribe } = useTimeline(timeline_name);
@@ -96,7 +108,14 @@ export default function FrameLoaderView(props: ViewPropsType) {
       });
       setSubscribed(true);
     }
-  }, [isTimelineInitialized, loadRange, myRenderFrame, subscribe]);
+  }, [
+    isTimelineInitialized,
+    loadRange,
+    myRenderFrame,
+    panelId,
+    subscribe,
+    subscribed,
+  ]);
 
   return null;
 }

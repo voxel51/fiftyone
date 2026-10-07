@@ -92,6 +92,7 @@ const RadioGroup = React.memo(
 
     useLayoutEffect(() => {
       choices.length >= 1 && !value && setValue(choices[0]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- setValue is often an inline callback; only re-check when value or choices change
     }, [value, choices]);
 
     if (!value) {

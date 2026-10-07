@@ -1,5 +1,10 @@
 {
-    "files": ["./types/css-modules.d.ts", "./types/mui-theme.d.ts"],
+    "files": [
+        "./types/css-modules.d.ts",
+        "./types/fetch-priority.d.ts",
+        "./types/mui-theme.d.ts",
+        "./packages/utilities/src/env.d.ts"
+    ],
     "compilerOptions": {
         "plugins": [
             {

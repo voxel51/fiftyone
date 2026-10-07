@@ -1,5 +1,5 @@
 import Flashlight, { Response } from "@fiftyone/flashlight";
-import { Sample, freeVideos } from "@fiftyone/looker";
+import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { get } from "lodash";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -22,7 +22,7 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
  */
 const useLookerRender = (
   store: fos.LookerStore<fos.Lookers>,
-  createLooker: ReturnType<typeof fos.useCreateLooker>,
+  createLooker: ReturnType<typeof fos.useCreateLooker<fos.Lookers>>,
   selectSample: React.MutableRefObject<ReturnType<typeof fos.useSelectSample>>,
 ) =>
   useCallback(
@@ -64,8 +64,8 @@ const useUpdateItems = (
   flashlight: Flashlight<number> | null,
   store: fos.LookerStore<fos.Lookers>,
   options: ReturnType<typeof fos.useLookerOptions>,
-  highlight: (sample: fos.Sample) => boolean,
-  selected: Set<string>,
+  highlight: (sample: fos.ModalSample["sample"]) => boolean,
+  selected: Map<string, fos.SelectionType>,
   style: fos.SelectionStyle,
 ) => {
   const updateItem = useCallback(
@@ -82,7 +82,7 @@ const useUpdateItems = (
         selected: isSelected,
         selectionType,
         selectionIcon,
-        highlight: highlight(store.samples.get(id)!.sample as Sample),
+        highlight: highlight(store.samples.get(id)!.sample),
       });
     },
     [highlight, options, selected, store, style],
@@ -109,7 +109,7 @@ const useCreateFlashlight = (
 ) => {
   const modalSampleId = useRecoilValue(fos.modalSampleId);
   const highlight = useCallback(
-    (sample) => sample._id === modalSampleId,
+    (sample: fos.ModalSample["sample"]) => sample._id === modalSampleId,
     [modalSampleId],
   );
   const select = fos.useSelectSample();
@@ -118,13 +118,17 @@ const useCreateFlashlight = (
   const options = fos.useLookerOptions(true);
   const field = useRecoilValue(fos.dynamicGroupParameters);
   const setSample = useSetDynamicGroupSample();
-  const createLooker = fos.useCreateLooker(
+  const createLooker = fos.useCreateLooker<fos.Lookers>(
     true,
     true,
     {
       ...options,
-      thumbnailTitle: (sample) =>
-        field?.orderBy ? get(sample, field.orderBy) : null,
+      // the order-by value, shown as the thumbnail's title text
+      thumbnailTitle: (sample) => {
+        if (!field?.orderBy) return null;
+        const value: unknown = get(sample, field.orderBy);
+        return value as string;
+      },
     },
     highlight,
   );
@@ -211,7 +215,6 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
     const identity = `${mediaField}::${key ?? "null"}`;
     if (lastIdentity.current === identity) return;
     lastIdentity.current = identity;
-    reset();
     setFlashlight(createFlashlight());
   }, [createFlashlight, key, reset, mediaField]);
 
@@ -223,6 +226,7 @@ export const DynamicGroupsFlashlightWrapper = React.memo(() => {
         freeVideos();
       };
     }
+    return undefined;
   }, [flashlight, id]);
 
   const selected = useRecoilValue(fos.selectedSamples);

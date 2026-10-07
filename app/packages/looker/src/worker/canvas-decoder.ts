@@ -12,6 +12,7 @@ const canvasAndCtx = (() => {
 
     return { canvas: offScreenCanvas, ctx: offScreenCanvasCtx };
   }
+  return undefined;
 })();
 
 /**

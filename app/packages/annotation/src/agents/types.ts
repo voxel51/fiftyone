@@ -1,7 +1,7 @@
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import type { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import type { SyntheticKeyframe } from "@fiftyone/utilities";
+import type { SerializedMask, SyntheticKeyframe } from "@fiftyone/utilities";
 import type { ProviderError } from "../providers";
 
 /** Helper type representing a `fo.Polylines`-like element. */
@@ -176,6 +176,16 @@ export type InferenceResult<T> = { labelId: string } & (
 );
 
 /**
+ * What an agent's `infer` returns. Agents that know the label (propagation)
+ * include its id; otherwise `useAnnotationAgent` adds it, producing an
+ * {@link InferenceResult}.
+ */
+export type AgentInferenceResult<T> = { labelId?: string } & (
+  | SyncInferenceResult<T>
+  | AsyncInferenceResult
+);
+
+/**
  * Response type for synchronous classification inference tasks.
  */
 export type ClassificationInferenceResult = ClassificationsParent;
@@ -193,7 +203,20 @@ export type PolylinesInferenceResult = PolylinesParent;
 /**
  * Response type for synchronous segmentation inference tasks.
  */
-export type SegmentationInferenceResult = DetectionsParent;
+export type SegmentationInferenceResult = {
+  detections: SegmentationDetection[];
+};
+
+/**
+ * A segmentation agent's detection: an encoded mask plus its box, in the shape
+ * applied onto a lighter `DetectionOverlay` label (not a looker label).
+ */
+export type SegmentationDetection = {
+  mask: SerializedMask;
+  mask_width?: number;
+  mask_height?: number;
+  bounding_box: number[];
+};
 
 /**
  * A `DetectionLabel` carrying the video-annotation dynamic attrs the
@@ -315,7 +338,7 @@ export interface AnnotationAgent<T extends InferenceResultProxy> {
    *          or an `AsyncInferenceResult` with a `sessionId` that can be
    *          passed to `subscribe()` / `abort()`.
    */
-  infer(context: AnnotationContext): Promise<InferenceResult<T>>;
+  infer(context: AnnotationContext): Promise<AgentInferenceResult<T>>;
 
   /**
    * Returns the task types this agent supports.

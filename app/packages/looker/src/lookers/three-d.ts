@@ -1,6 +1,6 @@
 import { get3dElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
-import type { ThreeDState } from "../state";
+import type { Optional, ThreeDState } from "../state";
 import { DEFAULT_3D_OPTIONS } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
@@ -47,7 +47,7 @@ export class ThreeDLooker extends AbstractLooker<ThreeDState> {
     const reload =
       !disableReload &&
       LookerUtils.shouldReloadSample(this.state.options, options);
-    const state: Partial<ThreeDState> = { options };
+    const state: Optional<ThreeDState> = { options };
     if (reload) {
       this.updater({
         ...state,

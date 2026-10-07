@@ -2,16 +2,17 @@ import { TransformOverlayCommand } from "@fiftyone/lighter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("AnnotationSchema", () => {
-  let mockScene: any;
-  let mockOverlay: any;
-  let commandExecutedHandler: any;
+  type MockOverlay = ConstructorParameters<typeof TransformOverlayCommand>[0];
+  let _mockScene: unknown;
+  let mockOverlay: MockOverlay;
+  let _commandExecutedHandler: unknown;
 
   beforeEach(() => {
-    commandExecutedHandler = null;
-    mockScene = {
-      on: vi.fn((event: string, handler: any) => {
+    _commandExecutedHandler = null;
+    _mockScene = {
+      on: vi.fn((event: string, handler: unknown) => {
         if (event === "lighter:command-executed") {
-          commandExecutedHandler = handler;
+          _commandExecutedHandler = handler;
         }
       }),
       off: vi.fn(),
@@ -27,7 +28,7 @@ describe("AnnotationSchema", () => {
         width: 100,
         height: 100,
       },
-    };
+    } as unknown as MockOverlay;
   });
 
   afterEach(() => {

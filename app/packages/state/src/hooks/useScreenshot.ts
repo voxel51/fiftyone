@@ -14,8 +14,8 @@ export const useScreenshot = (
   const fitSVGs = useCallback(() => {
     const svgElements = document.body.querySelectorAll("svg");
     svgElements.forEach((item) => {
-      item.setAttribute("width", item.getBoundingClientRect().width);
-      item.setAttribute("height", item.getBoundingClientRect().height);
+      item.setAttribute("width", String(item.getBoundingClientRect().width));
+      item.setAttribute("height", String(item.getBoundingClientRect().height));
     });
   }, []);
 
@@ -25,12 +25,13 @@ export const useScreenshot = (
     images.forEach((img) => {
       !img.classList.contains("fo-captured") &&
         promises.push(
-          getFetchFunction()("GET", img.src, null, "blob")
+          getFetchFunction()<null, Blob>("GET", img.src, null, "blob")
             .then((blob) => {
-              return new Promise((resolve, reject) => {
+              return new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                  resolve(reader.result);
+                  // readAsDataURL always yields a string
+                  resolve(reader.result as string);
                 };
                 reader.onerror = (error) => reject(error);
                 reader.readAsDataURL(blob);

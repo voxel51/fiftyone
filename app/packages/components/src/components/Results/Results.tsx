@@ -9,7 +9,7 @@ export interface ResultProps<T> {
   component: React.FC<{ value: T; className?: string }>;
 }
 
-const NONSTRING_VALUES: any[] = [false, true, null];
+const NONSTRING_VALUES: unknown[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
 
 export const getValueString = (value: unknown): [string, boolean] => {

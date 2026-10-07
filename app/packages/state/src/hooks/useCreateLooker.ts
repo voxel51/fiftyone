@@ -2,6 +2,7 @@ import {
   AbstractLooker,
   FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
+  type LabelToggledEvent,
   ImaVidLooker,
   ImageLooker,
   MetadataLooker,
@@ -12,7 +13,19 @@ import {
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
-import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
+import type {
+  BaseState,
+  FrameConfig,
+  ImaVidConfig,
+  ThreeDConfig,
+  VideoConfig,
+  VideoSample,
+} from "@fiftyone/looker/src/state";
+
+// built up field by field for whichever looker class is chosen below
+type LookerConfig = Partial<
+  FrameConfig & VideoConfig & ImaVidConfig & ThreeDConfig
+>;
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -22,7 +35,11 @@ import {
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilValue,
+  type SerializableParam,
+} from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { sampleSelectionStyle, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
@@ -34,6 +51,18 @@ import * as viewAtoms from "../recoil/view";
 import { getNormalizedUrls } from "../utils";
 import { resolveMediaFieldLooker } from "./media-field-lookers";
 import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
+
+/**
+ * What create() needs: the sample JSON and its media URLs. Modal samples and
+ * grid nodes carry these; frame number/rate and the grid symbol are optional.
+ */
+export type CreateLookerInput = {
+  sample: Sample;
+  urls: Parameters<typeof getNormalizedUrls>[0];
+  frameNumber?: number;
+  frameRate?: number;
+  symbol?: symbol;
+};
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -79,9 +108,11 @@ export default <T extends AbstractLooker<BaseState>>(
   );
 
   useEffect(() => {
+    // the controller is never replaced, so capturing it here is equivalent
+    const abortController = abortControllerRef.current;
     return () => {
       // sending abort signal to clean up all event handlers
-      return abortControllerRef.current.abort();
+      return abortController.abort();
     };
   }, []);
 
@@ -90,7 +121,13 @@ export default <T extends AbstractLooker<BaseState>>(
   const create = useRecoilCallback(
     ({ snapshot }) =>
       (
-        { frameNumber, frameRate, sample, urls: rawUrls, symbol },
+        {
+          frameNumber,
+          frameRate,
+          sample,
+          urls: rawUrls,
+          symbol,
+        }: CreateLookerInput,
         extra: Partial<
           Omit<Parameters<T["updateOptions"]>[0], "selected">
         > = {},
@@ -125,9 +162,10 @@ export default <T extends AbstractLooker<BaseState>>(
           create = ImaVidLooker;
         }
 
-        let config: ConstructorParameters<T>[1] = {
+        let config: LookerConfig = {
           enableTimeline,
           fieldSchema: {
+            // synthetic field; looker reads only its ftype, subfield and fields
             frames: {
               name: "frames",
               ftype: LIST_FIELD,
@@ -135,7 +173,7 @@ export default <T extends AbstractLooker<BaseState>>(
               embeddedDocType: "fiftyone.core.frames.FrameSample",
               fields: frameFieldSchema,
               dbField: null,
-            },
+            } as LookerConfig["fieldSchema"][string],
             ...fieldSchema,
           },
           sources: urls,
@@ -147,8 +185,8 @@ export default <T extends AbstractLooker<BaseState>>(
           dataset,
           mediaField,
           thumbnail,
-          view,
-          shouldHandleKeyEvents: isModal,
+          // state's Stage types kwargs values as unknown, looker's as object
+          view: view as LookerConfig["view"],
           isModal,
         };
 
@@ -192,12 +230,19 @@ export default <T extends AbstractLooker<BaseState>>(
 
         if (create === ImaVidLooker) {
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount({ value: sample._group }),
+            // NOTE: grid filters (modal: false) while the page below uses
+            // isModal; kept as-is, see PR 8654
+            dynamicGroupsElementCount({
+              value: sample._group as SerializableParam,
+              modal: false,
+            }),
           );
           const page = snapshot
             .getLoadable(
               dynamicGroupAtoms.dynamicGroupPageSelector({
-                value: sample._group,
+                // the dynamic-group selectors key on the raw group-by value
+                // (any JSON; the selectors type it as string)
+                value: sample._group as unknown as string,
                 modal: isModal,
               }),
             )
@@ -212,7 +257,7 @@ export default <T extends AbstractLooker<BaseState>>(
           const imavidKey = snapshot
             .getLoadable(
               dynamicGroupAtoms.imaVidStoreKey({
-                groupByFieldValue: sample._group,
+                groupByFieldValue: sample._group as unknown as string,
                 modal: isModal,
               }),
             )
@@ -246,7 +291,7 @@ export default <T extends AbstractLooker<BaseState>>(
                   )
                   .valueMaybe() ?? 1)
               : 1,
-          } as ImaVidConfig;
+          };
         }
 
         const isSelected = selected.has(sample._id);
@@ -256,8 +301,14 @@ export default <T extends AbstractLooker<BaseState>>(
         } = resolveSelectionIcon(selected, style, sample._id, isSelected);
 
         const looker = new create(
-          sample,
-          { ...config, symbol },
+          // `create` is a union of looker classes; only video lookers read
+          // frames, and the sample JSON carries them when present
+          sample as VideoSample,
+          // each looker reads only its own config keys
+          { ...config, symbol } as FrameConfig &
+            VideoConfig &
+            ImaVidConfig &
+            ThreeDConfig,
           {
             ...options,
             ...extra,
@@ -278,11 +329,13 @@ export default <T extends AbstractLooker<BaseState>>(
 
         selectiveRenderingEventBus.on(
           FO_LABEL_TOGGLED_EVENT,
-          (e) => getOnShiftClickLabelCallback(e),
+          // only label-toggled events are delivered for this event type
+          (e) => getOnShiftClickLabelCallback(e as LabelToggledEvent),
           abortControllerRef.current.signal,
         );
 
-        return looker;
+        // the caller chooses T for the looker kind it renders
+        return looker as unknown as T;
       },
     [
       dataset,

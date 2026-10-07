@@ -91,7 +91,10 @@ export const aggregationQuery = graphQLSelectorFamily<
           get(refresher) +
           (paths.includes(TEMPORAL_TAGS_FIELD) ? get(temporalTagsRevision) : 0),
         dataset,
-        dynamicGroup,
+        // a JSON scalar: relay types it as object, but group-by values are
+        // often primitives
+        dynamicGroup:
+          dynamicGroup as foq.aggregationsQuery$variables["form"]["dynamicGroup"],
         extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
         filters:
           extended && !root
@@ -102,11 +105,14 @@ export const aggregationQuery = graphQLSelectorFamily<
         paths,
         mixed,
         sampleIds,
-        slices: !useSelection
+        // a lone slice is sent as a string; GraphQL coerces it to a list
+        slices: (!useSelection
           ? get(groupSlice)
           : mixed
             ? get(groupSlices)
-            : get(currentSlices(modal)),
+            : get(
+                currentSlices(modal),
+              )) as unknown as foq.aggregationsQuery$variables["form"]["slices"],
         slice: get(groupSlice),
         view: !root ? get(viewAtoms.view) : [],
         queryPerformance:

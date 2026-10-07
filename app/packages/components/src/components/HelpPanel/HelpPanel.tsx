@@ -29,7 +29,7 @@ export default function HelpPanel({ containerRef, onClose, items }) {
     let result = [];
     if (hasKeys && !allSameKey) {
       // Group by key
-      const groups = {};
+      const groups: Record<string, typeof items> = {};
       items.forEach((item) => {
         const key = item.key || "general";
         if (!groups[key]) {

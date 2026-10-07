@@ -24,7 +24,7 @@ export interface DepthHover extends DepthSample {
 }
 
 /** Modal-local depth hover shared by image and 3D tiles. */
-const depthHoverAtom = atom<DepthHover | null>(null);
+const depthHoverAtom = atom(null as DepthHover | null);
 
 /** Reads the depth sample currently hovered in an image tile. */
 export function useDepthHover(): DepthHover | null {

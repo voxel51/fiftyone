@@ -51,7 +51,7 @@ export class SeekBarThumbElement extends BaseElement<
       "--progress",
       `${Math.max(0, value - 0.5)}%`,
     );
-    //@ts-ignore
+    // @ts-expect-error -- the thumb is a div; value is kept as an expando
     this.element.value = value;
 
     const active = seeking || seekBarHovering;

@@ -22,10 +22,9 @@ import {
 import { filters, modalFilters } from "../filters";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
-import { State } from "../types";
 import { boolean, listBoolean } from "./boolean";
 import { listNumber, numeric } from "./numeric";
-import { listString, string } from "./string";
+import { listString, string, type StringFilter } from "./string";
 
 export * from "./boolean";
 export * from "./numeric";
@@ -35,7 +34,7 @@ export * from "./utils";
 const KEYPOINT_TYPES = new Set([KEYPOINT_FIELD, KEYPOINTS_FIELD]);
 
 const primitiveFilter = selectorFamily<
-  (value: any) => boolean,
+  (value: unknown) => boolean,
   { modal: boolean; path: string }
 >({
   key: "primitiveFilter",
@@ -134,15 +133,16 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
 
           f[path] = (value: unknown) => {
             const correctedValue = value?.[0] ? value[0] : value;
-            if (hidden.has(value?.id)) {
+            if (hidden.has((value as { id?: string } | null)?.id)) {
               return false;
             }
 
             return (
               matchesLabelTags(
                 correctedValue as { tags: string[] },
-                currentFilter?._label_tags,
-                currentVisibility?._label_tags,
+                // _label_tags filters are string filters
+                currentFilter?._label_tags as StringFilter | undefined,
+                currentVisibility?._label_tags as StringFilter | undefined,
               ) &&
               fs.every((filter) => {
                 return filter(correctedValue);
@@ -191,8 +191,8 @@ const matchesLabelTags = (
   value: {
     tags: string[];
   },
-  filter?: State.CategoricalFilter<string>,
-  visibility?: State.CategoricalFilter<string>,
+  filter?: StringFilter,
+  visibility?: StringFilter,
 ) => {
   // in either visibility or filter is set
   if (!filter && !visibility) {

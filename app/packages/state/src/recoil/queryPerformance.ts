@@ -13,6 +13,7 @@ import {
   selector,
   selectorFamily,
   useRecoilValue,
+  type SerializableParam,
 } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
@@ -112,9 +113,14 @@ export const filterSearch = selectorFamily({
     },
 });
 
+// relay types filters as `object`; selector params must be serializable
+export type LightningPathParam = Omit<foq.LightningPathInput, "filters"> & {
+  readonly filters?: { readonly [key: string]: SerializableParam } | null;
+};
+
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
-  foq.LightningInput["paths"],
+  readonly LightningPathParam[],
   ResponseFrom<foq.lightningQuery>["lightning"]
 >({
   environment: RelayEnvironmentKey,

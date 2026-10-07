@@ -30,9 +30,10 @@ export interface PromptableSimilarityIndex {
  */
 const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
   const { samples, patches } = useRecoilValue(fos.similarityMethods);
-  const brainMethods = useRecoilValue(fos.dataset)?.brainMethods ?? [];
+  const datasetBrainMethods = useRecoilValue(fos.dataset)?.brainMethods;
   const providers = useTextSearchProviders();
   return useMemo(() => {
+    const brainMethods = datasetBrainMethods ?? [];
     const created = new Map(brainMethods.map((m, i) => [m.key, i]));
     const models = new Map(brainMethods.map((m) => [m.key, m.config.model]));
     const timestamps = new Map(brainMethods.map((m) => [m.key, m.timestamp]));
@@ -72,7 +73,7 @@ const usePromptableSimilarityKeys = (): PromptableSimilarityIndex[] => {
           timestamp,
         })),
     ].sort((a, b) => (created.get(b.key) ?? -1) - (created.get(a.key) ?? -1));
-  }, [samples, patches, brainMethods, providers]);
+  }, [samples, patches, datasetBrainMethods, providers]);
 };
 
 export default usePromptableSimilarityKeys;

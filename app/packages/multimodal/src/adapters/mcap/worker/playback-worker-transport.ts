@@ -321,7 +321,7 @@ export class McapPlaybackWorkerTransport {
       this.onTransport?.(response.transport);
     }
 
-    if (response.ok && "stream" in response) {
+    if (response.ok === true && "stream" in response) {
       this.handleStreamResponse(response);
       return;
     }
@@ -336,18 +336,20 @@ export class McapPlaybackWorkerTransport {
       if (
         pending.type === "readBoundedMessages" &&
         (pending.cancelled ||
-          (!response.ok && response.boundedReadCancellation !== undefined))
+          (response.ok === false &&
+            response.boundedReadCancellation !== undefined))
       ) {
-        const usage = response.ok
-          ? "usage" in response.result
-            ? response.result.usage
-            : emptyMcapBoundedReadUsage()
-          : (response.boundedReadCancellation?.usage ??
-            emptyMcapBoundedReadUsage());
+        const usage =
+          response.ok === true
+            ? "usage" in response.result
+              ? response.result.usage
+              : emptyMcapBoundedReadUsage()
+            : (response.boundedReadCancellation?.usage ??
+              emptyMcapBoundedReadUsage());
         pending.reject(new McapBoundedReadCancelledError(usage));
         return;
       }
-      if (response.ok) {
+      if (response.ok === true) {
         pending.resolve(response.result);
       } else {
         pending.reject(new Error(response.error));
@@ -355,7 +357,7 @@ export class McapPlaybackWorkerTransport {
       return;
     }
 
-    if (!response.ok) {
+    if (response.ok === false) {
       const stream = this.streams.get(response.id);
       if (stream) {
         this.failStream(response.id, stream, new Error(response.error));
@@ -406,7 +408,7 @@ export class McapPlaybackWorkerTransport {
       return;
     }
 
-    if (response.done) {
+    if (response.done === true) {
       this.finishStream(response.id, stream);
     } else {
       const items = "items" in response ? response.items : [response.item];

@@ -5,10 +5,10 @@ import { getFetchFunction } from "@fiftyone/utilities";
 const AGGREGATE_ROUTE = "/aggregate";
 
 type AggregationParams = {
-  view?: any;
-  filters?: any;
-  dataset?: any;
-  sample_ids?: any;
+  view?: unknown;
+  filters?: unknown;
+  dataset?: { name: string };
+  sample_ids?: unknown;
 };
 
 /**
@@ -63,7 +63,7 @@ export default function useAggregation({
   sample_ids,
 }: AggregationParams = {}) {
   const [isLoading, setLoading] = React.useState(true);
-  const [result, setResult] = React.useState(null);
+  const [result, setResult] = React.useState<unknown>(null);
 
   const aggregate = async (
     aggregations: Aggregation[],
@@ -72,13 +72,17 @@ export default function useAggregation({
     setLoading(true);
     const jsonAggregations = aggregations.map((a) => a.toJSON());
 
-    const resBody = (await getFetchFunction()("POST", AGGREGATE_ROUTE, {
-      filters, // extended view
-      view,
-      dataset: datasetName || dataset.name,
-      sample_ids,
-      aggregations: jsonAggregations,
-    })) as any;
+    const resBody = await getFetchFunction()<unknown, { aggregate: unknown }>(
+      "POST",
+      AGGREGATE_ROUTE,
+      {
+        filters, // extended view
+        view,
+        dataset: datasetName || dataset.name,
+        sample_ids,
+        aggregations: jsonAggregations,
+      },
+    );
     setResult(resBody.aggregate);
     setLoading(false);
   };

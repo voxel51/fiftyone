@@ -1,3 +1,4 @@
+import type { OperatorResult } from "@fiftyone/operators/src/operators";
 import { atom, useAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
@@ -86,7 +87,7 @@ export const useRuns = (): UseRunsResult => {
       fetchRuns(
         { owner: ownerFilter },
         {
-          callback: (result?: Record<string, unknown>) => {
+          callback: (result?: OperatorResult) => {
             fetchingRef.current = false;
 
             if (result?.error) {
@@ -148,7 +149,7 @@ export const useRuns = (): UseRunsResult => {
 
     inFlightRef.current = promise;
     return promise;
-  }, [fetchRuns, setRuns]);
+  }, [fetchRuns, setRuns, setLoaded]);
 
   useEffect(() => {
     if (

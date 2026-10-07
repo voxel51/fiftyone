@@ -5,6 +5,7 @@ import {
   ArraySchemaType,
   CustomComponentsType,
   SchemaType,
+  SchemaViewType,
   ViewPropsType,
 } from "./types";
 import { getLayoutProps } from "./layout";
@@ -34,15 +35,34 @@ export function getComponent(
   );
 }
 
-export function getComponentProps<P>(
-  props: ViewPropsType,
+/**
+ * Reads `schema.view.componentsProps[id]` from any props object (missing
+ * paths yield `{}`) and merges it over `baseProps`.
+ */
+// Without base props, nothing is known about the overrides; an inferred P
+// would come from the JSX context (and pick the wrong MUI overload).
+export function getComponentProps(
+  props: object & { schema?: { view?: SchemaViewType } },
+  id: string,
+): object;
+export function getComponentProps<P extends object>(
+  props: object & { schema?: { view?: SchemaViewType } },
+  id: string,
+  baseProps: P,
+): P;
+export function getComponentProps<P extends object>(
+  props: object & { schema?: { view?: SchemaViewType } },
   id: string,
   baseProps?: P,
-) {
-  return merge(
-    baseProps || {},
-    get(props, `schema.view.componentsProps.${id}`, {}),
+): P | object {
+  // componentsProps are the server's overrides of the target component's
+  // props, so they're typed as (partial) props of the same component
+  const overrides: Partial<P> = get(
+    props,
+    `schema.view.componentsProps.${id}`,
+    {},
   );
+  return merge(baseProps || ({} as P), overrides);
 }
 
 export function getProps<P>(

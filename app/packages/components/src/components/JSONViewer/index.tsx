@@ -89,7 +89,8 @@ export default function JSONViewer(props: JSONViewerPropsType) {
 }
 
 type JSONViewerPropsType = {
-  value?: JSON;
+  // forwarded to the viewer as-is (not the global JSON object)
+  value?: JsonViewerProps["value"];
   resetSearchOnEscape?: boolean;
   jsonViewerProps?: Omit<JsonViewerProps, "value">;
   searchContainerProps?: React.HTMLProps<HTMLInputElement>;

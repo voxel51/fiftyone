@@ -100,6 +100,14 @@ module.exports = {
     ],
     // allow namespace for type export
     "@typescript-eslint/no-namespace": "off",
+    // Empty arrow functions are idiomatic no-op defaults and callbacks, and
+    // private constructors are how singletons are declared. typescript-eslint
+    // v6+ drops this rule from "recommended" entirely; this narrows it until
+    // the upgrade.
+    "@typescript-eslint/no-empty-function": [
+      "warn",
+      { allow: ["arrowFunctions", "private-constructors"] },
+    ],
     "@typescript-eslint/no-non-null-assertion": "off",
     "react/display-name": "off",
     "react/no-unknown-property": [
@@ -129,6 +137,40 @@ module.exports = {
     },
   },
   overrides: [
+    {
+      // Operator subclasses call hooks from their useHooks() method, which the
+      // operator runtime invokes as a hook (see packages/operators/.eslintrc)
+      files: ["packages/embeddings/src/operators.ts"],
+      rules: {
+        "react-hooks/rules-of-hooks": "off",
+      },
+    },
+    {
+      // CommonJS config files and build scripts run in Node
+      files: [
+        "**/*.config.js",
+        "**/.eslintrc.js",
+        "packages/*/scripts/**/*.js",
+      ],
+      env: { node: true },
+      rules: {
+        // CommonJS loads modules with require
+        "@typescript-eslint/no-var-requires": "off",
+      },
+    },
+    {
+      // Tests and mocks stub out interfaces with empty methods
+      files: [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/__mocks__/**",
+        "**/__tests__/**",
+        "**/Mock*.ts",
+      ],
+      rules: {
+        "@typescript-eslint/no-empty-function": "off",
+      },
+    },
     {
       // react-three-fiber renders three.js object properties as JSX props
       files: ["packages/looker-3d/**"],

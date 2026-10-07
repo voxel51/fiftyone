@@ -16,7 +16,7 @@ import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import {
-  TransformOptions,
+  TransformOverlayOptions,
   TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
@@ -70,9 +70,9 @@ export const TypeGuards = {
   ): body is BaseOverlay & InteractionHandler & Selectable =>
     "id" in body && "isSelected" in body && "setSelected" in body,
 
-  isSpatial: (
-    body: BaseOverlay | InteractionHandler,
-  ): body is BaseOverlay & Spatial => "bounds" in body,
+  isSpatial: <T extends BaseOverlay | InteractionHandler>(
+    body: T,
+  ): body is T & Spatial => "bounds" in body,
 
   isRotatable: (
     body: BaseOverlay | InteractionHandler,
@@ -172,14 +172,14 @@ export class Scene2D {
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
-  private rotation: number = 0;
-  private interactiveMode: boolean = false;
+  private rotation = 0;
+  private interactiveMode = false;
   private interactiveHandler?: InteractionHandler;
   // When an external authority (the annotation engine) owns undo/redo, Lighter
   // must not also push its own edit commands — the engine captures the same
   // edits as value-based entries, so a self-push double-counts every gesture.
-  private externalUndoAuthority: boolean = false;
-  private isRenderLoopActive: boolean = false;
+  private externalUndoAuthority = false;
+  private isRenderLoopActive = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
@@ -1074,7 +1074,7 @@ export class Scene2D {
     }
 
     // Find overlays that contain the mouse point
-    let contained = this.overlayOrder
+    const contained = this.overlayOrder
       .map((id) => this.overlays.get(id))
       .filter((overlay): overlay is BaseOverlay => {
         if (!overlay) return false;
@@ -1245,7 +1245,7 @@ export class Scene2D {
    * @param overlay - The overlay to add.
    * @param withUndo - Whether to track this operation for undo/redo.
    */
-  addOverlay(overlay: BaseOverlay, withUndo: boolean = false): void {
+  addOverlay(overlay: BaseOverlay, withUndo = false): void {
     if (withUndo) {
       const command = new AddOverlayCommand(
         this,
@@ -1303,11 +1303,7 @@ export class Scene2D {
    * @param withUndo - Whether to track this operation for undo/redo.
    * @param lifecycle - Whether this is a lifecycle event (not user-driven)
    */
-  removeOverlay(
-    id: string,
-    withUndo: boolean = false,
-    lifecycle: boolean = false,
-  ): void {
+  removeOverlay(id: string, withUndo = false, lifecycle = false): void {
     if (withUndo) {
       const overlay = this.overlays.get(id);
       if (overlay) {
@@ -1381,7 +1377,7 @@ export class Scene2D {
    */
   async transformOverlay(
     id: string,
-    options: TransformOptions,
+    options: TransformOverlayOptions,
   ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {

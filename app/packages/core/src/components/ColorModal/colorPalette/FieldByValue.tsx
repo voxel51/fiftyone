@@ -18,13 +18,12 @@ const FieldByValue: React.FC = () => {
     [activePath, colorScheme.fields],
   );
   const values = useMemo(() => setting?.valueColors ?? [], [setting]);
-  const defaultValue = {
-    value: "",
-    color: getRandomColorFromPool(colorScheme.colorPool),
-  };
-  const index = useMemo(
-    () => colorScheme.fields?.findIndex((s) => s.path == activePath),
-    [activePath],
+  const defaultValue = useMemo(
+    () => ({
+      value: "",
+      color: getRandomColorFromPool(colorScheme.colorPool),
+    }),
+    [colorScheme.colorPool],
   );
   const shouldShowAddButton = Boolean(
     setting?.valueColors && setting.valueColors.length > 0,
@@ -41,7 +40,7 @@ const FieldByValue: React.FC = () => {
         }
       }
     },
-    [index, colorScheme],
+    [activePath, colorScheme, setColorScheme],
   );
 
   useEffect(() => {
@@ -53,7 +52,7 @@ const FieldByValue: React.FC = () => {
         setColorScheme({ ...colorScheme, fields: copy });
       }
     }
-  }, [values]);
+  }, [activePath, colorScheme, defaultValue, setColorScheme, values]);
 
   return (
     <ValueColorList

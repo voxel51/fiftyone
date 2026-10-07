@@ -10,6 +10,7 @@ import {
   ControlEventKeyType,
   ImaVidConfig,
   ImaVidState,
+  VideoConfig,
   VideoState,
 } from "../../state";
 import { clampScale } from "../../util";
@@ -451,7 +452,11 @@ export const playPause: Control<VideoState> = {
 
       dispatchEvent("options", { showJSON: false });
 
-      if ((state.config as ImaVidConfig).frameStoreController) {
+      // ImaVid configs carry a frame store controller; plain video ones don't
+      if (
+        (state.config as VideoConfig & Partial<ImaVidConfig>)
+          .frameStoreController
+      ) {
         return {};
       }
 

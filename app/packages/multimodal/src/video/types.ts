@@ -37,11 +37,12 @@ export function isSharedEncodedVideoVisualization(
   frame: EncodedVideoVisualization,
 ): frame is SharedEncodedVideoVisualization {
   if (frame.undecodable) return false;
+  // a typed local keeps this narrowing valid with and without strictNullChecks
+  const h264: { readonly hasFrame?: boolean } | undefined =
+    frame.codec === "h264" ? frame.h264 : undefined;
   return (
     frame.codec === "av1" ||
-    (frame.codec === "h264" &&
-      frame.h264 !== undefined &&
-      frame.h264.hasFrame !== false) ||
+    (frame.codec === "h264" && h264 !== undefined && h264.hasFrame !== false) ||
     frame.codec === "h265"
   );
 }

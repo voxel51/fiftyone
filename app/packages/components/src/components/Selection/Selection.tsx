@@ -2,9 +2,15 @@ import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
 import { DEFAULT_SELECTED, constants } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { ListSubheader, MenuItem, Select, Typography } from "@mui/material";
+import {
+  ListSubheader,
+  MenuItem,
+  type MenuListProps,
+  Select,
+  Typography,
+} from "@mui/material";
 import { debounce } from "lodash";
-import React, { useCallback, useState, useRef } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { CustomBox, LastOption } from "./styledComponents";
@@ -83,10 +89,11 @@ export default function Selection(props: SelectionProps) {
   const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
   const { id: selectedId, color: selectedColor } = selected || {};
 
-  const debouncedSearch = useCallback(
-    debounce((term: string) => {
-      onSearch?.(term?.toLowerCase());
-    }, 300),
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((term: string) => {
+        onSearch?.(term?.toLowerCase());
+      }, 300),
     [onSearch],
   );
 
@@ -99,6 +106,19 @@ export default function Selection(props: SelectionProps) {
   // Ensure selected item is always in the items list for MUI Select
   const isSelectedInItems = items.some((item) => item.id === selectedId);
   const itemsWithSelected = isSelectedInItems ? items : [selected, ...items];
+
+  // data-* attributes aren't part of MenuListProps' declared keys
+  const menuListProps: Partial<MenuListProps> & { "data-cy": string } = {
+    "data-cy": `${id}-selection-view`,
+    sx: {
+      paddingY: 0,
+      zIndex: 999,
+      maxHeight: "400px",
+      width: "100%",
+      overflowY: "auto",
+      background: theme.background.level2,
+    },
+  };
 
   return (
     <div
@@ -117,17 +137,7 @@ export default function Selection(props: SelectionProps) {
               width: containerRef.current?.clientWidth,
             },
           },
-          MenuListProps: {
-            "data-cy": `${id}-selection-view`,
-            sx: {
-              paddingY: 0,
-              zIndex: 999,
-              maxHeight: "400px",
-              width: "100%",
-              overflowY: "auto",
-              background: theme.background.level2,
-            },
-          },
+          MenuListProps: menuListProps,
         }}
         IconComponent={
           selectedId === DEFAULT_SELECTED.id || hideActions

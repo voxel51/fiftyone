@@ -1,5 +1,6 @@
 import { formatValueAsNumber } from "@fiftyone/utilities";
 import { capitalize } from "lodash";
+import type { Data } from "plotly.js";
 import { atom } from "recoil";
 import { NONE_CLASS } from "./constants";
 
@@ -8,15 +9,19 @@ export function getNumericDifference(
   compareValue,
   percentage = false,
   fractionDigits?: number,
-) {
+): number {
+  // formatValueAsNumber returns a number for numeric input
   if (typeof value === "number" && typeof compareValue === "number") {
     const difference = value - compareValue;
     const sanitizedCompareValue = compareValue === 0 ? 1 : compareValue;
     if (percentage) {
       const percentageDifference = (difference / sanitizedCompareValue) * 100;
-      return formatValueAsNumber(percentageDifference, fractionDigits);
+      return formatValueAsNumber(
+        percentageDifference,
+        fractionDigits,
+      ) as number;
     }
-    return formatValueAsNumber(difference, fractionDigits);
+    return formatValueAsNumber(difference, fractionDigits) as number;
   }
   return NaN;
 }
@@ -41,7 +46,7 @@ export interface CompareKey {
 }
 
 export function computeSortedCompareKeys(
-  evaluations: any[],
+  evaluations: { key: string; type: string; method?: string }[],
   currentName: string,
   currentType: string,
   currentMethod: string,
@@ -228,7 +233,7 @@ export function getConfusionMatrix(
 export function getConfusionMatrixPlotlyData(
   data: MatrixData,
   config: MatrixPlotDataConfig,
-) {
+): Data[] {
   const {
     classes: originalClasses,
     matrix: originalMatrix,
@@ -273,7 +278,9 @@ type MatrixData = {
 };
 
 type MatrixOptions = {
-  sortBy: "az" | "za" | "mc" | "lc";
+  // "az" | "za" | "mc" | "lc"; anything else (e.g. "default") leaves the
+  // classes unsorted
+  sortBy?: string;
   limit?: number;
   classes?: string[];
   skipZeroCount?: boolean;

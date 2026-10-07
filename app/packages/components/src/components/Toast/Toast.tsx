@@ -4,8 +4,9 @@ import { atom, useRecoilState } from "recoil";
 
 interface ToastProps {
   message: React.ReactNode;
-  primary?: any;
-  secondary?: any;
+  // render the toast's buttons; given the setter that opens/closes it
+  primary?: (setOpen: (open: boolean) => void) => React.ReactNode;
+  secondary?: (setOpen: (open: boolean) => void) => React.ReactNode;
   duration?: number;
   layout?: {
     vertical?: "top" | "bottom";

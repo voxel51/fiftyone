@@ -2,7 +2,7 @@ import { atom, useAtom } from "jotai";
 import { useCallback } from "react";
 import { CloneConfig } from "../types";
 
-const cloneConfigAtom = atom<CloneConfig | null>(null);
+const cloneConfigAtom = atom(null as CloneConfig | null);
 
 type UseCloneConfigResult = {
   cloneConfig: CloneConfig | null;

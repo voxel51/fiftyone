@@ -3,11 +3,48 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
-import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
-import { ViewPropsType } from "../utils/types";
+import {
+  getColorByCode,
+  getComponentProps,
+  getDisabledColors,
+  type StyleObject,
+} from "../utils";
+import type { SchemaViewType, ViewPropsType } from "../utils/types";
+
+/**
+ * ButtonView only reads its schema's view, path and onClick, so callers that
+ * render a standalone button (RadioView, DashboardView) can pass just those.
+ */
+type ButtonViewOptions = {
+  description?: string;
+  href?: string;
+  icon?: string;
+  icon_position?: "left" | "right";
+  label?: string;
+  operator?: string;
+  params?: Record<string, unknown>;
+  prompt?: boolean;
+  title?: string;
+  disabled?: boolean;
+  // "contained" | "outlined" | "round" | "square"
+  variant?: string;
+  color?: string;
+};
+
+export type ButtonViewProps = Omit<
+  Partial<ViewPropsType>,
+  "schema" | "onClick"
+> & {
+  schema: { type?: string; view: SchemaViewType };
+  onClick?: (
+    e: React.MouseEvent,
+    params: Record<string, unknown>,
+    props: ButtonViewProps,
+  ) => void;
+};
 import Button from "./Button";
 
-export default function ButtonView(props: ViewPropsType) {
+export default function ButtonView(props: ButtonViewProps) {
   const { schema, path, onClick } = props;
   const { view = {} } = schema;
   const {
@@ -21,7 +58,7 @@ export default function ButtonView(props: ViewPropsType) {
     prompt,
     title,
     disabled = false,
-  } = view;
+  } = view as ButtonViewOptions;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
   const variant = getVariant(props);
@@ -65,50 +102,52 @@ export default function ButtonView(props: ViewPropsType) {
   );
 }
 
-function getButtonProps(props: ViewPropsType): ButtonProps {
-  const { label, variant, color, disabled } = props.schema.view;
+function getButtonProps(props: ButtonViewProps): ButtonProps {
+  const { label, variant, color, disabled } = props.schema
+    .view as ButtonViewOptions;
   const baseProps: ButtonProps = getCommonProps(props);
+  const sx = baseProps.sx as StyleObject<ButtonProps["sx"]>;
   if (isNullish(label)) {
-    baseProps.sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
-    baseProps.sx.minWidth = "auto";
-    baseProps.sx.p = "6px";
+    sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
+    sx.minWidth = "auto";
+    sx.p = "6px";
   }
   if (variant === "round") {
-    baseProps.sx.borderRadius = "1rem";
-    baseProps.sx.p = "3.5px 10.5px";
+    sx.borderRadius = "1rem";
+    sx.p = "3.5px 10.5px";
   }
   if (variant === "square") {
-    baseProps.sx.borderRadius = "3px 3px 0 0";
-    baseProps.sx.backgroundColor = (theme) => theme.palette.background.field;
-    baseProps.sx.borderBottom = "1px solid";
-    baseProps.sx.paddingBottom = "5px";
-    baseProps.sx.borderColor = (theme) => theme.palette.primary.main;
+    sx.borderRadius = "3px 3px 0 0";
+    sx.backgroundColor = (theme) => theme.palette.background.field;
+    sx.borderBottom = "1px solid";
+    sx.paddingBottom = "5px";
+    sx.borderColor = (theme) => theme.palette.primary.main;
   }
   if (variant === "outlined") {
-    baseProps.sx.p = "5px";
+    sx.p = "5px";
   }
   if ((variant === "square" || variant === "outlined") && isNullish(color)) {
     const borderColor =
       "rgba(var(--fo-palette-common-onBackgroundChannel) / 0.23)";
-    baseProps.sx.borderColor = borderColor;
-    baseProps.sx.borderBottomColor = borderColor;
+    sx.borderColor = borderColor;
+    sx.borderBottomColor = borderColor;
   }
   if (isNullish(variant)) {
     baseProps.variant = "contained";
     baseProps.color = "tertiary";
-    baseProps.sx["&:hover"] = {
+    sx["&:hover"] = {
       backgroundColor: (theme) => theme.palette.tertiary.hover,
     };
   }
 
   if (disabled) {
     const [bgColor, textColor] = getDisabledColors();
-    baseProps.sx["&.Mui-disabled"] = {
+    sx["&.Mui-disabled"] = {
       backgroundColor: variant === "outlined" ? "inherit" : bgColor,
       color: textColor,
     };
     if (["square", "outlined"].includes(variant)) {
-      baseProps.sx["&.Mui-disabled"].backgroundColor = (theme) =>
+      sx["&.Mui-disabled"].backgroundColor = (theme) =>
         theme.palette.background.field;
     }
   }
@@ -116,13 +155,15 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
   return baseProps;
 }
 
-function getIconProps(props: ViewPropsType): ButtonProps {
+// the icon only takes the shared sx
+function getIconProps(props: ButtonViewProps): Pick<ButtonProps, "sx"> {
   return getCommonProps(props);
 }
 
-function getCommonProps(props: ViewPropsType): ButtonProps {
+function getCommonProps(props: ButtonViewProps): ButtonProps {
   const color = getColor(props);
-  const disabled = props.schema.view?.disabled || false;
+  const disabled =
+    (props.schema.view as ButtonViewOptions | undefined)?.disabled || false;
 
   return {
     sx: {
@@ -142,11 +183,11 @@ function getCommonProps(props: ViewPropsType): ButtonProps {
   };
 }
 
-function getColor(props: ViewPropsType) {
+function getColor(props: ButtonViewProps) {
   const {
     schema: { view = {} },
   } = props;
-  const { color } = view;
+  const { color } = view as ButtonViewOptions;
   if (color) {
     return getColorByCode(color);
   }
@@ -160,9 +201,10 @@ function getColor(props: ViewPropsType) {
 
 const defaultVariant = ["contained", "outlined"];
 
-function getVariant(pros: ViewPropsType) {
-  const variant = pros.schema.view.variant;
-  if (defaultVariant.includes(variant)) return variant;
+function getVariant(pros: ButtonViewProps) {
+  const { variant } = pros.schema.view as ButtonViewOptions;
+  if (defaultVariant.includes(variant))
+    return variant as "contained" | "outlined";
   if (variant === "round") return "contained";
   return null;
 }

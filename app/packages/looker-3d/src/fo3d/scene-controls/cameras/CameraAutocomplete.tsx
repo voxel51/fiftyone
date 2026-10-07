@@ -93,7 +93,7 @@ export const CameraAutocomplete = ({
   // This effect closes the dropdown when clicking outside the container
   useEffect(() => {
     if (!isOpen) {
-      return;
+      return undefined;
     }
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -117,7 +117,7 @@ export const CameraAutocomplete = ({
   // This effect determines whether the dropdown opens upward or downward based on available viewport space
   useEffect(() => {
     if (!isOpen || !containerRef.current) {
-      return;
+      return undefined;
     }
 
     const updateDirection = () => {

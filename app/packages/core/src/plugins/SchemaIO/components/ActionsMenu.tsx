@@ -3,6 +3,7 @@ import { MoreVert } from "@mui/icons-material";
 import {
   Box,
   Button,
+  type ButtonProps,
   IconButton,
   ListItemIcon,
   ListItemText,
@@ -137,7 +138,7 @@ function Action(props: ActionPropsType) {
   );
 }
 
-type SizeType = "small" | "medium";
+export type SizeType = "small" | "medium";
 
 type ActionsPropsType = {
   actions: Array<ActionPropsType>;
@@ -145,12 +146,12 @@ type ActionsPropsType = {
   size?: SizeType;
 };
 
-type ActionPropsType = {
+export type ActionPropsType = {
   name: string;
   label: string;
   onClick: (action: ActionPropsType, e: React.MouseEvent) => void;
   icon: string;
-  variant: string;
+  variant: ButtonProps["variant"];
   mode: "inline" | "menu";
   color?: string;
   size?: SizeType;

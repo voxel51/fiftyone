@@ -6,6 +6,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  type TableCellProps,
   TableContainer,
   TableHead,
   TableRow,
@@ -13,6 +14,14 @@ import {
 } from "@mui/material";
 import { useHover } from "react-laag";
 import ReactMarkdown from "react-markdown";
+import type {
+  CodeProps,
+  LiProps,
+  TableDataCellProps,
+  TableHeaderCellProps,
+  OrderedListProps,
+  UnorderedListProps,
+} from "react-markdown/lib/ast-to-react";
 import { ReactMarkdownOptions } from "react-markdown/lib/react-markdown";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import js from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
@@ -61,6 +70,53 @@ const CodeHeader = styled.div`
 const defaultSx: SxProps = { color: "inherit", mb: 1 };
 const boldSx: SxProps = { ...defaultSx, fontWeight: "bold" };
 
+// react-markdown renders `code` as a component, so it can use hooks
+const MarkdownCode = ({
+  node: _node,
+  inline,
+  className,
+  children,
+  ...props
+}: CodeProps) => {
+  const theme = useTheme();
+  const [hovered, hoverProps] = useHover();
+  // react-markdown passes code blocks' text as children (strings), which is
+  // what CopyButton and SyntaxHighlighter have always received
+  const code = children as string;
+  const isDarkMode = theme.mode === "dark";
+  const highlightTheme = isDarkMode ? vs2015 : tomorrow;
+  const match = /language-(\w+)/.exec(className || "");
+  let language = match ? match[1] : "text";
+  if (language === "js") {
+    language = "javascript";
+  }
+  if (language === "ts") {
+    language = "typescript";
+  }
+  if (language === "py") {
+    language = "python";
+  }
+  return !inline && match ? (
+    <CodeContainer {...hoverProps}>
+      <CodeHeader>
+        <Typography component="span">{language}</Typography>
+        <CopyButton
+          text={code}
+          sx={{ visibility: hovered ? "visible" : "hidden" }}
+        />
+      </CodeHeader>
+
+      <SyntaxHighlighter language={language} style={highlightTheme}>
+        {code}
+      </SyntaxHighlighter>
+    </CodeContainer>
+  ) : (
+    <InlineCode className={className} {...props}>
+      {children}
+    </InlineCode>
+  );
+};
+
 const componentsMap = {
   a({ children, ...props }) {
     if (
@@ -87,47 +143,18 @@ const componentsMap = {
       </TableContainer>
     );
   },
-  td: TableCell,
-  th: TableCell,
+  // react-markdown's cell props are td/th attributes; MUI's TableCell
+  // narrows a few of them (e.g. align)
+  td: (props: TableDataCellProps) => (
+    <TableCell {...(props as TableCellProps)} />
+  ),
+  th: (props: TableHeaderCellProps) => (
+    <TableCell {...(props as TableCellProps)} />
+  ),
   tbody: TableBody,
   thead: TableHead,
   tr: TableRow,
-  code({ node, inline, className, children, ...props }) {
-    const theme = useTheme();
-    const [hovered, hoverProps] = useHover();
-    const isDarkMode = theme.mode === "dark";
-    const highlightTheme = isDarkMode ? vs2015 : tomorrow;
-    const match = /language-(\w+)/.exec(className || "");
-    let language = match ? match[1] : "text";
-    if (language === "js") {
-      language = "javascript";
-    }
-    if (language === "ts") {
-      language = "typescript";
-    }
-    if (language === "py") {
-      language = "python";
-    }
-    return !inline && match ? (
-      <CodeContainer {...hoverProps}>
-        <CodeHeader>
-          <Typography component="span">{language}</Typography>
-          <CopyButton
-            text={children}
-            sx={{ visibility: hovered ? "visible" : "hidden" }}
-          />
-        </CodeHeader>
-
-        <SyntaxHighlighter language={language} style={highlightTheme}>
-          {children}
-        </SyntaxHighlighter>
-      </CodeContainer>
-    ) : (
-      <InlineCode className={className} {...props}>
-        {children}
-      </InlineCode>
-    );
-  },
+  code: MarkdownCode,
   p: ({ children }) => (
     <Typography
       sx={{
@@ -170,7 +197,7 @@ const componentsMap = {
       {children}
     </Typography>
   ),
-  ul: ({ children, className, ...props }) => {
+  ul: ({ children, className, ...props }: UnorderedListProps) => {
     // using checkboxes instead of bullets
     const isTaskList = className?.includes("contains-task-list");
 
@@ -195,7 +222,7 @@ const componentsMap = {
       </Box>
     );
   },
-  ol: ({ children, className, ...props }) => {
+  ol: ({ children, className, ...props }: OrderedListProps) => {
     // using checkboxes instead of numbers
     const isTaskList = className?.includes("contains-task-list");
 
@@ -220,7 +247,7 @@ const componentsMap = {
       </Box>
     );
   },
-  li: ({ children, className, ...props }) => {
+  li: ({ children, className, ...props }: LiProps) => {
     // using checkboxes instead of bullets
     const isTaskItem = className?.includes("task-list-item");
 

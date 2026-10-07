@@ -323,7 +323,7 @@ export const TooltipInfo = React.memo(() => {
 
   useLayoutEffect(() => {
     if (!isTooltipLocked) {
-      return;
+      return undefined;
     }
 
     // set esc handler to unlock tooltip
@@ -340,7 +340,7 @@ export const TooltipInfo = React.memo(() => {
     return () => {
       document.removeEventListener("keyup", unlockTooltip);
     };
-  }, [isTooltipLocked]);
+  }, [isTooltipLocked, setIsTooltipLocked]);
 
   useLayoutEffect(() => {
     const lockTooltip = (e: KeyboardEvent) => {
@@ -354,7 +354,7 @@ export const TooltipInfo = React.memo(() => {
     return () => {
       document.removeEventListener("keydown", lockTooltip);
     };
-  }, []);
+  }, [setIsTooltipLocked]);
 
   const tooltipDiv = useMemo(() => {
     if (!detail) {
@@ -614,7 +614,7 @@ const useTarget = (field, target) => {
 };
 
 const AttrInfo = ({ label, field, labelType, children = null }) => {
-  let entries = Object.entries(label).filter(
+  const entries = Object.entries(label).filter(
     ([k]) => "tags" !== k && !k.startsWith("_"),
   );
   if (!entries || !entries.length) {

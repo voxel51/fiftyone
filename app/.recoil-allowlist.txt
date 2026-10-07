@@ -67,7 +67,6 @@ packages/core/src/components/ColorModal/controls/ColorAttribute.tsx
 packages/core/src/components/ColorModal/controls/IdxColorList.tsx
 packages/core/src/components/ColorModal/controls/ManualColorScaleList.tsx
 packages/core/src/components/ColorModal/controls/ModeControl.tsx
-packages/core/src/components/ColorModal/controls/OpacityAttribute.tsx
 packages/core/src/components/ColorModal/controls/RefreshColor.tsx
 packages/core/src/components/ColorModal/controls/ValueColorList.tsx
 packages/core/src/components/ColorModal/FieldSetting.tsx
@@ -136,7 +135,6 @@ packages/core/src/components/Modal/Actions/GroupVisibility/GroupVisibility.tsx
 packages/core/src/components/Modal/Actions/HiddenLabels/index.tsx
 packages/core/src/components/Modal/Actions/index.tsx
 packages/core/src/components/Modal/Actions/ToggleFullscreen/index.tsx
-packages/core/src/components/Modal/Bars.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/carousel/DynamicGroupCarousel.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/carousel/DynamicGroupsFlashlightWrapper.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/carousel/useSetDynamicGroupSample.tsx
@@ -302,8 +300,6 @@ packages/looker-3d/src/frustum/hooks/internal/useFetchFrustumParameters.ts
 packages/looker-3d/src/frustum/hooks/public/useFrustumActions.ts
 packages/looker-3d/src/frustum/hooks/public/useFrustums.ts
 packages/looker-3d/src/frustum/state.ts
-packages/looker-3d/src/hooks/use3dAnnotationEventHandlers.ts
-packages/looker-3d/src/hooks/use-3d-annotation.ts
 packages/looker-3d/src/hooks/use-camera-views.ts
 packages/looker-3d/src/hooks/use-fetch-sample-static-transform.ts
 packages/looker-3d/src/hooks/use-fo3d-camera-controls-config.ts

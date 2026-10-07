@@ -131,6 +131,7 @@ const InteractiveSidebar = ({
   // releases rows pruned during render, which the ref callback skips).
   useEffect(() => {
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- dispose whatever items are live at unmount
       disposeInteractiveItems(controller, items.current);
       observer.disconnect();
     };
@@ -182,7 +183,7 @@ const InteractiveSidebar = ({
     [animate],
   );
 
-  useEventHandler(document.body, "mousemove", ({ clientY }) => {
+  useEventHandler(document.body, "mousemove", ({ clientY }: MouseEvent) => {
     if (!down.current) return;
 
     requestAnimationFrame(() => {
@@ -245,7 +246,8 @@ const InteractiveSidebar = ({
             group = entry.name;
           }
 
-          const { shadow, ...springs } = items.current[key].controller.springs;
+          const { shadow: _shadow, ...springs } =
+            items.current[key].controller.springs;
 
           const { children } = render(
             key,

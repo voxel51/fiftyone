@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { AnimationMixer, type Quaternion, type Vector3 } from "three";
 import { SkeletonUtils } from "three-stdlib";
-import type { GltfAsset } from "../../hooks";
+import type { GltfAsset } from "../render-types";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";

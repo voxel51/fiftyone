@@ -33,7 +33,7 @@ interface ToastProps {
     textAlign?: string;
   };
   onHandleClose?: (
-    event: React.SyntheticEvent<any> | Event,
+    event: React.SyntheticEvent | Event,
     reason?: string,
   ) => void;
 }
@@ -49,7 +49,7 @@ const Toast: React.FC<ToastProps> = ({
   const [open, setOpen] = useState(true); // do not use a global recoil atom for this state
 
   const handleClose = (
-    event: React.SyntheticEvent<any> | Event,
+    event: React.SyntheticEvent | Event,
     reason?: string,
   ) => {
     if (reason === "clickaway") {

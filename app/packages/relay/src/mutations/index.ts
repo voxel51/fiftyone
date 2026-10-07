@@ -16,6 +16,24 @@ export * from "./__generated__/setSidebarGroupsMutation.graphql";
 export * from "./__generated__/setSpacesMutation.graphql";
 export * from "./__generated__/setViewMutation.graphql";
 export * from "./__generated__/updateSavedViewMutation.graphql";
+
+// Generated artifacts redeclare shared GraphQL types; an ambiguous `export *`
+// drops the name, so pick one source explicitly.
+export type {
+  ColorSchemeInput,
+  ColorscaleInput,
+  ColorscaleListInput,
+  CustomizeColorInput,
+  DefaultColorscaleInput,
+  LabelTagColorInput,
+  MaskColorInput,
+  TemporalTagColorInput,
+  ValueColorInput,
+} from "./__generated__/setColorSchemeMutation.graphql";
+export type {
+  SelectedLabel,
+  StateForm,
+} from "./__generated__/createSavedViewMutation.graphql";
 export { default as createSavedView } from "./createSavedView";
 export { default as deleteSavedView } from "./deleteSavedView";
 export { default as searchSelectFields } from "./searchSelectFields";

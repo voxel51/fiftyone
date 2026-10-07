@@ -14,6 +14,7 @@ import {
 } from "@fiftyone/state";
 import {
   useSchemaManager,
+  type AnnotationSchema,
   type UpdateSchemaRequest,
 } from "../useSchemaManager";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -495,7 +496,7 @@ export const useFullSchemaEditor = () => {
       setDraftJson(null);
       setErrors([]);
     };
-  }, []);
+  }, [setDraftJson, setErrors]);
 
   const originalJson = useMemo(
     () => JSON.stringify(schemasData, null, 2),
@@ -531,12 +532,12 @@ export const useFullSchemaEditor = () => {
         }
 
         // Extract label_schema from each field for validation
-        const labelSchemas: Record<string, unknown> = {};
+        const labelSchemas: AnnotationSchema = {};
         for (const [field, data] of Object.entries(parsed)) {
           if (data && typeof data === "object" && "label_schema" in data) {
             labelSchemas[field] = (
               data as {
-                label_schema: unknown;
+                label_schema: AnnotationSchema[string];
               }
             ).label_schema;
           }
@@ -705,7 +706,7 @@ export const useSchemaManagerCleanup = () => {
       // Reset field editing state
       setCurrentFieldAtom(null);
     };
-  }, []);
+  }, [setCurrentFieldAtom]);
 };
 
 /**
@@ -721,5 +722,5 @@ export const useSelectionCleanup = () => {
       setSelectedActive(new Set());
       setSelectedHidden(new Set());
     };
-  }, []);
+  }, [setSelectedActive, setSelectedHidden]);
 };

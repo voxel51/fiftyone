@@ -70,7 +70,7 @@ export function typecheckRegisterComponent() {
   });
 }
 
-export function typecheckUseActivePlugins() {
+export function useTypecheckActivePlugins() {
   const sampleRenderers = useActivePlugins(
     PluginComponentType.SampleRenderer,
     {},

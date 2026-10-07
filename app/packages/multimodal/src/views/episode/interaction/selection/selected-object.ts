@@ -44,7 +44,7 @@ export interface SelectedImageObject {
 
 export type SelectedObject = SelectedSceneObject | SelectedImageObject;
 
-export const selectedObjectAtom = atom<SelectedObject | null>(null);
+export const selectedObjectAtom = atom(null as SelectedObject | null);
 
 export function useSelectedObject(): SelectedObject | null {
   return useAtomValue(selectedObjectAtom);

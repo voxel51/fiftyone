@@ -105,11 +105,9 @@ const Colorscale: React.FC = () => {
   const [input, setInput] = React.useState(colorscaleValues?.name ?? "");
   const [tab, setTab] = React.useState(
     state.useFieldSetting
-      ? Boolean(
-          (setting?.name || setting?.name !== "") &&
-          setting?.list &&
-          setting?.list.length > 0,
-        )
+      ? (setting?.name || setting?.name !== "") &&
+        setting?.list &&
+        setting?.list.length > 0
         ? "list"
         : "name"
       : null,
@@ -139,18 +137,13 @@ const Colorscale: React.FC = () => {
         }, 1000);
       }
     },
-    [colorscaleValues],
+    [colorscaleValues, setSetting],
   );
 
   const shouldShowAddButton = Boolean(
     colorscaleValues?.list &&
     colorscaleValues?.list?.length &&
     colorscaleValues?.list?.length > 0,
-  );
-
-  const index = useMemo(
-    () => colorScheme.colorscales?.findIndex((s) => s.path == activePath),
-    [activePath],
   );
 
   const onSyncUpdate = useCallback(
@@ -182,7 +175,7 @@ const Colorscale: React.FC = () => {
         }
       }
     },
-    [index, setColorScheme, activePath],
+    [colorScheme, setColorScheme, activePath],
   );
 
   useEffect(() => {
@@ -200,6 +193,7 @@ const Colorscale: React.FC = () => {
         list: [],
       }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed the setting only when the tab changes; defaultValue is rebuilt (with random colors) every render
   }, [tab]);
 
   useEffect(() => {
@@ -248,7 +242,7 @@ const Colorscale: React.FC = () => {
                 <a
                   href={NAME_COLORSCALE}
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   title="what is named colorscale"
                 >
                   <InfoOutlinedIcon

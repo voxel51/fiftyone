@@ -19,7 +19,7 @@ import type {
   FoMeshPhongMaterialProps,
   FoScene,
   FoSceneNode,
-} from "../hooks";
+} from "./render-types";
 import type { SavedCameraState } from "../types";
 
 export const getCameraPositionKey = (datasetName?: string) =>

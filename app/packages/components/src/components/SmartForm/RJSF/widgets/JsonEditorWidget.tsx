@@ -23,7 +23,9 @@ export default function JsonEditorWidget(props: WidgetProps) {
   const [localValue, setLocalValue] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const height = uiSchema?.["ui:options"]?.height ?? DEFAULT_HEIGHT;
+  // ui:options.height is the JsonEditorView's height (px)
+  const height =
+    (uiSchema?.["ui:options"]?.height as number | undefined) ?? DEFAULT_HEIGHT;
 
   useEffect(() => {
     try {

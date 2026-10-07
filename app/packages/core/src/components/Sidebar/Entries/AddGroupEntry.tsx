@@ -56,7 +56,7 @@ const AddGroup = () => {
         onChange={(e) => setValue(e.target.value.toLocaleLowerCase())}
         onKeyDown={(e) => {
           if (e.key === "Enter" && value.length) {
-            addGroup(e.target.value.toLowerCase());
+            addGroup((e.target as HTMLInputElement).value.toLowerCase());
             setValue("");
           }
         }}

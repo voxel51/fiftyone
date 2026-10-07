@@ -44,7 +44,8 @@ export const useDynamicGroupSamples = () => {
           after: cursor ? String(cursor) : null,
           dataset,
           filter,
-          dynamicGroup,
+          // a JSON scalar (the group's field value), typed object by relay
+          dynamicGroup: dynamicGroup as unknown as object,
           view,
         },
       );

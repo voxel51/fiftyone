@@ -1,4 +1,10 @@
-import { IconButton, MenuItem, Select, Tooltip } from "@mui/material";
+import {
+  IconButton,
+  MenuItem,
+  Select,
+  Tooltip,
+  type SelectProps,
+} from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AutocompleteView } from ".";
 import { useKey } from "../hooks";
@@ -11,13 +17,38 @@ import FieldWrapper from "./FieldWrapper";
 
 // if we want to support more icons in the future, add them here
 const iconImports: {
-  [key: string]: () => Promise<{ default: React.ComponentType<any> }>;
+  [key: string]: () => Promise<{ default: React.ComponentType }>;
 } = {
   MoreVertIcon: () => import("@mui/icons-material/MoreVert"),
   SettingsIcon: () => import("@mui/icons-material/Settings"),
 };
 
 const MULTI_SELECT_TYPES = ["string", "array"];
+
+type DropdownChoice = {
+  value: string;
+  label: string;
+  readOnly?: boolean;
+  [key: string]: unknown;
+};
+
+type DropdownViewOptions = {
+  choices: DropdownChoice[];
+  multiple?: boolean;
+  placeholder?: string;
+  separator?: string;
+  readOnly?: boolean;
+  compact?: boolean;
+  label?: string;
+  description?: string;
+  color?: FieldsetOptions["color"];
+  variant?: FieldsetOptions["variant"];
+  icon?: string;
+  addOnClickToMenuItems?: boolean;
+  tooltipTitle?: string;
+};
+
+type FieldsetOptions = Parameters<typeof getFieldSx>[0];
 
 export default function DropdownView(props: ViewPropsType) {
   const { onChange, schema, path, data } = props;
@@ -36,13 +67,13 @@ export default function DropdownView(props: ViewPropsType) {
     icon,
     addOnClickToMenuItems = false,
     tooltipTitle = "",
-  } = view;
+  } = view as DropdownViewOptions;
   const [IconComponent, setIconComponent] =
-    useState<React.ComponentType<any> | null>(null);
+    useState<React.ComponentType | null>(null);
   const [key, setUserChanged] = useKey(path, schema, data, true);
 
   const handleOnChange = useCallback(
-    (value: any) => {
+    (value: unknown) => {
       const computedValue =
         Array.isArray(value) && type !== "array"
           ? value.join(separator)
@@ -62,25 +93,11 @@ export default function DropdownView(props: ViewPropsType) {
     }
   }, [icon]);
 
-  if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
-    return (
-      <AlertView
-        schema={{
-          view: {
-            label: `Unsupported type "${type}" for multi-select`,
-            description:
-              "Multi-select is supported for types " +
-              MULTI_SELECT_TYPES.join(", "),
-            severity: "error",
-          },
-        }}
-      />
-    );
-
   const isArrayType = type === "array";
   const multiple = multiSelect || isArrayType;
   const fallbackDefaultValue = multiple ? [] : "";
-  const rawDefaultValue = data ?? fallbackDefaultValue;
+  // choice values: a string, or a list of them for multi-select
+  const rawDefaultValue = (data ?? fallbackDefaultValue) as string | string[];
   const computedDefaultValue =
     multiple && !Array.isArray(rawDefaultValue)
       ? rawDefaultValue.toString().split(separator)
@@ -102,6 +119,22 @@ export default function DropdownView(props: ViewPropsType) {
       !(Array.isArray(value) && value.length === 0)
     );
   }, [computedDefaultValue]);
+
+  // after every hook, so the hook order doesn't depend on the schema
+  if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
+    return (
+      <AlertView
+        schema={{
+          view: {
+            label: `Unsupported type "${type}" for multi-select`,
+            description:
+              "Multi-select is supported for types " +
+              MULTI_SELECT_TYPES.join(", "),
+            severity: "error",
+          },
+        }}
+      />
+    );
 
   const getIconOnlyStyles = () => ({
     "&.MuiInputBase-root.MuiOutlinedInput-root.MuiInputBase-colorPrimary": {
@@ -144,16 +177,14 @@ export default function DropdownView(props: ViewPropsType) {
   };
 
   // Now, condense the code like this:
-  const { MenuProps = {}, ...selectProps } = getComponentProps(
-    props,
-    "select",
-    {
-      sx: {
-        ...getDropdownStyles(icon, selected),
-        ...getFieldSx({ color, variant }),
-      },
+  const { MenuProps = {}, ...selectProps } = getComponentProps<
+    Pick<SelectProps, "sx" | "MenuProps">
+  >(props, "select", {
+    sx: {
+      ...getDropdownStyles(icon, selected),
+      ...getFieldSx({ color, variant }),
     },
-  );
+  });
 
   const renderIcon = () => {
     if (!IconComponent) return null;
@@ -192,7 +223,7 @@ export default function DropdownView(props: ViewPropsType) {
       fullWidth={!icon}
       displayEmpty
       title={compact ? description : undefined}
-      renderValue={(value) => {
+      renderValue={(value: string | string[]) => {
         if (icon) {
           return renderIcon();
         }
@@ -203,10 +234,13 @@ export default function DropdownView(props: ViewPropsType) {
           }
           return placeholder;
         }
+        // multiple selects hold an array, single selects a string
         if (multiple) {
-          return value.map((item) => choiceLabels[item] || item).join(", ");
+          return (value as string[])
+            .map((item) => choiceLabels[item] || item)
+            .join(", ");
         }
-        return choiceLabels[value] || value;
+        return choiceLabels[value as string] || value;
       }}
       onChange={(e) => {
         handleOnChange(e.target.value);
@@ -235,7 +269,7 @@ export default function DropdownView(props: ViewPropsType) {
           }}
           {...getComponentProps(props, "optionContainer")}
         >
-          <ChoiceMenuItemBody {...choice} {...props} />
+          <ChoiceMenuItemBody label={choice.label} {...choice} {...props} />
         </MenuItem>
       ))}
     </Select>

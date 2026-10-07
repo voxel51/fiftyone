@@ -39,6 +39,7 @@ export function useCurrentFiles(defaultPath) {
   const { limitedFiles, fileCount } = limitFiles(currentFiles, limit);
   const hasNextPage = fileCount >= limit;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- list files when the path changes, not when the executor re-renders
   useEffect(refresh, [currentPath]);
 
   return {
@@ -68,6 +69,7 @@ export function useAvailableFileSystems() {
     executor.execute({ list_filesystems: true });
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- list filesystems once on mount
   useEffect(refresh, []);
 
   return {

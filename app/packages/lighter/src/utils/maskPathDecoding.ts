@@ -79,7 +79,9 @@ const bindWorker = (slot: Slot, worker: Worker): void => {
     }
     slot.job = null;
 
-    if (event.data.ok) {
+    // Compare the discriminant explicitly: truthiness does not narrow the
+    // union without strictNullChecks.
+    if (event.data.ok === true) {
       job.resolve(event.data.mask);
     } else {
       console.error("[decodeMaskPath] worker decode failed:", event.data.error);

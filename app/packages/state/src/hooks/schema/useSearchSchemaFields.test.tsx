@@ -13,7 +13,7 @@ const TEST_DS = {
   mediaType: "image",
 };
 
-const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+const Root: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (
     <RecoilRoot
       initializeState={({ set }) => {

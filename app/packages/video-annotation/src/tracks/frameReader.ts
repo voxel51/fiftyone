@@ -55,7 +55,7 @@ export const makeFrameReader = (
     });
 
   const content = (label: LabelData): Partial<LabelData> => {
-    const { _id, instance, ...rest } = label;
+    const { _id, instance: _instance, ...rest } = label;
     return rest;
   };
 

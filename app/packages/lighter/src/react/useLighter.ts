@@ -4,7 +4,7 @@
 
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import type { TransformOptions } from "../commands/TransformOverlayCommand";
+import type { TransformOverlayOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
 import { lighterSceneAtom, overlayFactory } from "../index";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
@@ -33,24 +33,23 @@ export const useLighter = () => {
 
   // Cleanup registered callbacks when scene changes or component unmounts
   useEffect(() => {
+    // the set itself is never replaced, so capturing it here is equivalent
+    const callbacks = registeredCallbacks.current;
     return () => {
       // Unregister all callbacks when component unmounts or scene changes
-      registeredCallbacks.current.forEach((unregister) => unregister());
-      registeredCallbacks.current.clear();
+      callbacks.forEach((unregister) => unregister());
+      callbacks.clear();
     };
   }, [scene]);
 
-  const addOverlay = useCallback(
-    (overlay: BaseOverlay, withUndo: boolean = false) => {
-      if (sceneRef.current) {
-        sceneRef.current.addOverlay(overlay, withUndo);
-      }
-    },
-    [],
-  );
+  const addOverlay = useCallback((overlay: BaseOverlay, withUndo = false) => {
+    if (sceneRef.current) {
+      sceneRef.current.addOverlay(overlay, withUndo);
+    }
+  }, []);
 
   const removeOverlay = useCallback(
-    (id: string, withUndo: boolean = false, lifecycle: boolean = false) => {
+    (id: string, withUndo = false, lifecycle = false) => {
       if (sceneRef.current) {
         sceneRef.current.removeOverlay(id, withUndo, lifecycle);
       }
@@ -66,7 +65,7 @@ export const useLighter = () => {
   }, []);
 
   const transformOverlay = useCallback(
-    async (id: string, options: TransformOptions) => {
+    async (id: string, options: TransformOverlayOptions) => {
       if (sceneRef.current) {
         return await sceneRef.current.transformOverlay(id, options);
       }

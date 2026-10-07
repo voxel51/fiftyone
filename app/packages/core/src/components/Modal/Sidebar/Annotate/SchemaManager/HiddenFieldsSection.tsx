@@ -174,7 +174,8 @@ const HiddenFieldsSection = () => {
         <Tooltip
           content={
             <Text>
-              Fields currently hidden and not available in the "Annotate" tab
+              Fields currently hidden and not available in the
+              &quot;Annotate&quot; tab
             </Text>
           }
           anchor={Anchor.Top}

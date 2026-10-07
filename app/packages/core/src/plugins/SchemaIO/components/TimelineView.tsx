@@ -9,14 +9,9 @@ export default function TimelineView(props: ViewPropsType) {
   const { view = {} } = schema;
   const { timeline_name, loop, total_frames } = view;
 
-  const providedConfig = {
-    loop,
-    totalFrames: total_frames,
-  };
-
   const finalConfig = useMemo(
-    () => ({ ...DEFAULT_CONFIG, ...providedConfig }),
-    [providedConfig],
+    () => ({ ...DEFAULT_CONFIG, loop, totalFrames: total_frames }),
+    [loop, total_frames],
   );
   if (!timeline_name) {
     throw new Error("Timeline name is required");

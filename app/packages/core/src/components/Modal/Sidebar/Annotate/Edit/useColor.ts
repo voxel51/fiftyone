@@ -1,11 +1,13 @@
 import { useTheme } from "@fiftyone/components";
-import type { BaseOverlay } from "@fiftyone/lighter";
-import { getOverlayColor } from "@fiftyone/lighter";
+import { getLabelColorFromContext } from "@fiftyone/lighter";
 import { useMemo } from "react";
 import useColorMappingContext from "../../../Lighter/useColorMappingContext";
 import { useAnnotationContext } from "./useAnnotationContext";
 
-export default function useColor(overlay?: BaseOverlay) {
+// any overlay with a field and label: lighter's 2D overlays or the 3D ones
+type ColorableOverlay = { field: string; label: unknown };
+
+export default function useColor(overlay?: ColorableOverlay) {
   const coloring = useColorMappingContext();
   const { selected } = useAnnotationContext();
   const refresh = selected?.label;
@@ -13,6 +15,9 @@ export default function useColor(overlay?: BaseOverlay) {
 
   return useMemo(() => {
     refresh;
-    return overlay ? getOverlayColor(overlay, coloring) : brand;
+    // what lighter's getOverlayColor does, without requiring a BaseOverlay
+    return overlay
+      ? getLabelColorFromContext(overlay.field, overlay.label, coloring)
+      : brand;
   }, [brand, coloring, refresh, overlay]);
 }

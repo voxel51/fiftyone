@@ -31,7 +31,7 @@ import {
 } from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
-import { shortcutToHelpItems } from "./utils";
+import { type PanelsEventDetail, shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
   sample: fos.ModalSample;
@@ -77,6 +77,7 @@ export const ImaVidLookerReact = React.memo(
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- recreate the looker only on reset or media change; sample updates go through updateSample below
       [reset, createLooker, selectedMediaField],
     ) as ImaVidLooker;
 
@@ -88,20 +89,22 @@ export const ImaVidLookerReact = React.memo(
       if (looker instanceof ImaVidLooker) {
         subscribeToImaVidStateChanges();
       }
-    }, [looker, subscribeToImaVidStateChanges]);
+    }, [looker, setModalLooker, subscribeToImaVidStateChanges]);
 
     useEffect(() => {
       if (looker) {
         setActiveLookerRef(looker);
       }
-    }, [looker]);
+    }, [looker, setActiveLookerRef]);
 
     useEffect(() => {
       !initialRef.current && looker.updateOptions(lookerOptions);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- a new looker is created with the current options
     }, [lookerOptions]);
 
     useEffect(() => {
       !initialRef.current && looker.updateSample(sample);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- a new looker is created with the current sample
     }, [sample, colorScheme]);
 
     useEffect(() => {
@@ -119,12 +122,20 @@ export const ImaVidLookerReact = React.memo(
     const jsonPanel = fos.useJSONPanel();
     const helpPanel = fos.useHelpPanel();
 
-    useEventHandler(looker, "select", useOnSelectLabel());
-    useEventHandler(looker, "error", (event) => handleError(event.detail));
+    useEventHandler<CustomEvent<fos.SelectEvent["detail"]>>(
+      looker,
+      "select",
+      useOnSelectLabel(),
+    );
+    useEventHandler(looker, "error", (event: CustomEvent<Error>) =>
+      handleError(event.detail),
+    );
     useEventHandler(
       looker,
       "panels",
-      async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
+      async ({
+        detail: { showJSON, showHelp, SHORTCUTS },
+      }: CustomEvent<PanelsEventDetail>) => {
         if (showJSON) {
           const imaVidFrameSample = (looker as ImaVidLooker).thisFrameSample;
           jsonPanel[showJSON](imaVidFrameSample);
@@ -223,12 +234,16 @@ export const ImaVidLookerReact = React.memo(
           );
         });
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRange is subscribed to the timeline once; it reads the looker through its ref
       [],
     );
 
-    const renderFrame = React.useCallback((frameNumber: number) => {
-      imaVidLookerRef.current?.element.drawFrameNoAnimation(frameNumber);
-    }, []);
+    const renderFrame = React.useCallback(
+      (frameNumber: number) => {
+        imaVidLookerRef.current?.element.drawFrameNoAnimation(frameNumber);
+      },
+      [imaVidLookerRef],
+    );
 
     const { getName } = useDefaultTimelineNameImperative();
     const timelineName = React.useMemo(() => getName(), [getName]);
@@ -237,6 +252,7 @@ export const ImaVidLookerReact = React.memo(
 
     const totalFrameCountRef = useRef<number | null>(null);
 
+    const loop = (looker as ImaVidLooker).options.loop;
     const timelineCreationConfig = useMemo(() => {
       // todo: not working because it's resolved in a promise later
       // maybe emit event to update the total frames
@@ -245,17 +261,17 @@ export const ImaVidLookerReact = React.memo(
       }
 
       return {
-        loop: (looker as ImaVidLooker).options.loop,
+        loop,
         targetFrameRate: dynamicGroupsTargetFrameRate,
         totalFrames: totalFrameCount,
       } as FoTimelineConfig;
-    }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- the frame rate is read when the timeline config is first resolved (possible stale value, left as-is)
+    }, [totalFrameCount, loop]);
 
     const readyWhen = useCallback(async () => {
       return new Promise<void>((resolve) => {
         // hack: wait for total frame count to be resolved
-        let intervalId;
-        intervalId = setInterval(() => {
+        const intervalId = setInterval(() => {
           if (totalFrameCountRef.current) {
             clearInterval(intervalId);
             resolve();
@@ -266,7 +282,7 @@ export const ImaVidLookerReact = React.memo(
 
     const onAnimationStutter = useCallback(() => {
       imaVidLookerRef.current?.element.checkFetchBufferManager();
-    }, []);
+    }, [imaVidLookerRef]);
 
     const {
       isTimelineInitialized,
@@ -322,6 +338,7 @@ export const ImaVidLookerReact = React.memo(
           },
         });
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- subscribe and register the timeline callbacks once per initialization; re-running would stack duplicate handlers
     }, [isTimelineInitialized, loadRange, renderFrame, subscribe]);
 
     /**
@@ -330,7 +347,7 @@ export const ImaVidLookerReact = React.memo(
     useEffect(() => {
       // hack: poll every 10ms for total frame count
       // replace with event listener or callback
-      let intervalId = setInterval(() => {
+      const intervalId = setInterval(() => {
         const totalFrameCount =
           imaVidLookerRef.current.frameStoreController.totalFrameCount;
         if (totalFrameCount) {
@@ -340,7 +357,7 @@ export const ImaVidLookerReact = React.memo(
       }, 10);
 
       return () => clearInterval(intervalId);
-    }, [looker]);
+    }, [imaVidLookerRef, looker]);
 
     useImavidModalSelectiveRendering(id, looker);
 

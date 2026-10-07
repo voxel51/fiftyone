@@ -89,7 +89,7 @@ export class ExpandAndScrollToFieldInModalCommand extends Command<void> {
  * @param path - The field path to expand
  * @param modal - Whether to target modal sidebar (true) or grid sidebar (false, default)
  */
-export const requestExpandField = (path: string, modal: boolean = false) => {
+export const requestExpandField = (path: string, modal = false) => {
   const bus = getCommandBus();
   const Command = modal ? ExpandFieldInModalCommand : ExpandFieldInGridCommand;
   return bus.execute(new Command(path));
@@ -102,7 +102,7 @@ export const requestExpandField = (path: string, modal: boolean = false) => {
  * @param path - The field path to scroll to
  * @param modal - Whether to target modal sidebar (true) or grid sidebar (false, default)
  */
-export const requestScrollToField = (path: string, modal: boolean = false) => {
+export const requestScrollToField = (path: string, modal = false) => {
   const bus = getCommandBus();
   const Command = modal
     ? ScrollToFieldInModalCommand
@@ -117,7 +117,7 @@ export const requestScrollToField = (path: string, modal: boolean = false) => {
  * @param path - The field path to collapse
  * @param modal - Whether to target modal sidebar (true) or grid sidebar (false, default)
  */
-export const requestCollapseField = (path: string, modal: boolean = false) => {
+export const requestCollapseField = (path: string, modal = false) => {
   const bus = getCommandBus();
   const Command = modal
     ? CollapseFieldInModalCommand
@@ -132,10 +132,7 @@ export const requestCollapseField = (path: string, modal: boolean = false) => {
  * @param path - The field path to expand and scroll to
  * @param modal - Whether to target modal sidebar (true) or grid sidebar (false, default)
  */
-export const requestExpandAndScrollToField = (
-  path: string,
-  modal: boolean = false,
-) => {
+export const requestExpandAndScrollToField = (path: string, modal = false) => {
   const bus = getCommandBus();
   const Command = modal
     ? ExpandAndScrollToFieldInModalCommand

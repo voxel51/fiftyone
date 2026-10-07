@@ -4,7 +4,7 @@ import type {
   AnnotationAgentLifecycleListener,
   AnnotationAgentLifecycleStatus,
   AnnotationContext,
-  InferenceResult,
+  AgentInferenceResult,
   ModelMetadata,
   SegmentationInferenceResult,
   SyncInferenceResult,
@@ -64,7 +64,7 @@ export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationI
 
   async infer(
     context: AnnotationContext,
-  ): Promise<InferenceResult<SegmentationInferenceResult>> {
+  ): Promise<AgentInferenceResult<SegmentationInferenceResult>> {
     // Either a decoded-frame source (video) or a media URL (image) is required.
     if (!context.getMediaBitmap && !context.sampleDescriptor.mediaUrl) {
       throw new Error("Missing media url");
@@ -104,7 +104,7 @@ export class SAM2BrowserAnnotationAgent implements AnnotationAgent<SegmentationI
             },
           ],
         },
-      } as SyncInferenceResult<SegmentationInferenceResult>;
+      } satisfies SyncInferenceResult<SegmentationInferenceResult>;
     } catch (err) {
       // Respect a terminal error already set by the provider's onError; for
       // benign rejections (e.g. abort) return to idle so the next call can

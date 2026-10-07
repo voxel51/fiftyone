@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 
+type CreateDefaultLooker = Parameters<typeof useGridCustomRendererItem>[0];
+type CreateItemArgs = Parameters<
+  ReturnType<typeof useGridCustomRendererItem>["createItem"]
+>;
+
 // Mutated per-test to control what the mocked `useRecoilCallback`-derived
 // selection lookup reports, without depending on a real Recoil store.
 let currentSelectedSampleIds = new Set<string>();
@@ -130,7 +135,7 @@ const sampleResult = {
     id: "sample-id",
     filepath: "/tmp/file.pdf",
   },
-} as any;
+} as unknown as CreateItemArgs[0];
 
 describe("useGridCustomRendererItem", () => {
   beforeEach(() => {
@@ -160,14 +165,14 @@ describe("useGridCustomRendererItem", () => {
         addEventListener: vi.fn(),
         attach: vi.fn(),
       })),
-    } as any;
+    } as unknown as CreateDefaultLooker;
     const { result } = renderHook(() =>
       useGridCustomRendererItem(createDefaultLooker),
     );
 
     const looker = result.current.createItem(
       sampleResult,
-      { description: "sample-id" } as any,
+      { description: "sample-id" } as unknown as CreateItemArgs[1],
       12,
     );
 
@@ -178,14 +183,16 @@ describe("useGridCustomRendererItem", () => {
 
   it("wires a synchronous selection lookup into the created item that reflects selectedSamples", async () => {
     currentSelectedSampleIds = new Set(["sample-id"]);
-    const createDefaultLooker = { current: vi.fn() } as any;
+    const createDefaultLooker = {
+      current: vi.fn(),
+    } as unknown as CreateDefaultLooker;
     const { result } = renderHook(() =>
       useGridCustomRendererItem(createDefaultLooker),
     );
 
     const looker = result.current.createItem(
       sampleResult,
-      { description: "sample-id" } as any,
+      { description: "sample-id" } as unknown as CreateItemArgs[1],
       12,
     ) as GridCustomRendererItem;
     const host = document.createElement("div");
@@ -208,11 +215,11 @@ describe("useGridCustomRendererItem", () => {
     };
     const createDefaultLooker = {
       current: vi.fn(() => fallbackLooker),
-    } as any;
+    } as unknown as CreateDefaultLooker;
     const { result } = renderHook(() =>
       useGridCustomRendererItem(createDefaultLooker),
     );
-    const symbol = { description: "sample-id" } as any;
+    const symbol = { description: "sample-id" } as unknown as CreateItemArgs[1];
 
     getMatchingSampleRenderer.mockReturnValue(null);
 
@@ -236,7 +243,7 @@ describe("useGridCustomRendererItem", () => {
     };
     const createDefaultLooker = {
       current: vi.fn(() => fallbackLooker),
-    } as any;
+    } as unknown as CreateDefaultLooker;
     useGridCustomRendererFailover.mockReturnValue({
       dismissBanner: vi.fn(),
       failure: {
@@ -251,7 +258,7 @@ describe("useGridCustomRendererItem", () => {
     const { result } = renderHook(() =>
       useGridCustomRendererItem(createDefaultLooker),
     );
-    const symbol = { description: "sample-id" } as any;
+    const symbol = { description: "sample-id" } as unknown as CreateItemArgs[1];
 
     const looker = result.current.createItem(sampleResult, symbol, 12);
 

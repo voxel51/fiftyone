@@ -159,7 +159,10 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
-  override applyLabel(label: PolylineLabel): void {
+  // The signature takes the base label type to satisfy the override; a
+  // polyline overlay is only ever handed polyline labels.
+  override applyLabel(incoming: PolylineLabel | KeypointLabel): void {
+    const label = incoming as PolylineLabel;
     // Apply polyline-specific state (`closed`/`filled`/points) before the base
     // label set so the overlay's derived getters are current.
     const { flatPoints, connections, segmentBoundaries } =
@@ -246,11 +249,13 @@ export class PolylineOverlay extends KeypointOverlay {
    * to target a specific segment.
    *
    * @param worldPoint Absolute (world-space) coordinates of the new point.
-   * @param variant Optional variant key used to determine render style.
-   * @param id Optional point id; one is generated when omitted.
+   * @param options Forwarded to {@link KeypointOverlay.addPoint}.
    * @returns The id of the new point.
    */
-  override addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  override addPoint(
+    worldPoint: Point,
+    options?: Parameters<KeypointOverlay["addPoint"]>[1],
+  ): string {
     // Bump boundaries BEFORE super, since `super.addPoint` synchronously
     // dispatches `lighter:keypoint-point-added`.
     if (this.segmentBoundaries.length === 0) {
@@ -259,7 +264,7 @@ export class PolylineOverlay extends KeypointOverlay {
       this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
     }
 
-    const newId = super.addPoint(worldPoint, variant, id);
+    const newId = super.addPoint(worldPoint, options);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 

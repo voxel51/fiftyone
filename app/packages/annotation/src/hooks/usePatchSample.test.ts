@@ -23,7 +23,7 @@ const DATASET_ID = "dataset-1";
 const VERSION_TOKEN = "tok-abc";
 const DELTAS: JSONDeltas = [
   { path: "/label", value: "cat", op: "replace" },
-] as any;
+] as unknown as JSONDeltas;
 
 function makeArgs(overrides = {}) {
   return {

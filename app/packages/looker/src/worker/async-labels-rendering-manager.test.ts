@@ -23,7 +23,11 @@ const sample1 = { a: 1, b: 2, c: 3 };
 const { DummyWorker } = vi.hoisted(() => {
   return {
     DummyWorker: class DummyWorker extends EventTarget {
-      postMessage(args: any) {
+      postMessage(args: {
+        sample: Record<string, unknown>;
+        coloring?: unknown;
+        uuid?: string;
+      }) {
         setTimeout(() => {
           for (const [key, value] of Object.entries(args.sample)) {
             args.sample[key] = `transformed-${value}`;
@@ -42,7 +46,7 @@ const { DummyWorker } = vi.hoisted(() => {
       addEventListener(
         type: string,
         listener: EventListenerOrEventListenerObject,
-        options?: any,
+        options?: boolean | AddEventListenerOptions,
       ): void {
         super.addEventListener(type, listener, options);
       }
@@ -50,7 +54,7 @@ const { DummyWorker } = vi.hoisted(() => {
       removeEventListener(
         type: string,
         listener: EventListenerOrEventListenerObject,
-        options?: any,
+        options?: boolean | EventListenerOptions,
       ): void {
         super.removeEventListener(type, listener, options);
       }

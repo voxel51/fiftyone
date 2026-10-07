@@ -7,7 +7,7 @@ interface QueueItem {
     retryOptions?: RetryOptions;
   };
   resolve: (value: Response | PromiseLike<Response>) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: unknown) => void;
 }
 
 // note: arbitrary number that seems to work well

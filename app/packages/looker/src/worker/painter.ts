@@ -22,7 +22,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     _colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[],
@@ -150,7 +150,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     labels,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[],
@@ -181,7 +181,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     colorscale: Colorscale,
     _selectedLabelTags: string[],
     _labelTagColors: LabelTagColor,
@@ -259,7 +259,7 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring,
-    customizeColorSetting: CustomizeColor[],
+    customizeColorSetting: readonly CustomizeColor[],
     _colorscale: Colorscale,
     _selectedLabelsTags: string[],
     _labelTagColors: LabelTagColor,
@@ -339,11 +339,9 @@ export const PainterFactory = (requestColor) => ({
         coloring.by === COLOR_BY.FIELD ||
         (maskTargets && Object.keys(maskTargets).length === 1)
       ) {
-        let fieldColor;
-
         // if field color has valid custom settings, use the custom field color
         // convert the color into hex code, since it could be a color name (e.g. yellowgreen)
-        fieldColor = setting?.fieldColor
+        const fieldColor = setting?.fieldColor
           ? setting.fieldColor
           : await requestColor(coloring.pool, coloring.seed, field);
         color = get32BitColor(convertToHex(fieldColor));
@@ -425,7 +423,7 @@ const getRgbFromMaskData = (
 export const convertToHex = (color: string) =>
   colorString.to.hex(colorString.get.rgb(color));
 
-const convertMaskColorsToObject = (array: MaskColorInput[]) => {
+const convertMaskColorsToObject = (array: readonly MaskColorInput[]) => {
   const result = {};
   if (!array) return {};
   for (const item of array) {

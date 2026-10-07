@@ -28,11 +28,11 @@ export type ImageSourceType =
 export interface ImageSource {
   type: ImageSourceType;
   src?: string; // For HTMLImageElement compatibility
-  texture?: any; // For TextureLike objects
+  texture?: unknown; // For TextureLike objects (the renderer's own texture type)
   canvas?: HTMLCanvasElement; // For canvas elements
   imageData?: ImageData; // For ImageData objects
   bitmap?: ImageBitmap; // For ImageBitmap objects
-  custom?: any; // For custom image implementations
+  custom?: unknown; // For custom image implementations
 }
 
 /**

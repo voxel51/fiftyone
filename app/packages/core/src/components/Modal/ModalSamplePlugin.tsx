@@ -31,7 +31,7 @@ export const ModalSample = React.memo(() => {
     return () => {
       setTooltipDetail(null);
     };
-  }, []);
+  }, [setIsTooltipLocked, setTooltipDetail]);
 
   return (
     <ContentColumn data-cy="sample-canvas">

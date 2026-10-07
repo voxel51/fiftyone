@@ -1,13 +1,16 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
-import { TooltipProps } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
 import React from "react";
 import styled from "styled-components";
 
+// renders a div, so the ref and events are div ones
 const PillButton = React.forwardRef<
-  HTMLButtonElement,
-  PillButtonProps & { tooltipPlacement?: TooltipProps["placement"] }
+  HTMLDivElement,
+  PillButtonProps & {
+    // react-laag placements, e.g. "top-center"
+    tooltipPlacement?: React.ComponentProps<typeof Tooltip>["placement"];
+  }
 >((props, ref) => {
   const {
     onClick,
@@ -33,10 +36,10 @@ const PillButton = React.forwardRef<
   const children = (
     <PillButtonDiv
       {...otherProps}
-      onClick={(e: MouseEvent) => {
+      onClick={(e) => {
         onClick(e);
       }}
-      onMouseDown={(e: MouseEvent) => {
+      onMouseDown={(e) => {
         e.stopPropagation();
       }}
       id={id}
@@ -62,7 +65,7 @@ type PillButtonProps = {
   highlight?: boolean;
   icon?: JSX.Element;
   id?: string;
-  onClick: (event: Event) => void;
+  onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   open?: boolean;
   style?: React.CSSProperties;
   text?: string;

@@ -58,10 +58,10 @@ export function graphQLSyncFragmentAtomFamily<
               ({ setSelf, trigger }: Parameters<AtomEffect<K>>[0]) => {
                 // recoil state should be initialized via RecoilRoot's
                 // initializeState during tests
-                if (isTest) return;
+                if (isTest) return undefined;
 
                 if (trigger === "set") {
-                  return;
+                  return undefined;
                 }
                 const { pageQuery, subscribe } = getPageQuery();
                 let ctx: ReturnType<typeof loadContext>;
@@ -95,7 +95,6 @@ export function graphQLSyncFragmentAtomFamily<
                     for (let i = 0; i < fragmentOptions.fragments.length; i++) {
                       const fragment = fragmentOptions.fragments[i];
                       if (fragmentOptions?.keys[i]) {
-                        // @ts-ignore
                         data = data[fragmentOptions.keys[i]];
                       }
 
@@ -109,7 +108,6 @@ export function graphQLSyncFragmentAtomFamily<
                         );
                       }
 
-                      // @ts-ignore
                       ctx = loadContext(
                         fragment,
                         preloadedQuery.environment,

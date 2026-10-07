@@ -14,9 +14,13 @@ import FileTable from "./FileTable";
 // and utilities has Node.js dependencies that don't work in jsdom.
 // These mocks break that dependency chain.
 vi.mock("@fiftyone/components", () => ({
-  Button: ({ children, onClick }: any) => (
-    <button onClick={onClick}>{children}</button>
-  ),
+  Button: ({
+    children,
+    onClick,
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+  }) => <button onClick={onClick}>{children}</button>,
   scrollable: "mock-scrollable",
 }));
 

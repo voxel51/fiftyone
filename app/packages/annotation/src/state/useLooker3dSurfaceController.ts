@@ -17,8 +17,8 @@ import type {
  * when the bridge re-creates; the binding agent re-registers and consumers read
  * the latest off the atom.
  */
-const registeredControllerAtom = atom<SurfaceController<Looker3dHandle> | null>(
-  null,
+const registeredControllerAtom = atom(
+  null as SurfaceController<Looker3dHandle> | null,
 );
 
 /**

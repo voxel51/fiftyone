@@ -196,14 +196,17 @@ function validManifest(value: unknown): value is EpisodeManifest {
   }
   const range = value.timeRange as TimeWindow;
   const streamIds = new Set<string>();
-  for (const candidate of value.streams) {
+  // validated as an array above
+  for (const candidate of value.streams as readonly unknown[]) {
     if (!validStream(candidate, range) || streamIds.has(candidate.id)) {
       return false;
     }
     streamIds.add(candidate.id);
   }
   const calibrationIds = new Set<string>();
-  for (const candidate of value.calibrations ?? []) {
+  // validated with validCalibration above
+  for (const candidate of (value.calibrations ??
+    []) as readonly StreamCalibration[]) {
     if (calibrationIds.has(candidate.streamId)) return false;
     calibrationIds.add(candidate.streamId);
   }
@@ -294,7 +297,8 @@ function validTimeline(value: unknown): value is EpisodeTimeline {
   let previousEnd: bigint | undefined;
   let previousOffset: bigint | undefined;
   let previousBytes: number | undefined;
-  for (const point of value.byteTimeline ?? []) {
+  // validated as an array (or absent) above
+  for (const point of (value.byteTimeline ?? []) as readonly unknown[]) {
     if (
       !recordWithKeys(point, [
         "cumulativeCompressedBytes",

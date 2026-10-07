@@ -14,20 +14,21 @@ const {
   mockUseModalLookerOptions,
   mockRenderCallbacks,
 } = vi.hoisted(() => {
-  const map = new Map<string, Set<(...args: any[]) => any>>();
+  type Handler = (...args: unknown[]) => unknown;
+  const map = new Map<string, Set<Handler>>();
 
-  const on = (event: string, handler: (...args: any[]) => any) => {
+  const on = (event: string, handler: Handler) => {
     if (!map.has(event)) map.set(event, new Set());
     map.get(event)!.add(handler);
     return () => off(event, handler);
   };
 
-  const off = (event: string, handler: (...args: any[]) => any) => {
+  const off = (event: string, handler: Handler) => {
     map.get(event)?.delete(handler);
   };
 
-  const once = (event: string, handler: (...args: any[]) => any) => {
-    const wrapper = (...args: any[]) => {
+  const once = (event: string, handler: Handler) => {
+    const wrapper = (...args: unknown[]) => {
       off(event, wrapper);
       return handler(...args);
     };
@@ -35,7 +36,7 @@ const {
   };
 
   // Snapshot handlers at dispatch time to avoid set-mutation issues during iteration
-  const dispatch = (event: string, data?: any) =>
+  const dispatch = (event: string, data?: unknown) =>
     [...(map.get(event) ?? [])].forEach((h) => h(data));
 
   const clearAll = () => map.clear();
@@ -46,10 +47,10 @@ const {
     mockBus: { on, off, once, dispatch, clearAll },
     mockSetViewportState: vi.fn(),
     mockFitToContent: vi.fn(),
-    mockGetContentBounds: vi.fn<() => any>(() => null),
+    mockGetContentBounds: vi.fn<() => unknown>(() => null),
     mockEventBusDispatch: vi.fn(),
-    mockGetModalViewport: vi.fn<() => any>(() => null),
-    mockUseModalLookerOptions: vi.fn<() => any>(() => ({})),
+    mockGetModalViewport: vi.fn<() => unknown>(() => null),
+    mockUseModalLookerOptions: vi.fn<() => unknown>(() => ({})),
     mockRenderCallbacks: renderCallbacks,
   };
 });
@@ -79,13 +80,12 @@ vi.mock("@fiftyone/lighter", async () => {
         },
       },
     }),
-    useLighterEventHandler:
-      (_channelId: string) =>
-      (
+    useLighterEventHandler: (_channelId: string) =>
+      function useMockLighterEventHandler(
         event: string,
-        handler: (...args: any[]) => any,
+        handler: (...args: unknown[]) => unknown,
         { once = false } = {},
-      ) => {
+      ) {
         useEffect(() => {
           if (once) return mockBus.once(event, handler);
           mockBus.on(event, handler);

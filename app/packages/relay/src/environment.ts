@@ -44,7 +44,14 @@ export const createEnvironment = () => {
   const operations = new Map<string, Sink<GraphQLResponse>>();
 
   const poll = () => {
-    getFetchFunction()(
+    getFetchFunction()<
+      undefined,
+      {
+        data: {
+          messages: { type: string; id: string; payload: GraphQLResponse }[];
+        };
+      }
+    >(
       "GET",
       `/graphql?subscription=${subscription}`,
       undefined,

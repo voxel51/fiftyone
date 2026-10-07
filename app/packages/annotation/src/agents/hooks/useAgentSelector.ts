@@ -90,7 +90,7 @@ export const useAgentSelector = (): AgentSelector => {
     return () => {
       cancelled = true;
     };
-  }, [registry]);
+  }, [registry, setIsResolved]);
 
   // A cleared selection (the dropdown drops an agent whose service went down)
   // deliberately leaves `lastAgentId` alone, so the same agent is re-adopted

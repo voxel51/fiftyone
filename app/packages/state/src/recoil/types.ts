@@ -84,9 +84,10 @@ export namespace State {
     $date: number;
   }
 
-  export interface Targets {
-    [key: number]: string;
-  }
+  // mask target JSON keys are stringified ints (or hex colors)
+  export type Targets = {
+    [key: string]: string;
+  };
 
   export interface SavedView {
     id: string;
@@ -95,19 +96,21 @@ export namespace State {
     description?: string;
     color?: string;
     slug: string;
-    viewStages: Stage[];
+    // serialized stage strings, as relay returns them
+    viewStages: readonly string[];
     createdAt: DateTime;
     lastLoadedAt: DateTime;
     lastModifiedAt?: DateTime;
   }
 
-  export interface Evaluation {}
+  // unused placeholder for evaluation run results
+  export type Evaluation = Record<string, unknown>;
 
   export interface Run {
     key: string;
     version: string;
     timestamp: string;
-    config: {};
+    config: object;
     viewStages?: readonly string[];
   }
 
@@ -148,7 +151,7 @@ export namespace State {
   }
 
   export interface AnnotationRun extends Run {
-    config: {};
+    config: object;
   }
 
   export interface KeypointSkeleton {
@@ -167,7 +170,8 @@ export namespace State {
   }
 
   export interface DynamicGroupParameters {
-    groupBy: object | string[];
+    // a field name, a list of fields, or an expression
+    groupBy: string | string[] | object;
     orderBy?: string;
     orderByKey?: unknown;
   }

@@ -27,12 +27,15 @@ import {
   POINT_RADIUS,
   STROKE_WIDTH,
 } from "../constants";
-import { Events } from "../elements/base";
+import type { BaseElement } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
-import { buildThumbnailSelectionDetail } from "../selection";
+import {
+  buildThumbnailSelectionDetail,
+  type ThumbnailSelectionModifiers,
+} from "../selection";
 import {
   FO_LABEL_HOVERED_EVENT,
   FO_LABEL_UNHOVERED_EVENT,
@@ -44,6 +47,7 @@ import {
   Coordinates,
   Dimensions,
   LabelData,
+  Optional,
   Sample,
   StateUpdate,
   ViewportState,
@@ -71,6 +75,19 @@ const LABEL_LIST_KEY = Object.fromEntries(
 const LABELS_SET = new Set(LABELS);
 
 const UPDATE_SAMPLE_DEBOUNCE_MS = 100;
+
+/** Handlers for DOM events on the looker's root element. */
+type RootEvents<State extends BaseState> = {
+  [K in keyof HTMLElementEventMap]?: (args: {
+    event: HTMLElementEventMap[K];
+    update: StateUpdate<State>;
+  }) => void;
+};
+
+/** {@link RootEvents} bound to the looker, as DOM listeners. */
+type RootListeners = Partial<
+  Record<keyof HTMLElementEventMap, (event: Event) => void>
+>;
 
 /**
  * worker pool for processing labels
@@ -100,7 +117,7 @@ export abstract class AbstractLooker<
   S extends Sample = Sample,
 > {
   public readonly subscriptions: {
-    [fieldName: string]: ((newValue: any) => void)[];
+    [fieldName: string]: ((newValue: unknown) => void)[];
   };
   private eventTarget: EventTarget;
 
@@ -110,8 +127,8 @@ export abstract class AbstractLooker<
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
-  private readonly rootEvents: Events<State>;
-  private isSampleUpdating: boolean = false;
+  private readonly rootEvents: RootListeners;
+  private isSampleUpdating = false;
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
@@ -126,6 +143,9 @@ export abstract class AbstractLooker<
   /** @internal */
   state: State;
 
+  // Assigned once labels are painted; `declare` keeps it out of the emitted
+  // class fields so nothing resets it.
+  declare protected sample: S;
   sampleOverlays: Overlay<State>[];
   pluckedOverlays: Overlay<State>[];
 
@@ -165,12 +185,21 @@ export abstract class AbstractLooker<
 
     this.rootEvents = {};
     const events = this.getRootEvents();
-    for (const eventType in events) {
+    const bindRootEvent = <K extends keyof HTMLElementEventMap>(
+      eventType: K,
+      handler: RootEvents<State>[K],
+    ) => {
+      // Registered under `eventType`, so the DOM delivers that event's type.
       this.rootEvents[eventType] = (event) =>
-        events[eventType]({
-          event,
+        handler({
+          event: event as HTMLElementEventMap[K],
           update: this.updater,
         });
+    };
+    for (const eventType of Object.keys(
+      events,
+    ) as (keyof HTMLElementEventMap)[]) {
+      bindRootEvent(eventType, events[eventType]);
     }
 
     this.hideControlsTimeout = setTimeout(
@@ -252,7 +281,7 @@ export abstract class AbstractLooker<
 
   public subscribeToState(
     field: string,
-    callback: (value: any) => void,
+    callback: (value: unknown) => void,
   ): () => void {
     if (!(field in this.subscriptions)) {
       this.subscriptions[field] = [];
@@ -314,15 +343,17 @@ export abstract class AbstractLooker<
     return size;
   }
 
-  dispatchEvent(eventType: string, detail: any): void {
+  dispatchEvent(eventType: string, detail: unknown): void {
     if (detail instanceof ErrorEvent) {
       this.updater({ error: detail.error });
       return;
     }
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
-        // @ts-ignore
-        new detail.constructor(detail.type, detail),
+        new (detail.constructor as new (type: string, init: Event) => Event)(
+          detail.type,
+          detail,
+        ),
       );
       return;
     }
@@ -347,8 +378,8 @@ export abstract class AbstractLooker<
     }
   }
 
-  protected getDispatchEvent(): (eventType: string, detail: any) => void {
-    return (eventType: string, detail: any) => {
+  protected getDispatchEvent(): (eventType: string, detail: unknown) => void {
+    return (eventType: string, detail: unknown) => {
       if (eventType === "selectthumbnail") {
         this.dispatchEvent(
           eventType,
@@ -356,7 +387,8 @@ export abstract class AbstractLooker<
             id: this.sample.id,
             sample: this.sample,
             symbol: this.state.config.symbol,
-            modifiers: detail,
+            // selectthumbnail events carry the click's modifier keys
+            modifiers: detail as Partial<ThumbnailSelectionModifiers>,
           }),
         );
         return;
@@ -424,8 +456,8 @@ export abstract class AbstractLooker<
 
         // replace wholesale so fields removed from the map reset to default
         if (updates.options?.shownLabelAttributes) {
-          this.state.options.shownLabelAttributes =
-            updates.options.shownLabelAttributes;
+          this.state.options.shownLabelAttributes = updates.options
+            .shownLabelAttributes as State["options"]["shownLabelAttributes"];
         }
 
         if (!this.state.loaded && this.sample) {
@@ -517,7 +549,7 @@ export abstract class AbstractLooker<
         );
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
-          this.updater({ error });
+          this.updater({ error } as Optional<State>);
         } else {
           this.eventTarget.dispatchEvent(new ErrorEvent("error", { error }));
         }
@@ -546,12 +578,12 @@ export abstract class AbstractLooker<
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    ...args: any[]
+    options?: boolean | EventListenerOptions,
   ) {
-    this.eventTarget.removeEventListener(eventType, handler, ...args);
+    this.eventTarget.removeEventListener(eventType, handler, options);
   }
 
-  getRootEvents(): Events<State> {
+  getRootEvents(): RootEvents<State> {
     return {
       mouseenter: ({ update }) =>
         update(({ config: { thumbnail } }) => {
@@ -609,14 +641,13 @@ export abstract class AbstractLooker<
     dimensions?: Dimensions,
     fontSize?: number,
   ): void {
-    if (typeof element === "string") {
-      element = document.getElementById(element);
-    }
+    const target =
+      typeof element === "string" ? document.getElementById(element) : element;
 
-    if (element === this.lookerElement.element.parentElement) {
+    if (target === this.lookerElement.element.parentElement) {
       this.state.disabled &&
         this.updater({ disabled: false, options: { fontSize } });
-      this.resizeObserver?.observe(element);
+      this.resizeObserver?.observe(target);
       return;
     }
 
@@ -624,18 +655,20 @@ export abstract class AbstractLooker<
       this.detach();
     }
 
-    for (const eventType in this.rootEvents) {
-      element.addEventListener(eventType, this.rootEvents[eventType], {
+    for (const eventType of Object.keys(
+      this.rootEvents,
+    ) as (keyof HTMLElementEventMap)[]) {
+      target.addEventListener(eventType, this.rootEvents[eventType], {
         signal: this.abortController.signal,
       });
     }
     this.updater({
-      windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
+      windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(target),
       disabled: false,
       options: { fontSize },
     });
-    element.replaceChildren(this.lookerElement.element);
-    this.resizeObserver?.observe(element);
+    target.replaceChildren(this.lookerElement.element);
+    this.resizeObserver?.observe(target);
   }
 
   resize(dimensions: Dimensions): void {
@@ -706,7 +739,8 @@ export abstract class AbstractLooker<
         labels: renderLabels,
       })
       .then(({ sample, coloring }) => {
-        this.sample = sample;
+        // the painting job returns the sample it was given, with labels painted
+        this.sample = sample as S;
         this.loadOverlays(sample);
 
         // to run looker reconciliation
@@ -808,7 +842,12 @@ export abstract class AbstractLooker<
   ): State;
 
   protected getImageSource(): CanvasImageSource {
-    return this.lookerElement.children[0].imageSource;
+    // The first child is the media element (image, canvas, ...) for every
+    // looker that renders through this path.
+    const media = this.lookerElement.children[0] as BaseElement<State> & {
+      imageSource: CanvasImageSource;
+    };
+    return media.imageSource;
   }
 
   protected getInitialBaseState(): Omit<BaseState, "config" | "options"> {
@@ -1027,7 +1066,7 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   return result;
 };
 
-const f = <T extends {}>({
+const f = <T extends object>({
   schema,
   filter,
   value,

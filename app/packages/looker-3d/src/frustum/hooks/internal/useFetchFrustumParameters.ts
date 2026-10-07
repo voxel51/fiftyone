@@ -40,7 +40,7 @@ export function useFetchFrustumParameters() {
       setData([]);
       setIsLoading(false);
       setError(null);
-      return;
+      return undefined;
     }
 
     let cancelled = false;

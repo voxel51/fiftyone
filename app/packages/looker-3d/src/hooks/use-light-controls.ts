@@ -9,7 +9,7 @@ import {
   SpotLightHelper,
 } from "three";
 import { useFo3dContext } from "../fo3d/context";
-import type { FoScene } from "./use-fo3d";
+import type { FoScene } from "../fo3d/render-types";
 
 export const getIntensityKey = (lightName: string) => `${lightName}Intensity`;
 export const getColorKey = (lightName: string) => `${lightName}Color`;
@@ -17,7 +17,7 @@ export const getPositionKey = (lightName: string) => `${lightName}Position`;
 export const getDecayKey = (lightName: string) => `${lightName}Decay`;
 
 type LightHelperConfig = {
-  type: Omit<FoScene["lights"][number]["_type"], "AmbientLight">;
+  type: Exclude<FoScene["lights"][number]["_type"], "AmbientLight">;
   lightIndex: number;
 };
 
@@ -31,7 +31,7 @@ export const useLightControls = (
     useState<LightHelperConfig | null>(null);
 
   const onLightPositionEditStart = useCallback(
-    (type: string, lightIndex: number) => {
+    (type: LightHelperConfig["type"], lightIndex: number) => {
       setLightHelperConfig({
         type,
         lightIndex,

@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { RegularLabel } from "@fiftyone/looker/src/overlays/base";
 import { getLabelColor } from "@fiftyone/looker/src/overlays/util";
 import type { ColorSchemeInput } from "@fiftyone/relay";
 import { COLOR_BY, getColor } from "@fiftyone/utilities";
@@ -82,7 +83,7 @@ export function getLabelColorFromContext(
       valueColors: field.valueColors ? [...field.valueColors] : undefined,
     }),
   );
-  const embeddedDocType = typedLabel["_cls"];
+  const embeddedDocType = typedLabel["_cls"] as string;
   const isPolyline3D =
     "points3d" in typedLabel &&
     Array.isArray(typedLabel["points3d"]) &&
@@ -99,7 +100,8 @@ export function getLabelColorFromContext(
   return getLabelColor({
     coloring,
     path,
-    label: typedLabel as any,
+    // checked non-null above; getLabelColor reads only optional label fields
+    label: label as RegularLabel,
     isTagged,
     labelTagColors,
     customizeColorSetting,

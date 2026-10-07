@@ -8,7 +8,7 @@ import { queryPerformance } from "../queryPerformance";
 import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
 
-export interface NumericFilter {
+export type NumericFilter = {
   range: Range;
   none: boolean;
   nan: boolean;
@@ -16,7 +16,7 @@ export interface NumericFilter {
   inf: boolean;
   exclude: boolean;
   isMatching: boolean;
-}
+};
 
 const getFilter = (
   get: GetRecoilValue,
@@ -408,8 +408,10 @@ export const generateSelectorFamily = (key) =>
     get:
       (params) =>
       ({ get }) => {
-        const filter = get(filterAtoms.filter(params));
-        const visibility = get(visibilityAtoms.visibility(params));
+        const filter = get(filterAtoms.filter(params)) as NumericFilter | null;
+        const visibility = get(
+          visibilityAtoms.visibility(params),
+        ) as NumericFilter | null;
 
         // if no filter and no visibility, return true
         if (!filter && !visibility) {

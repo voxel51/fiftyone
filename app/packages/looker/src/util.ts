@@ -5,23 +5,19 @@ import { mergeWith } from "immutable";
 import mime from "mime";
 
 import {
-  BaseState,
   BoundingBox,
   BufferRange,
   Buffers,
   Coordinates,
   Dimensions,
   DispatchEvent,
+  Optional,
   Sample,
 } from "./state";
 
 import {
   AppError,
   GraphQLError,
-  MEDIA_TYPE_3D,
-  MEDIA_TYPE_GROUP,
-  MEDIA_TYPE_IMAGE,
-  MEDIA_TYPE_VIDEO,
   NetworkError,
   ServerError,
   getFetchParameters,
@@ -32,7 +28,10 @@ import {
  */
 export function compareData(a: object, b: object): boolean {
   for (const p in a) {
-    if (a.hasOwnProperty(p) !== b.hasOwnProperty(p)) {
+    if (
+      Object.prototype.hasOwnProperty.call(a, p) !==
+      Object.prototype.hasOwnProperty.call(b, p)
+    ) {
       return false;
     } else if (a[p] != b[p]) {
       return false;
@@ -310,7 +309,7 @@ export const getFitRect = (
 /**
  * Rotates items in an array.
  */
-export const rotate = (array: any[], rotation: number): [any[], number] => {
+export const rotate = <T>(array: T[], rotation: number): [T[], number] => {
   rotation = Math.min(rotation, array.length - 1);
   return [[...array.slice(rotation), ...array.slice(0, rotation)], rotation];
 };
@@ -397,10 +396,10 @@ export const clampScale = (
   return Math.min(Math.max(scale, 0.1), 10);
 };
 
-export const mergeUpdates = <State extends BaseState>(
-  state: State,
-  updates: Partial<State>,
-): State => {
+export const mergeUpdates = <T extends object>(
+  state: T,
+  updates: Optional<T>,
+): T => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
       return n;
@@ -437,7 +436,7 @@ const ERRORS = [AppError, GraphQLError, NetworkError, ServerError].reduce(
 
 export const createWorker = (
   listeners?: {
-    [key: string]: ((worker: Worker, args: any) => void)[];
+    [key: string]: ((worker: Worker, args: unknown) => void)[];
   },
   dispatchEvent?: DispatchEvent,
   abortController?: AbortController,
@@ -534,28 +533,29 @@ export const removeFromBuffers = (
 };
 
 export const addToBuffers = (range: BufferRange, buffers: Buffers): Buffers => {
-  buffers = [...buffers];
-  buffers.push(range);
+  // copy the ranges too: merging extends them, and the input is state
+  const merged: BufferRange[] = buffers.map(([start, end]) => [start, end]);
+  merged.push([range[0], range[1]]);
 
-  buffers.sort((a, b) => {
+  merged.sort((a, b) => {
     return a[0] - b[0];
   });
 
   let i = 0;
 
-  while (i < buffers.length - 1) {
-    var current = buffers[i],
-      next = buffers[i + 1];
+  while (i < merged.length - 1) {
+    const current = merged[i],
+      next = merged[i + 1];
 
     if (current[1] >= next[0] - 1) {
       current[1] = Math.max(current[1], next[1]);
-      buffers.splice(i + 1, 1);
+      merged.splice(i + 1, 1);
     } else {
       i++;
     }
   }
 
-  return buffers;
+  return merged;
 };
 
 export const getDPR = (() => {
@@ -569,7 +569,10 @@ export const getDPR = (() => {
   };
 })();
 
-export const getMimeType = (sample: any) => {
+export const getMimeType = (sample: {
+  metadata?: { mime_type?: string } | null;
+  filepath?: string;
+}) => {
   return (
     (sample.metadata && sample.metadata.mime_type) ||
     mime.getType(sample.filepath) ||
@@ -582,8 +585,8 @@ export const isFloatArray = (arr) =>
 
 // go through customizedColor array and check if any item.fieldColor has changed;
 export const hasColorChanged = (
-  prevColorScheme: Object[],
-  nextColorScheme: Object[],
+  prevColorScheme: readonly object[],
+  nextColorScheme: readonly object[],
 ) => {
   if (prevColorScheme?.length !== nextColorScheme?.length) {
     return true;
@@ -597,7 +600,10 @@ export const hasColorChanged = (
 };
 
 // order does not matter
-function compareObjectArr(arr1: object[], arr2: object[]): boolean {
+function compareObjectArr(
+  arr1: readonly object[],
+  arr2: readonly object[],
+): boolean {
   const sortedArr1 = arr1
     .map((el) => JSON.stringify(el, Object.keys(el).sort()))
     .sort();

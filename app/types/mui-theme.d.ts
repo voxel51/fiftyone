@@ -84,3 +84,16 @@ declare module "@mui/material/styles" {
     invert: string;
   }
 }
+
+declare module "@mui/material/Button" {
+  interface ButtonPropsColorOverrides {
+    tertiary: true;
+  }
+}
+
+declare module "@mui/material" {
+  // the app theme adds a near-black grey shade at key 5
+  interface Color {
+    5?: string;
+  }
+}

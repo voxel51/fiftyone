@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { Mesh, type Quaternion, type Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
-import type { StlAsset } from "../../hooks";
+import type { StlAsset } from "../render-types";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { useFo3dContext } from "../context";

@@ -99,6 +99,7 @@ function useStateInitializer(props: ViewPropsType) {
     ) {
       onChange(path, defaultValue, computedSchema);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply a default only when it changes; unboundState is read without subscribing on purpose
   }, [defaultValue]);
 
   useEffect(() => {
@@ -143,7 +144,7 @@ function schemaWithInheritedVariant(
 
 function getComputedSchema(props: ViewPropsType) {
   const { schema, parentSchema, relativePath } = props;
-  let computedSchema = schemaWithInheritedDefault(
+  let computedSchema: SchemaType = schemaWithInheritedDefault(
     schema,
     parentSchema,
     relativePath,

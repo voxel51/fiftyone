@@ -23,7 +23,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private colorBy: COLOR_BY.FIELD | COLOR_BY.VALUE | COLOR_BY.INSTANCE;
   private colorPool: string[];
   private colorSeed: number;
-  private customizedColors: CustomizeColor[] = [];
+  private customizedColors: readonly CustomizeColor[] = [];
   private fontSize?: number;
   private labelTagColors: LabelTagColor = {};
   private playing = false;
@@ -57,7 +57,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         timeZone,
       },
       playing,
-    }: Readonly<State>,
+      // only video states carry `playing`
+    }: Readonly<State & { playing?: boolean }>,
     sample: Readonly<Sample>,
   ) {
     this.handleFont(fontSize);

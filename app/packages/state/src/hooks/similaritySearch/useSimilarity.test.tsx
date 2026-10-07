@@ -14,7 +14,7 @@ const getRecoilRoot = (
   type: "selectedSample" | "selectedLabel" | "activeImageSort" | "default",
   modal = false,
 ) => {
-  const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+  const Root: React.FC<React.PropsWithChildren> = ({ children }) => {
     return (
       <RecoilRoot
         initializeState={({ set }) => {

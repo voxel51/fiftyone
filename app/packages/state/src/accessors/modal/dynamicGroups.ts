@@ -2,7 +2,12 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import { useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  type RecoilValueReadOnly,
+  type SerializableParam,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import {
   groupByFieldValue,
   isDynamicGroup,
@@ -20,9 +25,13 @@ import { dynamicGroupsElementCount } from "../../recoil/pathData/groups";
  * the next one loads, preventing Suspense boundaries from triggering on every
  * sample navigation. Returns undefined until the first value has settled.
  */
-export const useGroupByFieldValue = (): string | null | undefined => {
+// the raw group-by value of the modal sample (any JSON value), or null
+export type GroupByFieldValue =
+  typeof groupByFieldValue extends RecoilValueReadOnly<infer T> ? T : never;
+
+export const useGroupByFieldValue = (): GroupByFieldValue | undefined => {
   const loadable = useRecoilValueLoadable(groupByFieldValue);
-  const ref = useRef<string | null | undefined>(
+  const ref = useRef<GroupByFieldValue | undefined>(
     loadable.state === "hasValue" ? loadable.contents : undefined,
   );
   if (loadable.state === "hasValue") {
@@ -40,7 +49,8 @@ export const useGroupByFieldValue = (): string | null | undefined => {
 export const useElementsCount = (modal: boolean): number => {
   const value = useGroupByFieldValue() ?? null;
   const loadable = useRecoilValueLoadable(
-    dynamicGroupsElementCount({ modal, value }),
+    // the group-by value is JSON, which recoil can serialize
+    dynamicGroupsElementCount({ modal, value: value as SerializableParam }),
   );
   const ref = useRef<number>(
     loadable.state === "hasValue" ? loadable.contents : 0,

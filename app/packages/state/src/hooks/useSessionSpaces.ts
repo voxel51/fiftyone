@@ -21,7 +21,8 @@ const useSessionSpaces = () => {
 
   const setSessionSpaces = useCallback(
     (spaces: object, panelsState?: object) => {
-      const formattedSpaces = toAPIFormat(spaces, panelsState);
+      // a spaces root is a single node, never a list
+      const formattedSpaces = toAPIFormat(spaces, panelsState) as APISpaceNode;
       setSessionSpacesState(formattedSpaces);
     },
     [setSessionSpacesState],
@@ -49,10 +50,26 @@ export default useSessionSpaces;
 
 const nonPanelTypes = ["panel-container", "empty"];
 
-function toAPIFormat(state, panelsState = {}) {
+export type APISpaceNode = {
+  _cls: "Space" | "Panel";
+  component_id: string;
+  _version?: number;
+  pinned?: boolean;
+  state?: unknown;
+  type?: string;
+  children?: APISpaceTree;
+  orientation?: string;
+  active_child?: string;
+  sizes?: number[];
+  // saved workspaces carry their name on the root
+  _name?: string;
+};
+export type APISpaceTree = APISpaceNode | APISpaceTree[];
+
+function toAPIFormat(state, panelsState = {}): APISpaceTree {
   if (Array.isArray(state))
     return state.map((item) => toAPIFormat(item, panelsState));
-  const apiState = {
+  const apiState: APISpaceNode = {
     _cls: nonPanelTypes.includes(state.type) ? "Space" : "Panel",
     component_id: state.id,
   };
@@ -72,6 +89,12 @@ function toAPIFormat(state, panelsState = {}) {
   }
   return apiState;
 }
+
+/**
+ * Converts session spaces (API format) to the app format SpaceNode reads.
+ * App-format input passes through unchanged.
+ */
+export const sessionSpacesToAppFormat = (state) => toAppFormat(state);
 
 function toAppFormat(state) {
   if (Array.isArray(state)) return state.map(toAppFormat);

@@ -1,15 +1,16 @@
 import type { UiSchema } from "@rjsf/utils";
 import { SmartFormComponents } from "../../types";
-import { addWarning, type TranslationContext } from "./utils";
+import {
+  addWarning,
+  type SchemaIONode,
+  type TranslationContext,
+} from "./utils";
 
 /**
  * Translates SchemaIO view to UI Schema
- *
- * Note: Uses `any` for schemaIO parameter due to recursive processing of
- * dynamic schema structures with varying shapes.
  */
 export function translateToUISchema(
-  schemaIO: any,
+  schemaIO: SchemaIONode,
   context: TranslationContext,
 ): UiSchema {
   const uiSchema: UiSchema = {};
@@ -50,7 +51,6 @@ export function translateToUISchema(
       };
       break;
 
-    case SmartFormComponents.Select:
     case SmartFormComponents.SelectWidget:
       uiSchema["ui:widget"] = "SelectWidget";
       uiSchema["ui:options"] = {
@@ -197,7 +197,7 @@ export function translateToUISchema(
 
     case SmartFormComponents.TupleView:
       if (schemaIO.items && Array.isArray(schemaIO.items)) {
-        uiSchema.items = schemaIO.items.map((item: any, index: number) =>
+        uiSchema.items = schemaIO.items.map((item, index) =>
           translateToUISchema(item, {
             ...context,
             path: [...context.path, `items[${index}]`],

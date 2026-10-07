@@ -16,10 +16,19 @@ import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
  * This mock provides no-op implementations of all renderer methods, making it
  * suitable for creating lightweight lighter scenes without actual rendering.
  */
+/** What the mock records per drawn container (fields vary by draw call). */
+type MockContainer = {
+  type?: string;
+  bounds?: Rect;
+  destination?: Rect;
+  visible?: boolean;
+  [key: string]: unknown;
+};
+
 export class MockRenderer2D implements Renderer2D {
   private canvas: HTMLCanvasElement;
   private tickHandlers: (() => void)[] = [];
-  private containers = new Map<string, any>();
+  private containers = new Map<string, MockContainer>();
   private scale = 1;
   private panX = 0;
   private panY = 0;
@@ -321,7 +330,7 @@ export class MockRenderer2D implements Renderer2D {
     return this.containers.size;
   }
 
-  getContainer(containerId: string): any {
+  getContainer(containerId: string): MockContainer | undefined {
     return this.containers.get(containerId);
   }
 

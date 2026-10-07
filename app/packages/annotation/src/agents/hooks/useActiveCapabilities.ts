@@ -42,7 +42,7 @@ export const useActiveCapabilities = <T extends InferenceResultProxy>(
     setCapabilities([]);
     setIsResolved(false);
 
-    if (!agent || !task) return;
+    if (!agent || !task) return undefined;
 
     let cancelled = false;
 
@@ -56,7 +56,7 @@ export const useActiveCapabilities = <T extends InferenceResultProxy>(
     return () => {
       cancelled = true;
     };
-  }, [agent, task]);
+  }, [agent, task, setCapabilities, setIsResolved]);
 
   return useMemo(
     () => ({ capabilities, isResolved }),

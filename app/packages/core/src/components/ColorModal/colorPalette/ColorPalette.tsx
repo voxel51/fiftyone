@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import React, { useEffect, useRef, useState } from "react";
-import { ChromePicker } from "react-color";
+import { ChromePicker, type ColorResult } from "react-color";
 import { selector, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../../Common/Checkbox";
@@ -48,7 +48,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const handleColorChange = (color: any) => {
+  const handleColorChange = (color: ColorResult) => {
     if (activeIndex !== null && color) {
       const newColors = colors ? [...colors] : [];
       newColors[activeIndex] = color.hex;

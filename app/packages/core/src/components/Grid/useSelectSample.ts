@@ -1,5 +1,6 @@
 import type { ThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
-import type { Sample } from "@fiftyone/state";
+// the selection event carries the looker's sample JSON, not the relay node
+import type { Sample } from "@fiftyone/looker/src/state";
 import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
 import { useRef } from "react";

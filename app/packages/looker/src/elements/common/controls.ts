@@ -77,7 +77,7 @@ export class ControlsElement<
 
 export class ToggleOverlaysButtonElement<
   State extends BaseState,
-> extends BaseElement<State, HTMLImageElement> {
+> extends BaseElement<State, HTMLDivElement> {
   private overlaysVisible: boolean;
 
   getEvents(): Events<State> {
@@ -123,7 +123,7 @@ export class ToggleOverlaysButtonElement<
 
 export class PlusElement<State extends BaseState> extends BaseElement<
   State,
-  HTMLImageElement
+  HTMLDivElement
 > {
   getEvents(): Events<State> {
     return {
@@ -153,7 +153,7 @@ export class PlusElement<State extends BaseState> extends BaseElement<
 
 export class MinusElement<State extends BaseState> extends BaseElement<
   State,
-  HTMLImageElement
+  HTMLDivElement
 > {
   getEvents(): Events<State> {
     return {

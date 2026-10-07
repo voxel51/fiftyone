@@ -37,8 +37,11 @@ export default function CheckboxesWidget(props: WidgetProps) {
   } = props;
   // SchemaIO puts enum/enumNames on schema.items
   const items = schema.items as ItemsSchema;
-  const enumValues = items.enum || [];
-  const enumNames = items.enumNames || enumValues;
+  const enumValues = useMemo(() => items.enum || [], [items.enum]);
+  const enumNames = useMemo(
+    () => items.enumNames || enumValues,
+    [items.enumNames, enumValues],
+  );
 
   const isDisabled = disabled || readonly;
 

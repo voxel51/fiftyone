@@ -8,7 +8,7 @@ import * as fos from "@fiftyone/state";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChromePicker } from "react-color";
+import { ChromePicker, type ColorResult } from "react-color";
 import { useRecoilValue } from "recoil";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
@@ -69,7 +69,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 
   // color picker selection and sync with session
   const hanldeColorChange = useCallback(
-    (color: any, colorIdx: number) => {
+    (color: ColorResult, colorIdx: number) => {
       setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = color?.hex;
@@ -112,6 +112,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   // on changing tabs, sync local state with new session values
   useEffect(() => {
     setInput(values ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resync only when the active path changes; value changes are synced below
   }, [activePath]);
 
   useEffect(() => {
@@ -167,11 +168,6 @@ const ValueColorList: React.FC<ValueColorProp> = ({
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   ref={pickerRef}
                   disableAlpha={true}
-                  onBlur={() =>
-                    setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _)),
-                    )
-                  }
                   className={colorPicker}
                 />
               </ChromePickerWrapper>

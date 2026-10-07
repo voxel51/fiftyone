@@ -4,6 +4,34 @@ import { Box, Modal, Typography } from "@mui/material";
 import DisplayTags from "./DisplayTags";
 import { MuiIconFont } from "../index";
 
+// An operator URI from a Python panel, or a callback from JS callers
+type OperatorRef = string | (() => void);
+
+type ModalButtonConfig = {
+  href?: string;
+  prompt?: boolean;
+  params?: { tags?: string[]; [key: string]: unknown };
+  operator?: OperatorRef;
+  align?: string;
+  width?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+};
+
+// the remaining view props of the trigger button
+type ModalTriggerProps = {
+  variant?: string;
+  label?: string;
+  disabled?: boolean;
+  title?: string;
+  height?: string | number;
+  width?: string | number;
+  padding?: string | number;
+  icon?: string;
+  iconPosition?: string;
+  [key: string]: unknown;
+};
+
 interface ModalBaseProps {
   modal: {
     icon?: string;
@@ -13,45 +41,30 @@ interface ModalBaseProps {
     body: string;
     textAlign?: string | { [key: string]: string };
   };
-  primaryButton?: {
-    href?: any;
-    prompt?: any;
-    params?: any;
-    operator?: any;
-    align?: string;
-    width?: string;
-    onClick?: any;
-    disabled?: boolean;
+  primaryButton?: ModalButtonConfig & {
     primaryText: string;
     primaryColor: string;
   };
-  secondaryButton?: {
-    href?: any;
-    prompt?: any;
-    params?: any;
-    operator?: any;
-    align?: string;
-    width?: string;
-    onClick?: any;
-    disabled?: boolean;
+  secondaryButton?: ModalButtonConfig & {
     secondaryText: string;
     secondaryColor: string;
   };
   functionality?: string;
-  primaryCallback?: () => void;
-  secondaryCallback?: () => void;
-  props: any;
+  primaryCallback?: OperatorRef;
+  secondaryCallback?: OperatorRef;
+  props: ModalTriggerProps;
 }
 
-interface ModalButtonView {
+// a type alias (not an interface) so it's assignable to SchemaViewType
+type ModalButtonView = {
   disabled?: boolean;
   variant: string;
   label: string;
   icon?: string;
   iconPosition?: string;
   title?: string;
-  componentsProps: any;
-}
+  componentsProps: { button: { sx: Record<string, unknown> } };
+};
 
 const ModalBase: React.FC<ModalBaseProps> = ({
   modal,
@@ -170,24 +183,15 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   {
     /* TAGGING FUNCTIONALITY */
   }
+  const primaryParams = primaryButtonView.params;
   useEffect(() => {
-    if (
+    const disabled =
       (functionality === "tagging" || functionality === "Tagging") &&
-      (!primaryButtonView.params ||
-        !primaryButtonView.params.tags ||
-        primaryButtonView.params.tags.length === 0)
-    ) {
-      setPrimaryButtonView({
-        ...primaryButtonView,
-        disabled: true,
-      });
-    } else {
-      setPrimaryButtonView({
-        ...primaryButtonView,
-        disabled: false,
-      });
-    }
-  }, [primaryButtonView.params]);
+      (!primaryParams ||
+        !primaryParams.tags ||
+        primaryParams.tags.length === 0);
+    setPrimaryButtonView((prev) => ({ ...prev, disabled }));
+  }, [functionality, primaryParams]);
 
   const handleSaveTags = useCallback((tags: string[]) => {
     setPrimaryButtonView((prevButtonView) => ({

@@ -30,12 +30,12 @@ import { Command, CommandCtor, CommandHandler } from "../types";
  * }
  * ```
  */
-export const useRegisterCommandHandler = <C extends Command<any>>(
+export const useRegisterCommandHandler = <C extends Command<unknown>>(
   type: CommandCtor<C>,
   handler: CommandHandler<C>,
 ): void => {
-  const registeredTypeRef = useRef<CommandCtor<any> | null>(null);
-  const registeredHandlerRef = useRef<CommandHandler<any> | null>(null);
+  const registeredTypeRef = useRef<CommandCtor<C> | null>(null);
+  const registeredHandlerRef = useRef<CommandHandler<C> | null>(null);
 
   useEffect(() => {
     const bus = getCommandBus();

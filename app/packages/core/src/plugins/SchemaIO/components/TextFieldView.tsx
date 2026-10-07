@@ -1,4 +1,4 @@
-import { TextField } from "@mui/material";
+import { TextField, type TextFieldProps } from "@mui/material";
 import { useKey } from "../hooks";
 import { getComponentProps, getFieldSx } from "../utils";
 import autoFocus from "../utils/auto-focus";
@@ -17,9 +17,20 @@ export default function TextFieldView(props: ViewPropsType<NumberSchemaType>) {
     variant,
     multiline,
     rows,
-  } = view;
+  } = view as {
+    readOnly?: boolean;
+    placeholder?: string;
+    compact?: boolean;
+    label?: string;
+    color?: Parameters<typeof getFieldSx>[0]["color"];
+    variant?: Parameters<typeof getFieldSx>[0]["variant"];
+    multiline?: boolean;
+    rows?: number;
+  };
 
-  const { inputProps = {}, ...fieldProps } = getComponentProps(props, "field", {
+  const { inputProps = {}, ...fieldProps } = getComponentProps<
+    Pick<TextFieldProps, "sx" | "inputProps">
+  >(props, "field", {
     sx: getFieldSx({ color, variant }),
   });
 
@@ -31,7 +42,7 @@ export default function TextFieldView(props: ViewPropsType<NumberSchemaType>) {
         key={key}
         disabled={readOnly}
         autoFocus={autoFocus(props)}
-        defaultValue={data}
+        defaultValue={data as string | number}
         size="small"
         fullWidth
         placeholder={compact ? placeholder || label : placeholder}

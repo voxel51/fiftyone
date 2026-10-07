@@ -1,3 +1,4 @@
+import type { PointInfo } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useHelpPanel, useIsMediaType, useJSONPanel } from "@fiftyone/state";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
@@ -48,7 +49,7 @@ export const useLookerHelpers = () => {
 export const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (update: object, updater?: (updated: {}) => void) => {
+      async (update: object, updater?: (updated: object) => void) => {
         const currentOptions = await snapshot.getPromise(
           fos.savedLookerOptions,
         );
@@ -101,7 +102,11 @@ export const useTooltipEventHandler = () => {
 
   const tooltipEventHandler = useRecoilCallback(
     ({ snapshot, set }) =>
-      (e) => {
+      (event: Event) => {
+        // looker tooltip events carry the hovered point plus cursor coordinates
+        const e = event as CustomEvent<
+          (PointInfo & { coordinates?: [number, number] }) | null
+        >;
         const isTooltipLocked = snapshot
           .getLoadable(fos.isTooltipLocked)
           .getValue();

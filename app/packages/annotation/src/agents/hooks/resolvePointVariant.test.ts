@@ -7,8 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 // ── Mocks ────────────────────────────────────────────────────────────────────
 //
 // Provide a real `DetectionOverlay` class so `instanceof DetectionOverlay`
-// inside the SUT matches instances we construct in the test. Same trick used
-// in useLighterDeltaSupplier.test.ts and buildAnnotationLabel.test.ts.
+// inside the SUT matches instances we construct in the test.
 
 const hoisted = vi.hoisted(() => {
   class MockDetectionOverlay {

@@ -25,6 +25,8 @@ import { resolveLabelSelectionVisuals, strokeCanvasRect, t } from "./util";
 
 interface HeatmapLabel extends BaseLabel {
   map?: LabelMask;
+  /** On-disk map, decoded into `map` on demand. */
+  map_path?: string;
   range?: [number, number];
 }
 

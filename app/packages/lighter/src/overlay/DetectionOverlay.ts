@@ -25,6 +25,7 @@ import type {
   RenderMeta,
   Rotatable,
   Spatial,
+  TooltipInfo,
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import {
@@ -1508,12 +1509,7 @@ export class DetectionOverlay
     return LABEL_ARCHETYPE_PRIORITY.BOUNDING_BOX;
   }
 
-  getTooltipInfo(): {
-    color: string;
-    field: string;
-    label: any;
-    type: string;
-  } | null {
+  getTooltipInfo(): TooltipInfo | null {
     if (this.isSelected()) return null;
 
     return {

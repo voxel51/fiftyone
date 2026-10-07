@@ -5,6 +5,7 @@ import type {
   SampleRendererProps,
 } from "./sample-renderer";
 import { hasMatchMediaMatchers } from "./sample-renderer";
+import type * as fos from "@fiftyone/state";
 
 declare global {
   interface Window {
@@ -72,7 +73,7 @@ export function usePlugin<TType extends PluginComponentType>(
 /** a utility for safely calling plugin defined activator functions */
 export function safePluginActivator(
   plugin: PluginComponentRegistration,
-  ctx: any,
+  ctx: PluginActivatorContext,
 ): boolean {
   if (typeof plugin.activator === "function") {
     try {
@@ -107,7 +108,7 @@ const getRegistryVersion = () => usingRegistry().getVersion();
 
 export function useActivePlugins<TType extends PluginComponentType>(
   type: TType,
-  ctx: Record<string, unknown>,
+  ctx: PluginActivatorContext,
 ) {
   // useSyncExternalStore reads the snapshot synchronously during render and
   // atomically subscribes, so a register/unregister event that fires between
@@ -119,6 +120,8 @@ export function useActivePlugins<TType extends PluginComponentType>(
       usingRegistry()
         .getByType(type)
         .filter((plugin) => safePluginActivator(plugin, ctx)),
+    // version invalidates the list when the registry changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     [type, ctx, version],
   );
 }
@@ -162,7 +165,12 @@ export enum Categories {
   Custom = "custom",
 }
 
-export type PluginActivator = (props: any) => boolean;
+/** What useActivePlugins callers pass to activators; dataset when known. */
+export type PluginActivatorContext = {
+  dataset?: fos.State.Dataset;
+} & Record<string, unknown>;
+
+export type PluginActivator = (ctx: PluginActivatorContext) => boolean;
 
 export type PanelOptions = {
   /**
@@ -271,7 +279,7 @@ type BasePluginComponentRegistration<
   activator?: PluginActivator;
 };
 
-export type PanelRegistration<T extends {} = {}> =
+export type PanelRegistration<T extends object = object> =
   BasePluginComponentRegistration<
     PluginComponentType.Panel,
     PluginComponentProps<T>
@@ -280,7 +288,7 @@ export type PanelRegistration<T extends {} = {}> =
     sampleRendererOptions?: never;
   };
 
-export type ComponentRegistration<T extends {} = {}> =
+export type ComponentRegistration<T extends object = object> =
   BasePluginComponentRegistration<
     PluginComponentType.Component,
     PluginComponentProps<T>
@@ -289,7 +297,7 @@ export type ComponentRegistration<T extends {} = {}> =
     sampleRendererOptions?: never;
   };
 
-export type PlotRegistration<T extends {} = {}> =
+export type PlotRegistration<T extends object = object> =
   BasePluginComponentRegistration<
     PluginComponentType.Plot,
     PluginComponentProps<T>
@@ -430,13 +438,13 @@ export class PluginComponentRegistry {
     // Sample renderers provide their own grid/modal-specific fallbacks and
     // should not inherit the generic plugin boundary, which clears the modal
     // on error before local recovery can run.
-    const wrappedRegistration: PluginComponentRegistration = {
-      ...registration,
-      component:
-        registration.type === PluginComponentType.SampleRenderer
-          ? registration.component
-          : wrapCustomComponent(registration.component),
-    };
+    const wrappedRegistration: PluginComponentRegistration =
+      registration.type === PluginComponentType.SampleRenderer
+        ? { ...registration }
+        : {
+            ...registration,
+            component: wrapCustomComponent(registration.component),
+          };
 
     this.data.set(name, wrappedRegistration);
     this.version++;
@@ -480,9 +488,9 @@ export class PluginComponentRegistry {
   }
 }
 
+// the registry only keys definitions by name
 interface PluginDefinitionLike {
   name: string;
-  [key: string]: unknown;
 }
 
 type RegistryEvent = "register" | "unregister";

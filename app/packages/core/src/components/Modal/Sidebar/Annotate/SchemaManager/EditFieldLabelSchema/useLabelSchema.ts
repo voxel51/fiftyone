@@ -217,7 +217,7 @@ const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
     data?.label_schema,
-    (labelSchema: unknown) => {
+    (labelSchema: FieldSchema | undefined) => {
       setAtom({ ...data, label_schema: labelSchema });
     },
   ] as const;
@@ -244,7 +244,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
 
       const labelSchema = current ? reconcileComponent(current) : current;
 
-      let hydrated: unknown;
+      let hydrated: object | undefined;
       try {
         const response = await updateSchema({
           field,
@@ -259,7 +259,8 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       }
 
       const resolved = hydrated ?? current;
-      setSaved(resolved);
+      // the current schema being edited is a FieldSchema draft
+      setSaved(resolved as FieldSchema | undefined);
       setCurrent(resolved);
       setIsSaving(false);
       dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
@@ -407,10 +408,11 @@ export default function useLabelSchema(field: string) {
 
   // Wrap discard to also revert visibility
   const originalDiscard = validate.discard;
+  const { discardVisibility } = visibility;
   const discard = useCallback(() => {
     originalDiscard();
-    visibility.discardVisibility();
-  }, [originalDiscard, visibility.discardVisibility]);
+    discardVisibility();
+  }, [originalDiscard, discardVisibility]);
 
   // The currentLabelSchema atom is typed as `object | undefined` because it
   // is fed into both <GUIContent> (which wants the looser SchemaConfigType)

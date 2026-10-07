@@ -64,6 +64,12 @@ export interface PointSelection {
 
   /** The current activation status of the point selection tool. */
   isActive: boolean;
+
+  /**
+   * Drops the activation state and overlay/handler references without
+   * touching the scene, for when the scene has already been destroyed.
+   */
+  reset(): void;
 }
 
 /**
@@ -77,7 +83,7 @@ const resolvePointHit = () => KeypointPointHitAction.DELETE;
  * Overlay is created when point selection is activated, and removed when
  * point selection is deactivated.
  */
-const keypointOverlayIdAtom = atom<string | null>(null);
+const keypointOverlayIdAtom = atom(null as string | null);
 /**
  * Maintains a boolean flag to indicate whether the point selection mode is
  * currently active.
@@ -88,7 +94,7 @@ const pointSelectionActiveAtom = atom(false);
  * session. Held in an atom so activation and deactivation can happen from
  * different component instances of the hook.
  */
-const interactiveHandlerAtom = atom<InteractiveKeypointHandler | null>(null);
+const interactiveHandlerAtom = atom(null as InteractiveKeypointHandler | null);
 
 /**
  * Hook which provides activation/deactivation functions for point selection.

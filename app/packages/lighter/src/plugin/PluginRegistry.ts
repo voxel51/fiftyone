@@ -23,7 +23,7 @@ export class PluginRegistry {
    * @param type - The overlay type identifier.
    * @param constructor - The constructor function.
    */
-  registerOverlay(type: string, constructor: OverlayConstructor): void {
+  registerOverlay<T>(type: string, constructor: OverlayConstructor<T>): void {
     this.overlayFactory.register(type, constructor);
   }
 

@@ -41,10 +41,17 @@ export default function Slider(props: WidgetProps) {
     schema.type === "array";
 
   // Extract additional options from uiSchema
-  const bare = uiSchema?.["ui:options"]?.bare ?? false;
-  const labeled = uiSchema?.["ui:options"]?.labeled ?? false;
-  const minLabel = uiSchema?.["ui:options"]?.minLabel;
-  const maxLabel = uiSchema?.["ui:options"]?.maxLabel;
+  // set from the SliderView's view props by translateToUISchema
+  const options = (uiSchema?.["ui:options"] ?? {}) as {
+    bare?: boolean;
+    labeled?: boolean;
+    minLabel?: string;
+    maxLabel?: string;
+  };
+  const bare = options.bare ?? false;
+  const labeled = options.labeled ?? false;
+  const minLabel = options.minLabel;
+  const maxLabel = options.maxLabel;
 
   const handleChange = (newValue: number | number[]) => {
     onLivePreview?.(name, newValue);

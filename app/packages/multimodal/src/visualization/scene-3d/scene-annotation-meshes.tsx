@@ -240,7 +240,7 @@ export function SceneLineMesh({ line }: { readonly line: SceneLinePrimitive }) {
   const renderData = useMemo(() => createSceneLineRenderData(line), [line]);
 
   useEffect(() => {
-    if (!renderData) return;
+    if (!renderData) return undefined;
     invalidate();
     return () => renderData.geometry.dispose();
   }, [invalidate, renderData]);
@@ -313,11 +313,11 @@ export function SceneModelMesh({
     if (!asset || !instanceKey) {
       loadedInstanceKeyRef.current = null;
       setObject(null);
-      return;
+      return undefined;
     }
 
     if (loadedInstanceKeyRef.current === instanceKey) {
-      return;
+      return undefined;
     }
 
     loadSceneModelAsset(asset)
@@ -538,7 +538,7 @@ export function SceneTriangleMesh({
   );
 
   useEffect(() => {
-    if (!renderData) return;
+    if (!renderData) return undefined;
     invalidate();
     return () => renderData.geometry.dispose();
   }, [invalidate, renderData]);

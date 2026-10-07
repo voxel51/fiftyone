@@ -40,8 +40,6 @@ export type EventGroup = Record<string, unknown>;
  * };
  * ```
  */
-export type EventHandler<T extends unknown = undefined> = T extends
-  | undefined
-  | null
+export type EventHandler<T = undefined> = T extends undefined | null
   ? () => void | Promise<void>
   : (data: T) => void | Promise<void>;

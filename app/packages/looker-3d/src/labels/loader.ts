@@ -69,7 +69,8 @@ export const load3dOverlayForSample = (
   const labelValues = Array.isArray(samples) ? samples : Object.values(samples);
 
   for (let i = 0; i < labelValues.length; i++) {
-    const label = labelValues[i];
+    // a sample's field values: label documents, or nested documents to recurse
+    const label = labelValues[i] as { _id?: string; [key: string]: unknown };
 
     const labelKey = labelKeys ? labelKeys[i] : "";
 
@@ -92,7 +93,8 @@ export const load3dOverlayForSample = (
         ...overlays,
         ...load3dOverlayForSample(
           sampleId,
-          label[LABEL_LIST[cls]],
+          // the list's label documents, walked like a sample's fields
+          label[LABEL_LIST[cls]] as fos.Sample[],
           selectedLabels,
           [...currentPath, labelKey],
           schema,
@@ -114,7 +116,7 @@ export const load3dOverlays = (
   const overlays = [];
   for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
     if (!sampleWrapper?.sample?._id) {
-      return;
+      return undefined;
     }
 
     overlays.push(

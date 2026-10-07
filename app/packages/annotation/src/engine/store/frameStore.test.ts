@@ -256,7 +256,7 @@ describe("FrameStore re-key via compose (the split/merge primitive)", () => {
   // merge re-key a frame by deleting the old instance + recreating its content
   // under the new one — this strips the engine-owned fields like the hook does.
   const content = (label: LabelData): Partial<LabelData> => {
-    const { _id, instance, ...rest } = label;
+    const { _id, instance: _instance, ...rest } = label;
     return rest;
   };
 

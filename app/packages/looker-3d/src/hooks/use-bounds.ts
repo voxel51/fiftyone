@@ -138,7 +138,7 @@ export function useFo3dBounds(
     if (skip || !isReady) {
       runToken.current++;
       setIsComputing(false);
-      return;
+      return undefined;
     }
 
     const cancel = startLoop();

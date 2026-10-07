@@ -3,7 +3,10 @@
 import { isNullish, isPrimitiveType } from "@fiftyone/utilities";
 
 // todo: add support for OneOfView, TupleView, and MapView
-export function generateSchema(value: any, options?: GenerateSchemaOptions) {
+export function generateSchema(
+  value: unknown,
+  options?: GenerateSchemaOptions,
+) {
   const type = getType(value);
   const { label, readOnly } = options || {};
   if (type === "array") {
@@ -75,6 +78,7 @@ function getType(value) {
   if (!isNullish(value)) {
     return Array.isArray(value) ? "array" : typeof value;
   }
+  return undefined;
 }
 
 function getDominantType(array) {

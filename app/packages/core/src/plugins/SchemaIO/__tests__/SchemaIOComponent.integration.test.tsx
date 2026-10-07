@@ -235,7 +235,7 @@ describe("SchemaIOComponent Real-World Examples", () => {
         },
       };
 
-      const props: SchemaIOComponentProps = {
+      const _props: SchemaIOComponentProps = {
         schema,
         onChange: (data) => console.log(data),
       };
@@ -373,7 +373,7 @@ describe("SchemaIOComponent Real-World Examples", () => {
           console.log("Operator data:", data);
           console.log("Lite values:", liteValues);
         },
-        onPathChange: (path, value, schema, updatedState, liteValue) => {
+        onPathChange: (path, value, _schema, _updatedState, _liteValue) => {
           console.log(`Path ${path} changed to:`, value);
         },
       };
@@ -436,6 +436,6 @@ describe("SchemaIO Type Detection", () => {
     };
 
     // No view property = JSON Schema
-    expect((jsonSchema as any).view).toBeUndefined();
+    expect((jsonSchema as { view?: unknown }).view).toBeUndefined();
   });
 });

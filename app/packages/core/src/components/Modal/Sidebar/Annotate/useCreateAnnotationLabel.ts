@@ -21,6 +21,9 @@ import {
   decodeMaskPath,
   useLighter,
 } from "@fiftyone/lighter";
+import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import type { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import type { KeypointLabel } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { AnnotationLabel, useGetKeypointSkeleton } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
@@ -38,7 +41,7 @@ export const useCreateAnnotationLabel = () => {
   return useCallback(
     async (
       field: string,
-      type: LabelType,
+      type: LabelType | typeof TEMPORAL_DETECTION,
       data: AnnotationLabel["data"],
       options?: {
         /**
@@ -64,11 +67,18 @@ export const useCreateAnnotationLabel = () => {
           label: data,
         });
 
-        return { data, overlay, path: field, type };
+        return {
+          data: data as ClassificationLabel,
+          overlay,
+          path: field,
+          type,
+        };
       }
 
       if (type === DETECTION) {
-        const label = data as DetectionOverlayOptions["label"];
+        // state's DetectionLabel and lighter's detection label describe the same
+        // JSON with differently-typed masks
+        const label = data as unknown as DetectionOverlayOptions["label"];
         const boundingBox = label?.bounding_box;
 
         // Check if field is read-only
@@ -124,7 +134,7 @@ export const useCreateAnnotationLabel = () => {
           preDecodedMask,
         });
 
-        return { data, overlay, path: field, type };
+        return { data: data as DetectionLabel, overlay, path: field, type };
       }
 
       if (type === POLYLINE) {
@@ -183,7 +193,7 @@ export const useCreateAnnotationLabel = () => {
           },
         );
 
-        return { data, overlay, path: field, type };
+        return { data: data as KeypointLabel, overlay, path: field, type };
       }
 
       throw new Error(`unable to create label of type '${type}'`);

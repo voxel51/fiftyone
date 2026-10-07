@@ -15,17 +15,23 @@ import type {
   BaseOptions,
   BaseState,
   Coloring,
-  Coordinates,
   CustomizeColor,
   LabelTagColor,
   MaskTargets,
+  NONFINITE,
   RgbMaskTargets,
 } from "../state";
 import type { RegularLabel } from "./base";
 
-export const t = (state: BaseState, x: number, y: number): Coordinates => {
+export const t = (
+  state: BaseState,
+  // keypoints may hold "nan"/"inf"/"-inf"; Number() maps them to NaN just as
+  // the arithmetic's implicit coercion did
+  x: number | NONFINITE,
+  y: number | NONFINITE,
+): [number, number] => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
-  return [ctlx + cw * x, ctly + ch * y];
+  return [ctlx + cw * Number(x), ctly + ch * Number(y)];
 };
 
 /**
@@ -109,7 +115,9 @@ export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
   return normalizedMaskTargets;
 }
 
-export const convertId = (obj: Record<string, any>): Record<string, any> => {
+export const convertId = (
+  obj: Record<string, unknown>,
+): Record<string, unknown> => {
   return Object.fromEntries(
     Object.entries(obj).map(([key, value]) => {
       if (Array.isArray(value)) {
@@ -155,7 +163,7 @@ type LabelColorProps = {
   label: RegularLabel;
   isTagged: boolean;
   labelTagColors: LabelTagColor;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   is3D?: boolean;
   embeddedDocType: string;
 };

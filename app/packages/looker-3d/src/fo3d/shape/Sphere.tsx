@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Mesh, type Quaternion, SphereGeometry, type Vector3 } from "three";
-import type { SphereGeometryAsset } from "../../hooks";
+import type { SphereGeometryAsset } from "../render-types";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 
 export const Sphere = ({

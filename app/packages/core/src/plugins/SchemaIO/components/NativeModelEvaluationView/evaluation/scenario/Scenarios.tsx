@@ -28,6 +28,32 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import type { Data, PlotData, PlotDatum, PlotHoverEvent } from "plotly.js";
+
+// hover points of the class heatmaps and subset box plots; PlotDatum
+// omits the trace-specific fields and types x/y as any Datum
+type HeatmapHoverPoint = Omit<PlotDatum, "x" | "y"> & {
+  x: string;
+  y: string;
+  z: number;
+};
+type BoxHoverPoint = Omit<PlotDatum, "x"> & {
+  x: string;
+  lowerfence: number;
+  upperfence: number;
+  q1: number;
+  q3: number;
+  median: number;
+};
+
+// box traces built from precomputed stats, which @types/plotly.js lacks
+type BoxStatsTrace = Partial<PlotData> & {
+  q1: number[];
+  median: number[];
+  q3: number[];
+  lowerfence: number[];
+  upperfence: number[];
+};
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { atom } from "recoil";
 import AlertView from "../../../AlertView";
@@ -90,7 +116,7 @@ export default function Scenarios(props) {
   const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
-  const { key, compareKey, id: eval_id } = data?.view;
+  const { key, compareKey, id: eval_id } = data.view;
   const trackEvent = useTrackEvent();
   const [scenario, setScenario] = usePanelStatePartial(
     `${key}_scenario`,
@@ -123,7 +149,9 @@ export default function Scenarios(props) {
     () => data?.[`scenario_${scenario}_changes`] || [],
     [data, scenario],
   );
-  const scenariosArray = scenarios ? Object.values(scenarios) : [];
+  const scenariosArray = scenarios
+    ? Object.values<{ id: string; name: string }>(scenarios)
+    : [];
   const scenariosIds = Object.keys(scenarios);
   const readOnly = !data.permissions?.can_delete_scenario;
   const canCreate = data.permissions?.can_create_scenario;
@@ -449,13 +477,15 @@ function Scenario(props) {
     if (!scenario) {
       loadScenario(id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadScenario is an inline prop; depending on it would re-request every render while missing
   }, [id, scenario]);
 
   useEffect(() => {
     if (compareKey && !compareScenario) {
       loadScenario(id, compareKey);
     }
-  }, [compareKey, compareScenario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadScenario is an inline prop; depending on it would re-request every render while missing
+  }, [id, compareKey, compareScenario]);
 
   if (loadError) {
     return (
@@ -579,7 +609,7 @@ function PredictionStatisticsTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data.view;
   const width = getWidth(props);
   const type = getEvaluationType(props.evaluation);
   const isMulticlassClassification = type === "multiclass_classification";
@@ -783,7 +813,7 @@ function ModelPerformanceMetricsTable(props) {
   const { subsets, subsets_data, id } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [subset, setSubset] = usePanelStatePartial(`${id}_mpts`, subsets[0]);
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data.view;
   const width = getWidth(props);
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const metrics = MODEL_PERFORMANCE_METRICS.filter(
@@ -881,7 +911,7 @@ const CONFIDENCE_DISTRIBUTION_METRICS_VALUES = Object.values(
 
 function ConfidenceDistributionTable(props) {
   const { scenario, compareScenario, data, differenceMode } = props;
-  const { key, compareKey } = data?.view;
+  const { key, compareKey } = data.view;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = usePanelStatePartial("cdt_mode", "avg");
@@ -897,7 +927,7 @@ function ConfidenceDistributionTable(props) {
           size="small"
           defaultValue={metric}
           onChange={(e) => {
-            setMetric(e.target.value);
+            setMetric(e.target.value as string);
           }}
           ghost
         >
@@ -1221,7 +1251,7 @@ function PredictionStatisticsChart(props) {
           size="small"
           value={metric}
           onChange={(e) => {
-            setMetric(e.target.value);
+            setMetric(e.target.value as string);
           }}
           ghost
         >
@@ -1245,7 +1275,17 @@ function PredictionStatisticsChart(props) {
       <Plot
         data={plotData}
         layout={showAllMetric ? { barmode: "stack" } : {}}
-        onClick={({ points }) => {
+        onClick={({
+          points,
+        }: {
+          // traces carry an `id`, and the compare flag rides on fullData._input
+          points: Array<
+            PlotDatum & {
+              data: { id?: string | boolean };
+              fullData?: { _input?: { isCompare?: boolean } };
+            }
+          >;
+        }) => {
           const firstPoint = points[0];
           const { id } = firstPoint.data;
           const isCompare = firstPoint?.fullData?._input?.isCompare;
@@ -1287,7 +1327,7 @@ function ScenarioModelPerformanceChart(props) {
 
   const { metrics } = subsetData;
   const compareMetrics = compareSubsetData?.metrics;
-  const { key, compareKey } = props.data?.view;
+  const { key, compareKey } = props.data.view;
   const inapplicable = getInapplicableMetrics(props.evaluation);
   const metricFields = MODEL_PERFORMANCE_METRICS.filter(
     (metric) => !inapplicable.includes(metric.key),
@@ -1302,7 +1342,7 @@ function ScenarioModelPerformanceChart(props) {
     theta.push(label);
     r.push(value);
   }
-  const plotData = [
+  const plotData: Data[] = [
     {
       type: "scatterpolar",
       r,
@@ -1447,8 +1487,8 @@ function ConfusionMatrixChart(props) {
                 subset_def: subsetDef,
               });
             }}
-            tooltip={(event: any) => {
-              const [point] = event.points;
+            tooltip={(event: PlotHoverEvent) => {
+              const [point] = event.points as HeatmapHoverPoint[];
               const x = point.x;
               const y = point.y;
               const z = point.z;
@@ -1481,8 +1521,8 @@ function ConfusionMatrixChart(props) {
                   key: compareKey,
                 });
               }}
-              tooltip={(event: any) => {
-                const [point] = event.points;
+              tooltip={(event: PlotHoverEvent) => {
+                const [point] = event.points as HeatmapHoverPoint[];
                 const x = point.x;
                 const y = point.y;
                 const z = point.z;
@@ -1507,11 +1547,11 @@ function ConfidenceDistributionChart(props) {
   const { scenario, compareScenario } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const { key, compareKey } = props.data?.view;
+  const { key, compareKey } = props.data.view;
   const [mode, setMode] = usePanelStatePartial("cd_mode", "overview");
   const isOverview = mode === "overview";
 
-  const plotData: any = [];
+  const plotData: Array<Data | BoxStatsTrace> = [];
 
   if (!isOverview) {
     const y = [];
@@ -1639,7 +1679,7 @@ function ConfidenceDistributionChart(props) {
           size="small"
           value={mode}
           onChange={(e) => {
-            setMode(e.target.value);
+            setMode(e.target.value as string);
           }}
           ghost
         >
@@ -1661,8 +1701,8 @@ function ConfidenceDistributionChart(props) {
         layout={compareSubsetsData ? { boxmode: "group" } : {}}
         tooltip={
           isOverview
-            ? (event: any) => {
-                const [point] = event.points;
+            ? (event: PlotHoverEvent) => {
+                const [point] = event.points as BoxHoverPoint[];
 
                 const min = formatValueAsNumber(point.lowerfence);
                 const max = formatValueAsNumber(point.upperfence);
@@ -1706,7 +1746,7 @@ function MetricPerformanceChart(props) {
     return subsetData.metrics[metric];
   });
 
-  const plotData = [
+  const plotData: Data[] = [
     {
       x: subsets,
       y,
@@ -1739,7 +1779,7 @@ function MetricPerformanceChart(props) {
           size="small"
           defaultValue={metric}
           onChange={(e) => {
-            setMetric(e.target.value);
+            setMetric(e.target.value as string);
           }}
           ghost
         >
@@ -1775,14 +1815,14 @@ function SubsetDistributionChart(props) {
   const { scenario, compareScenario, loadView, trackEvent } = props;
   const { subsets, subsets_data, type } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
-  const { key, compareKey } = props.data?.view;
+  const { key, compareKey } = props.data.view;
 
   const y = subsets.map((subset) => {
     const subsetData = subsets_data[subset];
     return subsetData.distribution;
   });
 
-  const plotData = [
+  const plotData: Data[] = [
     {
       x: subsets,
       y,

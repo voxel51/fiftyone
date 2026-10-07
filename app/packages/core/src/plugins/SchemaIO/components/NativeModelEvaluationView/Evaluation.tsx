@@ -25,7 +25,7 @@ import EvaluationScenarioAnalysis from "./evaluation/scenario";
 import EvaluationIcon from "./EvaluationIcon";
 import Status from "./Status";
 import { tabStyles } from "./styles";
-import { ConcreteEvaluationType } from "./Types";
+import { ConcreteEvaluationType, EvaluationType } from "./Types";
 import { computeSortedCompareKeys } from "./utils";
 
 export default function Evaluation(props: EvaluationProps) {
@@ -52,17 +52,19 @@ export default function Evaluation(props: EvaluationProps) {
   const trackEvent = useTrackEvent();
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
-    const evaluation = data?.[`evaluation_${name}`];
+    const evaluation = data?.[`evaluation_${name}`] as
+      | LoadedEvaluation
+      | undefined;
     return evaluation;
-  }, [data]);
+  }, [data, name]);
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
-  }, [data]);
+  }, [data, compareKey]);
   const evaluationError = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}_error`];
     return evaluation;
-  }, [data]);
+  }, [data, name]);
 
   const compareKeys = useMemo(() => {
     const currentEval = data.evaluations.find((item) => item.key === name);
@@ -94,6 +96,7 @@ export default function Evaluation(props: EvaluationProps) {
     if (!evaluation) {
       loadEvaluation();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per missing evaluation; loadEvaluation is an inline prop and would re-trigger the load every render
   }, [evaluation]);
 
   useEffect(() => {
@@ -101,6 +104,7 @@ export default function Evaluation(props: EvaluationProps) {
       setLoadingCompare(true);
       loadEvaluation(compareKey);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadingCompare only guards the request; re-running when it clears would retry failed loads in a loop
   }, [compareEvaluation, compareKey]);
 
   if (evaluationError) {
@@ -331,6 +335,23 @@ export default function Evaluation(props: EvaluationProps) {
   );
 }
 
+// The panel's data: the evaluation list plus loaded results keyed
+// `evaluation_<key>` / `evaluation_<key>_error`.
+type EvaluationPanelData = {
+  evaluations?: EvaluationType[];
+  permissions?: Record<string, boolean>;
+  [key: string]: unknown;
+};
+
+// a loaded evaluation result; only the info header is read here
+type LoadedEvaluation = {
+  info: {
+    key: string;
+    config: { type: ConcreteEvaluationType; method?: string };
+  };
+  [key: string]: unknown;
+};
+
 type EvaluationProps = {
   name: string;
   id: string;
@@ -340,12 +361,12 @@ type EvaluationProps = {
   loadScenario: (id: string, key?: string, callback?: () => void) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;
-  data: any;
+  data: EvaluationPanelData;
   setStatusEvent: string;
   statuses: Record<string, string>;
   setNoteEvent: string;
   notes: Record<string, string>;
-  loadView: (type: string, params: any) => void;
+  loadView: (type: string, params: Record<string, unknown>) => void;
   onRename: (oldName: string, newName: string) => void;
   deleteScenario: (id: string, callback?: () => void) => void;
 };

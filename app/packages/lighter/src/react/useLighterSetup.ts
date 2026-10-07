@@ -71,10 +71,11 @@ export const useLighterSetupWithPixi = (
     renderer.setEventChannel(newScene.getEventChannel());
 
     // note: do NOT add options as a dep here, we have another effect to sync scene with new options
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [sceneId, stableCanvas]);
 
   useEffect(() => {
-    if (!scene || scene.isDestroyed) return;
+    if (!scene || scene.isDestroyed) return undefined;
 
     setInitError(null);
 
@@ -101,6 +102,9 @@ export const useLighterSetupWithPixi = (
       // over the old one.
       setScene((current) => (current === scene ? null : current));
     };
+    // tie setup/teardown to the scene only: the event bus is derived from the
+    // scene's channel and must not re-run (and destroy) the scene on its own
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [scene, setScene]);
 
   useEffect(() => {

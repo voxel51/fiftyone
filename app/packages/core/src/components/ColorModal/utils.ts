@@ -18,7 +18,7 @@ export const isSameArray = (a: readonly unknown[], b: readonly unknown[]) => {
   return isEmpty(xor(a, b));
 };
 
-export const isString = (v: unknown) => typeof v === "string";
+export const isString = (v: unknown): v is string => typeof v === "string";
 export const isObject = (v: unknown) => typeof v === "object" && v != null;
 export const isBoolean = (v: unknown) => typeof v === "boolean";
 
@@ -81,17 +81,18 @@ export const validateLabelTags = (
 
     return f.fieldColor || f.valueColors?.length > 0 ? f : null;
   }
+  return undefined;
 };
 
 const getValidMaskColors = (maskColors: unknown[]) => {
   const r = maskColors
-    ?.filter((input) => {
+    ?.filter((input): input is { intTarget?: unknown; color?: string } => {
       return (
-        input &&
+        !!input &&
         isObject(input) &&
         typeof Number(input["intTarget"]) == "number" &&
         isString(input["color"]) &&
-        isValidColor(input?.color)
+        isValidColor(input["color"])
       );
     })
     .map((item) => ({
@@ -103,23 +104,25 @@ const getValidMaskColors = (maskColors: unknown[]) => {
 };
 
 export const validateMaskColor = (
-  arr: any,
+  arr: unknown,
 ): ColorSchemeInput["defaultMaskTargetsColors"] => {
   return Array.isArray(arr) ? getValidMaskColors(arr) : null;
 };
 
 const getValidColorscaleList = (list: unknown[]) => {
   const r = list
-    ?.filter((x: unknown) => {
-      return (
-        x &&
-        isObject(x) &&
-        typeof Number(x["value"]) == "number" &&
-        isString(x["color"]) &&
-        isValidColor(x["color"]) &&
-        isString(x["color"])
-      );
-    })
+    ?.filter(
+      (x: unknown): x is { value?: unknown; color?: string; path?: string } => {
+        return (
+          !!x &&
+          isObject(x) &&
+          typeof Number(x["value"]) == "number" &&
+          isString(x["color"]) &&
+          isValidColor(x["color"]) &&
+          isString(x["color"])
+        );
+      },
+    )
     .map((y) => ({
       value: Number(y?.value),
       color: convertToRGB(y?.color),
@@ -130,26 +133,27 @@ const getValidColorscaleList = (list: unknown[]) => {
 };
 
 export const validateDefaultColorscale = (
-  obj: any,
+  value: unknown,
 ): ColorSchemeInput["defaultColorscale"] => {
-  if (typeof obj === "object" && obj !== null) {
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
     const list = Array.isArray(obj["list"])
       ? getValidColorscaleList(obj["list"])
       : null;
 
+    const rawName = obj["name"];
     const name =
-      isString(obj["name"]) && namedColorScales.includes(obj["name"])
-        ? obj["name"]
-        : null;
+      isString(rawName) && namedColorScales.includes(rawName) ? rawName : null;
 
     return (
       name || list ? { name, list } : null
     ) as ColorSchemeInput["defaultColorscale"];
   }
+  return undefined;
 };
 
 export const validateColorscales = (
-  arr: any,
+  arr: unknown,
 ): ColorSchemeInput["colorscales"] => {
   const result = Array.isArray(arr)
     ? arr
@@ -163,6 +167,7 @@ export const validateColorscales = (
 
             return name || list ? { name, list, path: x["path"] } : null;
           }
+          return undefined;
         })
         .filter((x) => x !== null)
     : [];

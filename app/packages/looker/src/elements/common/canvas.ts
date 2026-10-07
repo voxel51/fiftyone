@@ -48,10 +48,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             const isShiftPressed = event.shiftKey;
             const isAltPressed = event.altKey;
 
+            const { id, _id } = sample as { id?: string; _id?: string };
             top.containsPoint(state) &&
               dispatchEvent("select", {
                 ...top.getSelectData(state),
-                sampleId: sample.id ?? sample._id,
+                sampleId: id ?? _id,
                 instanceId: top.label?.instance?._id,
                 isShiftPressed,
                 isAltPressed,
@@ -68,13 +69,13 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
           if (state.config.thumbnail) {
             return {};
           }
-          const newState: Partial<State> = {
+          const newState = {
             cursorCoordinates: [
               (<MouseEvent>event).pageX,
               (<MouseEvent>event).pageY,
             ],
             rotate: 0,
-          };
+          } as Partial<State>;
           if (!this.mousedown) {
             return newState;
           }
@@ -145,9 +146,14 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
                 this.wheelTimeout = null;
                 update(
                   (state) => {
+                    // only video lookers play or seek
+                    const { playing, seeking } = state as State & {
+                      playing?: boolean;
+                      seeking?: boolean;
+                    };
                     return {
                       wheeling: false,
-                      disableOverlays: Boolean(state.playing || state.seeking),
+                      disableOverlays: Boolean(playing || seeking),
                     };
                   },
                   (state, overlays) =>
@@ -213,8 +219,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       cursor !== "all-scroll" && (this.cursor = "all-scroll");
     } else if (thumbnail || (mouseIsOnOverlay && !disableOverlays)) {
       cursor !== "pointer" && (this.cursor = "pointer");
-    } else if (thumbnail) {
-      cursor !== "unset" && (this.cursor = "unset");
     } else if (cursor !== "default") {
       this.cursor = "default";
     }

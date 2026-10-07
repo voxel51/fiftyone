@@ -10,12 +10,34 @@ import { usingRegistry } from "./registry";
 import { pluginsLoaderAtom } from "./state";
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
-  const result = await getFetchFunction()("GET", "/plugins");
+  const result = await getFetchFunction()<
+    unknown,
+    { plugins?: PluginDefinitionJSON[] }
+  >("GET", "/plugins");
   if (result && result.plugins) {
     return result.plugins.map((p) => new PluginDefinition(p));
   }
   throw new Error("Failed to fetch plugins metadata");
 }
+
+// the /plugins response entry for one plugin
+type PluginDefinitionJSON = {
+  name: string;
+  version: string;
+  license: string;
+  description: string;
+  fiftyone_compatibility: string;
+  operators: string[];
+  js_bundle: string | null;
+  py_entry: string | null;
+  js_bundle_exists: boolean;
+  js_bundle_server_path: string | null;
+  js_bundle_hash: string | null;
+  has_py: boolean;
+  has_js: boolean;
+  server_path: string;
+  builtin: boolean;
+};
 
 class PluginDefinition {
   name: string;
@@ -34,7 +56,7 @@ class PluginDefinition {
   hasJS: boolean;
   builtin: boolean;
 
-  constructor(json: any) {
+  constructor(json: PluginDefinitionJSON) {
     const serverPathPrefix = fou.getFetchPathPrefix();
     this.name = json.name;
     this.version = json.version;
@@ -143,6 +165,8 @@ export function usePlugins() {
       .then(() => {
         setState("ready");
       });
+    // load plugins once; notify is only used to report a failure
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [setState]);
 
   return {
@@ -191,6 +215,7 @@ export function getAbsolutePluginPath(name: string, path: string): string {
   if (pluginDefinition) {
     return `${pluginDefinition.serverPath}/${path}`;
   }
+  return undefined;
 }
 
 export function usePluginSettings<T>(
@@ -204,7 +229,7 @@ export function usePluginSettings<T>(
     const datasetPlugins = _.get(datasetAppConfig, "plugins", {});
     const appConfigPlugins = _.get(appConfig, "plugins", {});
 
-    return _.merge<T | {}, Partial<T>, Partial<T>>(
+    return _.merge<Partial<T>, Partial<T>, Partial<T>>(
       { ...defaults },
       _.get(appConfigPlugins, pluginName, {}),
       _.get(datasetPlugins, pluginName, {}),

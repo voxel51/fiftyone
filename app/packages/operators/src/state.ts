@@ -37,7 +37,7 @@ import {
   resolveExecutionOptions,
   resolveOperatorURI,
 } from "./operators";
-import { OperatorPromptType, Places } from "./types";
+import { Places, Property, View } from "./types";
 import {
   ExecutionCallback,
   ExecutionCallbackOptions,
@@ -293,11 +293,19 @@ export type OperatorExecutionOption = {
   isDisabledSchedule?: boolean;
 };
 
+// Remote operators' prompt views arrive as raw JSON, so they carry keys the
+// View class doesn't declare (and both label spellings occur).
+export type PromptView = View & {
+  placement?: string;
+  submitButtonLabel?: string;
+  submit_button_label?: string;
+};
+
 export const useOperatorPromptSubmitOptions = (
   operatorURI,
   execDetails,
   execute: (options?: OperatorExecutorOptions) => void,
-  promptView?: OperatorPromptType["promptView"],
+  promptView?: PromptView,
 ) => {
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const executionOptions = execDetails.executionOptions || {};
@@ -499,7 +507,8 @@ export const useOperatorPrompt = () => {
   const execDetails = useExecutionOptions(operatorName, ctx, isRemote);
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
-  const [inputFields, setInputFields] = useState();
+  const [inputFields, setInputFields] =
+    useState<ReturnType<Property["toProps"]>>();
   const [outputFields, setOutputFields] = useState();
   const [preparing, setPreparing] = useState(false);
   const [resolvedParams, setResolvedParams] = useState(null);
@@ -511,7 +520,7 @@ export const useOperatorPrompt = () => {
   const cachedResolvedInput = useMemo(() => {
     return isDynamic ? null : resolvedIO.input;
   }, [isDynamic, resolvedIO.input]);
-  const promptView = useMemo(() => {
+  const promptView = useMemo<PromptView | undefined>(() => {
     return inputFields?.view;
   }, [inputFields]);
   const params = ctx.params;
@@ -683,7 +692,7 @@ export const useOperatorPrompt = () => {
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
-      (fieldName, value) => {
+      (fieldName: string, value: unknown) => {
         const state = get(promptingOperatorState);
         if (state) {
           set(promptingOperatorState, {
@@ -827,10 +836,21 @@ export const useOperatorPrompt = () => {
   };
 };
 
-const operatorIOState = atom({
-  key: "operatorIOState",
-  default: { visible: false },
-});
+export type OperatorIOOptions = {
+  schema: Property;
+  data?: object;
+  isInput?: boolean;
+  isOutput?: boolean;
+  hideButtons?: boolean;
+  validationErrors?: unknown;
+};
+
+const operatorIOState = atom<Partial<OperatorIOOptions> & { visible: boolean }>(
+  {
+    key: "operatorIOState",
+    default: { visible: false },
+  },
+);
 
 export const operatorPaletteOpened = selector({
   key: "operatorPaletteOpened",
@@ -856,7 +876,7 @@ export function useShowOperatorIO() {
       data,
       hideButtons,
       validationErrors,
-    }) => {
+    }: OperatorIOOptions) => {
       setState({
         validationErrors,
         hideButtons,

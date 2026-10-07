@@ -6,7 +6,7 @@ import styled, { useTheme } from "styled-components";
 import { Column } from "./Components";
 import { Container } from "./Icons";
 import { usePresentLabelCount } from "./usePresentLabelRows";
-import { IconProps } from "@mui/material";
+import type { SvgIconProps } from "@mui/material";
 
 const PlusMinusButton = (props: PlusMinusButtonProps) => {
   const { expanded, toggle, ...otherProps } = props;
@@ -137,7 +137,8 @@ const Group = React.memo(({ name }: { name: string }) => {
 
 export default Group;
 
-type PlusMinusButtonProps = IconProps & {
+// Add/Remove are SVG icons
+type PlusMinusButtonProps = SvgIconProps & {
   expanded: boolean;
   toggle: () => void;
 };

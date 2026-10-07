@@ -15,7 +15,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
         const f = get(modal ? modalFilters : filters);
         return getCallback(({ snapshot }) => (path: string, value: Point) => {
           path = snapshot.getLoadable(expandPath(path)).contents;
-          let result: boolean = true;
+          let result = true;
 
           const stringListFilters: string[] = [];
           const numberListFilters: string[] = [];
@@ -51,7 +51,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
           stringListFilters.forEach((key) => {
             const strFilter = f[`${path}.${key}`] as StringFilter;
             if (strFilter && strFilter.values.length && value[key]) {
-              const included = strFilter.values.includes(value[key]);
+              const included = strFilter.values.includes(value[key] as string);
               if (strFilter.exclude) {
                 if (included) {
                   result = false;
@@ -101,6 +101,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
                 result = false;
               }
             }
+            return undefined;
           });
 
           booleanListFilters.forEach((key) => {

@@ -190,7 +190,7 @@ const LighterSetupImpl = (props: {
 
     // Set the image overlay as canonical media for coordinate transformations
     scene.setCanonicalMedia(mediaOverlay);
-  }, [scene, sceneId]);
+  }, [sampleRef, scene, sceneId]);
 
   const revealed = useViewportInitReveal(scene);
   useEffect(() => {

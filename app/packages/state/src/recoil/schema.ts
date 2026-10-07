@@ -515,7 +515,9 @@ export const _activeFields = (() => {
   let data: { activeFields: string[]; datasetId: string };
   try {
     data = JSON.parse(sessionStorage.getItem("activeFields"));
-  } catch {}
+  } catch {
+    // nothing stored, or unparseable: start without saved active fields
+  }
 
   let { activeFields: current, datasetId } = data || {};
   let modalCurrent: string[] = null;

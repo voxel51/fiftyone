@@ -9,13 +9,13 @@ import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import { isFilterDefault } from "./utils";
 
-export interface BooleanFilter {
+export type BooleanFilter = {
   false: boolean;
   true: boolean;
   none: boolean;
   isMatching: boolean;
   exclude: boolean;
-}
+};
 
 const getFilter = (
   get: GetRecoilValue,

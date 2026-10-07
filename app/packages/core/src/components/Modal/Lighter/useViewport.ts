@@ -37,6 +37,7 @@ const useViewport = (sampleId: string | undefined): void => {
       | undefined;
     const effectiveZoom = !!optionsZoom && !savedViewport;
     setInitConditions({ savedViewport, effectiveZoom });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- capture the initial viewport conditions once, on mount
   }, []);
 
   const mediaBounds = useCanonicalMediaBounds();

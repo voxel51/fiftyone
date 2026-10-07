@@ -8,7 +8,7 @@ import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 import styles from "./styles.module.css";
 
 export default class SectionElement implements Section {
-  private attached: boolean = false;
+  private attached = false;
   private top: number;
   private width: number;
   private height: number;

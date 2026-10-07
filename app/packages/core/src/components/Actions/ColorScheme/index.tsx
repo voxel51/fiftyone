@@ -41,7 +41,7 @@ export default ({
         onClick={onOpen}
         open={open}
         title={"Color settings"}
-        tooltipPlacement={modal ? "bottom" : "top"}
+        tooltipPlacement={modal ? "bottom-center" : "top-center"}
       />
     </ActionDiv>
   );

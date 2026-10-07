@@ -19,7 +19,8 @@ export const labelCount = selectorFamily<
       let sum = 0;
       const results = get(aggregations({ ...params, paths }));
       for (const data of results) {
-        sum += data.count;
+        // NOTE: a query-timeout result has no count, which makes the sum NaN
+        sum += (data as { count: number }).count;
       }
 
       return sum;

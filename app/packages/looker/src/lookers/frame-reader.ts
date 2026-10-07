@@ -36,7 +36,7 @@ interface AcquireReaderOptions {
   addFrame: (frameNumber: number, frame: Frame) => void;
   addFrameBuffers: (range: [number, number]) => void;
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
+  customizeColorSetting: readonly CustomizeColor[];
   dispatchEvent: (eventType: "buffering", detail: boolean) => void;
   getCurrentFrame: () => number;
   dataset: string;

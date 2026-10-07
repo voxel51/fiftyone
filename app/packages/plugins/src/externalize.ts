@@ -46,7 +46,6 @@ declare global {
 
 // required for plugins to use the same instance of React and other dependencies
 if (typeof window !== "undefined") {
-  // @ts-ignore
   window.React = React;
   window.ReactDOM = ReactDOM;
   window.recoil = recoil;

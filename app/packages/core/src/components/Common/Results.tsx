@@ -49,7 +49,7 @@ interface ResultProps<T> {
   color: string;
 }
 
-const Result = <T extends unknown>({
+const Result = <T,>({
   active,
   highlight,
   onClick,
@@ -79,7 +79,8 @@ const Result = <T extends unknown>({
 
   return (
     <ResultContainer
-      title={result === null ? "None" : result}
+      // non-string results are coerced by React, as before
+      title={(result === null ? "None" : result) as string}
       {...props}
       onClick={onClick}
       ref={ref}
@@ -99,7 +100,7 @@ interface ResultsProps<T> {
   color: string;
 }
 
-const Results = <T extends unknown>({
+const Results = <T,>({
   color,
   onSelect,
   results,

@@ -60,5 +60,7 @@ export class InteractiveCreationHandler implements InteractionHandler {
     return true;
   }
 
-  markDirty() {}
+  markDirty() {
+    // this handler draws nothing itself, so there is nothing to invalidate
+  }
 }

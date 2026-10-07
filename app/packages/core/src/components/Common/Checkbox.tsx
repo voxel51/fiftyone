@@ -18,7 +18,7 @@ interface CheckboxProps<T> {
   value: boolean;
   setValue?: (value: boolean) => void;
   count?: number | RecoilValueReadOnly<number>;
-  subcountAtom?: RecoilValueReadOnly<number>;
+  subcountAtom?: RecoilValueReadOnly<number | boolean>;
   disabled?: boolean;
   muted?: boolean;
   forceColor?: boolean;

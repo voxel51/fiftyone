@@ -8,7 +8,7 @@ import * as state from "./state";
 interface NonfiniteState {
   value: boolean;
   setValue: SetterOrUpdater<boolean>;
-  subcountAtom?: RecoilValueReadOnly<number>;
+  subcountAtom?: RecoilValueReadOnly<number | boolean>;
 }
 
 const NONFINITES = {

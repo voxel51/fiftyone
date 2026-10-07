@@ -17,11 +17,11 @@ import {
   useOperatorPlacements,
   usePromptOperatorInput,
 } from "./state";
-import { Placement, Places } from "./types";
+import { Placement, Places, View } from "./types";
 
 import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
-import { useCallback } from "react";
+import { useCallback, type ComponentType } from "react";
 
 export function OperatorPlacementWithErrorBoundary(
   props: OperatorPlacementProps,
@@ -41,14 +41,18 @@ function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place, modal } = props;
   const { placements } = useOperatorPlacements(place);
 
-  return placements.map((placement) => (
-    <OperatorPlacementWithErrorBoundary
-      key={placement?.operator?.uri}
-      modal={modal}
-      place={place}
-      {...placement}
-    />
-  ));
+  return (
+    <>
+      {placements.map((placement) => (
+        <OperatorPlacementWithErrorBoundary
+          key={placement?.operator?.uri}
+          modal={modal}
+          place={place}
+          {...placement}
+        />
+      ))}
+    </>
+  );
 }
 
 function PlacementError(props) {
@@ -95,9 +99,13 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 function ButtonPlacement(props: OperatorPlacementProps) {
   const { operator, placement, place, adaptiveMenuItemProps, modal } = props;
   const { label: operatorLabel, name: operatorName } = operator;
-  const { view = {} } = placement;
+  const { view = {} as Partial<View> } = placement;
   const { label } = view;
-  const { icon, darkIcon, lightIcon } = view?.options || {};
+  const { icon, darkIcon, lightIcon } = (view?.options || {}) as {
+    icon?: string;
+    darkIcon?: string;
+    lightIcon?: string;
+  };
   const { canExecute, execute } = usePlacementControls(props);
 
   const showIcon =
@@ -131,7 +139,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         title={title}
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
         style={{ whiteSpace: "nowrap" }}
-        tooltipPlacement={modal ? "top" : "bottom"}
+        tooltipPlacement={modal ? "top-center" : "bottom-center"}
       />
     );
   }
@@ -166,9 +174,15 @@ function ComponentPlacement(props: OperatorPlacementProps) {
     );
   }
 
+  // registered as a generic component plugin; placements render it with
+  // their own props plus the execute controls
   const Component = componentPlugins.find(
     (plugin) => plugin.name === componentName,
-  )?.component;
+  )?.component as
+    | ComponentType<
+        OperatorPlacementProps & ReturnType<typeof usePlacementControls>
+      >
+    | undefined;
 
   if (!Component) {
     throw new Error(

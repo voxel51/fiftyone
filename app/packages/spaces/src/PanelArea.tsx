@@ -36,5 +36,5 @@ export default function PanelArea(props: PanelAreaProps) {
     );
   }
 
-  return CurrentRenderer;
+  return <>{CurrentRenderer}</>;
 }

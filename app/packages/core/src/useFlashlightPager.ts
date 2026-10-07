@@ -17,7 +17,12 @@ const processSamplePageData = (
   schema: Schema,
   zoom?: boolean,
 ) => {
-  return data.samples.edges.map((edge, i) => {
+  // a QueryTimeout result has no edges; this path never handled one
+  const samples = data.samples as Extract<
+    typeof data.samples,
+    { __typename: "SampleItemStrConnection" }
+  >;
+  return samples.edges.map((edge, i) => {
     if (edge.node.__typename === "%other") {
       throw new Error("unexpected sample type");
     }
@@ -83,7 +88,12 @@ const useFlashlightPager = (
 
             resolve({
               items,
-              nextRequestKey: data.samples.pageInfo.hasNextPage
+              nextRequestKey: (
+                data.samples as Extract<
+                  typeof data.samples,
+                  { __typename: "SampleItemStrConnection" }
+                >
+              ).pageInfo.hasNextPage
                 ? pageNumber + 1
                 : null,
             });
@@ -99,6 +109,9 @@ const useFlashlightPager = (
 
   return {
     isEmpty,
+    // Not callable as a reset: this is the page-variables callback, whose
+    // identity changes with the query params. Use it as an effect dependency
+    // to rebuild the flashlight when the params change.
     reset: page,
     page: useCallback((page: number) => ref.current(page), []),
   };

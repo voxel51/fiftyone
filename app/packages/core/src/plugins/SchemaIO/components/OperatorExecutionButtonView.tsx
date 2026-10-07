@@ -5,13 +5,41 @@ import { OperatorExecutionOption } from "@fiftyone/operators/src/state";
 import {
   ExecutionCallback,
   ExecutionErrorCallback,
-} from "@fiftyone/operators/src/types-internal";
+} from "@fiftyone/operators/src/ts/runtime.types";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, ButtonProps, Typography } from "@mui/material";
-import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
+import {
+  getColorByCode,
+  getComponentProps,
+  getDisabledColors,
+  type StyleObject,
+} from "../utils";
 import { ViewPropsType } from "../utils/types";
+
+type MenuOrigin = {
+  vertical: "top" | "bottom" | "center";
+  horizontal: "left" | "right" | "center";
+};
+
+type OperatorExecutionButtonViewOptions = {
+  description?: string;
+  icon?: string;
+  icon_position?: "left" | "right";
+  label?: string;
+  operator: string;
+  params?: Record<string, unknown>;
+  title?: string;
+  disabled?: boolean;
+  // operator URIs triggered on these events
+  on_error?: string;
+  on_success?: string;
+  on_option_selected?: string;
+  inside_modal?: boolean;
+  menu_anchor_origin?: MenuOrigin;
+  menu_transform_origin?: MenuOrigin;
+};
 
 export default function OperatorExecutionButtonView(props: ViewPropsType) {
   const { schema, path } = props;
@@ -31,7 +59,7 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     inside_modal = false,
     menu_anchor_origin,
     menu_transform_origin,
-  } = view;
+  } = view as OperatorExecutionButtonViewOptions;
   const panelId = usePanelId();
   const variant = getVariant(props);
   const computedParams = { ...params, path, panel_id: panelId };
@@ -113,52 +141,62 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
   );
 }
 
-function getButtonProps(props: ViewPropsType): ButtonProps {
-  const { label, color, disabled } = props.schema.view;
-  const variant = getVariant(props);
+// onClick/onError belong to OperatorExecutionButton, not the MUI button
+function getButtonProps(
+  props: ViewPropsType,
+): Omit<ButtonProps, "onClick" | "onError"> {
+  const { label, color, disabled } = props.schema.view as {
+    label?: string;
+    color?: string;
+    disabled?: boolean;
+  };
+  // getVariant only yields contained/outlined, so the round/square branches
+  // below never apply; kept as-is
+  const variant: string = getVariant(props);
   const baseProps: ButtonProps = getCommonProps(props);
+  const sx = baseProps.sx as StyleObject<ButtonProps["sx"]>;
   if (isNullish(label)) {
-    baseProps.sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
-    baseProps.sx.minWidth = "auto";
-    baseProps.sx.p = "6px";
+    sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
+    sx.minWidth = "auto";
+    sx.p = "6px";
   }
   if (variant === "round") {
-    baseProps.sx.borderRadius = "1rem";
-    baseProps.sx.p = "3.5px 10.5px";
+    sx.borderRadius = "1rem";
+    sx.p = "3.5px 10.5px";
   }
   if (variant === "square") {
-    baseProps.sx.borderRadius = "3px 3px 0 0";
-    baseProps.sx.backgroundColor = (theme) => theme.palette.background.field;
-    baseProps.sx.borderBottom = "1px solid";
-    baseProps.sx.paddingBottom = "5px";
-    baseProps.sx.borderColor = (theme) => theme.palette.primary.main;
+    sx.borderRadius = "3px 3px 0 0";
+    sx.backgroundColor = (theme) => theme.palette.background.field;
+    sx.borderBottom = "1px solid";
+    sx.paddingBottom = "5px";
+    sx.borderColor = (theme) => theme.palette.primary.main;
   }
   if (variant === "outlined") {
-    baseProps.sx.p = "5px";
+    sx.p = "5px";
   }
   if ((variant === "square" || variant === "outlined") && isNullish(color)) {
     const borderColor =
       "rgba(var(--fo-palette-common-onBackgroundChannel) / 0.23)";
-    baseProps.sx.borderColor = borderColor;
-    baseProps.sx.borderBottomColor = borderColor;
+    sx.borderColor = borderColor;
+    sx.borderBottomColor = borderColor;
   }
   if (isNullish(variant) || variant === "contained") {
     baseProps.variant = "contained";
     baseProps.color = "primary";
-    baseProps.sx.color = (theme) => theme.palette.text.primary;
-    baseProps.sx["&:hover"] = {
+    sx.color = (theme) => theme.palette.text.primary;
+    sx["&:hover"] = {
       backgroundColor: (theme) => theme.palette.tertiary.hover,
     };
   }
 
   if (disabled) {
     const [bgColor, textColor] = getDisabledColors();
-    baseProps.sx["&.Mui-disabled"] = {
+    sx["&.Mui-disabled"] = {
       backgroundColor: variant === "outlined" ? "inherit" : bgColor,
       color: textColor,
     };
     if (["square", "outlined"].includes(variant)) {
-      baseProps.sx["&.Mui-disabled"].backgroundColor = (theme) =>
+      sx["&.Mui-disabled"].backgroundColor = (theme) =>
         theme.palette.background.field;
     }
   }
@@ -166,7 +204,8 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
   return baseProps;
 }
 
-function getIconProps(props: ViewPropsType): ButtonProps {
+// the icon only takes the shared sx
+function getIconProps(props: ViewPropsType): Pick<ButtonProps, "sx"> {
   return getCommonProps(props);
 }
 
@@ -196,7 +235,7 @@ function getColor(props: ViewPropsType) {
   const {
     schema: { view = {} },
   } = props;
-  const { color } = view;
+  const { color } = view as { color?: string };
   if (color) {
     return getColorByCode(color);
   }
@@ -211,8 +250,9 @@ function getColor(props: ViewPropsType) {
 const defaultVariant = ["contained", "outlined"];
 
 function getVariant(pros: ViewPropsType) {
-  const variant = pros.schema.view.variant;
-  if (defaultVariant.includes(variant)) return variant;
+  const variant = pros.schema.view.variant as string;
+  if (defaultVariant.includes(variant))
+    return variant as "contained" | "outlined";
   if (variant === "round") return "contained";
   return "contained";
 }

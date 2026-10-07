@@ -829,7 +829,7 @@ export class PixiRenderer2D implements Renderer2D {
         if (!image.texture) {
           return;
         }
-        texture = image.texture;
+        texture = image.texture as PIXI.Texture;
         break;
       case "canvas":
         if (!image.canvas) {
@@ -875,7 +875,9 @@ export class PixiRenderer2D implements Renderer2D {
           return;
         }
         try {
-          texture = PIXI.Texture.from(image.custom);
+          texture = PIXI.Texture.from(
+            image.custom as Parameters<typeof PIXI.Texture.from>[0],
+          );
         } catch {
           return;
         }
@@ -984,7 +986,7 @@ export class PixiRenderer2D implements Renderer2D {
    * Adjusts the viewport zoom and pan so that the given world-space rectangle
    * is centered and fully visible, with optional padding.
    */
-  fitToRect(worldRect: Rect, padding: number = 0): void {
+  fitToRect(worldRect: Rect, padding = 0): void {
     if (!this.viewport || this.viewport.destroyed) return;
     if (!worldRect.width || !worldRect.height) return;
 

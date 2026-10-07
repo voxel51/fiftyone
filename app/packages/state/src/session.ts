@@ -4,6 +4,7 @@ import {
   subscribe,
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import type { APISpaceNode } from "./hooks/useSessionSpaces";
 import { useCallback } from "react";
 import { atom, AtomOptions, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
@@ -99,7 +100,9 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   sampleSelectionStyle: SelectionStyle;
   labelSelectionStyle: LabelSelectionStyle;
-  sessionSpaces: SpaceNodeJSON;
+  // the server and setSessionSpaces store the API format; the default
+  // carries both shapes
+  sessionSpaces: SpaceNodeJSON | APISpaceNode;
   sessionGroupSlice?: string;
 }
 
@@ -197,7 +200,8 @@ export function sessionAtom<K extends keyof Session>(
           );
         }
 
-        // @ts-ignore
+        // @ts-expect-error setters is keyed by the session-atom keys, a
+        // subset of keyof Session that K is not narrowed to
         setters[options.key] = (value: Session[K]) => {
           const resolved = value === undefined ? options.default : value;
           setSelf(resolved);
@@ -250,7 +254,11 @@ export function sessionAtom<K extends keyof Session>(
 
       if (!isTest) {
         if (setterRef) {
-          setterRef(options.key, newValue);
+          // read-only keys threw above, so K is a setter key here
+          setterRef(
+            options.key as K & SetterKeys,
+            newValue as Session[K & SetterKeys],
+          );
         }
         if (sessionRef) {
           sessionRef[options.key] = newValue;

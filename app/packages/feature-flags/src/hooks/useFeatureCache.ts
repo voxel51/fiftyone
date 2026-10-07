@@ -49,7 +49,7 @@ export const useFeatureCache = (): {
 
   useEffect(() => {
     initializeCache();
-  }, [cache]);
+  }, [cache, initializeCache]);
 
   return { cache, isResolved: isInitialized };
 };

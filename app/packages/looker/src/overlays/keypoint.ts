@@ -16,8 +16,12 @@ import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { resolveLabelSelectionVisuals, sizeInImagePixels, t } from "./util";
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
+// keypoints are 2D; non-finite points are filtered out before drawing
+type Point2D = [number, number];
+
 interface KeypointLabel extends RegularLabel {
-  points: [NONFINITE, NONFINITE][];
+  // missing coordinates are serialized as "nan"/"inf"/"-inf"
+  points: [number | NONFINITE, number | NONFINITE][];
 }
 
 export default class KeypointOverlay<
@@ -138,11 +142,11 @@ export default class KeypointOverlay<
     state: Readonly<State>,
   ): [number, number | null] | null {
     const distances: [number, number][] = [];
-    let {
+    const {
       dimensions,
-      pointRadius,
       pixelCoordinates: [x, y],
     } = state;
+    let { pointRadius } = state;
     pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
 
     const skeleton = getSkeleton(this.field, state);
@@ -196,7 +200,7 @@ export default class KeypointOverlay<
   private getFilteredPoints(
     state: Readonly<State>,
     skeleton?: KeypointSkeleton,
-  ): (Coordinates | null)[] {
+  ): (Point2D | null)[] {
     return this.label.points.map((p, i) => {
       return p.every((c) => typeof c === "number") &&
         state.options.pointFilter(
@@ -207,13 +211,13 @@ export default class KeypointOverlay<
         )
         ? p
         : null;
-    }) as unknown as (Coordinates | null)[];
+    }) as unknown as (Point2D | null)[];
   }
 
   private strokePath(
     ctx: CanvasRenderingContext2D,
     state: Readonly<State>,
-    path: Coordinates[],
+    path: (Point2D | null)[],
     color: string,
     dash?: number,
   ) {

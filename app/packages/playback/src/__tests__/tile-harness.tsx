@@ -23,8 +23,6 @@ export const RegisterTiles: React.FC<{ entries: TileRegistration[] }> = ({
   entries,
 }) => {
   const { registerTile } = useTileRegistry();
-  // registerTile is a stable jotai-backed setter — not in deps by design.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const disposes = entries.map((e) => {
       const entry: RegisteredTile = {
@@ -38,7 +36,8 @@ export const RegisterTiles: React.FC<{ entries: TileRegistration[] }> = ({
     return () => {
       for (const d of disposes) d();
     };
-  }, [entries]);
+    // registerTile is a stable jotai-backed setter
+  }, [entries, registerTile]);
   return null;
 };
 

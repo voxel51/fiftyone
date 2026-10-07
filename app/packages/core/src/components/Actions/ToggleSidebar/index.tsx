@@ -7,7 +7,7 @@ import type { ActionProps } from "../types";
 import { getStringAndNumberProps } from "../utils";
 
 const ToggleSidebar = React.forwardRef<
-  HTMLButtonElement,
+  HTMLDivElement,
   ActionProps & {
     modal: boolean;
   }
@@ -20,7 +20,7 @@ const ToggleSidebar = React.forwardRef<
         setVisible(!visible);
       }}
       title={`${visible ? "Hide" : "Show"} sidebar (s)`}
-      tooltipPlacement={modal ? "bottom" : "top"}
+      tooltipPlacement={modal ? "bottom-center" : "top-center"}
       open={visible}
       icon={
         visible ? (

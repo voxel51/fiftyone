@@ -1,4 +1,3 @@
-/// <reference path="./env.d.ts" />
 import {
   EventSourceMessage,
   fetchEventSource,
@@ -531,7 +530,7 @@ export const setFetchFunction = (
     path: string,
     body: A = null,
     result: FetchResultType = "json",
-    retries: number = 2,
+    retries = 2,
     retryCodes: number[] = [502, 503, 504],
     errorHandler: (response: Response) => void | Promise<void>,
     headers: Record<string, string>,
@@ -587,7 +586,7 @@ async function readResponseArrayBuffer(
   const chunks: Uint8Array[] = [];
   let loadedBytes = 0;
   onProgress(loadedBytes);
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value);
@@ -623,7 +622,7 @@ class JSONStreamParser {
   }
 
   async parse(callback) {
-    while (true) {
+    for (;;) {
       const { done, value } = await this.reader.read();
       if (done) {
         // End of stream
@@ -650,7 +649,6 @@ class JSONStreamParser {
 }
 
 const isWorker =
-  // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 const hasWindow = typeof window !== "undefined" && !isWorker;
 
@@ -746,51 +744,45 @@ export const getEventSource = (
         events.onerror && events.onerror(err);
       },
       fetch: async (input, init) => {
-        try {
-          const response = await fetch(input, init);
-          if (response.status >= 400) {
-            let err;
-            try {
-              err = await response.json();
-            } catch {
-              throw new Error(`${response.status} ${response.url}`);
-            }
-
-            throw new ServerError(
-              {
-                code: response.status,
-                bodyResponse: err,
-                route: response.url,
-                payload: {},
-                requestHeaders: init?.headers ?? {},
-                responseHeaders: response.headers,
-                statusText: response.statusText,
-                stack: (err as unknown as { stack?: string }).stack,
-              },
-              (err as unknown as { message?: string }).message ??
-                `${response.status} ${response.url}`,
-            );
+        const response = await fetch(input, init);
+        if (response.status >= 400) {
+          let err;
+          try {
+            err = await response.json();
+          } catch {
+            throw new Error(`${response.status} ${response.url}`);
           }
 
-          return response;
-        } catch (err) {
-          throw err;
+          throw new ServerError(
+            {
+              code: response.status,
+              bodyResponse: err,
+              route: response.url,
+              payload: {},
+              requestHeaders: init?.headers ?? {},
+              responseHeaders: response.headers,
+              statusText: response.statusText,
+              stack: (err as unknown as { stack?: string }).stack,
+            },
+            (err as unknown as { message?: string }).message ??
+              `${response.status} ${response.url}`,
+          );
         }
+
+        return response;
       },
       openWhenHidden: true,
     });
   }
 };
 
-export const sendEvent = async (data: {}) => {
+export const sendEvent = async (data: object) => {
   return await getFetchFunction()("POST", "event", data);
 };
 
 interface PollingEventResponse {
   event: string;
-  data: {
-    [key: string]: any;
-  };
+  data: Record<string, unknown>;
 }
 
 const pollingEventSource = (

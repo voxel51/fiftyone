@@ -112,7 +112,8 @@ export default class DetectionOverlay<
     if (rotation) {
       if (
         isPointInRotatedBox(
-          state.pixelCoordinates,
+          // 2D lookers only produce [x, y] pixel coordinates
+          state.pixelCoordinates as [number, number],
           this.label.bounding_box,
           rotation,
           state.dimensions,
@@ -262,8 +263,8 @@ export default class DetectionOverlay<
     const [tlx, tly] = this.label.bounding_box;
     ctx.beginPath();
     ctx.fillStyle = color;
-    let [ox, oy] = t(state, tlx, tly);
-    [ox, oy] = [ox - state.strokeWidth / 2, oy];
+    const [tx, oy] = t(state, tlx, tly);
+    const ox = tx - state.strokeWidth / 2;
     ctx.moveTo(ox, oy);
     const { width } = ctx.measureText(labelText);
     const height = state.fontSize;

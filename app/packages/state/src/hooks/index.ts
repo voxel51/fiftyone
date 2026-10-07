@@ -37,6 +37,7 @@ export {
 export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
+export type { CreateLookerInput } from "./useCreateLooker";
 export { default as useDimensions } from "./useDimensions";
 export * from "./useExpandSample";
 export { default as useExpandSample } from "./useExpandSample";
@@ -70,7 +71,11 @@ export { default as useSavedViews } from "./useSavedViews";
 export { default as useSchemaSettings } from "./useSchemaSettings";
 export { default as useScreenshot } from "./useScreenshot";
 export { default as useSelectSample } from "./useSelectSample";
-export { default as useSessionSpaces } from "./useSessionSpaces";
+export {
+  default as useSessionSpaces,
+  sessionSpacesToAppFormat,
+} from "./useSessionSpaces";
+export type { APISpaceNode, APISpaceTree } from "./useSessionSpaces";
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";

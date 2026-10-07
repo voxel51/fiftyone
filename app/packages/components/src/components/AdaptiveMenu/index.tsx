@@ -41,7 +41,7 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
         itemsById[item.id] = { ...item, index };
         return itemsById;
       },
-      {} as Record<string, AdaptiveMenuItemPropsType>,
+      {} as Record<string, T & { index: number }>,
     );
   }, [items]);
 
@@ -216,18 +216,22 @@ function AdaptiveMenuItems<T extends AdaptiveMenuItemPropsType>(
   props: AdaptiveMenuItemsPropsType<T>,
 ) {
   const { items, variant, closeOverflow, refresh } = props;
-  return items.map((item) => {
-    const { Component, id } = item;
-    return (
-      <Component
-        key={id}
-        variant={variant}
-        data-item-id={id}
-        closeOverflow={closeOverflow}
-        refresh={refresh}
-      />
-    );
-  });
+  return (
+    <>
+      {items.map((item) => {
+        const { Component, id } = item;
+        return (
+          <Component
+            key={id}
+            variant={variant}
+            data-item-id={id}
+            closeOverflow={closeOverflow}
+            refresh={refresh}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 function MoreItems<T extends AdaptiveMenuItemPropsType>(
@@ -328,7 +332,7 @@ type MoreItemsPropsType<T extends AdaptiveMenuItemPropsType> = {
   id: string;
   items: T[];
   onMove: (e: MoveEvent, source: MenuVariant) => boolean;
-  onEnd: () => void;
+  onEnd: (e: SortableEvent) => void;
   onStart: () => void;
   onOrderChange?: (items: T[]) => void;
   orientation?: MenuOrientation;

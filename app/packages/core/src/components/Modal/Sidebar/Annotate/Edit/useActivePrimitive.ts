@@ -3,7 +3,9 @@ import { useMemo } from "react";
 import { useIsPrimitiveField } from "../SchemaManager/hooks";
 
 // the path of the primitive that is currently being edited
-export const activePrimitiveAtom = atom<string | null>(null);
+// Without strictNullChecks a bare null/undefined matches jotai's read-only
+// atom(read) overload; typing the initial value selects the writable one.
+export const activePrimitiveAtom = atom<string | null>(null as string | null);
 
 export const useActivePrimitive = () => {
   return useAtom(activePrimitiveAtom);

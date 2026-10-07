@@ -120,8 +120,8 @@ export function Writer<T extends OperationType>({
   subscribe,
   setters,
 }: WriterProps<T>) {
-  // @ts-ignore
-  pageQueryReader = read;
+  // the module-level reader is generic; this Writer serves one T
+  pageQueryReader = read as typeof pageQueryReader;
 
   const set = useRecoilTransaction_UNSTABLE(
     (transactionInterface) =>
@@ -134,8 +134,7 @@ export function Writer<T extends OperationType>({
   React.useEffect(() => {
     let previous: PageQuery<T> | undefined;
     return subscribe((pageQuery) => {
-      // @ts-ignore
-      pageQueryReader = () => pageQuery;
+      pageQueryReader = (() => pageQuery) as typeof pageQueryReader;
       set((transactionInterface) => {
         for (const cb of [
           ...pageSyncSubscribers.values(),

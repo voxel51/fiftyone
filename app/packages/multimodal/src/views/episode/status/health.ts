@@ -941,9 +941,9 @@ export function useStabilizedNotices(
   // next boundary, and rescheduling one timeout per render is cheap.
   useEffect(() => {
     const stabilizer = stabilizerRef.current;
-    if (!stabilizer) return;
+    if (!stabilizer) return undefined;
     const nextAt = stabilizer.nextEvaluateAtMs();
-    if (nextAt === null) return;
+    if (nextAt === null) return undefined;
 
     const timer = setTimeout(
       () => {

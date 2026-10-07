@@ -71,7 +71,7 @@ const createSourceData = (
   };
 };
 
-const Panel: React.FC<{}> = () => {
+const Panel: React.FC = () => {
   const theme = foc.useTheme();
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
@@ -177,7 +177,7 @@ const Panel: React.FC<{}> = () => {
         scope: SELECTION_SCOPE,
       });
     },
-    [data, setExtendedSelection],
+    [currentField, data, setExtendedSelection],
   );
 
   const bounds = React.useMemo(() => data && computeBounds(data), [data]);
@@ -223,7 +223,7 @@ const Panel: React.FC<{}> = () => {
     map.on("mouseleave", "point", () => crosshair);
     map.on("dragstart", drag);
     map.on("dragend", crosshair);
-  }, []);
+  }, [draw]);
 
   const length = React.useMemo(
     () => Object.keys(sampleLocationMap).length,
@@ -246,6 +246,8 @@ const Panel: React.FC<{}> = () => {
   const setPanelCloseEffect = useSetPanelCloseEffect();
   React.useEffect(() => {
     setPanelCloseEffect(resetExtendedSelection);
+    // register the close effect once, on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, []);
 
   if (!settings.mapboxAccessToken) {

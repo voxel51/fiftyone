@@ -1,8 +1,11 @@
 import { useRef, useState, useEffect, MutableRefObject } from "react";
 
-function useHover(): [MutableRefObject<any>, boolean] {
+function useHover<T extends HTMLElement = HTMLDivElement>(): [
+  MutableRefObject<T | null>,
+  boolean,
+] {
   const [value, setValue] = useState(false);
-  const ref = useRef(null);
+  const ref = useRef<T | null>(null);
   const handleMouseOver = () => setValue(true);
   const handleMouseOut = () => setValue(false);
 
@@ -17,8 +20,11 @@ function useHover(): [MutableRefObject<any>, boolean] {
           node.removeEventListener("mouseout", handleMouseOut);
         };
       }
+      return undefined;
     },
-    [ref.current], // Recall only if ref changes
+    // re-attach when the ref's node has changed by the next render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    [ref.current],
   );
   return [ref, value];
 }

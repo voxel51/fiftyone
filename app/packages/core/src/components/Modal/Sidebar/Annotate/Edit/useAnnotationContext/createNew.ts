@@ -202,7 +202,8 @@ export function getNewLabelDefaults(
  */
 export function buildNewLabelData(
   field: string,
-  type: LabelType,
+  // field swaps can pass any annotation label type; unknown ones get no _cls
+  type: LabelType | AnnotationLabel["type"],
   options?: CreateOptions,
 ) {
   const labelId = options?.id ?? objectId();

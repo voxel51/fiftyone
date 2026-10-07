@@ -1,3 +1,5 @@
+import type * as fos from "@fiftyone/state";
+import type { Schema } from "@fiftyone/utilities";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -15,10 +17,12 @@ import {
   SAMPLE_RENDERER_GRID_SLOT,
   sortSampleRenderersByPriority,
   supportsSampleRenderer,
+  type SampleRendererMatchContext,
+  type SampleRendererRenderContext,
 } from "./sample-renderer";
 
-const dataset = { name: "dataset" } as any;
-const schema = { filepath: { ftype: "StringField" } } as any;
+const dataset = { name: "dataset" } as unknown as fos.State.Dataset;
+const schema = { filepath: { ftype: "StringField" } } as unknown as Schema;
 
 const createSample = () =>
   ({
@@ -43,17 +47,21 @@ const createRegistration = (
           mimeTypes?: string[];
           mediaTypes?: string[];
         }
-      | ((ctx: any) => boolean);
+      | ((ctx: SampleRendererMatchContext) => boolean);
     grid?: {
       clickBehavior?: "renderer" | "passthrough";
       enabled?: boolean;
-      overrideComponent?: React.FunctionComponent<{ ctx: any }>;
+      overrideComponent?: React.FunctionComponent<{
+        ctx: SampleRendererRenderContext;
+      }>;
       slots?: Partial<Record<string, React.FunctionComponent>>;
     };
   },
 ) => ({
   name,
-  component: ({ ctx }: { ctx: any }) => <div>{ctx.media.url}</div>,
+  component: ({ ctx }: { ctx: SampleRendererRenderContext }) => (
+    <div>{ctx.media.url}</div>
+  ),
   sampleRendererOptions,
 });
 
@@ -392,7 +400,9 @@ describe("sample renderer selection", () => {
   });
 
   it("reuses the canonical component in grid when enabled without an override", () => {
-    const canonical = ({ ctx }: { ctx: any }) => <div>{ctx.media.path}</div>;
+    const canonical = ({ ctx }: { ctx: SampleRendererRenderContext }) => (
+      <div>{ctx.media.path}</div>
+    );
     const registration = {
       ...createRegistration("pdf", {
         supports: { extensions: ["pdf"] },
@@ -407,8 +417,12 @@ describe("sample renderer selection", () => {
   });
 
   it("uses a grid override component when one is configured", () => {
-    const canonical = ({ ctx }: { ctx: any }) => <div>{ctx.media.path}</div>;
-    const override = ({ ctx }: { ctx: any }) => <span>{ctx.media.path}</span>;
+    const canonical = ({ ctx }: { ctx: SampleRendererRenderContext }) => (
+      <div>{ctx.media.path}</div>
+    );
+    const override = ({ ctx }: { ctx: SampleRendererRenderContext }) => (
+      <span>{ctx.media.path}</span>
+    );
     const registration = {
       ...createRegistration("pdf", {
         supports: { extensions: ["pdf"] },

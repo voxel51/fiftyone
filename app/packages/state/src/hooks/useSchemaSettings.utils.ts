@@ -52,7 +52,8 @@ const isMetadataField = (path: string) => {
 export const getPath = (
   path: string,
   mediaType: MediaType,
-  frameSchema?: { [key: string]: Field },
+  // only checked for key presence
+  frameSchema?: { readonly [key: string]: unknown },
 ) => {
   if (mediaType === "video") {
     if (!frameSchema?.[path]) {
@@ -76,9 +77,9 @@ export interface DatasetSchema {
  */
 export const getSubPaths = (
   path: string,
-  schema: DatasetSchema,
+  schema: { readonly [path: string]: SchemaFieldLike },
   mediaType: MediaType,
-  frameSchema?: DatasetSchema,
+  frameSchema?: { readonly [key: string]: unknown },
 ) => {
   if (!path) {
     throw new Error("path is required");
@@ -105,7 +106,13 @@ export const getSubPaths = (
   return subPaths;
 };
 
-export const skipField = (rawPath: string, schema: {}) => {
+// the field properties skipField reads; relay's schema fragments carry these
+type SchemaFieldLike = Pick<Field, "ftype" | "embeddedDocType" | "path">;
+
+export const skipField = (
+  rawPath: string,
+  schema: { readonly [path: string]: SchemaFieldLike },
+) => {
   if (!rawPath) {
     throw new Error("path argument is required");
   }

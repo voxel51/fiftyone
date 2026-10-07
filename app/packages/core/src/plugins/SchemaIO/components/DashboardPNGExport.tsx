@@ -3,18 +3,19 @@ import { Box, Typography } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import DynamicIO from "./DynamicIO";
 import { ObjectSchemaType } from "../utils/types";
+import type GridLayout from "react-grid-layout";
 import { getPath } from "../utils";
 
 interface DashboardPNGExportProps {
   schema: ObjectSchemaType;
-  data: any;
+  data: Record<string, unknown>;
   path: string;
   layout?: { width: number; height: number };
   autoLayout?: boolean;
   layoutMode?: string;
   numRows?: number;
   numCols?: number;
-  customLayout?: any[];
+  customLayout?: GridLayout.Layout[];
 }
 
 export default function DashboardPNGExport({
@@ -113,7 +114,8 @@ export default function DashboardPNGExport({
     >
       {orderedProperties.map((property) => {
         const { id } = property;
-        const value = data?.[id];
+        // a property's data may carry a display name
+        const value = data?.[id] as { name?: string } | undefined;
         const label = property.view?.layout?.title || value?.name || id;
         const itemPath = getPath(path, id);
         const propertyIsPlotlyView = isPlotlyView(property);

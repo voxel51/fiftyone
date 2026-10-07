@@ -23,6 +23,12 @@ import {
 } from "./hooks";
 import { hasSetDiff, hasSetInt, toIds } from "./utils";
 
+const useCloseAndCall = (close: () => void, callback: () => unknown) =>
+  useCallback(() => {
+    close();
+    callback();
+  }, [callback, close]);
+
 export default ({
   anchorRef,
   close,
@@ -86,12 +92,6 @@ export default ({
     }
   }, [isPlaying, close]);
 
-  const closeAndCall = (callback) => {
-    return useCallback(() => {
-      close();
-      callback();
-    }, [callback, close]);
-  };
   const elementNames = useRecoilValue(fos.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(
@@ -126,16 +126,35 @@ export default ({
       key: "select",
       text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
-      onClick: closeAndCall(useSelectVisible(null, visibleSampleLabels)),
+      onClick: useCloseAndCall(
+        close,
+        useSelectVisible(null, visibleSampleLabels),
+      ),
     },
     {
       key: "unselect",
       text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
-      onClick: closeAndCall(
+      onClick: useCloseAndCall(
+        close,
         useUnselectVisible(undefined, toIds(visibleSampleLabels)),
       ),
     },
+  );
+
+  // Frame actions only show for video, but their hooks run on every render so
+  // the hook order can't change if the sample's media type does.
+  const selectVisibleFrame = useCloseAndCall(
+    close,
+    useSelectVisible(null, visibleFrameLabels),
+  );
+  const unselectVisibleFrame = useCloseAndCall(
+    close,
+    useUnselectVisible(undefined, toIds(visibleFrameLabels)),
+  );
+  const hideOthersFrame = useCloseAndCall(
+    close,
+    useHideOthers(undefined, visibleFrameLabels),
   );
 
   if (isVideo) {
@@ -144,15 +163,13 @@ export default ({
         key: "select-frame",
         text: "Select visible labels (current frame)",
         hidden: !hasFrameVisibleUnselected,
-        onClick: closeAndCall(useSelectVisible(null, visibleFrameLabels)),
+        onClick: selectVisibleFrame,
       },
       {
         key: "unselect-frame",
         text: "Unselect visible labels (current frame)",
         hidden: !hasFrameVisibleSelection,
-        onClick: closeAndCall(
-          useUnselectVisible(undefined, toIds(visibleFrameLabels)),
-        ),
+        onClick: unselectVisibleFrame,
       },
     );
   }
@@ -162,19 +179,22 @@ export default ({
       key: "clear-labels",
       text: "Clear selected labels",
       hidden: !selectedLabels.size,
-      onClick: closeAndCall(useClearSelectedLabels(close)),
+      onClick: useCloseAndCall(close, useClearSelectedLabels(close)),
     },
     {
       key: "hide-labels",
       text: "Hide selected labels",
       hidden: !selectedLabels.size,
-      onClick: closeAndCall(useHideSelected()),
+      onClick: useCloseAndCall(close, useHideSelected()),
     },
     {
       key: "hide-unselected-labels",
       text: `Hide unselected labels (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
-      onClick: closeAndCall(useHideOthers(undefined, visibleSampleLabels)),
+      onClick: useCloseAndCall(
+        close,
+        useHideOthers(undefined, visibleSampleLabels),
+      ),
     },
   );
 
@@ -183,7 +203,7 @@ export default ({
       key: "hide-unselected-labels-frame",
       text: "Hide unselected labels (current frame)",
       hidden: !hasFrameVisibleUnselected,
-      onClick: closeAndCall(useHideOthers(undefined, visibleFrameLabels)),
+      onClick: hideOthersFrame,
     });
   }
 

@@ -30,7 +30,7 @@ const selectedFieldInfo = atom<string | null>({
 // the given element for a specified amount of time
 const useHover = (ref, delay, onHover, onHoverEnd) => {
   const [hovering, setHovering] = useState(false);
-  const timer = useRef<number>();
+  const timer = useRef<ReturnType<typeof setTimeout>>();
 
   const handleMouseOver = (e) => {
     timer.current = setTimeout(() => {
@@ -55,6 +55,8 @@ const useHover = (ref, delay, onHover, onHoverEnd) => {
         node.removeEventListener("mouseout", handleMouseOut);
       };
     }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- attach once per node; the handlers only touch refs and stable setters
   }, [ref.current]);
 
   return hovering;
@@ -81,7 +83,7 @@ function useFieldInfo(field, nested, { expandedPath, color }) {
 
   useEffect(() => {
     setOpen(selectedField === instanceId);
-  }, [selectedField]);
+  }, [instanceId, selectedField]);
 
   return {
     open,
@@ -267,7 +269,7 @@ function FieldInfoExpanded({
     setIsCustomizingColor({ path: path || field.path });
   };
 
-  useEffect(updatePosition, [field, isCollapsed]);
+  useEffect(updatePosition, [el, field, hoverTarget, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
   const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
 
@@ -504,7 +506,7 @@ function FieldInfoTable({
 }) {
   info = info || {};
   const tableData = info;
-  let items = Object.entries<any>(tableData)
+  let items = Object.entries(tableData as Record<string, unknown>)
     .filter(keyValueIsRenderable)
     .map((v) => toRenderValue(v, timeZone));
 

@@ -10,7 +10,8 @@
  * persisted `index`.
  */
 export const establishPatchFor = (
-  source: { keyframe?: unknown; instance?: unknown },
+  // any label document; only these two keys are read
+  source: { keyframe?: unknown; instance?: unknown; [key: string]: unknown },
   instanceId: string,
 ): Record<string, unknown> => {
   const patch: Record<string, unknown> = {};

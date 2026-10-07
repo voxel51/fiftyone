@@ -9,7 +9,15 @@
  */
 
 import { WidgetProps } from "@rjsf/utils";
+import type { ComponentType } from "react";
 import DropdownView from "../../../../../../core/src/plugins/SchemaIO/components/DropdownView";
+import type { ViewPropsType } from "../../../../../../core/src/plugins/SchemaIO/utils/types";
+
+// DropdownView only reads these props (plus autoFocused/componentsProps,
+// which are optional), so the widget passes just them
+const DropdownViewWidget: ComponentType<
+  Pick<ViewPropsType, "schema" | "data" | "onChange" | "path">
+> = DropdownView;
 
 export default function Dropdown(props: WidgetProps) {
   const { value, onChange, schema, uiSchema, id, disabled, readonly, label } =
@@ -43,12 +51,12 @@ export default function Dropdown(props: WidgetProps) {
     },
   };
 
-  const handleChange = (_path: string, newValue: any) => {
+  const handleChange = (_path: string, newValue: unknown) => {
     onChange(newValue);
   };
 
   return (
-    <DropdownView
+    <DropdownViewWidget
       schema={schemaIOSchema}
       data={value}
       onChange={handleChange}

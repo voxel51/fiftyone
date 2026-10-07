@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { AnimationMixer, type Quaternion, type Vector3 } from "three";
 import { FBXLoader } from "three-stdlib";
-import type { FbxAsset } from "../../hooks";
+import type { FbxAsset } from "../render-types";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";

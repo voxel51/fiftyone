@@ -2,7 +2,7 @@ import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
-import type { Data } from "plotly.js";
+import type { Data, Layout } from "plotly.js";
 import Plot from "react-plotly.js";
 import { useRecoilValue } from "recoil";
 import { tracesToData } from "./tracesToData";
@@ -48,7 +48,7 @@ export function EmbeddingsPlot({
   const [zoomRev] = useZoomRevision();
   const resetZoom = useResetPlotZoom();
   const { isLoading, traces, style } = usePlot();
-  const [dragMode, setDragMode] = usePanelStatePartial(
+  const [dragMode, setDragMode] = usePanelStatePartial<Layout["dragmode"]>(
     "dragMode",
     "lasso",
     true,

@@ -211,7 +211,7 @@ export const useSignalValue = <T>(
 
   useEffect(() => {
     if (!key) {
-      return;
+      return undefined;
     }
 
     return engine.subscribeSignal<T>(topic, key, setValue);

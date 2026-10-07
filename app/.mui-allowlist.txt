@@ -73,7 +73,6 @@ packages/core/src/components/ColorModal/colorPalette/GlobalColorscale.tsx
 packages/core/src/components/ColorModal/controls/ColorAttribute.tsx
 packages/core/src/components/ColorModal/controls/ManualColorScaleList.tsx
 packages/core/src/components/ColorModal/controls/ModeControl.tsx
-packages/core/src/components/ColorModal/controls/OpacityAttribute.tsx
 packages/core/src/components/ColorModal/controls/RefreshColor.tsx
 packages/core/src/components/ColorModal/FieldSetting.tsx
 packages/core/src/components/ColorModal/GlobalSetting.tsx
@@ -102,7 +101,6 @@ packages/core/src/components/Modal/Actions/GroupVisibility/index.tsx
 packages/core/src/components/Modal/Actions/HiddenLabels/index.tsx
 packages/core/src/components/Modal/Actions/index.tsx
 packages/core/src/components/Modal/Actions/ToggleFullscreen/index.tsx
-packages/core/src/components/Modal/Bars.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/pagination/index.tsx
 packages/core/src/components/Modal/Group/DynamicGroup/pagination/PaginationComponentWithTooltip.tsx
 packages/core/src/components/Modal/MetadataLooker.tsx

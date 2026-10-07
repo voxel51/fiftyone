@@ -101,7 +101,7 @@ export const useModalSidebarRenderEntry = () => {
           };
         case fos.EntryKind.INPUT:
           return {
-            children: <Entries.Filter modal={true} key={key} />,
+            children: <Entries.Filter key={key} />,
             disabled: true,
           };
         default:

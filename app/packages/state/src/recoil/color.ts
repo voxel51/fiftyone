@@ -59,10 +59,13 @@ export const coloring = selector<Coloring>({
       seed,
       pool: colorScheme.colorPool,
       scale: get(configData).colorscale as RGB[], // from config, used as fallback
-      by: colorScheme.colorBy,
+      // relay types colorBy as string; the server only sends COLOR_BY values
+      by: colorScheme.colorBy as Coloring["by"],
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
-      defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors,
+      // looker's Coloring takes a mutable array; it never mutates it
+      defaultMaskTargetsColors:
+        colorScheme.defaultMaskTargetsColors as Coloring["defaultMaskTargetsColors"],
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
@@ -353,10 +356,14 @@ export const eligibleFieldsToCustomizeColor = selector({
 });
 
 export const ensureColorScheme = (
-  colorScheme: any,
+  rawColorScheme: unknown,
   appConfig?: datasetQuery$data["config"],
 ): ColorSchemeInput => {
-  colorScheme = toCamelCase(colorScheme);
+  // a stored or server color scheme, possibly snake_cased and partial
+  const colorScheme = toCamelCase(rawColorScheme as object) as
+    | Partial<ColorSchemeInput>
+    | null
+    | undefined;
   return {
     id: colorScheme?.id,
     colorPool:
@@ -400,7 +407,7 @@ export function removeRgbProperty(input) {
   // Process the 'colorscales' array
   if (clonedInput.colorscales && Array.isArray(clonedInput.colorscales)) {
     clonedInput.colorscales = clonedInput.colorscales.map(
-      ({ rgb, ...rest }) => rest,
+      ({ rgb: _rgb, ...rest }) => rest,
     );
   }
 
@@ -409,7 +416,7 @@ export function removeRgbProperty(input) {
     clonedInput.defaultColorscale &&
     typeof clonedInput.defaultColorscale === "object"
   ) {
-    const { rgb, ...rest } = clonedInput.defaultColorscale;
+    const { rgb: _rgb, ...rest } = clonedInput.defaultColorscale;
     clonedInput.defaultColorscale = rest;
   }
 

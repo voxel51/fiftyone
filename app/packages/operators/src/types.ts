@@ -243,6 +243,8 @@ export class Property {
   invalid?: boolean;
   errorMessage?: string;
   onChange?: string;
+  // not set by Property itself; toProps forwards it when present
+  choices?: unknown;
 
   public resolver: (property: Property, ctx: ExecutionContext) => Property;
   static fromJSON(json: PropertyJSON) {
@@ -1491,6 +1493,7 @@ type PropertyOptions = {
   default?: unknown;
   invalid?: boolean;
   errorMessage?: string;
+  on_change?: string;
 };
 // index signature admits view-specific keys forwarded through defineProperty
 type PropertyOptionsInput = PropertyOptions & { [key: string]: unknown };

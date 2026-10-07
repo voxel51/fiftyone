@@ -14,7 +14,7 @@ import resolveActiveGroupSliceForView from "./resolveActiveGroupSliceForView";
 export default function useToPatches() {
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (field) => {
+      async (field: string) => {
         set(patching, true);
         const { slice, updater } =
           await resolveActiveGroupSliceForView(snapshot);

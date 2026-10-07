@@ -90,7 +90,7 @@ export default function NativeModelEvaluationView(props) {
         },
       );
     },
-    [triggerEvent, rename_evaluation, evaluations, onChange],
+    [triggerEvent, rename_evaluation, evaluations, onChange, page],
   );
 
   const time = new Date().getTime();
@@ -124,7 +124,15 @@ export default function NativeModelEvaluationView(props) {
         },
       );
     },
-    [triggerEvent, delete_evaluation, evaluations, onChange, time],
+    [
+      triggerEvent,
+      delete_evaluation,
+      evaluations,
+      onChange,
+      on_change_view,
+      page,
+      time,
+    ],
   );
 
   const handleClose = () => {

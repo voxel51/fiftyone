@@ -57,7 +57,7 @@ export const useApplyPropagatedDetection = (): PropagatedDetectionWriter => {
 
       // the track's own frame field (e.g. a polyline), defaulting to primary
       const path = opts?.path ?? stream.labelsPath;
-      const { _id, instance, ...content } = detection;
+      const { _id, instance: _instance, ...content } = detection;
 
       actions.transaction(
         () =>

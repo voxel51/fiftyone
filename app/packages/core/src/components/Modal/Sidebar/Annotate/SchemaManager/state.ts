@@ -171,7 +171,9 @@ export const hiddenFieldHasSchemaStates = atom((get) => {
 /**
  * Draft JSON content for the full schemas editor
  */
-export const draftJsonContent = atom<string | null>(null);
+// Without strictNullChecks a bare null/undefined matches jotai's read-only
+// atom(read) overload; typing the initial value selects the writable one.
+export const draftJsonContent = atom<string | null>(null as string | null);
 
 /**
  * Validation errors for JSON editing
@@ -193,5 +195,5 @@ export const hasJsonChanges = atom((get) => {
  * Current label schema being edited (per field)
  */
 export const currentLabelSchema = atomFamily((_field: string) =>
-  atom<object | undefined>(undefined),
+  atom<object | undefined>(undefined as object | undefined),
 );

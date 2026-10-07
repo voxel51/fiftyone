@@ -14,5 +14,6 @@ export default function useColor(overlay?: BaseOverlay) {
 
   return useMemo(() => {
     return overlay ? getOverlayColor(overlay, coloring) : brand;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- field is a recompute trigger for in-place overlay mutation (see above)
   }, [brand, coloring, overlay, field]);
 }

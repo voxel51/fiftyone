@@ -1,4 +1,16 @@
-export type SchemaViewType = { [key: string]: any };
+// Server-configured view options. Keys every view shares are declared here;
+// each view types its own component-specific keys where it reads them.
+export type SchemaViewType = { [key: string]: unknown } & {
+  component?: string;
+  composite_view?: boolean;
+  name?: string;
+  label?: string;
+  description?: string;
+  caption?: string;
+  placeholder?: string;
+  readOnly?: boolean;
+  read_only?: boolean;
+};
 
 export type BaseSchemaType = {
   type: string;
@@ -6,6 +18,8 @@ export type BaseSchemaType = {
   default?: unknown;
   name?: string;
   read_only?: boolean;
+  // operator URI triggered on change (Property.toProps' onChange)
+  onChange?: string;
 };
 
 export type ArraySchemaType = BaseSchemaType & {
@@ -38,14 +52,14 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
   customComponents?: CustomComponentsType;
   onChange: (
     path: string,
-    value: any,
+    value: unknown,
     schema?: Schema,
     ancestors?: AncestorsType,
   ) => void;
   parentSchema?: SchemaType;
   relativePath: string;
-  data?: any;
-  initialData?: any;
+  data?: unknown;
+  initialData?: unknown;
   layout?: {
     height: number;
     width: number;

@@ -3,6 +3,7 @@ import {
   useToolsContext,
   useToolsState,
 } from "./useToolsContext";
+import type { DetectionAnnotationLabel } from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useLighter } from "@fiftyone/lighter";
@@ -40,7 +41,8 @@ export const useRegisterAnnotationToolEventHandlers = () => {
   const agent = useAnnotationAgent(useAgentSelector().activeAgent?.agent);
   const { consumeSeedNew } = usePointSelectionSeed();
   const createDetection = useCallback(
-    () => createNew("Detection"),
+    // createNew returns the label type it was asked for
+    () => createNew("Detection") as DetectionAnnotationLabel | null,
     [createNew],
   );
   const applyInferenceResult = useApplyInferenceResult(createDetection);
@@ -81,7 +83,10 @@ export const useRegisterAnnotationToolEventHandlers = () => {
         cancelled = true;
       };
     },
-    // trigger inference every time the input context changes
+    // trigger inference every time the input context changes; the agent and
+    // selection are read at that moment, and changing them alone must not
+    // re-run inference
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
     [toolsContext],
   );
 
@@ -92,5 +97,7 @@ export const useRegisterAnnotationToolEventHandlers = () => {
     resetToolsState();
 
     return resetToolsState;
+    // reset on scene changes only, not whenever the reset callback changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [scene]);
 };

@@ -174,7 +174,8 @@ const ActiveFieldsSection = () => {
           <Tooltip
             content={
               <Text>
-                Fields currently active and available in the "Annotate" tab
+                Fields currently active and available in the
+                &quot;Annotate&quot; tab
               </Text>
             }
             anchor={Anchor.Bottom}
@@ -212,7 +213,8 @@ const ActiveFieldsSection = () => {
         <Tooltip
           content={
             <Text>
-              Fields currently active and available in the "Annotate" tab
+              Fields currently active and available in the &quot;Annotate&quot;
+              tab
             </Text>
           }
           anchor={Anchor.Top}

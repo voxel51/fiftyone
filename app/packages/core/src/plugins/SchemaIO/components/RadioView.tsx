@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { ButtonView, HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";
+import type { ViewPropsType } from "../utils/types";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
@@ -20,7 +21,14 @@ export default function RadioView(props: RadioGroupProps) {
     orientation,
     readOnly,
     variant = "default",
-  } = view;
+  } = view as {
+    choices: Choice[];
+    label?: string;
+    description?: string;
+    orientation?: string;
+    readOnly?: boolean;
+    variant?: string;
+  };
 
   const useButtons = variant === "button";
   const [key, setUserChanged] = useKey(path, schema, data, true);
@@ -170,8 +178,9 @@ export type RadioGroupProps = {
   label?: string;
   description?: string;
   choices: Array<Choice>;
-  onChange: (path: string, value: string, schema: any) => void;
-  schema: any; // todo
+  onChange: ViewPropsType["onChange"];
+  schema: ViewPropsType["schema"];
   path: string;
   data: unknown;
+  autoFocused?: ViewPropsType["autoFocused"];
 };

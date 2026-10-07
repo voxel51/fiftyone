@@ -5,6 +5,7 @@ import {
   Stack,
   useTheme,
 } from "@mui/material";
+import type { AnchorHTMLAttributes } from "react";
 
 export default function MuiButton(props: ButtonPropsType) {
   const { loading, variant, ...otherProps } = props;
@@ -42,6 +43,8 @@ export default function MuiButton(props: ButtonPropsType) {
   );
 }
 
-type ButtonPropsType = ButtonProps & {
-  loading?: boolean;
-};
+// with an href MUI renders an anchor, so link attributes pass through
+type ButtonPropsType = ButtonProps &
+  Pick<AnchorHTMLAttributes<HTMLAnchorElement>, "target" | "rel"> & {
+    loading?: boolean;
+  };

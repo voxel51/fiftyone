@@ -3,12 +3,13 @@ In color by value mode, fields and label tags use this component
 */
 
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import type { ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import DeleteIcon from "@mui/icons-material/Delete";
 import IconButton from "@mui/material/IconButton";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChromePicker } from "react-color";
+import { ChromePicker, type ColorResult } from "react-color";
 import { useRecoilValue } from "recoil";
 import Input, { NumberInput } from "../../Common/Input";
 import { Button } from "../../utils";
@@ -22,19 +23,14 @@ import { activeColorPath } from "../state";
 import { convertToRGB, getRGBColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
 
-type ColorscaleListInput = {
-  value: number; // float
-  color: string;
-};
-
 type Input = {
-  value?: number;
+  value?: number | null; // float
   color: string;
 };
 
 type ManualColorScaleListProp = {
-  initialValue: ColorscaleListInput[];
-  values: ColorscaleListInput[];
+  initialValue: readonly ColorscaleListInput[];
+  values: readonly ColorscaleListInput[];
   style: React.CSSProperties;
   onValidate?: (value: number) => boolean;
   onSyncUpdate: (input: ColorscaleListInput[]) => void;
@@ -55,7 +51,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
   max,
   step,
 }) => {
-  const [input, setInput] = useState<Input[]>(initialValue ?? []);
+  const [input, setInput] = useState<readonly Input[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false),
   );
@@ -89,7 +85,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
 
   // color picker selection and sync with session
   const hanldeColorChange = useCallback(
-    (color: any, colorIdx: number) => {
+    (color: ColorResult, colorIdx: number) => {
       setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = convertToRGB(color.hex);
@@ -156,10 +152,12 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
   // on changing tabs, sync local state with new session values
   useEffect(() => {
     setInput(values ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resync only when the active path changes; value changes are synced below
   }, [activePath]);
 
   useEffect(() => {
     setInput(initialValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset to the initial value when the session values change
   }, [values]);
 
   fos.useOutsideClick(wrapperRef, () => {
@@ -217,11 +215,6 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   ref={pickerRef}
                   disableAlpha={true}
-                  onBlur={() =>
-                    setShowPicker((prev) =>
-                      prev.map((_, i) => (i === index ? false : _)),
-                    )
-                  }
                   className={colorPicker}
                 />
               </ChromePickerWrapper>

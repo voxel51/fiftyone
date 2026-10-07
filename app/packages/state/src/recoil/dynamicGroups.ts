@@ -81,7 +81,9 @@ export const dynamicGroupPageSelector = selectorFamily<
         dataset: get(datasetName),
         view: get(view),
         dynamicGroup: value,
-        filter: { group: { slice } },
+        filter: { group: { slice } } as {
+          group: { slice: string; slices?: string[] };
+        },
       };
 
       if (get(hasGroupSlices)) {
@@ -98,7 +100,14 @@ export const dynamicGroupPageSelector = selectorFamily<
     },
 });
 
-export const imaVidLookerState = atomFamily<any, string>({
+/**
+ * Mirrors of the ImaVid looker's state: currentFrameNumber is a frame number
+ * (seeded with a random float to force a refresh), playing/seeking are flags.
+ */
+export const imaVidLookerState = atomFamily<
+  number | boolean | null,
+  "currentFrameNumber" | "playing" | "seeking"
+>({
   key: "imaVidLookerState",
   default: null,
   effects: (key) => [
@@ -119,7 +128,8 @@ export const imaVidLookerState = atomFamily<any, string>({
           .then((looker: ImaVidLooker) => {
             if (looker) {
               unsubscribe = looker.subscribeToState(key, (stateValue) => {
-                setSelf(stateValue);
+                // the looker state field named by `key`
+                setSelf(stateValue as number | boolean | null);
               });
             }
           })
@@ -211,7 +221,8 @@ export const dynamicGroupParameters =
       if (isFlat) return null;
       return {
         // first index is 'field_or_expr', which defines group-by
-        groupBy: groupByViewStageNode.kwargs[0][1] as string,
+        groupBy: groupByViewStageNode
+          .kwargs[0][1] as State.DynamicGroupParameters["groupBy"],
         // second index is 'order_by', which defines order-by
         orderBy: groupByViewStageNode.kwargs[1][1] as string,
         orderByKey: groupByViewStageNode.kwargs[2][1] as string,

@@ -305,7 +305,10 @@ export const useLighterEngineBridge = ({
   on("lighter:overlay-drag-end", commitOverlay);
   on("lighter:overlay-resize-end", commitOverlay);
   on("lighter:overlay-rotate-end", commitOverlay);
-  on("lighter:overlay-paint-end", commitWithMaskTail);
+  // the undo key it returns is only needed by establish
+  on("lighter:overlay-paint-end", (event) => {
+    commitWithMaskTail(event);
+  });
   on("lighter:overlay-establish", establishOverlay);
   on("lighter:keypoint-point-added", commitOverlay);
   on("lighter:keypoint-point-moved", commitOverlay);

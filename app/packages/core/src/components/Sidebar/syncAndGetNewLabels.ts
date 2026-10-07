@@ -1,4 +1,4 @@
-import { CachedLabels, LookerId } from "./useShouldReloadSample";
+import type { CachedLabels, LookerId } from "./useDetectNewActiveLabelFields";
 
 /**
  * Synchronizes which label fields a given looker has seen so far. Returns any

@@ -37,7 +37,7 @@ export default function ActionMenu(props: ActionMenuProps) {
       >
         <TooltipProvider title={message}>
           <MenuItem
-            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+            onClick={(event: React.MouseEvent<HTMLLIElement>) => {
               event.stopPropagation();
               event.preventDefault();
               setEvaluation(props.evaluationName);

@@ -48,7 +48,8 @@ const Sidebar = () => {
       ) => void,
     ) => {
       switch (entry.kind) {
-        case fos.EntryKind.PATH: // e.g. metadata
+        case fos.EntryKind.PATH: {
+          // e.g. metadata
           const isDisabled = disabled.has(entry.path);
 
           return {
@@ -71,6 +72,7 @@ const Sidebar = () => {
             ),
             disabled: disabled.has(entry.path),
           };
+        }
         case fos.EntryKind.GROUP:
           return {
             children: (
@@ -93,7 +95,7 @@ const Sidebar = () => {
               entry.type === "add" ? (
                 <Entries.AddGroup key={key} />
               ) : (
-                <Entries.Filter modal={false} key={key} />
+                <Entries.Filter key={key} />
               ),
             disabled: true,
           };

@@ -6,7 +6,7 @@ import { Selectable } from "../selection/Selectable";
 import { BaseOverlay } from "./BaseOverlay";
 
 import type { Renderer2D } from "../renderer/Renderer2D";
-import type { Point, RawLookerLabel, RenderMeta } from "../types";
+import type { Point, RawLookerLabel, RenderMeta, TooltipInfo } from "../types";
 
 import {
   LABEL_ARCHETYPE_PRIORITY,
@@ -14,6 +14,12 @@ import {
   TAB_DASH_SELECTED,
   TAB_DASH_WIDTH,
 } from "../constants";
+
+/**
+ * The `Classification` fields drawn in the tab. `confidence` may be a
+ * non-finite sentinel string (e.g. "nan") from the backend.
+ */
+type ClassificationFields = { label?: string; confidence?: number | string };
 
 /**
  * Options for creating a classification overlay.
@@ -67,7 +73,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private getStackIndex(): number {
     const siblings = getChannelMap(this.channel);
     const alphabetical = [...siblings.values()].sort((a, b) =>
-      (a.label?.label ?? "").localeCompare(b.label?.label ?? ""),
+      (a.fields?.label ?? "").localeCompare(b.fields?.label ?? ""),
     );
 
     return alphabetical.indexOf(this);
@@ -83,6 +89,11 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     getChannelMap(this.channel).forEach((classificationOverlay) =>
       classificationOverlay.markDirty(),
     );
+  }
+
+  /** The label viewed as a `Classification`. */
+  private get fields(): ClassificationFields | null {
+    return this.label as ClassificationFields | null;
   }
 
   getCursor(_worldPoint: Point, _scale: number): string {
@@ -104,15 +115,16 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const { x, y } = renderMeta.canonicalMediaBounds;
     const labelPosition = { x, y };
 
-    const hasLabel = !!this.label?.label;
+    const fields = this.fields;
+    const hasLabel = !!fields?.label;
 
     const confidence =
-      this.label?.confidence && !isNaN(this.label.confidence)
-        ? this.label.confidence
+      fields?.confidence && !isNaN(Number(fields.confidence))
+        ? fields.confidence
         : "";
 
     const textToDraw = hasLabel
-      ? `${this.label?.label} ${confidence}`.trim()
+      ? `${fields?.label} ${confidence}`.trim()
       : "select classification...";
 
     const outlineDash = this.isSelected()
@@ -132,7 +144,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
       ? style.fillStyle || style.strokeStyle || "#000"
       : "#808080";
 
-    this.textBounds = renderer.drawText(
+    renderer.drawText(
       textToDraw,
       labelPosition,
       {
@@ -172,12 +184,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     return LABEL_ARCHETYPE_PRIORITY.CLASSIFICATION;
   }
 
-  getTooltipInfo(): {
-    color: string;
-    field: string;
-    label: any;
-    type: string;
-  } | null {
+  getTooltipInfo(): TooltipInfo | null {
     return {
       color: this.getCurrentStyle()?.fillStyle ?? "#ffffff",
       field: this.field || "unknown",

@@ -32,6 +32,14 @@ export default function useRefetchableSavedViews(): RefetchableSavedViews {
   // an empty, no-op result here instead of throwing — otherwise those hosts
   // crash with "ref not defined" the moment any operator's ``useHooks``
   // (e.g. ``set_view``) is evaluated.
+  //
+  // The fragment hook still runs (Relay accepts a null ref) so the hook order
+  // doesn't depend on whether the provider is mounted.
+  const refetchable = useRefetchableFragment<
+    savedViewsFragmentQuery,
+    savedViewsFragment$key
+  >(savedViewsFragment, fragmentRef ?? null);
+
   if (!fragmentRef) {
     return [
       { savedViews: [] },
@@ -39,8 +47,5 @@ export default function useRefetchableSavedViews(): RefetchableSavedViews {
     ] as unknown as RefetchableSavedViews;
   }
 
-  return useRefetchableFragment<
-    savedViewsFragmentQuery,
-    savedViewsFragment$key
-  >(savedViewsFragment, fragmentRef);
+  return refetchable as RefetchableSavedViews;
 }

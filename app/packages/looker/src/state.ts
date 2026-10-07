@@ -22,7 +22,8 @@ export interface Coloring {
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
-  defaultMaskTargetsColors: MaskColorInput[];
+  // absent until a color scheme provides it
+  defaultMaskTargetsColors?: readonly MaskColorInput[];
   maskTargets: {
     [field: string]: MaskTargets;
   };
@@ -33,7 +34,7 @@ export interface Coloring {
 export type ColorscaleInput = {
   path?: string;
   name?: string;
-  list?: Array<{
+  list?: ReadonlyArray<{
     value: number;
     color: string;
   }>;
@@ -41,7 +42,7 @@ export type ColorscaleInput = {
 };
 
 export type Colorscale = {
-  fields: ColorscaleInput[];
+  fields: readonly ColorscaleInput[];
   default: ColorscaleInput;
 };
 
@@ -52,7 +53,7 @@ export type MaskColorInput = {
 
 export interface LabelTagColor {
   fieldColor?: string;
-  valueColors?: {
+  valueColors?: readonly {
     value: string;
     color: string;
   }[];
@@ -61,7 +62,7 @@ export interface LabelTagColor {
 export interface CustomizeColor extends LabelTagColor {
   path: string;
   colorByAttribute?: string;
-  maskTargetsColors?: MaskColorInput[];
+  maskTargetsColors?: readonly MaskColorInput[];
 }
 
 export type OrthogrpahicProjectionMetadata = {
@@ -86,6 +87,7 @@ export type Sample = {
     width: number;
     height: number;
     mime_type?: string;
+    size_bytes?: number;
   };
   _id: string;
   id: string;
@@ -106,6 +108,9 @@ export type Sample = {
     | "three_d"
     | "3d";
   last_modified_at?: { datetime: number };
+  created_at?: { datetime: number };
+  /** [first, last] frame of a clip sample */
+  support?: [number, number];
 } & GenericLabel;
 
 export interface LabelData {
@@ -142,7 +147,7 @@ export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 export type BufferRange = [number, number];
 export type Buffers = Readonly<BufferRange>[];
 
-export type DispatchEvent = (eventType: string, details?: any) => void;
+export type DispatchEvent = (eventType: string, details?: unknown) => void;
 
 export type Action<State extends BaseState> = (
   update: StateUpdate<State>,
@@ -182,9 +187,10 @@ export interface BaseOptions {
   fontSize?: number;
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
-  colorscale: Colorscale;
-  labelTagColors: CustomizeColor;
+  customizeColorSetting: readonly CustomizeColor[];
+  // absent from the defaults until the app supplies them
+  colorscale?: Colorscale;
+  labelTagColors?: LabelTagColor;
   selectedLabels: string[];
   selectedLabelTypes: Record<string, string>;
   labelSelectionStyle: {
@@ -226,7 +232,7 @@ export interface BaseOptions {
   showSkeletons: boolean;
   isPointcloudDataset: boolean;
   pointFilter: (path: string, point: Point) => boolean;
-  thumbnailTitle?: (sample: any) => string;
+  thumbnailTitle?: (sample: Sample) => string | null;
   mediaFallback: boolean;
   initialViewport?: ViewportState | null;
 }
@@ -365,8 +371,8 @@ export interface BaseState {
   zoomToContent: boolean;
   setZoom: boolean;
   hasDefaultZoom: boolean;
-  SHORTCUTS: Readonly<ControlMap<any>>; // fix me,
-  error: boolean | number | AppError;
+  SHORTCUTS: Readonly<ControlMap<BaseState>>;
+  error: boolean | number | AppError | MediaError;
   destroyed: boolean;
   reloading: boolean;
 }
@@ -451,7 +457,7 @@ export interface ThreeDState extends BaseState {
 export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
   label: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type NONFINITE = "-inf" | "inf" | "nan";
@@ -482,7 +488,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   onlyShowHoveredLabel: false,
   filter: null,
   coloring: {
-    by: "field",
+    by: COLOR_BY.FIELD,
     points: true,
     pool: ["#000000"],
     scale: null,
@@ -537,13 +543,15 @@ export const DEFAULT_3D_OPTIONS: ThreeDOptions = {
 };
 
 export interface FrameSample {
-  [key: string]: any;
+  [key: string]: unknown;
   frame_number: number;
 }
 
-export interface VideoSample extends Sample {
+// An alias, not an interface: an interface extending Sample would have to fit
+// every named field to GenericLabel's index signature.
+export type VideoSample = Sample & {
   frames: [FrameSample];
-}
+};
 
 export interface FrameChunk {
   frames: FrameSample[];

@@ -16,11 +16,20 @@ export type IntermediateMask = {
  * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
  * we want to impute the relevant mask property of these labels from what's stored in the disk
  */
+/** The decoded mask/map a label carries once its on-disk image is loaded. */
+type DecodedOverlay = {
+  bitmap?: ImageBitmap | null;
+  image?: ArrayBuffer | null;
+};
+
+/** A label (or list label) whose mask/map may still be on disk. */
+type DiskLabel = { detections?: DiskLabel[] } & Record<string, unknown>;
+
 export const decodeOverlayOnDisk = async (
   field: string,
-  label: Record<string, any>,
+  label: DiskLabel,
   coloring: Coloring,
-  customizeColorSetting: CustomizeColor[],
+  customizeColorSetting: readonly CustomizeColor[],
   colorscale: Colorscale,
   sources: { [path: string]: string },
   cls: string,
@@ -58,24 +67,22 @@ export const decodeOverlayOnDisk = async (
   const overlayPathField = overlayFields.disk;
   const overlayField = overlayFields.canonical;
 
-  if (Boolean(label[overlayField]) || !Object.hasOwn(label, overlayPathField)) {
+  const decoded = label[overlayField] as DecodedOverlay | undefined;
+  if (Boolean(decoded) || !Object.hasOwn(label, overlayPathField)) {
     // it's possible we're just re-coloring, in which case re-init mask image and set bitmap to null
     if (
-      label[overlayField] &&
-      (label[overlayField].bitmap?.height ||
-        label[overlayField].bitmap?.width) &&
-      !label[overlayField].image
+      decoded &&
+      (decoded.bitmap?.height || decoded.bitmap?.width) &&
+      !decoded.image
     ) {
-      const height = label[overlayField].bitmap.height;
-      const width = label[overlayField].bitmap.width;
+      const height = decoded.bitmap.height;
+      const width = decoded.bitmap.width;
 
       // close the copied bitmap
-      label[overlayField].bitmap.close();
-      label[overlayField].bitmap = null;
+      decoded.bitmap.close();
+      decoded.bitmap = null;
 
-      label[overlayField].image = new ArrayBuffer(height * width * 4);
-      label[overlayField].bitmap.close();
-      label[overlayField].bitmap = null;
+      decoded.image = new ArrayBuffer(height * width * 4);
     }
     // nothing to be done
     return;
@@ -97,7 +104,9 @@ export const decodeOverlayOnDisk = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayImageUrl = getSampleSrc(source || label[overlayPathField]);
+  const overlayImageUrl = getSampleSrc(
+    source || (label[overlayPathField] as string),
+  );
 
   let overlayImageBlob: Blob;
   try {

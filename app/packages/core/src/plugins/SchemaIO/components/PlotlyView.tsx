@@ -16,19 +16,21 @@ type TraceWithIds = {
 };
 
 function getIdForTrace(
-  point: Plotly.Point,
+  point: Plotly.PlotDatum,
   trace: TraceWithIds,
   options: { is2DArray?: boolean } = {},
 ) {
   const { is2DArray = false } = options;
   const { data } = point;
-  const { x, y, z } = data;
+  const { x: _x, y: _y, z: _z } = data;
+  // 2D traces (heatmaps) report an [x, y] index pair
+  const pointIndex = point.pointIndex as number | number[];
   if (trace?.ids) {
     if (is2DArray) {
-      const [xIdx, yIdx] = point.pointIndex;
+      const [xIdx, yIdx] = pointIndex as number[];
       return trace.ids[yIdx][xIdx];
     } else {
-      return trace.ids[point.pointIndex];
+      return trace.ids[pointIndex as number];
     }
   }
   return null;
@@ -58,7 +60,7 @@ export default function PlotlyView(props: ViewPropsType) {
       let xBinsSize = null;
       for (const p of e.points) {
         const { data, fullData } = p;
-        const { x, y } = data;
+        const { x: _x, y: _y } = data;
         const { type } = fullData;
         if (type === "histogram") {
           xBinsSize = fullData.xbins.size;
@@ -88,7 +90,8 @@ export default function PlotlyView(props: ViewPropsType) {
       }
     }
 
-    const eventHandlerOperator = view[snakeCase(event)];
+    // operator URI configured for this event, e.g. view.on_click
+    const eventHandlerOperator = view[snakeCase(event)] as string | undefined;
     const defaultParams = {
       id,
       path: props.path,
@@ -212,8 +215,8 @@ export default function PlotlyView(props: ViewPropsType) {
     }, 500); // Delay to allow for layout to be animated
   }, [relativeLayout?.w, relativeLayout?.x, relativeLayout?.COLS]);
 
-  const plotHeight = view?.height || "100%";
-  const plotWidth = view?.width || "100%";
+  const plotHeight = (view?.height as string | number) || "100%";
+  const plotWidth = (view?.width as string | number) || "100%";
 
   return (
     <Box
@@ -236,7 +239,9 @@ export default function PlotlyView(props: ViewPropsType) {
   );
 }
 
-function createPlotlyHandlers(handleEvent: any) {
+function createPlotlyHandlers(
+  handleEvent: (event: string) => (e: unknown) => void,
+) {
   const PLOTLY_EVENTS = [
     // 'onAfterExport',
     // 'onAfterPlot',
@@ -270,7 +275,7 @@ function createPlotlyHandlers(handleEvent: any) {
     // 'onUnhover',
     // 'onWebGlContextLost'
   ];
-  let handlers = {} as any;
+  const handlers: Record<string, (e: unknown) => void> = {};
   for (const event of PLOTLY_EVENTS) {
     handlers[event] = handleEvent(event);
   }
@@ -279,8 +284,14 @@ function createPlotlyHandlers(handleEvent: any) {
 
 const EventDataMappers = {
   onClick: ({ points }) => {
-    const { data, fullData, xaxis, yaxis, ...pointdata } = points[0];
-    const { x, y, z, ...metadata } = data;
+    const {
+      data,
+      fullData,
+      xaxis: _xaxis,
+      yaxis: _yaxis,
+      ...pointdata
+    } = points[0];
+    const { x: _x, y: _y, z: _z, ...metadata } = data;
     const result = {
       ...pointdata,
       data: metadata,

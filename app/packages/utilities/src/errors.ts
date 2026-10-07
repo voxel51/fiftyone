@@ -184,7 +184,7 @@ export class PanelEventError extends OperatorError {
     public message: string,
     public stack: string,
     public operator: string,
-    public event: any,
+    public event: string,
   ) {
     super(message, stack, operator);
     this.event = event;

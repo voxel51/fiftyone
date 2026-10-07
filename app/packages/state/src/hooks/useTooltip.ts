@@ -8,10 +8,13 @@ export type { ComputeCoordinatesReturnType } from "./useTooltip.utils";
 export default function useTooltip() {
   const setTooltipCoordinates = useSetRecoilState(fos.tooltipCoordinates);
 
-  const setCoords = useCallback((coordinates: [number, number]) => {
-    const coords = computeCoordinates(coordinates);
-    setTooltipCoordinates(coords);
-  }, []);
+  const setCoords = useCallback(
+    (coordinates: [number, number]) => {
+      const coords = computeCoordinates(coordinates);
+      setTooltipCoordinates(coords);
+    },
+    [setTooltipCoordinates],
+  );
 
   return {
     setCoords,

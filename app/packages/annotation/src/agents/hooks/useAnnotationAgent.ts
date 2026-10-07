@@ -89,7 +89,7 @@ export const useAnnotationAgent = <T extends InferenceResultProxy>(
     // eagerly clear to maintain consistent UX, even when agent becomes null
     setSupportedTasks([]);
 
-    if (!agent) return;
+    if (!agent) return undefined;
 
     let cancelled = false;
     agent.listSupportedTasks().then((res) => {

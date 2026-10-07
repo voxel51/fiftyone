@@ -14,10 +14,10 @@ interface EventTarget {
   removeEventListener: HTMLElement["removeEventListener"];
 }
 
-export const useEventHandler = (
+export const useEventHandler = <E extends Event = Event>(
   target: EventTarget | undefined,
   eventType: string,
-  handler: React.EventHandler<any>,
+  handler: (event: E) => void,
   options?: boolean | AddEventListenerOptions,
 ) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -149,12 +149,12 @@ type ControlFunctions = {
   isPending: () => boolean;
 };
 
-export type DebouncedState<T extends (...args: any) => ReturnType<T>> = ((
+export type DebouncedState<T extends (...args: never[]) => unknown> = ((
   ...args: Parameters<T>
 ) => ReturnType<T> | undefined) &
   ControlFunctions;
 
-export const useDebounceCallback = <T extends (...args: any) => ReturnType<T>>(
+export const useDebounceCallback = <T extends (...args: never[]) => unknown>(
   func: T,
   delay = 500,
   options?: DebounceOptions,

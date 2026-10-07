@@ -11,8 +11,13 @@ export default function PlotlyTooltip(props: PlotlyTooltipProps) {
 
   if (!event) return null;
 
-  const xPosition = event.event.pointerX + 25;
-  const yPosition = event.event.pointerY - 25;
+  // plotly adds pointer coordinates to the hover's mouse event
+  const { pointerX, pointerY } = event.event as MouseEvent & {
+    pointerX: number;
+    pointerY: number;
+  };
+  const xPosition = pointerX + 25;
+  const yPosition = pointerY - 25;
   const TooltipComponent = isFunctionalComponent(value)
     ? (value as TooltipComponent)
     : DefaultTooltipComponent;
@@ -69,7 +74,14 @@ function getTooltipData(
     return value as FullTooltipData;
   }
 
-  const [point] = event.points;
+  // 3D and polar traces carry z / r / theta on their points
+  const [point] = event.points as Array<
+    Plotly.PlotDatum & {
+      z?: Plotly.Datum;
+      r?: Plotly.Datum;
+      theta?: Plotly.Datum;
+    }
+  >;
   const name = point.data.name;
   const x = point.x;
   const y = point.y;

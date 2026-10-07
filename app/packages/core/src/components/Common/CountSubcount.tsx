@@ -12,7 +12,7 @@ const EntryCounts = ({
   subcountAtom = CONST_SELECTOR,
 }: {
   countAtom?: RecoilValue<number | null>;
-  subcountAtom?: RecoilValue<number | null>;
+  subcountAtom?: RecoilValue<number | boolean | null>;
 }) => {
   const [count, subcount] = [
     useRecoilValue(countAtom),
@@ -54,7 +54,7 @@ const EntryCountsContainer = ({
   subcountAtom = CONST_SELECTOR,
 }: {
   countAtom?: RecoilValue<number | null>;
-  subcountAtom?: RecoilValue<number | null>;
+  subcountAtom?: RecoilValue<number | boolean | null>;
 }) => {
   // only subcounts have a timeout
   const subResult = useRecoilValueLoadable(subcountAtom);
@@ -74,7 +74,7 @@ export const SuspenseEntryCounts = ({
   subcountAtom,
 }: {
   countAtom?: RecoilValue<number>;
-  subcountAtom?: RecoilValue<number>;
+  subcountAtom?: RecoilValue<number | boolean>;
 }) => {
   return (
     <Suspense fallback={<EntryCounts />}>

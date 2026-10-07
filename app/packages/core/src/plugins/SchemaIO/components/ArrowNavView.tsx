@@ -16,7 +16,14 @@ export default function ArrowNavView(props: ViewPropsType) {
     position = "center",
     forward = true,
     backward = true,
-  } = view;
+  } = view as {
+    // operator URIs
+    on_backward?: string;
+    on_forward?: string;
+    position?: keyof typeof positionBasedStyleBackward;
+    forward?: boolean;
+    backward?: boolean;
+  };
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
   const backwardStyles = positionBasedStyleBackward[position] || {};

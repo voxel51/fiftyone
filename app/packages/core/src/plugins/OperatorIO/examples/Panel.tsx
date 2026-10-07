@@ -116,7 +116,7 @@ function OperatorIO() {
           data={smartFormData}
           onChange={log}
           smartForm={true}
-          smartFormProps={{ liveValidate: "onChange" }}
+          smartFormProps={{ liveValidate: true }}
         />
       )}
       {mode === "lab" && <Lab />}

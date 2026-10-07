@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useKey } from "../hooks";
 import { autoFocus, getComponentProps } from "../utils";
 import FieldWrapper from "./FieldWrapper";
-import { ViewPropsType } from "../utils/types";
+import { NumberSchemaType, ViewPropsType } from "../utils/types";
 
 type ValueFormat = "" | "%";
 
@@ -27,7 +27,7 @@ const valueLabelFormat = (
 interface SliderInputFieldProps {
   label: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   UnitSelection: React.ReactNode;
 }
@@ -55,8 +55,12 @@ const SliderInputField: React.FC<SliderInputFieldProps> = ({
   </Grid>
 );
 
-export default function SliderView(props: ViewPropsType) {
-  const { data, onChange, path, schema } = props;
+export default function SliderView(
+  props: ViewPropsType<NumberSchemaType & { viewMultipleOf?: number }>,
+) {
+  const { onChange, path, schema } = props;
+  // a value, or [min, max] for a range slider
+  const data = props.data as number | [number, number] | undefined;
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);
 
@@ -79,7 +83,17 @@ export default function SliderView(props: ViewPropsType) {
     view_multiple_of: viewMultipleOf = null,
     min: viewMin,
     max: viewMax,
-  } = view;
+  } = view as {
+    value_label_display?: "auto" | "off" | "on";
+    value_format?: ValueFormat;
+    value_precision?: number;
+    variant?: string | null;
+    label_position?: string;
+    label?: string;
+    view_multiple_of?: number | null;
+    min?: number;
+    max?: number;
+  };
 
   const isDoubleSlider = Boolean(viewMin) && Boolean(viewMax);
 
@@ -100,7 +114,7 @@ export default function SliderView(props: ViewPropsType) {
 
   // external data reset re-renders the inputs
   useEffect(() => {
-    return setFieldsRevision(fieldsRevision + 1);
+    setFieldsRevision((revision) => revision + 1);
   }, [data]);
 
   const [unit, _] = useState<ValueFormat>(valueFormat);

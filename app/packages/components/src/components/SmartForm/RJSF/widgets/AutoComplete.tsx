@@ -13,7 +13,8 @@ export default function AutoComplete(props: WidgetProps) {
     props;
 
   // Extract choices from schema.examples or uiSchema
-  const examples = schema.examples || [];
+  // translateToJSONSchema writes examples as the enum value list
+  const examples = (schema.examples || []) as unknown[];
   const enumValues = schema.enum || examples;
   const enumNames = uiSchema?.["ui:enumNames"] || enumValues;
 

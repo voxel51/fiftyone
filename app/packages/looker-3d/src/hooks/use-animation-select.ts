@@ -52,13 +52,13 @@ export const useAnimationSelect = (
   // This effect plays the selected clip and stops actions on cleanup.
   useEffect(() => {
     if (!mixer || currentAnimationIndex === null) {
-      return;
+      return undefined;
     }
 
     const clip = availableAnimationClips[currentAnimationIndex];
 
     if (!clip) {
-      return;
+      return undefined;
     }
 
     const action = mixer.clipAction(clip);

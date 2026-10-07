@@ -381,7 +381,7 @@ function useFramePerformanceStats(): FramePerformanceStats {
 
   // This effect samples browser frame cadence for the rendering summary.
   useEffect(() => {
-    if (typeof window.requestAnimationFrame !== "function") return;
+    if (typeof window.requestAnimationFrame !== "function") return undefined;
 
     let animationFrame = 0;
     let frameDurations: number[] = [];

@@ -69,11 +69,11 @@ describe("useDeleteAnnotation", () => {
       transaction: mockEngineTransaction,
       lastUndoEntry: mockEngineLastUndoEntry,
       rollbackEntry: mockEngineRollbackEntry,
-    } as any);
+    } as unknown as ReturnType<typeof useAnnotationEngine>);
     vi.mocked(useActiveAnnotationSampleId).mockReturnValue("sample-1");
     vi.mocked(useAnnotationEventBus).mockReturnValue({
       dispatch: mockDispatch,
-    } as any);
+    } as unknown as ReturnType<typeof useAnnotationEventBus>);
   });
 
   function getCallback() {

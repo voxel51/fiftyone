@@ -28,6 +28,9 @@ export const useFeature = ({
         isEnabled,
       });
     }
+    // track flag checks, not analytics-info changes (trackEvent's identity
+    // follows the analytics info)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [enableTracking, feature, isEnabled, isResolved]);
 
   return { isEnabled, isResolved };

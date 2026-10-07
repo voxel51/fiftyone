@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { genSort } from "../../utils/generic";
 
-const NONSTRING_VALUES: any[] = [false, true, null];
+const NONSTRING_VALUES: unknown[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
 export const CHECKBOX_LIMIT = 20;
 
@@ -42,13 +42,15 @@ export const joinStringArray = (arr: string[]) => {
   }
 };
 
+type V = { value: unknown; count: number };
+
 export const nullSort = ({
   count,
   asc,
 }: fos.SortResults): ((aa: V, bb: V) => number) => {
   return ({ count: aac, value: aav }, { count: bbc, value: bbv }): number => {
-    let a = [aav, aac];
-    let b = [bbv, bbc];
+    const a = [aav, aac];
+    const b = [bbv, bbc];
 
     if (count) {
       a.reverse();

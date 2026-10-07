@@ -374,7 +374,8 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
         key={overlay.id}
         smartForm={true}
         smartFormProps={{
-          liveValidate: "onChange",
+          // rjsf 5 only checks truthiness, so this is what "onChange" did
+          liveValidate: true,
           formContext: { onLivePreview },
         }}
         schema={schema}

@@ -1,6 +1,25 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, type TypographyProps } from "@mui/material";
 import { getComponentProps } from "../utils";
 import { NumberSchemaType, ViewPropsType } from "../utils/types";
+
+type TextViewOptions = {
+  color?: string;
+  font_size?: string;
+  title?: string;
+  text_transform?: TypographyProps["textTransform"];
+  variant?: TypographyProps["variant"];
+  bold?: boolean;
+  italic?: boolean;
+  align?: TypographyProps["align"];
+  no_wrap?: boolean;
+  text_decoration?: string;
+  letter_spacing?: string;
+  line_height?: string;
+  font_family?: string;
+  width?: string | number;
+  display_mode?: string;
+  padding?: string | number;
+};
 
 export default function TextView(props: ViewPropsType<NumberSchemaType>) {
   const { schema } = props;
@@ -22,10 +41,12 @@ export default function TextView(props: ViewPropsType<NumberSchemaType>) {
     width = "auto",
     display_mode = "block",
     padding = "1rem",
-  } = view;
+  } = view as TextViewOptions;
 
   const sx = {
-    font_family,
+    // "default" keeps the theme font
+    ...(font_family !== "default" ? { fontFamily: font_family } : {}),
+    textDecoration: text_decoration,
     ...(bold ? { fontWeight: "bold" } : {}),
     ...(italic ? { fontStyle: "italic" } : {}),
     ...(no_wrap
@@ -47,7 +68,6 @@ export default function TextView(props: ViewPropsType<NumberSchemaType>) {
         letterSpacing={letter_spacing}
         noWrap={no_wrap}
         lineHeight={line_height}
-        textDecoration={text_decoration}
         sx={sx}
         {...getComponentProps(props, "text")}
       >
