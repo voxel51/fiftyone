@@ -38,8 +38,10 @@ import {
   type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
+  getCurrentTime,
   useActivateStream,
   useDuration,
+  usePlaybackStore,
   usePlaybackStream,
 } from "@fiftyone/playback";
 import {
@@ -266,6 +268,9 @@ export const RegisterFrameLabels: React.FC<{
   const primitiveFields = mode === "explore" ? NO_FIELDS : framePrimitivePaths;
 
   const frameRate = useModalSampleFrameRate(sample);
+  // The identity of the registration last committed, to tell a field-set
+  // re-key apart from a new sample.
+  const registeredRef = useRef<{ key: string; scopeKey: string } | null>(null);
   const ready =
     duration > 0 &&
     !!sampleId &&
@@ -298,13 +303,25 @@ export const RegisterFrameLabels: React.FC<{
   // discard the move's unsaved edits. The primary follows in place via
   // `setPrimaryField` (below); only adding/removing a field re-mounts.
   const fieldSetKey = [...frameFields].sort().join(",");
-  const key = `${sampleId}|${dataset}|${slice ?? ""}|${
+  const scopeKey = `${sampleId}|${dataset}|${slice ?? ""}|${
     dynamicGroup ?? ""
-  }|${frameRate}|${frameCount}|${fieldSetKey}`;
+  }|${frameRate}|${frameCount}`;
+  const key = `${scopeKey}|${fieldSetKey}`;
+
+  // A re-mount that only swaps the field set (a sidebar toggle) is the same
+  // video at the same playhead, so the new stream resumes there rather than
+  // re-seeking to the opening position.
+  const previous = registeredRef.current;
+  const resume =
+    previous !== null && previous.key !== key && previous.scopeKey === scopeKey;
 
   return (
     <FrameLabelsRegistration
       key={key}
+      onRegistered={() => {
+        registeredRef.current = { key, scopeKey };
+      }}
+      resume={resume}
       initialTime={initialTime}
       sampleId={sampleId}
       dataset={dataset}
@@ -322,6 +339,10 @@ export const RegisterFrameLabels: React.FC<{
 
 interface FrameLabelsRegistrationProps {
   initialTime?: number | null;
+  /** Called after each commit, so the parent knows what is registered. */
+  onRegistered: () => void;
+  /** Open at the engine's current time instead of `initialTime`. */
+  resume: boolean;
   sampleId: string;
   dataset: string;
   view: Stage[];
@@ -335,8 +356,20 @@ interface FrameLabelsRegistrationProps {
 
 const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   children,
+  onRegistered,
   ...props
 }) => {
+  const store = usePlaybackStore();
+  // Read once: the opening position belongs to this mount, and following the
+  // clock afterwards would re-seek on every commit.
+  const [resumeTime] = useState(() =>
+    props.resume ? getCurrentTime(store) : null,
+  );
+
+  useEffect(() => {
+    onRegistered();
+  }, [onRegistered]);
+
   // Construct once per mount; the parent re-mounts on identity changes.
   const streamRef = useRef<VideoFrameLabelsStream | null>(null);
   if (streamRef.current === null) {
@@ -380,7 +413,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   usePublishFrameLabelsStream(streamRef.current);
 
   // Warm the opening position before committing the first label overlays.
-  useWarmupThenSeek(streamRef.current, props.initialTime);
+  useWarmupThenSeek(streamRef.current, resumeTime ?? props.initialTime);
 
   return <>{children}</>;
 };
