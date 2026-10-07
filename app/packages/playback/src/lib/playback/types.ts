@@ -317,11 +317,7 @@ export interface PlaybackConfig {
    * @default "configured"
    */
   defaultDisplay?: "configured" | "duration";
-  /**
-   * Called when the user toggles the readout, with the domain now shown, so
-   * a surface that remounts the provider per item can carry the choice into
-   * the next mount's `defaultDisplay`.
-   */
+  /** Called when the user toggles the readout. */
   onDisplayChange?: (display: "configured" | "duration") => void;
   /**
    * Trailing delay before a seek asks missing blocking streams to prefetch.

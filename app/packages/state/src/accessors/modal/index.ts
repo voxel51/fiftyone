@@ -215,15 +215,8 @@ export const useModalMediaPath = (): string | null => {
 };
 
 /**
- * The modal video timeline's frame-number vs. elapsed-time choice, shaped for
- * `PlaybackProvider`'s `defaultDisplay` and `onDisplayChange`. The video
- * surfaces configure the provider in frame numbers, so its "configured"
- * display is frames. Until the user toggles, the App config's
- * `use_frame_number` picks it.
- *
- * The provider reads `defaultDisplay` only at mount and surfaces remount per
- * sample, so the choice is read without subscribing: a toggle doesn't
- * re-render the surface.
+ * Frames vs. time for the modal video timeline. Read without subscribing:
+ * the provider only uses it at mount.
  */
 export const useVideoTimelineDisplay = () => {
   const store = useStore();

@@ -59,9 +59,8 @@ export const __unsafeAnnotationSurfaceAtom = atom<AnnotationSurface | null>(
   null as AnnotationSurface | null,
 );
 
-/** Whether the modal video timeline reads in frame numbers or elapsed time. */
 export type VideoTimelineDisplay = "frames" | "time";
 
-/** The user's choice this session; `null` until they toggle the readout. */
+/** `null` until the user toggles; `use_frame_number` decides until then. */
 export const __unsafeVideoTimelineDisplayAtom =
   atom<VideoTimelineDisplay | null>(null as VideoTimelineDisplay | null);
