@@ -126,7 +126,9 @@ const expectPersistedSliceClasses = async (
       searchParams: new URL(page.url()).searchParams,
       modalSample: "loaded-or-error",
     });
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
     for (const slice of SLICE_NAMES) {
       const select = () => modal.sidebar.annotate.selectAnnotationSlice(slice);
       if (SLICES[slice].media === "3d") {
@@ -177,7 +179,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     modal,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     // walk every slice, then revisit in reverse: the count must stay each slice's
     // own count throughout. Switching the slice re-federates the active sample
@@ -209,7 +213,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
@@ -237,7 +243,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
@@ -274,7 +282,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     // select the mesh slice as the annotation target — in annotate mode this
     // mounts the 3D looker + its annotation surface (the grouped 3D path); the
@@ -307,7 +317,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await modal.annotate3d.afterSurface(() =>
       modal.sidebar.annotate.selectAnnotationSlice("mesh"),
@@ -352,7 +364,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await modal.annotate3d.afterSurface(() =>
       modal.sidebar.annotate.selectAnnotationSlice("mesh"),
@@ -397,7 +411,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");

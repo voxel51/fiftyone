@@ -140,7 +140,9 @@ test.describe.serial("2D Lighter annotation", () => {
         modalSample: "loaded",
       });
       const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-      await freshModal.sidebar.switchMode("annotate");
+      await freshModal.afterLighterReady(() =>
+        freshModal.sidebar.switchMode("annotate"),
+      );
 
       await expectLabelsCount(freshModal, before + 1);
     } finally {

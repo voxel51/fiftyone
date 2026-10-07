@@ -1,5 +1,4 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -16,7 +15,6 @@ const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
   sidebar: SidebarPom;
-  asset3dPanel: Asset3dPanelPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -26,9 +24,6 @@ const test = base.extend<{
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
-  },
-  asset3dPanel: async ({ page }, use) => {
-    await use(new Asset3dPanelPom(page));
   },
 });
 
@@ -150,7 +145,9 @@ test.describe.serial("groups", () => {
       page,
       fiftyoneLoader,
     }) => {
-      await modal.sidebar.switchMode("annotate");
+      await modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      );
       await modal.looker3dControls.afterAllAssetsLoaded(() =>
         modal.afterSampleLoaded(
           () => modal.sidebar.annotate.selectAnnotationSlice("pcd"),
@@ -160,7 +157,9 @@ test.describe.serial("groups", () => {
       await modal.assert.verifyHasNoViewerError();
       await modal.sampleCanvas3d.assert.hasScreenshot("annotate-pcd.png");
 
-      await modal.sidebar.switchMode("explore");
+      await modal.afterGroupSampleLoaded(() =>
+        modal.sidebar.switchMode("explore"),
+      );
       await modal.group.openMediaVisibility();
 
       await modal.group.showMedia("viewer");

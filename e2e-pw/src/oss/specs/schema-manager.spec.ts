@@ -109,7 +109,7 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
     await schemaManager.open();
     await schemaManager.assert.isOpen();
 
@@ -188,7 +188,9 @@ test.describe.serial("schema manager", () => {
       readyEvent: "e2e:modal:opened",
     });
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
     await schemaManager.assert.isEnabled();
   });
 
@@ -252,7 +254,9 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
       searchParams: new URLSearchParams({ id }),
     });
-    await modal.sidebar.switchMode("annotate");
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await schemaManager.assert.isEnabled();
   });

@@ -57,7 +57,7 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
     modalSample: "loaded",
   });
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 });
 
 /** Verify a persisted edit from a brand-new browser context (true round-trip). */
@@ -75,7 +75,9 @@ const inFreshContext = async (
       modalSample: "loaded",
     });
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.sidebar.switchMode("annotate");
+    await freshModal.afterLighterReady(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
 
     await verify(freshModal);
   } finally {

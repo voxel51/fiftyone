@@ -91,7 +91,9 @@ const inFreshContext = async (
       modalSample: "loaded",
     });
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.sidebar.switchMode("annotate");
+    await freshModal.afterLighterReady(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
     await verify(freshModal);
   } finally {
     await context.close();

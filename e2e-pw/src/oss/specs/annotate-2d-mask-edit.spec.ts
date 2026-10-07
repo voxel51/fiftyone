@@ -23,8 +23,14 @@ const id = "000000000000000000000000";
 const SEED_WIDTH = 0.2;
 /** The persisted width after the Add stroke, as the editor renders it */
 const GROWN_WIDTH = "0.4971774193548387";
-/** The persisted mask's covered fraction after the Remove stroke */
-const ERASED_COVERAGE = 0.8824259440104166;
+/**
+ * The persisted mask's covered fraction after the Remove stroke; the brush
+ * rasterizes differently per platform, like screenshot baselines
+ */
+const ERASED_COVERAGE = {
+  darwin: 0.8824259440104166,
+  linux: 0.8823445638020834,
+}[process.platform as "darwin" | "linux"];
 
 /** Open the seeded detection's editor in a brand-new browser context. */
 const inFreshContext = async (
@@ -41,7 +47,9 @@ const inFreshContext = async (
       modalSample: "loaded",
     });
     await freshModal.assert.isOpen();
-    await freshModal.sidebar.switchMode("annotate");
+    await freshModal.afterLighterReady(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
     // the seeded label is masked; its preview draws once the form opens
     await freshModal.sidebar.edit.afterMaskPreview(() =>
       freshModal.sidebar.annotate.selectActiveLabel("cat", 0),
@@ -103,7 +111,7 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
       modalSample: "loaded",
     });
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("an Add brush stroke grows the mask and persists", async ({

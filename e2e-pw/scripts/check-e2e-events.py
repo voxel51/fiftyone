@@ -93,6 +93,9 @@ E2E_RULES = [
             r"\b(?:looker3d|groupLooker|looker|canvas)\b(?:\(\))?\.(?:click|hover|dblclick)\("
         ),
     ),
+    # a mode switch remounts the modal's sidebar and renderer: run it through
+    # the event that remount sends
+    ("bare-mode-switch", re.compile(r"(?m)^\s*await [\w.]+\.switchMode\(")),
     ("raw-screenshot", re.compile(r"\.screenshot\(|\.toMatchSnapshot\(")),
     ("direct-expect-screenshot", re.compile(r"\bexpectScreenshot\(")),
     (

@@ -146,7 +146,9 @@ test.describe.serial("grouped 2D+3D annotation — 3D pin does not leak", () => 
     modal,
   }) => {
     await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     // Selecting the 3D mesh slice as the annotation target must list its cuboid.
     await modal.annotate3d.afterSurface(() =>

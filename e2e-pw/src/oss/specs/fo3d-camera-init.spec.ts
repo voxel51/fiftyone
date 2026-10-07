@@ -204,9 +204,6 @@ test.describe.skip("camera initialization", () => {
     await modal.looker3dControls.afterAllAssetsLoaded(() =>
       grid.openFirstSample(),
     );
-    // the modal opens in explore, so this switch remounts nothing
-    await modal.sidebar.switchMode("explore");
-
     const exploreCameraBefore = await renderer3d.getCameraPosition();
 
     await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>

@@ -54,7 +54,7 @@ test.describe.serial("schema manager tooltip z-index stacking", () => {
     await modal.sampleCanvas.tooltip.toggleLock();
     await modal.sampleCanvas.tooltip.assert.isLocked();
 
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
     await schemaManager.open();
     await schemaManager.assert.isOpen();
 

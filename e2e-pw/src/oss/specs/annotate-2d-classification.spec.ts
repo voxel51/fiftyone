@@ -84,7 +84,7 @@ test.describe.serial("2D annotation classification", () => {
       modalSample: "loaded",
     });
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("a classification can be deleted", async ({

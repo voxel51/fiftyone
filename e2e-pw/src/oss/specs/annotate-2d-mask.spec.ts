@@ -123,7 +123,9 @@ const inFreshContext = async (
       modalSample: "loaded",
     });
     const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.sidebar.switchMode("annotate");
+    await freshModal.afterLighterReady(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
 
     await verify(freshModal);
   } finally {
@@ -142,7 +144,7 @@ for (const cfg of KINDS) {
         modalSample: "loaded",
       });
       await modal.assert.isOpen();
-      await modal.sidebar.switchMode("annotate");
+      await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
     });
 
     test("selecting a masked detection enters segmentation mode", async ({

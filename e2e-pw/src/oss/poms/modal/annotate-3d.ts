@@ -106,16 +106,11 @@ export class ModalAnnotate3dPom {
       .getByTestId(`position3d-${axis}`);
   }
 
-  /**
-   * Select a listed cuboid and resolve once the position inputs show its
-   * values; reselecting the shown cuboid sends no new event, so the inputs
-   * are read once after arming
-   */
+  /** Select a listed cuboid; resolves once the position inputs show it */
   async selectCuboid(labelText: string): Promise<void> {
-    await this.selectLabel(labelText);
-    await this.modal.eventUtils.untilState(
+    await this.modal.eventUtils.after(
       POSITION_SHOWN,
-      async () => (await this.geometryField("x").inputValue()) !== "",
+      () => this.selectLabel(labelText),
       (e) => (e.detail as PositionShown).x !== "",
     );
   }
@@ -206,15 +201,6 @@ export class ModalAnnotate3dPom {
         return detail.visible && detail.transformMode !== "";
       },
     );
-  }
-
-  /**
-   * The engine instanceId of a listed label (strips the `annotate-label-`
-   * prefix from its `data-cy`).
-   */
-  async labelRowId(labelText: string): Promise<string> {
-    const cy = await this.labelRow(labelText).first().getAttribute("data-cy");
-    return (cy ?? "").replace(/^annotate-label-/, "");
   }
 
   /**
