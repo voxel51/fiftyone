@@ -53,11 +53,20 @@ export const clearSelectionNonceState = atom<number>({
  * call, since it also tears down the local layers (lasso indices, the
  * chart's dim); this serves the panel root, where the plot view may
  * already be unmounted (spaces renders only the active tab).
+ *
+ * Only the panel's own selection is its to clear. The count marks it:
+ * every stage the plot publishes carries one, and any other publish or
+ * reset clears it (see the participant above). Another panel's selection,
+ * or the view bar's search, stays for its owner to clear, as the Map
+ * panel does on close.
  */
 export function useClearPublishedSelection(): () => void {
   return useRecoilCallback(
-    ({ set, reset }) =>
+    ({ set, reset, snapshot }) =>
       () => {
+        if (snapshot.getLoadable(selectionCountState).valueMaybe() == null) {
+          return;
+        }
         fos.resetExtendedSelectionTransaction({ set, reset });
         reset(selectionCountState);
         reset(selectionSampleCountState);
