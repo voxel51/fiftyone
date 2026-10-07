@@ -127,6 +127,18 @@ describe("VideoElement poster draw", () => {
     expect(updates.at(-1)).toEqual(loadedPoster);
   });
 
+  it("draws the target's frame when the seek reports the ended clip's end", async () => {
+    const { drawImage, present, release, seek, updates } =
+      await drawPoster(null);
+
+    present(0);
+    seek(3);
+
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(updates.at(-1)).toEqual(loadedPoster);
+  });
+
   it("does not draw the frame from before the seek", async () => {
     const { drawImage, present, seek, updates } = await drawPoster(1.5);
 

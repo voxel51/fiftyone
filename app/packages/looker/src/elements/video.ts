@@ -683,6 +683,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       let frameCallback: number | null = null;
       let presented: number | null = null;
       let seekDone = false;
+      let target = 0;
 
       const finish = () => {
         video.removeEventListener("error", error);
@@ -737,9 +738,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           return;
         }
 
+        // Not `currentTime`: Chromium can report a seek in an ended clip as
+        // landing at its end, past the frame it presents, and present no other
         if (
           !watchesFrames ||
-          presentsSeekTarget(presented, video.currentTime, frameRate)
+          presentsSeekTarget(presented, target, frameRate)
         ) {
           paint();
         }
@@ -747,12 +750,13 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
       const load = () => {
         video.addEventListener("seeked", seeked);
-        video.currentTime =
+        target =
           seconds === null
             ? support
               ? getTime(support[0], frameRate)
               : 0
             : Math.min(Math.max(seconds, 0), video.duration);
+        video.currentTime = target;
         video.removeEventListener("loadedmetadata", load);
 
         // Assigning a size clears the canvas
