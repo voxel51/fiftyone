@@ -440,12 +440,6 @@ export class EpisodePom {
     await this.scope.getByRole("tab", { name: tileTitle, exact: true }).click();
   }
 
-  async expectFileName(fileName: string): Promise<void> {
-    expect(
-      await this.scope.getByText(fileName, { exact: true }).isVisible(),
-    ).toBe(true);
-  }
-
   async expectTileTitles(
     present: readonly string[],
     absent: readonly string[] = [],

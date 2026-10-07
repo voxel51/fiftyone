@@ -23,36 +23,6 @@ export class ColorModalPom {
     await this.getFieldSelector(`color-modal-list-item-${fieldName}`).click();
   }
 
-  async setColorBy(mode: "value" | "field") {
-    await this.getFieldSelector(
-      "color-modal-list-item-Global settings",
-    ).click();
-    await this.getFieldSelector(`radio-button-${mode}`).click();
-  }
-
-  async shuffleColors() {
-    await this.getFieldSelector(
-      "color-modal-list-item-Global settings",
-    ).click();
-    await this.getFieldSelector("shuffle-colors").click();
-  }
-
-  async useColorBlindColors() {
-    await this.getFieldSelector(
-      "color-modal-list-item-Global settings",
-    ).click();
-    await this.getFieldSelector(
-      "checkbox-Use color blind friendly option",
-    ).click();
-  }
-
-  async useMultiColorKeypoints() {
-    await this.getFieldSelector(
-      "color-modal-list-item-Global settings",
-    ).click();
-    await this.getFieldSelector("checkbox-Multicolor keypoints").click();
-  }
-
   // field level setting
   async changeColorMode(mode: "value" | "field" | "instance") {
     await this.getFieldSelector("color-by-attribute").click();
@@ -64,21 +34,6 @@ export class ColorModalPom {
     await this.getFieldSelector(
       "checkbox-Use custom colors for specific field values",
     ).click();
-  }
-
-  async addNewPairs(pairs: { value: string; color: string }[]) {
-    for (let i = 0; i < pairs.length; i++) {
-      await this.addANewPair(pairs[i].value, pairs[i].color, i);
-    }
-  }
-
-  async addANewPair(value: string, color: string, index: number) {
-    if (index !== 0) {
-      await this.getFieldSelector("button-add a new pair").click();
-    }
-
-    await this.setPairValue(value, index);
-    await this.setPairColor(color, index);
   }
 
   /** Enter the value of pair `index`, which applies it */
@@ -94,30 +49,6 @@ export class ColorModalPom {
     await this.getFieldSelector(`input-color-${index}`).clear();
     await this.getFieldSelector(`input-color-${index}`).fill(color);
     await this.page.keyboard.press("Enter");
-  }
-
-  async getJSONEditor() {
-    return this.page.getByTestId("color-scheme-editor");
-  }
-
-  // action buttons
-  async saveAsDefault() {
-    const saveAsDefaultButton = this.page.getByTestId(
-      "button-Save to dataset appConfig",
-    );
-    await saveAsDefaultButton.click();
-  }
-
-  async resetColorScheme() {
-    const resetButton = this.page.getByTestId(
-      "button-Clear session settings and revert to default settings",
-    );
-    await resetButton.click();
-  }
-
-  async clearDefault() {
-    const clearDefaultButton = this.page.getByTestId("button-Clear default");
-    await clearDefaultButton.click();
   }
 }
 

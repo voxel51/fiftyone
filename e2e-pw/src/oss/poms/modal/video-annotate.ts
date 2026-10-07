@@ -26,13 +26,11 @@ export class VideoAnnotatePom {
   readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: VideoAnnotateAsserter;
-  readonly surface: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new VideoAnnotateAsserter(this);
-    this.surface = page.getByTestId("video-annotation-surface");
   }
 
   /** The dynamic group's order-by value beside the clock, `(value)`. */
@@ -43,11 +41,6 @@ export class VideoAnnotatePom {
   /** The timeline clock; in frame display it reads `#frame / #total`. */
   get clock(): Locator {
     return this.page.locator('[data-testid="timeline-playhead-time"]');
-  }
-
-  /** Switch the clock between elapsed time and frame numbers. */
-  async toggleClockDisplay() {
-    await this.clock.click();
   }
 
   /**
@@ -61,14 +54,6 @@ export class VideoAnnotatePom {
       "e2e:video-annotation:surface-revealed",
       action,
     );
-  }
-
-  /**
-   * Run `action` and resolve once the timeline (Annotate or Explore) has
-   * committed its tracks because of it
-   */
-  async afterTimeline<T>(action: () => Promise<T>): Promise<T> {
-    return this.modal.eventUtils.after(TRACKS_RENDERED, action);
   }
 
   /** All distinct timeline track ids (object instanceIds + `td-…` rows). */
@@ -102,11 +87,6 @@ export class VideoAnnotatePom {
   /** Temporal-detection track rows (`td-…`). */
   get temporalTracks(): Locator {
     return this.page.locator('[data-track-id^="td-"]');
-  }
-
-  /** Dynamic-attribute sub-track rows under a parent object track. */
-  subTracks(parentId: string): Locator {
-    return this.page.locator(`[data-track-id^="${parentId}::"]`);
   }
 
   /**
@@ -385,11 +365,6 @@ export class VideoAnnotatePom {
     return this.page.getByRole("menuitem").allTextContents();
   }
 
-  /** The human-readable interval span shown in a track bar's `title` tooltip. */
-  async trackBarTitle(trackId: string): Promise<string> {
-    return (await this.trackBar(trackId).getAttribute("title")) ?? "";
-  }
-
   /**
    * A track's presence intervals in seconds, read off its rendered lane. The
    * row must be mounted (drawer open or pinned).
@@ -420,35 +395,6 @@ export class VideoAnnotatePom {
         ),
       );
     return times.sort((a, b) => a - b);
-  }
-
-  /**
-   * Drag a TD interval's END resize handle by `dxPx` pixels (positive = later),
-   * resizing its `support` end. The drag uses document-level mouse listeners and
-   * a 3px threshold, so move in several steps past it before releasing.
-   */
-  async dragTemporalIntervalEnd(trackId: string, dxPx: number) {
-    const handle = this.page
-      .locator(`[data-track-id="${trackId}"] [data-resize-handle="end"]`)
-      .first();
-    const box = await handle.boundingBox();
-
-    if (!box) {
-      throw new Error(`no end resize handle for track ${trackId}`);
-    }
-
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    const steps = 8;
-
-    await this.page.mouse.move(x, y);
-    await this.page.mouse.down();
-
-    for (let i = 1; i <= steps; i++) {
-      await this.page.mouse.move(x + (dxPx * i) / steps, y);
-    }
-
-    await this.page.mouse.up();
   }
 
   /**
@@ -502,13 +448,6 @@ export class VideoAnnotatePom {
     );
   }
 
-  /** Click the toolbar "Merge" button (enabled with exactly two tracks selected). */
-  async clickMergeToolbarButton() {
-    await this.afterTracksChange(() =>
-      this.page.locator('button[aria-label="Merge"]').click(),
-    );
-  }
-
   /**
    * Right-click the source track's interval bar and choose "Merge into
    * <targetLabel>" — re-keys the source's frames onto the target instance
@@ -550,11 +489,6 @@ export class VideoAnnotatePom {
     );
   }
 
-  /** Toggle playback (play/pause) via the timeline control. */
-  async togglePlay() {
-    await this.page.getByTestId("timeline-controls-play-pause").click();
-  }
-
   /**
    * The annotate-sidebar label rows currently listed (engine-presence derived:
    * the current frame's labels + in-support temporal detections). Each row is a
@@ -581,13 +515,6 @@ export class VideoAnnotatePom {
       .getByTestId("modal")
       .getByTestId("sidebar")
       .locator(`[data-cy^='annotate-label-'][data-cy-label='${labelText}']`);
-  }
-
-  /** The class texts of every label row currently listed in the sidebar. */
-  async listedLabels(): Promise<string[]> {
-    return this.labelRows.evaluateAll((els) =>
-      els.map((e) => e.getAttribute("data-cy-label") ?? ""),
-    );
   }
 
   /**

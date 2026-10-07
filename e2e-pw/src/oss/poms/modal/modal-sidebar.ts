@@ -16,7 +16,6 @@ const MODAL_FIELD_COUNT_SIGNAL = "modal-sidebar-field";
 export class ModalSidebarPom {
   readonly annotate: ModalAnnotateSidebarPom;
   readonly edit: ModalAnnotateEditPom;
-  readonly page: Page;
   readonly locator: Locator;
   readonly assert: ModalSidebarAsserter;
 
@@ -32,7 +31,6 @@ export class ModalSidebarPom {
   ) {
     this.annotate = new ModalAnnotateSidebarPom(page, eventUtils);
     this.edit = new ModalAnnotateEditPom(page, eventUtils);
-    this.page = page;
     this.assert = new ModalSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
@@ -47,19 +45,6 @@ export class ModalSidebarPom {
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
     await selectionDiv.click();
-  }
-
-  /**
-   * Fills a search input for the specified sidebar field and submits by
-   * pressing Enter
-   *
-   * @param field - The field identifier for the search input
-   * @param search - The search string to enter
-   */
-  async applySearch(field: string, search: string) {
-    const input = this.locator.getByTestId(`selector-sidebar-search-${field}`);
-    await input.fill(search);
-    await input.press("Enter");
   }
 
   /**
@@ -133,15 +118,6 @@ export class ModalSidebarPom {
    */
   async getSampleTagCount() {
     return Number(await this.getSidebarEntryText("tags"));
-  }
-
-  /**
-   * Retrieves the total count of label tags from the `_label_tags` field entry
-   *
-   *  @returns A promise resolving to the label tag count as a number.
-   */
-  async getLabelTagCount() {
-    return Number(await this.getSidebarFieldCount("_label_tags"));
   }
 
   /**
@@ -370,16 +346,5 @@ class ModalSidebarAsserter {
         collapseWhitespace(await entry.getByTestId(`value-${v}`).textContent()),
       ).toBe(v);
     }
-  }
-
-  /**
-   * Assert that annotation is disabled with a specific message
-   */
-  async hasDisabledMessage(messageSubstring: string) {
-    expect(
-      await this.modalSidebarPom.locator
-        .getByText(messageSubstring)
-        .isVisible(),
-    ).toBe(true);
   }
 }

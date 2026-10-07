@@ -285,28 +285,10 @@ export class StageEditorPom {
       .getByRole("option", { name: option, exact: true })
       .click();
   }
-
-  async setToggle(param: string, checked: boolean) {
-    const toggle = this.param(param).getByRole("checkbox");
-    if ((await toggle.isChecked()) !== checked) {
-      await toggle.click();
-    }
-  }
-
-  /** Switches a param to one of its editors: `field`, `text`, `expr`, `json`. */
-  async chooseEditor(param: string, label: string) {
-    await this.param(param)
-      .getByRole("tab", { name: label, exact: true })
-      .click();
-  }
 }
 
 class ViewBarAsserter {
   constructor(private readonly viewBar: ViewBarPom) {}
-
-  async isVisible() {
-    expect(await this.viewBar.locator.isVisible()).toBe(true);
-  }
 
   /** Each pill's text, in order: the stage name, then its first param's preview */
   async viewStages(texts: string[]) {
@@ -398,12 +380,6 @@ class StageEditorAsserter {
           })
         : await control.getByRole("textbox").inputValue();
     expect(text).toBe(value);
-  }
-
-  async paramToggle(param: string, checked: boolean) {
-    expect(
-      await this.editor.param(param).getByRole("checkbox").isChecked(),
-    ).toBe(checked);
   }
 
   /** Which editor a hydrated param opened in. */

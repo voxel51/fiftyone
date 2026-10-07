@@ -8,7 +8,6 @@
  */
 
 import { expect, test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { LabelSchema } from "src/shared/dataset-factory";
@@ -19,12 +18,8 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 );
 
 const test = base.extend<{
-  grid: GridPom;
   modal: ModalPom;
 }>({
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
-  },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },

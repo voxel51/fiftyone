@@ -1,6 +1,4 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
-import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -8,16 +6,8 @@ const datasetName = getUniqueDatasetNameWithPrefix("datetime-regression");
 const NUM_SAMPLES = 2;
 
 const test = base.extend<{
-  grid: GridPom;
-  modal: ModalPom;
   sidebar: SidebarPom;
 }>({
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
-  },
-  modal: async ({ page, eventUtils }, use) => {
-    await use(new ModalPom(page, eventUtils));
-  },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },

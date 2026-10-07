@@ -5,7 +5,6 @@ import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
 import { collapseWhitespace, escapeRegExp } from "src/oss/utils";
-import { UrlPom } from "../url";
 import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
@@ -24,7 +23,6 @@ export class ModalPom {
 
   readonly groupCarousel: Locator;
   readonly locator: Locator;
-  readonly looker: Locator;
   readonly modalContent: Locator;
   readonly modalContainer: Locator;
 
@@ -39,7 +37,6 @@ export class ModalPom {
   readonly groupSampleCanvas: SampleCanvasPom;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
-  readonly url: UrlPom;
   readonly video: ModalVideoControlsPom;
   readonly videoAnnotate: VideoAnnotatePom;
   readonly annotate3d: ModalAnnotate3dPom;
@@ -53,7 +50,6 @@ export class ModalPom {
     this.locator = page.getByTestId("modal");
 
     this.groupCarousel = this.locator.getByTestId("group-carousel");
-    this.looker = this.locator.getByTestId("looker").last();
     this.modalContent = this.locator.getByTestId("modal-content");
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
@@ -74,18 +70,11 @@ export class ModalPom {
       this.groupLooker,
     );
     this.sidebar = new ModalSidebarPom(page, eventUtils);
-    this.tagger = new ModalTaggerPom(page, this);
-    this.url = new UrlPom(page, eventUtils);
+    this.tagger = new ModalTaggerPom(this);
     this.video = new ModalVideoControlsPom(page, this);
     this.videoAnnotate = new VideoAnnotatePom(page, this);
     this.annotate3d = new ModalAnnotate3dPom(page, this);
     this.episode = new EpisodePom(page, this.locator, eventUtils);
-  }
-
-  get modalSamplePluginTitle() {
-    return this.locator
-      .getByTestId("panel-tab-fo-sample-modal-plugin")
-      .textContent();
   }
 
   get groupLooker() {
@@ -296,10 +285,6 @@ export class ModalPom {
     );
   }
 
-  async toggleTagSampleOrLabels() {
-    await this.locator.getByTestId("action-tag-sample-labels").click();
-  }
-
   async navigateSlice(
     groupField: string,
     slice: string,
@@ -448,11 +433,6 @@ class ModalAsserter {
       .getByTestId("looker")
       .count();
     expect(actualLookerCount).toBe(expectedCount);
-  }
-
-  async verifySampleNavigation(direction: "forward" | "backward") {
-    const navigation = this.modalPom.getSampleNavigation(direction);
-    expect(await navigation.isVisible()).toBe(true);
   }
 
   async verifyModalSamplePluginTitle(

@@ -1,5 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
-import { Asset3dPanelPom } from "src/oss/poms/fo3d/assets-panel";
+import { Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 
 export type CameraPosition = [number, number, number];
@@ -41,29 +40,10 @@ export function positionsAreClose(
 }
 
 export class Renderer3dPom {
-  readonly asset3dPanel: Asset3dPanelPom;
-  readonly modalLookerContainer: Locator;
-  readonly looker3d: Locator;
-  readonly statusBar: Locator;
-  readonly statusBarToggle: Locator;
-  readonly statusBarClose: Locator;
-
   constructor(
     private readonly page: Page,
     private readonly eventUtils: EventUtils,
-  ) {
-    this.asset3dPanel = new Asset3dPanelPom(this.page);
-    this.modalLookerContainer = this.page.getByTestId("modal-looker-container");
-    this.looker3d = this.modalLookerContainer.getByTestId("looker3d");
-    this.statusBar =
-      this.modalLookerContainer.getByTestId("looker3d-statusbar");
-    this.statusBarToggle = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-toggle",
-    );
-    this.statusBarClose = this.modalLookerContainer.getByTestId(
-      "looker3d-statusbar-close",
-    );
-  }
+  ) {}
 
   /** The camera position the canvas last rendered (the status bar lags it). */
   async getCameraPosition(): Promise<CameraPosition> {

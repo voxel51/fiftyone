@@ -5,14 +5,12 @@ import { ModalLevaPom } from "./leva";
 const SLICE_SELECTOR = "e2e:looker3d:slice-selector";
 
 export class Looker3DControlsPom {
-  readonly page: Page;
   readonly modal: ModalPom;
   readonly leva: ModalLevaPom;
   readonly locator: Locator;
   readonly assert: Looker3DControlsAsserter;
 
   constructor(page: Page, modal: ModalPom) {
-    this.page = page;
     this.modal = modal;
     this.locator = modal.locator.getByTestId("looker3d-action-bar");
 

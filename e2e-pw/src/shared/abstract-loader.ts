@@ -29,13 +29,6 @@ export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;
 
   /**
-   * This method is used to load datasets that are assumed to be already available in the test hosts.
-   *
-   * @param name name of the dataset to load
-   */
-  abstract loadTestDataset(name: string): Promise<void>;
-
-  /**
    * Execute arbitrary python code.
    *
    * @param code python code to be executed

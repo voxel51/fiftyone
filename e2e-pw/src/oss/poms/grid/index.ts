@@ -101,10 +101,6 @@ export class GridPom {
     this.locator = page.getByTestId("fo-grid");
   }
 
-  getBackwardSection() {
-    return this.locator.getByTestId("spotlight-section-backward");
-  }
-
   getForwardSection() {
     return this.locator.getByTestId("spotlight-section-forward");
   }
@@ -234,13 +230,6 @@ export class GridPom {
     return this.getForwardSection()
       .locator("div")
       .last()
-      .scrollIntoViewIfNeeded();
-  }
-
-  async scrollTop() {
-    return this.getBackwardSection()
-      .locator("div")
-      .first()
       .scrollIntoViewIfNeeded();
   }
 
@@ -389,22 +378,6 @@ export class GridPom {
         }
         return draws.settled(tiles);
       },
-    );
-  }
-
-  /**
-   * Run `action` and resolve once `count` custom-renderer tiles have mounted
-   * because of it; they mount after the grid does
-   */
-  async afterRendererTilesMounted<T>(
-    count: number,
-    action: () => Promise<T>,
-  ): Promise<T> {
-    let mounted = 0;
-    return this.eventUtils.after(
-      "e2e:grid:custom-renderer-mounted",
-      action,
-      () => ++mounted === count,
     );
   }
 

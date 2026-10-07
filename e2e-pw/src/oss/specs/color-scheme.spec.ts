@@ -2,7 +2,6 @@ import { test as base, expect } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { ColorModalPom } from "src/oss/poms/color-modal";
 import { GridPom } from "src/oss/poms/grid";
-import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import {
@@ -13,7 +12,6 @@ import {
 const test = base.extend<{
   sidebar: SidebarPom;
   grid: GridPom;
-  modal: ModalPom;
   colorModal: ColorModalPom;
   gridActionsRow: GridActionsRowPom;
 }>({
@@ -22,9 +20,6 @@ const test = base.extend<{
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
-  },
-  modal: async ({ page, eventUtils }, use) => {
-    await use(new ModalPom(page, eventUtils));
   },
   colorModal: async ({ page }, use) => {
     await use(new ColorModalPom(page));

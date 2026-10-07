@@ -2,12 +2,10 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventCondition } from "src/shared/event-utils";
 
 export class SidebarPom {
-  readonly page: Page;
   readonly sidebar: Locator;
   readonly asserter: SidebarAsserter;
 
   constructor(page: Page) {
-    this.page = page;
     this.asserter = new SidebarAsserter(this);
 
     this.sidebar = page.getByTestId("sidebar");
@@ -78,24 +76,6 @@ export class SidebarPom {
       .first();
   }
 
-  getNumericSliderContainer(field: string) {
-    return this.sidebar.getByTestId(`numeric-slider-container-${field}`);
-  }
-
-  getSlider(field: string) {
-    return this.getNumericSliderContainer(field).getByTestId("slider");
-  }
-
-  getSliderIndicator(field: string, text: string, parent?: boolean) {
-    const point = this.getSlider(field)
-      .locator("span")
-      .filter({ hasText: text })
-      .first();
-    // TODO: we should figure out why pointA.dragTo(pointB) stopped working
-    // recent with upgrades. ".." drags to the center of slider
-    return parent ? point.locator("..") : point;
-  }
-
   async clickFieldCheckbox(field: string) {
     const selector = this.sidebar.getByTestId(`checkbox-${field}`);
     return selector.click();
@@ -124,12 +104,6 @@ export class SidebarPom {
     return item.getByTestId(`entry-count-all`);
   }
 
-  async changeSliderStartValue(field: string, textA: string, textB: string) {
-    const sliderStart = this.getSliderIndicator(field, textA);
-    const sliderMidPoint = this.getSliderIndicator(field, textB, true);
-    await sliderStart.dragTo(sliderMidPoint);
-  }
-
   async getActiveMode() {
     return this.sidebar.getByTestId("sidebar-mode-status").innerText();
   }
@@ -142,12 +116,6 @@ export class SidebarPom {
     // the filter dropdown is still animating open (a forced click computes
     // its point once and misses a moving checkbox)
     await selectionDiv.click();
-  }
-
-  async applySearch(field: string, search: string) {
-    const input = this.sidebar.getByTestId(`selector-sidebar-search-${field}`);
-    await input.fill(search);
-    await input.press("Enter");
   }
 
   // apply a filter to a field
@@ -181,14 +149,6 @@ export class SidebarPom {
       .click();
   }
 
-  async resetAttribute(attribute: string) {
-    const container = this.sidebar.getByTestId(
-      `categorical-filter-${attribute}`,
-    );
-    const reset = container.getByTestId("filter-reset");
-    return reset.click();
-  }
-
   async toggleSidebarMode() {
     const toggle = this.sidebar.getByTestId("sidebar-mode-status");
     return toggle.click();
@@ -208,21 +168,9 @@ class SidebarAsserter {
     ).toBe(true);
   }
 
-  async assertCheckboxDisabled(fieldName: string) {
-    expect(
-      await this.sb.sidebar.getByTestId(`checkbox-${fieldName}`).count(),
-    ).toBe(0);
-  }
-
   async assertCheckboxesEnabled(fieldNames: string[]) {
     for (let i = 0; i < fieldNames.length; i++) {
       await this.assertCheckboxEnabled(fieldNames[i]);
-    }
-  }
-
-  async assertCheckboxesDisabled(fieldNames: string[]) {
-    for (let i = 0; i < fieldNames.length; i++) {
-      await this.assertCheckboxDisabled(fieldNames[i]);
     }
   }
 
@@ -258,17 +206,6 @@ class SidebarAsserter {
 
   async assertFieldDisabled(fieldName: string) {
     expect(await this.sb.fieldArrow(fieldName, true).count()).toBe(0);
-  }
-
-  async assertFieldArrowRemoved(fieldName: string) {
-    expect(await this.sb.fieldArrow(fieldName, false).count()).toBe(0);
-    expect(await this.sb.fieldArrow(fieldName, true).count()).toBe(0);
-  }
-
-  async assertFieldsDisabled(fieldNames: string[]) {
-    for (let i = 0; i < fieldNames.length; i++) {
-      await this.assertFieldDisabled(fieldNames[i]);
-    }
   }
 
   async assertFieldEnabled(fieldName: string) {

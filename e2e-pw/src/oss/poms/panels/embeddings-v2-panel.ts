@@ -6,7 +6,7 @@ export class EmbeddingsV2Pom {
   readonly runsPage: Locator;
   readonly gridPanel: GridPanelPom;
 
-  constructor(readonly page: Page) {
+  constructor(page: Page) {
     this.gridPanel = new GridPanelPom(page);
     this.runsPage = page.getByTestId("embeddings-runs-page");
     this.assert = new EmbeddingsV2Asserter(this);

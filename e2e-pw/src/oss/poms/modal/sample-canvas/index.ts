@@ -139,14 +139,7 @@ export class SampleCanvasPom {
    * The Lighter toolbar (annotate mode), if present
    */
   get toolbar() {
-    return new ToolbarPom(this.page, this.eventUtils);
-  }
-
-  /**
-   * The top-left checkbox, if present
-   */
-  get checkbox() {
-    return this.page.getByTestId("sample-canvas-checkbox");
+    return new ToolbarPom(this.page);
   }
 
   /**
@@ -177,19 +170,6 @@ export class SampleCanvasPom {
    */
   async clickEmptyArea() {
     await this.click(EMPTY_AREA, EMPTY_AREA);
-  }
-
-  /**
-   * Mouse double click on the sample canvas
-   *
-   * @param x The x coordinate between [0, 1]
-   * @param y The y coordinate between [0, 1]
-   */
-  async dblclick(x: number, y: number) {
-    const xy = await this.#toScreenCoordinates(x, y);
-    this.#mouseX = xy.x;
-    this.#mouseY = xy.y;
-    await this.page.mouse.dblclick(xy.x, xy.y);
   }
 
   /**

@@ -25,16 +25,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
     this.pythonRunner = new PythonRunner(getPythonCommand);
   }
 
-  async loadTestDataset() {
-    throw new Error("Method not implemented.");
-  }
-
   async executePythonCode(code: string) {
     return this.pythonRunner.exec(code);
-  }
-
-  async executePythonFixture() {
-    throw new Error("Method not implemented.");
   }
 
   async selectDatasetFromSelector(page: Page, datasetName: string) {

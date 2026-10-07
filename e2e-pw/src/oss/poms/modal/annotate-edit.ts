@@ -60,15 +60,6 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Add an (empty) mask to the currently-edited detection via the label menu.
-   * The MUI menu renders in a document-level portal, so target it off `page`.
-   */
-  async addMask() {
-    await this.openLabelMenu();
-    await this.page.getByTestId("label-menu-add-mask").click();
-  }
-
-  /**
    * Remove the mask from the currently-edited detection via the label menu.
    */
   async removeMask() {
@@ -145,27 +136,6 @@ export class ModalAnnotateEditPom {
       }
       return opaque / area;
     });
-  }
-
-  /**
-   * Get the error message text for a specific field
-   *
-   * @param path The field path
-   * @returns A promise that resolves to the error text content
-   */
-  async getFieldErrors(path: string) {
-    const id = convertPathToId(path);
-    return this.locator.getByTestId(`${id}_errors`).textContent();
-  }
-
-  /**
-   * Get a field label
-   *
-   * @param path The field path
-   * @returns A promise that resolves to the label text content
-   */
-  async getFieldLabel(path: string) {
-    return (await this.getFieldContainer(path)).locator("label").textContent();
   }
 
   /**
@@ -289,28 +259,6 @@ class ModalAnnotateEditAsserter {
    */
   async isClosed() {
     expect(await this.modalAnnotateEdit.backButton.isVisible()).toBe(false);
-  }
-
-  /**
-   * Verify a field's label
-   *
-   * @param path The field path
-   * @param expectedLabel The expected label value
-   */
-  async verifyFieldLabel(path: string, expectedLabel: string) {
-    const actualLabel = await this.modalAnnotateEdit.getFieldLabel(path);
-    expect(actualLabel).toBe(expectedLabel);
-  }
-
-  /**
-   * Verify a field's errors
-   *
-   * @param path The field path
-   * @param expectedErrors The expected error message
-   */
-  async verifyFieldErrors(path: string, expectedErrors: string) {
-    const actualErrors = await this.modalAnnotateEdit.getFieldErrors(path);
-    expect(actualErrors).toBe(expectedErrors);
   }
 
   /**

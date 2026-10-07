@@ -1,8 +1,6 @@
 import { test as base } from "src/oss/fixtures";
-import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const NUM_VIDEOS = 2;
@@ -14,20 +12,12 @@ const datasetName = getUniqueDatasetNameWithPrefix(`group-ima-vid`);
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  gridActionsRow: GridActionsRowPom;
-  sidebar: SidebarPom;
 }>({
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
-  },
-  gridActionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
   },
 });
 

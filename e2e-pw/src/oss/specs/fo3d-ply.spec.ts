@@ -3,23 +3,17 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
-
 const datasetName = getUniqueDatasetNameWithPrefix("fo3d-ply");
 
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  modalSidebar: ModalSidebarPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  modalSidebar: async ({ page, eventUtils }, use) => {
-    await use(new ModalSidebarPom(page, eventUtils));
   },
 });
 

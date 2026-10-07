@@ -19,7 +19,6 @@ export class JSONEditorPom {
   constructor(
     readonly page: Page,
     readonly eventUtils: EventUtils,
-    readonly field: string,
     readonly schemaManager: SchemaManagerPom,
   ) {
     this.assert = new JSONEditorAsserter(this);
@@ -110,13 +109,6 @@ export class JSONEditorPom {
    */
   async discard() {
     await this.schemaManager.footer.getByTestId("secondary-button").click();
-  }
-
-  /**
-   * Toggle the visibility, i.e. make the field active or hidden
-   */
-  async toggleVisibility() {
-    await this.schemaManager.locator.getByTestId("toggle-visibility").click();
   }
 
   /**

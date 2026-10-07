@@ -29,10 +29,6 @@ export class FieldVisibilityPom {
     this.containerLocator = page.getByTestId("field-visibility-container");
   }
 
-  get modalContainer() {
-    return this.page.getByTestId("field-visibility-container");
-  }
-
   get fieldVisibilityBtn() {
     return this.sidebarLocator.getByTestId("field-visibility-icon");
   }
@@ -61,12 +57,6 @@ export class FieldVisibilityPom {
     return this.containerLocator.getByTestId(
       "filter-visibility-filter-rule-input",
     );
-  }
-
-  getFieldCheckbox(name: string) {
-    return this.page
-      .getByTestId(`schema-selection-${name}`)
-      .getByRole("checkbox");
   }
 
   getFieldVisibilityControl(label: string) {

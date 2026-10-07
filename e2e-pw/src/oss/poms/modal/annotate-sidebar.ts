@@ -27,22 +27,10 @@ export class ModalAnnotateSidebarPom {
     );
   }
 
-  /** Label rows of the active-labels list, each carrying `data-cy-label` / `data-cy-path`. */
-  get labelRows(): Locator {
-    return this.locator.locator("[data-cy^='annotate-label-']");
-  }
-
   /** Label rows of the field at `path` (e.g. `weather`, `instances`). */
   labelRowsFor(path: string): Locator {
     return this.locator.locator(
       `[data-cy^='annotate-label-'][data-cy-path='${path}']`,
-    );
-  }
-
-  /** Label rows whose text is `labelText`. */
-  labelRow(labelText: string): Locator {
-    return this.locator.locator(
-      `[data-cy^='annotate-label-'][data-cy-label='${labelText}']`,
     );
   }
 
@@ -88,19 +76,6 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Get the count of active primitive fields in the sidebar
-   *
-   * @returns A promise that resolves to the number of active primitive fields
-   */
-  async getActivePrimitiveFieldsCount() {
-    return Number(
-      await this.locator
-        .getByTestId("sidebar-group-PRIMITIVES-field-count")
-        .textContent(),
-    );
-  }
-
-  /**
    * Run `action` and resolve once the edit it makes has been written and
    * nothing is left to save: the write is the edit's cause-signal, and the
    * settled pass after it proves no later edit is still pending.
@@ -125,29 +100,6 @@ export class ModalAnnotateSidebarPom {
       .getByText(label)
       .nth(position)
       .click();
-  }
-
-  /**
-   * Select an active primitive field by field name
-   *
-   * @param field The primitive field name to select
-   */
-  async selectActivePrimitiveField(field: string) {
-    await this.locator.getByTestId(`${field}-field`).click();
-  }
-
-  /**
-   * Toggle the active labels section in the sidebar
-   */
-  async toggleActiveLabels() {
-    await this.locator.getByTestId("sidebar-group-Labels-toggle").click();
-  }
-
-  /**
-   * Toggle the active primitive fields section in the sidebar
-   */
-  async toggleActivePrimitiveFields() {
-    await this.locator.getByTestId("sidebar-group-PRIMITIVES-toggle").click();
   }
 
   /**
@@ -302,20 +254,6 @@ class ModalAnnotateSidebarAsserter {
     expect(await this.modalAnnotateSidebar.getActiveLabelsCount()).toBe(count);
   }
 
-  /**
-   * Verify that the active labels section is expanded
-   */
-  async verifyActiveLabelsIsExpanded() {
-    expect(await this.toggleIcon("Labels")).toBe("RemoveIcon");
-  }
-
-  /**
-   * Verify that the active labels section is collapsed
-   */
-  async verifyActiveLabelsIsCollapsed() {
-    expect(await this.toggleIcon("Labels")).toBe("AddIcon");
-  }
-
   /** The field at `path` lists exactly `count` label rows. */
   async labelRowCount(path: string, count: number) {
     expect(await this.modalAnnotateSidebar.labelRowsFor(path).count()).toBe(
@@ -342,20 +280,6 @@ class ModalAnnotateSidebarAsserter {
   }
 
   /**
-   * Verify that the active primitive fields section is expanded
-   */
-  async verifyActivePrimitiveFieldsIsExpanded() {
-    expect(await this.toggleIcon("PRIMITIVES")).toBe("RemoveIcon");
-  }
-
-  /**
-   * Verify that the active primitive fields section is collapsed
-   */
-  async verifyActivePrimitiveFieldsIsCollapsed() {
-    expect(await this.toggleIcon("PRIMITIVES")).toBe("AddIcon");
-  }
-
-  /**
    * Verify the count of active labels matches the expected count
    *
    * @param expectedCount The expected number of active labels
@@ -364,24 +288,6 @@ class ModalAnnotateSidebarAsserter {
     expect(await this.modalAnnotateSidebar.getActiveLabelsCount()).toBe(
       expectedCount,
     );
-  }
-
-  /**
-   * Verify the count of active primitive fields matches the expected count
-   *
-   * @param expectedCount The expected number of active primitive fields
-   */
-  async verifyActivePrimitiveFieldsCount(expectedCount: number) {
-    expect(
-      await this.modalAnnotateSidebar.getActivePrimitiveFieldsCount(),
-    ).toBe(expectedCount);
-  }
-
-  /** The icon a sidebar group's toggle shows (its expanded state). */
-  private toggleIcon(group: "Labels" | "PRIMITIVES") {
-    return this.modalAnnotateSidebar.locator
-      .getByTestId(`sidebar-group-${group}-toggle`)
-      .getAttribute("data-testid");
   }
 
   /**

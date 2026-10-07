@@ -38,13 +38,6 @@ export class TooltipPom {
   }
 
   /**
-   * The unlocked tooltip locator
-   */
-  get unlocked() {
-    return this.page.getByTestId("sample-canvas-tooltip-unlocked");
-  }
-
-  /**
    *
    * @param name The attribute name
    * @param hidden Whether the attribute is in the "Hidden" section
@@ -137,28 +130,6 @@ class TooltipAsserter {
 
     expect(await locator.isVisible()).toBe(true);
     expect(collapseWhitespace(await locator.textContent())).toBe(value);
-  }
-
-  /**
-   * Does the tooltip have these label attributes
-   *
-   * @param attributes A list of attributes
-   */
-  async hasAttributes(
-    attributes: { attribute: string; value: string; hidden?: boolean }[],
-  ) {
-    const promises: Promise<void>[] = [];
-    for (const attribute of attributes) {
-      promises.push(
-        this.hasAttribute(
-          attribute.attribute,
-          attribute.value,
-          attribute.hidden,
-        ),
-      );
-    }
-
-    await Promise.all(promises);
   }
 
   /**

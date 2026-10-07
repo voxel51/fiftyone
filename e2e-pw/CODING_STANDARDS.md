@@ -139,6 +139,9 @@ them before adding new ones.
   in the POM itself.
 - Static locators are `get` accessors; dynamic ones are `getX(param)` methods.
 - Actions are verbs and resolve on the `e2e:` event they cause.
+- Every POM, member, fixture and helper is reached from a spec. CI's
+  `e2e-events` job runs `scripts/check-unused-poms.mjs`, which fails on any
+  that nothing reaches; delete them instead of keeping them for later.
 
 See the README's POM template.
 

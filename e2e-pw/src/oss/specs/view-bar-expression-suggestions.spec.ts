@@ -1,15 +1,13 @@
 import { expect, test as base } from "src/oss/fixtures";
 import type { Page } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 let datasetName: string;
 
-const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
+const test = base.extend<{ viewBar: ViewBarPom }>({
   viewBar: async ({ page, eventUtils }, use) =>
     use(new ViewBarPom(page, eventUtils)),
-  grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
 });
 
 test.beforeAll(async ({ foWebServer }) => {

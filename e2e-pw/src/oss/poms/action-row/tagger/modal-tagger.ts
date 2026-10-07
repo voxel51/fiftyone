@@ -1,14 +1,11 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Locator } from "src/oss/fixtures";
 import { ModalPom } from "../../modal";
 import { afterPopout } from "../popout";
 
 export class ModalTaggerPom {
   readonly locator: Locator;
 
-  constructor(
-    private readonly page: Page,
-    private readonly modal: ModalPom,
-  ) {
+  constructor(private readonly modal: ModalPom) {
     this.locator = modal.locator.getByTestId("popout");
   }
 

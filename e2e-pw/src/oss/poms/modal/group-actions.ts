@@ -16,13 +16,11 @@ const NAVIGATION_MODE_OPTIONS = {
 } as const;
 
 export class ModalGroupActionsPom {
-  readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: ModalGroupActionsAsserter;
   readonly dynamicGroupPagination: DynamicGroupPaginationPom;
 
   constructor(page: Page, modal: ModalPom) {
-    this.page = page;
     this.modal = modal;
     this.dynamicGroupPagination = new DynamicGroupPaginationPom(page, modal);
     this.assert = new ModalGroupActionsAsserter(this);
@@ -32,10 +30,6 @@ export class ModalGroupActionsPom {
     return this.modal.locator.getByTestId(
       "action-toggle-group-media-visibility",
     );
-  }
-
-  get groupMediaVisibilityPopout() {
-    return this.modal.locator.getByTestId("group-media-visibility-popout");
   }
 
   async openMediaVisibility() {

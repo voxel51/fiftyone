@@ -1,7 +1,6 @@
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { GROUP_SLICES } from "./detections-data";
 
@@ -10,16 +9,12 @@ const datasetName = getUniqueDatasetNameWithPrefix("groups");
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  sidebar: SidebarPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
-  },
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
   },
 });
 

@@ -10,7 +10,7 @@ export class McapExplorerPom {
   readonly scope: Locator;
 
   constructor(
-    private readonly page: Page,
+    page: Page,
     private readonly eventUtils: EventUtils,
   ) {
     this.panel = new GridPanelPom(page);

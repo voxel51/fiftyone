@@ -20,7 +20,6 @@ export class OperatorsPromptPom {
   readonly page: Page;
   readonly locator: Locator;
   readonly assert: OperatorsPromptAsserter;
-  readonly selectionCount: Locator;
   readonly type: PromptType;
 
   constructor(
@@ -95,17 +94,6 @@ export class OperatorsPromptPom {
       OUTPUT_EVENT,
       action,
       (e) => JSON.parse((e.detail as { data: string }).data)[key] === value,
-    );
-  }
-
-  /**
-   * Resolve on the prompt closing by itself, as a run that needs no output
-   * does when it completes
-   */
-  untilClosed() {
-    return this.eventUtils.next(
-      PROMPT_EVENT,
-      (e) => promptDetail(e).phase === "closed",
     );
   }
 

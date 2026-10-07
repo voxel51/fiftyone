@@ -44,13 +44,6 @@ export class SchemaManagerPom {
   }
 
   /**
-   * Go back using the top-left arrow
-   */
-  async back() {
-    await this.locator.getByTestId("schema-manager-back").click();
-  }
-
-  /**
    * Close the modal
    */
   async close() {
@@ -170,17 +163,6 @@ class SchemaManagerAsserter {
    */
   async isOpen() {
     expect(await this.schemaManagerPom.locator.isVisible()).toBe(true);
-  }
-
-  /**
-   * Is the "Add schema" button disabled
-   */
-  async isDisabled() {
-    expect(
-      await this.schemaManagerPom.page
-        .getByTestId("open-schema-manager")
-        .isDisabled(),
-    ).toBe(true);
   }
 
   /**

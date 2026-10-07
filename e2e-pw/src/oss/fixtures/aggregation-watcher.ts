@@ -52,8 +52,4 @@ export class AggregationWatcher {
   allPaths() {
     return [...this.paths];
   }
-
-  reset() {
-    this.paths = [];
-  }
 }

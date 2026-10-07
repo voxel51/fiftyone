@@ -24,13 +24,6 @@ export class FieldRowPom {
   }
 
   /**
-   * The pencil button locator, if it exists
-   */
-  get pencil() {
-    return this.locator.getByTestId("edit");
-  }
-
-  /**
    * The scan button locator, if it exists (shown for unconfigured fields)
    */
   get scanButton() {
@@ -73,29 +66,11 @@ export class FieldRowPom {
   }
 
   /**
-   * Click the pencil button, if it exists
-   */
-  async edit() {
-    await this.pencil.press("Enter");
-    return new JSONEditorPom(
-      this.page,
-      this.eventUtils,
-      this.field,
-      this.schemaManager,
-    );
-  }
-
-  /**
    * Click the scan button (for unconfigured fields)
    */
   async scan() {
     await this.scanButton.press("Enter");
-    return new JSONEditorPom(
-      this.page,
-      this.eventUtils,
-      this.field,
-      this.schemaManager,
-    );
+    return new JSONEditorPom(this.page, this.eventUtils, this.schemaManager);
   }
 }
 
@@ -115,14 +90,6 @@ class FieldRowAsserter {
   }
 
   /**
-   * Does the field row have a checkbox, i.e. does it have a label schema
-   * configured.
-   */
-  async hasCheckbox() {
-    expect(await this.fieldRowPom.checkbox.isVisible()).toBe(true);
-  }
-
-  /**
    * Is the field row in the 'Hidden fields' section
    */
   async isHiddenField() {
@@ -138,13 +105,6 @@ class FieldRowAsserter {
    */
   async isChecked(checked: boolean) {
     expect(await this.fieldRowPom.checkbox.isChecked()).toBe(checked);
-  }
-
-  /**
-   * Is the field row editable, i.e. does it have a pencil button
-   */
-  async isEditable() {
-    expect(await this.fieldRowPom.pencil.count()).toBe(1);
   }
 
   /**
