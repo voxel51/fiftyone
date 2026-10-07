@@ -159,6 +159,7 @@ export function PlaybackProvider({
   snapToFrameOnSettle,
   mode,
   defaultDisplay = "configured",
+  onDisplayChange,
   seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
@@ -190,10 +191,10 @@ export function PlaybackProvider({
   const canToggleMode = resolvedMode.kind !== "duration";
   const toggleMode = useCallback(() => {
     if (!canToggleMode) return;
-    setDisplayMode((current) =>
-      current.kind === "duration" ? resolvedMode : DEFAULT_MODE,
-    );
-  }, [canToggleMode, resolvedMode]);
+    const showConfigured = displayMode.kind === "duration";
+    setDisplayMode(showConfigured ? resolvedMode : DEFAULT_MODE);
+    onDisplayChange?.(showConfigured ? "configured" : "duration");
+  }, [canToggleMode, displayMode, resolvedMode, onDisplayChange]);
   const modeControl = useMemo<TimelineModeControl>(
     () => ({
       mode: displayMode,

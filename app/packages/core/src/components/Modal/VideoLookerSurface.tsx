@@ -17,6 +17,7 @@ import styles from "./VideoLookerSurface.module.css";
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
 import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
+import { useVideoTimelineDisplay } from "./useVideoTimelineDisplay";
 
 const CARD_BACKGROUND: React.CSSProperties = {
   background: getColorCssVar(BackgroundColor.Card),
@@ -86,8 +87,15 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
   const playbackKey =
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
+  const { defaultDisplay, onDisplayChange } = useVideoTimelineDisplay();
+
   return (
-    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
+    <PlaybackProvider
+      key={playbackKey}
+      mode={mode}
+      defaultDisplay={defaultDisplay}
+      onDisplayChange={onDisplayChange}
+    >
       {/* Registers the label stream the tracks read. A SIBLING of the media:
           it re-keys on the resolved frame count, and nesting the looker under
           it would rebuild the looker on the way to ready. */}
