@@ -15,6 +15,7 @@ import pytest
 import torch
 from PIL import Image as PILImage
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.utils.clef as fouc
 from fiftyone.utils.clef import (
@@ -322,6 +323,41 @@ class TestClefOutputProcessor:
         ]
 
         assert label is None
+
+    def test_threshold_omits_dropped_answers_from_a_dict(self):
+        """A new field cannot take its type from None, so a dropped answer
+        is left out rather than kept as None"""
+        output = [
+            {
+                "sure": self._answer("noul", ["true", "false"], [5.0, 0.0]),
+                "unsure": self._answer("noul", ["true", "false"], [0.1, 0.0]),
+                "sharp": self._answer("score", ["0", "1"], [0.0, 0.0]),
+            }
+        ]
+
+        labels = ClefOutputProcessor()(
+            output, (10, 10), confidence_thresh=0.9
+        )[0]
+
+        assert set(labels) == {"sure", "sharp"}
+        assert labels["sure"].label == "true"
+
+    def test_threshold_dict_saves_to_new_fields(self):
+        output = [
+            {
+                "sure": self._answer("noul", ["true", "false"], [5.0, 0.0]),
+                "unsure": self._answer("noul", ["true", "false"], [0.1, 0.0]),
+            }
+        ]
+        labels = ClefOutputProcessor()(
+            output, (10, 10), confidence_thresh=0.9
+        )[0]
+        sample = fo.Sample(filepath="image.jpg")
+
+        sample.add_labels(labels, label_field="clef")
+
+        assert sample.clef_sure.label == "true"
+        assert not sample.has_field("clef_unsure")
 
     def test_confidence_threshold_keeps_regressions(self):
         output = [{"q": self._answer("score", ["0", "1", "2"], [0, 0, 0])}]

@@ -162,7 +162,11 @@ class ClefOutputProcessor(fout.OutputProcessor):
             if len(labels) == 1:
                 results.append(next(iter(labels.values())))
             else:
-                results.append(labels)
+                # An answer the threshold dropped is left out, since a new
+                # field cannot take its type from None
+                results.append(
+                    {k: v for k, v in labels.items() if v is not None}
+                )
 
         return results
 
