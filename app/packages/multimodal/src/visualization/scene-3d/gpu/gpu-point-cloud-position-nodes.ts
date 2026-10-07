@@ -4,6 +4,7 @@ import * as TSL from "three/tsl";
 import { POINT_COMPONENT_COUNT } from "../point-cloud-colors";
 import type {
   PointCloudChannelNode,
+  PointCloudChannelTslFacade,
   PointCloudPositionNode,
   PointCloudPositionTslFacade,
 } from "../../tsl-chainables";
@@ -19,10 +20,26 @@ export type GpuPointCloudSampleIndexNode = PointCloudChannelNode;
 
 // Fiber's bundled Three typings lag the runtime's storage/index TSL exports.
 const pointCloudTsl: PointCloudPositionTslFacade = TSL;
+const pointCloudIndexTsl: PointCloudChannelTslFacade = TSL;
 
 /** Shader counterpart of `gpuPointCloudSampleIndex`, shared by draw and pick. */
 export function gpuPointCloudSampleIndexNode(): GpuPointCloudSampleIndexNode {
   return pointCloudTsl.instanceIndex;
+}
+
+/**
+ * Compute-culled counterpart of `gpuPointCloudSampleIndexNode`: the rendered
+ * instance reads its canonical sample index from the compacted visible-index
+ * buffer written by `gpu-point-cloud-compute-cull`. Shared by draw and pick so
+ * both resolve the same instance to the same sample.
+ */
+export function gpuPointCloudCulledSampleIndexNode(
+  visibleIndices: THREE.BufferAttribute,
+): GpuPointCloudSampleIndexNode {
+  return pointCloudIndexTsl
+    .storage(visibleIndices, "uint", visibleIndices.count)
+    .toReadOnly()
+    .element(pointCloudTsl.instanceIndex);
 }
 
 /** Reads one sampled position without materializing a second point array. */

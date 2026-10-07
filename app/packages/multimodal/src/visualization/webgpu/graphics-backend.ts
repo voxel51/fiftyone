@@ -88,3 +88,19 @@ export function requestedGraphicsBackend(
     ? "webgl2"
     : "auto";
 }
+
+/** Opt-in diagnostic flag for WebGPU compute-culled point-cloud draws. */
+export const POINT_CLOUD_COMPUTE_QUERY_PARAMETER = "pointCloudCompute";
+
+/**
+ * Reads the non-persistent point-cloud compute-cull opt-in from the page URL
+ * (`?pointCloudCompute=1`). Off by default; only WebGPU canvases honor it.
+ */
+export function requestedPointCloudCompute(
+  search = typeof window === "undefined" ? "" : window.location.search,
+): boolean {
+  const value = new URLSearchParams(search).get(
+    POINT_CLOUD_COMPUTE_QUERY_PARAMETER,
+  );
+  return value === "1" || value === "true";
+}

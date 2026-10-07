@@ -12,6 +12,10 @@ declare module "three/webgpu" {
   import type { Node } from "three/tsl";
 
   export * from "three";
+  // GPGPU buffers. Re-exported from @types/three's source declarations so
+  // BufferGeometry.setIndirect accepts the same nominal class.
+  export { default as StorageBufferAttribute } from "three/src/renderers/common/StorageBufferAttribute.js";
+  export { default as IndirectStorageBufferAttribute } from "three/src/renderers/common/IndirectStorageBufferAttribute.js";
 
   /**
    * Minimal WebGPU renderer surface consumed by the multimodal panels.
@@ -128,7 +132,20 @@ declare module "three/tsl" {
   /** Chainable storage binding returned by TSL storage accessors. */
   export interface StorageNode<NodeType extends Node = Node> {
     element(index: Node): NodeType;
+    toAtomic(): StorageNode<NodeType>;
     toReadOnly(): StorageNode<NodeType>;
+  }
+
+  /** Compute dispatch created by `.compute()`; `count` is mutable. */
+  export interface ComputeNode extends Node {
+    count: number | null;
+    readonly isComputeNode: true;
+    dispose(): void;
+  }
+
+  /** Call of a statement-only TSL function, convertible to a dispatch. */
+  export interface ComputeKernelCallNode extends Node {
+    compute(count: number, workgroupSize?: number[]): ComputeNode;
   }
 
   export const cameraPosition: Node;
@@ -152,12 +169,26 @@ declare module "three/tsl" {
   export function Fn<NodeType extends Node>(
     callback: () => NodeType,
   ): () => NodeType;
+  export function Fn(callback: () => void): () => ComputeKernelCallNode;
+  export function If(condition: Node, body: () => void): unknown;
   export function abs<NodeType extends Node = Node>(
     value: Node | number,
   ): NodeType;
   export function and<NodeType extends Node = Node>(
     ...conditions: readonly Node[]
   ): NodeType;
+  export function atomicAdd<NodeType extends Node = Node>(
+    pointer: Node,
+    value: Node | number,
+  ): NodeType;
+  export function atomicLoad<NodeType extends Node = Node>(
+    pointer: Node,
+  ): NodeType;
+  export function atomicMin<NodeType extends Node = Node>(
+    pointer: Node,
+    value: Node | number,
+  ): NodeType;
+  export function atomicStore(pointer: Node, value: Node | number): unknown;
   export function atan<NodeType extends Node = Node>(
     y: Node,
     x?: Node,
@@ -209,6 +240,10 @@ declare module "three/tsl" {
   ): NodeType;
   export function log2(value: Node | number): Node;
   export function max(a: Node | number, b: Node | number): Node;
+  export function min<NodeType extends Node = Node>(
+    a: Node | number,
+    b: Node | number,
+  ): NodeType;
   export function mix(
     a: Node | number,
     b: Node | number,
