@@ -318,6 +318,14 @@ export interface PlaybackConfig {
    */
   defaultDisplay?: "configured" | "duration";
   /**
+   * Called when the user swaps the display domain, with the domain it now
+   * shows (`"configured"` for anything other than plain elapsed time).
+   * Pairs with {@link defaultDisplay} for surfaces that remount the provider
+   * per sample but want the choice to carry over: persist it here, seed it
+   * back on the next mount.
+   */
+  onDisplayChange?: (display: "configured" | "duration") => void;
+  /**
    * Trailing delay before a seek asks missing blocking streams to prefetch.
    * The visual playhead and commits into already-buffered data stay immediate.
    * Step, loop-wrap, play-reset, and settle-snap operations bypass the delay.

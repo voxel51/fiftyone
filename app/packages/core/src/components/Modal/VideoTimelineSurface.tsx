@@ -10,6 +10,7 @@ import {
 import React, { useCallback, useMemo, useState } from "react";
 import { VideoExploreToolbar } from "./VideoExploreToolbar";
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
+import { useModalVideoDisplay } from "./useModalVideoDisplay";
 import { useVideoExploreKeybindings } from "./useVideoExploreKeybindings";
 import styles from "./VideoTimelineSurface.module.css";
 
@@ -184,8 +185,10 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // if not. The readout in the controls row switches between the two at a
   // click, which is where the frame-number preference now lives.
   //
-  // The DISPLAY still opens on timecode (`defaultDisplay` below): frames were
-  // opt-in on the looker too, behind `UseFrameNumberOptionElement`.
+  // The DISPLAY opens on whichever of the two the user last picked, falling
+  // back to timecode: frames were opt-in on the looker too, behind
+  // `UseFrameNumberOptionElement`.
+  const display = useModalVideoDisplay();
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
@@ -205,7 +208,7 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
   return (
-    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
+    <PlaybackProvider key={playbackKey} mode={mode} {...display}>
       {/* Hydrates the frame labels onto the video's Lighter scene. A SIBLING
           of `RegisterFrameLabels`, not a child — that component swaps its
           wrapper when duration lands, which would remount the store. */}

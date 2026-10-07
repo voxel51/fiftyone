@@ -159,6 +159,7 @@ export function PlaybackProvider({
   snapToFrameOnSettle,
   mode,
   defaultDisplay = "configured",
+  onDisplayChange,
   seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
@@ -188,21 +189,28 @@ export function PlaybackProvider({
     initialDisplayModeRef.current,
   );
   const canToggleMode = resolvedMode.kind !== "duration";
+  const applyDisplayMode = useCallback(
+    (next: TimelineMode) => {
+      setDisplayMode(next);
+      onDisplayChange?.(next.kind === "duration" ? "duration" : "configured");
+    },
+    [onDisplayChange],
+  );
   const toggleMode = useCallback(() => {
     if (!canToggleMode) return;
-    setDisplayMode((current) =>
-      current.kind === "duration" ? resolvedMode : DEFAULT_MODE,
+    applyDisplayMode(
+      displayMode.kind === "duration" ? resolvedMode : DEFAULT_MODE,
     );
-  }, [canToggleMode, resolvedMode]);
+  }, [canToggleMode, displayMode, resolvedMode, applyDisplayMode]);
   const modeControl = useMemo<TimelineModeControl>(
     () => ({
       mode: displayMode,
       configuredMode: resolvedMode,
       canToggle: canToggleMode,
       toggle: toggleMode,
-      setMode: setDisplayMode,
+      setMode: applyDisplayMode,
     }),
-    [displayMode, resolvedMode, canToggleMode, toggleMode],
+    [displayMode, resolvedMode, canToggleMode, toggleMode, applyDisplayMode],
   );
   const { store, contextValue } = usePlaybackEngine({
     duration,
