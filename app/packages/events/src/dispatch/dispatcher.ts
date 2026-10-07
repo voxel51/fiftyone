@@ -1,7 +1,18 @@
-import { isE2E } from "@fiftyone/utilities";
 import type { EventGroup, EventHandler } from "../types";
 
-type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
+/** Whether the App is driven by browser automation (e2e), not a real user */
+export const isE2E = (): boolean =>
+  typeof navigator !== "undefined" && navigator.webdriver === true;
+
+/**
+ * An `e2e:` event's payload may be passed as a function, which the bus calls
+ * only when it keeps the event (under browser automation)
+ */
+type Payload<E, T> = E extends `e2e:${string}` ? T | (() => T) : T;
+
+type DispatchData<E, T> = T extends undefined | null
+  ? [data?: Payload<E, T>]
+  : [data: Payload<E, T>];
 
 /**
  * Map from event types to their registered handlers.
@@ -217,7 +228,8 @@ export class EventDispatcher<T extends EventGroup> {
    *
    * @template E - Event type key
    * @param event - Event type name
-   * @param args - Event payload (optional if event type is undefined/null)
+   * @param args - Event payload (optional if event type is undefined/null);
+   *   for an `e2e:` event, a function returning it builds it only when kept
    *
    * @example
    * ```typescript
@@ -236,12 +248,17 @@ export class EventDispatcher<T extends EventGroup> {
    */
   public dispatch<E extends keyof T>(
     event: E,
-    ...args: DispatchData<T[E]>
+    ...args: DispatchData<E, T[E]>
   ): void {
-    if (String(event).startsWith(E2E_EVENT_PREFIX) && !isE2E()) {
+    const isE2EEvent = String(event).startsWith(E2E_EVENT_PREFIX);
+    if (isE2EEvent && !isE2E()) {
       return;
     }
-    const data = args[0] as T[E];
+    const data = (
+      isE2EEvent && typeof args[0] === "function"
+        ? (args[0] as () => T[E])()
+        : args[0]
+    ) as T[E];
     for (const tap of taps) {
       try {
         tap(event as string, data);

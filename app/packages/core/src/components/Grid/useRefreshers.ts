@@ -1,4 +1,3 @@
-import { getEventBus } from "@fiftyone/events";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
@@ -6,11 +5,6 @@ import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
-
-/** e2e specs wait on the grid rebuild a requested refresh causes */
-type GridResetE2EEvents = {
-  "e2e:grid:reset": { refresher: number };
-};
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -77,10 +71,6 @@ export default function useRefreshers() {
     pageReset;
     return uuid();
   }, [layoutReset, pageReset]);
-
-  useEffect(() => {
-    getEventBus<GridResetE2EEvents>().dispatch("e2e:grid:reset", { refresher });
-  }, [reset, refresher]);
 
   useEffect(() => {
     const unsubscribe = subscribe(({ event }, { reset }) => {

@@ -1,4 +1,9 @@
+import { getEventBus } from "@fiftyone/events";
 import type { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
+import {
+  IMAVID_FETCHED_EVENT,
+  type ImaVidEvents,
+} from "@fiftyone/looker/src/lookers/imavid/events";
 import type { PlayheadState } from "@fiftyone/playback";
 import {
   PLAYHEAD_STATE_BUFFERING,
@@ -55,26 +60,23 @@ export const loadImaVidRange = async (
   }
 
   return new Promise<void>((resolve) => {
-    const fetchMoreListener = (e: CustomEvent) => {
-      if (e.detail.id !== controller.key) {
-        return;
-      }
-
-      if (storeBufferManager.containsRange(unprocessedStoreBufferRange)) {
-        // if we were buffering, set playhead state to playing
-        if (playhead.get() === PLAYHEAD_STATE_BUFFERING) {
-          playhead.set(PLAYHEAD_STATE_PAUSED);
+    const off = getEventBus<ImaVidEvents>().on(
+      IMAVID_FETCHED_EVENT,
+      ({ id }) => {
+        if (id !== controller.key) {
+          return;
         }
 
-        resolve();
+        if (storeBufferManager.containsRange(unprocessedStoreBufferRange)) {
+          // if we were buffering, set playhead state to playing
+          if (playhead.get() === PLAYHEAD_STATE_BUFFERING) {
+            playhead.set(PLAYHEAD_STATE_PAUSED);
+          }
 
-        window.removeEventListener(
-          "fetchMore",
-          fetchMoreListener as EventListener,
-        );
-      }
-    };
-
-    window.addEventListener("fetchMore", fetchMoreListener as EventListener);
+          resolve();
+          off();
+        }
+      },
+    );
   });
 };

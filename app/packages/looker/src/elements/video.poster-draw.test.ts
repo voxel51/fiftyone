@@ -73,7 +73,6 @@ const drawPoster = async (seconds: number | null) => {
 
 const loadedPoster = {
   hasPoster: true,
-  posterPending: false,
   duration: 3,
   loaded: true,
 };
@@ -161,13 +160,29 @@ describe("VideoLooker mediaPending", () => {
     )?.get?.call({ state });
 
   it.each([
-    { name: "a poster still waiting on its frame", posterPending: true },
-    { name: "a drawn poster", posterPending: false },
-  ])("reports $name", ({ posterPending }) => {
-    expect(mediaPending({ posterPending })).toBe(posterPending);
+    {
+      name: "a thumbnail still waiting on its poster",
+      thumbnail: true,
+      hasPoster: false,
+      pending: true,
+    },
+    {
+      name: "a thumbnail with its poster drawn",
+      thumbnail: true,
+      hasPoster: true,
+      pending: false,
+    },
+    {
+      name: "a modal video, which draws no poster",
+      thumbnail: false,
+      hasPoster: false,
+      pending: false,
+    },
+  ])("reports $name", ({ thumbnail, hasPoster, pending }) => {
+    expect(mediaPending({ config: { thumbnail }, hasPoster })).toBe(pending);
   });
 
-  it("marks a poster redraw pending until its frame draws", () => {
+  it("redraws the poster at a new time", () => {
     const updates: Record<string, unknown>[] = [];
     const element = {
       drawPoster: vi.fn(),
@@ -185,7 +200,7 @@ describe("VideoLooker mediaPending", () => {
 
     VideoElement.prototype.posterAt.call(element, 1.5);
 
-    expect(updates).toEqual([{ posterPending: true }]);
+    expect(updates).toEqual([{}]);
     expect(element.drawPoster).toHaveBeenCalledWith(
       "clip.webm",
       FPS,

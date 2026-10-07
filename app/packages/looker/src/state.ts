@@ -397,8 +397,6 @@ export interface VideoState extends BaseState {
   seekBarHovering: boolean;
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
-  /** a thumbnail's poster is waiting on its seeked frame to draw */
-  posterPending: boolean;
   waitingForVideo: boolean;
   waitingToStream: boolean;
   lockedToSupport: boolean;

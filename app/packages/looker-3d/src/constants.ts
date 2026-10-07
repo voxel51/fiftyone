@@ -22,7 +22,7 @@ export const CAMERA_LOOK_AT_SETTLED_EVENT = "looker3d-camera-look-at-settled";
 export const SCENE_READY_EVENT = "e2e:looker3d:scene-ready";
 /** Dispatched as the camera pose is saved, which it is only when it changes. */
 export const CAMERA_SAVED_EVENT = "e2e:looker3d:camera-saved";
-/** Dispatched after a rendered frame shows the camera at a new position. */
+/** Dispatched as the status bar shows the camera at a new position. */
 export const CAMERA_POSITION_EVENT = "e2e:looker3d:camera-position";
 /** The 2D looker's signals, dispatched as the 3D canvas mounts or an error shows */
 export const CANVAS_LOADED_EVENT = "e2e:looker:canvas-loaded";
@@ -44,7 +44,7 @@ export const ANNOTATION_TOOLBAR_EVENT = "e2e:looker3d:annotation-toolbar";
 export type Looker3dE2EEvents = {
   /** the saved `{ position, target }` as JSON */
   [CAMERA_SAVED_EVENT]: { pose: string };
-  [CAMERA_POSITION_EVENT]: { x: number; y: number; z: number };
+  [CAMERA_POSITION_EVENT]: undefined;
   /** `slices`: the revealed active slices, sorted and comma-joined */
   [SCENE_READY_EVENT]: { sceneKey: string; slices: string };
   [CANVAS_LOADED_EVENT]: { thumbnail: boolean };
@@ -57,6 +57,14 @@ export type Looker3dE2EEvents = {
   [ANNOTATION_TOOLBAR_EVENT]: { visible: boolean; transformMode: string };
 };
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
+
+/** The 3D viewer's commands and notices, sent on the event bus */
+export type Looker3dEvents = {
+  [SET_TOP_VIEW_EVENT]: undefined;
+  [SET_EGO_VIEW_EVENT]: undefined;
+  [SET_ZOOM_TO_SELECTED_EVENT]: undefined;
+  [CAMERA_LOOK_AT_SETTLED_EVENT]: undefined;
+};
 
 export const SHADE_BY_INTENSITY = "intensity";
 export const SHADE_BY_HEIGHT = "height";

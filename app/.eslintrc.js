@@ -56,6 +56,32 @@ const muiPatterns = [
   },
 ];
 
+const E2E_STANDARDS = "See e2e-pw/CODING_STANDARDS.md (App events).";
+const customEventSyntax = [
+  {
+    selector: "NewExpression[callee.name='CustomEvent']",
+    message: `Don't dispatch DOM CustomEvents; send on the @fiftyone/events bus (an e2e: event for a test signal). ${E2E_STANDARDS}`,
+  },
+];
+const automationGuardSyntax = [
+  {
+    selector: "Identifier[name=/^(isE2E|IS_PLAYWRIGHT)$/]",
+    message: `App code doesn't branch on browser automation; dispatch e2e: events unconditionally and the bus drops them outside it. ${E2E_STANDARDS}`,
+  },
+  {
+    selector:
+      "MemberExpression[object.name='navigator'][property.name='webdriver']",
+    message: `App code doesn't branch on browser automation; dispatch e2e: events unconditionally and the bus drops them outside it. ${E2E_STANDARDS}`,
+  },
+];
+
+// The bus's own automation check: it drops e2e: events outside automation and
+// exposes its tap under it
+const automationCheckFiles = [
+  "packages/events/src/dispatch/dispatcher.ts",
+  "packages/events/src/dispatch/registry.ts",
+];
+
 module.exports = {
   env: {
     browser: true,
@@ -122,6 +148,11 @@ module.exports = {
       "warn",
       { paths: recoilPaths, patterns: muiPatterns },
     ],
+    "no-restricted-syntax": [
+      "warn",
+      ...customEventSyntax,
+      ...automationGuardSyntax,
+    ],
   },
   settings: {
     react: {
@@ -129,6 +160,27 @@ module.exports = {
     },
   },
   overrides: [
+    {
+      // deprecated plugin compatibility: mirrors a closed list of bus events
+      // to the DOM events main sent, pinned by e2e-pw/scripts/check-e2e-events.py
+      files: ["packages/events/src/dispatch/legacyDomEvents.ts"],
+      rules: {
+        "no-restricted-syntax": ["warn", ...automationGuardSyntax],
+      },
+    },
+    {
+      files: automationCheckFiles,
+      rules: {
+        "no-restricted-syntax": ["warn", ...customEventSyntax],
+      },
+    },
+    {
+      // tests stand in for the App's own events and the automation flag
+      files: ["**/*.test.ts", "**/*.test.tsx"],
+      rules: {
+        "no-restricted-syntax": "off",
+      },
+    },
     {
       // react-three-fiber renders three.js object properties as JSX props
       files: ["packages/looker-3d/**"],

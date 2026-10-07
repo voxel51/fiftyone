@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus } from "@fiftyone/events";
 import {
   crop,
   help as helpIcon,
@@ -30,11 +29,6 @@ import {
   lookerControlActive,
   lookerControls,
 } from "./controls.module.css";
-
-/** e2e specs wait on the controls hiding before a screenshot */
-type ControlsE2EEvents = {
-  "e2e:looker:controls-rendered": { shown: boolean };
-};
 
 export class ControlsElement<
   State extends BaseState,
@@ -77,9 +71,6 @@ export class ControlsElement<
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
     }
-    getEventBus<ControlsE2EEvents>().dispatch("e2e:looker:controls-rendered", {
-      shown: showControls,
-    });
     return this.element;
   }
 }

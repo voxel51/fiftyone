@@ -83,11 +83,10 @@ const Notice = () => {
 /**
  * Only the stateful App shares its session. Polling event sources are left
  * out because a polling App that leaves stays counted until its lease lapses,
- * well over a minute later. E2E runs open extra pages against one server, and
- * a strip appearing mid-test would shift them.
+ * well over a minute later.
  */
 export default function SharedSessionBanner() {
-  if (env().VITE_NO_STATE || isEventSourcePolling() || window.IS_PLAYWRIGHT) {
+  if (env().VITE_NO_STATE || isEventSourcePolling()) {
     return null;
   }
 

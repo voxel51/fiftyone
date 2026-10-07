@@ -28,7 +28,6 @@ import React from "react";
 
 import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
-import { dispatchFocusPlaced, dispatchStageEditor } from "./focusPlaced";
 import { previewValue } from "./preview";
 import {
   blockedBy,
@@ -130,7 +129,6 @@ export const StageCard: React.FC<StageCardProps> = ({
   // moment the content is guaranteed to be in the DOM.
   const focusEditor = React.useCallback((el: HTMLDivElement | null) => {
     popoverContentRef.current = el;
-    dispatchStageEditor(el !== null);
     if (!el) return;
 
     // Not a combobox: voodo's Select opens its options on focus, and opening
@@ -316,12 +314,11 @@ export const StageCard: React.FC<StageCardProps> = ({
             e.preventDefault();
             e.stopPropagation();
             onToggle();
-            requestAnimationFrame(() => {
+            requestAnimationFrame(() =>
               editButtonRef.current
                 ?.querySelector<HTMLElement>('[role="button"]')
-                ?.focus();
-              dispatchFocusPlaced("stage");
-            });
+                ?.focus(),
+            );
             return;
           }
 

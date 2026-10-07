@@ -1,3 +1,8 @@
+import { getEventBus } from "@fiftyone/events";
+import {
+  IMAVID_FETCHED_EVENT,
+  type ImaVidEvents,
+} from "@fiftyone/looker/src/lookers/imavid/events";
 import type { PlayheadState } from "@fiftyone/playback";
 import { BufferManager } from "@fiftyone/utilities";
 import { describe, expect, it, vi } from "vitest";
@@ -39,7 +44,7 @@ const fetched = (
   range: [number, number],
 ) => {
   controller.storeBufferManager.addNewRange(range);
-  window.dispatchEvent(new CustomEvent("fetchMore", { detail: { id: KEY } }));
+  getEventBus<ImaVidEvents>().dispatch(IMAVID_FETCHED_EVENT, { id: KEY });
 };
 
 describe("loadImaVidRange", () => {

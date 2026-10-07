@@ -660,7 +660,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   posterAt(seconds: number | null) {
     this.update(({ config: { src, frameRate, support } }) => {
       this.drawPoster(src, frameRate, support, seconds, false);
-      return { posterPending: true };
+      return {};
     });
   }
 
@@ -716,8 +716,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         }
         this.update(
           initial
-            ? { hasPoster: true, posterPending: false, duration, loaded: true }
-            : { hasPoster: true, posterPending: false },
+            ? { hasPoster: true, duration, loaded: true }
+            : { hasPoster: true },
         );
       };
 

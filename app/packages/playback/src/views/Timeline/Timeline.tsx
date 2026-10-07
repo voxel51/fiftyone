@@ -1,6 +1,7 @@
 import { getEventBus } from "@fiftyone/events";
 import React from "react";
 import { SEEK_BAR_DEBOUNCE } from "../../lib/constants";
+import type { TimelineEvents } from "../../lib/timeline/events";
 import { TimelineName } from "../../lib/timeline/state";
 import { useFrameNumber } from "../../lib/timeline/use-frame-number";
 import { useTimeline } from "../../lib/timeline/use-timeline";
@@ -81,19 +82,17 @@ export const Timeline = React.memo(
 
       const onSeekStart = React.useCallback(() => {
         pause();
-        dispatchEvent(
-          new CustomEvent("seek", {
-            detail: { timelineName: name, start: true },
-          }),
-        );
+        getEventBus<TimelineEvents>().dispatch("timeline:seek", {
+          timelineName: name,
+          start: true,
+        });
       }, [pause, name]);
 
       const onSeekEnd = React.useCallback(() => {
-        dispatchEvent(
-          new CustomEvent("seek", {
-            detail: { timelineName: name, start: false },
-          }),
-        );
+        getEventBus<TimelineEvents>().dispatch("timeline:seek", {
+          timelineName: name,
+          start: false,
+        });
       }, [name]);
 
       const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);

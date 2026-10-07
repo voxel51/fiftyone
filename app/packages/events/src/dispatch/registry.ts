@@ -1,5 +1,4 @@
-import { isE2E } from "@fiftyone/utilities";
-import { EventDispatcher, tapAllEvents } from "../dispatch/dispatcher";
+import { EventDispatcher, isE2E, tapAllEvents } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
 
 declare global {
@@ -19,8 +18,9 @@ declare global {
 const dispatchOnAppBus = (event: string, data?: unknown) =>
   getEventBus<Record<string, unknown>>().dispatch(event, data);
 
+// a plugin's bundled copy of this package must not replace the App's handle
 if (isE2E()) {
-  window.__FO_EVENTS__ = { tap: tapAllEvents, dispatch: dispatchOnAppBus };
+  window.__FO_EVENTS__ ??= { tap: tapAllEvents, dispatch: dispatchOnAppBus };
 }
 
 export const DEFAULT_CHANNEL_ID = "default";

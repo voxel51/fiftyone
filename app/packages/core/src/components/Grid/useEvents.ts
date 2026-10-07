@@ -13,6 +13,11 @@ import { recommendedGridZoom } from "./recoil";
 import type { LookerCache } from "./types";
 import type { ScrollLocation } from "./useScrollLocation";
 
+/** The grid showed its first page; `width` is what it measured itself at */
+export type GridEvents = {
+  "grid-mount": { id: string; width: number | undefined };
+};
+
 /** e2e specs count grid teardowns to assert one remount per refresh */
 type GridE2EEvents = {
   "e2e:grid:unmount": { id: string; width: number | undefined };
@@ -63,9 +68,7 @@ export default ({
       cache.unfreeze();
       clearTimeout(timeout);
       document.getElementById(pixels)?.classList.add(styles.hidden);
-      document.dispatchEvent(
-        new CustomEvent("grid-mount", { detail: detail() }),
-      );
+      getEventBus<GridEvents>().dispatch("grid-mount", detail());
       getEventBus<GridE2EEvents>().dispatch("e2e:grid:mount", {
         tiles: cache.shown.size,
       });

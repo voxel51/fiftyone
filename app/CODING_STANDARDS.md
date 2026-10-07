@@ -113,3 +113,31 @@ existing MUI usage (changing a prop, moving or reformatting an import).
 Existing MUI code is also not a bug to fix opportunistically. Leave it unless
 you are already rewriting that component. When you do migrate a file, remove it
 from `.mui-allowlist.txt`; that list only shrinks.
+
+# e2e Test Signals
+
+When an e2e spec needs to know an App transition has rendered (a sample
+loading, a save settling, a canvas drawing a frame), the App dispatches an
+`e2e:` event on the `@fiftyone/events` bus. The rules, in full in
+[`e2e-pw/CODING_STANDARDS.md`](../e2e-pw/CODING_STANDARDS.md#app-events):
+
+- Send test signals on the bus only, as `e2e:` events. Never dispatch a DOM
+  `CustomEvent`, for tests or otherwise: App events go on the bus too, with a
+  typed event map beside the feature. An object whose listeners attach to it
+  alone (a looker, a grid item) keeps a `LocalEventTarget` from
+  `@fiftyone/events`.
+- Dispatch them unconditionally. The bus drops `e2e:` events outside browser
+  automation, so App code never checks for it.
+- Pass a payload that costs work to build (a scan, a joined string) as a
+  function, `dispatch("e2e:foo:drawn", () => ({ ... }))`, so it is built only
+  under automation. Keep payload fields primitive.
+- Add an event only for an App transition, not for state the DOM already shows
+  (focus, visibility, text a click puts on screen), and only with a spec that
+  waits for it. CI fails on `e2e:` events nothing waits for.
+
+CI's `e2e-events` job (`e2e-pw/scripts/check-e2e-events.py`) fails on DOM
+`CustomEvent`s and automation checks in App code; the ESLint config flags them
+in the editor. The App may still listen for DOM events a plugin sends, skipping
+its own mirrors. For plugins that listen, a deprecated module in
+`@fiftyone/events` mirrors a closed, CI-pinned set of bus events to the DOM
+events the App used to send; nothing is added to it.

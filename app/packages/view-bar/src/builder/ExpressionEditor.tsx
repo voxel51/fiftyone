@@ -34,7 +34,7 @@ import { tryParse } from "../expression/parse";
 import type { Node } from "../expression/types";
 import type { Kind, Operator } from "./catalog";
 import { EDITOR_HEADER_HEIGHT, EXPRESSION_BOX_HEIGHT } from "../params";
-import { dispatchExpressionMounted, dispatchFocusPlaced } from "../focusPlaced";
+import { dispatchExpressionMounted } from "../e2eEvents";
 import styles from "./ExpressionEditor.module.css";
 import {
   caretContext,
@@ -314,7 +314,6 @@ export const ExpressionEditor: React.FC<ExpressionEditorProps> = ({
       editor.setPosition(model.getPositionAt(at));
       setOffset(at);
       editor.focus();
-      dispatchFocusPlaced("expression");
     });
   }, []);
 

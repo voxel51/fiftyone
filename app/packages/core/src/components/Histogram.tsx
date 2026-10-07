@@ -27,8 +27,7 @@ const Container = styled.div`
 
 /** e2e specs wait on a histogram's draw before reading or capturing it */
 type HistogramE2EEvents = {
-  /** `bars` is each drawn bar as `key:count`, in axis order */
-  "e2e:histograms:loaded": { path: string; bars: string };
+  "e2e:histograms:loaded": { path: string };
 };
 
 const LIMIT = 200;
@@ -189,7 +188,6 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
 
     getEventBus<HistogramE2EEvents>().dispatch("e2e:histograms:loaded", {
       path,
-      bars: strData.map(({ key, count }) => `${key}:${count}`).join(" "),
     });
   }, [path, raw, ref, height]);
 

@@ -687,4 +687,34 @@ describe("e2e events", () => {
     expect(handler).toHaveBeenCalledWith({ id: "1" });
     expect(tap).toHaveBeenCalledWith("e2e:signal", { id: "1" });
   });
+
+  test("a lazy e2e: payload is never built outside browser automation", () => {
+    const dispatcher = new EventDispatcher<TestEventGroup>();
+    const build = vi.fn(() => ({ id: "1" }));
+
+    dispatcher.dispatch("e2e:signal", build);
+
+    expect(build).not.toHaveBeenCalled();
+  });
+
+  test("a lazy e2e: payload is built once and delivered under browser automation", () => {
+    Object.defineProperty(navigator, "webdriver", {
+      configurable: true,
+      value: true,
+    });
+    const dispatcher = new EventDispatcher<TestEventGroup>();
+    const handler = vi.fn();
+    const tap = vi.fn();
+    const build = vi.fn(() => ({ id: "1" }));
+    dispatcher.on("e2e:signal", handler);
+    const untap = tapAllEvents(tap);
+
+    dispatcher.dispatch("e2e:signal", build);
+    untap();
+    delete (navigator as { webdriver?: boolean }).webdriver;
+
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith({ id: "1" });
+    expect(tap).toHaveBeenCalledWith("e2e:signal", { id: "1" });
+  });
 });

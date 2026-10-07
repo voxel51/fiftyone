@@ -1914,7 +1914,6 @@ __metadata:
   resolution: "@fiftyone/events@workspace:packages/events"
   dependencies:
     "@fiftyone/analytics": "npm:*"
-    "@fiftyone/utilities": "npm:*"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
     "@typescript-eslint/eslint-plugin": "npm:^6.0.0"

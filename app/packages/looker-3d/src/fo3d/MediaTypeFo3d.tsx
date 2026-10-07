@@ -14,7 +14,6 @@ import { SinglePanelView } from "../annotation/SinglePanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
 import { LookerErrorShown } from "../ErrorBoundary";
-import { useAnnounceCameraPosition } from "../hooks/use-announce-camera-position";
 import {
   useFo3d,
   useFo3dCameraControlsConfig,
@@ -162,7 +161,6 @@ export const MediaTypeFo3dComponent = () => {
 
   const cameraRef = useRef<PerspectiveCamera | null>(null);
   const cameraControlsRef = useRef<Fo3dCameraControls | null>(null);
-  useAnnounceCameraPosition(cameraRef);
   const assetsGroupRef = useRef<Group | null>(null);
   const threeJsLoadingStatus = useTrackStatus(loadingManager, isSceneReady);
 

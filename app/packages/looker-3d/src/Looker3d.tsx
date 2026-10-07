@@ -18,6 +18,7 @@ import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { getMediaPathForFo3dSample } from "./fo3d/utils";
 import { useHotkey } from "./hooks";
+import { useLooker3dEventHandler } from "./hooks/use-looker3d-event-handler";
 import { getLooker3dRenderKey } from "./looker3d-render-key";
 import {
   currentActionAtom,
@@ -133,12 +134,13 @@ export const Looker3d = () => {
   // raycastable; the e2e draw helpers gate on it through `data-scene-ready`
   const sceneReady = useFo3dSceneReady();
   const [cameraSettledKey, setCameraSettledKey] = useState<string | null>(null);
-  useEffect(() => {
-    const onSettled = () => setCameraSettledKey(looker3dSceneKey);
-    document.addEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
-    return () =>
-      document.removeEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
-  }, [looker3dSceneKey]);
+  useLooker3dEventHandler(
+    CAMERA_LOOK_AT_SETTLED_EVENT,
+    useCallback(
+      () => setCameraSettledKey(looker3dSceneKey),
+      [looker3dSceneKey],
+    ),
+  );
 
   useHotkey(
     "KeyG",

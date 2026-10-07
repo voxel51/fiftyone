@@ -11,6 +11,8 @@ const { dispatch, gridOn } = vi.hoisted(() => ({
 
 vi.mock("@fiftyone/events", () => ({
   getEventBus: () => ({ dispatch }),
+  createUseEventHandler: () => () => undefined,
+  isLegacyDomMirror: () => false,
 }));
 
 // the grid toggle is the only state under test; the grid sizing reads defaults

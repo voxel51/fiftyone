@@ -1,4 +1,4 @@
-import { getEventBus } from "@fiftyone/events";
+import { getEventBus, LocalEventTarget } from "@fiftyone/events";
 import { Lookers } from "@fiftyone/state";
 import {
   jotaiStore,
@@ -119,7 +119,7 @@ export abstract class AbstractLooker<
   public readonly subscriptions: {
     [fieldName: string]: ((newValue: any) => void)[];
   };
-  private eventTarget: EventTarget;
+  private eventTarget: LocalEventTarget;
 
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   protected lookerElement: LookerElement<State>;
@@ -156,7 +156,7 @@ export abstract class AbstractLooker<
     options: Partial<State["options"]> = {},
   ) {
     this.abortController = new AbortController();
-    this.eventTarget = new EventTarget();
+    this.eventTarget = new LocalEventTarget();
     this.subscriptions = {};
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
@@ -339,14 +339,11 @@ export abstract class AbstractLooker<
       return;
     }
     if (detail instanceof Event) {
-      this.eventTarget.dispatchEvent(
-        // @ts-ignore
-        new detail.constructor(detail.type, detail),
-      );
+      this.eventTarget.dispatch(detail.type, detail);
       return;
     }
 
-    this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
+    this.eventTarget.dispatch(eventType, detail);
   }
 
   protected dispatchImpliedEvents(
@@ -528,32 +525,38 @@ export abstract class AbstractLooker<
         ctx.globalAlpha = 1;
 
         ctx.canvas.setAttribute("canvas-loaded", "true");
-        getEventBus<LookerE2EEvents>().dispatch("e2e:looker:canvas-loaded", {
-          sampleFilepath: this.sample.filepath,
-          sampleId: this.sample.id,
-          thumbnail: this.state.config.thumbnail,
-          labelsPending:
-            this.isSampleReloadScheduled ||
-            this.isSampleUpdating ||
-            this.labelPaintingJobs > 0 ||
-            this.currentOverlays.some(
-              (overlay) =>
-                overlay.label?._renderStatus === RENDER_STATUS_PENDING,
-            ),
-          mediaPending: this.mediaPending,
-          labels: this.currentOverlays
-            .map(
-              (overlay) =>
-                `${overlay.field}:${(overlay.label as RegularLabel)?.label}`,
-            )
-            .sort()
-            .join(","),
-        });
+        getEventBus<LookerE2EEvents>().dispatch(
+          "e2e:looker:canvas-loaded",
+          () => ({
+            sampleFilepath: this.sample.filepath,
+            sampleId: this.sample.id,
+            thumbnail: this.state.config.thumbnail,
+            labelsPending:
+              this.isSampleReloadScheduled ||
+              this.isSampleUpdating ||
+              this.labelPaintingJobs > 0 ||
+              this.currentOverlays.some(
+                (overlay) =>
+                  overlay.label?._renderStatus === RENDER_STATUS_PENDING,
+              ),
+            mediaPending: this.mediaPending,
+            labels: this.currentOverlays
+              .map(
+                (overlay) =>
+                  `${overlay.field}:${(overlay.label as RegularLabel)?.label}`,
+              )
+              .sort()
+              .join(","),
+          }),
+        );
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });
         } else {
-          this.eventTarget.dispatchEvent(new ErrorEvent("error", { error }));
+          this.eventTarget.dispatch(
+            "error",
+            new ErrorEvent("error", { error }),
+          );
         }
       }
     };
@@ -580,9 +583,8 @@ export abstract class AbstractLooker<
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    ...args: any[]
   ) {
-    this.eventTarget.removeEventListener(eventType, handler, ...args);
+    this.eventTarget.removeEventListener(eventType, handler);
   }
 
   getRootEvents(): Events<State> {

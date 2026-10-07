@@ -1,4 +1,4 @@
-import { getEventBus } from "@fiftyone/events";
+import { getEventBus, LocalEventTarget } from "@fiftyone/events";
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
   type SampleRendererGridClickBehavior,
@@ -254,7 +254,7 @@ const GridCustomRenderer = ({
 export class GridCustomRendererItem {
   public loaded = false;
 
-  private readonly eventTarget = new EventTarget();
+  private readonly eventTarget = new LocalEventTarget();
   private readonly hostElement = document.createElement("div");
   private mountedElement: HTMLElement | null = null;
   private pluginRoot: Root | null = null;
@@ -286,13 +286,13 @@ export class GridCustomRendererItem {
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | EventListenerOptions,
+    _options?: boolean | EventListenerOptions,
   ) {
-    this.eventTarget.removeEventListener(eventType, handler, options);
+    this.eventTarget.removeEventListener(eventType, handler);
   }
 
   private dispatchEvent(eventType: string, detail?: unknown) {
-    this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
+    this.eventTarget.dispatch(eventType, detail);
   }
 
   private handleRetainedBytesChange = (retainedBytes: number) => {
