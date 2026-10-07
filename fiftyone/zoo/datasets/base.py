@@ -4047,6 +4047,77 @@ class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class ColoRadarSampleDataset(FiftyOneDataset):
+    """A sample of the ColoRadar 3D millimetre-wave radar dataset, as native
+    ``.mcap`` episodes.
+
+    A handheld rig carries a cascaded imaging radar and a single-chip radar
+    beside a 64-beam LiDAR and an inertial unit, through hallways, a lab, a
+    motion-capture space, outdoor built environments, the narrow and the
+    large passages of an underground mine, and a fast ride along paths and
+    roads. Each episode carries both radars' point clouds, a top-down render
+    of each cascaded radar heatmap, the LiDAR scans, the inertial unit and
+    the release's LiDAR-inertial ground truth.
+
+    The sample carries one sequence from each of the seven places the
+    release records, 13 minutes 46 seconds in all.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coloradar-sample")
+
+        # The sequences that covered the most ground
+        view = dataset.sort_by("ground_truth_path_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        6.47 GB
+    """
+
+    _REPO_ID = "Voxel51/ColoRadar-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "be5920e93f57471359797fd65c7f3a0082a9fd7e"
+
+    @property
+    def name(self):
+        return "coloradar-sample"
+
+    @property
+    def license(self):
+        return "Apache-2.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "radar", "lidar", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class TaFTactileForceDataset(FiftyOneDataset):
     """Contact-rich probing runs pairing tactile sensing with measured force,
     as native ``.mcap`` episodes.
@@ -4279,6 +4350,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "coloradar-sample": ColoRadarSampleDataset,
     "construction-site-traversability": ConstructionSiteTraversabilityDataset,
     "dreamtac": DreamTacDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
