@@ -47,7 +47,7 @@
 }
 
 .recommendButton:hover {
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
 }
 
 .sectionHeader {
@@ -69,7 +69,7 @@
 }
 
 .projectionGroups {
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-content-border-default);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -77,22 +77,22 @@
 }
 
 .colorPreview {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   height: 12px;
   width: 100%;
 }
 
 .colorPreviewLarge {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   height: 32px;
   width: 100%;
 }
 
 .colormapEditor {
-  background: var(--color-background-primary);
-  color: var(--color-content-text);
+  background: var(--color-content-bg-background);
+  color: var(--color-content-text-primary);
   min-width: 520px;
   padding: 16px;
 }
@@ -115,7 +115,7 @@
 }
 
 .colorSourceEditor {
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-content-border-default);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -138,10 +138,10 @@
 }
 
 .select {
-  background: var(--color-background-primary);
-  border: 1px solid var(--color-border);
+  background: var(--color-content-bg-card);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   font-size: 12px;
   line-height: 1.25;
   min-height: 28px;
@@ -155,7 +155,7 @@
 
 .tooltipIcon {
   align-items: center;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 50%;
   color: var(--color-content-text-muted);
   cursor: help;
@@ -194,7 +194,7 @@
 }
 
 .sharedDisplayControls {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-content-border-default);
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -209,7 +209,7 @@
 .pointCloudStyleButton {
   align-items: center;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
   cursor: pointer;
   display: grid;
@@ -279,7 +279,7 @@
 }
 
 .radioRowLabel {
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   flex: 1 1 auto;
   font-size: 12px;
   line-height: 1.25;
@@ -296,10 +296,10 @@
 }
 
 .numberField {
-  background: var(--color-background-primary);
-  border: 1px solid var(--color-border);
+  background: var(--color-content-bg-card);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 4px;
-  color: var(--color-content-text);
+  color: var(--color-content-text-primary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;

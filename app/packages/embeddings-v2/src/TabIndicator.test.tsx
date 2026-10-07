@@ -25,6 +25,11 @@ vi.mock("@fiftyone/components", () => ({
     </button>
   ),
 }));
+// `./state` reaches the App's reset through the @fiftyone/state barrel,
+// whose relay fragments need the Babel transform; the pill never calls it
+vi.mock("@fiftyone/state", () => ({
+  resetExtendedSelectionTransaction: vi.fn(),
+}));
 
 function NonceProbe() {
   const nonce = useRecoilValue(clearSelectionNonceState);

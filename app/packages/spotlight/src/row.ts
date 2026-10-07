@@ -48,12 +48,7 @@ export default class Row<K, V> {
 
       if (config.onItemClick) {
         const handler = (event: MouseEvent) => {
-          // The consumer routes modified clicks to selection buckets and
-          // ranges. Ignore modified context menus: macOS sends one for Ctrl-click.
-          if (
-            (event.shiftKey || event.metaKey || event.ctrlKey) &&
-            event.type !== "click"
-          ) {
+          if (event.metaKey || event.shiftKey || event.ctrlKey) {
             return;
           }
 

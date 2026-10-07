@@ -90,7 +90,7 @@ export const LoadingCover = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-content-bg-card-1);
+  background: var(--color-content-bg-card);
 `;
 
 export const StatusBarRootContainer = styled.div`

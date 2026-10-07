@@ -484,9 +484,7 @@ type TaggerProps = {
 };
 
 const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
-  const patches = fos.useIsPatchesView();
-  const [labelChoice, setLabels] = useState(modal);
-  const labels = patches || labelChoice;
+  const [labels, setLabels] = useState(modal);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
@@ -514,15 +512,13 @@ const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
       anchorRef={anchorRef}
     >
       <SwitcherDiv>
-        {!patches && (
-          <SwitchDiv
-            data-cy="tagger-switch-sample"
-            style={sampleProps}
-            onClick={() => labels && setLabels(false)}
-          >
-            {modal ? elementNames.singular : elementNames.plural}
-          </SwitchDiv>
-        )}
+        <SwitchDiv
+          data-cy="tagger-switch-sample"
+          style={sampleProps}
+          onClick={() => labels && setLabels(false)}
+        >
+          {modal ? elementNames.singular : elementNames.plural}
+        </SwitchDiv>
         <SwitchDiv
           data-cy="tagger-switch-label"
           style={labelProps}

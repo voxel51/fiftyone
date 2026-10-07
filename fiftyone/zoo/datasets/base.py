@@ -3657,6 +3657,82 @@ class EgocentricEMGForceDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class CitrusFarmSampleDataset(FiftyOneDataset):
+    """A sample of the CitrusFarm multimodal agricultural robotics dataset,
+    as a native ``.mcap`` episode.
+
+    A Clearpath Jackal drives the rows of citrus trees at the University of
+    California Riverside's Agricultural Experimental Station carrying a
+    monochrome camera, a thermal camera, a camera that sees red, green and
+    near-infrared, a ZED 2i stereo camera with its depth, a Velodyne LiDAR,
+    an inertial unit and a GPS-RTK receiver. The episode carries every
+    camera, the stereo depth, the LiDAR scans, the GPS-RTK fixes, the wheel
+    and visual odometry and the ground-truth trajectory on one clock.
+
+    One sequence, 5 minutes of driving over 357 m: 3,026 monochrome, 3,024
+    thermal, 3,025 red-green-NIR and 3,022 stereo frames and 2,998 LiDAR
+    scans.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("citrusfarm-sample")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        2.50 GB
+    """
+
+    _REPO_ID = "Voxel51/CitrusFarm-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "7c4d2138ff587ea782aed8c3a0e22819008f2ed3"
+
+    @property
+    def name(self):
+        return "citrusfarm-sample"
+
+    @property
+    def license(self):
+        return "CC-BY-SA-4.0"
+
+    @property
+    def tags(self):
+        return (
+            "multimodal",
+            "mcap",
+            "agriculture",
+            "thermal",
+            "multispectral",
+            "lidar",
+        )
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class RoboLabDataset(FiftyOneDataset):
     """Policy rollouts recorded on NVIDIA's RoboLab manipulation benchmark,
     as native ``.mcap`` episodes.
@@ -4039,6 +4115,75 @@ class HiltiTrimbleSLAMChallenge2026Dataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class NTNUUnderwaterMulticamDataset(FiftyOneDataset):
+    """Piloted underwater robot runs with five cameras and an inertial unit,
+    as native ``.mcap`` episodes.
+
+    Ariel, the NTNU Autonomous Robots Lab's underwater robot built on the
+    BlueROV2 Heavy configuration, is piloted through the Trondheim Fjord and
+    the Marine Cybernetics Laboratory pool. An Alphasense rig records five
+    monochrome cameras, a forward stereo pair and cameras looking up, left
+    and right, with a 200 Hz inertial unit, while the vehicle's autopilot
+    logs a second inertial unit, a barometer, a downward rangefinder and
+    the thruster outputs. Each run carries the authors' ReAqROVIO reference
+    trajectory and the rig's calibration.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("ntnu-underwater-multicam")
+
+        # The deepest dives
+        view = dataset.sort_by("max_depth_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        1.31 GB
+    """
+
+    _REPO_ID = "Voxel51/NTNU-Underwater-Multicam"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "71882c95fece2c9b9b8ad10f41d9dd893d7bd82d"
+
+    @property
+    def name(self):
+        return "ntnu-underwater-multicam"
+
+    @property
+    def license(self):
+        return "BSD-3-Clause"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "underwater", "robotics", "slam")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
     """Construction-site recordings from an autonomous mobile robot, as
     native ``.mcap`` episodes.
@@ -4117,6 +4262,77 @@ class ConstructionSiteTraversabilityDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class ColoRadarSampleDataset(FiftyOneDataset):
+    """A sample of the ColoRadar 3D millimetre-wave radar dataset, as native
+    ``.mcap`` episodes.
+
+    A handheld rig carries a cascaded imaging radar and a single-chip radar
+    beside a 64-beam LiDAR and an inertial unit, through hallways, a lab, a
+    motion-capture space, outdoor built environments, the narrow and the
+    large passages of an underground mine, and a fast ride along paths and
+    roads. Each episode carries both radars' point clouds, a top-down render
+    of each cascaded radar heatmap, the LiDAR scans, the inertial unit and
+    the release's LiDAR-inertial ground truth.
+
+    The sample carries one sequence from each of the seven places the
+    release records, 13 minutes 46 seconds in all.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coloradar-sample")
+
+        # The sequences that covered the most ground
+        view = dataset.sort_by("ground_truth_path_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        6.47 GB
+    """
+
+    _REPO_ID = "Voxel51/ColoRadar-Sample"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "be5920e93f57471359797fd65c7f3a0082a9fd7e"
+
+    @property
+    def name(self):
+        return "coloradar-sample"
+
+    @property
+    def license(self):
+        return "Apache-2.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "radar", "lidar", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class TaFTactileForceDataset(FiftyOneDataset):
     """Contact-rich probing runs pairing tactile sensing with measured force,
     as native ``.mcap`` episodes.
@@ -4168,6 +4384,78 @@ class TaFTactileForceDataset(FiftyOneDataset):
             "force-torque",
             "manipulation",
         )
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class HapTileDataset(FiftyOneDataset):
+    """Teleoperated contact-rich manipulation with vision-based tactile
+    fingertips and the operator's haptic feedback, as native ``.mcap``
+    episodes.
+
+    A UR5e arm with a Robotiq 2F-85 gripper works through contact-rich
+    tabletop tasks under teleoperation. Each gripper finger carries a
+    vision-based tactile sensor that films a gel pad printed with a marker
+    grid, so the contact shows as the markers moving. Two RGB-D cameras
+    watch the scene, one facing the table and one on the wrist, and the
+    haptic feedback the operator felt is recorded alongside the robot state
+    and the language instruction.
+
+    The 1,699 episodes span 38 tasks, from inserting a peg and folding a
+    T-shirt to pouring from a bottle and wiping a whiteboard.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("haptile")
+
+        # The firmest contacts on the right fingertip
+        view = dataset.sort_by("peak_marker_motion_right", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        6.32 GB
+    """
+
+    _REPO_ID = "Voxel51/HapTile"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "1f6e16517f3625ffb0f2424c5d726045ebf64c12"
+
+    @property
+    def name(self):
+        return "haptile"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "tactile", "haptics", "manipulation")
 
     @property
     def supported_splits(self):
@@ -4267,6 +4555,149 @@ class SpectralWasteSegmentationDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class DreamTacDataset(FiftyOneDataset):
+    """Contact-rich Franka manipulation with vision-based tactile
+    fingertips, as native ``.mcap`` episodes.
+
+    A Franka Emika Panda works through contact-rich tabletop tasks while
+    four cameras record on one 20 fps clock: a third-person view, a wrist
+    view, and two Xense Photon vision-based tactile sensors on the gripper
+    fingertips. Each fingertip is a gel pad printed with a marker grid that
+    deforms where the object presses, so the moment of contact is visible
+    rather than inferred from a force reading.
+
+    The 703 trajectories span 12 tasks, from picking up a baguette or a USB
+    plug to wiping a whiteboard and cutting a banana. Each episode also
+    carries the end-effector pose, the gripper opening and the task
+    instruction.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("dreamtac")
+
+        # The trajectories that moved the furthest
+        view = dataset.sort_by("end_effector_path_m", reverse=True)
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        2.36 GB
+    """
+
+    _REPO_ID = "Voxel51/DreamTac"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "65a1113f55a12271cd53bd10f745238ff4dedb0d"
+
+    @property
+    def name(self):
+        return "dreamtac"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "tactile", "manipulation", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class EdgedUSLAMEventCameraDataset(FiftyOneDataset):
+    """Quadrotor flights with a DAVIS346 event camera, carrying every event,
+    as native ``.mcap`` episodes.
+
+    A DAVIS346 event camera rides a quadrotor flown in a motion-capture
+    room. Each run records the camera's asynchronous events, its grayscale
+    frames and its inertial unit with the Vicon pose of the vehicle, across
+    lines, squares, circles, aggressive turns and manual flights and under
+    lighting from under 5 lux to blinking lights and strong side light. The
+    events are carried as point clouds, one per 1/30 s window, beside a
+    render of each window.
+
+    The 13 runs cover 16 minutes 27 seconds of flight and 657,511,373
+    events.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("edged-uslam-event-camera")
+
+        # The darkest runs, where the frames see least
+        view = dataset.sort_by("mean_frame_brightness")
+
+        session = fo.launch_app(dataset, view=view)
+
+    Dataset size
+        4.88 GB
+    """
+
+    _REPO_ID = "Voxel51/Edged-USLAM-Event-Camera"
+
+    # Pinned so a loaded dataset is reproducible; the default branch is
+    # mutable and could change media, labels or size underneath a user
+    _REVISION = "74597c8cad8f3bc802bb9d2505dcef50adc9f821"
+
+    @property
+    def name(self):
+        return "edged-uslam-event-camera"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
+    def tags(self):
+        return ("multimodal", "mcap", "event-camera", "uav", "robotics")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
+        hfh.snapshot_download(
+            repo_id=self._REPO_ID,
+            repo_type="dataset",
+            revision=self._REVISION,
+            local_dir=dataset_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -4274,13 +4705,18 @@ AVAILABLE_DATASETS = {
     "boilingbench-multimodal": BoilingBenchMultimodalDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
+    "citrusfarm-sample": CitrusFarmSampleDataset,
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "coloradar-sample": ColoRadarSampleDataset,
     "construction-site-traversability": ConstructionSiteTraversabilityDataset,
+    "dreamtac": DreamTacDataset,
+    "edged-uslam-event-camera": EdgedUSLAMEventCameraDataset,
     "egocentric-emg-force": EgocentricEMGForceDataset,
     "fiw": FIWDataset,
     "grandtour-sample": GrandTourSampleDataset,
+    "haptile": HapTileDataset,
     "hilti-slam-challenge-2021": HiltiSLAMChallenge2021Dataset,
     "hilti-trimble-slam-challenge-2026": HiltiTrimbleSLAMChallenge2026Dataset,
     "hmdb51": HMDB51Dataset,
@@ -4292,6 +4728,7 @@ AVAILABLE_DATASETS = {
     "kitti": KITTIDataset,
     "kitti-multiview": KITTIMultiviewDataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "ntnu-underwater-multicam": NTNUUnderwaterMulticamDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
     "places": PlacesDataset,
