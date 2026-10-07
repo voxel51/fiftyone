@@ -281,6 +281,13 @@ for _viz in payload["visualizations"]:
         for _id, _label_points in _viz["points"].items():
             _labels = _samples[_id][_patches]
             _items = getattr(_labels, _labels._LABEL_LIST_FIELD)
+            # zip() would drop the extras, and the spec would fail later on
+            # a count that doesn't say why
+            if len(_label_points) != len(_items):
+                raise ValueError(
+                    f"{_viz['brainKey']}: sample {_id} has {len(_items)} "
+                    f"{_patches} labels but {len(_label_points)} points"
+                )
             for _label, _p in zip(_items, _label_points):
                 _points[_label.id] = np.array(_p)
     else:
