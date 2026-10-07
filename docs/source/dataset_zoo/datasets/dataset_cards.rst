@@ -287,7 +287,7 @@
 
 .. customcarditem::
     :header: TUM RGB-D
-    :description: The TUM RGB-D SLAM benchmark in native MCAP format, pairing a Kinect's color and depth at 30 Hz with its accelerometer and motion-capture ground truth on one clock.
+    :description: The TUM RGB-D SLAM benchmark in native MCAP format, pairing a Kinect's color and depth at 30 Hz with motion-capture ground truth on one clock, plus the Kinect's accelerometer on the freiburg1 and freiburg2 sequences.
     :link: datasets/tum_rgbd.html
     :image: ../_images/tum-rgbd.png
     :tags: multimodal,mcap,rgbd,slam,robotics
