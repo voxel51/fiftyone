@@ -38,7 +38,7 @@ import {
   type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
-  getCurrentTime,
+  getPlayhead,
   useActivateStream,
   useDuration,
   usePlaybackStore,
@@ -268,9 +268,6 @@ export const RegisterFrameLabels: React.FC<{
   const primitiveFields = mode === "explore" ? NO_FIELDS : framePrimitivePaths;
 
   const frameRate = useModalSampleFrameRate(sample);
-  // The identity of the registration last committed, to tell a field-set
-  // re-key apart from a new sample.
-  const registeredRef = useRef<{ key: string; scopeKey: string } | null>(null);
   const ready =
     duration > 0 &&
     !!sampleId &&
@@ -278,12 +275,27 @@ export const RegisterFrameLabels: React.FC<{
     frameRate !== undefined &&
     Number.isFinite(frameRate);
 
+  const frameCount = Math.max(1, Math.round(duration * (frameRate ?? 0)));
+  // Everything that identifies the video, without the field set: a re-key
+  // inside one scope is a sidebar toggle on the same video and playhead.
+  const scopeKey = ready
+    ? `${sampleId}|${dataset}|${slice ?? ""}|${
+        dynamicGroup ?? ""
+      }|${frameRate}|${frameCount}`
+    : null;
+  // The scope last committed. Cleared while not ready, so a registration that
+  // comes back after the params dropped out opens at `initialTime` again.
+  const registeredScopeRef = useRef<string | null>(null);
+  const resume = scopeKey !== null && registeredScopeRef.current === scopeKey;
+  useEffect(() => {
+    registeredScopeRef.current = scopeKey;
+  }, [scopeKey]);
+
   if (!ready) {
     // Params incomplete; consumers read `null` until the registrar mounts.
     return <>{children}</>;
   }
 
-  const frameCount = Math.max(1, Math.round(duration * frameRate));
   const frameField = toPerFrameField(activeField);
   // All active per-frame fields, frame-relative, primary first — deduped + sorted
   // so the identity key is stable regardless of schema iteration order.
@@ -303,24 +315,11 @@ export const RegisterFrameLabels: React.FC<{
   // discard the move's unsaved edits. The primary follows in place via
   // `setPrimaryField` (below); only adding/removing a field re-mounts.
   const fieldSetKey = [...frameFields].sort().join(",");
-  const scopeKey = `${sampleId}|${dataset}|${slice ?? ""}|${
-    dynamicGroup ?? ""
-  }|${frameRate}|${frameCount}`;
   const key = `${scopeKey}|${fieldSetKey}`;
-
-  // A re-mount that only swaps the field set (a sidebar toggle) is the same
-  // video at the same playhead, so the new stream resumes there rather than
-  // re-seeking to the opening position.
-  const previous = registeredRef.current;
-  const resume =
-    previous !== null && previous.key !== key && previous.scopeKey === scopeKey;
 
   return (
     <FrameLabelsRegistration
       key={key}
-      onRegistered={() => {
-        registeredRef.current = { key, scopeKey };
-      }}
       resume={resume}
       initialTime={initialTime}
       sampleId={sampleId}
@@ -339,9 +338,10 @@ export const RegisterFrameLabels: React.FC<{
 
 interface FrameLabelsRegistrationProps {
   initialTime?: number | null;
-  /** Called after each commit, so the parent knows what is registered. */
-  onRegistered: () => void;
-  /** Open at the engine's current time instead of `initialTime`. */
+  /**
+   * Open at the playhead instead of `initialTime`: this mount replaces a
+   * registration for the same video, so the user's position stands.
+   */
   resume: boolean;
   sampleId: string;
   dataset: string;
@@ -356,19 +356,15 @@ interface FrameLabelsRegistrationProps {
 
 const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   children,
-  onRegistered,
   ...props
 }) => {
   const store = usePlaybackStore();
-  // Read once: the opening position belongs to this mount, and following the
-  // clock afterwards would re-seek on every commit.
-  const [resumeTime] = useState(() =>
-    props.resume ? getCurrentTime(store) : null,
+  // Fixed per mount (a stable getter, so the warmup runs once), and read when
+  // the warmup lands rather than now: the playhead keeps moving while the
+  // new stream loads, and seeking to where it was would pull it back.
+  const [resumeAt] = useState(() =>
+    props.resume ? () => getPlayhead(store) : null,
   );
-
-  useEffect(() => {
-    onRegistered();
-  }, [onRegistered]);
 
   // Construct once per mount; the parent re-mounts on identity changes.
   const streamRef = useRef<VideoFrameLabelsStream | null>(null);
@@ -413,7 +409,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   usePublishFrameLabelsStream(streamRef.current);
 
   // Warm the opening position before committing the first label overlays.
-  useWarmupThenSeek(streamRef.current, resumeTime ?? props.initialTime);
+  useWarmupThenSeek(streamRef.current, resumeAt ?? props.initialTime);
 
   return <>{children}</>;
 };
