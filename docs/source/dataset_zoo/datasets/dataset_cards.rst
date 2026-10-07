@@ -125,6 +125,13 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: HapTile
+    :description: 1,699 teleoperated contact-rich manipulation episodes in native MCAP format, pairing front and wrist RGB-D cameras with two vision-based tactile fingertips and the operator's haptic feedback on one clock.
+    :link: datasets/haptile.html
+    :image: ../_images/haptile.png
+    :tags: multimodal,mcap,tactile,haptics,manipulation
+
+.. customcarditem::
     :header: HMDB51
     :description: Action recognition dataset with 6,766 video clips across 51 action classes. Collected from movies and web videos with realistic human actions and diverse scenarios.
     :link: datasets/hmdb51.html
