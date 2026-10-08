@@ -46,7 +46,6 @@ test.describe("view bar keyboard", () => {
   test("a stage can be added, filled and applied without the mouse", async ({
     viewBar,
     grid,
-    request,
     baseURL,
   }) => {
     const editor = await viewBar.addStage("Limit");
@@ -60,7 +59,7 @@ test.describe("view bar keyboard", () => {
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
-    const stages = await getSessionView(request, baseURL, datasetName);
+    const stages = await getSessionView(baseURL, datasetName);
     expect(clsOf(stages[0])).toBe("Limit");
     expect(kwargsOf(stages[0])).toEqual({ limit: 3 });
   });
@@ -74,7 +73,6 @@ test.describe("view bar keyboard", () => {
     viewBar,
     grid,
     page,
-    request,
     baseURL,
   }) => {
     // Opening the stages row lands the keyboard in the pinned typeahead —
@@ -96,7 +94,7 @@ test.describe("view bar keyboard", () => {
     await grid.afterEntryCounts(() => grid.run(() => limit.finish()));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
-    const stages = await getSessionView(request, baseURL, datasetName);
+    const stages = await getSessionView(baseURL, datasetName);
     expect(stages).toHaveLength(2);
     expect(clsOf(stages[0])).toBe("Skip");
     expect(kwargsOf(stages[0])).toEqual({ skip: 2 });
