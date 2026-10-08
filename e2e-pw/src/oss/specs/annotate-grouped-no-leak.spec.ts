@@ -179,8 +179,11 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     modal,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.annotate.afterLabelList(() =>
-      modal.sidebar.switchMode("annotate"),
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
     );
 
     // walk every slice, then revisit in reverse: the count must stay each slice's
@@ -213,8 +216,11 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.annotate.afterLabelList(() =>
-      modal.sidebar.switchMode("annotate"),
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
     );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
@@ -243,8 +249,11 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.annotate.afterLabelList(() =>
-      modal.sidebar.switchMode("annotate"),
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
     );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
@@ -411,8 +420,11 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.annotate.afterLabelList(() =>
-      modal.sidebar.switchMode("annotate"),
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
     );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
