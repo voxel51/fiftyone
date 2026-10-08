@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cc69cf3d753b96f4b6040d7f39471964>>
+ * @generated SignedSource<<979357fb23cf03d67d1f5e20c4cb54a6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -85,7 +85,7 @@ export type DatasetPageQuery$data = {
     readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
   } | null;
-  readonly " $fragmentSpreads": FragmentRefs<"NavFragment" | "configFragment" | "expressionCatalogFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"NavFragment" | "configFragment" | "expressionCatalogFragment" | "savedViewsFragment" | "stageDefinitionsFragment">;
 };
 export type DatasetPageQuery = {
   response: DatasetPageQuery$data;
@@ -597,19 +597,6 @@ v55 = [
     "name": "search",
     "variableName": "search"
   }
-],
-v56 = {
-  "kind": "Variable",
-  "name": "datasetName",
-  "variableName": "name"
-},
-v57 = [
-  (v24/*: any*/),
-  (v49/*: any*/),
-  (v50/*: any*/),
-  (v51/*: any*/),
-  (v37/*: any*/),
-  (v53/*: any*/)
 ];
 return {
   "fragment": {
@@ -718,11 +705,6 @@ return {
         "args": null,
         "kind": "FragmentSpread",
         "name": "stageDefinitionsFragment"
-      },
-      {
-        "args": null,
-        "kind": "FragmentSpread",
-        "name": "viewSchemaFragment"
       }
     ],
     "type": "Query",
@@ -1469,7 +1451,11 @@ return {
       {
         "alias": null,
         "args": [
-          (v56/*: any*/)
+          {
+            "kind": "Variable",
+            "name": "datasetName",
+            "variableName": "name"
+          }
         ],
         "concreteType": "SavedView",
         "kind": "LinkedField",
@@ -1741,58 +1727,20 @@ return {
           }
         ],
         "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": [
-          (v56/*: any*/),
-          {
-            "kind": "Variable",
-            "name": "viewStages",
-            "variableName": "view"
-          }
-        ],
-        "concreteType": "SchemaResult",
-        "kind": "LinkedField",
-        "name": "schemaForViewStages",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "SampleField",
-            "kind": "LinkedField",
-            "name": "fieldSchema",
-            "plural": true,
-            "selections": (v57/*: any*/),
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "SampleField",
-            "kind": "LinkedField",
-            "name": "frameFieldSchema",
-            "plural": true,
-            "selections": (v57/*: any*/),
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "e454734a8bb816965ed5fffa00e38940",
+    "cacheID": "33badbea23c792eeb13ddad54b0082e1",
     "id": null,
     "metadata": {},
     "name": "DatasetPageQuery",
     "operationKind": "query",
-    "text": "query DatasetPageQuery(\n  $count: Int\n  $cursor: String\n  $name: String!\n  $extendedView: BSONArray!\n  $savedViewSlug: String\n  $search: String = \"\"\n  $view: BSONArray!\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  colorscale\n  dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {\n    name\n    defaultGroupSlice\n    appConfig {\n      colorScheme {\n        id\n        colorBy\n        colorPool\n        multicolorKeypoints\n        opacity\n        showSkeletons\n        defaultMaskTargetsColors {\n          intTarget\n          color\n        }\n        defaultColorscale {\n          name\n          list {\n            value\n            color\n          }\n          rgb\n        }\n        colorscales {\n          path\n          name\n          list {\n            value\n            color\n          }\n          rgb\n        }\n        fields {\n          colorByAttribute\n          fieldColor\n          path\n          valueColors {\n            color\n            value\n          }\n          maskTargetsColors {\n            intTarget\n            color\n          }\n        }\n        labelTags {\n          fieldColor\n          valueColors {\n            color\n            value\n          }\n        }\n      }\n    }\n    ...datasetFragment\n    id\n  }\n  ...NavFragment\n  ...savedViewsFragment\n  ...configFragment\n  ...expressionCatalogFragment\n  ...stageDefinitionsFragment\n  ...viewSchemaFragment\n}\n\nfragment Analytics on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...Analytics\n  ...NavDatasets\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  temporalTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  defaultColorscale {\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  colorscales {\n    path\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    disableFrameFiltering\n    gridZoom\n    enableQueryPerformance\n    defaultQueryPerformance\n    loopVideos\n    mediaFallback\n    maxQueryTime\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment datasetAppConfigFragment on DatasetAppConfig {\n  activeFields {\n    exclude\n    paths\n  }\n  colorScheme {\n    ...colorSchemeFragment\n    id\n  }\n  disableFrameFiltering\n  dynamicGroupsTargetFrameRate\n  gridMediaField\n  mediaFields\n  modalMediaField\n  mediaFallback\n  plugins\n}\n\nfragment datasetFragment on Dataset {\n  createdAt\n  datasetId\n  groupField\n  id\n  info\n  lastLoadedAt\n  mediaSources\n  mediaType\n  name\n  parentMediaType\n  version\n  appConfig {\n    ...datasetAppConfigFragment\n  }\n  brainMethods {\n    key\n    version\n    timestamp\n    viewStages\n    ready\n    error\n    resultsMeta {\n      groupSlices\n    }\n    config {\n      cls\n      embeddingsField\n      method\n      patchesField\n      supportsPrompts\n      numDims\n      pointsField\n      model\n      type\n      maxK\n      supportsLeastSimilarity\n    }\n  }\n  defaultMaskTargets {\n    target\n    value\n  }\n  defaultSkeleton {\n    labels\n    edges\n  }\n  evaluations {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      predField\n      gtField\n    }\n  }\n  groupMediaTypes {\n    name\n    mediaType\n  }\n  maskTargets {\n    name\n    targets {\n      target\n      value\n    }\n  }\n  skeletons {\n    name\n    labels\n    edges\n  }\n  ...estimatedCountsFragment\n  ...frameFieldsFragment\n  ...groupSliceFragment\n  ...indexesFragment\n  ...mediaFieldsFragment\n  ...mediaTypeFragment\n  ...sampleFieldsFragment\n  ...sidebarGroupsFragment\n  ...viewFragment\n}\n\nfragment estimatedCountsFragment on Dataset {\n  estimatedFrameCount\n  estimatedSampleCount\n}\n\nfragment expressionCatalogFragment on Query {\n  viewExpressionAstVersion\n  viewExpressionFieldKinds {\n    ftype\n    kind\n  }\n  viewExpressionOperators {\n    name\n    display\n    syntax\n    selfKind\n    argKinds\n    returns\n    minArgs\n    maxArgs\n    reflected\n    typed\n    summary\n  }\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  defaultGroupSlice\n}\n\nfragment indexesFragment on Dataset {\n  frameIndexes {\n    name\n    unique\n    key {\n      field\n      type\n    }\n    wildcardProjection {\n      fields\n      inclusion\n    }\n  }\n  sampleIndexes {\n    name\n    unique\n    key {\n      field\n      type\n    }\n    wildcardProjection {\n      fields\n      inclusion\n    }\n  }\n}\n\nfragment mediaFieldsFragment on Dataset {\n  name\n  appConfig {\n    gridMediaField\n    mediaFields\n    modalMediaField\n    mediaFallback\n  }\n  sampleFields {\n    path\n  }\n}\n\nfragment mediaTypeFragment on Dataset {\n  mediaType\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment savedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  datasetId\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n\nfragment stageDefinitionsFragment on Query {\n  stageDefinitions {\n    name\n    description\n    mediaTypes\n    params {\n      name\n      type\n      tokens\n      nullable\n      required\n      default\n      placeholder\n      description\n      choices {\n        source\n        values\n        fields {\n          level\n          existence\n          ftypes\n          labelTypes\n        }\n      }\n    }\n  }\n}\n\nfragment viewFragment on Dataset {\n  stages(slug: $savedViewSlug, view: $view)\n  viewCls\n  viewName\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $view) {\n    fieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n    frameFieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n  }\n}\n"
+    "text": "query DatasetPageQuery(\n  $count: Int\n  $cursor: String\n  $name: String!\n  $extendedView: BSONArray!\n  $savedViewSlug: String\n  $search: String = \"\"\n  $view: BSONArray!\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  colorscale\n  dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {\n    name\n    defaultGroupSlice\n    appConfig {\n      colorScheme {\n        id\n        colorBy\n        colorPool\n        multicolorKeypoints\n        opacity\n        showSkeletons\n        defaultMaskTargetsColors {\n          intTarget\n          color\n        }\n        defaultColorscale {\n          name\n          list {\n            value\n            color\n          }\n          rgb\n        }\n        colorscales {\n          path\n          name\n          list {\n            value\n            color\n          }\n          rgb\n        }\n        fields {\n          colorByAttribute\n          fieldColor\n          path\n          valueColors {\n            color\n            value\n          }\n          maskTargetsColors {\n            intTarget\n            color\n          }\n        }\n        labelTags {\n          fieldColor\n          valueColors {\n            color\n            value\n          }\n        }\n      }\n    }\n    ...datasetFragment\n    id\n  }\n  ...NavFragment\n  ...savedViewsFragment\n  ...configFragment\n  ...expressionCatalogFragment\n  ...stageDefinitionsFragment\n}\n\nfragment Analytics on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...Analytics\n  ...NavDatasets\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  temporalTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  defaultColorscale {\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  colorscales {\n    path\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    disableFrameFiltering\n    gridZoom\n    enableQueryPerformance\n    defaultQueryPerformance\n    loopVideos\n    mediaFallback\n    maxQueryTime\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment datasetAppConfigFragment on DatasetAppConfig {\n  activeFields {\n    exclude\n    paths\n  }\n  colorScheme {\n    ...colorSchemeFragment\n    id\n  }\n  disableFrameFiltering\n  dynamicGroupsTargetFrameRate\n  gridMediaField\n  mediaFields\n  modalMediaField\n  mediaFallback\n  plugins\n}\n\nfragment datasetFragment on Dataset {\n  createdAt\n  datasetId\n  groupField\n  id\n  info\n  lastLoadedAt\n  mediaSources\n  mediaType\n  name\n  parentMediaType\n  version\n  appConfig {\n    ...datasetAppConfigFragment\n  }\n  brainMethods {\n    key\n    version\n    timestamp\n    viewStages\n    ready\n    error\n    resultsMeta {\n      groupSlices\n    }\n    config {\n      cls\n      embeddingsField\n      method\n      patchesField\n      supportsPrompts\n      numDims\n      pointsField\n      model\n      type\n      maxK\n      supportsLeastSimilarity\n    }\n  }\n  defaultMaskTargets {\n    target\n    value\n  }\n  defaultSkeleton {\n    labels\n    edges\n  }\n  evaluations {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      predField\n      gtField\n    }\n  }\n  groupMediaTypes {\n    name\n    mediaType\n  }\n  maskTargets {\n    name\n    targets {\n      target\n      value\n    }\n  }\n  skeletons {\n    name\n    labels\n    edges\n  }\n  ...estimatedCountsFragment\n  ...frameFieldsFragment\n  ...groupSliceFragment\n  ...indexesFragment\n  ...mediaFieldsFragment\n  ...mediaTypeFragment\n  ...sampleFieldsFragment\n  ...sidebarGroupsFragment\n  ...viewFragment\n}\n\nfragment estimatedCountsFragment on Dataset {\n  estimatedFrameCount\n  estimatedSampleCount\n}\n\nfragment expressionCatalogFragment on Query {\n  viewExpressionAstVersion\n  viewExpressionFieldKinds {\n    ftype\n    kind\n  }\n  viewExpressionOperators {\n    name\n    display\n    syntax\n    selfKind\n    argKinds\n    returns\n    minArgs\n    maxArgs\n    reflected\n    typed\n    summary\n  }\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  defaultGroupSlice\n}\n\nfragment indexesFragment on Dataset {\n  frameIndexes {\n    name\n    unique\n    key {\n      field\n      type\n    }\n    wildcardProjection {\n      fields\n      inclusion\n    }\n  }\n  sampleIndexes {\n    name\n    unique\n    key {\n      field\n      type\n    }\n    wildcardProjection {\n      fields\n      inclusion\n    }\n  }\n}\n\nfragment mediaFieldsFragment on Dataset {\n  name\n  appConfig {\n    gridMediaField\n    mediaFields\n    modalMediaField\n    mediaFallback\n  }\n  sampleFields {\n    path\n  }\n}\n\nfragment mediaTypeFragment on Dataset {\n  mediaType\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment savedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  datasetId\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n\nfragment stageDefinitionsFragment on Query {\n  stageDefinitions {\n    name\n    description\n    mediaTypes\n    params {\n      name\n      type\n      tokens\n      nullable\n      required\n      default\n      placeholder\n      description\n      choices {\n        source\n        values\n        fields {\n          level\n          existence\n          ftypes\n          labelTypes\n        }\n      }\n    }\n  }\n}\n\nfragment viewFragment on Dataset {\n  stages(slug: $savedViewSlug, view: $view)\n  viewCls\n  viewName\n}\n"
   }
 };
 })();
 
-(node as any).hash = "820725316667aed1d0805e6bc6d211ce";
+(node as any).hash = "bc92f527982ef2080ae085cefa86db76";
 
 export default node;
