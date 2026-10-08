@@ -123,9 +123,12 @@ export const renderTimingDrift = ({ added, removed, drifted, slowShards }) => {
         `- ${name(d)}: ${s(d.expected)} in the timings, ${s(d.actual)} this run`,
     ),
     ...added.map(
-      (a) => `- ${name(a)}: not in the timings (${s(a.actual)} this run)`,
+      (a) => `- ${name(a)}: new test, no timing yet (${s(a.actual)} this run)`,
     ),
-    ...removed.map((r) => `- ${name(r)}: in the timings, but no longer exists`),
+    ...removed.map(
+      (r) =>
+        `- ${name(r)}: stale entry, the ${r.test ? "test" : "spec file"} no longer exists`,
+    ),
     "",
     "</details>",
   ];
