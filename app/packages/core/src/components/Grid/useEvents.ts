@@ -17,6 +17,7 @@ export default ({
   cache,
   pixels,
   resizing,
+  reveal,
   set,
   spotlight,
 }: {
@@ -24,6 +25,7 @@ export default ({
   cache: LookerCache;
   pixels: string;
   resizing: boolean;
+  reveal: () => void;
   set: (location: ScrollLocation) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
@@ -51,10 +53,6 @@ export default ({
       width: element?.parentElement?.getBoundingClientRect().width,
     });
 
-    const reveal = () => {
-      document.getElementById(pixels)?.classList.add(styles.hidden);
-    };
-
     const mount = () => {
       cache.unfreeze();
       clearTimeout(timeout);
@@ -74,7 +72,7 @@ export default ({
     };
 
     element && spotlight.attach(element);
-    spotlight.addEventListener("render", reveal);
+    spotlight.addEventListener("load", reveal);
     spotlight.addEventListener("load", mount);
     spotlight.addEventListener("rejected", rejected);
     spotlight.addEventListener("rowchange", set);
@@ -86,7 +84,7 @@ export default ({
         new CustomEvent("grid-unmount", { detail: detail() }),
       );
       document.getElementById(pixels)?.classList.remove(styles.hidden);
-      spotlight.removeEventListener("render", reveal);
+      spotlight.removeEventListener("load", reveal);
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
@@ -97,6 +95,7 @@ export default ({
     handleAutosize,
     pixels,
     resizing,
+    reveal,
     set,
     setRecommendedZoom,
     spotlight,

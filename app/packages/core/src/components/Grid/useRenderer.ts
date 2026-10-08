@@ -79,11 +79,14 @@ const sampleIdFromResult = (result: unknown): string | null => {
 export default function useRenderer({
   cache,
   id,
+  onItemLoad,
   records,
   store,
 }: {
   cache: LookerCache;
   id: string;
+  /** Called when a shown item's media has loaded */
+  onItemLoad: () => void;
   records: Map<string, number>;
   store: SampleStore;
 }) {
@@ -155,6 +158,9 @@ export default function useRenderer({
       if (instance) {
         instance.attach(innerHost, dimensions, getFontSize());
         cache.show(key);
+        if (instance.loaded) {
+          onItemLoad();
+        }
         // Re-register so the overlay div (potentially recreated on a
         // fresh tile element after scroll) is what portals target.
         const cachedResult = store.get(id);
@@ -184,6 +190,7 @@ export default function useRenderer({
         getFontSize(),
       );
 
+      item.addEventListener("load", onItemLoad, { once: true });
       item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail),
       );
@@ -201,7 +208,15 @@ export default function useRenderer({
       tileOverlay.mount(key, element, result, item);
       return cache.sizeOf(key);
     },
-    [cache, getFontSize, selectSample, sampleRendererRef, store, tileOverlay],
+    [
+      cache,
+      getFontSize,
+      onItemLoad,
+      selectSample,
+      sampleRendererRef,
+      store,
+      tileOverlay,
+    ],
   );
 
   return {
