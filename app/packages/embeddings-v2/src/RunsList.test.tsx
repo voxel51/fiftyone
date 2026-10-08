@@ -10,7 +10,32 @@ import RunsList from "./RunsList";
 // component (same pattern as TabIndicator.test)
 vi.mock("@fiftyone/components", () => ({
   PanelCTA: ({ label }: { label: ReactNode }) => <div>{label}</div>,
+  PendingRunCard: ({
+    title,
+    runState,
+    onOpen,
+  }: {
+    title: string;
+    runState: string;
+    onOpen?: () => void;
+  }) => <div onClick={onOpen}>{`${title} ${runState}`}</div>,
+  RunScreen: ({ title, onBack }: { title: string; onBack: () => void }) => (
+    <div onClick={onBack}>{`screen ${title}`}</div>
+  ),
 }));
+vi.mock("@fiftyone/operators", async () => {
+  const { useState } = await import("react");
+  return {
+    usePendingRunScreen: (runs: { id: string; brain_key: string | null }[]) => {
+      const [id, setId] = useState<string | null>(null);
+      const run = runs.find((candidate) => candidate.id === id);
+      return {
+        open: setId,
+        screen: run && { title: run.brain_key, onBack: () => setId(null) },
+      };
+    },
+  };
+});
 
 const run = (
   brainKey: string,
@@ -234,5 +259,56 @@ describe("RunsList", () => {
     );
 
     expect(screen.getByText("last updated 01/02/2026")).toBeDefined();
+  });
+
+  const pending = (brain_key: string | null) => ({
+    id: "1",
+    operator: "op",
+    run_state: "scheduled",
+    label: null,
+    brain_key,
+  });
+
+  it("shows a pending run instead of the empty state", () => {
+    render(
+      <RunsList
+        runs={[]}
+        pendingRuns={[pending("viz_new")]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("viz_new scheduled")).toBeTruthy();
+  });
+
+  it("opens a pending run's screen on click and returns on back", () => {
+    render(
+      <RunsList
+        runs={[]}
+        pendingRuns={[pending("viz_new")]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("viz_new scheduled"));
+    expect(screen.queryByText("viz_new scheduled")).toBeNull();
+
+    fireEvent.click(screen.getByText("screen viz_new"));
+    expect(screen.getByText("viz_new scheduled")).toBeTruthy();
+  });
+
+  it("hides a pending run whose brain key is already a run", () => {
+    render(
+      <RunsList
+        runs={[run("viz_a")]}
+        pendingRuns={[pending("viz_a")]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("viz_a scheduled")).toBeNull();
   });
 });

@@ -14,7 +14,7 @@
  * the deployment defines them; the panel renders its own confirmation,
  * so the operator's prompt is bypassed.
  */
-import { useOperatorExecutor } from "@fiftyone/operators";
+import { useOperatorExecutor, usePendingRuns } from "@fiftyone/operators";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +26,12 @@ import { useClearSelectionOnClose } from "./useClearSelectionOnClose";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
 const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
+const PENDING_RUNS = {
+  operators: [
+    "@voxel51/brain/compute_visualization",
+    "@voxel51/operators/compute_visualization",
+  ],
+};
 
 /** Poll cadence while the runs list is showing */
 const RUNS_POLL_MS = 5_000;
@@ -84,6 +90,7 @@ export default function EmbeddingsV2Panel() {
   // should not maintain an independent list.
   const { runs } = useVisualizationRuns();
   const knownSignature = runs === null ? null : statusSignature(runs);
+  const { runs: pendingRuns } = usePendingRuns(PENDING_RUNS, runs);
   const refresh = fos.useRefresh();
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -192,6 +199,7 @@ export default function EmbeddingsV2Panel() {
   return (
     <RunsList
       runs={runs}
+      pendingRuns={pendingRuns}
       actionError={actionError}
       onOpen={handleOpen}
       onDelete={handleDelete}

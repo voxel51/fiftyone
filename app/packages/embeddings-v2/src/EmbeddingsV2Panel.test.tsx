@@ -23,6 +23,7 @@ vi.mock("@fiftyone/spaces", () => ({
 }));
 vi.mock("@fiftyone/operators", () => ({
   useOperatorExecutor: () => ({ execute: vi.fn() }),
+  usePendingRuns: () => ({ runs: [] }),
 }));
 vi.mock("./extensions", () => ({ useExtensionGeneration: () => 0 }));
 vi.mock("./useClearSelectionOnClose", () => ({
