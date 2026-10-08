@@ -448,6 +448,12 @@ def _project_pagination_paths(
         if field.document_type in fol._INSTANCE_FIELDS:
             selected_fields.append(f"{path}.instance")
 
+        # include a detection's rotation, even if it is missing from schema:
+        # it is a dynamic attribute, and the grid needs it to draw rotated
+        # boxes
+        if issubclass(field.document_type, fol.Detection):
+            selected_fields.append(f"{path}.rotation")
+
     return view.add_stage(
         fosg.SelectFields(
             selected_fields, _media_types=media_types, _allow_missing=True

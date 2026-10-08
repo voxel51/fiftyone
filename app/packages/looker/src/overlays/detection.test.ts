@@ -206,6 +206,18 @@ describe("drawing a detection", () => {
       textPad: 2,
     }) as never;
 
+  it("paints the label over the box lines", () => {
+    // selected: both the box stroke and the dashed outline come first
+    const ctx = makeContext();
+    makeOverlay().draw(ctx as never, makeState({ selected: true }));
+
+    const strokes = ctx.stroke.mock.invocationCallOrder;
+    expect(strokes).toHaveLength(2);
+    expect(ctx.fill.mock.invocationCallOrder[0]).toBeGreaterThan(
+      Math.max(...strokes),
+    );
+  });
+
   it("strokes the box while shown", () => {
     const ctx = makeContext();
     makeOverlay().draw(ctx as never, makeState());

@@ -8,6 +8,7 @@ import {
 } from "@fiftyone/state/src/jotai";
 import {
   getRotatedBoxCorners,
+  getRotatedBoxNorthwestCorner,
   getRotation2d,
   isPointInRotatedBox,
 } from "@fiftyone/utilities";
@@ -188,8 +189,6 @@ export default class DetectionOverlay<
       this.drawMask(ctx, state);
     }
 
-    !state.config.thumbnail && this.drawLabelText(ctx, state);
-
     // a hidden box still outlines while its instance is hovered
     if (
       !this.label.convexHull &&
@@ -202,6 +201,10 @@ export default class DetectionOverlay<
     if (overlayStrokeColor && overlayDash) {
       this.strokeRect(ctx, state, overlayStrokeColor, overlayDash);
     }
+
+    // drawn last so the header paints over the box lines, matching the
+    // annotate-mode (lighter) header
+    !state.config.thumbnail && this.drawLabelText(ctx, state);
   }
 
   getMouseDistance(state: Readonly<State>): number {
@@ -299,10 +302,10 @@ export default class DetectionOverlay<
    * The canvas-space bottom-left corner of a label header of the given size;
    * the header is drawn upward from there.
    *
-   * The header stays unrotated. With the box drawn, it is anchored to the
-   * stored box's top-left — matches the annotate-mode (lighter) header, which
-   * keeps the anchor stationary while a box rotates. With the box hidden, it
-   * centers on the box.
+   * The header stays upright. With the box drawn, it is anchored to the box's
+   * northwest-most corner, so a rotated box's label stays on its geometry —
+   * matches the annotate-mode (lighter) header. With the box hidden, it
+   * centers on the box, which rotation leaves in place.
    */
   private getLabelOrigin(
     state: Readonly<State>,
@@ -315,8 +318,12 @@ export default class DetectionOverlay<
       return [cx - headerWidth / 2, cy + headerHeight / 2];
     }
 
-    const [tlx, tly] = this.label.bounding_box;
-    const [x, y] = t(state, tlx, tly);
+    const [nwx, nwy] = getRotatedBoxNorthwestCorner(
+      this.label.bounding_box,
+      this.getRotation(),
+      state.dimensions,
+    );
+    const [x, y] = t(state, nwx, nwy);
     return [x - state.strokeWidth / 2, y];
   }
 
