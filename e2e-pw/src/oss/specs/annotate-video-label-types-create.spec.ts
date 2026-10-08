@@ -7,7 +7,7 @@
  * through `usePolylineModeInstaller` and an unselected brush stroke opens a
  * fresh masked detection via `lighter:overlay-create`.
  */
-import { Browser, test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -50,19 +50,14 @@ const openAnnotate = async (
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 test.describe.serial("video non-box label create", () => {
@@ -140,7 +135,7 @@ test.describe.serial("video non-box label create", () => {
   });
 
   test("drawing a polyline adds a track, assigns a class, and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -170,13 +165,13 @@ test.describe.serial("video non-box label create", () => {
     // the polyline frame label survives a true round-trip — exactly one object
     // track persists on the clean-slate timeline (the class is verified live
     // above; a single-frame polyline isn't reliably playhead-listed on reload).
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.assert.objectTrackCount(before + 1);
     });
   });
 
   test("painting a mask adds a track, assigns a class, and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -209,7 +204,7 @@ test.describe.serial("video non-box label create", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
 
     // the masked detection survives a true round-trip with its mask intact
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.assert.objectTrackCount(before + 1);
       await freshModal.videoAnnotate.selectLabel("person");
       await freshModal.sidebar.edit.assert.hasMask(true);

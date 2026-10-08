@@ -8,7 +8,7 @@
  * default; the successful-merge test re-seeds them same-class since merge is
  * gated to same-class tracks.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import type { VideoAnnotatePom } from "src/oss/poms/modal/video-annotate";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -107,19 +107,14 @@ const openAnnotate = async (
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 /** The object tracks on the timeline before an edit: every track id, and the one to split. */
@@ -249,7 +244,7 @@ test.describe.serial("video annotation track split / merge", () => {
   });
 
   test("split pins both sides of the cut as keyframes and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -267,13 +262,13 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
 
     // 2 s at 10 fps
-    await inFreshContext(browser, fiftyoneLoader, (fresh) =>
+    await inFreshContext(openFreshPage, fiftyoneLoader, (fresh) =>
       expectSplitPersisted(fresh, before, "frames.detections", 20, 10),
     );
   });
 
   test("split a polyline track: two tracks, both cut frames keyframes, vertices kept", async ({
-    browser,
+    openFreshPage,
     datasetFactory,
     fiftyoneLoader,
     modal,
@@ -358,13 +353,13 @@ test.describe.serial("video annotation track split / merge", () => {
     await modal.sidebar.annotate.afterSave(() => va.clickSplitToolbarButton());
     await va.assert.objectTrackCount(3);
 
-    await inFreshContext(browser, fiftyoneLoader, (fresh) =>
+    await inFreshContext(openFreshPage, fiftyoneLoader, (fresh) =>
       expectSplitPersisted(fresh, before, "frames.polylines", 20, 10),
     );
   });
 
   test("merge (context menu) folds one same-class track into the other and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -395,16 +390,11 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.labelListed("vehicle");
 
     // the merge survives a true round-trip
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
-    try {
-      const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
-      await openAnnotate(fiftyoneLoader, m2, freshPage);
-      await m2.videoAnnotate.assert.objectTrackCount(1);
-      await m2.videoAnnotate.assert.labelListed("vehicle");
-    } finally {
-      await context.close();
-    }
+    const freshPage = await openFreshPage();
+    const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, m2, freshPage);
+    await m2.videoAnnotate.assert.objectTrackCount(1);
+    await m2.videoAnnotate.assert.labelListed("vehicle");
   });
 
   test("merge is gated by class: a cross-class track offers no merge target", async ({

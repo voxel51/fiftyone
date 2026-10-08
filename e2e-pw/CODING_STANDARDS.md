@@ -224,8 +224,10 @@ an event never carries a timeout.
   data the spec builds.
 - Data shared by a spec family lives in a module beside the specs.
 - Check persistence the way a user would: wrap the edit in
-  `modal.sidebar.annotate.afterSave(...)`, then read what the App renders in a
-  fresh browser context.
+  `modal.sidebar.annotate.afterSave(...)`, then read what the App renders on a
+  page from the `openFreshPage` fixture. It closes the test's page first: an
+  App open alongside shares the server's session and syncs its state into the
+  check. CI rejects `browser.newContext()` in specs and POMs.
 
 ## Screenshots
 

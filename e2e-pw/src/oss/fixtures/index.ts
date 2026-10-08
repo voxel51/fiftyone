@@ -1,4 +1,4 @@
-import { test as base } from "@playwright/test";
+import { test as base, type BrowserContext, type Page } from "@playwright/test";
 import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
@@ -22,6 +22,13 @@ export type CustomFixturesWithoutPage = {
 // these fixtures have access to the {page} fixture
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
+  /**
+   * Opens a page in a fresh browser context, for checking what persisted
+   * through a true server round-trip. Every page the test opened before it
+   * closes first: an App open alongside would share the server's session and
+   * sync its state into the check.
+   */
+  openFreshPage: () => Promise<Page>;
   /**
    * Installs a deterministic mock SAM2 worker via `page.addInitScript` so
    * the page's `BrowserAnnotationProvider` constructs the mock instead of
@@ -109,6 +116,19 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     },
     { auto: true },
   ],
+  openFreshPage: async ({ browser, page }, use) => {
+    const pages: Page[] = [page];
+    const contexts: BrowserContext[] = [];
+    await use(async () => {
+      for (const open of pages) await open.close();
+      const context = await browser.newContext();
+      contexts.push(context);
+      const fresh = await context.newPage();
+      pages.push(fresh);
+      return fresh;
+    });
+    for (const context of contexts) await context.close();
+  },
   mockSam2Worker: async ({ page }, use) => {
     await installSam2MockWorker(page);
     await use();

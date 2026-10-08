@@ -6,7 +6,7 @@
  * stack, and persists across a true round-trip. Exercises the MUI-Select-backed
  * dropdown path (distinct from the text/number inputs other specs drive).
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -62,27 +62,21 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
 
 /** Verify a persisted edit from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
-
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 test.describe.serial("2D label class editing", () => {
@@ -115,9 +109,9 @@ test.describe.serial("2D label class editing", () => {
   });
 
   test("a class change persists across a fresh load", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
 
@@ -127,7 +121,7 @@ test.describe.serial("2D label class editing", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
 
     // the box is now a "dog" — select it by its new class in the fresh context
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("dog", 0);
       await freshModal.sidebar.edit.assert.verifyFieldValue("label", "dog");
     });

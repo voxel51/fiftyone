@@ -7,7 +7,7 @@
  * undo restores it. The seeded detections carry `_cls` so their embedded masks
  * decode, and merge needs ≥2 masked detections to enable.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -79,30 +79,25 @@ test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
 });
 
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
+  await verify(freshModal);
 };
 
 test.describe.serial("2D annotation mask merge", () => {
   test("merging two masked detections absorbs the source and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -126,13 +121,13 @@ test.describe.serial("2D annotation mask merge", () => {
     });
 
     // The source detection is absorbed + deleted → one label remains, persisted.
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
     });
   });
 
   test("a merge is a single undo unit that restores the source", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -154,7 +149,7 @@ test.describe.serial("2D annotation mask merge", () => {
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(2);
     });
   });

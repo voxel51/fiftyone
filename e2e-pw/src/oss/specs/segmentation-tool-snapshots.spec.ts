@@ -217,7 +217,7 @@ test.describe.serial("segmentation tool snapshots", () => {
     test.use({ seed: twoMaskedCats });
 
     test("merge", async ({
-      browser,
+      openFreshPage,
       datasetName,
       fiftyoneLoader,
       modal,
@@ -245,19 +245,14 @@ test.describe.serial("segmentation tool snapshots", () => {
       await modal.sampleCanvas.assert.hasMediaScreenshot("seg-merge-union.png");
 
       // Sanity check: the merge persisted the pair as a single masked detection.
-      const context = await browser.newContext();
-      const freshPage = await context.newPage();
-      try {
-        const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-        await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
-        await freshModal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
-        await assertOnlyLabelHasMask(freshModal);
-        await freshModal.sampleCanvas.assert.hasMediaScreenshot(
-          "seg-merge-persisted.png",
-        );
-      } finally {
-        await context.close();
-      }
+      const freshPage = await openFreshPage();
+      const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+      await openAnnotate(freshModal, freshPage, fiftyoneLoader, datasetName);
+      await freshModal.sidebar.annotate.assert.labelRowCount(FIELD, 1);
+      await assertOnlyLabelHasMask(freshModal);
+      await freshModal.sampleCanvas.assert.hasMediaScreenshot(
+        "seg-merge-persisted.png",
+      );
     });
   });
 });

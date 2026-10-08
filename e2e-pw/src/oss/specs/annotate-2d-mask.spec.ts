@@ -8,7 +8,7 @@
  * seeded detections carry `_cls` so the embedded mask decodes.
  */
 import fs from "node:fs";
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -109,28 +109,23 @@ test.afterAll(async ({ foWebServer }) => {
  * `verify` against an annotate-mode modal there.
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   datasetName: string,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 for (const cfg of KINDS) {
@@ -198,7 +193,7 @@ for (const cfg of KINDS) {
     });
 
     test("a mask removal persists across a fresh load", async ({
-      browser,
+      openFreshPage,
       fiftyoneLoader,
       modal,
     }) => {
@@ -211,7 +206,7 @@ for (const cfg of KINDS) {
       await modal.sidebar.edit.assert.hasMask(false);
 
       await inFreshContext(
-        browser,
+        openFreshPage,
         fiftyoneLoader,
         cfg.datasetName,
         async (freshModal) => {

@@ -65,9 +65,9 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation AI (SAM2) round-trip", () => {
   test("placing a positive point persists a Detection with a mask", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     // ── 1. Enter annotate → segmentation → AI ───────────────────────────────
     await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
@@ -91,30 +91,23 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     await modal.sidebar.edit.exitToList();
 
     // ── 4. A fresh browser context must show the persisted Detection ────────
-    const context = await browser.newContext();
-    try {
-      await installSam2MockWorker(context);
-      const freshPage = await context.newPage();
-      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-        searchParams: new URLSearchParams({ id: sampleId }),
-        modalSample: "loaded",
-      });
-      const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-      await fresh.sidebar.annotate.afterLabelList(() =>
-        fresh.sidebar.switchMode("annotate"),
-      );
-      const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBe(1);
+    const freshPage = await openFreshPage();
+    await installSam2MockWorker(freshPage);
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+      searchParams: new URLSearchParams({ id: sampleId }),
+      modalSample: "loaded",
+    });
+    const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
+    await fresh.sidebar.annotate.afterLabelList(() =>
+      fresh.sidebar.switchMode("annotate"),
+    );
+    const rows = fresh.sidebar.annotate.labelRowsFor("instances");
+    expect(await rows.count()).toBe(1);
 
-      // the mock worker answers with an 8x8 all-foreground mask at box
-      // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
-      await rows.click();
-      await fresh.sidebar.edit.assert.hasMaskPreview();
-      await fresh.sampleCanvas.assert.hasMediaScreenshot(
-        "seg-ai-persisted.png",
-      );
-    } finally {
-      await context.close();
-    }
+    // the mock worker answers with an 8x8 all-foreground mask at box
+    // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
+    await rows.click();
+    await fresh.sidebar.edit.assert.hasMaskPreview();
+    await fresh.sampleCanvas.assert.hasMediaScreenshot("seg-ai-persisted.png");
   });
 });

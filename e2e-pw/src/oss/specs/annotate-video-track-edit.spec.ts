@@ -7,7 +7,7 @@
  * shared selection. Re-seeded per test with one tracked `vehicle` at
  * `bounding_box=[0.3,0.3,0.2,0.2]` on every frame.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -46,19 +46,14 @@ const openAnnotate = async (
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 /** Read a numeric edit-form field value (the sidebar shows relative [0,1]). */
@@ -208,7 +203,7 @@ test.describe.serial("video annotation track editing", () => {
   });
 
   test("selecting a track on the canvas neither persists nor promotes a keyframe", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -254,7 +249,7 @@ test.describe.serial("video annotation track editing", () => {
     expect(persists).toBe(1);
     page.off("response", countPersist);
 
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
       const va = fresh.videoAnnotate;
       await va.assert.labelListed("person");
       const [trackId] = await va.objectTrackIds();

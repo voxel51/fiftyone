@@ -7,7 +7,7 @@
  * geometry edits have no DOM handles, so class edits and the canvas draw are
  * the surfaces covered.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -50,28 +50,23 @@ const openAnnotate = async (
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 /** The labels listed in the annotate sidebar of a fresh browser context. */
 const expectPersistedLabels = (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   labels: string[],
 ) =>
-  inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+  inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
     await fresh.annotate3d.assert.labelCount(labels.length);
     for (const label of labels) {
       await fresh.annotate3d.assert.labelListed(label);
@@ -151,7 +146,7 @@ test.describe.serial("3d polyline annotation", () => {
   });
 
   test("a class edit on the polyline persists across a fresh save", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -163,7 +158,7 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
 
     // the polyline stays a single label whose class is now persisted "barrier"
-    await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["barrier"]);
   });
 
   test("deleting the polyline drops its row; undo restores it and redo re-deletes", async ({
@@ -185,7 +180,7 @@ test.describe.serial("3d polyline annotation", () => {
   });
 
   test("a delete persists across a fresh save", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -196,17 +191,19 @@ test.describe.serial("3d polyline annotation", () => {
     );
     await modal.annotate3d.assert.labelCount(0);
 
-    await expectPersistedLabels(browser, fiftyoneLoader, []);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, []);
   });
 
   // The audit flagged that undo/redo durability across an autosave is
   // unverified on every surface. Once a class edit has been persisted, the
   // engine's command stack must still drive undo AND redo — and each step must
-  // itself re-persist (the engine commits through the same save path).
-  test("undo and redo of a persisted class edit re-persist through the DB", async ({
-    browser,
+  // itself re-persist (the engine commits through the same save path). The
+  // fresh-context check closes this page and its stack, so undo and redo are
+  // verified in separate tests.
+  test("undo of a persisted class edit re-persists through the DB", async ({
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await modal.annotate3d.selectLabel("lane");
 
@@ -214,20 +211,33 @@ test.describe.serial("3d polyline annotation", () => {
     await modal.sidebar.annotate.afterSave(() =>
       modal.sidebar.edit.selectFieldChoice("label", "barrier"),
     );
-    await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
 
     // after the autosave the stack survives: undo reverts the class and
     // re-persists "lane"
     await modal.sidebar.edit.assert.undoIsEnabled(true);
     await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
-    await expectPersistedLabels(browser, fiftyoneLoader, ["lane"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["lane"]);
+  });
+
+  test("redo of an undone persisted class edit re-persists through the DB", async ({
+    fiftyoneLoader,
+    modal,
+    openFreshPage,
+  }) => {
+    await modal.annotate3d.selectLabel("lane");
+
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "barrier"),
+    );
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "lane");
 
     // redo re-applies the class and re-persists "barrier"
     await modal.sidebar.edit.assert.redoIsEnabled(true);
     await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "barrier");
-    await expectPersistedLabels(browser, fiftyoneLoader, ["barrier"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["barrier"]);
   });
 });
 
@@ -269,7 +279,7 @@ test.describe.serial("3d polyline creation", () => {
   });
 
   test("drawing a polyline on the canvas creates a label, assigns a class, and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -319,7 +329,7 @@ test.describe.serial("3d polyline creation", () => {
 
     // the drawn polyline persists as a single label carrying the class and
     // one vertex per click
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
       await fresh.annotate3d.assert.labelCount(1);
       await fresh.annotate3d.assert.labelListed("barrier");
       await fresh.annotate3d.afterSelectedVertices(points.length, () =>

@@ -7,7 +7,7 @@
  * label's current field so the serial tests don't depend on each other's end
  * state.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -90,27 +90,22 @@ const reselect = async (modal: ModalPom, label = "cat") => {
  * pattern".
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 test.describe.serial("2D annotation field move", () => {
@@ -166,9 +161,9 @@ test.describe.serial("2D annotation field move", () => {
   });
 
   test("a field move persists across a fresh load", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await reselect(modal);
 
@@ -182,7 +177,7 @@ test.describe.serial("2D annotation field move", () => {
     await reselect(modal);
     await modal.sidebar.edit.assert.currentField(to);
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
       await freshModal.sidebar.edit.assert.currentField(to);
     });

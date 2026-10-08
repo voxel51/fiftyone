@@ -5,7 +5,7 @@
  * the sidebar form autosave and are verified from a brand-new browser
  * context. Operates on the single seeded box so selection is unambiguous.
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -67,27 +67,22 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
  * pattern" for why a page.reload() can't be used.
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 test.describe.serial("2D annotation edit/delete persistence", () => {
@@ -95,7 +90,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
   // it, so it must run last (serial order is guaranteed).
 
   test("an attribute edit persists across a fresh load", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -106,7 +101,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     );
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.7");
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
       await freshModal.sidebar.edit.assert.verifyFieldValue(
         "confidence",
@@ -116,7 +111,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
   });
 
   test("a geometry edit persists across a fresh load", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -127,7 +122,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     );
     await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.111");
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
       await freshModal.sidebar.edit.assert.verifyFieldValue(
         "position.x",
@@ -137,7 +132,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
   });
 
   test("a delete persists across a fresh load", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -150,7 +145,7 @@ test.describe.serial("2D annotation edit/delete persistence", () => {
     });
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(before - 1);
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(before - 1);
     });
   });

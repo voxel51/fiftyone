@@ -6,7 +6,7 @@
  * persists across a fresh browser context, and its delete undoes. The same
  * `usePolylineMode` creation handler as video runs here on the Lighter canvas.
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -47,25 +47,20 @@ const drawPolyline = async (
 };
 
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
+  await verify(freshModal);
 };
 
 test.beforeAll(async ({ foWebServer }) => {
@@ -113,7 +108,7 @@ test.describe.serial("2D annotation polyline", () => {
   });
 
   test("drawing a polyline creates a labeled polyline that persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -128,7 +123,7 @@ test.describe.serial("2D annotation polyline", () => {
 
     // true round-trip: the labeled polyline is the one active label and reads
     // back its class.
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
       await freshModal.sidebar.annotate.selectActiveLabel("lane", 0);
       await freshModal.sidebar.edit.assert.verifyFieldValue("label", "lane");

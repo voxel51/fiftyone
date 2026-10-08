@@ -62,9 +62,9 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation pen-tool round-trip", () => {
   test("draws a mask polygon, persists it, and the mask survives reload", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     // ── 1. Enter annotate → segmentation mode → pick Pen ─────────────────────
     await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
@@ -111,32 +111,25 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
     await modal.sidebar.annotate.assert.selectIsActive();
 
     // ── 4. A fresh browser context must list both detections with masks ─────
-    const context = await browser.newContext();
-    try {
-      const freshPage = await context.newPage();
-      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-        searchParams: new URLSearchParams({ id: sampleId }),
-        modalSample: "loaded",
-      });
-      const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-      await fresh.sidebar.annotate.afterLabelList(() =>
-        fresh.sidebar.switchMode("annotate"),
-      );
-      const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      // both polygons were committed as their own detections
-      expect(await rows.count()).toBe(2);
+    const freshPage = await openFreshPage();
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+      searchParams: new URLSearchParams({ id: sampleId }),
+      modalSample: "loaded",
+    });
+    const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
+    await fresh.sidebar.annotate.afterLabelList(() =>
+      fresh.sidebar.switchMode("annotate"),
+    );
+    const rows = fresh.sidebar.annotate.labelRowsFor("instances");
+    // both polygons were committed as their own detections
+    expect(await rows.count()).toBe(2);
 
-      // both masks render on the fresh canvas as drawn, captured before any
-      // row is selected since the rows' order isn't fixed
-      await fresh.sampleCanvas.assert.hasMediaScreenshot(
-        "seg-pen-persisted.png",
-      );
+    // both masks render on the fresh canvas as drawn, captured before any
+    // row is selected since the rows' order isn't fixed
+    await fresh.sampleCanvas.assert.hasMediaScreenshot("seg-pen-persisted.png");
 
-      // and a persisted row carries its mask
-      await rows.first().click();
-      await fresh.sidebar.edit.assert.hasMaskPreview();
-    } finally {
-      await context.close();
-    }
+    // and a persisted row carries its mask
+    await rows.first().click();
+    await fresh.sidebar.edit.assert.hasMaskPreview();
   });
 });

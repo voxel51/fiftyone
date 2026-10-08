@@ -101,6 +101,8 @@ E2E_RULES = [
         re.compile(r"\.screenshot\(|\.toMatchSnapshot\(|\.toHaveScreenshot\("),
     ),
     ("direct-expect-screenshot", re.compile(r"\bexpectScreenshot\(")),
+    # a second App beside the test's page shares the server's session
+    ("browser-new-context", re.compile(r"\bbrowser\.newContext\(")),
     (
         "retry-loop",
         re.compile(
@@ -195,6 +197,18 @@ APP_SKIP = re.compile(
     r"|(?:^|/)app/packages/[\w-]+/tests/"
 )
 APP_SOURCE = re.compile(r"\.[jt]sx?$")
+
+# rules that don't apply under a path, as rule -> pattern on the relative path
+RULE_EXEMPT = {
+    # the openFreshPage fixture is the one place a second context opens
+    "browser-new-context": re.compile(r"^e2e-pw/src/oss/fixtures/"),
+}
+# what to do instead, printed under a rule's findings
+RULE_HINTS = {
+    "browser-new-context": "use the openFreshPage fixture: an App open"
+    " alongside the test's page shares the server's session and syncs its"
+    " state into the check",
+}
 
 E2E_SKIP = re.compile(
     # test plugin sources run inside the App; their timers are not test waits
@@ -313,6 +327,8 @@ def scan(files, rules, skip=None):
                     rel
                 ):
                     continue
+                if name in RULE_EXEMPT and RULE_EXEMPT[name].search(rel):
+                    continue
                 if any(
                     k.split(":")[0] == rel and k.split(":", 1)[1] in text
                     for k in ALLOW
@@ -386,6 +402,8 @@ for rel, line, name, text in sorted(findings):
     by_rule.setdefault(name, []).append(f"{rel}:{line}  {text}")
 for name, items in by_rule.items():
     print(f"== {name} ({len(items)})")
+    if name in RULE_HINTS:
+        print(f"  ({RULE_HINTS[name]})")
     for i in items:
         print("  " + i)
 print(f"TOTAL {len(findings)}")

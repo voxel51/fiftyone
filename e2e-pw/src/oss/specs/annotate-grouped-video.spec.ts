@@ -9,7 +9,7 @@
  * the PATCH be checked against its slice, and the dataset is re-seeded per
  * test.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -186,23 +186,18 @@ const enterVideoAnnotate = async (grid: GridPom, modal: ModalPom) => {
  * open modal would carry over to the new page, so `modal` closes first.
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
   await modal.close();
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const eventUtils = new EventUtils(freshPage);
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshModal = new ModalPom(freshPage, eventUtils);
-    await enterVideoAnnotate(new GridPom(freshPage, eventUtils), freshModal);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const eventUtils = new EventUtils(freshPage);
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+  const freshModal = new ModalPom(freshPage, eventUtils);
+  await enterVideoAnnotate(new GridPom(freshPage, eventUtils), freshModal);
+  await verify(freshModal);
 };
 
 test.describe.serial("grouped video annotation", () => {
@@ -262,7 +257,7 @@ test.describe.serial("grouped video annotation", () => {
   });
 
   test("editing on the video slice writes to the video sample", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     grid,
     modal,
@@ -290,14 +285,19 @@ test.describe.serial("grouped video annotation", () => {
     expect(pageErrors).toEqual([]);
 
     // stored on the video sample: a fresh context shows it on the video slice
-    await inFreshContext(browser, fiftyoneLoader, modal, async (fresh) => {
-      await fresh.videoAnnotate.selectLabel("vehicle");
-      await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
-    });
+    await inFreshContext(
+      openFreshPage,
+      fiftyoneLoader,
+      modal,
+      async (fresh) => {
+        await fresh.videoAnnotate.selectLabel("vehicle");
+        await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
+      },
+    );
   });
 
   test("editing on the image slice writes to the image sample", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     grid,
     modal,
@@ -317,12 +317,17 @@ test.describe.serial("grouped video annotation", () => {
     );
 
     // stored on the image sample: a fresh context shows it on the image slice
-    await inFreshContext(browser, fiftyoneLoader, modal, async (fresh) => {
-      await fresh.afterLighterReady(() =>
-        fresh.sidebar.annotate.selectAnnotationSlice("image"),
-      );
-      await fresh.videoAnnotate.selectLabel("vehicle");
-      await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
-    });
+    await inFreshContext(
+      openFreshPage,
+      fiftyoneLoader,
+      modal,
+      async (fresh) => {
+        await fresh.afterLighterReady(() =>
+          fresh.sidebar.annotate.selectAnnotationSlice("image"),
+        );
+        await fresh.videoAnnotate.selectLabel("vehicle");
+        await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
+      },
+    );
   });
 });

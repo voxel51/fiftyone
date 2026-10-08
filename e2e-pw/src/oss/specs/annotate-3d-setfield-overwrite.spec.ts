@@ -7,7 +7,7 @@
  * DB. The dataset materializes `note` and the cuboid's `confidence` and saves
  * a view projecting different values over both.
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -43,21 +43,16 @@ test.afterAll(async ({ foWebServer }) => {
  * so what it renders is the persisted value, not the projection.
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id, view: baseSlug }),
-    });
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id, view: baseSlug }),
+  });
+  await verify(freshModal);
 };
 
 const openAnnotate = async (
@@ -126,7 +121,7 @@ test.describe.serial("3d annotate set_field overwrite", () => {
   });
 
   test("editing a cuboid does not persist set_field-projected fields", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -145,7 +140,7 @@ test.describe.serial("3d annotate set_field overwrite", () => {
     // the DB — the base dataset still shows the materialized `note`, and the
     // projected `confidence` on the very label we edited must not persist
     // either (the field-level save path's clobber vector)
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
       await fresh.sidebar.assert.verifySidebarEntryText("note", "db-original");
       await fresh.annotate3d.afterSurface(() =>
         fresh.sidebar.switchMode("annotate"),

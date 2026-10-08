@@ -114,9 +114,9 @@ test.describe.serial("2D Lighter annotation", () => {
   });
 
   test("a drawn detection persists (verified from a fresh browser context)", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     const before = await modal.sidebar.annotate.getActiveLabelsCount();
 
@@ -131,22 +131,17 @@ test.describe.serial("2D Lighter annotation", () => {
     // verify from a brand-new context (no shared client cache): proves the box
     // round-tripped and exercises load-time bridge hydration. A mid-test reload
     // can't be used because a nested dataset URL 404s its relative bundle.
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
+    const freshPage = await openFreshPage();
 
-    try {
-      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-        searchParams: new URLSearchParams({ id }),
-        modalSample: "loaded",
-      });
-      const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-      await freshModal.afterLighterReady(() =>
-        freshModal.sidebar.switchMode("annotate"),
-      );
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
+    });
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await freshModal.afterLighterReady(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
 
-      await expectLabelsCount(freshModal, before + 1);
-    } finally {
-      await context.close();
-    }
+    await expectLabelsCount(freshModal, before + 1);
   });
 });

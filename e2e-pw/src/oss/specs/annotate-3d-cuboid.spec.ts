@@ -6,7 +6,7 @@
  * selects, its form edits persist, and delete round-trips through undo. The
  * three-click canvas draw is covered in its own describe on an empty scene.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -47,28 +47,23 @@ const openAnnotate = async (
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 /** The labels listed in the annotate sidebar of a fresh browser context. */
 const expectPersistedLabels = (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   labels: string[],
 ) =>
-  inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+  inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
     await fresh.annotate3d.assert.labelCount(labels.length);
     for (const label of labels) {
       await fresh.annotate3d.assert.labelListed(label);
@@ -140,7 +135,7 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("editing a cuboid's position via the form persists and round-trips through undo/redo", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -156,29 +151,30 @@ test.describe.serial("3d cuboid annotation", () => {
       ),
     );
 
+    // the form value mirrors the committed engine state, so undo/redo of the
+    // geometry edit round-trips there
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.afterPositionChanged(() => modal.sidebar.edit.undo()),
+    );
+    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("0.00");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.afterPositionChanged(() => modal.sidebar.edit.redo()),
+    );
+    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("1.50");
+
     // the new x persists (form edits store the value verbatim — no
-    // container/world coordinate ambiguity)
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    // container/world coordinate ambiguity); last, since the fresh context
+    // closes this page
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
       await fresh.annotate3d.selectCuboid("car");
       expect(await fresh.annotate3d.geometryField("x").inputValue()).toBe(
         "1.50",
       );
     });
-
-    // the form value mirrors the committed engine state, so undo/redo of the
-    // geometry edit round-trips there
-    await modal.annotate3d.afterPositionChanged(() =>
-      modal.sidebar.edit.undo(),
-    );
-    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("0.00");
-    await modal.annotate3d.afterPositionChanged(() =>
-      modal.sidebar.edit.redo(),
-    );
-    expect(await modal.annotate3d.geometryField("x").inputValue()).toBe("1.50");
   });
 
   test("a class edit on the cuboid persists across a fresh save", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -190,7 +186,7 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
 
     // the cuboid stays a single detection whose class is now persisted "truck"
-    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["truck"]);
   });
 
   test("deleting the cuboid drops its row; undo restores it and redo re-deletes", async ({
@@ -212,7 +208,7 @@ test.describe.serial("3d cuboid annotation", () => {
   });
 
   test("a delete persists across a fresh save", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -223,17 +219,19 @@ test.describe.serial("3d cuboid annotation", () => {
     );
     await modal.annotate3d.assert.labelCount(0);
 
-    await expectPersistedLabels(browser, fiftyoneLoader, []);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, []);
   });
 
   // The audit flagged that undo/redo durability across an autosave is
   // unverified on every surface. Once a class edit has been persisted, the
   // engine's command stack must still drive undo AND redo — and each step must
-  // itself re-persist (the engine commits through the same save path).
-  test("undo and redo of a persisted class edit re-persist through the DB", async ({
-    browser,
+  // itself re-persist (the engine commits through the same save path). The
+  // fresh-context check closes this page and its stack, so undo and redo are
+  // verified in separate tests.
+  test("undo of a persisted class edit re-persists through the DB", async ({
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await modal.annotate3d.selectLabel("car");
 
@@ -241,20 +239,33 @@ test.describe.serial("3d cuboid annotation", () => {
     await modal.sidebar.annotate.afterSave(() =>
       modal.sidebar.edit.selectFieldChoice("label", "truck"),
     );
-    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
 
     // after the autosave the stack survives: undo reverts the class and
     // re-persists "car"
     await modal.sidebar.edit.assert.undoIsEnabled(true);
     await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
-    await expectPersistedLabels(browser, fiftyoneLoader, ["car"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["car"]);
+  });
+
+  test("redo of an undone persisted class edit re-persists through the DB", async ({
+    fiftyoneLoader,
+    modal,
+    openFreshPage,
+  }) => {
+    await modal.annotate3d.selectLabel("car");
+
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "truck"),
+    );
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
+    await modal.sidebar.edit.assert.verifyFieldValue("label", "car");
 
     // redo re-applies the class and re-persists "truck"
     await modal.sidebar.edit.assert.redoIsEnabled(true);
     await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
-    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["truck"]);
   });
 });
 
@@ -293,7 +304,7 @@ test.describe.serial("3d cuboid creation", () => {
   });
 
   test("drawing a cuboid on the canvas creates a label, assigns a class, and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
   }) => {
@@ -322,6 +333,6 @@ test.describe.serial("3d cuboid creation", () => {
     await modal.sidebar.edit.assert.verifyFieldValue("label", "truck");
 
     // the drawn cuboid persists as a single detection carrying the class
-    await expectPersistedLabels(browser, fiftyoneLoader, ["truck"]);
+    await expectPersistedLabels(openFreshPage, fiftyoneLoader, ["truck"]);
   });
 });

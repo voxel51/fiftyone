@@ -7,7 +7,7 @@
  * Assertions are relative to the track's current field so the serial tests
  * don't depend on each other's end state.
  */
-import { Browser, test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -57,19 +57,14 @@ const reselect = async (modal: ModalPom, label = "vehicle") => {
 };
 
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 test.describe.serial("video annotation field move", () => {
@@ -127,7 +122,7 @@ test.describe.serial("video annotation field move", () => {
   });
 
   test("moving a track between frame fields re-homes it and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -145,7 +140,7 @@ test.describe.serial("video annotation field move", () => {
     await reselect(modal);
     await modal.sidebar.edit.assert.currentField(to);
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.selectLabel("vehicle");
       await freshModal.sidebar.edit.assert.currentField(to);
     });

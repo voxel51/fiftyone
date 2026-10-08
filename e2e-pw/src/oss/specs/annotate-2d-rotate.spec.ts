@@ -11,7 +11,7 @@
  * value); the canvas rotate-handle gesture geometry is pinned by
  * `DetectionOverlay` unit tests.
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -89,28 +89,23 @@ test.beforeEach(async ({ datasetName, fiftyoneLoader, modal, page }) => {
 
 /** Verify a persisted edit from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   datasetName: string,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-      modalSample: "loaded",
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.afterLighterReady(() =>
-      freshModal.sidebar.switchMode("annotate"),
-    );
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 test.describe("2D rotated bounding boxes", () => {
@@ -134,7 +129,7 @@ test.describe("2D rotated bounding boxes", () => {
   });
 
   test("a rotation edit persists across a fresh load", async ({
-    browser,
+    openFreshPage,
     datasetName,
     fiftyoneLoader,
     modal,
@@ -150,7 +145,7 @@ test.describe("2D rotated bounding boxes", () => {
     );
 
     await inFreshContext(
-      browser,
+      openFreshPage,
       fiftyoneLoader,
       datasetName,
       async (freshModal) => {
@@ -164,7 +159,7 @@ test.describe("2D rotated bounding boxes", () => {
   });
 
   test("zeroing a rotation overwrites the stored scalar", async ({
-    browser,
+    openFreshPage,
     datasetName,
     fiftyoneLoader,
     modal,
@@ -177,7 +172,7 @@ test.describe("2D rotated bounding boxes", () => {
     await modal.sidebar.edit.assert.hasFieldValue("rotation.rotation", "0");
 
     await inFreshContext(
-      browser,
+      openFreshPage,
       fiftyoneLoader,
       datasetName,
       async (freshModal) => {
@@ -191,7 +186,7 @@ test.describe("2D rotated bounding boxes", () => {
   });
 
   test("editing an unrotated box round-trips with zero rotation", async ({
-    browser,
+    openFreshPage,
     datasetName,
     fiftyoneLoader,
     modal,
@@ -206,7 +201,7 @@ test.describe("2D rotated bounding boxes", () => {
     // the form shows 0 for an absent attribute; that the geometry edit never
     // STAMPS `rotation` onto the box is pinned by the detectionAdapter tests
     await inFreshContext(
-      browser,
+      openFreshPage,
       fiftyoneLoader,
       datasetName,
       async (freshModal) => {
