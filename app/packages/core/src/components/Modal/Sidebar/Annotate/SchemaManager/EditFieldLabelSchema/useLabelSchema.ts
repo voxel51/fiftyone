@@ -8,13 +8,14 @@ import {
 } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { isEqual } from "lodash";
+import { isEqual, omit } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   activeLabelSchemas,
   addToActiveSchemas,
   currentField,
   labelSchemaData,
+  labelSchemasData,
   removeFromActiveSchemas,
 } from "../../state";
 import {
@@ -22,8 +23,19 @@ import {
   type FieldSchema,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
-import { useSchemaManagerEventBus } from "../events";
-import { currentLabelSchema } from "../state";
+import {
+  dispatchSchemaManagerEvent,
+  useSchemaManagerEventBus,
+} from "../events";
+import {
+  docFieldTier,
+  useManagerDocMode,
+  withAttributeTiers,
+  withFieldTier,
+  withoutExploreAttributeTiers,
+  type SchemaDocTier,
+} from "../useSchemaDocs";
+import { currentLabelSchema, pendingAttributeTiers } from "../state";
 import { type AttributeConfig, reconcileComponent } from "../utils";
 
 const fetchAndMergeOntologyAttributes = async (
@@ -113,25 +125,47 @@ const useHasChanges = (one: unknown, two: unknown) => {
  * activate/deactivate operators.
  */
 const useVisibility = (field: string) => {
-  const activeSchemas = useAtomValue(activeLabelSchemas);
-  const [toggled, setToggled] = useState(false);
+  const docMode = useManagerDocMode();
+  const [pending, setPending] = useState<SchemaDocTier | null>(null);
+  const [attributeTiers, setAttributeTiers] = useAtom(pendingAttributeTiers);
 
-  const savedVisible = (activeSchemas ?? []).includes(field);
-  const isFieldVisible = toggled ? !savedVisible : savedVisible;
-  const visibilityChanged = toggled;
+  // Doc mode: the field's tier in THIS schema, annotate or hidden — a
+  // set-up field is never explore-only, and saving makes it annotate
+  // (see useSave). The dataset default cannot hide, so its fields are
+  // always annotate.
+  const savedTier: SchemaDocTier =
+    docMode && docFieldTier(docMode.doc, field) === "hidden"
+      ? "hidden"
+      : "annotate";
+  const fieldTier = pending ?? savedTier;
+  const visibilityChanged = pending !== null && pending !== savedTier;
 
-  const toggleVisibility = useCallback(() => {
-    setToggled((t) => !t);
+  // Attribute moves (Active ↔ Hidden) that differ from the open doc.
+  const savedAttributeTiers = docMode
+    ? docMode.doc.visibility?.fields?.[field]?.attributes
+    : undefined;
+  const attributeTiersChanged = Object.entries(attributeTiers).some(
+    ([name, tier]) =>
+      (savedAttributeTiers?.[name] === "hidden" ? "hidden" : "annotate") !==
+      tier,
+  );
+
+  const setFieldTier = useCallback((tier: SchemaDocTier) => {
+    setPending(tier);
   }, []);
 
   const discardVisibility = useCallback(() => {
-    setToggled(false);
-  }, []);
+    setPending(null);
+    setAttributeTiers({});
+  }, [setAttributeTiers]);
 
   return {
-    isFieldVisible,
+    fieldTier,
+    isFieldVisible: fieldTier === "annotate",
     visibilityChanged,
-    toggleVisibility,
+    attributeTiers,
+    attributeTiersChanged,
+    setFieldTier,
     discardVisibility,
   };
 };
@@ -212,15 +246,30 @@ const useConfigUpdate = (field: string) => {
 
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
+  // Write back onto the RAW dataset entry, not the effective one: the
+  // effective value may carry task-policy stamps (e.g. `read_only`)
+  // that must not outlive the policy.
+  const raw = useAtomValue(labelSchemasData)?.[field];
   return [
     data?.label_schema,
     (labelSchema: unknown) => {
-      setAtom({ ...data, label_schema: labelSchema });
+      // A field with no raw entry (it is only in an open or task schema
+      // doc) starts from the effective one without the policy stamps
+      const base = raw ?? {
+        ...omit(data, "bbox_read_only"),
+        read_only: false,
+      };
+      setAtom({ ...base, label_schema: labelSchema });
     },
   ] as const;
 };
 
-const useSave = (field: string, visibilityChanged: boolean) => {
+const useSave = (
+  field: string,
+  visibilityChanged: boolean,
+  targetTier: SchemaDocTier,
+  attributeTiers: Record<string, SchemaDocTier>,
+) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
   const { updateSchema, activateSchemas, deactivateSchemas } =
@@ -231,7 +280,10 @@ const useSave = (field: string, visibilityChanged: boolean) => {
   const notify = useNotification();
   const [current, setCurrent] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
+  const setAttributeTiers = useSetAtom(pendingAttributeTiers);
   const { dispatch } = useSchemaManagerEventBus();
+
+  const docMode = useManagerDocMode();
 
   return {
     isSaving,
@@ -240,6 +292,55 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       setIsSaving(true);
 
       const labelSchema = current ? reconcileComponent(current) : current;
+
+      // NAMED-SCHEMA branch: the draft persists into the open doc's
+      // content — the dataset's schemas are never touched. The editor's
+      // visibility toggle maps to the doc's annotate/explore tier.
+      if (docMode) {
+        const { docId, doc, setDoc, api } = docMode;
+        // Saving content makes the field set up (annotate) unless it
+        // is — or the footer toggle just made it — hidden.
+        const tier: SchemaDocTier = visibilityChanged
+          ? targetTier
+          : docFieldTier(doc, field) === "hidden"
+            ? "hidden"
+            : "annotate";
+        const label_schema = {
+          ...doc.label_schema,
+          [field]: labelSchema as Record<string, unknown>,
+        };
+        const visibility = withoutExploreAttributeTiers(
+          withAttributeTiers(
+            withFieldTier(doc.visibility, field, tier),
+            field,
+            attributeTiers,
+          ),
+          field,
+        );
+        try {
+          const saved = await api.updateDoc(docId, {
+            label_schema,
+            visibility,
+            version: doc.version,
+          });
+          setDoc(saved);
+          setCurrent(labelSchema);
+          setAttributeTiers({});
+        } catch (error) {
+          console.error("Failed to save schema to doc:", error);
+          notify({
+            msg: `Failed to save schema: ${error}`,
+            variant: "error",
+          });
+          setIsSaving(false);
+          dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+          return;
+        }
+        setIsSaving(false);
+        dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+        setCurrentField(null);
+        return;
+      }
 
       let hydrated: unknown;
       try {
@@ -265,8 +366,11 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       // otherwise apply the visibility toggle for this field
       const fieldSet = new Set([field]);
       const wasActive = (activeSchemas ?? []).includes(field);
-      const shouldActivate = isFirstSave || (visibilityChanged && !wasActive);
-      const shouldDeactivate = !isFirstSave && visibilityChanged && wasActive;
+      const wantActive = visibilityChanged
+        ? targetTier === "annotate"
+        : isFirstSave || wasActive;
+      const shouldActivate = wantActive && !wasActive;
+      const shouldDeactivate = !wantActive && wasActive && !isFirstSave;
 
       if (shouldActivate) {
         addToActive(fieldSet);
@@ -382,7 +486,12 @@ export default function useLabelSchema(field: string) {
   const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const visibility = useVisibility(field);
-  const save = useSave(field, visibility.visibilityChanged);
+  const save = useSave(
+    field,
+    visibility.visibilityChanged,
+    visibility.fieldTier,
+    visibility.attributeTiers,
+  );
   const validate = useValidate(field);
   const schemaChanged = useHasChanges(
     validate.currentLabelSchema,
@@ -390,17 +499,22 @@ export default function useLabelSchema(field: string) {
   );
 
   const hasChanges =
-    schemaChanged || !!validate.errors.length || visibility.visibilityChanged;
+    schemaChanged ||
+    !!validate.errors.length ||
+    visibility.visibilityChanged ||
+    visibility.attributeTiersChanged;
 
   // Discard unsaved schema edits when navigating away (back button unmounts
   // this view). Visibility is local state so it resets automatically on unmount.
   // After a successful save, savedLabelSchema is already updated before unmount,
   // so re-opening the field will show the saved state correctly.
+  const resetAttributeTiers = useSetAtom(pendingAttributeTiers);
   useEffect(() => {
     return () => {
       currentLabelSchema.remove(field);
+      resetAttributeTiers({});
     };
-  }, [field]);
+  }, [field, resetAttributeTiers]);
 
   // Wrap discard to also revert visibility
   const originalDiscard = validate.discard;
@@ -420,7 +534,8 @@ export default function useLabelSchema(field: string) {
   return {
     hasChanges,
     isFieldVisible: visibility.isFieldVisible,
-    toggleVisibility: visibility.toggleVisibility,
+    fieldTier: visibility.fieldTier,
+    setFieldTier: visibility.setFieldTier,
 
     ...readOnly,
     ...configUpdate,

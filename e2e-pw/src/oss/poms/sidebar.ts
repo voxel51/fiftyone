@@ -37,18 +37,6 @@ export class SidebarPom {
     return this.sidebar.getByTestId(`sidebar-group-${groupName}-field`);
   }
 
-  get addGroupField() {
-    return this.sidebar.getByTestId("sidebar-field-add-group-input");
-  }
-
-  field(fieldName: string) {
-    return this.sidebar
-      .getByTestId(`${fieldName}-field`)
-      .locator("div")
-      .filter({ hasText: fieldName })
-      .nth(1);
-  }
-
   fieldContainer(fieldName: string) {
     return this.sidebar.getByTestId(`sidebar-field-container-${fieldName}`);
   }
@@ -200,10 +188,6 @@ class SidebarAsserter {
     ).toBe(false);
   }
 
-  async assertFieldInSidebar(fieldName: string) {
-    expect(await this.sb.field(fieldName).isVisible()).toBe(true);
-  }
-
   async assertFieldDisabled(fieldName: string) {
     expect(await this.sb.fieldArrow(fieldName, true).count()).toBe(0);
   }
@@ -218,40 +202,12 @@ class SidebarAsserter {
     }
   }
 
-  async assertFieldsInSidebar(fieldNames: string[]) {
-    for (let i = 0; i < fieldNames.length; i++) {
-      await this.assertFieldInSidebar(fieldNames[i]);
-    }
-  }
-
-  async assertFieldsNotInSidebar(fieldNames: string[]) {
-    for (let i = 0; i < fieldNames.length; i++) {
-      await this.assertFieldNotInSidebar(fieldNames[i]);
-    }
-  }
-
-  async assertFieldNotInSidebar(fieldName: string) {
-    expect(await this.sb.field(fieldName).isVisible()).toBe(false);
-  }
-
   async assertFilterIsVisible(fieldName: string, filterType: "categorical") {
     expect(await this.sb.filter(fieldName, filterType).isVisible()).toBe(true);
   }
 
-  async assertSidebarGroupIsVisible(groupName: string) {
-    expect(await this.sb.groupField(groupName).isVisible()).toBe(true);
-  }
-
   async assertSidebarGroupIsHidden(groupName: string) {
     expect(await this.sb.groupField(groupName).isVisible()).toBe(false);
-  }
-
-  async assertAddGroupVisible() {
-    expect(await this.sb.addGroupField.isVisible()).toBe(true);
-  }
-
-  async assertAddGroupHidden() {
-    expect(await this.sb.addGroupField.isVisible()).toBe(false);
   }
 
   async assertCanDragField(fieldName: string) {
