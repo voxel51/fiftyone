@@ -6,7 +6,10 @@ import {
   VideoLooker,
   VideoOptions,
 } from "@fiftyone/looker";
+import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { hiddenBoundingBoxesAtom } from "../bounding-boxes/model/atoms";
 import * as atoms from "./atoms";
 import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
@@ -123,8 +126,20 @@ export const useLookerOptions = (
   );
 
   const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
+  const options =
+    loaded.contents instanceof Promise ? loading : loaded.contents;
 
-  return loaded.contents instanceof Promise ? loading : loaded.contents;
+  // box visibility lives in Jotai, outside the Recoil selector; memoized so
+  // the merged options keep their identity until either input changes
+  const datasetId = useRecoilValue(selectors.datasetId);
+  const hiddenBoundingBoxes = useAtomValue(
+    hiddenBoundingBoxesAtom(datasetId ?? ""),
+  );
+
+  return useMemo(
+    () => ({ ...options, hiddenBoundingBoxes }),
+    [hiddenBoundingBoxes, options],
+  );
 };
 
 const getActiveLabelTags = (
