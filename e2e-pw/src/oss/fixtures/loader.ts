@@ -77,33 +77,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
       document.addEventListener("mousemove", handleCursorChange);
       document.addEventListener("pointerdown", handleCursorChange);
       document.addEventListener("pointerup", handleCursorChange);
-
-      // the page fixture asserts each document showed the global loading
-      // screen at most once
-      const documentId = `${performance.timeOrigin}-${Math.random()}`;
-      const counters = (window.__FO_BUS_COUNTERS__ ??= []);
-      counters.push(
-        (event) =>
-          event === "e2e:app:global-loading-screen" &&
-          window.__FO_GLOBAL_LOADING_SCREEN__?.(documentId),
-      );
-      if (counters.length === 1) {
-        // the bus registry installs its tap while the app loads, after this
-        // script; tap it the moment it is assigned
-        Object.defineProperty(window, "__FO_EVENTS__", {
-          configurable: true,
-          set(bus: NonNullable<Window["__FO_EVENTS__"]>) {
-            Object.defineProperty(window, "__FO_EVENTS__", {
-              configurable: true,
-              writable: true,
-              value: bus,
-            });
-            bus.tap((event, data) =>
-              counters.forEach((count) => count(event, data)),
-            );
-          },
-        });
-      }
     });
 
     const forceDatasetFromSelector = async () => {

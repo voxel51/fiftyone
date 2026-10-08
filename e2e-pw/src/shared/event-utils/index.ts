@@ -47,6 +47,36 @@ declare global {
   }
 }
 
+/** Pages whose documents hand every bus event to their bus listeners */
+const busTapPages = new WeakSet<Page>();
+
+/**
+ * Hand every bus event of each document this page loads to the listeners in
+ * `window.__FO_BUS_COUNTERS__`. The bus registry assigns `__FO_EVENTS__` while
+ * the App loads, after init scripts run, so the tap is installed the moment
+ * it is assigned. Installed once per page; listeners register separately.
+ */
+const ensureBusTap = async (page: Page): Promise<void> => {
+  if (busTapPages.has(page)) return;
+  busTapPages.add(page);
+  await page.addInitScript(() => {
+    const listeners = (window.__FO_BUS_COUNTERS__ ??= []);
+    Object.defineProperty(window, "__FO_EVENTS__", {
+      configurable: true,
+      set(bus: NonNullable<Window["__FO_EVENTS__"]>) {
+        Object.defineProperty(window, "__FO_EVENTS__", {
+          configurable: true,
+          writable: true,
+          value: bus,
+        });
+        bus.tap((event, data) =>
+          listeners.forEach((listen) => listen(event, data)),
+        );
+      },
+    });
+  });
+};
+
 /** Pages whose every document records its `e2e:` events from the start */
 const recordingPages = new WeakSet<Page>();
 
@@ -272,6 +302,7 @@ export class EventUtils {
     if (recordingPages.has(this.page)) return;
     recordingPages.add(this.page);
 
+    await ensureBusTap(this.page);
     await this.page.addInitScript(() => {
       if (window.__FO_EVENT_LOG__) return;
       const log: NonNullable<Window["__FO_EVENT_LOG__"]> = {
@@ -292,21 +323,6 @@ export class EventUtils {
         );
         log.records.push({ event, detail });
         log.waiters.forEach((wake) => wake());
-      });
-      if (counters.length > 1) return;
-      // same hand-off as initCounter: tap the bus the moment it is assigned
-      Object.defineProperty(window, "__FO_EVENTS__", {
-        configurable: true,
-        set(bus: NonNullable<Window["__FO_EVENTS__"]>) {
-          Object.defineProperty(window, "__FO_EVENTS__", {
-            configurable: true,
-            writable: true,
-            value: bus,
-          });
-          bus.tap((event, data) =>
-            counters.forEach((count) => count(event, data)),
-          );
-        },
       });
     });
   }
@@ -572,6 +588,7 @@ export class EventUtils {
   public async initCounter(eventName: string): Promise<EventCounter> {
     const key = getFunctionNameWithRandomSuffix(`counter_${eventName}`);
 
+    await ensureBusTap(this.page);
     await this.page.addInitScript(
       ({ eventName_, key_ }) => {
         const store = (window.__EVENT_COUNTS__ ??= {});
@@ -580,27 +597,37 @@ export class EventUtils {
           records.push({ t: performance.now(), detail });
         const counters = (window.__FO_BUS_COUNTERS__ ??= []);
         counters.push((event, data) => event === eventName_ && record(data));
-        if (counters.length > 1) return;
-        // the bus registry installs its tap while the app loads, after this
-        // script; tap it the moment it is assigned
-        Object.defineProperty(window, "__FO_EVENTS__", {
-          configurable: true,
-          set(bus: NonNullable<Window["__FO_EVENTS__"]>) {
-            Object.defineProperty(window, "__FO_EVENTS__", {
-              configurable: true,
-              writable: true,
-              value: bus,
-            });
-            bus.tap((event, data) =>
-              counters.forEach((count) => count(event, data)),
-            );
-          },
-        });
       },
       { eventName_: eventName, key_: key },
     );
 
     return new EventCounter(this.page, key);
+  }
+
+  /**
+   * Count `eventName` in every document this page loads from here on, for a
+   * check that spans navigations; returns a read of the per-document counts
+   */
+  public async countPerDocument(eventName: string): Promise<() => number[]> {
+    const counts = new Map<string, number>();
+    const binding = getFunctionNameWithRandomSuffix("perDocument");
+    await this.page.exposeBinding(binding, (_source, documentId: string) => {
+      counts.set(documentId, (counts.get(documentId) ?? 0) + 1);
+    });
+    await ensureBusTap(this.page);
+    await this.page.addInitScript(
+      ({ eventName_, binding_ }) => {
+        const documentId = `${performance.timeOrigin}-${Math.random()}`;
+        const report = (window as unknown as Record<string, unknown>)[
+          binding_
+        ] as (documentId: string) => void;
+        (window.__FO_BUS_COUNTERS__ ??= []).push(
+          (event) => event === eventName_ && report(documentId),
+        );
+      },
+      { eventName_: eventName, binding_: binding },
+    );
+    return () => [...counts.values()];
   }
 }
 

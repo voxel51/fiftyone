@@ -79,40 +79,36 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
         console.error(`[browser-error] ${testInfo.title}: ${message.text()}`);
       }
     });
-    // global loading screens per document, reported by the loader's watchdog
-    const loadingScreens = new Map<string, number>();
-    await page.exposeBinding(
-      "__FO_GLOBAL_LOADING_SCREEN__",
-      (_source, documentId: string) => {
-        loadingScreens.set(
-          documentId,
-          (loadingScreens.get(documentId) ?? 0) + 1,
-        );
-      },
-    );
     await use(page);
-    if (Math.max(0, ...loadingScreens.values()) > 1) {
-      throw new Error(
-        "the top-level Suspense boundary re-activated after the page loaded",
+  },
+  eventUtils: [
+    async ({ page }, use, testInfo) => {
+      const eventUtils = new EventUtils(page);
+      await eventUtils.recordLoads();
+      // each document shows the global loading screen at most once
+      const loadingScreens = await eventUtils.countPerDocument(
+        "e2e:app:global-loading-screen",
       );
-    }
-  },
-  eventUtils: async ({ page }, use, testInfo) => {
-    const eventUtils = new EventUtils(page);
-    await eventUtils.recordLoads();
-    await use(eventUtils);
-    // a missing event fails as a bare timeout; say which events were expected
-    if (testInfo.status !== testInfo.expectedStatus) {
-      const report = await eventUtils.describePending();
-      if (report) {
-        console.log(`pending events:\n${report}`);
-        await testInfo.attach("pending events", {
-          body: report,
-          contentType: "text/plain",
-        });
+      await use(eventUtils);
+      if (Math.max(0, ...loadingScreens()) > 1) {
+        throw new Error(
+          "the top-level Suspense boundary re-activated after the page loaded",
+        );
       }
-    }
-  },
+      // a missing event fails as a bare timeout; say which events were expected
+      if (testInfo.status !== testInfo.expectedStatus) {
+        const report = await eventUtils.describePending();
+        if (report) {
+          console.log(`pending events:\n${report}`);
+          await testInfo.attach("pending events", {
+            body: report,
+            contentType: "text/plain",
+          });
+        }
+      }
+    },
+    { auto: true },
+  ],
   mockSam2Worker: async ({ page }, use) => {
     await installSam2MockWorker(page);
     await use();
