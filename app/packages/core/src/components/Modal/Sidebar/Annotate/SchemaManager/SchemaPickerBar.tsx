@@ -8,24 +8,55 @@ import {
   AddIcon,
   Button,
   ContentCopyIcon,
+  cssVar,
   DeleteIcon,
   Dropdown,
   DropdownAnchor,
+  DropdownTrigger,
   EditIcon,
   Icon,
   IconName,
   Input,
+  MenuCheckItem,
   MenuIconTextItem,
-  Select,
   Size,
   Text,
   Variant,
 } from "@voxel51/voodo";
+import styled from "styled-components";
 import type { SchemaDocSummary } from "./useSchemaDocs";
 
-// voodo's Select shows nothing for an empty id; the dataset default
-// rides this sentinel and maps back to "no doc".
-const DEFAULT_SCHEMA_OPTION = "__default__";
+const DEFAULT_SCHEMA_LABEL = "Default schema (all fields)";
+
+// A plain pick list (voodo's Select is a typeahead combobox): the trigger
+// shows the selected schema, the menu checks it, like the sidebar's schema
+// lens.
+const PickerTrigger = styled(DropdownTrigger)`
+  && {
+    width: 260px;
+    justify-content: space-between;
+  }
+`;
+
+const PickerLabel = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const PickerItem = styled(MenuCheckItem)`
+  flex-direction: row-reverse;
+  justify-content: space-between;
+
+  &[aria-checked="true"] {
+    background-color: ${cssVar.color.bg.selected};
+  }
+
+  &[aria-checked="true"] svg {
+    color: ${cssVar.color.brand.primary};
+  }
+`;
 
 export type NamingMode = null | "create" | "rename" | "delete";
 
@@ -63,6 +94,10 @@ const SchemaPickerBar = ({
   duplicateSchema,
   deleteSchema,
 }: SchemaPickerBarProps) => {
+  const selectedLabel =
+    (selectedId && docs.find((d) => d.id === selectedId)?.name) ||
+    DEFAULT_SCHEMA_LABEL;
+
   return (
     <>
       {naming === "delete" ? (
@@ -120,26 +155,38 @@ const SchemaPickerBar = ({
         </>
       ) : docsAvailable ? (
         <>
-          <Select
-            exclusive
+          <Dropdown
             portal
-            data-cy="schema-select"
-            aria-label="Schema"
-            value={selectedId ?? DEFAULT_SCHEMA_OPTION}
-            options={[
-              {
-                id: DEFAULT_SCHEMA_OPTION,
-                data: { label: "Default schema (all fields)" },
-              },
-              ...docs.map((d) => ({ id: d.id, data: { label: d.name } })),
-            ]}
-            onChange={(id) => {
-              if (typeof id === "string") {
-                selectSchema(id === DEFAULT_SCHEMA_OPTION ? "" : id);
-              }
-            }}
-            style={{ width: 260 }}
-          />
+            anchor={DropdownAnchor.BottomStart}
+            trigger={
+              <PickerTrigger
+                data-cy="schema-select"
+                aria-label="Schema"
+                title={selectedLabel}
+              >
+                <PickerLabel>{selectedLabel}</PickerLabel>
+              </PickerTrigger>
+            }
+          >
+            <PickerItem
+              data-cy="schema-option-default"
+              checked={!selectedId}
+              onClick={() => selectSchema("")}
+            >
+              {DEFAULT_SCHEMA_LABEL}
+            </PickerItem>
+            {docs.map((d) => (
+              <PickerItem
+                key={d.id}
+                data-cy="schema-option"
+                checked={selectedId === d.id}
+                title={d.name}
+                onClick={() => selectSchema(d.id)}
+              >
+                {d.name}
+              </PickerItem>
+            ))}
+          </Dropdown>
           <Dropdown
             anchor={DropdownAnchor.BottomEnd}
             trigger={
