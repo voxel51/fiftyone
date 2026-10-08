@@ -1,7 +1,7 @@
 import { Loading } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import React, { useEffect } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import { ERROR_SHOWN_EVENT, type Looker3dE2EEvents } from "./constants";
 import { fo3dAssetsParseStatusThisSample } from "./state";
 
@@ -26,7 +26,7 @@ const AddFo3dErrorLogs = ({
   error: Error;
   boundaryName?: string;
 }) => {
-  const setLogs = useSetRecoilState(fo3dAssetsParseStatusThisSample);
+  const setLogs = useSetReverbState(fo3dAssetsParseStatusThisSample);
 
   useEffect(() => {
     if (!error) {

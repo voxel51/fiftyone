@@ -2,7 +2,7 @@ import { Tooltip } from "@fiftyone/components";
 import { IconButton } from "@mui/material";
 import Color from "color";
 import React from "react";
-import type { RecoilState } from "recoil";
+import type { ReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Item from "./FilterItem";
 import Popout from "./Popout";
@@ -34,8 +34,8 @@ const FilterMode = styled.div`
 
 interface Props {
   color: string;
-  excludeAtom: RecoilState<boolean>;
-  isMatchingAtom: RecoilState<boolean>;
+  excludeAtom: ReverbState<boolean>;
+  isMatchingAtom: ReverbState<boolean>;
   valueName: string;
   modal: boolean;
   path: string;

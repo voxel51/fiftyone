@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { isSidebarFilterMode } from "@fiftyone/state";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import { Button } from "../../utils";
 
 export default function (params: {
@@ -8,7 +8,7 @@ export default function (params: {
   modal: boolean;
   path: string;
 }) {
-  const handleReset = useRecoilCallback(
+  const handleReset = useReverbCallback(
     ({ snapshot, reset }) =>
       async () => {
         const isFilterMode = await snapshot.getPromise(isSidebarFilterMode);

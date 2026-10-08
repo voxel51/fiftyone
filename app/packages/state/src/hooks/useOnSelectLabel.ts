@@ -2,7 +2,7 @@ import {
   FO_LABEL_TOGGLED_EVENT,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
-import * as recoil from "recoil";
+import * as reverb from "@fiftyone/reverb";
 import * as fos from "..";
 
 export interface SelectEvent {
@@ -18,7 +18,7 @@ export interface SelectEvent {
 }
 
 export function useOnSelectLabel() {
-  return recoil.useRecoilCallback(
+  return reverb.useReverbCallback(
     ({ set, snapshot }) =>
       async ({
         detail: {
@@ -68,17 +68,17 @@ export function useOnSelectLabel() {
 /**
  * Read accessors and one mutation primitive for the modal's label selection,
  * living here for the same reason {@link fos.useOnSelectLabel} does: the
- * selection is Recoil state, and surfaces that drive it should not have to
- * import Recoil to do so (see `.recoil-allowlist.txt`).
+ * selection is store state, and surfaces that drive it should not have to
+ * reach the store to do so.
  */
 
 /** The ids of every currently selected label. */
 export const useSelectedLabelIds = (): ReadonlySet<string> =>
-  recoil.useRecoilValue(fos.selectedLabelIds);
+  reverb.useReverbValue(fos.selectedLabelIds);
 
 /** The sample the modal is showing. */
 export const useModalSampleId = (): string =>
-  recoil.useRecoilValue(fos.modalSampleId);
+  reverb.useReverbValue(fos.modalSampleId);
 
 /** A change to the selection, expressed as labels in and label ids out. */
 export interface SelectedLabelsDelta {
@@ -99,7 +99,7 @@ export interface SelectedLabelsDelta {
  * a fresh identity and kick those observers off again for no reason.
  */
 export const useApplySelectedLabelsDelta = () =>
-  recoil.useRecoilCallback(
+  reverb.useReverbCallback(
     ({ snapshot, set }) =>
       ({ add = [], remove = [] }: SelectedLabelsDelta) => {
         const labels = {

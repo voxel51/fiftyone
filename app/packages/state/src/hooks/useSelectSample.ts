@@ -1,9 +1,9 @@
-import type { SelectionType } from "@fiftyone/state/src/recoil/types";
-import { selectedSamples } from "@fiftyone/state/src/recoil";
-import { useRecoilCallback } from "recoil";
+import type { SelectionType } from "@fiftyone/state/src/atoms/types";
+import { selectedSamples } from "../atoms";
+import { useReverbCallback } from "@fiftyone/reverb";
 
 const useSelectSample = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async (sampleId: string, altKey = false) => {
         const selected = new Map(await snapshot.getPromise(selectedSamples));

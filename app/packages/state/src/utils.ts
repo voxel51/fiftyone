@@ -18,7 +18,7 @@ import {
   RecordSource,
   Store,
 } from "relay-runtime";
-import { ModalSample, State } from "./recoil";
+import { ModalSample, State } from "./atoms";
 
 export const deferrer =
   (initialized: MutableRefObject<boolean>) =>

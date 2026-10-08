@@ -14,7 +14,7 @@ import {
 import { useSpring } from "@react-spring/web";
 import type { MutableRefObject } from "react";
 import React, { useState } from "react";
-import { selector, useRecoilValue } from "recoil";
+import { selector, useReverbValue } from "@fiftyone/reverb";
 import {
   CLIPS_VIEWS,
   EVALUATION_PATCHES,
@@ -88,7 +88,7 @@ const evaluationKeys = selector<string[]>({
 });
 
 const LabelsClips = ({ close }) => {
-  const fields = useRecoilValue(clipsFields);
+  const fields = useReverbValue(clipsFields);
   const toClips = useToClips();
 
   return (
@@ -117,7 +117,7 @@ const LabelsClips = ({ close }) => {
 };
 
 const LabelsPatches = ({ close }) => {
-  const fields = useRecoilValue(patchesFields);
+  const fields = useReverbValue(patchesFields);
   const toPatches = useToPatches();
 
   return (
@@ -147,7 +147,7 @@ const LabelsPatches = ({ close }) => {
 };
 
 const EvaluationPatches = ({ close }) => {
-  const evaluations = useRecoilValue(evaluationKeys);
+  const evaluations = useReverbValue(evaluationKeys);
   const toEvaluationPatches = useToEvaluationPatches();
 
   return (
@@ -181,9 +181,9 @@ type PatcherProps = {
 };
 
 const Patcher = ({ close, anchorRef }: PatcherProps) => {
-  const isRoot = useRecoilValue(fos.isRootView);
-  const isVideo = useRecoilValue(fos.isVideoDataset) && isRoot;
-  const isClips = useRecoilValue(fos.isClipsView);
+  const isRoot = useReverbValue(fos.isRootView);
+  const isVideo = useReverbValue(fos.isVideoDataset) && isRoot;
+  const isClips = useReverbValue(fos.isClipsView);
   const [labels, setLabels] = useState(true);
   const theme = useTheme();
 

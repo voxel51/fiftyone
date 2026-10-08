@@ -6,7 +6,7 @@ import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import {
   CollapseFieldInGridCommand,
   CollapseFieldInModalCommand,
@@ -35,7 +35,7 @@ export const useRegisterSidebarCommandHandlers = (
   items: React.MutableRefObject<InteractiveItems>,
   modal: boolean,
 ) => {
-  const handleExpandField = useRecoilCallback(
+  const handleExpandField = useReverbCallback(
     ({ set }) =>
       async (path: string) => {
         set(fos.sidebarExpanded({ path, modal }), true);
@@ -53,7 +53,7 @@ export const useRegisterSidebarCommandHandlers = (
     ),
   );
 
-  const handleCollapseField = useRecoilCallback(
+  const handleCollapseField = useReverbCallback(
     ({ set }) =>
       async (path: string) => {
         set(fos.sidebarExpanded({ path, modal }), false);
@@ -61,7 +61,7 @@ export const useRegisterSidebarCommandHandlers = (
     [modal],
   );
 
-  const handleCollapseFieldWithExpandedPath = useRecoilCallback(
+  const handleCollapseFieldWithExpandedPath = useReverbCallback(
     ({ snapshot }) =>
       async (path: string) => {
         // Get the full expanded path (e.g., "yolo11.detections")
@@ -125,7 +125,7 @@ export const useRegisterSidebarCommandHandlers = (
   );
 
   // Handler: Expand and scroll to field
-  const handleExpandAndScrollToField = useRecoilCallback(
+  const handleExpandAndScrollToField = useReverbCallback(
     ({ snapshot }) =>
       async (path: string) => {
         // Get the full expanded path (e.g., "yolo11.detections")

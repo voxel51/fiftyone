@@ -5,7 +5,7 @@ import { GLOBAL_TIMELINE_ID } from "../constants";
  * Lives in its own file (separate from `use-default-timeline-name`) so
  * call sites that only need the name derivation — e.g. the seekbar
  * gradient utilities — don't transitively pull in `@fiftyone/state`
- * + recoil (which fail to load in vitest without the relay babel
+ * + Reverb (which fail to load in vitest without the relay babel
  * transform set up).
  */
 export const getTimelineNameFromSampleAndGroupId = (

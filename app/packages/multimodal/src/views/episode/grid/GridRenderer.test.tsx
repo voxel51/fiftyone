@@ -7,7 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { ReverbRoot, useSetReverbState } from "@fiftyone/reverb";
+import { createStore } from "jotai";
 import { multimodalGridFit } from "@fiftyone/state";
 import {
   publishSampleFocus,
@@ -47,14 +48,21 @@ import type {
 } from "./use-grid-poster-provider";
 
 function render(ui: ReactElement) {
-  return renderBare(ui, { wrapper: RecoilRoot });
+  return renderBare(ui, {
+    wrapper: ({ children }) => (
+      <ReverbRoot store={createStore()}>{children}</ReverbRoot>
+    ),
+  });
 }
 
 function renderWithGridFit(ui: ReactElement, fit: "contain" | "cover") {
   return renderBare(
-    <RecoilRoot initializeState={({ set }) => set(multimodalGridFit, fit)}>
+    <ReverbRoot
+      store={createStore()}
+      initializeState={({ set }) => set(multimodalGridFit, fit)}
+    >
       {ui}
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
@@ -62,15 +70,15 @@ let setGridFit: ((fit: "contain" | "cover") => void) | null = null;
 
 function renderWithMutableGridFit(ui: ReactElement) {
   return renderBare(
-    <RecoilRoot>
+    <ReverbRoot store={createStore()}>
       <GridFitController />
       {ui}
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
 }
 
 function GridFitController() {
-  setGridFit = useSetRecoilState(multimodalGridFit);
+  setGridFit = useSetReverbState(multimodalGridFit);
   return null;
 }
 

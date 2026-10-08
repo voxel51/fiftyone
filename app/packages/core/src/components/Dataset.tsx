@@ -3,7 +3,7 @@ import { subscribe } from "@fiftyone/relay";
 import { isModalActive, useCurrentDatasetId } from "@fiftyone/state";
 import { clearFetchCache } from "@fiftyone/utilities/src/fetch";
 import React, { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import ColorModal from "./ColorModal/ColorModal";
 import { activeColorEntry } from "./ColorModal/state";
@@ -27,12 +27,12 @@ const Body = styled.div`
 `;
 
 const ModalWrapper = () => {
-  const isModalOpen = useRecoilValue(isModalActive);
+  const isModalOpen = useReverbValue(isModalActive);
   return isModalOpen ? <Modal /> : null;
 };
 
 function Dataset() {
-  const isCustomizeColorModalActive = useRecoilValue(activeColorEntry);
+  const isCustomizeColorModalActive = useReverbValue(activeColorEntry);
   const trackEvent = useTrackEvent();
 
   const datasetId = useCurrentDatasetId();

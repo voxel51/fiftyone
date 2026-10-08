@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import {
   AnnotatedBrainKeyConfig,
@@ -48,8 +48,8 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     >) ?? {};
 
   // Detect patches view and filter brain keys accordingly
-  const isPatchesView = useRecoilValue(fos.isPatchesView);
-  const viewStages = useRecoilValue(fos.view);
+  const isPatchesView = useReverbValue(fos.isPatchesView);
+  const viewStages = useReverbValue(fos.view);
 
   const patchesField = useMemo(() => {
     if (!isPatchesView) return undefined;
@@ -106,7 +106,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   const canManage = Boolean(
     (panelData as Record<string, unknown>).can_manage ?? true,
   );
-  const isReadOnly = useRecoilValue(fos.readOnly) as boolean;
+  const isReadOnly = useReverbValue(fos.readOnly) as boolean;
 
   // Only show All|Mine toggle for users with manage permissions
   const canFilterByOwner = !!currentUser && canManage;

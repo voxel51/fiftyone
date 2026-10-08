@@ -4,7 +4,7 @@ import ColorLensIcon from "@mui/icons-material/ColorLens";
 import { animated, useSpring } from "@react-spring/web";
 import { useCallback, useState } from "react";
 import { ChromePicker } from "react-color";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 import {
   ACTION_SHADE_BY,
@@ -17,7 +17,7 @@ import type { ShadeBy } from "../types";
 import { ActionPopOver } from "./shared";
 
 export const ChooseColorSpace = () => {
-  const [currentAction, setAction] = useRecoilState(currentActionAtom);
+  const [currentAction, setAction] = useReverbState(currentActionAtom);
 
   return (
     <>
@@ -42,7 +42,7 @@ export const ChooseColorSpace = () => {
 };
 
 const ColorSpaceChoices = () => {
-  const [current, setCurrent] = useRecoilState(shadeByAtom);
+  const [current, setCurrent] = useReverbState(shadeByAtom);
 
   const getHandleTabClick = useCallback(
     (shadeBy: ShadeBy) => {
@@ -107,7 +107,7 @@ const CustomColorSpace = () => {
   const { activeSlices: activePcdSlices, pinnedSlice: defaultPcdSlice } =
     fos.useRenderConfig3dState();
   const [customColorMap, setCustomColorMap] =
-    useRecoilState(customColorMapAtom);
+    useReverbState(customColorMapAtom);
   const [isColorPickerOn, setIsColorPickerOn] = useState(false);
   const [colorPickerSlice, setColorPickerSlice] = useState("");
 

@@ -1,12 +1,12 @@
 import { Sample } from "@fiftyone/looker";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import * as fos from "../..";
 
 export default function useHoveredSample(
   sample: Sample,
   args?: { update?: () => void; clear?: () => void },
 ) {
-  const setSample = useSetRecoilState(fos.hoveredSample);
+  const setSample = useSetReverbState(fos.hoveredSample);
   function onMouseEnter() {
     setSample(sample);
     args?.update?.();

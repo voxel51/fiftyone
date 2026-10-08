@@ -1,19 +1,21 @@
 import { act, renderHook } from "@testing-library/react";
 import type React from "react";
-import { RecoilRoot, useRecoilCallback } from "recoil";
+import { ReverbRoot, useReverbCallback } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // The state surface the seam reads.
 vi.mock("@fiftyone/state", async () => {
-  const { atom, useRecoilValue } =
-    await vi.importActual<typeof import("recoil")>("recoil");
+  const { atom, useReverbValue } =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   const datasetName = atom<string | null>({
     key: "test_product_datasetName",
     default: null,
   });
   return {
     datasetName,
-    useCurrentDatasetName: () => useRecoilValue(datasetName),
+    useCurrentDatasetName: () => useReverbValue(datasetName),
   };
 });
 
@@ -34,7 +36,7 @@ const REGISTERED: Product = {
 };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <RecoilRoot>{children}</RecoilRoot>
+  <ReverbRoot>{children}</ReverbRoot>
 );
 
 /** Renders the display name with a dataset loaded. */
@@ -42,7 +44,7 @@ const renderDisplayName = (loaded: string) => {
   const { result } = renderHook(
     () => ({
       displayName: useDatasetDisplayName(),
-      load: useRecoilCallback(
+      load: useReverbCallback(
         ({ set }) =>
           (name: string) => {
             set(datasetName, name);

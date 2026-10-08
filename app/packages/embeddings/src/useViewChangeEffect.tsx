@@ -1,7 +1,7 @@
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { fetchPlot } from "./fetch";
 import { useBrainResult, usePointsField } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
@@ -10,14 +10,14 @@ import { PlotErrorResponse, PlotResponse, PlotSuccessResponse } from "./types";
 import { NetworkError } from "@fiftyone/utilities";
 
 export function useViewChangeEffect() {
-  const colorSeed = useRecoilValue(fos.colorSeed);
-  const datasetName = useRecoilValue(fos.datasetName);
+  const colorSeed = useReverbValue(fos.colorSeed);
+  const datasetName = useReverbValue(fos.datasetName);
   const [brainKey] = useBrainResult();
   const [, setPointsField] = usePointsField();
   const [labelField] = useColorByField();
-  const view = useRecoilValue(fos.view);
-  const slices = useRecoilValue(fos.currentSlices(false));
-  const filters = useRecoilValue(fos.filters);
+  const view = useReverbValue(fos.view);
+  const slices = useReverbValue(fos.currentSlices(false));
+  const filters = useReverbValue(fos.filters);
   const [, setLoadedPlot] = usePanelStatePartial("loadedPlot", null, true);
   const [, setLoadingPlot] = usePanelStatePartial("loadingPlot", true, true);
   const [, setLoadingPlotError] = usePanelStatePartial(
@@ -25,7 +25,7 @@ export function useViewChangeEffect() {
     null,
     true,
   );
-  const setOverrideStage = useSetRecoilState(
+  const setOverrideStage = useSetReverbState(
     fos.extendedSelectionOverrideStage,
   );
   const warnings = useWarnings();

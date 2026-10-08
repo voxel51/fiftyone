@@ -1,13 +1,13 @@
 import { useTheme } from "@fiftyone/components";
 import { DisplaySettings } from "@mui/icons-material";
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { ACTION_VIEW_JSON } from "../constants";
 import { ActionItem } from "../containers";
 import { isLevaConfigPanelOnAtom } from "../state";
 
 export const LevaConfigPanel = React.memo(() => {
-  const [isLevaPanelOn, setIsLevaPanelOn] = useRecoilState(
+  const [isLevaPanelOn, setIsLevaPanelOn] = useReverbState(
     isLevaConfigPanelOnAtom,
   );
   const { primary } = useTheme();

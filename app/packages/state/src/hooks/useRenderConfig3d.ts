@@ -2,21 +2,21 @@ import { is3d } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import {
   type CallbackInterface,
-  type Snapshot,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
+  type SnapshotInterface,
+  useReverbCallback,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import {
   groupMediaIsCarouselVisibleSetting,
   groupMediaIsMain2DViewerVisibleSetting,
   groupMediaTypesMap,
-} from "../recoil/groups";
+} from "../atoms/groups";
 import {
   areSlicesEqual,
   resolveNormalized3dSelection,
-} from "../recoil/groups.utils";
-import type { ModalSample } from "../recoil/modal";
-import * as internals from "../recoil/renderConfig3d.atoms";
+} from "../atoms/groups.utils";
+import type { ModalSample } from "../atoms/modal";
+import * as internals from "../atoms/renderConfig3d.atoms";
 
 type RenderConfig3dSampleMap = Record<string, ModalSample>;
 
@@ -26,7 +26,7 @@ type RenderConfig3dSampleMap = Record<string, ModalSample>;
  * its write.
  */
 const ensurePinned = async (
-  snapshot: Snapshot,
+  snapshot: SnapshotInterface,
   set: CallbackInterface["set"],
 ) => {
   const all3dSlices = await snapshot.getPromise(internals.all3dSlices);
@@ -139,27 +139,27 @@ export type RenderConfig3dImperativeState = {
  * Suspense-compatible 3D render state for React rendering.
  */
 export const useRenderConfig3dState = (): RenderConfig3dState => {
-  const is3dVisible = useRecoilValue(internals.groupMediaIs3dVisible);
-  const is3dVisibleSetting = useRecoilValue(
+  const is3dVisible = useReverbValue(internals.groupMediaIs3dVisible);
+  const is3dVisibleSetting = useReverbValue(
     internals.groupMedia3dVisibleSetting,
   );
-  const isPinned = useRecoilValue(internals.is3dPinned);
-  const has3dSlice = useRecoilValue(internals.has3dSlice);
-  const hasFo3dSlice = useRecoilValue(internals.hasFo3dSlice);
-  const pinnedSlice = useRecoilValue(internals.pinned3DSampleSlice);
-  const activeSlices = useRecoilValue(internals.active3dSlices);
-  const allSlices = useRecoilValue(internals.all3dSlices);
-  const non3dSlices = useRecoilValue(internals.allNon3dSlices);
-  const hasMultipleSlices = useRecoilValue(internals.hasMultiple3dSlices);
-  const realFo3dSlices = useRecoilValue(internals.realFo3dSlices);
-  const activeFo3dSlice = useRecoilValue(internals.activeFo3dSlice);
-  const activeDirectSlices = useRecoilValue(internals.activeNonFo3d3dSlices);
-  const interactionSample = useRecoilValue(internals.interaction3dSample);
-  const interactionSlice = useRecoilValue(internals.interaction3dSlice);
-  const sceneSample = useRecoilValue(internals.sceneSample);
-  const fo3dContent = useRecoilValue(internals.fo3dContent);
-  const activeSampleMap = useRecoilValue(internals.active3dSlicesToSampleMap);
-  const allSampleMap = useRecoilValue(internals.all3dSlicesToSampleMap);
+  const isPinned = useReverbValue(internals.is3dPinned);
+  const has3dSlice = useReverbValue(internals.has3dSlice);
+  const hasFo3dSlice = useReverbValue(internals.hasFo3dSlice);
+  const pinnedSlice = useReverbValue(internals.pinned3DSampleSlice);
+  const activeSlices = useReverbValue(internals.active3dSlices);
+  const allSlices = useReverbValue(internals.all3dSlices);
+  const non3dSlices = useReverbValue(internals.allNon3dSlices);
+  const hasMultipleSlices = useReverbValue(internals.hasMultiple3dSlices);
+  const realFo3dSlices = useReverbValue(internals.realFo3dSlices);
+  const activeFo3dSlice = useReverbValue(internals.activeFo3dSlice);
+  const activeDirectSlices = useReverbValue(internals.activeNonFo3d3dSlices);
+  const interactionSample = useReverbValue(internals.interaction3dSample);
+  const interactionSlice = useReverbValue(internals.interaction3dSlice);
+  const sceneSample = useReverbValue(internals.sceneSample);
+  const fo3dContent = useReverbValue(internals.fo3dContent);
+  const activeSampleMap = useReverbValue(internals.active3dSlicesToSampleMap);
+  const allSampleMap = useReverbValue(internals.all3dSlicesToSampleMap);
 
   return useMemo<RenderConfig3dState>(
     () => ({
@@ -212,7 +212,7 @@ export const useRenderConfig3dState = (): RenderConfig3dState => {
  */
 export const useRenderConfig3dImperativeState =
   (): RenderConfig3dImperativeState => {
-    const getIsPinned = useRecoilCallback(
+    const getIsPinned = useReverbCallback(
       ({ snapshot }) =>
         async () =>
           snapshot.getPromise(internals.is3dPinned),
@@ -231,7 +231,7 @@ export const useRenderConfig3dImperativeState =
  * 3D render config mutation actions.
  */
 export const useRenderConfig3dActions = (): RenderConfig3dActions => {
-  const setFo3dContent = useRecoilCallback(
+  const setFo3dContent = useReverbCallback(
     ({ set }) =>
       (content: unknown | null) => {
         set(internals.fo3dContent, content);
@@ -239,7 +239,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const setPinned = useRecoilCallback(
+  const setPinned = useReverbCallback(
     ({ snapshot, set }) =>
       async (pinned: boolean) => {
         if (!pinned) {
@@ -252,7 +252,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const initializeFromModalSlice = useRecoilCallback(
+  const initializeFromModalSlice = useReverbCallback(
     ({ snapshot, set }) =>
       async (sliceName: string | null) => {
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);
@@ -272,7 +272,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const reconcileAvailableSlices = useRecoilCallback(
+  const reconcileAvailableSlices = useReverbCallback(
     ({ snapshot, set }) =>
       async () => {
         const samples = await snapshot.getPromise(
@@ -323,7 +323,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const toggleSlice = useRecoilCallback(
+  const toggleSlice = useReverbCallback(
     ({ snapshot, set }) =>
       async (sliceName: string, enabled: boolean) => {
         const samples = await snapshot.getPromise(
@@ -369,7 +369,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const setVisible = useRecoilCallback(
+  const setVisible = useReverbCallback(
     ({ snapshot, set }) =>
       async (visible: boolean) => {
         const mainVisible = await snapshot.getPromise(
@@ -383,7 +383,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const setMainViewerVisible = useRecoilCallback(
+  const setMainViewerVisible = useReverbCallback(
     ({ snapshot, set }) =>
       async (visible: boolean) => {
         const threeDVisible = await snapshot.getPromise(
@@ -397,7 +397,7 @@ export const useRenderConfig3dActions = (): RenderConfig3dActions => {
     [],
   );
 
-  const focusSlice = useRecoilCallback(
+  const focusSlice = useReverbCallback(
     ({ snapshot, set }) =>
       async (sliceName: string) => {
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);

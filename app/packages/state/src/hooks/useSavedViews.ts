@@ -3,12 +3,12 @@ import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 
 export default function useSavedViews() {
-  const datasetNameValue = useRecoilValue(fos.datasetName);
+  const datasetNameValue = useReverbValue(fos.datasetName);
   const onError = useErrorHandler();
-  const subscription = useRecoilValue(fos.stateSubscription);
+  const subscription = useReverbValue(fos.stateSubscription);
 
   const [deleteView, isDeletingSavedView] =
     useMutation<foq.deleteSavedViewMutation>(foq.deleteSavedView);
@@ -43,7 +43,7 @@ export default function useSavedViews() {
     [datasetNameValue, deleteView, onError, subscription],
   );
 
-  const handleCreateSavedView = useRecoilCallback(
+  const handleCreateSavedView = useReverbCallback(
     ({ snapshot }) =>
       async (
         name: string,

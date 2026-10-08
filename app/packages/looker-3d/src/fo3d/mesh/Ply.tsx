@@ -1,6 +1,6 @@
 import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   type BufferGeometry,
   type LoadingManager,
@@ -264,7 +264,7 @@ const PlyGeometry = ({
   pointCloudCrop,
 }: PlyProps) => {
   const { fo3dRoot } = useFo3dContext();
-  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
+  const isInMultiPanelView = useReverbValue(isInMultiPanelViewAtom);
 
   const plyUrl = useMemo(
     () =>

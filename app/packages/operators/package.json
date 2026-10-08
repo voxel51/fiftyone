@@ -19,7 +19,7 @@
         "README.md"
     ],
     "dependencies": {
-        "@fiftyone/events": "*"
+        "@fiftyone/reverb": "workspace:*"
     },
     "devDependencies": {
         "@fiftyone/utilities": "workspace:^",

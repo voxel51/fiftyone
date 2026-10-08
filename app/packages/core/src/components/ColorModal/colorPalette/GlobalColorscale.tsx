@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { isEmpty } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
 import { FieldCHILD_STYLE, Guide } from "../ShareStyledDiv";
@@ -15,7 +15,7 @@ import {
 } from "../utils";
 
 const GlobalColorscale: React.FC = () => {
-  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorScheme = useReverbValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const setting = useMemo(

@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { modalMode } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, { Suspense } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { SampleWrapper } from "./Sample2D";
 import useCanAnnotate from "./Sidebar/Annotate/useCanAnnotate";
@@ -18,7 +18,7 @@ const Sample3dContainer = styled.div`
 `;
 
 export const Sample3d = React.memo(() => {
-  const isGroup = useRecoilValue(fos.isGroup);
+  const isGroup = useReverbValue(fos.isGroup);
   const canAnnotate = useCanAnnotate();
   const isInAnnotateMode = useAtomValue(modalMode) === "annotate";
 

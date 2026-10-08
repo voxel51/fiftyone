@@ -7,7 +7,7 @@ import { Bolt } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { atom, useRecoilState } from "recoil";
+import { atom, useReverbState } from "@fiftyone/reverb";
 
 const SHOWN_FOR = 10000;
 
@@ -45,7 +45,7 @@ const QueryPerformanceToast = ({
   text = "View Documentation",
 }) => {
   const [data, setData] = useState<QueryPerformanceDetail | null>(null);
-  const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
+  const [disabled, setDisabled] = useReverbState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const trackEvent = useTrackEvent();

@@ -5,8 +5,11 @@ import type { State } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useCallback } from "react";
-import type { RecoilValueReadOnly } from "recoil";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  type ReverbValueReadOnly,
+  useReverbCallback,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import { toLabelMap } from "./utils";
 
 /**
@@ -30,7 +33,7 @@ import { toLabelMap } from "./utils";
 export const useClearSelectedLabels = (close?: () => void) => {
   const { scene } = useLighter();
 
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       async () => {
         scene?.clearSelection();
@@ -53,10 +56,10 @@ export const useClearSampleSelection = (close) => {
 };
 
 export const useHideOthers = (
-  visibleAtom?: RecoilValueReadOnly<State.SelectedLabel[]>,
+  visibleAtom?: ReverbValueReadOnly<State.SelectedLabel[]>,
   visible?: State.SelectedLabel[],
 ) => {
-  return useRecoilCallback(({ snapshot, set }) => async () => {
+  return useReverbCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(fos.selectedLabelIds);
     const result = visibleAtom
       ? await snapshot.getPromise(visibleAtom)
@@ -70,7 +73,7 @@ export const useHideOthers = (
 };
 
 export const useHideSelected = () => {
-  return useRecoilCallback(({ snapshot, set, reset }) => async () => {
+  return useReverbCallback(({ snapshot, set, reset }) => async () => {
     const selected = await snapshot.getPromise(fos.selectedLabelMap);
     const hidden = await snapshot.getPromise(fos.hiddenLabels);
     reset(fos.selectedLabels);
@@ -79,12 +82,12 @@ export const useHideSelected = () => {
 };
 
 export const useSelectVisible = (
-  visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]> | null,
+  visibleAtom?: ReverbValueReadOnly<fos.State.SelectedLabel[]> | null,
   visible?: fos.State.SelectedLabel[],
 ) => {
   const { scene } = useLighter();
 
-  return useRecoilCallback(({ snapshot, set }) => async () => {
+  return useReverbCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(fos.selectedLabelMap);
 
     if (scene) {
@@ -123,8 +126,8 @@ export const useSelectVisible = (
 export const useVisibleSampleLabels = (
   lookerRef?: MutableRefObject<Lookers | undefined>,
 ) => {
-  const isGroup = useRecoilValue(fos.isGroup);
-  const activeLabels = useRecoilValue(fos.activeLabels({}));
+  const isGroup = useReverbValue(fos.isGroup);
+  const activeLabels = useReverbValue(fos.activeLabels({}));
 
   const currentSampleLabels = lookerRef?.current
     ? lookerRef.current.getCurrentSampleLabels()
@@ -229,7 +232,7 @@ export const overlaysToFrameLabels = (
  */
 export const useVisibleFrameLabels = (): State.SelectedLabel[] => {
   const { scene } = useLighter();
-  const sampleId = useRecoilValue(fos.modalSampleId);
+  const sampleId = useReverbValue(fos.modalSampleId);
   const frameNumber = useCurrentPublishedFrame();
 
   if (!scene) {
@@ -240,12 +243,12 @@ export const useVisibleFrameLabels = (): State.SelectedLabel[] => {
 };
 
 export const useUnselectVisible = (
-  visibleIdsAtom?: RecoilValueReadOnly<Set<string>>,
+  visibleIdsAtom?: ReverbValueReadOnly<Set<string>>,
   visibleIds?: Set<string>,
 ) => {
   const { scene } = useLighter();
 
-  return useRecoilCallback(({ snapshot, set }) => async () => {
+  return useReverbCallback(({ snapshot, set }) => async () => {
     if (scene) {
       // UNFLAGGED, matching `useSelectVisible` and `useClearSelectedLabels`:
       // the deselects have to reach the annotation engine, or its active set

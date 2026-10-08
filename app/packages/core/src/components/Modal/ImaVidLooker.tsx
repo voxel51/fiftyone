@@ -18,7 +18,7 @@ import React, {
   useState,
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import {
@@ -46,8 +46,8 @@ export const ImaVidLookerReact = React.memo(
     showControls = true,
   }: ImaVidLookerReactProps) => {
     const [id] = useState(() => uuid());
-    const colorScheme = useRecoilValue(fos.colorScheme);
-    const dynamicGroupsTargetFrameRate = useRecoilValue(
+    const colorScheme = useReverbValue(fos.colorScheme);
+    const dynamicGroupsTargetFrameRate = useReverbValue(
       fos.dynamicGroupsTargetFrameRate,
     );
 
@@ -61,8 +61,8 @@ export const ImaVidLookerReact = React.memo(
     );
 
     const [reset, setReset] = useState(false);
-    const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
-    const setModalLooker = useSetRecoilState(fos.modalLooker);
+    const selectedMediaField = useReverbValue(fos.selectedMediaField(true));
+    const setModalLooker = useSetReverbState(fos.modalLooker);
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,

@@ -8,7 +8,7 @@ import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
 import { isPatchesView, useUnboundStateRef } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
 import { useCallback, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
@@ -52,7 +52,7 @@ const Field = () => {
   const { selected, setField, pendingNewType } = useAnnotationContext();
   const currentFieldValue = selected?.field ?? null;
   const setCurrentField = setField;
-  const isPatches = useRecoilValue(isPatchesView);
+  const isPatches = useReverbValue(isPatchesView);
   const currentLabel = selected?.label ?? null;
   const schema = useMemo(
     () => createSchema(fields, disabled, isPatches),

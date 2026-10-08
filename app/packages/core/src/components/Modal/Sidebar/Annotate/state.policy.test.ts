@@ -3,14 +3,14 @@
  * (`taskSchemaPolicy` → `visibleLabelSchemas` / `effectiveLabelSchemasData`).
  */
 
-import { createStore } from "jotai";
-import { describe, expect, it } from "vitest";
+import { activeFields } from "@fiftyone/state";
+import { createStore, type PrimitiveAtom } from "jotai";
+import { describe, expect, it, vi } from "vitest";
 import {
   activeLabelSchemas,
   managerSchemaDoc,
   taskLabelSchemaDoc,
   effectiveLabelSchemasData,
-  exploreActiveFields,
   inactiveLabelSchemas,
   isFieldBboxLocked,
   isFieldReadOnly,
@@ -21,6 +21,23 @@ import {
   type StageSchemaPolicy,
 } from "./state";
 import type { LabelSchemaMeta } from "./useSchemaManager";
+
+// The Explore sidebar's active fields, as one atom the test can set, on a
+// dataset with no group slice
+vi.mock("@fiftyone/state", async (importOriginal) => {
+  const { atom } = await import("jotai");
+  const explore = atom<string[]>([]);
+  return {
+    ...(await importOriginal<typeof import("@fiftyone/state")>()),
+    activeFields: () => explore,
+    currentSlice: () => atom(null),
+    groupMediaTypesMap: atom({}),
+  };
+});
+
+const exploreActiveFields = activeFields({
+  modal: true,
+}) as unknown as PrimitiveAtom<string[]>;
 
 const meta = (over: Partial<LabelSchemaMeta> = {}): LabelSchemaMeta =>
   ({ type: "detections", read_only: false, ...over }) as LabelSchemaMeta;

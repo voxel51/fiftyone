@@ -20,7 +20,7 @@ import {
   type PromptPoint,
 } from "../providers";
 import { encodeMaskData } from "@fiftyone/lighter/src/utils/maskEncoding";
-import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
+import { getSampleSrc } from "@fiftyone/state/src/atoms/utils";
 
 /**
  * Factory that constructs a {@link BrowserAnnotationProvider} given the

@@ -1,9 +1,9 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { Button } from "../../utils";
 
 const useReset = (options: { modal: boolean; path: string }) => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot, set }) =>
       async () => {
         set(fos.rangeAtom({ ...options, withBounds: true }), [null, null]);
@@ -28,10 +28,10 @@ function Reset({
   modal: boolean;
   path: string;
 }) {
-  const hasVisibilitySetting = useRecoilValue(
+  const hasVisibilitySetting = useReverbValue(
     fos.fieldHasVisibilitySetting({ modal, path }),
   );
-  const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
+  const isFiltered = useReverbValue(fos.fieldIsFiltered({ modal, path }));
   const reset = useReset({ modal, path });
 
   if (!isFiltered && !hasVisibilitySetting) {

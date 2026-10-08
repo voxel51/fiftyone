@@ -32,10 +32,10 @@ import {
   ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
 import {
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+  useReverbCallback,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
@@ -92,7 +92,7 @@ const AnnotationHandlerRegistration = () => {
   // Sparse groups can have no sample on the active slice; the annotation
   // hooks below read modalSample and would throw GroupSampleNotFound. Skip
   // registration entirely until the slice has a sample.
-  const modal = useRecoilValueLoadable(fos.modalSample);
+  const modal = useReverbValueLoadable(fos.modalSample);
   if (
     modal.state === "hasError" &&
     modal.contents instanceof fos.GroupSampleNotFound
@@ -130,10 +130,10 @@ const Modal = () => {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
-  const { enabled: isAnnotationEnabled } = useRecoilValue(canAnnotate);
+  const { enabled: isAnnotationEnabled } = useReverbValue(canAnnotate);
   const clearModal = fos.useClearModal();
   const is3dVisible = fos.useIs3dVisible();
-  const modalSelector = useRecoilValue(fos.modalSelector);
+  const modalSelector = useReverbValue(fos.modalSelector);
 
   const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
     // Track where the pointer down started
@@ -176,7 +176,7 @@ const Modal = () => {
     [trackEvent],
   );
 
-  const modalCloseHandler = useRecoilCallback(
+  const modalCloseHandler = useReverbCallback(
     ({ snapshot, set }) =>
       async () => {
         const isTooltipCurrentlyLocked = await snapshot.getPromise(
@@ -210,7 +210,7 @@ const Modal = () => {
     [clearModal, jsonPanel, helpPanel],
   );
 
-  const selectCallback = useRecoilCallback(
+  const selectCallback = useReverbCallback(
     ({ snapshot, set }) =>
       async () => {
         const current = await snapshot.getPromise(fos.modalSelector);
@@ -229,7 +229,7 @@ const Modal = () => {
     [],
   );
 
-  const sidebarFn = useRecoilCallback(
+  const sidebarFn = useReverbCallback(
     ({ set }) =>
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
@@ -237,7 +237,7 @@ const Modal = () => {
     [],
   );
 
-  const fullscreenFn = useRecoilCallback(
+  const fullscreenFn = useReverbCallback(
     ({ set }) =>
       async () => {
         set(fos.fullscreen, (prev) => !prev);
@@ -245,7 +245,7 @@ const Modal = () => {
     [],
   );
 
-  const closeFn = useRecoilCallback(
+  const closeFn = useReverbCallback(
     ({ snapshot }) =>
       async () => {
         const mediaType = await snapshot.getPromise(fos.mediaType);
@@ -319,7 +319,7 @@ const Modal = () => {
       description: "Select Sample",
     },
   ]);
-  const isFullScreen = useRecoilValue(fos.fullscreen);
+  const isFullScreen = useReverbValue(fos.fullscreen);
 
   const { closePanels } = useLookerHelpers();
 
@@ -336,7 +336,7 @@ const Modal = () => {
     typeof addTooltipEventHandler
   > | null>(null);
 
-  const onLookerSet = useRecoilCallback(
+  const onLookerSet = useReverbCallback(
     ({ snapshot }) =>
       (looker: fos.Lookers) => {
         looker.addEventListener("close", modalCloseHandler);

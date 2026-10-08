@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useMemo } from "react";
 import Draggable from "react-draggable";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import BrowseOperations from "../../Actions/BrowseOperations";
 import ColorScheme from "../../Actions/ColorScheme";
@@ -76,9 +76,9 @@ const DragActionsRow = () => {
 export default () => {
   const { activeLookerRef } = useModalContext();
 
-  const isActualGroup = useRecoilValue(fos.isGroup);
-  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
-  const isFullScreen = useRecoilValue(fos.fullscreen);
+  const isActualGroup = useReverbValue(fos.isGroup);
+  const isDynamicGroup = useReverbValue(fos.isDynamicGroup);
+  const isFullScreen = useReverbValue(fos.fullscreen);
   const isMultimodal = fos.useIsMediaType(MEDIA_TYPE_MULTIMODAL);
   const mode = useAtomValue(modalMode);
   const isGroup = useMemo(

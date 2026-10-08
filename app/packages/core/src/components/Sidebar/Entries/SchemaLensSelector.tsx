@@ -39,7 +39,7 @@ import {
 } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React, { useEffect, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { useSchemaManagerModal } from "../../Modal/Sidebar/Annotate/SchemaManager/hooks";
 import {
@@ -134,14 +134,14 @@ const useRestrictedBrowsing: () => boolean =
  * task (whose stage schema governs instead).
  */
 export const useSchemaLensAvailable = () => {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const canEditLabels = useRecoilValue(fos.canEditLabels);
-  const canManageSchema = useRecoilValue(fos.canManageSchema);
+  const datasetName = useReverbValue(fos.datasetName);
+  const canEditLabels = useReverbValue(fos.canEditLabels);
+  const canManageSchema = useReverbValue(fos.canManageSchema);
   const taskDoc = useAtomValue(taskLabelSchemaDoc);
-  const taskGoverns = useRecoilValue(fos.taskSchemaGoverns);
+  const taskGoverns = useReverbValue(fos.taskSchemaGoverns);
   // Patches views expose labels, not the dataset's fields: no schema row
   // (and no Schema Manager entry) there, matching the Create section.
-  const patches = useRecoilValue(fos.isPatchesView);
+  const patches = useReverbValue(fos.isPatchesView);
   // Labelers (and any role an org restricts to task-only browsing).
   const restricted = useRestrictedBrowsing();
 
@@ -170,7 +170,7 @@ const SchemaLensSelector = ({
   );
 
   const { available, canSwitch, datasetName } = useSchemaLensAvailable();
-  const [lens, setLens] = useRecoilState(fos.schemaLens);
+  const [lens, setLens] = useReverbState(fos.schemaLens);
   const canManage = useCanManageSchema();
   const { openSchemaManager } = useSchemaManagerModal();
 
@@ -238,7 +238,7 @@ const SchemaLensSelector = ({
     // Refetch per dataset, once the operators are available, and each
     // time the Schema Manager opens or closes (schemas may have been
     // created, renamed or deleted in it). `api` is memoized and `setLens`
-    // is a Recoil setter; both are stable.
+    // is a Reverb setter; both are stable.
   }, [
     api,
     datasetName,

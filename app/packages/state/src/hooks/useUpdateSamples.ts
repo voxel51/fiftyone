@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { commitLocalUpdate, useRelayEnvironment } from "react-relay";
-import type { ModalSample } from "../recoil";
+import type { ModalSample } from "../atoms";
 import { stores } from "./useLookerStore";
 
 export const useUpdateSamples = () => {

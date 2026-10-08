@@ -5,7 +5,7 @@ import {
   modalSample,
 } from "@fiftyone/state";
 import React, { PropsWithChildren, Suspense } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 
 type Props = PropsWithChildren<{
   /**
@@ -19,8 +19,8 @@ type Props = PropsWithChildren<{
 }>;
 
 export const GroupSuspense: React.FC<Props> = ({ children, main2d }) => {
-  const modal = useRecoilValueLoadable(modalSample);
-  const slice = useRecoilValue(modalGroupSlice);
+  const modal = useReverbValueLoadable(modalSample);
+  const slice = useReverbValue(modalGroupSlice);
 
   if (main2d && !slice) {
     return <Loading>No sample</Loading>;

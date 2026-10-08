@@ -3,7 +3,7 @@ import { AnnotationSaveIndicator } from "@fiftyone/annotation";
 import { getEventBus } from "@fiftyone/events";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
@@ -31,7 +31,7 @@ type AnnotateSidebarE2EEvents = {
 export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAnnotationContext().isEditing;
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
 
   useEffect(() => {
     getEventBus<AnnotateSidebarE2EEvents>().dispatch("e2e:annotate:editing", {

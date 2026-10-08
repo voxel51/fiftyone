@@ -19,7 +19,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { activeLabelSchemas, labelSchemasData } from "./state";
 import {
   operatorAsPromise,
@@ -29,7 +29,7 @@ import {
 } from "./useSchemaManager";
 
 export const useEnsureSchemasLoaded = (enabled: boolean): void => {
-  const datasetName = useRecoilValue(fos.datasetName);
+  const datasetName = useReverbValue(fos.datasetName);
   const schemasData = useAtomValue(labelSchemasData);
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);

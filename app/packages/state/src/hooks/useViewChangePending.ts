@@ -1,5 +1,5 @@
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { viewChangePending } from "../recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
+import { viewChangePending } from "../atoms";
 
 /**
  * Whether a view change is in flight outside the router's knowledge — e.g.
@@ -8,7 +8,7 @@ import { viewChangePending } from "../recoil";
  * long: the router clears it when the resulting entry loads.
  */
 export const useViewChangePending = (): boolean =>
-  useRecoilValue(viewChangePending);
+  useReverbValue(viewChangePending);
 
 export const useSetViewChangePending = () =>
-  useSetRecoilState(viewChangePending);
+  useSetReverbState(viewChangePending);

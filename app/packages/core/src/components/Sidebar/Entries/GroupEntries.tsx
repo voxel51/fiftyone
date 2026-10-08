@@ -11,7 +11,7 @@ import {
   numGroupFieldsActive,
   numGroupFieldsFiltered,
   numGroupFieldsVisible,
-} from "@fiftyone/state/src/recoil/groupEntries";
+} from "@fiftyone/state/src/atoms/groupEntries";
 import {
   Add,
   Check,
@@ -24,10 +24,10 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import React, { useRef, useState } from "react";
 import {
   SetterOrUpdater,
-  useRecoilStateLoadable,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+  useReverbStateLoadable,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import Draggable from "./Draggable";
 
@@ -134,7 +134,7 @@ const GroupEntry = React.memo(
     const canCommit = useRef(false);
     const theme = useTheme();
     const notify = fos.useNotification();
-    const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
+    const canModifySidebarGroup = useReverbValue(fos.canModifySidebarGroup);
     const disabled = canModifySidebarGroup.enabled !== true;
 
     return (
@@ -258,10 +258,10 @@ const useShown = (
   key: string,
   modal: boolean,
 ): [boolean, SetterOrUpdater<boolean>] => {
-  const expanded = useRecoilValueLoadable(
+  const expanded = useReverbValueLoadable(
     fos.groupShown({ group: key, modal, loading: false }),
   );
-  const [expandedLoading, setExpanded] = useRecoilStateLoadable(
+  const [expandedLoading, setExpanded] = useReverbStateLoadable(
     fos.groupShown({ group: key, modal, loading: true }),
   );
 
@@ -305,7 +305,7 @@ export const PathGroupEntry = React.memo(
           <Pills
             entries={[
               {
-                count: useRecoilValue(
+                count: useReverbValue(
                   numGroupFieldsFiltered({ modal, group: name }),
                 ),
                 dataCy: `clear-filters-${name}`,
@@ -315,7 +315,7 @@ export const PathGroupEntry = React.memo(
                 title: `Clear ${name} filters`,
               },
               {
-                count: useRecoilValue(
+                count: useReverbValue(
                   numGroupFieldsVisible({ modal, group: name }),
                 ),
                 dataCy: `clear-visibility-${name}`,
@@ -324,7 +324,7 @@ export const PathGroupEntry = React.memo(
                 title: `Clear ${name} visibility`,
               },
               {
-                count: useRecoilValue(
+                count: useReverbValue(
                   numGroupFieldsActive({ modal, group: name }),
                 ),
                 dataCy: `clear-shown-${name}`,

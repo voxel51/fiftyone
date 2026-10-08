@@ -11,8 +11,8 @@ vi.mock("@fiftyone/state", () => ({
   isGeneratedView: { key: "isGeneratedView" },
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => mockIsGenerated,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => mockIsGenerated,
 }));
 
 const { useGeneratedViewInteraction } =

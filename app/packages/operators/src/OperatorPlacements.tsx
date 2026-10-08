@@ -41,14 +41,18 @@ function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place, modal } = props;
   const { placements } = useOperatorPlacements(place);
 
-  return placements.map((placement) => (
-    <OperatorPlacementWithErrorBoundary
-      key={placement?.operator?.uri}
-      modal={modal}
-      place={place}
-      {...placement}
-    />
-  ));
+  return (
+    <>
+      {placements.map((placement) => (
+        <OperatorPlacementWithErrorBoundary
+          key={placement?.operator?.uri}
+          modal={modal}
+          place={place}
+          {...placement}
+        />
+      ))}
+    </>
+  );
 }
 
 function PlacementError(props) {

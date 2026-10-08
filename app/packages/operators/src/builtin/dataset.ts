@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { Operator, OperatorConfig } from "../operators";
 import {
   DataObject,
@@ -29,7 +29,7 @@ export class ListBrainRuns extends Operator {
   }
 
   useHooks() {
-    return { dataset: useRecoilValue(fos.dataset) };
+    return { dataset: useReverbValue(fos.dataset) };
   }
 
   async execute(ctx: ExecutionContext<ListBrainRunsParams, DatasetHooks>) {
@@ -68,7 +68,7 @@ export class ListEvaluations extends Operator {
   }
 
   useHooks() {
-    return { dataset: useRecoilValue(fos.dataset) };
+    return { dataset: useReverbValue(fos.dataset) };
   }
 
   async execute(ctx: ExecutionContext<DataObject, DatasetHooks>) {

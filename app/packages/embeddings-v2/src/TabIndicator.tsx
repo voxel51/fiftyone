@@ -1,5 +1,5 @@
 import { FilterAndSelectionIndicator } from "@fiftyone/components";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import {
   clearSelectionNonceState,
   selectionCountState,
@@ -12,9 +12,9 @@ import {
  * the panel tree, so it talks to the plot through the package atoms.
  */
 export default function TabIndicator() {
-  const count = useRecoilValue(selectionCountState);
-  const sampleCount = useRecoilValue(selectionSampleCountState);
-  const requestClear = useSetRecoilState(clearSelectionNonceState);
+  const count = useReverbValue(selectionCountState);
+  const sampleCount = useReverbValue(selectionSampleCountState);
+  const requestClear = useSetReverbState(clearSelectionNonceState);
 
   if (!count) return null;
 

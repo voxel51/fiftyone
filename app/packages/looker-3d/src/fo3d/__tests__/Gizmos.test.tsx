@@ -17,14 +17,14 @@ vi.mock("@fiftyone/events", async (importOriginal) => ({
 }));
 
 // the grid toggle is the only state under test; the grid sizing reads defaults
-vi.mock("recoil", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("recoil")>();
+vi.mock("@fiftyone/reverb", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fiftyone/reverb")>();
   const value = ({ key }: { key: string }) =>
     key === "fo3d-isGridOn" ? gridOn.current : undefined;
   return {
     ...actual,
-    useRecoilValue: value,
-    useRecoilState: (atom: { key: string }) => [value(atom), vi.fn()],
+    useReverbValue: value,
+    useReverbState: (atom: { key: string }) => [value(atom), vi.fn()],
   };
 });
 

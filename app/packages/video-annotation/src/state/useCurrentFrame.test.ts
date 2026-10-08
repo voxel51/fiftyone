@@ -38,7 +38,7 @@ vi.mock("@fiftyone/state", () => ({
 }));
 
 // The accessors read the dataset's dynamic-group target frame rate and the
-// group's member count through recoil; stub both sources.
+// group's member count through reverb; stub both sources.
 vi.mock("./accessors", () => ({
   useModalSampleFrameRate: (sample?: { frameRate?: number }) =>
     sample?.frameRate ??

@@ -1,6 +1,6 @@
 import { selectorWithEffect, subscribe } from "@fiftyone/relay";
-import { useRecoilCallback } from "recoil";
-import { refresher } from "../recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
+import { refresher } from "../atoms";
 
 export const refresh = selectorWithEffect<undefined>({
   key: "refresh",
@@ -9,7 +9,7 @@ export const refresh = selectorWithEffect<undefined>({
 });
 
 const useRefresh = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       () => {
         const unsubscribe = subscribe((_, { set }) => {

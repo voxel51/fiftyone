@@ -14,7 +14,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useAtom, useSetAtom, type PrimitiveAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   managerSchemaDoc,
   managerSchemaDocId,
@@ -303,8 +303,8 @@ export const useManagerDocMode = () => {
  */
 export const useOpenOnCurrentSchema = () => {
   const [taskDoc] = useAtom(taskLabelSchemaDoc);
-  const lens = useRecoilValue(fos.schemaLens);
-  const datasetName = useRecoilValue(fos.datasetName);
+  const lens = useReverbValue(fos.schemaLens);
+  const datasetName = useReverbValue(fos.datasetName);
   const [selected, setSelected] = useAtom(selectedSchemaDocId);
 
   // "All fields" / default means classic dataset mode.

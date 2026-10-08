@@ -52,8 +52,8 @@ export interface TileDecorator {
    * `null`/`undefined` for samples the decorator doesn't care about
    * (e.g. status badge returns null when not in task mode).
    *
-   * Runs inside the parent app's React tree (RecoilBridge wired by
-   * the grid renderer), so decorators can freely use Recoil / Jotai
+   * Runs inside the parent app's React tree (ReverbBridge wired by
+   * the grid renderer), so decorators can freely use Reverb / Jotai
    * hooks.
    */
   render: (sample: TileDecoratorSample) => React.ReactNode;

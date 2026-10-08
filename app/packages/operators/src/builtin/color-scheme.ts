@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { isNullish } from "@fiftyone/utilities";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { Operator, OperatorConfig } from "../operators";
 import * as types from "../types";
 
@@ -40,8 +40,8 @@ export class SetColorScheme extends Operator {
     return new types.Property(inputs);
   }
   useHooks(): SetColorSchemeHooks {
-    const setColorScheme = useSetRecoilState(fos.colorScheme);
-    const defaultPool = useRecoilValue(fos.config).colorPool;
+    const setColorScheme = useSetReverbState(fos.colorScheme);
+    const defaultPool = useReverbValue(fos.config).colorPool;
 
     return { setColorScheme, defaultPool };
   }
@@ -128,10 +128,10 @@ export class ResetColorScheme extends Operator {
   }
 
   useHooks(): ResetColorSchemeHooks {
-    const setColorScheme = useSetRecoilState(fos.colorScheme);
-    const colorScheme = useRecoilValue(fos.colorScheme);
-    const configDefault = useRecoilValue(fos.config);
-    const datasetDefault = useRecoilValue(fos.datasetColorScheme);
+    const setColorScheme = useSetReverbState(fos.colorScheme);
+    const colorScheme = useReverbValue(fos.colorScheme);
+    const configDefault = useReverbValue(fos.config);
+    const datasetDefault = useReverbValue(fos.datasetColorScheme);
 
     const { id: _, ...update } = fos.ensureColorScheme(
       datasetDefault,

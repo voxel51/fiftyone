@@ -2,7 +2,7 @@ import { Bar, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useMemo, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
 
@@ -17,7 +17,7 @@ const SelectableBar: React.FC<
   const headerRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const select = fos.useSelectSample();
-  const selected = useRecoilValue(fos.selectedSamples).has(sampleId);
+  const selected = useReverbValue(fos.selectedSamples).has(sampleId);
 
   return (
     <Bar
@@ -58,7 +58,7 @@ export const SampleBar: React.FC<{
 };
 
 export const GroupBar = () => {
-  const activeSliceDescriptorLabel = useRecoilValue(
+  const activeSliceDescriptorLabel = useReverbValue(
     fos.activeSliceDescriptorLabel,
   );
 
@@ -112,7 +112,7 @@ export const GroupSampleBar: React.FC<{
   sampleId: string;
   hoveringRef: MutableRefObject<boolean>;
 }> = ({ hoveringRef, pinned, sampleId }) => {
-  const activeSliceDescriptorLabel = useRecoilValue(
+  const activeSliceDescriptorLabel = useReverbValue(
     fos.activeSliceDescriptorLabel,
   );
 

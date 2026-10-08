@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import React from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { activeColorEntry } from "../state";
 import { getDisplayName } from "../utils";
@@ -44,13 +44,13 @@ const Option = styled.div`
 `;
 
 const ModeControl: React.FC = () => {
-  const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
+  const [colorScheme, setColorScheme] = useReverbState(fos.colorScheme);
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const theme = useTheme();
 
-  const activeEntry = useRecoilValue(activeColorEntry);
+  const activeEntry = useReverbValue(activeColorEntry);
   if (!activeEntry) {
     throw new Error("entry not defined in color modal");
   }

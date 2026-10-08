@@ -7,7 +7,7 @@ import {
   useStableInteraction3dSample,
 } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { enqueuePersist } from "./persistQueue";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import {
@@ -64,7 +64,7 @@ export const usePersistAnnotationDeltas = (): ((
   const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
   const patchSelected = usePatchSample();
   const eventBus = useAnnotationEventBus();
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isGenerated = useReverbValue(isGeneratedView);
 
   // the pinned 3D scene is a distinct sample; patch it through its own
   // binding (version token + refresh keyed to that sample). Inert unless a
@@ -81,7 +81,7 @@ export const usePersistAnnotationDeltas = (): ((
   // to it so grouped-modal edits (the second camera, the pinned 3D
   // scene) reach the submit delta and the trail under the same key the
   // subtask, the delta peek, and the tracker focus already use.
-  const anchorSampleId = useRecoilValue(nullableModalSampleId) ?? undefined;
+  const anchorSampleId = useReverbValue(nullableModalSampleId) ?? undefined;
   const sceneId = useThreeDSceneSampleId();
   const threeDScene = useStableInteraction3dSample();
   const patch3d = usePatchSampleWith({

@@ -1,2 +1,2 @@
 export * from "./accessors";
-export * from "./recoil";
+export * from "./atoms";

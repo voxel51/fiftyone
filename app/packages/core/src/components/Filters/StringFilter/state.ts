@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { isMatchingAtom, stringExcludeAtom } from "@fiftyone/state";
 import { getFetchFunction, isObjectIdString } from "@fiftyone/utilities";
-import { atomFamily, selectorFamily } from "recoil";
+import { atomFamily, selectorFamily } from "@fiftyone/reverb";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { nullSort } from "../utils";
 import type { Result } from "./Result";

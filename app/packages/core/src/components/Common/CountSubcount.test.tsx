@@ -1,6 +1,6 @@
 import { act, cleanup, render } from "@testing-library/react";
-import type { SetterOrUpdater } from "recoil";
-import { RecoilRoot, atom, useSetRecoilState } from "recoil";
+import type { SetterOrUpdater } from "@fiftyone/reverb";
+import { ReverbRoot, atom, useSetReverbState } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
@@ -21,12 +21,12 @@ const subcountAtom = atom({ key: "test_subcount", default: 5 });
 
 let setSubcount: SetterOrUpdater<number>;
 const Setter = () => {
-  setSubcount = useSetRecoilState(subcountAtom);
+  setSubcount = useSetReverbState(subcountAtom);
   return null;
 };
 
 const counts = (label: string, slice = "") => (
-  <RecoilRoot>
+  <ReverbRoot>
     <Setter />
     <SuspenseEntryCounts
       countAtom={countAtom}
@@ -35,7 +35,7 @@ const counts = (label: string, slice = "") => (
       label={label}
       slice={slice}
     />
-  </RecoilRoot>
+  </ReverbRoot>
 );
 
 const shown = (count: number, subcount: number, label: string, slice = "") => [

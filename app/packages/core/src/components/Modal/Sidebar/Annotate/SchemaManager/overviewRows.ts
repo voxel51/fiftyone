@@ -8,7 +8,7 @@ import * as fos from "@fiftyone/state";
 import type { StrictField } from "@fiftyone/utilities";
 import { atom, useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { fieldAttributeCount, fieldType } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 import {
@@ -59,8 +59,8 @@ const datasetFieldType = (field: StrictField) => {
  * hide server-side, including those that cannot be annotated.
  */
 export const useDatasetFieldTypes = (): Record<string, string> => {
-  const sampleFields = useRecoilValue(fos.sampleFields);
-  const frameFields = useRecoilValue(fos.frameFields);
+  const sampleFields = useReverbValue(fos.sampleFields);
+  const frameFields = useReverbValue(fos.frameFields);
   return useMemo(() => {
     const out: Record<string, string> = {};
     for (const field of sampleFields ?? []) {

@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
 import { removeKeys } from "@fiftyone/utilities";
-import { useRecoilCallback, useRecoilValue } from "recoil";
-import { groupLength } from "../recoil/groupEntries";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
+import { groupLength } from "../atoms/groupEntries";
 
 export const useRenameGroup = (mutable: boolean, group: string) => {
-  const callback = useRecoilCallback(
+  const callback = useReverbCallback(
     ({ set, snapshot }) =>
       async (newName: string) => {
         newName = newName.toLowerCase();
@@ -56,8 +56,8 @@ export const useRenameGroup = (mutable: boolean, group: string) => {
 };
 
 export const useDeleteGroup = (mutable: boolean, group: string) => {
-  const numFields = useRecoilValue(groupLength({ modal: false, group }));
-  const onDelete = useRecoilCallback(
+  const numFields = useReverbValue(groupLength({ modal: false, group }));
+  const onDelete = useReverbCallback(
     ({ set, snapshot }) =>
       async () => {
         const groups = await snapshot.getPromise(
@@ -79,7 +79,7 @@ export const useDeleteGroup = (mutable: boolean, group: string) => {
 };
 
 export const useClearActive = (modal: boolean, group: string) => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
@@ -97,7 +97,7 @@ export const useClearActive = (modal: boolean, group: string) => {
 };
 
 export const useClearFiltered = (modal: boolean, group: string) => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
@@ -117,7 +117,7 @@ export const useClearFiltered = (modal: boolean, group: string) => {
 };
 
 export const useClearVisibility = (modal: boolean, group: string) => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(

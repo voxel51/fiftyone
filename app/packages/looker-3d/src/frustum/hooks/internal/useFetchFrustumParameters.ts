@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useImageSlicesIfAvailable } from "../../../annotation/useImageSlicesIfAvailable";
 import type {
   CameraIntrinsics,
@@ -24,9 +24,9 @@ export function useFetchFrustumParameters() {
   const [fetchTrigger, setFetchTrigger] = useState(0);
   const allNon3dSlices = fos.useNon3dSlices();
 
-  const datasetId = useRecoilValue(fos.datasetId);
+  const datasetId = useReverbValue(fos.datasetId);
   const sampleId = fos.useCurrentSampleId();
-  const isGroup = useRecoilValue(fos.isGroup);
+  const isGroup = useReverbValue(fos.isGroup);
   const modalSample = fos.useStableModalSample();
 
   const { resolveUrlForImageSlice } = useImageSlicesIfAvailable(modalSample);

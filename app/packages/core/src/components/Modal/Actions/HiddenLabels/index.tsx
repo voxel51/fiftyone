@@ -1,10 +1,10 @@
 import { PillButton } from "@fiftyone/components";
 import { hiddenLabels } from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 
 const HiddenLabels = ({ modal }: { modal?: boolean }) => {
-  const [hiddenObjects, setHiddenObjects] = useRecoilState(hiddenLabels);
+  const [hiddenObjects, setHiddenObjects] = useReverbState(hiddenLabels);
   const count = Object.keys(hiddenObjects).length;
 
   if (count < 1) {

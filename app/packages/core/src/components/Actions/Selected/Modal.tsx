@@ -7,7 +7,7 @@ import {
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { ActionOptionProps } from "../Common";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
@@ -37,12 +37,12 @@ export default ({
    */
   lookerRef?: MutableRefObject<Lookers | undefined>;
 }) => {
-  const selected = useRecoilValue(fos.selectedSamples);
+  const selected = useReverbValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
-  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
+  const selectedLabels = useReverbValue(fos.selectedLabelIds);
   const visibleSampleLabels = useVisibleSampleLabels(lookerRef);
-  const isRoot = useRecoilValue(fos.isRootView);
-  const isVideo = useRecoilValue(fos.isVideoDataset) && isRoot;
+  const isRoot = useReverbValue(fos.isRootView);
+  const isVideo = useReverbValue(fos.isVideoDataset) && isRoot;
   const lighterFrameLabels = useVisibleFrameLabels();
   const requestPlaybackPause = useRequestPlaybackPause();
   const visibleFrameLabels =
@@ -92,7 +92,7 @@ export default ({
       callback();
     }, [callback, close]);
   };
-  const elementNames = useRecoilValue(fos.elementNames);
+  const elementNames = useReverbValue(fos.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(
     toIds(visibleSampleLabels),

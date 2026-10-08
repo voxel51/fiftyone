@@ -1,10 +1,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { cloneDeep } from "lodash";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/state", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
+  const { atom } =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   return {
     colorScheme: atom({
       key: "test_colorScheme",
@@ -14,7 +17,10 @@ vi.mock("@fiftyone/state", async () => {
   };
 });
 vi.mock("../state", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
+  const { atom } =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   return {
     activeColorPath: atom({ key: "test_activeColorPath", default: "tags" }),
   };
@@ -54,7 +60,7 @@ import ValueColorList from "./ValueColorList";
 const VALUES = [{ value: "validation", color: "#009999" }];
 
 const list = (values: typeof VALUES) => (
-  <RecoilRoot>
+  <ReverbRoot>
     <ValueColorList
       initialValue={values}
       values={values}
@@ -62,7 +68,7 @@ const list = (values: typeof VALUES) => (
       onSyncUpdate={() => undefined}
       shouldShowAddButton
     />
-  </RecoilRoot>
+  </ReverbRoot>
 );
 
 const color = () => (screen.getByTestId("color-0") as HTMLInputElement).value;

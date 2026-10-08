@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 // An explicit factory, NOT importOriginal: the real atoms module reaches this
 // hook again through the package barrel, and loading it here instantiates the
 // hook against the unmocked module before the mock can take effect
-vi.mock("../recoil/atoms", () => ({
+vi.mock("../atoms/atoms", () => ({
   clearExtendedSelectionMirror: vi.fn(),
   // Distinct sentinels, so the two reset assertions below cannot both match
   // one call
@@ -17,7 +17,7 @@ import {
   extendedSelection,
   extendedSelectionOverrideStage,
   writeExtendedSelectionMirror,
-} from "../recoil/atoms";
+} from "../atoms/atoms";
 import { registerExtendedSelectionResetParticipant } from "./extendedSelectionReset";
 import {
   publishExtendedSelection,

@@ -1,4 +1,4 @@
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 import { analyticsInfo } from "./state";
 import type { AnalyticsInfo } from "./usingAnalytics";
 
@@ -6,5 +6,5 @@ export default function useAnalyticsInfo(): [
   AnalyticsInfo,
   (info: AnalyticsInfo) => void,
 ] {
-  return useRecoilState<AnalyticsInfo>(analyticsInfo);
+  return useReverbState<AnalyticsInfo>(analyticsInfo);
 }

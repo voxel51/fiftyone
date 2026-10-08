@@ -1,5 +1,5 @@
 import { pathColor } from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
 
@@ -14,7 +14,7 @@ const FilterablePathEntries = ({
   path: string;
 }) => {
   const { data } = useFilterData(modal, path);
-  const color = useRecoilValue(pathColor(path));
+  const color = useReverbValue(pathColor(path));
 
   return (
     <>

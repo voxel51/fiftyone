@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { ReverbRoot, useReverbValue } from "@fiftyone/reverb";
 import { describe, expect, it, vi } from "vitest";
 import { resetExtendedSelectionTransaction } from "@fiftyone/state";
 import { selectionCountState, selectionSampleCountState } from "./state";
@@ -26,21 +26,21 @@ vi.mock("@fiftyone/state", () => ({
 describe("useClearSelectionOnClose", () => {
   it("registers a close effect that clears the selection and the pill", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <RecoilRoot
+      <ReverbRoot
         initializeState={({ set }) => {
           set(selectionCountState, 12);
           set(selectionSampleCountState, 3);
         }}
       >
         {children}
-      </RecoilRoot>
+      </ReverbRoot>
     );
     const { result } = renderHook(
       () => {
         useClearSelectionOnClose();
         return {
-          count: useRecoilValue(selectionCountState),
-          sampleCount: useRecoilValue(selectionSampleCountState),
+          count: useReverbValue(selectionCountState),
+          sampleCount: useReverbValue(selectionSampleCountState),
         };
       },
       { wrapper },

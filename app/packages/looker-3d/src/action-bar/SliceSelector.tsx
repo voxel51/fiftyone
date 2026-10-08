@@ -3,7 +3,7 @@ import { Checkbox } from "@fiftyone/core";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useReverbState, useSetReverbState } from "@fiftyone/reverb";
 import styled from "styled-components";
 import {
   ACTION_SET_PCDS,
@@ -39,7 +39,7 @@ const SliceSelectorLabel = styled.div`
  */
 export const SliceSelector = () => {
   const { activeSlices, allSlices } = fos.useRenderConfig3dState();
-  const [currentAction, setAction] = useRecoilState(currentActionAtom);
+  const [currentAction, setAction] = useReverbState(currentActionAtom);
 
   const activeSlicesLabel = useMemo(() => {
     if (!activeSlices || activeSlices.length === 0) {
@@ -97,7 +97,7 @@ const PcdsSelector = () => {
   const { activeSlices, allSampleMap, allSlices } =
     fos.useRenderConfig3dState();
   const actions = fos.useRenderConfig3dActions();
-  const setCurrentAction = useSetRecoilState(currentActionAtom);
+  const setCurrentAction = useSetReverbState(currentActionAtom);
   const availableSlices = allSlices.filter((slice) =>
     Boolean(allSampleMap[slice]),
   );

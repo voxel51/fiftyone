@@ -2,7 +2,7 @@
 import { getColor } from "@fiftyone/utilities";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { describe, expect, it, vi } from "vitest";
 import { categoryCss } from "./colors";
 import {
@@ -27,7 +27,8 @@ vi.mock("./protocol", async (importOriginal) => ({
 // real selector exactly — the seeded pool generator the grid also colors
 // its labels with — so grid parity here is a real assertion, not a stub's
 vi.mock("@fiftyone/state", async () => {
-  const { atom, selector, useSetRecoilState } = await import("recoil");
+  const { atom, selector, useSetReverbState } =
+    await import("@fiftyone/reverb");
   const { createColorGenerator } = await import("@fiftyone/utilities");
 
   const colorScheme = atom<Scheme>({
@@ -52,7 +53,7 @@ vi.mock("@fiftyone/state", async () => {
       key: "testColoring",
       get: () => ({ scale: [] }),
     }),
-    useSetSessionColorScheme: () => useSetRecoilState(colorScheme),
+    useSetSessionColorScheme: () => useSetReverbState(colorScheme),
   };
 });
 
@@ -83,7 +84,7 @@ const COLUMN: ColorValues = {
 };
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>{children}</RecoilRoot>
+  <ReverbRoot>{children}</ReverbRoot>
 );
 
 const rgbOfHex = (hex: string) =>
@@ -174,7 +175,7 @@ const RUN: VisualizationRun = {
 };
 
 /** The pair as PlotView composes them: the fetched column, then its palette
- * and built colors — a real (mocked) fetch feeding a real Recoil-driven
+ * and built colors — a real (mocked) fetch feeding a real store-driven
  * palette resolution, so a mismatch between what one hook returns and what
  * the other expects fails here even if each hook's own tests pass. */
 const useColumnWithColors = (

@@ -4,12 +4,15 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import React from "react";
 import { FallbackProps } from "react-error-boundary";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { ReverbRoot, useSetReverbState } from "@fiftyone/reverb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Provide just the @fiftyone/state surface the boundary imports.
 vi.mock("@fiftyone/state", async () => {
-  const { atom } = await vi.importActual<typeof import("recoil")>("recoil");
+  const { atom } =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
   return {
     tooltipDetail: atom<{ field: string; label?: { id?: string } } | null>({
       key: "test_tooltipDetail",
@@ -23,10 +26,10 @@ vi.mock("@fiftyone/state", async () => {
 // the boundary through error and recovery.
 vi.mock("./TooltipInfo", async () => {
   const fos = await import("@fiftyone/state");
-  const { useRecoilValue } = await import("recoil");
+  const { useReverbValue } = await import("@fiftyone/reverb");
   return {
     TooltipInfo: () => {
-      const detail = useRecoilValue(fos.tooltipDetail);
+      const detail = useReverbValue(fos.tooltipDetail);
       if (detail?.field === "explodes") {
         throw new Error("tooltip render failure");
       }
@@ -50,22 +53,22 @@ type Detail = { field: string; label?: { id?: string } } | null;
 let setDetail: (detail: Detail) => void;
 
 const CaptureSetter = () => {
-  setDetail = useSetRecoilState(
-    fos.tooltipDetail as import("recoil").RecoilState<Detail>,
+  setDetail = useSetReverbState(
+    fos.tooltipDetail as import("@fiftyone/reverb").ReverbState<Detail>,
   );
   return null;
 };
 
 const renderBoundary = (onError = vi.fn()) => {
   render(
-    <RecoilRoot>
+    <ReverbRoot>
       <CaptureSetter />
       <TooltipInfoBoundary
         FallbackComponent={Fallback}
         onError={onError}
         resetKeys={["sample-1"]}
       />
-    </RecoilRoot>,
+    </ReverbRoot>,
   );
   return onError;
 };

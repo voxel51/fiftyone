@@ -1,15 +1,15 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 
 export default function useSchemaSettings() {
-  const datasetName = useRecoilValue(fos.datasetName) as string;
-  const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
-  const fieldVisibilityStage = useRecoilValue(fos.fieldVisibilityStage);
+  const datasetName = useReverbValue(fos.datasetName) as string;
+  const isFieldVisibilityActive = useReverbValue(fos.isFieldVisibilityActive);
+  const fieldVisibilityStage = useReverbValue(fos.fieldVisibilityStage);
   const affectedPathCount =
     fieldVisibilityStage?.kwargs?.field_names?.length || 0;
 
-  const [excludedPaths, setExcludedPaths] = useRecoilState(
+  const [excludedPaths, setExcludedPaths] = useReverbState(
     fos.excludedPathsState({}),
   );
 

@@ -1,9 +1,9 @@
 import { modalSelector } from "@fiftyone/state";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 
 export default () => {
-  const setModal = useSetRecoilState(modalSelector);
+  const setModal = useSetReverbState(modalSelector);
 
   return useCallback(
     (id: string) => {

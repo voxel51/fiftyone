@@ -1,6 +1,6 @@
 import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   Mesh,
   MeshStandardMaterial,
@@ -28,7 +28,7 @@ const ObjMeshDefaultMaterial = ({
   const { objPath, preTransformedObjPath } = obj;
 
   const { fo3dRoot } = useFo3dContext();
-  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
+  const isInMultiPanelView = useReverbValue(isInMultiPanelViewAtom);
 
   const objUrl = useMemo(
     () =>
@@ -89,7 +89,7 @@ const ObjMeshWithCustomMaterial = ({
     obj;
 
   const { fo3dRoot } = useFo3dContext();
-  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
+  const isInMultiPanelView = useReverbValue(isInMultiPanelViewAtom);
 
   const objUrl = useMemo(
     () =>

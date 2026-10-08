@@ -7,7 +7,7 @@ import {
 import { animated } from "@react-spring/web";
 import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import useActivePrimitive from "./Edit/useActivePrimitive";
 import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
@@ -72,12 +72,12 @@ const UrlLink = ({ url }: UrlLinkProps) => {
 };
 
 const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
-  const field = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
+  const field = useReverbValue(fos.field(path)) ?? makePseudoField(path);
   const isFramePrimitive = useIsFramePrimitive(path);
   const sampleValue = useSampleSelector((s) => s.getResolved<Primitive>(path));
   const frameValue = useFramePrimitiveValue(path);
   const value = isFramePrimitive ? frameValue : sampleValue;
-  const timeZone = useRecoilValue(fos.timeZone);
+  const timeZone = useReverbValue(fos.timeZone);
   const [, setActivePrimitive] = useActivePrimitive();
   const { isReadOnly: schemaReadOnly } = useReadOnly(path);
   const readOnlyReason = useFramePrimitiveReadOnlyReason(path);

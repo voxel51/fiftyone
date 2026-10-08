@@ -19,6 +19,7 @@
         "@fiftyone/components": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/spaces": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
@@ -40,14 +41,11 @@
         "react-error-boundary": "catalog:",
         "react-is": "catalog:",
         "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
         "relay-runtime": "catalog:",
         "styled-components": "catalog:",
         "vitest": "catalog:"
     },
     "peerDependencies": {
-        "react": "*",
-        "recoil": "*"
+        "react": "*"
     }
 }

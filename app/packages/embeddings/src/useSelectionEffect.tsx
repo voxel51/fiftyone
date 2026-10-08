@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResult } from "./useBrainResult";
@@ -9,15 +9,15 @@ import { shouldResolveSelection } from "./utils";
 
 export function useSelectionEffect() {
   const { setPlotSelection } = usePlotSelection();
-  const datasetName = useRecoilValue(fos.datasetName);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
+  const datasetName = useReverbValue(fos.datasetName);
+  const selectedSamples = useReverbValue(fos.selectedSamples);
   const [brainKey] = useBrainResult();
-  const view = useRecoilValue(fos.view);
+  const view = useReverbValue(fos.view);
   const [loadedPlot] = usePanelStatePartial("loadedPlot", null, true);
-  const filters = useRecoilValue(fos.filters);
-  const extended = useRecoilValue(fos.extendedStagesUnsorted);
-  const { selection } = useRecoilValue(fos.extendedSelection);
-  const slices = useRecoilValue(fos.currentSlices(false));
+  const filters = useReverbValue(fos.filters);
+  const extended = useReverbValue(fos.extendedStagesUnsorted);
+  const { selection } = useReverbValue(fos.extendedSelection);
+  const slices = useReverbValue(fos.currentSlices(false));
 
   // updated the selection when the extended view updates
   useEffect(() => {

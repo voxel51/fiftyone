@@ -142,7 +142,7 @@ function normalizeColorscale(raw: unknown): Colorscale | null {
  * Every parameter is accepted as `unknown`: the App's own Session type for
  * `fos.colorScheme` is declared against the mutation INPUT shape (which
  * omits the server-computed `rgb` field), narrower than what the read
- * fragment actually returns — so callers pass the live Recoil values
+ * fragment actually returns — so callers pass the live store values
  * straight through rather than fighting that gap here.
  */
 export function resolveColorscale(

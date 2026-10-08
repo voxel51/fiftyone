@@ -1,3 +1,8 @@
+import {
+  activeFields,
+  currentSlice,
+  groupMediaTypesMap,
+} from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, type PrimitiveAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
@@ -304,24 +309,6 @@ export const labelSchemaData = atomFamily((field: string) => {
 
 export const activeLabelSchemas = datasetScopedAtom<string[] | null>(null);
 
-/**
- * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
- * Can't read Recoil from inside a Jotai atom's getter, so we need the data
- * bridged into a Jotai atom. null means not yet initialized — in that case
- * visibleLabelSchemas treats the explore set as empty (only primitive fields
- * pass through).
- */
-export const exploreActiveFields = atom<string[] | null>(null);
-
-/**
- * Media type of the group slice currently being annotated, mirrored from Recoil
- * by `useSyncAnnotationSliceMediaType`. null when the dataset isn't grouped — in
- * that case visibleLabelSchemas applies no per-slice filtering. Recoil can't be
- * read from inside a Jotai getter, so the slice media type is bridged in (same
- * pattern as exploreActiveFields).
- */
-export const annotationSliceMediaType = atom<string | null>(null);
-
 const FRAMES_PREFIX = "frames.";
 const CLASSIFICATION_TYPES = new Set(["classification", "classifications"]);
 const TEMPORAL_TYPES = new Set(["temporaldetection", "temporaldetections"]);
@@ -371,11 +358,22 @@ const isPathAnnotatableOnSlice = (
 };
 
 /**
- * Intersection of activeLabelSchemas and exploreActiveFields, further narrowed
- * to the paths the current group slice supports (see isPathAnnotatableOnSlice).
- * Display consumers should read this instead of activeLabelSchemas so that
- * hiding a field in the Explore sidebar also hides it in Annotate, and so that
- * navigating between slices only offers schemas valid for the open slice.
+ * The open group slice's media type. `currentSlice` is null unless the dataset
+ * is grouped, which is what makes a non-grouped dataset skip per-slice
+ * filtering.
+ */
+const annotationSliceMediaType = atom((get) => {
+  const slice = get(currentSlice(true));
+  return slice ? (get(groupMediaTypesMap)[slice] ?? null) : null;
+});
+
+/**
+ * Intersection of activeLabelSchemas and the Explore sidebar's active fields,
+ * further narrowed to the paths the current group slice supports (see
+ * isPathAnnotatableOnSlice). Display consumers should read this instead of
+ * activeLabelSchemas so that hiding a field in the Explore sidebar also hides
+ * it in Annotate, and so that navigating between slices only offers schemas
+ * valid for the open slice.
  */
 export const visibleLabelSchemas = atom((get) => {
   const doc = get(taskLabelSchemaDoc);
@@ -401,8 +399,7 @@ export const visibleLabelSchemas = atom((get) => {
   const active = get(activeLabelSchemas);
   if (!active) return [];
 
-  const explore = get(exploreActiveFields);
-  const exploreSet = new Set(explore ?? []);
+  const exploreSet = new Set(get(activeFields({ modal: true })));
   const sliceMediaType = get(annotationSliceMediaType);
   const policy = get(taskSchemaPolicy);
 

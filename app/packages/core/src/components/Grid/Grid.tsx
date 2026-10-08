@@ -3,7 +3,7 @@ import styles from "./Grid.module.css";
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import React, { useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
@@ -13,7 +13,7 @@ import {
   gridSpacing,
   maxGridItemsSizeBytes,
   pageParameters,
-} from "./recoil";
+} from "./atoms";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -36,7 +36,7 @@ function Grid() {
   useGroupMatchTileDecorator();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
-  const spacing = useRecoilValue(gridSpacing);
+  const spacing = useReverbValue(gridSpacing);
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const zoom = useZoomSetting();
@@ -46,7 +46,7 @@ function Grid() {
   const records = useRecords(pageReset);
 
   // divide by two, half for the hidden cache and half for max shown
-  const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
+  const maxBytes = useReverbValue(maxGridItemsSizeBytes) / 2;
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
@@ -70,7 +70,7 @@ function Grid() {
   const { get, set } = useScrollLocation(pageReset);
 
   const setSample = fos.useExpandSample(store);
-  const autosizing = useRecoilValue(gridAutosizing);
+  const autosizing = useReverbValue(gridAutosizing);
 
   // `reset` is the grid's refresh signal. The callables below are routed
   // through a ref so their identities are not rebuild triggers — a transient

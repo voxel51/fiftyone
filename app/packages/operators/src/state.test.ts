@@ -6,16 +6,16 @@ import {
   useOperatorPromptSubmitOptions,
 } from "./state";
 
-vi.mock("recoil", () => ({
+vi.mock("@fiftyone/reverb", () => ({
   atom: vi.fn(() => ({ key: "mocked-atom" })),
   selector: vi.fn(() => ({ key: "mocked-selector" })),
   selectorFamily: vi.fn(() => () => ({ key: "mocked-selector-family" })),
-  useRecoilCallback: vi.fn(),
-  useRecoilState: vi.fn(() => [null, vi.fn()]),
-  useRecoilTransaction_UNSTABLE: vi.fn(),
-  useRecoilValue: vi.fn(),
-  useRecoilValueLoadable: vi.fn(),
-  useSetRecoilState: vi.fn(),
+  useReverbCallback: vi.fn(),
+  useReverbState: vi.fn(() => [null, vi.fn()]),
+  useReverbTransaction: vi.fn(),
+  useReverbValue: vi.fn(),
+  useReverbValueLoadable: vi.fn(),
+  useSetReverbState: vi.fn(),
 }));
 
 vi.mock("@fiftyone/analytics", () => ({

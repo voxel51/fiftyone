@@ -2,8 +2,12 @@ import { LoadingDots } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import { AggregationQueryTimeout } from "@fiftyone/state";
 import { Suspense, useEffect } from "react";
-import type { RecoilValue } from "recoil";
-import { constSelector, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  constSelector,
+  type ReverbValue,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 import TimedOut from "../Common/TimedOut";
 
 const CONST_SELECTOR = constSelector(null);
@@ -53,15 +57,15 @@ const EntryCounts = ({
   label = "",
   slice = "",
 }: {
-  countAtom?: RecoilValue<number | null>;
-  subcountAtom?: RecoilValue<number | null>;
+  countAtom?: ReverbValue<number | null>;
+  subcountAtom?: ReverbValue<number | null>;
   signal?: string;
   label?: string;
   slice?: string;
 }) => {
   const [count, subcount] = [
-    useRecoilValue(countAtom),
-    useRecoilValue(subcountAtom),
+    useReverbValue(countAtom),
+    useReverbValue(subcountAtom),
   ];
   const shown = signal ? (
     <CountShownSignal
@@ -117,14 +121,14 @@ const EntryCountsContainer = ({
   label,
   slice,
 }: {
-  countAtom?: RecoilValue<number | null>;
-  subcountAtom?: RecoilValue<number | null>;
+  countAtom?: ReverbValue<number | null>;
+  subcountAtom?: ReverbValue<number | null>;
   signal?: string;
   label?: string;
   slice?: string;
 }) => {
   // only subcounts have a timeout
-  const subResult = useRecoilValueLoadable(subcountAtom);
+  const subResult = useReverbValueLoadable(subcountAtom);
 
   if (
     subResult.state === "hasError" &&
@@ -151,8 +155,8 @@ export const SuspenseEntryCounts = ({
   label,
   slice,
 }: {
-  countAtom?: RecoilValue<number>;
-  subcountAtom?: RecoilValue<number>;
+  countAtom?: ReverbValue<number>;
+  subcountAtom?: ReverbValue<number>;
   /** An e2e name to signal the loaded counts under */
   signal?: string;
   /** What the counts are shown with, for the signal */

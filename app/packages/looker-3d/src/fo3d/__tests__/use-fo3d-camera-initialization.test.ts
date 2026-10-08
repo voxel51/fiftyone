@@ -8,28 +8,31 @@ import type { Fo3dCameraControls } from "../camera-controls";
 import { FO3D_CAMERA_LIFECYCLE_ACTION } from "../camera-lifecycle";
 import { getSavedCameraState, saveCameraState } from "../utils";
 
-const mockRecoilState = vi.hoisted(() => ({
+const mockReverbState = vi.hoisted(() => ({
   datasetNameAtom: { key: "test-datasetNameAtom" },
   datasetName: "test-dataset" as string | null,
   overriddenCameraPosition: null as [number, number, number] | null,
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  datasetName: mockRecoilState.datasetNameAtom,
+  datasetName: mockReverbState.datasetNameAtom,
 }));
 
-vi.mock("recoil", async () => {
-  const actual = await vi.importActual<typeof import("recoil")>("recoil");
+vi.mock("@fiftyone/reverb", async () => {
+  const actual =
+    await vi.importActual<typeof import("@fiftyone/reverb")>(
+      "@fiftyone/reverb",
+    );
 
   return {
     ...actual,
-    useRecoilValue: (atom: { key?: string }) => {
-      if (atom === mockRecoilState.datasetNameAtom) {
-        return mockRecoilState.datasetName;
+    useReverbValue: (atom: { key?: string }) => {
+      if (atom === mockReverbState.datasetNameAtom) {
+        return mockReverbState.datasetName;
       }
 
       if (atom?.key === "fo3d-cameraPosition") {
-        return mockRecoilState.overriddenCameraPosition;
+        return mockReverbState.overriddenCameraPosition;
       }
 
       return null;
@@ -83,8 +86,8 @@ const makeFoScene = (
 describe("useFo3dCameraInitialization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRecoilState.datasetName = "test-dataset";
-    mockRecoilState.overriddenCameraPosition = null;
+    mockReverbState.datasetName = "test-dataset";
+    mockReverbState.overriddenCameraPosition = null;
     vi.mocked(getSavedCameraState).mockReturnValue(null);
   });
 
@@ -252,7 +255,7 @@ describe("useFo3dCameraInitialization", () => {
     const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();
 
-    mockRecoilState.overriddenCameraPosition = [1, 2, 3];
+    mockReverbState.overriddenCameraPosition = [1, 2, 3];
 
     const { rerender } = renderHook(() =>
       useFo3dCameraInitialization({
@@ -272,7 +275,7 @@ describe("useFo3dCameraInitialization", () => {
     expect(cameraControlsRef.current?.target.toArray()).toEqual([0, 0, 0]);
     const updateCallsAfterInit = update.mock.calls.length;
 
-    mockRecoilState.overriddenCameraPosition = [4, 5, 6];
+    mockReverbState.overriddenCameraPosition = [4, 5, 6];
     rerender();
 
     expect(cameraRef.current?.position.toArray()).toEqual([4, 5, 6]);
@@ -284,7 +287,7 @@ describe("useFo3dCameraInitialization", () => {
     const { cameraRef, cameraControlsRef } = makeCameraHarness([0, 0, 0]);
     const dispatchCameraLifecycle = vi.fn();
 
-    mockRecoilState.overriddenCameraPosition = [1, 2, 3];
+    mockReverbState.overriddenCameraPosition = [1, 2, 3];
 
     const { rerender } = renderHook(() =>
       useFo3dCameraInitialization({
@@ -300,7 +303,7 @@ describe("useFo3dCameraInitialization", () => {
       }),
     );
 
-    mockRecoilState.overriddenCameraPosition = [0, 0, 0];
+    mockReverbState.overriddenCameraPosition = [0, 0, 0];
     rerender();
 
     expect(cameraRef.current?.position.toArray()).toEqual([0, 0, 0]);
@@ -310,7 +313,7 @@ describe("useFo3dCameraInitialization", () => {
   it("persists camera state on cleanup", () => {
     const { cameraRef, cameraControlsRef } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();
-    mockRecoilState.datasetName = "cleanup-dataset";
+    mockReverbState.datasetName = "cleanup-dataset";
 
     const { unmount } = renderHook(() =>
       useFo3dCameraInitialization({

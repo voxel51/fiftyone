@@ -1,7 +1,7 @@
 import { LABEL_LIST } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "../../";
 import usePanel from "./usePanel";
 
@@ -122,8 +122,8 @@ export default function useJSONPanel() {
   );
 
   const { sample, isOpen } = state || {};
-  const excludedFields = useRecoilValue(fos.activeSchemaExclusions);
-  const excludedAttrs = useRecoilValue(fos.activeSchemaAttrExclusions);
+  const excludedFields = useReverbValue(fos.activeSchemaExclusions);
+  const excludedAttrs = useReverbValue(fos.activeSchemaAttrExclusions);
   const json = useMemo(
     () =>
       sample

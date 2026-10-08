@@ -1,5 +1,5 @@
 import { useEventHandler } from "@fiftyone/state";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 
 import * as fos from "@fiftyone/state";
 
@@ -7,7 +7,7 @@ const useEscape = () => {
   useEventHandler(
     document,
     "keydown",
-    useRecoilCallback(
+    useReverbCallback(
       ({ reset, snapshot }) =>
         async (event: KeyboardEvent) => {
           const escapeKeyHandlerIds = await snapshot.getPromise(

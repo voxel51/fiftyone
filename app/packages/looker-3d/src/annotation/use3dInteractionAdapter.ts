@@ -7,7 +7,7 @@ import { current } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Ed
 import { labelSchemaData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import { getDefaultStore } from "jotai";
 import { useEffect, useRef } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useReverbState, useSetReverbState } from "@fiftyone/reverb";
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
 import {
   clearTransformStateSelector,
@@ -44,16 +44,16 @@ export const use3dInteractionAdapter = (): void => {
   const workingDoc = useWorkingDoc();
   const eventBus = useAnnotationEventBus();
 
-  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
-  const setSelectedLabelForAnnotation = useSetRecoilState(
+  const [transformMode, setTransformMode] = useReverbState(transformModeAtom);
+  const setSelectedLabelForAnnotation = useSetReverbState(
     selectedLabelForAnnotationAtom,
   );
-  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
+  const setCurrentArchetypeSelectedForTransform = useSetReverbState(
     currentArchetypeSelectedForTransformAtom,
   );
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
+  const clearTransformState = useSetReverbState(clearTransformStateSelector);
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
-  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const setHoveredLabel = useSetReverbState(hoveredLabelAtom);
 
   const transformModeRef = useRef(transformMode);
   transformModeRef.current = transformMode;

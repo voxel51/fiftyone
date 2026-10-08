@@ -16,7 +16,7 @@ This package can be used in the following contexts
 The API assumes you are running in one of the contexts listed above, which
 requires the ability to interact with the following types of objects.
 
-### Recoil
+### Reverb
 
 - `Atom`
 - `Selector`

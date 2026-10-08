@@ -15,6 +15,7 @@
         "@fiftyone/aggregations": "*",
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/state": "*",
         "@mapbox/mapbox-gl-draw": "1.4.3",
         "@turf/boolean-contains": "^6.5.0",
@@ -35,8 +36,6 @@
         "react-dom": "catalog:",
         "react-error-boundary": "catalog:",
         "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
         "relay-runtime": "catalog:",
         "styled-components": "catalog:",
         "vite": "catalog:",
@@ -52,8 +51,6 @@
         "react-dom": "*",
         "react-error-boundary": "*",
         "react-relay": "*",
-        "recoil": "*",
-        "recoil-relay": "*",
         "styled-components": "*"
     }
 }

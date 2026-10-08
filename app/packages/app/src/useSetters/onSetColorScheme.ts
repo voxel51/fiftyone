@@ -10,7 +10,7 @@ import {
   type setColorSchemeMutation,
 } from "@fiftyone/relay";
 import { ensureColorScheme, removeRgbProperty } from "@fiftyone/state";
-import { DefaultValue } from "recoil";
+import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
 import type { RegisteredSetter } from "./registerSetter";
 

@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { atom, useRecoilCallback } from "recoil";
+import { atom, useReverbCallback } from "@fiftyone/reverb";
 
 /**
  * The active plot selection's size, published by the plot view for
@@ -44,7 +44,7 @@ export const clearSelectionNonceState = atom<number>({
  * already be unmounted (spaces renders only the active tab).
  */
 export function useClearPublishedSelection(): () => void {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set, reset }) =>
       () => {
         fos.resetExtendedSelectionTransaction({ set, reset });

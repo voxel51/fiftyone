@@ -44,7 +44,7 @@ vi.mock("./Modal/Sidebar/Annotate/useEnsureSchemasLoaded", () => ({
   useEnsureSchemasLoaded: mocks.ensureSchemasLoaded,
 }));
 
-// Reads Recoil's datasetName; the outlet renders without a RecoilRoot here.
+// Reads Reverb's datasetName; the outlet renders without a ReverbRoot here.
 vi.mock("./Modal/Sidebar/Annotate/useSyncSchemaDataset", () => ({
   useSyncSchemaDataset: vi.fn(),
 }));

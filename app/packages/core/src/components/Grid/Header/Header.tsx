@@ -3,11 +3,15 @@ import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
 import { Suspense, useMemo } from "react";
-import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  constSelector,
+  useReverbValue,
+  useResetReverbState,
+} from "@fiftyone/reverb";
 import { Slider } from "../../Common/RangeSlider";
 import ResourceCount from "../../ResourceCount";
 import Actions from "../Actions";
-import { gridSpacing, gridZoom } from "../recoil";
+import { gridSpacing, gridZoom } from "../atoms";
 import { ZOOM_RANGE } from "../useZoomSetting";
 import {
   RightContainer,
@@ -21,7 +25,7 @@ import Sort from "./Sort";
 
 const Spacing = () => {
   const theme = useTheme();
-  const resetSpacing = useResetRecoilState(gridSpacing);
+  const resetSpacing = useResetReverbState(gridSpacing);
   return (
     <SliderContainer>
       <div style={{ flexGrow: 1 }} title={"Spacing"}>
@@ -48,7 +52,7 @@ const Spacing = () => {
 };
 
 const Zoom = () => {
-  const resetZoom = useResetRecoilState(gridZoom);
+  const resetZoom = useResetReverbState(gridZoom);
 
   const theme = useTheme();
   return (
@@ -77,8 +81,8 @@ const Zoom = () => {
 };
 
 const Header = () => {
-  const isGroup = useRecoilValue(isGroupAtom);
-  const groupSlices = useRecoilValue(fos.groupSlices);
+  const isGroup = useReverbValue(isGroupAtom);
+  const groupSlices = useReverbValue(fos.groupSlices);
   const shouldShowSliceSelector = useMemo(
     () => isGroup && groupSlices.length > 1,
     [isGroup, groupSlices],

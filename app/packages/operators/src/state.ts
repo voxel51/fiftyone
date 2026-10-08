@@ -14,13 +14,13 @@ import {
   atom,
   selector,
   selectorFamily,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-  useRecoilValueLoadable,
-  useSetRecoilState,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbTransaction,
+  useReverbValue,
+  useReverbValueLoadable,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
@@ -74,10 +74,10 @@ export const showOperatorPromptSelector = selector({
 });
 
 export const usePromptOperatorInput = () => {
-  const setRecentlyUsedOperators = useSetRecoilState(
+  const setRecentlyUsedOperators = useSetReverbState(
     recentlyUsedOperatorsState,
   );
-  const setPromptingOperator = useSetRecoilState(promptingOperatorState);
+  const setPromptingOperator = useSetReverbState(promptingOperatorState);
 
   const prompt = (operatorName, params = {}, options = {}) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
@@ -152,7 +152,7 @@ const currentContextSelector = selectorFamily({
 });
 
 export function useGlobalExecutionContext(): ExecutionContext {
-  const globalCtx = useRecoilValue(globalContextSelector);
+  const globalCtx = useReverbValue(globalContextSelector);
   const ctx = useMemo(() => {
     return new ExecutionContext({}, globalCtx);
   }, [globalCtx]);
@@ -160,7 +160,7 @@ export function useGlobalExecutionContext(): ExecutionContext {
 }
 
 const useExecutionContext = (operatorName, hooks = {}) => {
-  const curCtx = useRecoilValue(currentContextSelector(operatorName));
+  const curCtx = useReverbValue(currentContextSelector(operatorName));
   const currentSample = useCurrentSample();
   const {
     datasetName,
@@ -181,7 +181,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     activeFields,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
-  const promptingOperator = useRecoilValue(promptingOperatorState);
+  const promptingOperator = useReverbValue(promptingOperatorState);
   const promptId = promptingOperator?.id || null;
   const ctx = useMemo(() => {
     return new ExecutionContext(
@@ -489,7 +489,7 @@ export const useOperatorExecutionOptions = ({
 };
 
 export const useOperatorPrompt = () => {
-  const [promptingOperator, setPromptingOperator] = useRecoilState(
+  const [promptingOperator, setPromptingOperator] = useReverbState(
     promptingOperatorState,
   );
   const containerRef = useRef();
@@ -682,7 +682,7 @@ export const useOperatorPrompt = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executor.result]);
 
-  const setFieldValue = useRecoilTransaction_UNSTABLE(
+  const setFieldValue = useReverbTransaction(
     ({ get, set }) =>
       (fieldName, value) => {
         const state = get(promptingOperatorState);
@@ -853,7 +853,7 @@ export const operatorPaletteOpened = selector({
 });
 
 export function useShowOperatorIO() {
-  const [state, setState] = useRecoilState(operatorIOState);
+  const [state, setState] = useReverbState(operatorIOState);
   return {
     ...state,
     showButtons: state.hideButtons !== true && state.isInput,
@@ -1010,19 +1010,19 @@ export const recentlyUsedOperatorsState = atom({
 
 export function useCurrentSample() {
   // 'currentSampleId' may suspend for group datasets, so we use a loadable
-  const currentSample = useRecoilValueLoadable(fos.currentSampleId);
+  const currentSample = useReverbValueLoadable(fos.currentSampleId);
   return currentSample.state === "hasValue" ? currentSample.contents : null;
 }
 
 export function useOperatorBrowser() {
-  const [isVisible, setIsVisible] = useRecoilState(operatorBrowserVisibleState);
-  const [query, setQuery] = useRecoilState(operatorBrowserQueryState);
-  const [selected, setSelected] = useRecoilState(operatorChoiceState);
-  const defaultSelected = useRecoilValue(operatorDefaultChoice);
-  const choices = useRecoilValue(operatorBrowserChoices);
+  const [isVisible, setIsVisible] = useReverbState(operatorBrowserVisibleState);
+  const [query, setQuery] = useReverbState(operatorBrowserQueryState);
+  const [selected, setSelected] = useReverbState(operatorChoiceState);
+  const defaultSelected = useReverbValue(operatorDefaultChoice);
+  const choices = useReverbValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
-  const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
-  const editingField = useRecoilValue(fos.editingFieldAtom);
+  const isOperatorPaletteOpened = useReverbValue(operatorPaletteOpened);
+  const editingField = useReverbValue(fos.editingFieldAtom);
 
   const selectedValue = useMemo(() => {
     return selected ?? defaultSelected;
@@ -1268,7 +1268,7 @@ export function useOperatorExecutor(
     setNeedsOutput(false);
   }, [setIsExecuting, setError, setResult, setHasExecuted, setNeedsOutput]);
 
-  const execute = useRecoilCallback(
+  const execute = useReverbCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
       // exit early if operator did not load successfully
       if (loadResult !== OperatorLoadResult.SUCCESS) {
@@ -1436,7 +1436,7 @@ export const placementsForPlaceSelector = selectorFamily({
 });
 
 export function useOperatorPlacements(place: Places) {
-  const placements = useRecoilValue(placementsForPlaceSelector(place));
+  const placements = useReverbValue(placementsForPlaceSelector(place));
 
   return { placements };
 }
@@ -1447,14 +1447,14 @@ export const activePanelsEventCountAtom = atom({
 });
 
 export const useViewTargetSampleCounts = () => {
-  const isGroup = useRecoilValue(fos.isGroup);
-  const aggregation = useRecoilValue(
+  const isGroup = useReverbValue(fos.isGroup);
+  const aggregation = useReverbValue(
     fos.aggregation({ path: "", extended: true, modal: false }),
   );
-  const count = useRecoilValue(
+  const count = useReverbValue(
     fos.count({ path: "", extended: true, modal: false }),
   );
-  const groupStatistics = useRecoilValue(fos.groupStatistics(false));
+  const groupStatistics = useReverbValue(fos.groupStatistics(false));
 
   let viewSampleCount = count ?? 0;
   if (isGroup) {
@@ -1467,17 +1467,17 @@ export const useViewTargetSampleCounts = () => {
   }
 
   return {
-    datasetSampleCount: useRecoilValue(fos.datasetSampleCount) ?? 0,
+    datasetSampleCount: useReverbValue(fos.datasetSampleCount) ?? 0,
     viewSampleCount,
-    selectionSampleCount: useRecoilValue(fos.selectedSamples)?.size ?? 0,
-    selectionLabelCount: useRecoilValue(fos.selectedLabels)?.length ?? 0,
+    selectionSampleCount: useReverbValue(fos.selectedSamples)?.size ?? 0,
+    selectionLabelCount: useReverbValue(fos.selectedLabels)?.length ?? 0,
   };
 };
 
 export const useViewTargetGroupConstraints = () => {
-  const isGroup = useRecoilValue(fos.isGroup);
-  const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
-  const slice = useRecoilValue(fos.groupSlice);
+  const isGroup = useReverbValue(fos.isGroup);
+  const parentMediaType = useReverbValue(fos.parentMediaTypeSelector);
+  const slice = useReverbValue(fos.groupSlice);
 
   return {
     isGroupedDataset: isGroup || parentMediaType === "group",

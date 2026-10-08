@@ -5,7 +5,11 @@ import { FilterList, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React, { useEffect } from "react";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useResetReverbState,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
@@ -26,7 +30,7 @@ type SidebarModeE2EEvents = {
  */
 const Filter = (_props: { modal?: boolean }) => {
   const theme = useTheme();
-  const [isFilterMode, setIsFilterMode] = useRecoilState(
+  const [isFilterMode, setIsFilterMode] = useReverbState(
     fos.isSidebarFilterMode,
   );
 
@@ -36,14 +40,14 @@ const Filter = (_props: { modal?: boolean }) => {
     });
   }, [isFilterMode]);
 
-  const resetSelectedFieldStages = useResetRecoilState(
+  const resetSelectedFieldStages = useResetReverbState(
     fos.fieldVisibilityStage,
   );
 
   const { resetExcludedPaths, affectedPathCount, isFieldVisibilityActive } =
     fos.useSchemaSettings();
 
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const queryPerformance = useReverbValue(fos.queryPerformance);
 
   return (
     <FilterInputDiv>

@@ -11,7 +11,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useMemo, useState } from "react";
-import { useRecoilCallback, useRecoilState, useResetRecoilState } from "recoil";
+import {
+  useReverbCallback,
+  useReverbState,
+  useResetReverbState,
+} from "@fiftyone/reverb";
 import { workspaceEditorStateAtom } from "../../state";
 import { LOAD_WORKSPACE_OPERATOR } from "./constants";
 import { useWorkspaces } from "./hooks";
@@ -22,10 +26,10 @@ const { COLOR_OPTIONS } = constants;
 
 export default function WorkspaceEditor() {
   const { reset } = useWorkspaces();
-  const [state, setState] = useRecoilState(workspaceEditorStateAtom);
-  const resetEditor = useResetRecoilState(workspaceEditorStateAtom);
+  const [state, setState] = useReverbState(workspaceEditorStateAtom);
+  const resetEditor = useResetReverbState(workspaceEditorStateAtom);
   const { open, name, description, color, edit } = state;
-  const getSessionSpaces = useRecoilCallback(({ snapshot }) => async () => {
+  const getSessionSpaces = useReverbCallback(({ snapshot }) => async () => {
     const spaces = await snapshot.getPromise(sessionSpaces);
     return spaces;
   });

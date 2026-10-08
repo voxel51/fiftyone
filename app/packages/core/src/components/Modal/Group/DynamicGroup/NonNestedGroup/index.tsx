@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { Sample2D } from "../../../Sample2D";
 import { Sample3d } from "../../../Sample3d";
@@ -23,14 +23,14 @@ const ElementsContainer = styled.div`
 `;
 
 export const NonNestedDynamicGroup = () => {
-  const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
+  const [isBigLookerVisible, setIsBigLookerVisible] = useReverbState(
     fos.groupMediaIsMain2DViewerVisibleSetting,
   );
-  const viewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
-  const isCarouselVisible = useRecoilValue(
+  const viewMode = useReverbValue(fos.dynamicGroupsViewMode(true));
+  const isCarouselVisible = useReverbValue(
     fos.groupMediaIsCarouselVisibleSetting,
   );
-  const parent = useRecoilValue(fos.parentMediaTypeSelector);
+  const parent = useReverbValue(fos.parentMediaTypeSelector);
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
   // This effect ensures the main 2D viewer stays visible outside carousel mode (skipped in annotate mode)

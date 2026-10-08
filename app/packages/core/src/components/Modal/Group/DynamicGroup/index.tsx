@@ -1,22 +1,26 @@
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useReverbState,
+  useReverbValue,
+  useSetReverbState,
+} from "@fiftyone/reverb";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
 
 export const DynamicGroup = () => {
-  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+  const hasGroupSlices = useReverbValue(fos.hasGroupSlices);
 
-  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker(true));
-  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
+  const shouldRenderImaVid = useReverbValue(fos.shouldRenderImaVidLooker(true));
+  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useReverbState(
     fos.dynamicGroupsViewMode(true),
   );
-  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
+  const isOrderedDynamicGroup = useReverbValue(fos.isOrderedDynamicGroup);
 
-  const setDynamicGroupCurrentElementIndex = useSetRecoilState(
+  const setDynamicGroupCurrentElementIndex = useSetReverbState(
     fos.dynamicGroupCurrentElementIndex,
   );
-  const imaVidIndex = useRecoilValue(
+  const imaVidIndex = useReverbValue(
     fos.imaVidLookerState("currentFrameNumber"),
   );
 

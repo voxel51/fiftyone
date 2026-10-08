@@ -3,14 +3,14 @@ import { FrameSample } from "@fiftyone/looker/src/state";
 import { getTimelineConfigAtom } from "@fiftyone/playback";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { useRecoilCallback } from "recoil";
+import { useReverbCallback } from "@fiftyone/reverb";
 import {
   hoveredInstances,
   HoveredInstancesLabelsTuple,
   jotaiStore,
 } from "../jotai";
-import { datasetName, selectedLabelMap, State, view } from "../recoil";
-import { hoveredSample, selectedLabels } from "../recoil/atoms";
+import { datasetName, selectedLabelMap, State, view } from "../atoms";
+import { hoveredSample, selectedLabels } from "../atoms/atoms";
 
 const MAX_SIMILAR_LABELS_RESPONSE_CACHE_SIZE = 25;
 const MAX_SIMILAR_LABELS_RESPONSE_CACHE_TTL = 60 * 1000;
@@ -104,7 +104,7 @@ export const getSimilarLabelsCached = async (params: {
 };
 
 export const useOnShiftClickLabel = () => {
-  const handleGroup = useRecoilCallback(
+  const handleGroup = useReverbCallback(
     ({ set, snapshot }) =>
       async (e: LabelToggledEvent) => {
         const { sourceInstanceId } = e.detail;
@@ -200,7 +200,7 @@ export const useOnShiftClickLabel = () => {
     [],
   );
 
-  const handleVideo = useRecoilCallback(
+  const handleVideo = useReverbCallback(
     ({ set, snapshot }) =>
       async (e: LabelToggledEvent) => {
         const { sourceInstanceId, sourceLabelId } = e.detail;
@@ -269,7 +269,7 @@ export const useOnShiftClickLabel = () => {
     [],
   );
 
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot }) =>
       async (e: LabelToggledEvent) => {
         const { sourceInstanceId } = e.detail;

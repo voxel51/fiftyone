@@ -22,7 +22,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 
 import { useProduct } from "../product";
 import Header from "./Header";
@@ -120,7 +120,7 @@ const TABS = [
 
 const Setup = () => {
   const [activeTab, setActiveTab] = useState<"local" | "remote">("local");
-  const notebook = useRecoilValue(isNotebook);
+  const notebook = useReverbValue(isNotebook);
   const { title } = useProduct();
 
   return (

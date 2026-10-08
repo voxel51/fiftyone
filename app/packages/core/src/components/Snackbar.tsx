@@ -16,7 +16,7 @@ import {
 import { SnackbarProvider } from "notistack";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { useRecoilState } from "recoil";
+import { useReverbState } from "@fiftyone/reverb";
 
 import styles from "./Snackbar.module.css";
 
@@ -63,7 +63,7 @@ const Notice = ({
 };
 
 function SnackbarErrors() {
-  const [snackErrors, setSnackErrors] = useRecoilState(fos.snackbarErrors);
+  const [snackErrors, setSnackErrors] = useReverbState(fos.snackbarErrors);
 
   if (!snackErrors.length) return null;
 
@@ -75,7 +75,7 @@ function SnackbarErrors() {
 }
 
 function SnackbarLinks() {
-  const [snackLink, setSnackLink] = useRecoilState(fos.snackbarLink);
+  const [snackLink, setSnackLink] = useReverbState(fos.snackbarLink);
 
   if (!snackLink) return null;
 
@@ -98,7 +98,7 @@ function SnackbarLinks() {
 }
 
 function SnackbarMessage() {
-  const [message, setSnackMessage] = useRecoilState(fos.snackbarMessage);
+  const [message, setSnackMessage] = useReverbState(fos.snackbarMessage);
 
   if (!message) return null;
 

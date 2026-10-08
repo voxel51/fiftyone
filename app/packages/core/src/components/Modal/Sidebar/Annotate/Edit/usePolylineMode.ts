@@ -15,7 +15,7 @@ import { isPatchesView } from "@fiftyone/state";
 import { POLYLINE } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import {
   type AnnotationContextSelected,
   type CreateOptions,
@@ -75,7 +75,7 @@ export const usePolylineMode = () => {
   const [polylineModeActive, setPolylineModeActive] = useAtom(
     polylineModeActiveAtom,
   );
-  const isPatchView = useRecoilValue(isPatchesView);
+  const isPatchView = useReverbValue(isPatchesView);
   const { fields } = useAnnotationFields(POLYLINE);
   const exit = useExit();
   // ref so `deactivatePolylineMode` doesn't churn with every scene render

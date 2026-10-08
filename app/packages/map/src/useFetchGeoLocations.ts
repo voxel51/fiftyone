@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
 import React from "react";
-import { atom, useSetRecoilState } from "recoil";
+import { atom, useSetReverbState } from "@fiftyone/reverb";
 
 export type SampleLocationMap = {
   [key: string]: [number, number];
@@ -56,7 +56,7 @@ const useFetchGeoLocations = ({
   loading: boolean;
 } => {
   const [loading, setLoading] = React.useState(false);
-  const setSampleLocationMap = useSetRecoilState(sampleLocationMapAtom);
+  const setSampleLocationMap = useSetReverbState(sampleLocationMapAtom);
 
   const key = React.useMemo(() => {
     return [

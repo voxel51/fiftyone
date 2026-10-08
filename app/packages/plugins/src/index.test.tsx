@@ -11,10 +11,10 @@ const mocks = vi.hoisted(() => ({
   pluginState: "ready" as "error" | "loading" | "ready",
 }));
 
-vi.mock("recoil", () => ({
+vi.mock("@fiftyone/reverb", () => ({
   atom: vi.fn((value) => value),
-  useRecoilState: vi.fn(() => [mocks.pluginState, vi.fn()]),
-  useRecoilValue: vi.fn(() => "dataset"),
+  useReverbState: vi.fn(() => [mocks.pluginState, vi.fn()]),
+  useReverbValue: vi.fn(() => "dataset"),
 }));
 
 vi.mock("@fiftyone/operators", () => ({

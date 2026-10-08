@@ -1,14 +1,19 @@
 import * as fos from "@fiftyone/state";
 import { FLOAT_FIELD } from "@fiftyone/utilities";
-import type { RecoilValueReadOnly, SetterOrUpdater } from "recoil";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  type ReverbValueReadOnly,
+  type SetterOrUpdater,
+  useAssertedReverbValue,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import Checkbox from "../../Common/Checkbox";
 import * as state from "./state";
 
 interface NonfiniteState {
   value: boolean;
   setValue: SetterOrUpdater<boolean>;
-  subcountAtom?: RecoilValueReadOnly<number>;
+  subcountAtom?: ReverbValueReadOnly<number>;
 }
 
 const NONFINITES = {
@@ -20,7 +25,7 @@ const NONFINITES = {
 
 const useNonfiniteSettings = (params: { modal: boolean; path: string }) => {
   function useData(key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] {
-    const [value, setValue] = useRecoilState(
+    const [value, setValue] = useReverbState(
       fos.nonfiniteAtom({ ...params, key }),
     );
 
@@ -44,10 +49,8 @@ const useNonfiniteSettings = (params: { modal: boolean; path: string }) => {
 const useNonfinites = (options: { modal: boolean; path: string }) => {
   const get = useNonfiniteSettings(options);
   const list = [get("none")];
-  const { ftype, subfield } = fos.useAssertedRecoilValue(
-    fos.field(options.path),
-  );
-  const data = useRecoilValue(
+  const { ftype, subfield } = useAssertedReverbValue(fos.field(options.path));
+  const data = useReverbValue(
     fos.nonfiniteData({
       extended: false,
       path: options.path,
@@ -72,13 +75,13 @@ const useNonfinites = (options: { modal: boolean; path: string }) => {
 };
 
 function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
-  const color = useRecoilValue(fos.pathColor(path));
+  const color = useReverbValue(fos.pathColor(path));
   const nonfinites = useNonfinites({
     modal,
     path,
   });
-  const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
-  const one = useRecoilValue(state.oneBound({ modal, path }));
+  const hasBounds = useReverbValue(state.hasBounds({ modal, path }));
+  const one = useReverbValue(state.oneBound({ modal, path }));
 
   if (nonfinites.length === 1 && nonfinites[0].key === "none") {
     return null;

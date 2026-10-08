@@ -18,7 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useSetRecoilState } from "recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
 import Error from "../../Error";
 import EvaluationNotes from "../../EvaluationNotes";
 import ClassPerformance from "./ClassPerformance";
@@ -82,7 +82,7 @@ export default function Overview(props) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerPanelEvent();
-  const setEditingField = useSetRecoilState(editingFieldAtom);
+  const setEditingField = useSetReverbState(editingFieldAtom);
 
   const trackEvent = useTrackEvent();
 

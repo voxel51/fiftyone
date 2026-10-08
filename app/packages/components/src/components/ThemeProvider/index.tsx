@@ -4,7 +4,7 @@ import {
   experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
 import React from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
 function dynamicTheme(accessor: string) {
@@ -308,7 +308,7 @@ let theme = extendMuiTheme({
 
 /** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export const useTheme = () => {
-  return theme.colorSchemes[useRecoilValue(fos.theme)].palette;
+  return theme.colorSchemes[useReverbValue(fos.theme)].palette;
 };
 
 /** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
@@ -321,7 +321,7 @@ const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: typeof theme }>
 > = ({ children, customTheme }) => {
   if (customTheme) theme = customTheme;
-  const loadable = useRecoilValueLoadable(fos.theme);
+  const loadable = useReverbValueLoadable(fos.theme);
   const current = loadable.state === "hasValue" ? loadable.contents : "dark";
 
   // Sync dark class on document element for design-system components

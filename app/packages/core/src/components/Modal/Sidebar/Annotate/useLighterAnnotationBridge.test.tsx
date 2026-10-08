@@ -19,7 +19,7 @@ vi.mock("@fiftyone/state", () => ({
   useModalSample: () => null,
   useGetKeypointSkeleton: () => () => undefined,
 }));
-vi.mock("@fiftyone/state/src/recoil/utils", () => ({
+vi.mock("@fiftyone/state/src/atoms/utils", () => ({
   getSampleSrc: (value: string) => value,
 }));
 vi.mock("@fiftyone/state/src/utils", () => ({

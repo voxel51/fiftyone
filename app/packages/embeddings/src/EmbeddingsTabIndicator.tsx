@@ -1,11 +1,11 @@
 import { FilterAndSelectionIndicator } from "@fiftyone/components";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { SELECTION_SCOPE } from "./constants";
 import { usePlotSelection } from "./usePlotSelection";
 
 export default function EmbeddingsTabIndicator() {
-  const { selection, scope } = useRecoilValue(fos.extendedSelection);
+  const { selection, scope } = useReverbValue(fos.extendedSelection);
   const plotSelection = usePlotSelection();
 
   if (scope !== SELECTION_SCOPE) return null;

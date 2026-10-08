@@ -1,16 +1,15 @@
 import { SelectorValidationError } from "@fiftyone/components";
 import { isObjectIdField, snackbarErrors } from "@fiftyone/state";
 import { isObjectIdString } from "@fiftyone/utilities";
-import type { RecoilState } from "recoil";
-import { useRecoilCallback } from "recoil";
+import { type ReverbState, useReverbCallback } from "@fiftyone/reverb";
 import type { Result } from "./Result";
 
 export default function (
   modal: boolean,
   path: string,
-  selectedAtom: RecoilState<(string | null)[]>,
+  selectedAtom: ReverbState<(string | null)[]>,
 ) {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot, set }) =>
       async (value: string | null, d?: Result) => {
         const isObjectId = await snapshot.getPromise(isObjectIdField(path));

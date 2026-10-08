@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SchemaConfigType } from "../../utils";
 import PrimitiveFieldContent from "./PrimitiveFieldContent";
@@ -18,7 +18,7 @@ const SLIDER: SchemaConfigType = { type: "float", component: "slider" };
 const Editor = ({ initial }: { initial: SchemaConfigType }) => {
   const [config, setConfig] = useState(initial);
   return (
-    <RecoilRoot>
+    <ReverbRoot>
       <PrimitiveFieldContent
         field="score"
         fieldType="Float"
@@ -31,7 +31,7 @@ const Editor = ({ initial }: { initial: SchemaConfigType }) => {
         scan
       </button>
       <output data-testid="config">{JSON.stringify(config)}</output>
-    </RecoilRoot>
+    </ReverbRoot>
   );
 };
 

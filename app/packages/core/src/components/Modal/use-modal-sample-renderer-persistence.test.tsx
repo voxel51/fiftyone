@@ -41,9 +41,9 @@ vi.mock("@fiftyone/state", () => ({
   useModalSampleSchema: () => ({}),
 }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: () => "filepath",
-  useRecoilValueLoadable: () => harness.loadable,
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: () => "filepath",
+  useReverbValueLoadable: () => harness.loadable,
 }));
 
 describe("useModalSampleRendererPersistenceKey", () => {

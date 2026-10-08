@@ -37,7 +37,7 @@ import {
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useMemoOne } from "use-memo-one";
-import { constSelector, useRecoilValue } from "recoil";
+import { constSelector, useReverbValue } from "@fiftyone/reverb";
 import {
   useAnnotationContext,
   useAnnotationFields,
@@ -49,37 +49,37 @@ import {
 import { getModalSampleFrameRate } from "../utils/modalSample";
 
 /**
- * Read accessors for the external recoil / jotai atoms the video surface
+ * Read accessors for the external Reverb / Jotai atoms the video surface
  * consumes. The rest of the package depends on these hooks rather than on
- * recoil / jotai or the foreign atoms' module paths, so there's a single
+ * Reverb / Jotai or the foreign atoms' module paths, so there's a single
  * seam to update if an upstream atom moves or changes shape — and the
  * surrounding code reads as plain hooks, not state-library plumbing.
  */
 
 /** Active color scheme (`@fiftyone/state`). */
-export const useColorScheme = () => useRecoilValue(colorScheme);
+export const useColorScheme = () => useReverbValue(colorScheme);
 
 /** Color seed used for instance / field color hashing. */
-export const useColorSeed = () => useRecoilValue(colorSeed);
+export const useColorSeed = () => useReverbValue(colorSeed);
 
 /** Current dataset name. */
-export const useDatasetName = () => useRecoilValue(datasetName);
+export const useDatasetName = () => useReverbValue(datasetName);
 
 /** Current dataset id — the `EntityId` namespace for engine signal keys. */
 export const useDatasetId = (): string => useCurrentDatasetId() ?? "";
 
 /** Active group slice, or `null` when the dataset isn't grouped. */
-export const useGroupSlice = () => useRecoilValue(groupSlice);
+export const useGroupSlice = () => useReverbValue(groupSlice);
 
 /** Id of the sample open in the modal. */
-export const useModalSampleId = () => useRecoilValue(modalSampleId);
+export const useModalSampleId = () => useReverbValue(modalSampleId);
 
 /** Active view stages as the structurally compatible `utilities` `Stage[]`; empty when no view is applied. */
-export const useView = (): Stage[] => (useRecoilValue(view) ?? []) as Stage[];
+export const useView = (): Stage[] => (useReverbValue(view) ?? []) as Stage[];
 
 /** Schema paths of the dataset's temporal-detections fields. */
 export const useTemporalDetectionFieldPaths = () =>
-  useRecoilValue(
+  useReverbValue(
     fieldPaths({
       ftype: EMBEDDED_DOCUMENT_FIELD,
       embeddedDocType: TEMPORAL_DETECTIONS_FIELD,
@@ -92,7 +92,7 @@ export const useTemporalDetectionFieldPaths = () =>
  * routes each path to exactly one owner.
  */
 export const useSampleClassificationFieldPaths = () =>
-  useRecoilValue(
+  useReverbValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,
       ftype: EMBEDDED_DOCUMENT_FIELD,
@@ -213,7 +213,7 @@ export const useFramePrimitivePaths = (): readonly string[] => {
 
 /** The dataset's modal media field (default `filepath`), which locates each frame's media. */
 export const useModalMediaField = (): string =>
-  useRecoilValue(selectedMediaField(true));
+  useReverbValue(selectedMediaField(true));
 
 /**
  * Frame rate driving video annotation playback for the modal sample. An image
@@ -223,7 +223,7 @@ export const useModalMediaField = (): string =>
 export const useModalSampleFrameRate = (
   sample: ModalSample | null | undefined,
 ): number => {
-  const targetFrameRate = useRecoilValue(dynamicGroupsTargetFrameRate);
+  const targetFrameRate = useReverbValue(dynamicGroupsTargetFrameRate);
   return getModalSampleFrameRate(sample) ?? targetFrameRate;
 };
 
@@ -233,7 +233,7 @@ export const useModalSampleFrameRate = (
  * while keeping hook order stable.
  */
 export const useDynamicGroupElementCount = (enabled = true): number | null =>
-  useRecoilValue(
+  useReverbValue(
     enabled ? dynamicGroupsElementCount({ modal: true }) : constSelector(null),
   );
 
@@ -243,7 +243,7 @@ export const useDynamicGroupElementCount = (enabled = true): number | null =>
  * any `group_by` stage, so the value is gated on the image-backed case.
  */
 export const useDynamicGroupValue = (): string | null => {
-  const value = useRecoilValue(groupByFieldValue) as unknown as string | null;
+  const value = useReverbValue(groupByFieldValue) as unknown as string | null;
   return useIsImageDynamicGroupVideo() ? (value ?? null) : null;
 };
 
@@ -259,8 +259,8 @@ export {
 } from "../../../core/src/components/Modal/Sidebar/Annotate/state";
 
 /** The dataset's display time zone. */
-export const useTimeZone = (): string => useRecoilValue(timeZone);
+export const useTimeZone = (): string => useReverbValue(timeZone);
 
 /** A field's `ftype`, or undefined when the path is not in the schema. */
 export const useFieldType = (path: string | null): string | undefined =>
-  useRecoilValue(field(path ?? ""))?.ftype;
+  useReverbValue(field(path ?? ""))?.ftype;

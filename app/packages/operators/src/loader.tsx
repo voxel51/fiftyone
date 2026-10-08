@@ -1,7 +1,7 @@
 import { datasetName as datasetNameAtom } from "@fiftyone/state";
 import { isPrimitiveString } from "@fiftyone/utilities";
 import { useCallback, useEffect, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { useOperatorPlacementsResolver } from "./hooks";
 import { executeOperatorsForEvent, loadOperatorsFromServer } from "./operators";
@@ -48,12 +48,12 @@ async function loadOperators(datasetName: string) {
 export function useOperators(datasetLess?: boolean) {
   const [state, setState] = useState<"loading" | "error" | "ready">("loading");
   const [error, setError] = useState<Error | null>(null);
-  const datasetName = useRecoilValue(datasetNameAtom);
-  const setAvailableOperatorsRefreshCount = useSetRecoilState(
+  const datasetName = useReverbValue(datasetNameAtom);
+  const setAvailableOperatorsRefreshCount = useSetReverbState(
     availableOperatorsRefreshCount,
   );
-  const setOperatorsInitialized = useSetRecoilState(operatorsInitializedAtom);
-  const setOperatorsLoadFailed = useSetRecoilState(operatorsLoadFailedAtom);
+  const setOperatorsInitialized = useSetReverbState(operatorsInitializedAtom);
+  const setOperatorsLoadFailed = useSetReverbState(operatorsLoadFailedAtom);
   const { initialized } = useOperatorPlacementsResolver();
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export function useOperators(datasetLess?: boolean) {
  * `loadOperators`' one-time `onDatasetOpen`/`onStartup` side effects.
  */
 export function useRefreshOperators() {
-  const setAvailableOperatorsRefreshCount = useSetRecoilState(
+  const setAvailableOperatorsRefreshCount = useSetReverbState(
     availableOperatorsRefreshCount,
   );
 

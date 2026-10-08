@@ -15,8 +15,8 @@ vi.mock("@fiftyone/operators", () => ({
 
 vi.mock("@fiftyone/state", () => ({ datasetName: "datasetName" }));
 
-vi.mock("recoil", () => ({
-  useRecoilValue: vi.fn(() => mocks.datasetName),
+vi.mock("@fiftyone/reverb", () => ({
+  useReverbValue: vi.fn(() => mocks.datasetName),
 }));
 
 vi.mock("jotai", () => ({

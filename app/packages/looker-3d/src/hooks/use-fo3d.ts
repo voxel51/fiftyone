@@ -5,7 +5,7 @@ import {
   isWrappableDirect3dSamplePath,
 } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { FoScene } from "../fo3d/render-types";
 import type { DirectPcdWorldTransforms } from "../fo3d/direct-pcd-world-alignment";
 import {
@@ -122,11 +122,11 @@ type UseFo3dReturnType = {
 
 /**
  * Parses the active fo3d sample into a typed scene graph and keeps
- * normalized raw scene content in Recoil for downstream consumers.
+ * normalized raw scene content in the store for downstream consumers.
  */
 export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const isGroup = useRecoilValue(fos.isGroup);
+  const mediaField = useReverbValue(fos.selectedMediaField(true));
+  const isGroup = useReverbValue(fos.isGroup);
   const group3dState = fos.useRenderConfig3dState();
   const { setFo3dContent } = fos.useRenderConfig3dActions();
   const fetchFo3d = useFo3dFetcher();
@@ -350,7 +350,7 @@ export const useFo3d = (sample: fos.ModalSample): UseFo3dReturnType => {
     return normalizeFo3dRawData(rawData, fo3dRoot);
   }, [rawData, fo3dRoot]);
 
-  // This effect writes normalized fo3d content into Recoil state.
+  // This effect writes normalized fo3d content into store state.
   useEffect(() => {
     setFo3dContent(normalizedRawData);
   }, [normalizedRawData, setFo3dContent]);

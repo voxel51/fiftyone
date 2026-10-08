@@ -11,6 +11,7 @@
     "main": "./src/index.ts",
     "private": true,
     "dependencies": {
+        "@fiftyone/reverb": "workspace:*",
         "@segment/analytics-next": "^1.70.0"
     }
 }

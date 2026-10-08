@@ -2,7 +2,7 @@ import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { FlipToBack } from "@mui/icons-material";
 import { useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
 import { ActionDiv, getStringAndNumberProps } from "../../../Actions/utils";
@@ -10,11 +10,11 @@ import Patches, { patchesFields } from "./Patches";
 
 export default ({ adaptiveMenuItemProps }: ActionProps) => {
   const [open, setOpen] = useState(false);
-  const loading = useRecoilValue(fos.patching);
-  const isVideo = useRecoilValue(fos.isVideoDataset);
+  const loading = useReverbValue(fos.patching);
+  const isVideo = useReverbValue(fos.isVideoDataset);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
-  const fields = useRecoilValue(patchesFields);
+  const fields = useReverbValue(patchesFields);
 
   return (
     <ActionDiv

@@ -1,6 +1,6 @@
 import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import {
   dataset,
   datasetId,
@@ -19,8 +19,8 @@ import {
   stageDefinitions,
   State,
   view,
-} from "../recoil";
-import { isPatchesView } from "../recoil/view";
+} from "../atoms";
+import { isPatchesView } from "../atoms/view";
 
 /**
  * Get the current dataset ID.
@@ -28,14 +28,14 @@ import { isPatchesView } from "../recoil/view";
  * @returns The current dataset ID, or null if no dataset is selected
  */
 export const useCurrentDatasetId = (): string | null =>
-  useRecoilValue(datasetId);
+  useReverbValue(datasetId);
 
 /**
  * Get the current dataset.
  *
  * @returns The current dataset state
  */
-export const useCurrentDataset = () => useRecoilValue(dataset);
+export const useCurrentDataset = () => useReverbValue(dataset);
 
 /**
  * Get the current dataset name.
@@ -43,7 +43,7 @@ export const useCurrentDataset = () => useRecoilValue(dataset);
  * @returns The current dataset name
  */
 export const useCurrentDatasetName = (): string | null =>
-  useRecoilValue(datasetName);
+  useReverbValue(datasetName);
 
 /**
  * Get the current sample schema.
@@ -51,7 +51,7 @@ export const useCurrentDatasetName = (): string | null =>
  * @returns The field schema for the sample space
  */
 export const useSampleSchema = () =>
-  useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+  useReverbValue(fieldSchema({ space: State.SPACE.SAMPLE }));
 
 /**
  * The dataset's media type, with group datasets reporting `group` — matching
@@ -60,7 +60,7 @@ export const useSampleSchema = () =>
  * @returns the media type, or null when no dataset is loaded
  */
 export const useDatasetMediaType = (): string | null => {
-  const current = useRecoilValue(dataset);
+  const current = useReverbValue(dataset);
   return current?.mediaType ?? null;
 };
 
@@ -71,7 +71,7 @@ export const useDatasetMediaType = (): string | null => {
  * @returns the evaluation keys, empty when no dataset is loaded
  */
 export const useEvaluationKeys = (): string[] => {
-  const current = useRecoilValue(dataset);
+  const current = useReverbValue(dataset);
   return useMemo(
     () => (current?.evaluations ?? []).map((run) => run.key),
     [current?.evaluations],
@@ -120,8 +120,8 @@ const flatten = (
  * @returns field types keyed by the path used to address them
  */
 export const useFieldTypes = (): ReadonlyMap<string, FieldType> => {
-  const samples = useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
-  const frames = useRecoilValue(fieldSchema({ space: State.SPACE.FRAME }));
+  const samples = useReverbValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+  const frames = useReverbValue(fieldSchema({ space: State.SPACE.FRAME }));
 
   return useMemo(() => {
     const types = flatten(samples, false, new Map<string, FieldType>());
@@ -136,7 +136,7 @@ export const useFieldTypes = (): ReadonlyMap<string, FieldType> => {
  * @returns The field schema for the frame space
  */
 export const useFrameSchema = () =>
-  useRecoilValue(fieldSchema({ space: State.SPACE.FRAME }));
+  useReverbValue(fieldSchema({ space: State.SPACE.FRAME }));
 
 /**
  * Hook to retrieve the selected media field for the grid view.
@@ -144,7 +144,7 @@ export const useFrameSchema = () =>
  * @returns The selected media field state for the grid
  */
 export const useSelectedMediaFieldGrid = () => {
-  return useRecoilValue(selectedMediaField(false));
+  return useReverbValue(selectedMediaField(false));
 };
 
 /**
@@ -153,7 +153,7 @@ export const useSelectedMediaFieldGrid = () => {
  * @returns True if the current dataset is a group dataset
  */
 export const useIsGroupDataset = () => {
-  return useRecoilValue(isGroup);
+  return useReverbValue(isGroup);
 };
 
 export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
@@ -167,8 +167,8 @@ export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
  * through to the dataset default, which is null for most datasets.
  *
  * Exported so the rule can be tested on its own: the hook around it is a
- * `useRecoilCallback`, and exercising that would mean importing Recoil into a
- * test during the Recoil->Jotai freeze.
+ * `useReverbCallback`, and exercising that would mean reaching the store from
+ * a test.
  */
 export const skeletonFieldKey = (field: string): string =>
   field.split(".").slice(-1)[0];
@@ -179,7 +179,7 @@ export const skeletonFieldKey = (field: string): string =>
  * has none of its own.
  */
 export const useGetKeypointSkeleton = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot }) =>
       (field: string) =>
         snapshot.getLoadable(skeleton(skeletonFieldKey(field))).getValue(),
@@ -198,7 +198,7 @@ export const useGetKeypointSkeleton = () => {
 export const useGroupSlices = (
   mediaTypes?: GroupSliceMediaType[],
 ): string[] => {
-  const slices = useRecoilValue(groupMediaTypes);
+  const slices = useReverbValue(groupMediaTypes);
 
   return useMemo(
     () =>
@@ -217,14 +217,14 @@ export const useGroupSlices = (
 
 /** The media type of a dynamic group's members, or the dataset's own media type. */
 export const useParentMediaType = (): string =>
-  useRecoilValue(parentMediaTypeSelector);
+  useReverbValue(parentMediaTypeSelector);
 
 /**
  * The operator catalog the expression editor suggests from, exactly as the
  * server describes it — or null before the query has resolved, which callers
  * treat as "suggest nothing rather than something wrong".
  */
-export const useExpressionCatalog = () => useRecoilValue(expressionCatalog);
+export const useExpressionCatalog = () => useReverbValue(expressionCatalog);
 
 /**
  * Whether the current view is an ordered dynamic group over image samples
@@ -233,8 +233,8 @@ export const useExpressionCatalog = () => useRecoilValue(expressionCatalog);
  * @returns True if the current view is an image-backed dynamic group video
  */
 export const useIsImageDynamicGroupVideo = (): boolean => {
-  const orderedDynamicGroup = useRecoilValue(isOrderedDynamicGroup);
-  const parentMediaType = useRecoilValue(parentMediaTypeSelector);
+  const orderedDynamicGroup = useReverbValue(isOrderedDynamicGroup);
+  const parentMediaType = useReverbValue(parentMediaTypeSelector);
 
   return orderedDynamicGroup && parentMediaType === MEDIA_TYPE_IMAGE;
 };
@@ -244,7 +244,7 @@ export const useIsImageDynamicGroupVideo = (): boolean => {
  * not a dynamic group or the group is unordered.
  */
 export const useDynamicGroupOrderBy = (): string | null =>
-  useRecoilValue(dynamicGroupParameters)?.orderBy ?? null;
+  useReverbValue(dynamicGroupParameters)?.orderBy ?? null;
 
 /**
  * The field the current dynamic group is grouped by, or null when the view is
@@ -252,24 +252,24 @@ export const useDynamicGroupOrderBy = (): string | null =>
  * has no single field to name, so it reads null too.
  */
 export const useDynamicGroupGroupBy = (): string | null => {
-  const groupBy = useRecoilValue(dynamicGroupParameters)?.groupBy;
+  const groupBy = useReverbValue(dynamicGroupParameters)?.groupBy;
 
   return typeof groupBy === "string" ? groupBy : null;
 };
 
 /** Whether the current view is a patches view. */
-export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
+export const useIsPatchesView = (): boolean => useReverbValue(isPatchesView);
 
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
-export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
+export const useStageDefinitions = () => useReverbValue(stageDefinitions);
 
 /** The applied view's stages. */
-export const useView = (): State.Stage[] => useRecoilValue(view);
+export const useView = (): State.Stage[] => useReverbValue(view);
 
 /** The grid's sidebar filters. */
-export const useFilters = (): State.Filters => useRecoilValue(filters);
+export const useFilters = (): State.Filters => useReverbValue(filters);
 
 /** The grid's extended stages, `{ [stage class]: kwargs }`, as operators are
  * sent them. */
 export const useExtendedStages = (): Record<string, unknown> =>
-  useRecoilValue(extendedStages);
+  useReverbValue(extendedStages);

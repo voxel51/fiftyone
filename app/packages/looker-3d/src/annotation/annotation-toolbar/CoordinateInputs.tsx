@@ -1,6 +1,6 @@
 import { Box, TextField } from "@mui/material";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import {
   annotationPlaneAtom,
   selectedLabelForAnnotationAtom,
@@ -61,7 +61,7 @@ export const PlaneCoordinateInputs = ({
   hideRotation = false,
 }: CoordinateInputsProps) => {
   const [annotationPlane, setAnnotationPlane] =
-    useRecoilState(annotationPlaneAtom);
+    useReverbState(annotationPlaneAtom);
   const [x, setX] = useState<string>("0");
   const [y, setY] = useState<string>("0");
   const [z, setZ] = useState<string>("0");
@@ -224,8 +224,8 @@ export const VertexCoordinateInputs = ({
   className,
   hideTranslate = false,
 }: CoordinateInputsProps) => {
-  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
-  const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
+  const selectedPoint = useReverbValue(selectedPolylineVertexAtom);
+  const selectedLabel = useReverbValue(selectedLabelForAnnotationAtom);
 
   const workingLabel = useWorkingLabel(selectedPoint?.labelId ?? "");
   const { updatePolylinePoints } = usePolylineOperations();

@@ -5,7 +5,7 @@ import {
   KEYPOINT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { selectorFamily } from "recoil";
+import { selectorFamily } from "@fiftyone/reverb";
 
 export const isBooleanField = selectorFamily({
   key: "isBooleanField",

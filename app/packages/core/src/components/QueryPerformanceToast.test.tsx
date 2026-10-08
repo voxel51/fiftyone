@@ -10,10 +10,10 @@ import QueryPerformanceToast, {
 
 const shouldOptimize = vi.hoisted(() => vi.fn());
 
-vi.mock("recoil", () => ({
+vi.mock("@fiftyone/reverb", () => ({
   atom: (options: unknown) => options,
-  useRecoilState: () => [false, vi.fn()],
-  useRecoilValue: shouldOptimize,
+  useReverbState: () => [false, vi.fn()],
+  useReverbValue: shouldOptimize,
 }));
 
 vi.mock("@fiftyone/state", () => ({

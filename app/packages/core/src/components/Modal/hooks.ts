@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useHelpPanel, useIsMediaType, useJSONPanel } from "@fiftyone/state";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { useCallback, useContext, useRef } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { modalContext } from "./modal-context";
 import { shouldShowClassicSidebar } from "./utils";
 
@@ -15,7 +15,7 @@ import { shouldShowClassicSidebar } from "./utils";
  * controls that do nothing and layout inset against a panel that isn't there.
  */
 export const useShowClassicSidebar = () => {
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+  const isSidebarVisible = useReverbValue(fos.sidebarVisible(true));
   const isMultimodal = useIsMediaType(MEDIA_TYPE_MULTIMODAL);
 
   return shouldShowClassicSidebar(isSidebarVisible, isMultimodal);
@@ -46,7 +46,7 @@ export const useLookerHelpers = () => {
 };
 
 export const useLookerOptionsUpdate = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ snapshot, set }) =>
       async (update: object, updater?: (updated: {}) => void) => {
         const currentOptions = await snapshot.getPromise(
@@ -67,12 +67,11 @@ export const useLookerOptionsUpdate = () => {
 };
 
 export const useInitializeImaVidSubscriptions = () => {
-  const subscribeToImaVidStateChanges = useRecoilCallback(
+  const subscribeToImaVidStateChanges = useReverbCallback(
     ({ set }) =>
       () => {
-        // note: resetRecoilState is not triggering `onSet` in effect,
-        // see https://github.com/facebookexperimental/Recoil/issues/2183
-        // replace with `useResetRecoilState` when fixed
+        // A reset does not reach `onSet`, so write the default explicitly.
+        // replace with `useResetReverbState` when fixed
 
         // this setter is to trigger onSet effect that kicks-off the subscription to frame number
         // the supplied random value is placeholder so that the onSet effect is triggered in the atom
@@ -99,7 +98,7 @@ export const useModalContext = () => {
 export const useTooltipEventHandler = () => {
   const tooltip = fos.useTooltip();
 
-  const tooltipEventHandler = useRecoilCallback(
+  const tooltipEventHandler = useReverbCallback(
     ({ snapshot, set }) =>
       (e) => {
         const isTooltipLocked = snapshot

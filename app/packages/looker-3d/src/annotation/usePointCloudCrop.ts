@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { PANEL_ID_MAIN } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { load3dOverlays } from "../labels/loader";
@@ -44,19 +44,19 @@ export const usePointCloudCrop = ({
   } = useFo3dContext();
   const selectedLabel = useCurrentSelected3dAnnotationLabel();
   const hoveredLabel = useHoveredLabel3d();
-  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
-  const schema = useRecoilValue(
+  const selectedLabels = useReverbValue(fos.selectedLabelMap);
+  const schema = useReverbValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
   );
   const { activeSampleMap } = fos.useRenderConfig3dState();
-  const isPointCropModifierPressed = useRecoilValue(
+  const isPointCropModifierPressed = useReverbValue(
     isFo3dPointCropModifierPressedAtom,
   );
   const isMainPanelPointerDown = useFo3dMainPanelPointerDown();
   const raycastResult = useRaycastResult();
-  const isCreatingCuboid = useRecoilValue(isCreatingCuboidAtom);
-  const cuboidCreationState = useRecoilValue(cuboidCreationStateAtom);
-  const annotationPlane = useRecoilValue(annotationPlaneAtom);
+  const isCreatingCuboid = useReverbValue(isCreatingCuboidAtom);
+  const cuboidCreationState = useReverbValue(cuboidCreationStateAtom);
+  const annotationPlane = useReverbValue(annotationPlaneAtom);
   const renderModel = useRenderModel();
   const margin = pointCloudSettings.selectedCuboidCropMargin;
   const useLegacyCoordinates = pluginSettings?.useLegacyCoordinates;

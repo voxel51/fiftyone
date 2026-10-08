@@ -12,7 +12,7 @@ import { Resizable } from "re-resizable";
 import React, { Fragment, useCallback, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
-import { useRecoilValue, useResetRecoilState } from "recoil";
+import { useReverbValue, useResetReverbState } from "@fiftyone/reverb";
 import { resizeHandle } from "./../Sidebar/InteractiveSidebar/style.module.css";
 import ColorFooter from "./ColorFooter";
 import FieldSetting from "./FieldSetting";
@@ -38,8 +38,8 @@ const ColorModal = () => {
   const theme = useTheme();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
-  const activeEntry = useRecoilValue(activeColorEntry);
-  const resetEntry = useResetRecoilState(activeColorEntry);
+  const activeEntry = useReverbValue(activeColorEntry);
+  const resetEntry = useResetReverbState(activeColorEntry);
   const [width, setWidth] = useState(860);
   const [height, setHeight] = useState(680);
 

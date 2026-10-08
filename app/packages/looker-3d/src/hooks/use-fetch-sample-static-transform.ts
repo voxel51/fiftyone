@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import type { StaticTransform } from "../frustum/types";
 
 type StaticTransformsListResponse = {
@@ -9,8 +9,8 @@ type StaticTransformsListResponse = {
 };
 
 export const useFetchSampleStaticTransform = () => {
-  const datasetId = useRecoilValue(fos.datasetId);
-  const sampleId = useRecoilValue(fos.currentSampleId);
+  const datasetId = useReverbValue(fos.datasetId);
+  const sampleId = useReverbValue(fos.currentSampleId);
 
   const listCacheRef = useRef<StaticTransform[] | null>(null);
 

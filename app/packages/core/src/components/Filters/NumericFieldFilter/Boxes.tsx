@@ -1,7 +1,10 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import { maxAtom, minAtom, pathColor } from "@fiftyone/state";
-import type { RecoilState } from "recoil";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  type ReverbState,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
 import styled from "styled-components";
 
 const Container = styled.div`
@@ -21,11 +24,11 @@ const Box = ({
   color,
   placeholder,
 }: {
-  atom: RecoilState<number | null>;
+  atom: ReverbState<number | null>;
   color: string;
   placeholder: string;
 }) => {
-  const [value, setValue] = useRecoilState(atom);
+  const [value, setValue] = useReverbState(atom);
   const theme = useTheme();
   return (
     <Selector
@@ -46,7 +49,7 @@ const Box = ({
 };
 
 const Boxes = ({ path }: { path: string }) => {
-  const color = useRecoilValue(pathColor(path));
+  const color = useReverbValue(pathColor(path));
   return (
     <Container>
       <Box

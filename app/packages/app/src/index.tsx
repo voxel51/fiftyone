@@ -12,7 +12,7 @@ import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
 import type React from "react";
 import { createRoot } from "react-dom/client";
-import { RecoilRoot } from "recoil";
+import { ReverbRoot } from "@fiftyone/reverb";
 import Network from "./Network";
 import "./index.css";
 import "@voxel51/voodo/theme.css";
@@ -59,7 +59,7 @@ Promise.race([
 
 const renderApp = () =>
   createRoot(document.getElementById("root") as HTMLDivElement).render(
-    <RecoilRoot>
+    <ReverbRoot>
       <ThemeProvider>
         <ErrorBoundary>
           <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
@@ -69,5 +69,5 @@ const renderApp = () =>
           </BeforeScreenshotContext.Provider>
         </ErrorBoundary>
       </ThemeProvider>
-    </RecoilRoot>,
+    </ReverbRoot>,
   );

@@ -33,8 +33,6 @@
         "react-error-boundary": "catalog:",
         "react-is": "catalog:",
         "react-relay": "catalog:",
-        "recoil": "catalog:",
-        "recoil-relay": "catalog:",
         "relay-runtime": "catalog:",
         "storybook": "catalog:",
         "typescript": "catalog:",
@@ -47,7 +45,6 @@
         "react": "*",
         "react-markdown": "*",
         "react-relay": "*",
-        "recoil": "*",
         "styled-components": "*"
     },
     "dependencies": {
@@ -55,6 +52,7 @@
         "@emotion/styled": "catalog:",
         "@fiftyone/commands": "workspace:^",
         "@fiftyone/events": "*",
+        "@fiftyone/reverb": "workspace:*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@mui/icons-material": "catalog:",

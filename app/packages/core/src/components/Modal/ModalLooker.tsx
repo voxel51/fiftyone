@@ -4,7 +4,7 @@ import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
 import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
@@ -13,13 +13,13 @@ import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
 export const useShowOverlays = () => {
-  return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
+  return useReverbCallback(({ set }) => async (event: CustomEvent) => {
     set(fos.showOverlays, event.detail);
   });
 };
 
 export const useClearSelectedLabels = () => {
-  return useRecoilCallback(
+  return useReverbCallback(
     ({ set }) =>
       async () =>
         set(fos.selectedLabels, []),
@@ -70,7 +70,7 @@ export const ModalLooker = React.memo(
 );
 
 const ModalLookerCurrentSample = React.memo(() => {
-  const sample = useRecoilValue(fos.modalSample);
+  const sample = useReverbValue(fos.modalSample);
 
   return <ModalLookerContent sample={sample} />;
 });
@@ -84,12 +84,12 @@ const ModalLookerContent = React.memo(
     sampleTransitioning?: boolean;
   }) => {
     const mode = useAtomValue(fos.modalMode);
-    const shouldRenderImavid = useRecoilValue(
+    const shouldRenderImavid = useReverbValue(
       fos.shouldRenderImaVidLooker(true),
     );
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
 
-    const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+    const modalMediaField = useReverbValue(fos.selectedMediaField(true));
     const selectedMedia = fos.resolveMediaFieldLooker({
       mediaField: modalMediaField,
       sample: sample.sample,

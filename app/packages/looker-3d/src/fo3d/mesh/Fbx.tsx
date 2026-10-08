@@ -1,6 +1,6 @@
 import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { AnimationMixer, type Quaternion, type Vector3 } from "three";
 import { FBXLoader } from "three-stdlib";
 import type { FbxAsset } from "../../hooks";
@@ -28,7 +28,7 @@ export const Fbx = ({
   children: React.ReactNode;
 }) => {
   const { fo3dRoot } = useFo3dContext();
-  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
+  const isInMultiPanelView = useReverbValue(isInMultiPanelViewAtom);
 
   const fbxUrl = useMemo(
     () =>

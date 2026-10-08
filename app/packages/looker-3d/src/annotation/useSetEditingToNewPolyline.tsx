@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import {
   clearTransformStateSelector,
   currentActiveAnnotationField3dAtom,
@@ -19,14 +19,14 @@ export const currentEditingPolylineAtom =
  */
 export const useSetEditingToNewPolyline = () => {
   const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const shouldDefaultToClosed = useRecoilValue(snapCloseAutomaticallyAtom);
+  const currentActiveField = useReverbValue(currentActiveAnnotationField3dAtom);
+  const currentSampleId = useReverbValue(fos.currentSampleId);
+  const shouldDefaultToClosed = useReverbValue(snapCloseAutomaticallyAtom);
 
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
   const { clear, readEditing, select, setSavedData } = useAnnotationContext();
 
-  const clearTransformState = useSetRecoilState(clearTransformStateSelector);
+  const clearTransformState = useSetReverbState(clearTransformStateSelector);
 
   useEffect(() => {
     return () => {

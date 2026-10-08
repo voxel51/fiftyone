@@ -1,8 +1,8 @@
-import { useSetRecoilState } from "recoil";
-import { groupSlice } from "../recoil";
+import { useSetReverbState } from "@fiftyone/reverb";
+import { groupSlice } from "../atoms";
 
 const useSetGroupSlice = () => {
-  return useSetRecoilState(groupSlice);
+  return useSetReverbState(groupSlice);
 };
 
 export default useSetGroupSlice;

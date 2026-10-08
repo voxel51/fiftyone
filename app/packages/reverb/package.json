@@ -1,0 +1,31 @@
+{
+    "name": "@fiftyone/reverb",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "src/index.ts",
+    "scripts": {
+        "check": "yarn check:lint && yarn check:deps && yarn check:types",
+        "check:types": "node ./scripts/check-types.mjs",
+        "check:lint": "node ./scripts/check-lint.mjs",
+        "check:deps": "node ./scripts/check-deps.mjs",
+        "test": "vitest"
+    },
+    "dependencies": {
+        "jotai": "catalog:",
+        "jotai-effect": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "jsdom": "^26.0.0",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "peerDependencies": {
+        "react": "*"
+    },
+    "exports": {
+        ".": "./src/index.ts"
+    }
+}

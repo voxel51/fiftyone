@@ -1,5 +1,5 @@
-import { useRecoilValue } from "recoil";
-import { mediaTypeSelector } from "../recoil/selectors";
+import { useReverbValue } from "@fiftyone/reverb";
+import { mediaTypeSelector } from "../atoms/selectors";
 
 /**
  * Returns `true` when the current dataset's media type matches the argument.
@@ -9,7 +9,7 @@ import { mediaTypeSelector } from "../recoil/selectors";
  * `is3DDataset` selector since it handles multiple matching types.
  */
 export const useIsMediaType = (mediaType: string): boolean =>
-  useRecoilValue(mediaTypeSelector) === mediaType;
+  useReverbValue(mediaTypeSelector) === mediaType;
 
 /** Convenience: `useIsMediaType("video")`. */
 export const useIsVideo = (): boolean => useIsMediaType("video");

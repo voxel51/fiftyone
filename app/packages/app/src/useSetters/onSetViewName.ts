@@ -8,7 +8,7 @@ import {
   datasetName,
   stateSubscription,
 } from "@fiftyone/state";
-import { DefaultValue } from "recoil";
+import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";

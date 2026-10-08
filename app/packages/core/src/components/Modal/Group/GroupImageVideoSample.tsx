@@ -1,10 +1,10 @@
 import * as fos from "@fiftyone/state";
-import { useRecoilValue } from "recoil";
+import { useReverbValue } from "@fiftyone/reverb";
 import { ModalLooker } from "../ModalLooker";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
 
 export const GroupImageVideoSample = () => {
-  const sample = useRecoilValue(fos.modalSample);
+  const sample = useReverbValue(fos.modalSample);
   const isPinned = fos.useIs3dPinned();
   const actions = fos.useRenderConfig3dActions();
   const hover = fos.useHoveredSample(sample.sample);

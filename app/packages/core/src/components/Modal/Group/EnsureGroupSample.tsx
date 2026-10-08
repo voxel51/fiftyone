@@ -29,11 +29,11 @@ import { is3d } from "@fiftyone/utilities";
 import { get } from "lodash";
 import React, { useEffect } from "react";
 import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+  useReverbCallback,
+  useReverbState,
+  useReverbValue,
+  useReverbValueLoadable,
+} from "@fiftyone/reverb";
 
 type SliceMediaType = { name: string; mediaType: string };
 
@@ -51,10 +51,10 @@ const pickNon3dSlice = (
 
 const EnsureGroupSample = ({ children }: React.PropsWithChildren) => {
   const actions = useRenderConfig3dActions();
-  const modal = useRecoilValueLoadable(modalSample);
-  const mediaTypes = useRecoilValue(groupMediaTypes);
-  const mediaTypesMap = useRecoilValue(groupMediaTypesMap);
-  const [slice, setSlice] = useRecoilState(modalGroupSlice);
+  const modal = useReverbValueLoadable(modalSample);
+  const mediaTypes = useReverbValue(groupMediaTypes);
+  const mediaTypesMap = useReverbValue(groupMediaTypesMap);
+  const [slice, setSlice] = useReverbState(modalGroupSlice);
 
   // If the currently selected modal slice is 3D, swap to the first non-3D
   // slice (and pin 3D rendering). Keeps the carousel non-3D-only.
@@ -67,7 +67,7 @@ const EnsureGroupSample = ({ children }: React.PropsWithChildren) => {
 
   // If the modal sample couldn't be loaded for the current slice (sparse
   // groups), reset to a slice that actually has a sample.
-  const resetSlice = useRecoilCallback(
+  const resetSlice = useReverbCallback(
     ({ set, snapshot }) =>
       async () => {
         let next = await snapshot.getPromise(groupSlice);
