@@ -292,10 +292,6 @@ jobs:
           fi
         working-directory: e2e-pw
 
-      - name: Lint Playwright tests
-        run: yarn lint
-        working-directory: e2e-pw
-
       - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7

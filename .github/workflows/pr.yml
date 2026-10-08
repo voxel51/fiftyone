@@ -153,9 +153,8 @@ jobs:
       - name: Install E2E dependencies
         run: yarn install
         working-directory: e2e-pw
-      - name: Check for unused POM code
-        # every POM member, fixture and helper must be reachable from a spec
-        run: node scripts/check-unused-poms.mjs
+      - name: Lint e2e (eslint, types, unused POM code)
+        run: yarn lint
         working-directory: e2e-pw
 
   lint-python:
