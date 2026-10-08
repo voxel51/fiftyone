@@ -13582,6 +13582,42 @@
             ],
             "training_data": [],
             "date_added": "2026-10-07 12:00:00"
+        },
+        {
+            "base_name": "d1-3b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "3B multimodal decision model that answers yes-or-no, multiple-choice and rating questions about an image with a probability for every option",
+            "source": "https://huggingface.co/LiquidAI/d1-3B",
+            "author": "Liquid AI",
+            "license": "LFM Open License v1.0",
+            "size_bytes": 6265052644,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.d1.D1Model",
+                "config": {
+                    "name_or_path": "LiquidAI/d1-3B",
+                    "revision": "051bcc464b01b9f92942b364d9586b0ef5912432",
+                    "output_processor_cls": "fiftyone.utils.d1.D1OutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=5.14"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
+            "training_data": [],
+            "date_added": "2026-10-07 12:00:00"
         }
     ]
 }
