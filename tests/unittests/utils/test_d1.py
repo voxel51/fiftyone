@@ -21,6 +21,7 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.d1 as fou_d1
 from fiftyone.utils.d1 import (
     DEFAULT_CHOICE_INSTRUCTIONS,
+    DEFAULT_D1_REVISION,
     DEFAULT_QUESTION_ID,
     D1GetItem,
     D1Model,
@@ -227,10 +228,22 @@ class TestD1ModelConfig:
         config = D1ModelConfig({"classes": ["cat", "dog"]})
 
         assert config.name_or_path == "LiquidAI/d1-3B"
-        assert config.revision is None
+        assert config.revision == DEFAULT_D1_REVISION
         assert config.state is None
         assert config.raw_inputs is True
         assert config.output_processor_cls is D1OutputProcessor
+
+    def test_other_repositories_have_no_default_revision(self):
+        config = D1ModelConfig(
+            {"classes": ["cat", "dog"], "name_or_path": "/models/d1-local"}
+        )
+
+        assert config.revision is None
+
+    def test_an_explicit_revision_is_kept(self):
+        config = D1ModelConfig({"classes": ["cat", "dog"], "revision": "main"})
+
+        assert config.revision == "main"
 
     def test_classes_become_one_choice_question(self):
         config = D1ModelConfig({"classes": ["outdoor", "indoor"]})

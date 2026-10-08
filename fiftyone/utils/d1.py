@@ -36,6 +36,7 @@ def _ensure_d1():
 transformers = fou.lazy_import("transformers", callback=_ensure_d1)
 
 DEFAULT_D1_MODEL = "LiquidAI/d1-3B"
+DEFAULT_D1_REVISION = "051bcc464b01b9f92942b364d9586b0ef5912432"
 DEFAULT_CHOICE_INSTRUCTIONS = "Which option best describes the image?"
 DEFAULT_QUESTION_ID = "label"
 
@@ -382,7 +383,8 @@ class D1ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         name_or_path ("LiquidAI/d1-3B"): the HuggingFace repository of a d1
             release
         revision (None): the commit hash, branch or tag of the release to
-            load
+            load. The release runs its own code, so the default release
+            loads its pinned revision when this is omitted
         questions (None): the questions to answer about each image, a dict
             mapping a question ID, which must be a valid field name, to a
             dict with:
@@ -412,7 +414,14 @@ class D1ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.name_or_path = self.parse_string(
             d, "name_or_path", default=DEFAULT_D1_MODEL
         )
-        self.revision = self.parse_string(d, "revision", default=None)
+        default_revision = (
+            DEFAULT_D1_REVISION
+            if self.name_or_path == DEFAULT_D1_MODEL
+            else None
+        )
+        self.revision = self.parse_string(
+            d, "revision", default=default_revision
+        )
         self.questions = self.parse_dict(d, "questions", default=None)
         self.classes = self.parse_array(d, "classes", default=None)
         self.prompt = self.parse_string(d, "prompt", default=None)
