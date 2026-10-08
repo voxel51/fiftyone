@@ -57,6 +57,7 @@ import type {
   PointCloudRenderLayer,
 } from "../types";
 import { VISUALIZATION_PANEL_BACKGROUND_COLOR } from "../../panel-ui/style-tokens";
+import { resolveCssColor } from "@fiftyone/utilities";
 import {
   registerGraphicsRenderer,
   type GraphicsRendererRegistration,
@@ -486,8 +487,9 @@ function buildSnapshotScene(
   scene: THREE.Scene;
 } {
   const scene = new THREE.Scene();
+  const clearColor = job.clearColor ?? VISUALIZATION_PANEL_BACKGROUND_COLOR;
   scene.background = new THREE.Color(
-    job.clearColor ?? VISUALIZATION_PANEL_BACKGROUND_COLOR,
+    typeof clearColor === "string" ? resolveCssColor(clearColor) : clearColor,
   );
 
   const disposables: { dispose(): void }[] = [];

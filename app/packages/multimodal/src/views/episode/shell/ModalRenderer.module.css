@@ -65,7 +65,7 @@
 /* stylelint-enable selector-pseudo-class-no-unknown */
 
 .preparing {
-  background: var(--fo-palette-background-level1);
+  background: var(--color-content-bg-background);
   display: grid;
   grid-template-rows: 44px minmax(0, 1fr) 64px;
   height: 100%;
@@ -75,7 +75,7 @@
 
 .preparingHeader {
   align-items: center;
-  border-bottom: 1px solid var(--fo-palette-divider);
+  border-bottom: 1px solid var(--color-content-border-default);
   display: flex;
   gap: 12px;
   justify-content: space-between;
@@ -108,8 +108,8 @@
 
 .preparingTile,
 .posterCard {
-  background: var(--fo-palette-background-level2);
-  border: 1px solid var(--fo-palette-divider);
+  background: var(--color-content-bg-card);
+  border: 1px solid var(--color-content-border-default);
   border-radius: 2px;
   min-height: 0;
   overflow: hidden;
@@ -117,7 +117,7 @@
 }
 
 .preparingTile::after {
-  background: var(--fo-palette-background-level3);
+  background: var(--color-content-bg-card-elevated);
   content: "";
   height: 5px;
   left: 12px;
@@ -155,12 +155,12 @@
 }
 
 .preparingTimeline {
-  border-top: 1px solid var(--fo-palette-divider);
+  border-top: 1px solid var(--color-content-border-default);
   position: relative;
 }
 
 .preparingTimeline::before {
-  background: var(--fo-palette-divider);
+  background: var(--color-content-border-default);
   content: "";
   height: 2px;
   left: 16px;

@@ -1,4 +1,5 @@
 import React from "react";
+import { cssVar } from "@voxel51/voodo";
 
 import {
   combineLocationBounds,
@@ -74,11 +75,11 @@ export function StaticMapPreview({
 
   return (
     <svg aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 100">
-      <rect fill="#06101a" height="100" width="100" />
+      <rect fill={cssVar.color.bg.popover} height="100" width="100" />
       {Array.from({ length: 6 }, (_, index) => (
         <React.Fragment key={index}>
           <line
-            stroke="rgba(148, 163, 184, 0.14)"
+            stroke={cssVar.color.border.subtle}
             strokeWidth="0.15"
             x1={index * 20}
             x2={index * 20}
@@ -86,7 +87,7 @@ export function StaticMapPreview({
             y2="100"
           />
           <line
-            stroke="rgba(148, 163, 184, 0.14)"
+            stroke={cssVar.color.border.subtle}
             strokeWidth="0.15"
             x1="0"
             x2="100"
@@ -126,7 +127,7 @@ export function StaticMapPreview({
             fill={marker.color}
             key={marker.stream}
             r="1.8"
-            stroke="#f8fafc"
+            stroke={cssVar.color.text.primary}
             strokeWidth="0.5"
           />
         );

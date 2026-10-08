@@ -9,7 +9,7 @@
   color: var(--fo-palette-text-secondary);
   background-color: var(--fo-palette-background-level2);
   border: 1px solid var(--fo-palette-primary-plainBorder);
-  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-custom-shadow);
   border-radius: 3px;
   overflow: auto;
   scrollbar-width: none;

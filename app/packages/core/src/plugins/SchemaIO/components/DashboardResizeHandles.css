@@ -1,7 +1,11 @@
 /* Make react-grid-layout resize handles more visible */
 .react-resizable-handle {
-  background-color: rgba(255, 109, 4, 0.3) !important;
-  border: 2px solid #ff6d04 !important;
+  background-color: color-mix(
+    in srgb,
+    var(--color-brand-primary) 30%,
+    transparent
+  ) !important;
+  border: 2px solid var(--color-brand-primary) !important;
   border-radius: 2px !important;
   transition: all 0.2s ease !important;
   opacity: 0 !important;
@@ -21,7 +25,11 @@
 }
 
 .react-resizable-handle:hover {
-  background-color: rgba(255, 109, 4, 0.5) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--color-brand-primary) 50%,
+    transparent
+  ) !important;
 }
 
 /* Show handles only for selected items */
@@ -40,7 +48,7 @@
 .react-resizable-handle.react-resizable-handle-sw,
 .react-resizable-handle.react-resizable-handle-ne,
 .react-resizable-handle.react-resizable-handle-nw {
-  background-color: #ff6d04 !important;
+  background-color: var(--color-brand-primary) !important;
   border-radius: 50% !important;
   width: 12px !important;
   height: 12px !important;
@@ -94,14 +102,14 @@
 
 /* Hover effect for all handles */
 .react-resizable-handle:hover {
-  background-color: #ff8533 !important;
+  background-color: var(--color-brand-accent) !important;
   transform: scale(1.2) !important;
 }
 
 /* Override react-grid-layout placeholder color */
 .react-grid-placeholder {
-  background-color: #e0e0e0 !important;
-  border: 2px dashed #bdbdbd !important;
+  background-color: var(--color-content-bg-muted) !important;
+  border: 2px dashed var(--color-content-border-strong) !important;
   border-radius: 4px !important;
   opacity: 0.5 !important;
 }

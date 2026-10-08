@@ -23,10 +23,10 @@
 
   background: linear-gradient(
     0deg,
-    hsla(210, 11%, 11%, 0) 0%,
-    hsl(210, 11%, 11%) 100%
+    color-mix(in srgb, var(--color-content-bg-background) 0%, transparent) 0%,
+    var(--color-content-bg-background) 100%
   );
-  color: #ffffff;
+  color: var(--color-content-text-primary);
   font-weight: bold;
   font-size: 1.2rem;
 }

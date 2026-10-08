@@ -6,6 +6,7 @@ import {
 } from "@fiftyone/state";
 import { atom, selector } from "recoil";
 import { SELECTION_SCOPE } from "./constants";
+import { cssVar } from "@voxel51/voodo";
 
 export interface Settings {
   clustering?: boolean;
@@ -24,7 +25,7 @@ export const defaultSettings = Object.freeze({
   clusterMaxZoom: 11,
   clusters: {
     paint: {
-      "circle-color": "rgb(244, 113, 6)",
+      "circle-color": cssVar.color.brand.primary,
       "circle-opacity": 0.7,
       // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
       "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40],
@@ -34,7 +35,7 @@ export const defaultSettings = Object.freeze({
     },
   },
   pointPaint: {
-    "circle-color": "rgb(244, 113, 6)",
+    "circle-color": cssVar.color.brand.primary,
     "circle-opacity": 0.7,
     "circle-radius": 4,
   },

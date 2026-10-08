@@ -3,6 +3,8 @@ import { merge } from "lodash";
 import React, { lazy, Suspense, useMemo } from "react";
 import type { PlotParams } from "react-plotly.js";
 import PlotlyTooltip, { TooltipValue } from "./PlotlyTooltip";
+import { useAppliedThemeMode } from "../ThemeProvider";
+import { resolveCssColorsDeep } from "@fiftyone/utilities";
 
 const Plot = lazy(() => import("react-plotly.js"));
 
@@ -49,6 +51,8 @@ function PlotlyWithCustomTooltip(props: EvaluationPlotProps) {
 function Plotly(props: EvaluationPlotProps) {
   const { layout = {}, data, style = {}, ...otherProps } = props;
   const theme = useTheme();
+  // re-resolve tokens once the theme class has actually flipped
+  const themeMode = useAppliedThemeMode();
 
   const layoutDefaults = useMemo(() => {
     return {
@@ -91,9 +95,17 @@ function Plotly(props: EvaluationPlotProps) {
     };
   }, [theme]);
 
+  // plotly parses colours itself, so any Voodo token a caller put in a
+  // layout or trace is resolved to a concrete value here
   const mergedLayout = useMemo(() => {
-    return merge({}, layoutDefaults, layout);
-  }, [layoutDefaults, layout]);
+    return resolveCssColorsDeep(merge({}, layoutDefaults, layout));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
+  }, [layoutDefaults, layout, themeMode]);
+  const resolvedData = useMemo(
+    () => resolveCssColorsDeep(data),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- themeMode is the signal
+    [data, themeMode],
+  );
 
   const configDefaults: PlotConfig = useMemo(() => {
     return {
@@ -119,7 +131,7 @@ function Plotly(props: EvaluationPlotProps) {
         config={configDefaults}
         layout={mergedLayout}
         style={{ height: "100%", width: "100%", zIndex: 1, ...style }}
-        data={data}
+        data={resolvedData}
         {...otherProps}
       />
     </Suspense>

@@ -2,7 +2,7 @@ body,
 html,
 #root {
   height: 100%;
-  background: rgb(42, 42, 42);
+  background: var(--color-content-bg-background);
 }
 
 code {

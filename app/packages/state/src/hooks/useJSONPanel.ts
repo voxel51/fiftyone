@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "../../";
 import usePanel from "./usePanel";
+import { cssVar } from "@voxel51/voodo";
 
 const LIST_KEYS = Object.values(LABEL_LIST);
 
@@ -90,12 +91,12 @@ export const redactSample = (
 };
 
 export const JSON_COLORS = {
-  keyColor: "var(--fo-palette-text-tertiary)",
-  numberColor: "rgb(225, 100, 40)",
-  stringColor: "var(--fo-palette-text-secondary)",
-  nullColor: "rgb(225, 100, 40)",
-  trueColor: "rgb(225, 100, 40)",
-  falseColor: "rgb(225, 100, 40)",
+  keyColor: cssVar.color.text.tertiary,
+  numberColor: cssVar.color.code.text,
+  stringColor: cssVar.color.text.secondary,
+  nullColor: cssVar.color.code.text,
+  trueColor: cssVar.color.code.text,
+  falseColor: cssVar.color.code.text,
 };
 
 /**

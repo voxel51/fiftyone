@@ -1,24 +1,32 @@
+import { cssVar } from "@voxel51/voodo";
+
 /**
  * Shared dark background used behind multimodal visualization canvases.
+ *
+ * A `var(--…)` reference: hand it to canvas 2D, three.js, MapLibre or plotly
+ * through `resolveCssColor` from `@fiftyone/utilities` at draw time.
  */
-export const VISUALIZATION_PANEL_BACKGROUND_COLOR = "#050b12";
+export const VISUALIZATION_PANEL_BACKGROUND_COLOR = cssVar.color.bg.popover;
 
 /**
  * Muted text color for visualization loading and empty states.
  */
-export const VISUALIZATION_STATUS_TEXT_COLOR = "#9fb3c8";
+export const VISUALIZATION_STATUS_TEXT_COLOR = cssVar.color.text.secondary;
 
 /**
- * Foreground color for compact visualization HUD text.
+ * Background for compact visualization HUD overlays. `tooltip.bg` is dark in
+ * both themes (the HUDs float over media and 3D scenes), so the text that
+ * sits on it must be `tooltip.text`, not a theme-following text token.
  */
-export const VISUALIZATION_HUD_TEXT_COLOR = "#cbd5e1";
+export const VISUALIZATION_HUD_BACKGROUND_COLOR = cssVar.color.tooltip.bg;
 
 /**
- * Translucent background for compact visualization HUD overlays.
+ * Foreground color for compact visualization HUD text. Fixed light, to pair
+ * with the fixed-dark `VISUALIZATION_HUD_BACKGROUND_COLOR`.
  */
-export const VISUALIZATION_HUD_BACKGROUND_COLOR = "rgba(5, 11, 18, 0.76)";
+export const VISUALIZATION_HUD_TEXT_COLOR = cssVar.color.tooltip.text;
 
 /**
  * Subtle border color for compact visualization HUD overlays.
  */
-export const VISUALIZATION_HUD_BORDER_COLOR = "rgba(148, 163, 184, 0.22)";
+export const VISUALIZATION_HUD_BORDER_COLOR = cssVar.color.border.subtle;

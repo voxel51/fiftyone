@@ -14,9 +14,10 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { cssVar } from "@voxel51/voodo";
 
 /** Accent for the icon, border, and CTA — the "AI" orange used across upsells. */
-const AI_ACCENT = "#F5821F";
+const AI_ACCENT = cssVar.color.brand.accent;
 
 /** Default destination for the "Learn more" CTA. */
 export const ENTERPRISE_LEARN_MORE_URL =

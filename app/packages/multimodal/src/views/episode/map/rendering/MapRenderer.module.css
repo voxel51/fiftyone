@@ -1,16 +1,17 @@
 /*
- * Overlay chrome is keyed to the map imagery (and the fixed-dark no-tile
- * canvas), not the app theme, so the glass palette is intentionally
- * literal — but defined once here. The accent is the one theme-sourced
- * color: Voxel51 primary, matching the ego puck and comet trail drawn in
- * GL (which resolve the same variable at runtime).
+ * The map surface, measure and text colours are keyed to the map imagery
+ * (and the fixed-dark no-tile canvas), not the app theme, so they stay
+ * literal — but defined once here. The chrome glass and the accent come
+ * from the design-system tokens; the accent is Voxel51 primary, matching
+ * the ego puck and comet trail drawn in GL (which resolve the same
+ * variable at runtime).
  */
 .body {
   --map-surface: #06101a;
-  --map-accent: var(--fo-palette-primary-plainColor, #ff6d04);
-  --map-chrome-bg: rgb(4 12 22 / 76%);
-  --map-chrome-border: rgb(148 163 184 / 28%);
-  --map-chrome-border-subtle: rgb(148 163 184 / 22%);
+  --map-accent: var(--color-brand-primary);
+  --map-chrome-bg: var(--color-content-scrim-heavy);
+  --map-chrome-border: var(--color-content-border-default);
+  --map-chrome-border-subtle: var(--color-content-border-subtle);
   --map-chrome-shadow: 0 8px 20px rgb(0 0 0 / 24%);
   --map-measure: #22d3ee;
   --map-text: #e2e8f0;
@@ -52,7 +53,7 @@
 }
 
 .map :global(.maplibregl-ctrl-group button:not(:disabled):hover) {
-  background-color: rgb(56 189 248 / 16%);
+  background-color: var(--color-content-bg-selected);
 }
 
 .map :global(.maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
