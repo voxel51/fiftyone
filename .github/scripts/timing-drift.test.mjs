@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { fileWeight, packShards } from "./shard-plan.mjs";
 import {
-  measureSpecSeconds,
+  measureTestSeconds,
   renderTimingDrift,
   timingDrift,
 } from "./timing-drift.mjs";
@@ -13,75 +14,119 @@ const spec = (file, line, title, ...results) => ({
   tests: [{ results }],
 });
 
-const report = (...specs) => ({ suites: [{ specs }] });
+// a merged report: one top-level suite per file, describes nested inside
+const report = (file, describe, ...specs) => ({
+  suites: [{ title: file, suites: [{ title: describe, specs }] }],
+});
 
-describe("measureSpecSeconds", () => {
-  it("sums each test's first attempt per file, ignoring retries", () => {
-    const seconds = measureSpecSeconds(
+describe("measureTestSeconds", () => {
+  it("keys each test by its describe titles and counts its first attempt", () => {
+    const seconds = measureTestSeconds(
       report(
+        "a.spec.ts",
+        "grid",
         spec(
           "a.spec.ts",
           1,
-          "one",
+          "loads",
           { retry: 0, duration: 10_000 },
           { retry: 1, duration: 90_000 },
         ),
-        spec("a.spec.ts", 9, "two", { retry: 0, duration: 5_000 }),
-        spec("b.spec.ts", 1, "one", { retry: 0, duration: 2_000 }),
       ),
     );
-    expect(seconds).toEqual({ "a.spec.ts": 15, "b.spec.ts": 2 });
+    expect(seconds).toEqual({ "a.spec.ts": { "grid › loads": 10 } });
   });
 
   it("averages a test's repeats instead of adding them", () => {
-    const seconds = measureSpecSeconds(
+    const seconds = measureTestSeconds(
       report(
-        spec("a.spec.ts", 1, "one", { retry: 0, duration: 10_000 }),
-        spec("a.spec.ts", 1, "one", { retry: 0, duration: 20_000 }),
-        spec("a.spec.ts", 1, "one", { retry: 0, duration: 30_000 }),
+        "a.spec.ts",
+        "grid",
+        spec("a.spec.ts", 1, "loads", { retry: 0, duration: 10_000 }),
+        spec("a.spec.ts", 1, "loads", { retry: 0, duration: 20_000 }),
+        spec("a.spec.ts", 1, "loads", { retry: 0, duration: 30_000 }),
       ),
     );
-    expect(seconds).toEqual({ "a.spec.ts": 20 });
+    expect(seconds).toEqual({ "a.spec.ts": { "grid › loads": 20 } });
+  });
+});
+
+describe("packShards", () => {
+  it("weighs a file by its tests and fills the lightest shard", () => {
+    const timings = { "a.spec.ts": { x: 30, y: 30 }, "b.spec.ts": { x: 40 } };
+    expect(fileWeight(timings, "a.spec.ts")).toBe(60);
+    const bins = packShards(
+      ["a.spec.ts", "b.spec.ts", "c.spec.ts"],
+      timings,
+      2,
+    );
+    expect(bins.map((b) => b.files)).toEqual([
+      ["a.spec.ts"],
+      ["b.spec.ts", "c.spec.ts"],
+    ]);
   });
 });
 
 describe("timingDrift", () => {
-  const timings = { "a.spec.ts": 20, "b.spec.ts": 100, "gone.spec.ts": 30 };
-  const existing = ["a.spec.ts", "b.spec.ts", "new.spec.ts"];
+  const timings = {
+    "a.spec.ts": { slow: 10, same: 30, gone: 5 },
+    "deleted.spec.ts": { x: 3 },
+    "unrun.spec.ts": { x: 3 },
+  };
+  const specFiles = ["a.spec.ts", "unrun.spec.ts"];
 
-  it("lists missing, stale and drifted specs", () => {
+  it("reports only drifted, added and removed tests", () => {
     const drift = timingDrift(
-      { "a.spec.ts": 50, "b.spec.ts": 120, "new.spec.ts": 7 },
+      { "a.spec.ts": { slow: 25, same: 34, fresh: 4 } },
       timings,
-      existing,
+      specFiles,
     );
     expect(drift).toEqual({
-      missing: ["new.spec.ts"],
-      stale: ["gone.spec.ts"],
-      drifted: [{ file: "a.spec.ts", expected: 20, actual: 50 }],
+      added: [{ file: "a.spec.ts", test: "fresh", actual: 4 }],
+      removed: [
+        { file: "a.spec.ts", test: "gone" },
+        { file: "deleted.spec.ts", test: null },
+      ],
+      drifted: [{ file: "a.spec.ts", test: "slow", expected: 10, actual: 25 }],
+      slowShards: [],
     });
   });
 
-  it("ignores small absolute changes on short specs", () => {
-    const drift = timingDrift({ "a.spec.ts": 34 }, timings, existing);
-    expect(drift.drifted).toEqual([]);
+  it("flags a shard that ran far longer than it was packed at", () => {
+    const drift = timingDrift(
+      {
+        "a.spec.ts": { slow: 300, same: 30, gone: 5 },
+        "unrun.spec.ts": { x: 3 },
+      },
+      timings,
+      specFiles,
+      1,
+    );
+    expect(drift.slowShards).toEqual([{ shard: 1, expected: 48, actual: 338 }]);
   });
 
   it("renders nothing when the timings hold", () => {
-    expect(renderTimingDrift({ missing: [], stale: [], drifted: [] })).toEqual(
-      [],
-    );
+    expect(
+      renderTimingDrift({
+        added: [],
+        removed: [],
+        drifted: [],
+        slowShards: [],
+      }),
+    ).toEqual([]);
   });
 
   it("renders one collapsed warning listing every finding", () => {
-    const lines = renderTimingDrift({
-      missing: ["new.spec.ts"],
-      stale: [],
-      drifted: [{ file: "a.spec.ts", expected: 20, actual: 50 }],
-    });
-    expect(lines.join("\n")).toContain("Shard timings drifted (2)");
-    expect(lines.join("\n")).toContain(
-      "`a.spec.ts`: 20.0s in the timings, 50.0s this run",
+    const text = renderTimingDrift({
+      added: [],
+      removed: [],
+      drifted: [{ file: "a.spec.ts", test: "slow", expected: 10, actual: 25 }],
+      slowShards: [{ shard: 4, expected: 600, actual: 2100 }],
+    }).join("\n");
+    expect(text).toContain("Test timings drifted (2)");
+    expect(text).toContain("- shard 4: packed at 600.0s, ran 2100.0s");
+    expect(text).toContain(
+      "`a.spec.ts` › slow: 10.0s in the timings, 25.0s this run",
     );
   });
 });

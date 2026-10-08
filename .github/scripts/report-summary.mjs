@@ -13,8 +13,6 @@
 // job conclusion)
 
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { fmtMs, jobSpan } from "./job-span.mjs";
 import {
@@ -24,8 +22,9 @@ import {
   hasPythonJobs,
 } from "./python-section.mjs";
 import { buildSuiteRows } from "./suite-rows.mjs";
+import { listSpecFiles, readTimings } from "./shard-plan.mjs";
 import {
-  measureSpecSeconds,
+  measureTestSeconds,
   renderTimingDrift,
   timingDrift,
 } from "./timing-drift.mjs";
@@ -277,31 +276,14 @@ if (flaky.length) {
   lines.push("", "### Flaky (passed on retry)", ...itemize(flaky));
 }
 
-// the timings pack-shards.mjs balances the shards with, against this run
-const specRoot = fileURLToPath(new URL("../../e2e-pw/src", import.meta.url));
-const specFiles = [];
-const walkSpecs = (dir) => {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) walkSpecs(path);
-    else if (entry.name.endsWith(".spec.ts"))
-      specFiles.push(relative(specRoot, path));
-  }
-};
-walkSpecs(specRoot);
+// drift between this run and the per-test timings the shards are packed by
 lines.push(
   ...renderTimingDrift(
     timingDrift(
-      measureSpecSeconds(report),
-      JSON.parse(
-        readFileSync(
-          fileURLToPath(
-            new URL("../../e2e-pw/ci/spec-timings.json", import.meta.url),
-          ),
-          "utf8",
-        ),
-      ),
-      specFiles,
+      measureTestSeconds(report),
+      readTimings(),
+      listSpecFiles(),
+      expectedShards,
     ),
   ),
 );

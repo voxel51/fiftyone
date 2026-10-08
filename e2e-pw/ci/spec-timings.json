@@ -1,105 +1,556 @@
 {
-    "oss/specs/annotate-2d-class.spec.ts": 22.1,
-    "oss/specs/annotate-2d-classification.spec.ts": 32.2,
-    "oss/specs/annotate-2d-field-move.spec.ts": 21.8,
-    "oss/specs/annotate-2d-last-used-class.spec.ts": 5.6,
-    "oss/specs/annotate-2d-lighter.spec.ts": 18.3,
-    "oss/specs/annotate-2d-mask-edit.spec.ts": 46.1,
-    "oss/specs/annotate-2d-mask-merge.spec.ts": 29.2,
-    "oss/specs/annotate-2d-mask.spec.ts": 226.3,
-    "oss/specs/annotate-2d-persistence.spec.ts": 35.4,
-    "oss/specs/annotate-2d-polyline.spec.ts": 25.2,
-    "oss/specs/annotate-3d-cuboid.spec.ts": 125.0,
-    "oss/specs/annotate-3d-polyline.spec.ts": 112.6,
-    "oss/specs/annotate-3d-selection-clear.spec.ts": 22.6,
-    "oss/specs/annotate-3d-setfield-overwrite.spec.ts": 24.9,
-    "oss/specs/annotate-action-switching.spec.ts": 32.9,
-    "oss/specs/annotate-canvas-actions.spec.ts": 41.7,
-    "oss/specs/annotate-cross-surface-undo.spec.ts": 22.6,
-    "oss/specs/annotate-edit.spec.ts": 19.9,
-    "oss/specs/annotate-grouped-3d-pin-leak.spec.ts": 29.6,
-    "oss/specs/annotate-grouped-no-leak.spec.ts": 171.6,
-    "oss/specs/annotate-grouped-video.spec.ts": 52.8,
-    "oss/specs/annotate-segmentation-ai-sam2.spec.ts": 12.7,
-    "oss/specs/annotate-segmentation-pen-roundtrip.spec.ts": 13.1,
-    "oss/specs/annotate-sidebar.spec.ts": 18.2,
-    "oss/specs/annotate-static-actions.spec.ts": 22.9,
-    "oss/specs/annotate-undo-durability.spec.ts": 11.9,
-    "oss/specs/annotate-video-auto-extend.spec.ts": 26.9,
-    "oss/specs/annotate-video-draw.spec.ts": 12.9,
-    "oss/specs/annotate-video-dynamic-attribute.spec.ts": 27.6,
-    "oss/specs/annotate-video-dynamic-subtracks.spec.ts": 50.9,
-    "oss/specs/annotate-video-field-move.spec.ts": 33.3,
-    "oss/specs/annotate-video-label-types-create.spec.ts": 31.6,
-    "oss/specs/annotate-video-label-types.spec.ts": 27.7,
-    "oss/specs/annotate-video-last-used-class.spec.ts": 5.5,
-    "oss/specs/annotate-video-mask-playback.spec.ts": 9.4,
-    "oss/specs/annotate-video-navigation.spec.ts": 5.5,
-    "oss/specs/annotate-video-schema-activation.spec.ts": 22.4,
-    "oss/specs/annotate-video-temporal-crud.spec.ts": 26.0,
-    "oss/specs/annotate-video-temporal-edit.spec.ts": 13.5,
-    "oss/specs/annotate-video-temporal.spec.ts": 4.3,
-    "oss/specs/annotate-video-track-delete.spec.ts": 13.6,
-    "oss/specs/annotate-video-track-edit.spec.ts": 47.3,
-    "oss/specs/annotate-video-track-split-merge.spec.ts": 40.1,
-    "oss/specs/annotate-video-undo.spec.ts": 35.7,
-    "oss/specs/built-in-operators.spec.ts": 3.6,
-    "oss/specs/canvas.spec.ts": 6.7,
-    "oss/specs/color-scheme.spec.ts": 4.5,
-    "oss/specs/default-video-slice-group.spec.ts": 5.3,
-    "oss/specs/detection-mask.spec.ts": 3.9,
-    "oss/specs/detection-mode.spec.ts": 71.7,
-    "oss/specs/direct3d-flat-parity.spec.ts": 7.8,
-    "oss/specs/display-options.spec.ts": 3.9,
-    "oss/specs/dynamic-embedded-documents-segmentation.spec.ts": 3.7,
-    "oss/specs/dynamic-groups.spec.ts": 20.4,
-    "oss/specs/field-visibility.spec.ts": 45.1,
-    "oss/specs/fo3d-camera-init.spec.ts": 43.6,
-    "oss/specs/fo3d-pcd-stl.spec.ts": 9.8,
-    "oss/specs/fo3d-ply.spec.ts": 5.2,
-    "oss/specs/frame-filtering.spec.ts": 6.2,
-    "oss/specs/grid-page.spec.ts": 13.5,
-    "oss/specs/grid-tagging.spec.ts": 5.1,
-    "oss/specs/group-filter-toPatches.spec.ts": 5.0,
-    "oss/specs/group-video-label.spec.ts": 10.7,
-    "oss/specs/grouped-fo3d-direct3d.spec.ts": 12.0,
-    "oss/specs/grouped-point-cloud-ply.spec.ts": 9.8,
-    "oss/specs/histograms.spec.ts": 4.3,
-    "oss/specs/ima-vid.spec.ts": 6.3,
-    "oss/specs/index-page.spec.ts": 2.6,
-    "oss/specs/large-groups.spec.ts": 61.0,
-    "oss/specs/lighter-toolbar.spec.ts": 3.8,
-    "oss/specs/linking.spec.ts": 6.3,
-    "oss/specs/media-field.spec.ts": 4.0,
-    "oss/specs/modal-multi-pcd.spec.ts": 6.6,
-    "oss/specs/navigation-slice-integrity.spec.ts": 5.6,
-    "oss/specs/nested-dynamic-groups.spec.ts": 4.6,
-    "oss/specs/one-loading-screen-explore-mode-grouped.spec.ts": 3.6,
-    "oss/specs/one-loading-screen-explore-mode.spec.ts": 2.4,
-    "oss/specs/panels-modal.spec.ts": 2.4,
-    "oss/specs/pcd-only-dataset.spec.ts": 2.0,
-    "oss/specs/prompt.spec.ts": 15.9,
-    "oss/specs/python-panels-grid.spec.ts": 3.1,
-    "oss/specs/query-performance.spec.ts": 3.0,
-    "oss/specs/quick-edit.spec.ts": 120.0,
-    "oss/specs/groups-dynamic.spec.ts": 4.5,
-    "oss/specs/groups.spec.ts": 41.9,
-    "oss/specs/smoke.spec.ts": 15.8,
-    "oss/specs/saved-views.spec.ts": 33.2,
-    "oss/specs/schema-manager-tooltip-stacking.spec.ts": 3.4,
-    "oss/specs/schema-manager.spec.ts": 16.2,
-    "oss/specs/segmentation-tool-snapshots.spec.ts": 70.3,
-    "oss/specs/selection.spec.ts": 23.3,
-    "oss/specs/sidebar-classification.spec.ts": 13.0,
-    "oss/specs/sidebar-datetime.spec.ts": 7.0,
-    "oss/specs/sidebar-explore-is-disabled.spec.ts": 9.9,
-    "oss/specs/sidebar.spec.ts": 23.9,
-    "oss/specs/sparse-dynamic-groups.spec.ts": 14.7,
-    "oss/specs/sparse-fo3d-groups.spec.ts": 10.5,
-    "oss/specs/sparse-groups-scenes.spec.ts": 6.6,
-    "oss/specs/sparse-groups.spec.ts": 32.9,
-    "oss/specs/sparse-multimodal-groups.spec.ts": 21.8,
-    "oss/specs/summary-fields.spec.ts": 3.5,
-    "oss/specs/tagger.spec.ts": 19.8,
-    "oss/specs/viewport-bridge.spec.ts": 18.0
+    "oss/specs/annotate-2d-class.spec.ts": {
+        "2D label class editing › a class change persists across a fresh load": 15.3,
+        "2D label class editing › changing a label's class updates the form and is undoable": 26.7
+    },
+    "oss/specs/annotate-2d-classification.spec.ts": {
+        "2D annotation classification › a classification can be deleted": 23.3,
+        "2D annotation classification › a classification deletion is undoable": 0
+    },
+    "oss/specs/annotate-2d-field-move.spec.ts": {
+        "2D annotation field move › a field move persists across a fresh load": 11.9,
+        "2D annotation field move › moving a label between fields re-homes it in one patch and round-trips through undo/redo": 9.1
+    },
+    "oss/specs/annotate-2d-last-used-class.spec.ts": {
+        "a changed class becomes the default for the next drawn detection": 5.6
+    },
+    "oss/specs/annotate-2d-lighter.spec.ts": {
+        "2D Lighter annotation › a drawn detection appears in the engine-derived sidebar list": 3.7,
+        "2D Lighter annotation › a drawn detection persists (verified from a fresh browser context)": 11.4,
+        "2D Lighter annotation › deleting a detection drops its row; undo restores it": 3.2
+    },
+    "oss/specs/annotate-2d-mask-edit.spec.ts": {
+        "2D annotation mask edit (brush) › a Remove brush stroke erases pixels and is undoable": 23.4,
+        "2D annotation mask edit (brush) › an Add brush stroke grows the mask and persists": 14.3
+    },
+    "oss/specs/annotate-2d-mask-merge.spec.ts": {
+        "2D annotation mask merge › a merge is a single undo unit that restores the source": 23.5,
+        "2D annotation mask merge › merging two masked detections absorbs the source and persists": 18.1
+    },
+    "oss/specs/annotate-2d-mask.spec.ts": {
+        "2D annotation mask (mask) › a mask removal persists across a fresh load": 22.2,
+        "2D annotation mask (mask) › removing the mask drops it in one patch and is undoable": 15.8,
+        "2D annotation mask (mask) › selecting a masked detection enters segmentation mode": 7.8,
+        "2D annotation mask (mask_path) › a mask removal persists across a fresh load": 20.7,
+        "2D annotation mask (mask_path) › removing the mask drops it in one patch and is undoable": 15.6,
+        "2D annotation mask (mask_path) › selecting a masked detection enters segmentation mode": 7.4
+    },
+    "oss/specs/annotate-2d-persistence.spec.ts": {
+        "2D annotation edit/delete persistence › a delete persists across a fresh load": 8.3,
+        "2D annotation edit/delete persistence › a geometry edit persists across a fresh load": 15.3,
+        "2D annotation edit/delete persistence › an attribute edit persists across a fresh load": 15.3
+    },
+    "oss/specs/annotate-2d-polyline-single-vertex.spec.ts": {
+        "Backspace on the lone vertex deletes the label": 14.4,
+        "a single vertex persists on the first click": 10.5
+    },
+    "oss/specs/annotate-2d-polyline.spec.ts": {
+        "2D annotation polyline › a polyline can be deleted and the deletion is undoable": 20.3,
+        "2D annotation polyline › backing out of a polyline edit returns to Select and releases the draw": 8.3,
+        "2D annotation polyline › drawing a polyline creates a labeled polyline that persists": 15.2,
+        "2D annotation polyline › right-click closes the polyline but keeps the tool armed; a second right-click returns to Select": 6.6
+    },
+    "oss/specs/annotate-2d-rotate.spec.ts": {
+        "2D rotated bounding boxes › a rotation edit persists across a fresh load": 18.9,
+        "2D rotated bounding boxes › a seeded rotation reaches the edit form's rotation field": 6.5,
+        "2D rotated bounding boxes › a seeded rotation renders the box rotated": 8.3,
+        "2D rotated bounding boxes › editing an unrotated box round-trips with zero rotation": 19.3,
+        "2D rotated bounding boxes › zeroing a rotation overwrites the stored scalar": 19
+    },
+    "oss/specs/annotate-3d-cuboid.spec.ts": {
+        "3d cuboid annotation › a class edit on the cuboid persists across a fresh save": 22.9,
+        "3d cuboid annotation › a delete persists across a fresh save": 23,
+        "3d cuboid annotation › deleting the cuboid drops its row; undo restores it and redo re-deletes": 10.8,
+        "3d cuboid annotation › editing a cuboid's position via the form persists and round-trips through undo/redo": 25,
+        "3d cuboid annotation › selecting the cuboid opens its edit form, toolbar, and scale gizmo": 8.4,
+        "3d cuboid annotation › the seeded cuboid is listed in the annotate sidebar": 7.3,
+        "3d cuboid annotation › undo and redo of a persisted class edit re-persist through the DB": 48.3,
+        "3d cuboid creation › drawing a cuboid on the canvas creates a label, assigns a class, and persists": 30.4
+    },
+    "oss/specs/annotate-3d-polyline.spec.ts": {
+        "3d polyline annotation › a class edit on the polyline persists across a fresh save": 15.7,
+        "3d polyline annotation › a delete persists across a fresh save": 15.9,
+        "3d polyline annotation › deleting the polyline drops its row; undo restores it and redo re-deletes": 8,
+        "3d polyline annotation › selecting the polyline opens its edit form, toolbar, and transform gizmo": 6.4,
+        "3d polyline annotation › the seeded polyline is listed in the annotate sidebar": 5.2,
+        "3d polyline annotation › undo and redo of a persisted class edit re-persist through the DB": 33.5,
+        "3d polyline creation › drawing a polyline on the canvas creates a label, assigns a class, and persists": 29.8
+    },
+    "oss/specs/annotate-3d-setfield-overwrite.spec.ts": {
+        "3d annotate set_field overwrite › editing a cuboid does not persist set_field-projected fields": 24.1
+    },
+    "oss/specs/annotate-dgva-frame-primitives.spec.ts": {
+        "primitives follow the playhead and the order-by field is read-only": 3.3
+    },
+    "oss/specs/annotate-grouped-3d-pin-leak.spec.ts": {
+        "grouped 2D+3D annotation — 3D pin does not leak › 3D cuboids do not appear as editable labels on the camera slice": 6.7,
+        "grouped 2D+3D annotation — 3D pin does not leak › selecting the 3D slice still surfaces its cuboid (positive control)": 8.9
+    },
+    "oss/specs/annotate-grouped-no-leak.spec.ts": {
+        "grouped 2D+3D annotation — federation by slice › creating a cuboid on the 3D mesh slice persists only to that slice": 30.9,
+        "grouped 2D+3D annotation — federation by slice › creating a detection on the 2D image slice persists only to that slice": 26.6,
+        "grouped 2D+3D annotation — federation by slice › deleting a cuboid on the 3D mesh slice persists, and undo/redo round-trip — all only on that slice": 50.1,
+        "grouped 2D+3D annotation — federation by slice › deleting a label on the 2D image slice persists, and undo/redo round-trip — all only on that slice": 40.6,
+        "grouped 2D+3D annotation — federation by slice › each slice's label list shows only its own labels (no cross-slice leak)": 11.4,
+        "grouped 2D+3D annotation — federation by slice › editing a cuboid on the 3D mesh slice persists only to that slice": 23.2,
+        "grouped 2D+3D annotation — federation by slice › editing a label on the 2D image slice persists only to that slice": 20.7
+    },
+    "oss/specs/annotate-grouped-video.spec.ts": {
+        "grouped video annotation › editing on the image slice writes to the image sample": 18.8,
+        "grouped video annotation › editing on the video slice writes to the video sample": 18.7,
+        "grouped video annotation › the annotation slice selector offers both the video and image slices": 7.6,
+        "grouped video annotation › the image slice offers sample detections + classification, not frame or temporal schemas": 8.1,
+        "grouped video annotation › the video slice mounts the video annotation surface": 7.8,
+        "grouped video annotation › the video slice offers frame + classification + temporal schemas, not sample detections": 7.6
+    },
+    "oss/specs/annotate-multimodal-disabled.spec.ts": {
+        "annotate-multimodal-disabled › the classic sidebar's explore/annotate mode switcher is unavailable for multimodal datasets": 1.4
+    },
+    "oss/specs/annotate-segmentation-ai-sam2.spec.ts": {
+        "segmentation AI (SAM2) round-trip › placing a positive point persists a Detection with a mask": 12.2
+    },
+    "oss/specs/annotate-segmentation-pen-roundtrip.spec.ts": {
+        "segmentation pen-tool round-trip › draws a mask polygon, persists it, and the mask survives reload": 19.6
+    },
+    "oss/specs/annotate-temporal-tags.spec.ts": {
+        "video temporal tags › a tag drawn in the modal lands on the tile and survives a reload": 8.5
+    },
+    "oss/specs/annotate-toolbar-state.spec.ts": {
+        "annotate toolbar state › Select is the default and the toolbar actions are mutually exclusive": 4,
+        "annotate toolbar state › clicking a label in the sidebar activates the matching action": 4.6,
+        "annotate toolbar state › detection mode draws under a crosshair, stays active after a draw, and click-to-quit returns to Select": 4.8,
+        "annotate toolbar state › overlay clicks enter the matching action; in detection mode they quit it": 4.8,
+        "annotate toolbar state › the edit form hides the create toolbar, keeps undo/redo and the mode toggle, and exiting restores the label list": 4.3,
+        "annotate toolbar state › the schema manager opens from the label list": 3.7
+    },
+    "oss/specs/annotate-undo-durability.spec.ts": {
+        "annotate undo durability › a select-only canvas click records no phantom undo entry": 3.4,
+        "annotate undo durability › the undo stack survives an autosave": 9.6
+    },
+    "oss/specs/annotate-video-audio-control.spec.ts": {
+        "timeline audio controls › a silent video shows no volume UI at all": 3.4,
+        "timeline audio controls › a video with an audio track shows the volume control, muted by default": 3.2
+    },
+    "oss/specs/annotate-video-auto-extend.spec.ts": {
+        "video annotation fresh draw › a freshly-drawn box auto-extends ~30 frames forward as filler": 13.3,
+        "video annotation fresh draw › the fresh-draw form reads the schema field and follows the playhead": 12.2,
+        "video annotation fresh draw › undo removes a freshly-drawn box (engine undo on video)": 7.6
+    },
+    "oss/specs/annotate-video-draw.spec.ts": {
+        "video per-frame detection drawing › drawing a box adds a timeline track, opens its editor, and persists": 14.7
+    },
+    "oss/specs/annotate-video-dynamic-attribute.spec.ts": {
+        "video annotation dynamic attribute › a later change bounds a subsequent fill (sample-and-hold)": 25,
+        "video annotation dynamic attribute › an edit forward-fills to the track end, leaving earlier frames": 16.4
+    },
+    "oss/specs/annotate-video-dynamic-subtracks.spec.ts": {
+        "video annotation dynamic attribute sub-tracks › a chevron reveals one sub-track per dynamic attribute; collapsing hides it": 7.8,
+        "video annotation dynamic attribute sub-tracks › a mid-track edit splits the sub-track into two value segments": 13.5,
+        "video annotation dynamic attribute sub-tracks › clicking a sub-track row selects the parent instance": 7.4,
+        "video annotation dynamic attribute sub-tracks › clicking a value segment seeks to its start": 14.4,
+        "video annotation dynamic attribute sub-tracks › undo collapses the two segments back to one": 14,
+        "video annotation multiple dynamic attributes › a track expands to one sub-track row per declared dynamic attribute": 6.9
+    },
+    "oss/specs/annotate-video-field-move.spec.ts": {
+        "video annotation field move › a video field move round-trips through undo/redo": 13.8,
+        "video annotation field move › moving a track between frame fields re-homes it and persists": 20
+    },
+    "oss/specs/annotate-video-frame-primitives.spec.ts": {
+        "frame primitives follow the playhead and the frame number is read-only": 3.3
+    },
+    "oss/specs/annotate-video-label-types-create.spec.ts": {
+        "video non-box label create › drawing a polyline adds a track, assigns a class, and persists": 16.7,
+        "video non-box label create › painting a mask adds a track, assigns a class, and persists": 22.9
+    },
+    "oss/specs/annotate-video-label-types.spec.ts": {
+        "video non-box label rendering › an existing instance mask renders on the detection": 4.5,
+        "video non-box label rendering › an existing polyline is selectable and opens its editor": 3.9,
+        "video non-box label rendering › existing detection and polyline labels both render in the sidebar": 3.6,
+        "video non-box label rendering › polyline create mode activates on the video surface": 3.8,
+        "video non-box label rendering › selecting a polyline from its timeline track drives the other surfaces": 5,
+        "video non-box label rendering › the annotate surface exposes mask + polyline create modes": 3.5,
+        "video non-box label rendering › the polyline appears as its own timeline track": 3.5
+    },
+    "oss/specs/annotate-video-last-used-class.spec.ts": {
+        "video annotation last-used class › a changed class becomes the default for the next drawn box": 6
+    },
+    "oss/specs/annotate-video-mask-playback.spec.ts": {
+        "a painted mask clears on auto-extended filler frames during playback": 10.6
+    },
+    "oss/specs/annotate-video-navigation.spec.ts": {
+        "video annotation sample navigation › paging next then prev re-homes the store without a duplicate-store crash": 4.3
+    },
+    "oss/specs/annotate-video-polyline-interpolation.spec.ts": {
+        "polyline interpolation on video › the canvas paints interpolated geometry while scrubbing the span": 13.2,
+        "polyline track deletion on video › Backspace deletes a selected polyline track on the first press": 8.7
+    },
+    "oss/specs/annotate-video-rotate-interpolation.spec.ts": {
+        "video rotation interpolation › rotation lerps the shortest arc between keyframes": 13.5
+    },
+    "oss/specs/annotate-video-schema-activation.spec.ts": {
+        "video annotation schema activation gating › deactivating a frame field hides its canvas overlays, timeline tracks, and sidebar rows": 9,
+        "video annotation schema activation gating › deactivating the temporal-detection field hides its canvas overlays + timeline tracks": 8.8,
+        "video annotation schema activation gating › reactivating a deactivated frame field restores its overlays + tracks": 11.1
+    },
+    "oss/specs/annotate-video-temporal-crud.spec.ts": {
+        "video annotation temporal detection CRUD › New TD creates a temporal detection, a class edit persists": 13,
+        "video annotation temporal detection CRUD › deleting the middle TD preserves the siblings' ids and labels": 10
+    },
+    "oss/specs/annotate-video-temporal.spec.ts": {
+        "video temporal-detection membership › the sidebar lists a temporal detection only inside its support": 3.6
+    },
+    "oss/specs/annotate-video-timeline-drawer.spec.ts": {
+        "video annotation timeline drawer › opening the drawer manually reveals an unpinned track for interaction": 6.9,
+        "video annotation timeline drawer › starts closed; pinning a track makes its row actionable in the header": 6.8
+    },
+    "oss/specs/annotate-video-track-delete.spec.ts": {
+        "video annotation whole-track delete › right-click Delete track removes the instance from every frame and persists": 16.1
+    },
+    "oss/specs/annotate-video-track-edit.spec.ts": {
+        "video annotation track editing › a class edit fans across the track, and a geometry edit re-keys it": 12.6,
+        "video annotation track editing › geometry edits undo and redo through the engine stack": 8.2,
+        "video annotation track editing › selecting a track on the canvas neither persists nor promotes a keyframe": 18.3,
+        "video annotation track editing › selecting on the canvas, timeline, and sidebar all open the same editor": 8.6,
+        "video annotation track editing › the edit form follows the selected track across frames": 7.4
+    },
+    "oss/specs/annotate-video-track-split-merge.spec.ts": {
+        "video annotation track split / merge › merge (context menu) folds one same-class track into the other and persists": 18.4,
+        "video annotation track split / merge › merge is gated by class: a cross-class track offers no merge target": 6.8,
+        "video annotation track split / merge › split a polyline track: two tracks, both cut frames keyframes, vertices kept": 20.8,
+        "video annotation track split / merge › split at playhead (context menu) makes two tracks; undo restores one": 8.4,
+        "video annotation track split / merge › split at playhead (toolbar) makes two tracks": 8,
+        "video annotation track split / merge › split pins both sides of the cut as keyframes and persists": 16.9
+    },
+    "oss/specs/annotate-video-undo.spec.ts": {
+        "video annotation undo/redo › a drawn track is one undo unit: a single undo removes it, redo restores it": 7.8,
+        "video annotation undo/redo › a track-wide class edit undoes and redoes via the keyboard": 12.8,
+        "video annotation undo/redo › deleting a whole track undoes to a restored track": 7.6,
+        "video annotation undo/redo › two distinct edits are two undo units — no duplicate entries": 13.8
+    },
+    "oss/specs/annotate-zoom-pan.spec.ts": {
+        "Lighter zoom and pan › image: wheel zooms, drag pans, and reset restores the initial frame": 3,
+        "Lighter zoom and pan › video: wheel zooms, drag pans, and reset restores the initial frame": 3.8
+    },
+    "oss/specs/built-in-operators.spec.ts": {
+        "Built-in operators: set view": 2.5
+    },
+    "oss/specs/canvas.spec.ts": {
+        "Canvas Rendering Regressions › Explore and Annotate canvases have pixelated image rendering": 6.3
+    },
+    "oss/specs/color-scheme.spec.ts": {
+        "color scheme basic functionality › update color by value mode, use tag as colorByAttribute": 3.7,
+        "label fields get distinct default colors from a multi-color pool": 2.6
+    },
+    "oss/specs/default-video-slice-group.spec.ts": {
+        "default video slice group › video as default slice renders": 5.2
+    },
+    "oss/specs/detection-mask.spec.ts": {
+        "detection-mask › should load all masks fine": 3
+    },
+    "oss/specs/detection-mode.spec.ts": {
+        "detection mode › click-to-quit": 5.8,
+        "detection mode › click-to-quit threshold": 5.7,
+        "detection mode › draw and click-to-quit": 8.2,
+        "detection mode › draw multiple detections": 9.2,
+        "detection mode › draw over an existing detection": 8.2,
+        "detection mode › toggle button deactivates detection mode": 5.8
+    },
+    "oss/specs/direct3d-flat-parity.spec.ts": {
+        "flat direct 3d parity › pcd and ply samples keep the same DOM invariants across navigation": 7.7
+    },
+    "oss/specs/display-options.spec.ts": {
+        "Display Options › switching display options statistics to group should be successful when histogram is open": 2.7
+    },
+    "oss/specs/dynamic-embedded-documents-segmentation.spec.ts": {
+        "dynamic embedded documents (DED) visibility / filter › Sample modal opens when the sample has segmentation mask label from disk mask_path": 2.3
+    },
+    "oss/specs/dynamic-groups.spec.ts": {
+        "dynamic groups smoke test › pcd dynamic group pagination bar": 5.3,
+        "dynamic groups smoke test › pcd dynamic group smoke test": 4.4,
+        "dynamic groups smoke test › png dynamic group pagination bar": 3.1,
+        "dynamic groups smoke test › png dynamic group smoke test": 3
+    },
+    "oss/specs/embeddings-panel.spec.ts": {
+        "embeddings panel loads": 2
+    },
+    "oss/specs/fo3d-camera-init.spec.ts": {
+        "camera initialization › camera position persists across explore/annotate mode switches": 0,
+        "camera initialization › camera position persists between sample navigations": 0,
+        "camera initialization › fresh load computes camera from bounding box": 0,
+        "camera initialization › respects camera position from fo3d scene": 0,
+        "camera initialization › view changes move camera after initialization": 0
+    },
+    "oss/specs/fo3d-pcd-stl.spec.ts": {
+        "fo3d › scene is rendered correctly": 17
+    },
+    "oss/specs/fo3d-ply.spec.ts": {
+        "fo3d-ply › PLY scene is rendered correctly": 4.7
+    },
+    "oss/specs/frame-filtering.spec.ts": {
+        "frame filtering › assert disabled frame filtering": 2.1,
+        "frame filtering › assert enabled frame filtering": 2.1
+    },
+    "oss/specs/grid-page.spec.ts": {
+        "grid page › grid has correct second page (all 21 samples)": 2.1,
+        "grid page › modal dynamic group carousel has correct second page (all 21 samples)": 3.1,
+        "grid page › modal group carousel has correct second page (all 21 samples)": 3.2
+    },
+    "oss/specs/grid-tagging.spec.ts": {
+        "grid tagging refreshes visible tiles across pages without reloading": 3.2
+    },
+    "oss/specs/group-filter-toPatches.spec.ts": {
+        "group dataset with filters converts toPatches correctly": 4.2
+    },
+    "oss/specs/group-video-label.spec.ts": {
+        "groups video labels › correct thumbnails for both slices": 3.3,
+        "groups video labels › video plays with correct label for each slice": 5
+    },
+    "oss/specs/grouped-direct-pcd-world-alignment.spec.ts": {
+        "renders both point-cloud slices aligned in the world frame": 5.7
+    },
+    "oss/specs/grouped-fo3d-direct3d.spec.ts": {
+        "grouped fo3d and direct 3d › keeps one active fo3d scene while composing direct 3d slices": 11.4
+    },
+    "oss/specs/grouped-point-cloud-ply.spec.ts": {
+        "grouped point-cloud and ply › reconciles point-cloud and ply slices across grouped navigation": 10.3
+    },
+    "oss/specs/groups-dynamic.spec.ts": {
+        "groups-dynamic › dynamic groups": 3.7
+    },
+    "oss/specs/groups.spec.ts": {
+        "groups › entry counts works": 2.4,
+        "groups › modal with grid filter": 5.2,
+        "groups › modal › annotate pcd slice renders after refreshing from explore mode": 0,
+        "groups › modal › changes slice to \"pcd\" when 3D viewer is clicked": 4.7,
+        "groups › modal › group media visibility toggle works": 6.8,
+        "groups › modal › navigation works": 7,
+        "groups › should have four lookers with 'left' as default slice": 2.2
+    },
+    "oss/specs/histograms.spec.ts": {
+        "histograms panel": 3.4
+    },
+    "oss/specs/ima-vid.spec.ts": {
+        "check modal playback and tagging behavior": 0
+    },
+    "oss/specs/index-page.spec.ts": {
+        "index page › index page": 1.5
+    },
+    "oss/specs/large-groups.spec.ts": {
+        "group carousel › mp4 group carousel": 28.3,
+        "group carousel › png group carousel": 24.1
+    },
+    "oss/specs/lighter-toolbar.spec.ts": {
+        "lighter-toolbar-smoke › lighter toolbar appears when hovering over sample in annotate mode": 2.7
+    },
+    "oss/specs/linking.spec.ts": {
+        "modal linking › group linking": 2.3,
+        "modal linking › sample linking": 2.2
+    },
+    "oss/specs/mcap-persistence.spec.ts": {
+        "MCAP persistence › persists dataset sidebar settings across channel ids, remount, and reload": 24.4,
+        "MCAP persistence › persists the ego camera pose across channel-id changes, modal reopen, and reload": 14.3,
+        "MCAP persistence › restores an image pane source across sample navigation and modal reopen": 8.4,
+        "MCAP persistence › workspace persistence › restores a customized episode workspace across navigation, reopen, and reload": 19.3
+    },
+    "oss/specs/mcap-playback.spec.ts": {
+        "MCAP playback › honors rear-camera first and last temporal boundaries through seeks and scrubs": 7,
+        "MCAP playback › keeps paused stepping, raw values, logs, and image pixels synchronized": 13.9,
+        "MCAP playback › keeps sparse log and diagnostic predecessor anchors synchronized": 10.7,
+        "MCAP playback › replaces inventory, layout, capabilities, clock, and decoded content A-B-A": 0,
+        "MCAP playback › resets duration, streams, playback, seek state, and values short-long-short": 9.5,
+        "MCAP playback › seeks, scrubs, synchronizes sparse streams, and clamps one-hour boundaries": 10.3
+    },
+    "oss/specs/mcap-surfaces.spec.ts": {
+        "MCAP surfaces › alternate grid media › keeps alternate modal media across sample navigation": 6.2,
+        "MCAP surfaces › diagnostic backend override › renders stable MCAP point clouds with the forced WebGL2 backend": 10.1,
+        "MCAP surfaces › mounts, unmounts, validates, and replaces local Explorer recordings": 5.2,
+        "MCAP surfaces › renders an MCAP grid preview and opens the episode modal": 11.9,
+        "MCAP surfaces › restores the episode shell from source facts after reload and reopen": 8,
+        "MCAP surfaces › shows the explicit state for a valid recording with no previewable streams": 2.7
+    },
+    "oss/specs/media-field.spec.ts": {
+        "media field › grid media field": 1.6,
+        "media field › modal media field": 2.2
+    },
+    "oss/specs/modal-multi-pcd.spec.ts": {
+        "multi-pcd › multi-pcd slice in modal": 5.5
+    },
+    "oss/specs/navigation-slice-integrity.spec.ts": {
+        "navigation slice integrity › keeps the same main 2d viewer when opening from image or 3d grid slices": 4.8
+    },
+    "oss/specs/nested-dynamic-groups.spec.ts": {
+        "dynamic groups of groups works": 4.4
+    },
+    "oss/specs/one-loading-screen-explore-mode-grouped.spec.ts": {
+        "does not show when opening or navigating the modal for a group dataset": 5.1
+    },
+    "oss/specs/one-loading-screen-explore-mode.spec.ts": {
+        "does not show when opening or navigating in the modal's explore mode for an image dataset": 2.5
+    },
+    "oss/specs/one-loading-screen-patches.spec.ts": {
+        "does not show when opening or navigating the modal in a patches view": 2.9
+    },
+    "oss/specs/panels-modal.spec.ts": {
+        "Modal Panels: Counter": 2.5
+    },
+    "oss/specs/patch-label-overlays.spec.ts": {
+        "attribute eyes control bubble text; all attributes can be hidden": 2.6,
+        "patch tiles show the patch label as a tag bubble": 2
+    },
+    "oss/specs/pcd-only-dataset.spec.ts": {
+        "orthographic projections › orthographic projections are rendered correctly": 5.4
+    },
+    "oss/specs/polyline-single-vertex.spec.ts": {
+        "a lone vertex renders and hovers like a keypoint": 1.6,
+        "polyline attributes offer visibility eyes in the modal": 2.1
+    },
+    "oss/specs/prompt.spec.ts": {
+        "operator prompt › Prompt: Cancel drawer": 2.4,
+        "operator prompt › Prompt: Cancel modal": 2.3,
+        "operator prompt › Prompt: Progress": 5.9,
+        "operator prompt › Prompt: Say hello in drawer": 3,
+        "operator prompt › Prompt: Say hello in modal": 2.9
+    },
+    "oss/specs/python-panels-grid.spec.ts": {
+        "Python Panels: Counter": 2.7
+    },
+    "oss/specs/query-performance.spec.ts": {
+        "query performance sidebar › assert query performance icons": 3.5
+    },
+    "oss/specs/quick-edit.spec.ts": {
+        "quick edit › classification via sidebar": 3.5,
+        "quick edit › detection confidence edit": 7.1,
+        "quick edit › detection move to bottom-left and left with undo/redo": 14.6,
+        "quick edit › detection move to bottom-right and bottom with undo/redo": 14.7,
+        "quick edit › detection move to top-left and top with undo/redo": 19.6,
+        "quick edit › detection move to top-right and right with undo/redo": 14.6,
+        "quick edit › detection resize via bottom-left and left handles with undo/redo": 17.8,
+        "quick edit › detection resize via bottom-right and bottom handles with undo/redo": 17.6,
+        "quick edit › detection resize via top-left and top handles with undo/redo": 23,
+        "quick edit › detection resize via top-right and right handles with undo/redo": 17.7,
+        "quick edit › detections via tooltip": 6
+    },
+    "oss/specs/saved-views.spec.ts": {
+        "saved views › clearing a saved view clears the url and view selection": 7.1,
+        "saved views › deleting a saved view clears the URL view parameter and view selection": 8,
+        "saved views › editing a saved view should update the view URL parameter and selection": 8.6,
+        "saved views › editing a saved view updates the view's name and description": 9.4,
+        "saved views › saved view basic operations": 7.1,
+        "saved views › saving a view with an already existing name fails": 8.2,
+        "saved views › searching through saved views works": 9.8
+    },
+    "oss/specs/schema-manager-tooltip-stacking.spec.ts": {
+        "schema manager tooltip z-index stacking › tooltip does not appear above schema manager modal": 2.8
+    },
+    "oss/specs/schema-manager.spec.ts": {
+        "schema manager › JSON view configuration": 5.6,
+        "schema manager › annotation enabled for a grouped dataset with a video slice": 3,
+        "schema manager › patches view required field prompt activates schema and enters edit mode": 3.6,
+        "schema manager › the schema manager is available for a video dataset": 3
+    },
+    "oss/specs/segmentation-tool-snapshots.spec.ts": {
+        "segmentation tool snapshots › ai": 13.4,
+        "segmentation tool snapshots › brush": 13.6,
+        "segmentation tool snapshots › merge › merge": 20.5,
+        "segmentation tool snapshots › pen": 12.7
+    },
+    "oss/specs/selection.spec.ts": {
+        "selection › mp4 selection": 5.7,
+        "selection › pcd selection": 10.1,
+        "selection › png selection": 5
+    },
+    "oss/specs/sidebar-classification.spec.ts": {
+        "classification-sidebar-filter-visibility › In classification grid, omit samples with a label filter works": 4.3,
+        "classification-sidebar-filter-visibility › In classification grid, setting visibility directly works": 3.7,
+        "classification-sidebar-filter-visibility › In classification grid, show samples with a label filter works": 4.3
+    },
+    "oss/specs/sidebar-datetime.spec.ts": {
+        "date field and date time field can filter visibility › change date field visibility works": 2.5,
+        "date field and date time field can filter visibility › change datetime field visibility works": 2.5
+    },
+    "oss/specs/sidebar-explore-is-disabled.spec.ts": {
+        "explore-is-disabled › _label_tags is not draggable": 2.1,
+        "explore-is-disabled › dict field in disabledCheckboxPaths is not draggable": 2.1,
+        "explore-is-disabled › supported label field is draggable": 2
+    },
+    "oss/specs/sidebar.spec.ts": {
+        "sidebar-filter-visibility › In grid, exclude a label filter works": 6.2,
+        "sidebar-filter-visibility › In grid, omit samples with a label filter works": 5.1,
+        "sidebar-filter-visibility › In grid, select a label filter works": 4.9,
+        "sidebar-filter-visibility › In grid, show samples with a label filter works": 5.1
+    },
+    "oss/specs/smoke.spec.ts": {
+        "smoke › entry counts text when toPatches then groupedBy": 4.9,
+        "smoke › selection bookmark": 3,
+        "smoke › sidebar persistence": 2.7,
+        "smoke › smoke": 3.4
+    },
+    "oss/specs/spaces-layout-grid-remount.spec.ts": {
+        "grid remounts exactly once per spaces layout change": 2.6
+    },
+    "oss/specs/sparse-dynamic-groups.spec.ts": {
+        "sparse dynamic groups › left slice (default)": 3.8,
+        "sparse dynamic groups › right slice": 4.4
+    },
+    "oss/specs/sparse-fo3d-groups.spec.ts": {
+        "sparse grouped fo3d › keeps sparse 3d modal navigation stable": 16.5,
+        "sparse grouped fo3d › opens the first modal cleanly from every grid slice": 12.8
+    },
+    "oss/specs/sparse-groups-scenes.spec.ts": {
+        "ego default group slice transitions": 6.1
+    },
+    "oss/specs/sparse-groups.spec.ts": {
+        "sparse groups tests › mp4 default slice": 2.5,
+        "sparse groups tests › mp4 second slice": 3.6,
+        "sparse groups tests › mp4 shared slice": 3.9,
+        "sparse groups tests › png default slice": 2.3,
+        "sparse groups tests › png second slice": 2.9,
+        "sparse groups tests › png shared slice": 3.1
+    },
+    "oss/specs/sparse-multimodal-groups.spec.ts": {
+        "sparse multimodal groups › opens a pcd-only group from the pcd grid slice without throwing": 6.3,
+        "sparse multimodal groups › opens the first modal cleanly from every grid slice": 19
+    },
+    "oss/specs/summary-fields.spec.ts": {
+        "summary fields › modal sidebar summary fields render": 2.6
+    },
+    "oss/specs/tagger.spec.ts": {
+        "tag › In grid, I can add a new label tag to all samples": 4.7,
+        "tag › In grid, I can add a new sample tag to all samples": 3.2,
+        "tag › In modal, I can add a label tag to a filtered sample": 3.7,
+        "tag › sample tag and label tag loads correct aggregation number on default view": 1.7
+    },
+    "oss/specs/video-explore-mask-tracks.spec.ts": {
+        "mask fields are one read-only row each, with a hole at missing frames": 3.4
+    },
+    "oss/specs/video-explore-timeline-field-toggle.spec.ts": {
+        "toggling a frame field keeps the timeline drawer and its rows mounted": 3.4
+    },
+    "oss/specs/view-bar-expression-suggestions.spec.ts": {
+        "operator suggestions follow a mouse-completed field": 5.8,
+        "operator suggestions follow an Enter-completed field": 5.8
+    },
+    "oss/specs/view-bar-keyboard.spec.ts": {
+        "view bar keyboard › Enter is refused while a required parameter is empty": 5.5,
+        "view bar keyboard › Escape closes the editor, and Escape again clears pending work": 5.4,
+        "view bar keyboard › Escape releases an applied stage that has no pending edits": 6.1,
+        "view bar keyboard › Tab and Shift+Tab traverse the stages row": 5.5,
+        "view bar keyboard › a stage can be added, filled and applied without the mouse": 5.6,
+        "view bar keyboard › applying moves the keyboard to the next insert slot": 5.8,
+        "view bar keyboard › multiple stages reach the view without the mouse": 6.2
+    },
+    "oss/specs/view-bar-quick-search.spec.ts": {
+        "view bar quick search › a query runs a real search and applies a subset view": 6.2,
+        "view bar quick search › opening the stages row focuses the typeahead and its stage list": 5.6
+    },
+    "oss/specs/view-bar.spec.ts": {
+        "view bar › a long view scrolls inside the bar without breaking the layout": 5.7,
+        "view bar › a stage built in the bar reaches the session view": 5.9,
+        "view bar › a view built in Python hydrates into the bar": 5.7,
+        "view bar › an expression survives being applied and reopened": 6.4
+    },
+    "oss/specs/viewport-bridge.spec.ts": {
+        "viewport-bridge-visual › visual cross-renderer: Lighter shows same image region as Looker after viewport transfer": 3.6,
+        "viewport-bridge-visual › visual round-trip: Looker screenshot is identical after toggling to Lighter and back": 3.8
+    }
 }
