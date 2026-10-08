@@ -67,6 +67,20 @@ const useSchema = (readOnly: boolean) => {
     .map((attr) => allAttributes.indexOf(attr))
     .join("\0");
 
+  // Class-lock: when a stage policy narrowed the class options and this
+  // label's current class fell outside them, freeze the class input — a
+  // picker offering only in-scope classes must not let an annotator
+  // stomp an out-of-scope value (e.g. "van" reclassified to "sedan"
+  // because "van" wasn't offered). Computed outside the schema memo so
+  // label edits re-evaluate it.
+  const currentClass = (data as { label?: unknown } | undefined)?.label;
+  const classOutOfScope =
+    (config?.classes?.length ?? 0) > 0 &&
+    !config?.applied_taxonomy &&
+    typeof currentClass === "string" &&
+    currentClass.length > 0 &&
+    !(config?.classes ?? []).includes(currentClass);
+
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
     const taxonomy = config?.applied_taxonomy as string | undefined;
@@ -84,7 +98,10 @@ const useSchema = (readOnly: boolean) => {
             : undefined,
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
-        readOnly: effectiveReadOnly,
+        // `label_read_only` = stage-policy attribute lock on the class
+        // input ("Other attributes: View" covers the label too).
+        readOnly:
+          effectiveReadOnly || classOutOfScope || !!config?.label_read_only,
       }),
     };
 
@@ -108,7 +125,7 @@ const useSchema = (readOnly: boolean) => {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleKey, config, effectiveReadOnly]);
+  }, [visibleKey, config, effectiveReadOnly, classOutOfScope]);
 };
 
 const useParseFieldValue = () => {

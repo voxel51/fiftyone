@@ -13541,6 +13541,47 @@
             "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
             "training_data": [],
             "date_added": "2026-08-10 12:00:00"
+        },
+        {
+            "base_name": "clef-flash-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "9B multimodal decision model that answers yes-or-no, multiple-choice and rating questions about an image with a probability for every option",
+            "source": "https://huggingface.co/Cloudflare/clef-flash",
+            "author": "Cloudflare",
+            "license": "Apache 2.0",
+            "size_bytes": 19083377419,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.clef.ClefModel",
+                "config": {
+                    "name_or_path": "Cloudflare/clef-flash",
+                    "revision": "fde727a287004204b7518dcc983fe64379776712",
+                    "output_processor_cls": "fiftyone.utils.clef.ClefOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.10.2",
+                    "accelerate"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
+            "training_data": [],
+            "date_added": "2026-10-07 12:00:00"
         }
     ]
 }

@@ -58,11 +58,74 @@ export class SchemaManagerPom {
   }
 
   /**
+   * The schema row's dropdown trigger (grid sidebar and sample modal).
+   * "Manage schema" lives inside its menu; the standalone gear only
+   * renders where the row does not (inside a workflow task). Both the
+   * grid sidebar and the sample modal render the row; with the modal
+   * open, its trigger is the one on top.
+   */
+  async lensTrigger() {
+    const modal = this.page.getByTestId("modal");
+    if (await modal.isVisible()) {
+      return modal.getByTestId("schema-lens-select");
+    }
+    return this.page.getByTestId("schema-lens-select").first();
+  }
+
+  /**
    * Open the schema manager modal. The sample modal must be open for the
    * schema manager modal to open
    */
   async open() {
+    const trigger = await this.lensTrigger();
+    if (await trigger.isVisible()) {
+      await trigger.click();
+      await this.page
+        .getByRole("menu")
+        .getByTestId("open-schema-manager")
+        .click();
+      return;
+    }
     await this.page.getByTestId("open-schema-manager").click();
+  }
+
+  /**
+   * Create a custom schema from the actions menu. The manager switches to
+   * the new schema, whose rows can be moved between Active and Hidden.
+   *
+   * @param name The schema name (unique per dataset)
+   */
+  async createSchema(name: string) {
+    await this.locator.getByTestId("schema-actions-menu").click();
+    await this.page.getByRole("menu").getByTestId("schema-action-new").click();
+    const input = this.locator.getByTestId("schema-name-input");
+    await input.fill(name);
+    await this.locator
+      .getByRole("button", { name: "Save", exact: true })
+      .click();
+    await expect(input).toBeHidden();
+  }
+
+  /**
+   * Apply a custom schema as the sidebar's schema lens, or the dataset
+   * default when no name is given. The dataset default shows every field;
+   * only a custom schema hides fields.
+   *
+   * @param name The schema name, or undefined for the default
+   */
+  async applyLens(name?: string) {
+    const trigger = await this.lensTrigger();
+    await trigger.click();
+    const menu = this.page.getByRole("menu");
+    if (name) {
+      await menu
+        .getByTestId("schema-lens-option")
+        .filter({ hasText: name })
+        .click();
+    } else {
+      await menu.getByTestId("schema-lens-option-default").click();
+    }
+    await expect(menu).toBeHidden();
   }
 
   /**
@@ -156,21 +219,17 @@ class SchemaManagerAsserter {
   }
 
   /**
-   * Is the "Add schema" button disabled
+   * Is the schema entry point (the schema row's trigger) disabled
    */
   async isDisabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeDisabled();
+    await expect(await this.schemaManagerPom.lensTrigger()).toBeDisabled();
   }
 
   /**
-   * Is the "Add schema" button enabled
+   * Is the schema entry point (the schema row's trigger) enabled
    */
   async isEnabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeEnabled();
+    await expect(await this.schemaManagerPom.lensTrigger()).toBeEnabled();
   }
 
   /**
