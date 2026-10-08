@@ -22,10 +22,7 @@ type SidebarModeE2EEvents = {
 
 /**
  * The sidebar's mode row: the Filter / Visibility toggle on the left,
- * the query-performance bolt on the right. Field visibility is owned
- * by persisted label schemas now (the schema row above, and the Schema
- * Manager), so the per-session Field Visibility modal and its gear are
- * gone from here.
+ * the query-performance bolt on the right.
  */
 const Filter = (_props: { modal?: boolean }) => {
   const theme = useTheme();
@@ -43,14 +40,9 @@ const Filter = (_props: { modal?: boolean }) => {
     fos.fieldVisibilityStage,
   );
 
-  const {
-    resetExcludedPaths,
-    affectedPathCount,
-    mergedSchema,
-    isFieldVisibilityActive,
-  } = fos.useSchemaSettings();
+  const { resetExcludedPaths, affectedPathCount, isFieldVisibilityActive } =
+    fos.useSchemaSettings();
 
-  const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   return (
@@ -119,7 +111,6 @@ const Filter = (_props: { modal?: boolean }) => {
               onClick={() => {
                 resetSelectedFieldStages();
                 resetExcludedPaths();
-                setSearchResults([]);
               }}
             >
               {affectedPathCount > 0 && (

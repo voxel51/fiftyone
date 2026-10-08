@@ -1,6 +1,5 @@
 export * from "./__generated__/createSavedViewMutation.graphql";
 export * from "./__generated__/deleteSavedViewMutation.graphql";
-export * from "./__generated__/searchSelectFieldsMutation.graphql";
 export * from "./__generated__/setColorSchemeMutation.graphql";
 export * from "./__generated__/setDatasetColorSchemeMutation.graphql";
 export * from "./__generated__/setDatasetMutation.graphql";
@@ -18,7 +17,6 @@ export * from "./__generated__/setViewMutation.graphql";
 export * from "./__generated__/updateSavedViewMutation.graphql";
 export { default as createSavedView } from "./createSavedView";
 export { default as deleteSavedView } from "./deleteSavedView";
-export { default as searchSelectFields } from "./searchSelectFields";
 export { default as setColorScheme } from "./setColorScheme";
 export { default as setDataset } from "./setDataset";
 export { default as setDatasetColorScheme } from "./setDatasetColorScheme";
