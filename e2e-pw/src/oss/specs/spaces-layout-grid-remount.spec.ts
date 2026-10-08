@@ -37,6 +37,7 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test("grid remounts exactly once per spaces layout change", async ({
+  eventUtils,
   fiftyoneLoader,
   grid,
   page,
@@ -46,6 +47,12 @@ test("grid remounts exactly once per spaces layout change", async ({
   // grid mount is always observed — arming after load would race it
   const { mounts, unmounts } = await grid.armLifecycleCounters();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  // the grid mounts once its first page's items settle, which can trail the
+  // drawn tiles; splitting before then tears it down unmounted
+  await eventUtils.untilState(
+    "grid-mount",
+    async () => (await mounts.read()) === 1,
+  );
 
   const now = () => page.evaluate(() => performance.now());
   const assertCycles = async (n: number, context: Record<string, number>) => {
