@@ -198,7 +198,6 @@ packages/core/src/components/Modal/use-modal-sample-renderer-persistence.ts
 packages/core/src/components/QueryPerformanceToast.tsx
 packages/core/src/components/ResourceCount.tsx
 packages/core/src/components/SamplesContainer.tsx
-packages/core/src/components/Schema/SchemaSettings.tsx
 packages/core/src/components/Sidebar/Entries/AddGroupEntry.tsx
 packages/core/src/components/Sidebar/Entries/Draggable.tsx
 packages/core/src/components/Sidebar/Entries/EntryCounts.tsx
@@ -378,10 +377,6 @@ packages/state/src/accessors/modal/dynamicGroups.ts
 packages/state/src/accessors/modal/index.ts
 packages/state/src/accessors/modal/use-active-modal-sample-value.ts
 packages/state/src/accessors/sidebar.ts
-packages/state/src/hooks/schema/useSearchSchemaFields.test.tsx
-packages/state/src/hooks/schema/useSearchSchemaFields.ts
-packages/state/src/hooks/schema/useSetExcludedFieldsStage.test.tsx
-packages/state/src/hooks/schema/useSetSelectedFieldsStage.ts
 packages/state/src/hooks/similaritySearch/usePromptableSimilarityKeys.ts
 packages/state/src/hooks/similaritySearch/useSimilarity.test.tsx
 packages/state/src/hooks/similaritySearch/useSimilarityKeys.ts

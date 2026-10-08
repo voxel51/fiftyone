@@ -56,8 +56,11 @@ describe("drawing a detection", () => {
     stroke: vi.fn(),
   });
 
-  // 100x100px canvas: the box spans 20..60px on each axis
-  const makeState = ({ selected = false }: { selected?: boolean } = {}) =>
+  // 100x100px canvas: the box spans 20..60px on each axis, centered at 40px
+  const makeState = ({
+    hidden = false,
+    selected = false,
+  }: { hidden?: boolean; selected?: boolean } = {}) =>
     ({
       canvasBBox: [0, 0, 100, 100],
       config: { thumbnail: false },
@@ -65,6 +68,7 @@ describe("drawing a detection", () => {
       dimensions: [100, 100],
       fontSize: 10,
       options: {
+        hiddenBoundingBoxes: hidden ? ["detections"] : [],
         labelSelectionStyle: {},
         selectedLabels: selected ? ["box"] : [],
         selectedLabelTypes: {},
@@ -86,11 +90,41 @@ describe("drawing a detection", () => {
     );
   });
 
-  it("anchors the label on the top-left corner", () => {
+  it("strokes the box while shown", () => {
+    const ctx = makeContext();
+    makeOverlay().draw(ctx as never, makeState());
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the box stroke while hidden", () => {
+    const ctx = makeContext();
+    makeOverlay().draw(ctx as never, makeState({ hidden: true }));
+    expect(ctx.stroke).not.toHaveBeenCalled();
+  });
+
+  it("still dashes the box while selected", () => {
+    const ctx = makeContext();
+    makeOverlay().draw(
+      ctx as never,
+      makeState({ hidden: true, selected: true }),
+    );
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+    expect(ctx.setLineDash).toHaveBeenCalledWith([4]);
+  });
+
+  it("anchors the label on the top-left corner while shown", () => {
     // header bottom-left at (20 - strokeWidth / 2, 20); text inset by
     // textPad + strokeWidth
     const ctx = makeContext();
     makeOverlay().draw(ctx as never, makeState());
     expect(ctx.fillText).toHaveBeenCalledWith("car", 23, 16);
+  });
+
+  it("centers the label while hidden", () => {
+    // the 48x18px header (40px text + 8px padding) centered on (40, 40)
+    // puts its bottom-left at (16, 49); text inset by textPad + strokeWidth
+    const ctx = makeContext();
+    makeOverlay().draw(ctx as never, makeState({ hidden: true }));
+    expect(ctx.fillText).toHaveBeenCalledWith("car", 20, 45);
   });
 });
