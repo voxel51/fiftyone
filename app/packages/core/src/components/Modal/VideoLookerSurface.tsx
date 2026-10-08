@@ -11,8 +11,9 @@ import {
   useTimelineMaxSize,
 } from "@fiftyone/video-annotation";
 import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLookerPlaybackBridge } from "./useLookerPlaybackBridge";
+import { VideoLookerActions } from "./VideoLookerActions";
 import styles from "./VideoLookerSurface.module.css";
 import { VideoTimelineExtensions } from "./VideoTimelineExtensions";
 import useLooker from "./use-looker";
@@ -30,8 +31,15 @@ const CARD_BACKGROUND: React.CSSProperties = {
 const VideoLookerReact: React.FC<{
   sample: fos.ModalSample;
   frameRate: number | undefined;
-}> = ({ sample, frameRate }) => {
+  onLooker: (looker: VideoLooker | null) => void;
+}> = ({ sample, frameRate, onLooker }) => {
   const { id, ref, looker } = useLooker<VideoLooker>({ sample });
+
+  // Hand the looker up so the timeline's trailing actions can drive it.
+  useEffect(() => {
+    onLooker(looker);
+    return () => onLooker(null);
+  }, [looker, onLooker]);
 
   useVideoModalSelectiveRendering(id, looker);
   useLookerPlaybackBridge(looker, frameRate);
@@ -54,7 +62,9 @@ const VideoLookerReact: React.FC<{
  * every label type, zoom and pan, tooltips, the JSON and help panels, and the
  * looker's keyboard shortcuts. The timeline replaces only the looker's own
  * transport bar (hidden by this surface's stylesheet), and the two are kept
- * in step by {@link useLookerPlaybackBridge}.
+ * in step by {@link useLookerPlaybackBridge}. The bar's fit, JSON and help
+ * buttons move to the timeline's trailing actions, in
+ * {@link VideoLookerActions}.
  *
  * `RegisterFrameLabels` and `FrameLabelsTracks` are the read-only track
  * data under the ruler; they read the server's label index and paint nothing
@@ -70,6 +80,7 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
   const timelineMaxSize = useTimelineMaxSize(surfaceHeight);
 
   const frameRate = getModalSampleFrameRate(sample);
+  const [looker, setLooker] = useState<VideoLooker | null>(null);
 
   // Sequence mode when the frame rate is known, so the engine steps whole
   // frames and the ruler can count them; elapsed seconds if not.
@@ -97,13 +108,18 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
         className={styles.root}
       >
         <div className={styles.media} style={CARD_BACKGROUND}>
-          <VideoLookerReact sample={sample} frameRate={frameRate} />
+          <VideoLookerReact
+            sample={sample}
+            frameRate={frameRate}
+            onLooker={setLooker}
+          />
         </div>
         <div className={styles.timeline} style={CARD_BACKGROUND}>
           <VideoTimelineExtensions
             sample={sample}
             maxSize={timelineMaxSize}
             mode="explore"
+            trailingActions={<VideoLookerActions looker={looker} />}
           />
         </div>
       </div>
