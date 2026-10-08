@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -125,5 +126,37 @@ describe("SharedSessionBanner", () => {
     wait(APP_COUNT_SETTLE_MS * 2);
 
     expect(banner()).toBeNull();
+  });
+
+  describe("sole App signal", () => {
+    const listen = () => {
+      // the bus keeps e2e events only under browser automation
+      vi.stubGlobal("navigator", { ...navigator, webdriver: true });
+      const signaled = vi.fn();
+      const off = getEventBus<{ "e2e:app:sole-app": undefined }>().on(
+        "e2e:app:sole-app",
+        signaled,
+      );
+      return { signaled, off };
+    };
+
+    it("signals once the server counts only this App", () => {
+      const { signaled, off } = listen();
+      setup(2);
+      expect(signaled).not.toHaveBeenCalled();
+
+      report(1);
+      expect(signaled).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it("signals at once for an App that does not share its session", () => {
+      mode.stateless = true;
+      const { signaled, off } = listen();
+      setup(null);
+
+      expect(signaled).toHaveBeenCalledTimes(1);
+      off();
+    });
   });
 });

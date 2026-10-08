@@ -23,7 +23,10 @@ import {
   WarningAmberIcon,
 } from "@voxel51/voodo";
 import type { CSSProperties } from "react";
-import { useSharedSessionCount } from "../sharedSession/hooks";
+import {
+  useSharedSessionCount,
+  useSoleAppSignal,
+} from "../sharedSession/hooks";
 import styles from "./SharedSessionBanner.module.css";
 import SharedSessionUpgrade from "./SharedSessionUpgrade";
 
@@ -86,7 +89,10 @@ const Notice = () => {
  * well over a minute later.
  */
 export default function SharedSessionBanner() {
-  if (env().VITE_NO_STATE || isEventSourcePolling()) {
+  const shares = !env().VITE_NO_STATE && !isEventSourcePolling();
+  useSoleAppSignal(shares);
+
+  if (!shares) {
     return null;
   }
 

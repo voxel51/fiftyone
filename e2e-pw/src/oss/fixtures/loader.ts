@@ -13,6 +13,9 @@ import { PythonRunner } from "src/shared/python-runner/python-runner";
  */
 const MODAL_OPENED = "e2e:modal:opened";
 const COUNT_SHOWN = "e2e:components:entry-count-shown";
+// a page the server still counts after it closed shows the shared session
+// banner on the next one, pushing it down mid-test
+const SOLE_APP = "e2e:app:sole-app";
 const TILE_READY = [
   "e2e:looker:canvas-loaded",
   "e2e:looker:error-shown",
@@ -130,12 +133,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
     let modalOpened = !opensModal;
     let modalLoaded = !modalSample;
     let ready = !readyEvent;
+    let soleApp = false;
 
     await eventUtils.afterNavigation(
       [
         ...TILE_READY,
         MODAL_OPENED,
         COUNT_SHOWN,
+        SOLE_APP,
         ...(readyEvent ? [readyEvent] : []),
       ],
       navigate,
@@ -148,6 +153,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
           thumbnail?: boolean;
         };
         if (event === readyEvent) ready = true;
+        if (event === SOLE_APP) soleApp = true;
         if (event === MODAL_OPENED) modalOpened = true;
         // the grid's entry counts load after its tiles
         if (event === COUNT_SHOWN) {
@@ -176,7 +182,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
         return (
           (readyEvent ? ready : tileReady && countsShown) &&
           modalOpened &&
-          modalLoaded
+          modalLoaded &&
+          soleApp
         );
       },
     );
