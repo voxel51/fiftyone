@@ -24,6 +24,13 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
 
+// label types whose `bounding_box` gets a header-only row with an eyeball
+// that toggles the field's box outlines
+const BOUNDING_BOX_TYPES = [
+  withPath(LABELS_PATH, DETECTION),
+  withPath(LABELS_PATH, DETECTIONS),
+];
+
 export const getFilterItemsProps = (
   color: string,
   path: string,
@@ -31,6 +38,8 @@ export const getFilterItemsProps = (
   parent: Field | null,
   fields: Field[],
   skeleton: (field: string) => KeypointSkeleton | null,
+  // the label field's unexpanded sidebar path, e.g. "frames.ground_truth"
+  labelPath: string,
 ): FilterItem[] => {
   if (path === "_label_tags") {
     return [
@@ -102,6 +111,19 @@ export const getFilterItemsProps = (
     }
   }
 
+  const docType = parent.embeddedDocType;
+  if (docType && BOUNDING_BOX_TYPES.includes(docType)) {
+    extra.push({
+      color,
+      path: [path, "bounding_box"].join("."),
+      modal,
+      named: true,
+      ftype: "_BOUNDING_BOX",
+      labelPath,
+      listField: false,
+    });
+  }
+
   return fields
     .filter(({ name, ftype, subfield }) => {
       if (ftype === LIST_FIELD) {
@@ -156,6 +178,7 @@ const useFilterData = (
       field,
       fields,
       skeleton,
+      path,
     );
     const filtered = filter ? data.filter(({ path }) => filter(path)) : data;
     const rest = filter ? data.filter(({ path }) => !filter(path)) : data;
@@ -163,7 +186,7 @@ const useFilterData = (
       data: filtered,
       removed: rest,
     };
-  }, [color, expandedPath, field, fields, filter, modal, skeleton]);
+  }, [color, expandedPath, field, fields, filter, modal, path, skeleton]);
 };
 
 export default useFilterData;
