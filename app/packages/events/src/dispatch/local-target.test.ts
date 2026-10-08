@@ -26,6 +26,21 @@ describe("LocalEventTarget", () => {
     expect(listener).toHaveBeenCalledWith(error);
   });
 
+  test("an Error payload is also the event's error, as on an ErrorEvent", () => {
+    const target = new LocalEventTarget();
+    const listener = vi.fn();
+    target.addEventListener("error", listener);
+    const error = new Error("boom");
+
+    target.dispatch("error", error);
+
+    expect(listener).toHaveBeenCalledWith({
+      type: "error",
+      detail: error,
+      error,
+    });
+  });
+
   test("listeners on one target never hear another's events", () => {
     const one = new LocalEventTarget();
     const other = new LocalEventTarget();

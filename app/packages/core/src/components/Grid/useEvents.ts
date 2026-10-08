@@ -8,7 +8,7 @@ import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import { MANAGING_GRID_MEMORY } from "../../utils/links";
-import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
+import { QP_WAIT, type QueryPerformanceEvents } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
 import type { LookerCache } from "./types";
 import type { ScrollLocation } from "./useScrollLocation";
@@ -53,8 +53,9 @@ export default ({
     const info = fos.getQueryPerformancePath();
     const timeout = setTimeout(() => {
       if (info) {
-        window.dispatchEvent(
-          new QueryPerformanceToastEvent(info.path, info.isFrameField),
+        getEventBus<QueryPerformanceEvents>().dispatch(
+          "query-performance:slow",
+          { path: info.path, isFrameField: info.isFrameField },
         );
       }
     }, QP_WAIT);

@@ -2369,6 +2369,7 @@ __metadata:
   resolution: "@fiftyone/spotlight@workspace:packages/spotlight"
   dependencies:
     "@af-utils/scrollend-polyfill": "npm:^0.0.13"
+    "@fiftyone/events": "npm:*"
     typescript: "catalog:"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "catalog:"

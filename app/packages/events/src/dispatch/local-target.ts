@@ -1,9 +1,13 @@
 import { EventDispatcher } from "./dispatcher";
 
-/** What a {@link LocalEventTarget} listener receives for a non-DOM payload */
+/**
+ * What a {@link LocalEventTarget} listener receives for a non-DOM payload; an
+ * `Error` payload is on `error` too, where an `ErrorEvent` carries it
+ */
 export type LocalEvent<T = unknown> = {
   readonly type: string;
   readonly detail: T;
+  readonly error?: T extends Error ? T : never;
 };
 
 type Listener = EventListenerOrEventListenerObject;
@@ -11,9 +15,9 @@ type Listener = EventListenerOrEventListenerObject;
 /**
  * An EventTarget-shaped facade over a private event bus, for an object whose
  * listeners attach to it alone (a looker, a grid item). A listener receives
- * `{ type, detail }`, or the DOM event itself when one is dispatched (an
- * `ErrorEvent`, a forwarded pointer event). Listeners run synchronously, in
- * the order they were added.
+ * `{ type, detail }` (an `Error` also as `error`), or the DOM event itself
+ * when one is dispatched (an `ErrorEvent`, a forwarded pointer event).
+ * Listeners run synchronously, in the order they were added.
  */
 export class LocalEventTarget {
   private readonly bus = new EventDispatcher<Record<string, unknown>>();
@@ -44,7 +48,11 @@ export class LocalEventTarget {
     const off = this.bus.on(type, (payload) => {
       if (once) remove();
       const event = (
-        payload instanceof Event ? payload : { type, detail: payload }
+        payload instanceof Event
+          ? payload
+          : payload instanceof Error
+            ? { type, detail: payload, error: payload }
+            : { type, detail: payload }
       ) as Event;
       if (typeof listener === "function") {
         listener(event);

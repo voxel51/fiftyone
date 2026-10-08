@@ -20,7 +20,7 @@ export class PagePom {
    * the page whose load should be observed.
    */
   armGlobalLoadingScreenCounter(): Promise<EventCounter> {
-    return this.eventUtils.initCounter("global-loading-screen");
+    return this.eventUtils.initCounter("e2e:app:global-loading-screen");
   }
 
   get pathname() {

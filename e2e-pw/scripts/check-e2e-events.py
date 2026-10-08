@@ -109,18 +109,92 @@ E2E_RULES = [
     ),
 ]
 
-# files whose matches are infrastructure, not waits in the page
-# App code sends events on the @fiftyone/events bus and never branches on
-# browser automation; the App ESLint config flags the same for editors
-APP_RULES = [
-    ("app-custom-event", re.compile(r"new CustomEvent\(")),
+
+class DomDispatch:
+    """`target.dispatchEvent(event)`: one argument, not a string. Calls with a
+    name, as in a looker's `dispatchEvent("load", detail)`, are its own
+    per-instance bus."""
+
+    CALL = re.compile(r"\bdispatchEvent\s*(?:\?\.)?\s*\(")
+    OPEN, CLOSE = "([{", ")]}"
+
+    def finditer(self, src):
+        for m in self.CALL.finditer(src):
+            args = self._args(src, m.end())
+            # a trailing comma is formatting, not a second argument
+            args = (args or "").strip().rstrip(",").strip()
+            if not args or "," in args or args[0] in "\"'`":
+                continue
+            yield m
+
+    def _args(self, src, i):
+        """Top-level text of the call's arguments, nested groups dropped"""
+        depth, out, quote = 0, [], None
+        while i < len(src):
+            c = src[i]
+            if quote:
+                if c == "\\":
+                    i += 1
+                elif c == quote:
+                    quote = None
+                if depth == 0:
+                    out.append(c)
+            elif c in "\"'`":
+                quote = c
+                if depth == 0:
+                    out.append(c)
+            elif c in self.OPEN:
+                depth += 1
+            elif c in self.CLOSE:
+                if depth == 0:
+                    return "".join(out)
+                depth -= 1
+            elif depth == 0:
+                out.append(c)
+            i += 1
+        return None
+
+
+# App code sends events on the @fiftyone/events bus (an object whose listeners
+# attach to it alone keeps a LocalEventTarget) and never branches on browser
+# automation; the App ESLint config flags the same for editors
+APP_EVENT_RULES = [
+    # constructs a DOM event: new Event(...), new CustomEvent<T>(...), new
+    # MouseEvent(...), or an App subclass named like one
+    (
+        "app-dom-event",
+        re.compile(r"\bnew\s+(?:[A-Z]\w*)?Event\b\s*(?:<[^>()]*>)?\s*\("),
+    ),
+    (
+        "app-event-subclass",
+        re.compile(
+            r"\bclass\b(?:\s+\w+)?\s*(?:<[^{]*?>)?\s+extends\s+(?:[A-Z]\w*)?Event\b"
+        ),
+    ),
+    ("app-dom-dispatch", DomDispatch()),
+]
+APP_RULES = APP_EVENT_RULES + [
     (
         "app-e2e-guard",
         re.compile(r"\bisE2E\b|\bIS_PLAYWRIGHT\b|navigator\.webdriver"),
     ),
 ]
-# App unit tests stand in for the App's events and the automation flag
-APP_SKIP = re.compile(r"/(node_modules|dist|__generated__)/|\.test\.tsx?$")
+APP_EVENT_RULE_NAMES = {name for name, _ in APP_EVENT_RULES}
+# A tooltip component with no focus trigger opens on keyboard focus only by
+# a synthetic mouseover/mouseout on its own element; the handler carries this
+# marker (with why) within the three lines above. Remove it, and the marker,
+# once the component opens on focus itself.
+TOOLTIP_FOCUS = "// tooltip-focus-fallback:"
+# the bus and its deprecated DOM mirror
+APP_EVENT_EXEMPT = re.compile(r"^app/packages/events/src/dispatch/")
+# App unit tests stand in for the App's events, user input and the
+# automation flag
+APP_SKIP = re.compile(
+    r"/(node_modules|dist|__generated__|__tests__|__mocks__)/"
+    r"|\.(test|spec)\.[jt]sx?$"
+    r"|(?:^|/)app/packages/[\w-]+/tests/"
+)
+APP_SOURCE = re.compile(r"\.[jt]sx?$")
 
 E2E_SKIP = re.compile(
     # test plugin sources run inside the App; their timers are not test waits
@@ -129,7 +203,6 @@ E2E_SKIP = re.compile(
 
 # accepted sites, as "relative/path:substring of the matched text" -> reason
 ALLOW = {
-    "app/packages/events/src/dispatch/legacyDomEvents.ts:new CustomEvent(": "deprecated plugin compatibility: mirrors the closed LEGACY_DOM_EVENTS list below to the DOM events main sent",
     "app/packages/events/src/dispatch/dispatcher.ts:isE2E": "the bus itself: drops e2e: events outside automation",
     "app/packages/events/src/dispatch/dispatcher.ts:navigator.webdriver": "the bus's automation check",
     "app/packages/events/src/dispatch/registry.ts:isE2E": "the bus itself: exposes its tap only under automation",
@@ -222,8 +295,24 @@ def scan(files, rules, skip=None):
                     for i in range(max(0, line - 2), line)
                 ):
                     continue
+                if (
+                    name in ("app-dom-event", "app-dom-dispatch")
+                    and any(
+                        TOOLTIP_FOCUS in raw_lines[i]
+                        for i in range(max(0, line - 4), line)
+                    )
+                    and re.search(
+                        r"""["']mouse(?:over|out)["']""",
+                        "\n".join(raw_lines[line - 1 : line + 1]),
+                    )
+                ):
+                    continue
                 text = " ".join(raw[m.start() : m.end()].split())[:110]
                 rel = os.path.relpath(path, ROOT)
+                if name in APP_EVENT_RULE_NAMES and APP_EVENT_EXEMPT.search(
+                    rel
+                ):
+                    continue
                 if any(
                     k.split(":")[0] == rel and k.split(":", 1)[1] in text
                     for k in ALLOW
@@ -273,7 +362,18 @@ def unused_app_events(e2e_files):
 
 
 e2e_files = glob.glob(os.path.join(E2E, "**", "*.ts"), recursive=True)
-app_files = glob.glob(os.path.join(APP, "**", "*.ts*"), recursive=True)
+
+
+def app_sources():
+    """Every App package source, in both trees' packages"""
+    for top, dirs, files in os.walk(APP):
+        dirs[:] = [d for d in dirs if d not in ("node_modules", "dist")]
+        for name in files:
+            if APP_SOURCE.search(name):
+                yield os.path.join(top, name)
+
+
+app_files = sorted(app_sources())
 findings = (
     scan(e2e_files, E2E_RULES, E2E_SKIP)
     + scan(app_files, APP_RULES, APP_SKIP)
@@ -295,7 +395,8 @@ if findings:
         " the result once with an exact matcher (a time budget carries"
         " `// time-budget: <why>`), mark other web-first matchers on plain"
         " components `// component-only: <why>`, delete App e2e: events"
-        " nothing waits for, and in App code send events on the bus without"
-        " automation guards; see e2e-pw/CODING_STANDARDS.md"
+        " nothing waits for, and in App code send events on the bus (never"
+        " a DOM event) without automation guards; see"
+        " e2e-pw/CODING_STANDARDS.md"
     )
 sys.exit(1 if findings else 0)

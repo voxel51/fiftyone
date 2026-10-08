@@ -264,6 +264,7 @@ export class GridCustomRendererItem {
   private inSelectionMode = false;
   private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
+  private open?: () => void;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     // Assigned rather than spread into a new context so the identity stays
@@ -392,20 +393,25 @@ export class GridCustomRendererItem {
   };
 
   /**
+   * Sets how the grid opens this item's tile, as a click on it does. The
+   * grid hands it over each time the tile is shown.
+   */
+  setOpen(open: (() => void) | undefined) {
+    this.open = open;
+  }
+
+  /**
    * Opens this sample's modal, handed to the renderer as `ctx.openModal`.
    *
-   * Reuses the grid's own activation path — a click on the mounted element —
-   * rather than reaching for the modal directly, so a renderer-owned button
-   * lands the user in exactly the same place a click on an ordinary tile does.
+   * Runs the grid's own activation path, so a renderer-owned button lands the
+   * user in exactly the same place a click on an ordinary tile does.
    */
   private openModal = () => {
     if (!this.mountedElement || this.destroyed) {
       return;
     }
 
-    this.mountedElement.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true }),
-    );
+    this.open?.();
   };
 
   private switchToFallback(error: Error) {

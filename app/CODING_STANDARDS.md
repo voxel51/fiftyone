@@ -114,6 +114,32 @@ Existing MUI code is also not a bug to fix opportunistically. Leave it unless
 you are already rewriting that component. When you do migrate a file, remove it
 from `.mui-allowlist.txt`; that list only shrinks.
 
+# App Events
+
+App code has one event pattern: typed `@fiftyone/events` bus events, with a
+typed event map beside the feature. Send them on the shared bus (`useEventBus`
+in components, `getEventBus` elsewhere), or, for an object whose listeners
+attach to it alone (a looker, a grid item), on its own `LocalEventTarget` or
+`EventDispatcher` from `@fiftyone/events`.
+
+- Never build or dispatch a DOM event: no `Event`, `CustomEvent` or other DOM
+  event constructor, no subclass of one, and no `dispatchEvent(event)`. A
+  plugin bundles its own copy of the bus, so it sends through
+  `window.__FO_EVENTS__.dispatch`.
+- Never fake user input to reuse a handler. Call the behavior the input would
+  run, and open or focus a component through its own props; if a component
+  can't, raise the gap with its owners instead of working around it.
+- Listening for events the browser or a library sends (resize, keydown, a media
+  element's error) is fine, as is listening for a DOM event a plugin sends,
+  skipping the App's own mirrors.
+
+CI's `e2e-events` job (`e2e-pw/scripts/check-e2e-events.py`) fails on any DOM
+event built or dispatched in App code outside `@fiftyone/events` itself (unit
+tests excepted), and the ESLint config flags the same in the editor. For
+plugins that listen, a deprecated module in `@fiftyone/events` mirrors a
+closed, CI-pinned set of bus events to the DOM events the App used to send;
+nothing is added to it.
+
 # e2e Test Signals
 
 When an e2e spec needs to know an App transition has rendered (a sample
@@ -121,11 +147,8 @@ loading, a save settling, a canvas drawing a frame), the App dispatches an
 `e2e:` event on the `@fiftyone/events` bus. The rules, in full in
 [`e2e-pw/CODING_STANDARDS.md`](../e2e-pw/CODING_STANDARDS.md#app-events):
 
-- Send test signals on the bus only, as `e2e:` events. Never dispatch a DOM
-  `CustomEvent`, for tests or otherwise: App events go on the bus too, with a
-  typed event map beside the feature. An object whose listeners attach to it
-  alone (a looker, a grid item) keeps a `LocalEventTarget` from
-  `@fiftyone/events`.
+- Send test signals on the bus only, as `e2e:` events, like every other App
+  event (see App Events above).
 - Dispatch them unconditionally. The bus drops `e2e:` events outside browser
   automation, so App code never checks for it.
 - Pass a payload that costs work to build (a scan, a joined string) as a
@@ -135,9 +158,5 @@ loading, a save settling, a canvas drawing a frame), the App dispatches an
   (focus, visibility, text a click puts on screen), and only with a spec that
   waits for it. CI fails on `e2e:` events nothing waits for.
 
-CI's `e2e-events` job (`e2e-pw/scripts/check-e2e-events.py`) fails on DOM
-`CustomEvent`s and automation checks in App code; the ESLint config flags them
-in the editor. The App may still listen for DOM events a plugin sends, skipping
-its own mirrors. For plugins that listen, a deprecated module in
-`@fiftyone/events` mirrors a closed, CI-pinned set of bus events to the DOM
-events the App used to send; nothing is added to it.
+CI's `e2e-events` job fails on automation checks in App code, and the ESLint
+config flags them in the editor.

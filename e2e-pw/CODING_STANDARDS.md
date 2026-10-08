@@ -146,12 +146,17 @@ useEffect(() => {
   commits. Plain UI state needs none (see above).
 - Every `e2e:` event the App dispatches has a spec or POM listening for it; CI
   fails on one nothing waits for, so delete it with its last listener.
-- Never guard App code on automation (such as `isE2E()`) and never dispatch a
-  DOM `CustomEvent`. CI's `e2e-events` job fails on either, and the App's
-  ESLint config flags them in the editor. The only exemptions are inside
-  `@fiftyone/events`: the bus's own automation check, and a deprecated module
-  that mirrors a closed set of bus events to the DOM events plugins used to
-  listen for. The checker pins that set, so it never grows.
+- App code has one event pattern: typed `@fiftyone/events` bus events, on the
+  shared bus or, for an object whose listeners attach to it alone, its own
+  `LocalEventTarget`. It never builds or dispatches a DOM event (any `Event`
+  constructor or subclass, or `dispatchEvent(event)`), fakes user input to
+  reach a handler, or guards on automation (such as `isE2E()`). CI's
+  `e2e-events` job (`scripts/check-e2e-events.py`) fails on each in every App
+  package, unit tests excepted, and the App's ESLint config flags them in the
+  editor. The only exemptions are inside `@fiftyone/events`: the bus's own
+  automation check, and a deprecated module that mirrors a closed set of bus
+  events to the DOM events plugins used to listen for. The checker pins that
+  set, so it never grows.
 - A plugin bundles its own copy of the bus, so it sends through
   `window.__FO_EVENTS__.dispatch` instead.
 

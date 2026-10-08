@@ -334,8 +334,13 @@ export abstract class AbstractLooker<
   }
 
   dispatchEvent(eventType: string, detail: any): void {
-    if (detail instanceof ErrorEvent) {
-      this.updater({ error: detail.error });
+    if (
+      detail instanceof ErrorEvent ||
+      (eventType === "error" && detail instanceof Error)
+    ) {
+      this.updater({
+        error: detail instanceof ErrorEvent ? detail.error : detail,
+      });
       return;
     }
     if (detail instanceof Event) {
@@ -553,10 +558,7 @@ export abstract class AbstractLooker<
         if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });
         } else {
-          this.eventTarget.dispatch(
-            "error",
-            new ErrorEvent("error", { error }),
-          );
+          this.eventTarget.dispatch("error", error);
         }
       }
     };
