@@ -177,7 +177,7 @@ jobs:
     # Hard budget: a shard that can't finish in 30 minutes is a failure by
     # policy, and the verdict job fails whenever a shard job does.
     # (fiftyone-teams runs the same suite ~1.6x slower.)
-    timeout-minutes: 30
+    timeout-minutes: 60
     # downstream repos reusing this workflow can point shards at a
     # larger runner spec via repo var
     runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
@@ -287,7 +287,7 @@ jobs:
           if [ -z "$FILES" ]; then
             echo "no specs assigned to shard ${{ matrix.shard }}"
           else
-            yarn e2e $FILES ||
+            yarn e2e $FILES --repeat-each=3 --retries=0 ||
               echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
           fi
         working-directory: e2e-pw
