@@ -51,6 +51,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <script src="https://tag.clearbitscripts.com/v1/pk_b9ed71c8234edd4f77326bcbfab5a4ca/tags.js"></script>
 
 <!-- Favicon -->
+<link rel="icon" type="image/x-icon" href="/_static/favicon/favicon.ico" />
 <link rel="icon" sizes="16x16" href="/_static/favicon/favicon-16.png" />
 <link rel="icon" sizes="32x32" href="/_static/favicon/favicon-32.png" />
 <link rel="icon" sizes="64x64" href="/_static/favicon/favicon-64.png" />
@@ -144,6 +145,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   bigPicture.init("1646");
 </script>
 {% endblock %}
+
+{%- block htmltitle %}
+{%- if pagename == "index" %}
+<title>FiftyOne Documentation | Datasets and Computer Vision Models</title>
+{%- else %}
+<title>{{ title|striptags|e }}{{ titlesuffix }}</title>
+{%- endif %}
+{%- endblock %}
 
 {%- block content %}
 <!-- Google Tag Manager (noscript) -->

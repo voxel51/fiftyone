@@ -5,7 +5,9 @@
 # -----------------------------------------------
 User-agent: *
 Allow: /
-# Disallow static assets and build artifacts
+# Disallow static assets and build artifacts, but keep favicons crawlable
+Allow: /_static/favicon/
+Allow: /_static/favicon.ico
 Disallow: /_static/
 Disallow: /_sources/
 Disallow: /.doctrees/
