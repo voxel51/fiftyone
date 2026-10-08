@@ -9,7 +9,8 @@ const { dispatch, gridOn } = vi.hoisted(() => ({
   gridOn: { current: true },
 }));
 
-vi.mock("@fiftyone/events", () => ({
+vi.mock("@fiftyone/events", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fiftyone/events")>()),
   getEventBus: () => ({ dispatch }),
   createUseEventHandler: () => () => undefined,
   isLegacyDomMirror: () => false,

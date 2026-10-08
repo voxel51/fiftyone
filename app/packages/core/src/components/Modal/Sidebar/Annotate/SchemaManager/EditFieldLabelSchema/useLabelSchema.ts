@@ -23,10 +23,7 @@ import {
   type FieldSchema,
   type UpdateSchemaRequest,
 } from "../../useSchemaManager";
-import {
-  dispatchSchemaManagerEvent,
-  useSchemaManagerEventBus,
-} from "../events";
+import { useSchemaManagerEventBus } from "../events";
 import {
   docFieldTier,
   useManagerDocMode,
@@ -333,11 +330,11 @@ const useSave = (
             variant: "error",
           });
           setIsSaving(false);
-          dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+          dispatch("schema-manager:save-complete");
           return;
         }
         setIsSaving(false);
-        dispatchSchemaManagerEvent(dispatch, "schema-manager:save-complete");
+        dispatch("schema-manager:save-complete");
         setCurrentField(null);
         return;
       }
