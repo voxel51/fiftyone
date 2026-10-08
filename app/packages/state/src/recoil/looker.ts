@@ -6,10 +6,9 @@ import {
   VideoLooker,
   VideoOptions,
 } from "@fiftyone/looker";
-import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
-import { hiddenBoundingBoxesAtom } from "../bounding-boxes/model/atoms";
+import { useHiddenBoundingBoxes } from "../bounding-boxes/hooks";
 import * as atoms from "./atoms";
 import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
@@ -131,10 +130,7 @@ export const useLookerOptions = (
 
   // box visibility lives in Jotai, outside the Recoil selector; memoized so
   // the merged options keep their identity until either input changes
-  const datasetId = useRecoilValue(selectors.datasetId);
-  const hiddenBoundingBoxes = useAtomValue(
-    hiddenBoundingBoxesAtom(datasetId ?? ""),
-  );
+  const hiddenBoundingBoxes = useHiddenBoundingBoxes();
 
   return useMemo(
     () => ({ ...options, hiddenBoundingBoxes }),
