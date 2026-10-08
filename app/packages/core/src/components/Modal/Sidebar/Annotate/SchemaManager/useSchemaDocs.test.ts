@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   docFieldTier,
+  PROTECTED_PATHS,
   withoutFieldTier,
   withAttributeTier,
   withFieldTier,
@@ -36,6 +37,23 @@ describe("docFieldTier", () => {
       visibility: { fields: { car: { tier: "explore" } } },
     });
     expect(docFieldTier(demoted, "car")).toBe("annotate");
+  });
+
+  it("never hides media_reference or a dataset's group field", () => {
+    const d = doc({
+      visibility: {
+        default: "hidden",
+        fields: {
+          media_reference: { tier: "hidden" },
+          group: { tier: "hidden" },
+        },
+      },
+    });
+    expect(docFieldTier(d, "media_reference")).toBe("explore");
+    // the group field is protected when the dataset's set includes it
+    expect(docFieldTier(d, "group")).toBe("hidden");
+    const groupProtected = new Set([...PROTECTED_PATHS, "group"]);
+    expect(docFieldTier(d, "group", groupProtected)).toBe("explore");
   });
 
   it("content membership implies annotate; default covers the rest", () => {

@@ -316,6 +316,30 @@ def test_resolve_never_excludes_protected_fields():
     assert out["excluded_paths"] == ["gt"]
 
 
+def test_resolve_never_excludes_media_reference_or_given_protected_paths():
+    # media_reference is a reference-backed dataset's media identity, the
+    # group field ties a group dataset's slices together
+    doc = {
+        "id": "d",
+        "name": "n",
+        "label_schema": {},
+        "visibility": {
+            "default": "hidden",
+            "fields": {
+                "media_reference": {"tier": "hidden"},
+                "group": {"tier": "hidden"},
+            },
+        },
+    }
+    universe = ["gt", "group", "media_reference"]
+
+    out = resolve(doc, universe, protected=docs.PROTECTED_PATHS | {"group"})
+    assert out["excluded_paths"] == ["gt"]
+
+    # without the dataset's protected paths, only the static ones hold
+    assert resolve(doc, universe)["excluded_paths"] == ["group", "gt"]
+
+
 def test_synthesize_default_empty_dataset():
     doc = synthesize_default(None)
     out = resolve(doc, universe=["car", "gt"])

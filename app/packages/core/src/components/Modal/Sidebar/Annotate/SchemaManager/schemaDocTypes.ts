@@ -13,6 +13,8 @@
 export const PROTECTED_PATHS = new Set([
   "id",
   "filepath",
+  // a reference-backed (multimodal) dataset's media identity
+  "media_reference",
   "tags",
   "metadata",
   "created_at",
@@ -128,11 +130,16 @@ export type DocResponse = OkResponse & {
  * field is explore-only unless the doc's `default` hides it (an
  * explicit non-hidden tier on it still means visible).
  */
-export const docFieldTier = (doc: SchemaDoc, path: string): string => {
+export const docFieldTier = (
+  doc: SchemaDoc,
+  path: string,
+  protectedPaths: ReadonlySet<string> = PROTECTED_PATHS,
+): string => {
   const explicit = doc.visibility.fields?.[path]?.tier;
   // Required/system fields can never be hidden (the server refuses to
-  // exclude them — see PROTECTED_PATHS); they always read as visible.
-  if (PROTECTED_PATHS.has(path)) {
+  // exclude them — see PROTECTED_PATHS and `useProtectedPaths`); they
+  // always read as visible.
+  if (protectedPaths.has(path)) {
     return path in doc.label_schema ? "annotate" : "explore";
   }
   if (explicit === "hidden") return "hidden";

@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useOverviewRows } from "./overviewRows";
 import type { SchemaDoc } from "./useSchemaDocs";
+import { PROTECTED_PATHS } from "./schemaDocTypes";
 
 const DATASET_SCHEMAS = {
   gt: { type: "detections", label_schema: { type: "detections" } },
@@ -61,5 +62,46 @@ describe("useOverviewRows", () => {
       visibility: { fields: { location: { tier: "hidden" } } },
     });
     expect(paths(sections.hidden)).toEqual(["location"]);
+  });
+
+  it("never lets a group dataset's group field or media_reference be hidden", () => {
+    // stable inputs: the hook memoizes on them
+    const datasetFields = {
+      ...DATASET_FIELDS,
+      group: "Group",
+      media_reference: "MediaReference",
+    };
+    // a group dataset's protected paths include its group field
+    const protectedPaths = new Set([...PROTECTED_PATHS, "group"]);
+    // even a schema that hides everything by default, or hides them
+    const doc: SchemaDoc = {
+      ...DOC,
+      visibility: {
+        default: "hidden",
+        fields: {
+          group: { tier: "hidden" },
+          media_reference: { tier: "hidden" },
+        },
+      },
+    };
+    const { result } = renderHook(() =>
+      useOverviewRows({
+        datasetSchemas: DATASET_SCHEMAS,
+        datasetFields,
+        protectedPaths,
+        doc,
+        docMode: true,
+        search: "",
+        activeFields: [],
+      }),
+    );
+
+    const { sections } = result.current;
+    expect(paths(sections.unhideable)).toEqual(
+      expect.arrayContaining(["group", "media_reference"]),
+    );
+    expect(paths(sections.hidden)).not.toContain("group");
+    expect(paths(sections.hidden)).not.toContain("media_reference");
+    expect(paths(sections.hidden)).toContain("location");
   });
 });

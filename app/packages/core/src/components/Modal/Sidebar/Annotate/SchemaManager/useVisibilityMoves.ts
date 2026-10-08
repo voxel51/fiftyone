@@ -11,8 +11,8 @@ import { useAtom } from "jotai";
 import { useCallback } from "react";
 import { selectedActiveFields, selectedHiddenFields } from "./state";
 import {
-  PROTECTED_PATHS,
   useManagerDocMode,
+  useProtectedPaths,
   withFieldTier,
   withoutFieldTier,
 } from "./useSchemaDocs";
@@ -26,11 +26,12 @@ export const useHideSelectedFields = () => {
   const docMode = useManagerDocMode();
   const [selected, setSelected] = useAtom(selectedActiveFields);
   const setMessage = useNotification();
+  const protectedPaths = useProtectedPaths();
 
   return useCallback(() => {
     if (!docMode) return;
     const { docId, doc, setDoc, api } = docMode;
-    const paths = Array.from(selected).filter((p) => !PROTECTED_PATHS.has(p));
+    const paths = Array.from(selected).filter((p) => !protectedPaths.has(p));
     if (!paths.length) return;
     let visibility = doc.visibility;
     for (const path of paths) {
@@ -49,7 +50,7 @@ export const useHideSelectedFields = () => {
       msg: `${paths.length} field${paths.length > 1 ? "s" : ""} moved to hidden fields`,
       variant: "success",
     });
-  }, [docMode, selected, setSelected, setMessage]);
+  }, [docMode, selected, setSelected, setMessage, protectedPaths]);
 };
 
 /**

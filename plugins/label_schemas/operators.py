@@ -177,8 +177,11 @@ class GetLabelSchemaDocOperator(Operator):
             return {"ok": False, "error": "not_found"}
         out = {"ok": True, "schema": doc}
         if ctx.params.get("include_resolved"):
+            dataset = getattr(ctx, "dataset", None)
             out["resolved"] = docs.resolve(
-                doc, docs.schema_universe(getattr(ctx, "dataset", None))
+                doc,
+                docs.schema_universe(dataset),
+                protected=docs.protected_paths(dataset),
             )
         return out
 

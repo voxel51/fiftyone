@@ -19,7 +19,7 @@ import { useCallback } from "react";
 import type { RowData } from "./overviewRows";
 import type { OverviewStyles } from "./overviewStyles";
 import SecondaryText from "./SecondaryText";
-import { PROTECTED_PATHS } from "./useSchemaDocs";
+import { useProtectedPaths } from "./useSchemaDocs";
 
 export const useFieldRowItem = ({
   rowTypes,
@@ -36,6 +36,7 @@ export const useFieldRowItem = ({
   setCurrentField: (path: string) => void;
   setUpField: (row: RowData) => void;
 }) => {
+  const protectedPaths = useProtectedPaths();
   const buildItem = useCallback(
     (row: RowData, draggable: boolean) => {
       const type = rowTypes[row.path];
@@ -47,7 +48,7 @@ export const useFieldRowItem = ({
       // schemas hide, and protected fields can never be hidden. Fields
       // that cannot be annotated can still be hidden.
       const canSelect =
-        docMode && !row.system && (hidden || !PROTECTED_PATHS.has(row.path));
+        docMode && !row.system && (hidden || !protectedPaths.has(row.path));
       return {
         id: row.path,
         data: {
@@ -111,7 +112,15 @@ export const useFieldRowItem = ({
         } as ListItemProps,
       };
     },
-    [rowTypes, rowAttrCounts, docMode, styles, setCurrentField, setUpField],
+    [
+      rowTypes,
+      rowAttrCounts,
+      docMode,
+      styles,
+      setCurrentField,
+      setUpField,
+      protectedPaths,
+    ],
   );
 
   return buildItem;
