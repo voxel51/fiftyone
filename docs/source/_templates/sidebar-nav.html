@@ -12,25 +12,31 @@
     -}}
   </div>
 </nav>
-{%- if static_sidebar_nav_current_href %}
+{%- if static_sidebar_nav_current_hrefs %}
 <script>
-  {# Mirrors the markers pydata-sphinx-theme sets server-side (toctree._set_current_chain) #}
-  ((nav, href) => {
-    for (const link of nav.querySelectorAll("a.reference.internal")) {
-      if (link.getAttribute("href") !== href) continue;
-      link.setAttribute("href", "#");
-      link.setAttribute("aria-current", "page");
-      link.classList.add("current");
-      for (let el = link.parentElement; el !== nav; el = el.parentElement) {
-        if (el.tagName === "LI") {
-          el.classList.add("current", "active");
-          const details = el.querySelector(":scope > details");
-          if (details) details.open = true;
-        } else if (el.tagName === "UL") {
-          el.classList.add("current");
+  {# Mirrors the markers pydata-sphinx-theme sets server-side (toctree._set_current_chain). hrefs holds this page, then its toctree ancestors: a page deeper than the nav has no entry, so its nearest listed ancestor's branch is marked instead, leaving that ancestor's link as is. #}
+  ((nav, hrefs) => {
+    const links = [...nav.querySelectorAll("a.reference.internal")];
+    for (const [i, href] of hrefs.entries()) {
+      const matches = links.filter((link) => link.getAttribute("href") === href);
+      for (const link of matches) {
+        if (i === 0) {
+          link.setAttribute("href", "#");
+          link.setAttribute("aria-current", "page");
+          link.classList.add("current");
+        }
+        for (let el = link.parentElement; el !== nav; el = el.parentElement) {
+          if (el.tagName === "LI") {
+            el.classList.add("current", "active");
+            const details = el.querySelector(":scope > details");
+            if (details) details.open = true;
+          } else if (el.tagName === "UL") {
+            el.classList.add("current");
+          }
         }
       }
+      if (matches.length) break;
     }
-  })(document.currentScript.previousElementSibling, {{ static_sidebar_nav_current_href | tojson }});
+  })(document.currentScript.previousElementSibling, {{ static_sidebar_nav_current_hrefs | tojson }});
 </script>
 {%- endif %}

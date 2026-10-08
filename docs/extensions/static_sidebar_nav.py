@@ -13,7 +13,8 @@ on every page except for:
 So this extension renders the nav once, with a placeholder in front of every
 internal link, and each page swaps in its own ``content_root``. The inline
 script in ``sidebar-nav.html`` then applies the current-page markers in the
-browser.
+browser. A page deeper than the nav's ``maxdepth`` has no entry of its own;
+like Sphinx, the script then marks the nearest ancestor's branch instead.
 
 Set ``FIFTYONE_DOCS_PER_PAGE_NAV=1`` to render the nav per page instead.
 """
@@ -23,6 +24,7 @@ import os
 from urllib.parse import urlparse
 
 from pydata_sphinx_theme.toctree import add_toctree_functions
+from sphinx import addnodes
 from sphinx.application import Sphinx
 from sphinx.environment.adapters.toctree import global_toctree_for_doc
 from sphinx.util import logging
@@ -61,7 +63,10 @@ def _render_static_nav(app, kwargs):
 
 
 def _get_static_nav(app, kwargs):
-    cache = app.__dict__.setdefault("_static_sidebar_nav_cache", {})
+    if not hasattr(app, "_static_sidebar_nav_cache"):
+        app._static_sidebar_nav_cache = {}
+
+    cache = app._static_sidebar_nav_cache
     key = tuple(sorted(kwargs.items()))
     if key not in cache:
         try:
@@ -73,6 +78,27 @@ def _get_static_nav(app, kwargs):
             cache[key] = None
 
     return cache[key]
+
+
+def _get_toctree_chain(app, pagename):
+    """Returns the page and its toctree ancestors, nearest first."""
+    if not hasattr(app, "_static_sidebar_nav_parents"):
+        # Built from `env.tocs`, which the nav is rendered from, rather than
+        # `env.toctree_includes`: sphinx_remove_toctrees edits only the former
+        parents = {}
+        for docname, toc in app.env.tocs.items():
+            for toctree in toc.findall(addnodes.toctree):
+                for _, ref in toctree.get("entries", []):
+                    parents[ref] = docname
+
+        app._static_sidebar_nav_parents = parents
+
+    parents = app._static_sidebar_nav_parents
+    chain = [pagename]
+    while chain[-1] in parents and parents[chain[-1]] not in chain:
+        chain.append(parents[chain[-1]])
+
+    return chain
 
 
 def _add_sidebar_nav_function(app, pagename, templatename, context, doctree):
@@ -92,10 +118,13 @@ def _add_sidebar_nav_function(app, pagename, templatename, context, doctree):
         return html.replace(_ROOT_PLACEHOLDER, content_root)
 
     context["static_sidebar_nav"] = static_sidebar_nav
-    context["static_sidebar_nav_current_href"] = (
+    context["static_sidebar_nav_current_hrefs"] = (
         None
         if per_page
-        else content_root + app.builder.get_target_uri(pagename)
+        else [
+            content_root + app.builder.get_target_uri(docname)
+            for docname in _get_toctree_chain(app, pagename)
+        ]
     )
 
 
