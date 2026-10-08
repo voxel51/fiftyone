@@ -1,4 +1,4 @@
-import { Provider as JotaiProvider, createStore } from "jotai";
+import { createStore } from "jotai";
 import React, {
   createContext,
   useCallback,
@@ -16,6 +16,7 @@ import {
   collectTileIds,
 } from "../views/MosaicGrid/MosaicGrid";
 import { registeredTilesAtom, tileSelectionAtom } from "./atoms";
+import { TilingStoreContext } from "./store-context";
 import type {
   AddTileOptions,
   SetTileTitleOptions,
@@ -139,7 +140,13 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
     focusedTileIdRef.current = focusedTileId;
   }, [focusedTileId]);
   // Per-instance Jotai store so multiple <TilingProvider>s on the same
-  // page each get isolated atom state (sources, selections, registry).
+  // page each get isolated atom state (selections, titles, registry). It
+  // is handed down through `TilingStoreContext`, NOT through Jotai's own
+  // <Provider>: Jotai resolves every atom against the nearest <Provider>,
+  // so mounting one here would shadow the host app's store for everything
+  // rendered inside a tile body. Tiling's hooks bind to this store
+  // explicitly (see `store-context.ts`); tile bodies keep whatever store
+  // the surrounding app has.
   const jotaiStore = useMemo(() => createStore(), []);
   // Portal target the settings sidebar registers; `<TileSettingsContent>`
   // children render here when their tile is focused.
@@ -513,9 +520,9 @@ export const TilingProvider: React.FC<TilingProviderProps> = ({
   );
 
   return (
-    <JotaiProvider store={jotaiStore}>
+    <TilingStoreContext.Provider value={jotaiStore}>
       <TilingContext.Provider value={value}>{children}</TilingContext.Provider>
-    </JotaiProvider>
+    </TilingStoreContext.Provider>
   );
 };
 

@@ -1,6 +1,7 @@
 import { useTileId } from "@fiftyone/tiling";
-import { atom, useAtomValue, useStore } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { useEpisodeStore } from "../../../../extensions/host/episode-store";
 
 /** Persisted playback presentation settings owned by one 3D tile. */
 export interface Scene3dTilePlaybackSettings {
@@ -23,8 +24,9 @@ export const scene3dTilePlaybackSettingsAtom =
 
 /** Subscribe to playback presentation settings for the surrounding 3D tile. */
 export function useScene3dTilePlaybackSettings(): Scene3dTilePlaybackSettings {
+  const store = useEpisodeStore();
   const tileId = useTileId();
-  const byTile = useAtomValue(scene3dTilePlaybackSettingsAtom);
+  const byTile = useAtomValue(scene3dTilePlaybackSettingsAtom, { store });
   return useMemo(
     () =>
       tileId
@@ -42,7 +44,7 @@ export function useSetScene3dTilePlaybackSettings(): (
   patch: Partial<Scene3dTilePlaybackSettings>,
 ) => void {
   const tileId = useTileId();
-  const store = useStore();
+  const store = useEpisodeStore();
   return useCallback(
     (patch) => {
       if (!tileId) return;

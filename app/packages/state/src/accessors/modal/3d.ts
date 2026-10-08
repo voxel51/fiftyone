@@ -17,12 +17,15 @@
 
 import { useAtomValue } from "jotai";
 import { useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { only3d } from "../../recoil/atoms";
 import { ModalMode, modalMode } from "../../jotai/modal";
 import {
   groupMediaIsCarouselVisible,
+  groupMediaIsCarouselVisibleSetting,
   groupMediaIsMain2DViewerVisible,
   groupMediaIsMain2DViewerVisibleSetting,
+  groupMediaTypesSet,
 } from "../../recoil/groups";
 import { GroupSampleNotFound, type ModalSample } from "../../recoil/modal";
 import * as internals from "../../recoil/renderConfig3d.atoms";
@@ -47,6 +50,16 @@ export const useIsGroupCarouselVisible = () => {
   const isAnnotate = useAtomValue(modalMode) === ModalMode.ANNOTATE;
   return isVisible && !isAnnotate;
 };
+
+/** The user's carousel setting and its setter, before annotate-mode suppression. */
+export const useGroupCarouselVisibleSetting = () =>
+  useRecoilState(groupMediaIsCarouselVisibleSetting);
+
+/** Whether every slice of the current group dataset is a 3D media type. */
+export const useOnly3d = () => useRecoilValue(only3d);
+
+/** The set of media types across the current group dataset's slices. */
+export const useGroupMediaTypesSet = () => useRecoilValue(groupMediaTypesSet);
 
 /** The user's setting for showing the 2D viewer, before annotate-mode suppression. */
 export const useIsGroupMain2dViewerVisibleSetting = () =>

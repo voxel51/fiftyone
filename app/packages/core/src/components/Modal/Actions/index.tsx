@@ -15,6 +15,7 @@ import ToggleSidebar from "../../Actions/ToggleSidebar";
 import { useModalContext } from "../hooks";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import GroupVisibility from "./GroupVisibility";
+import { useGroupTilesOwnVisibility } from "../Tiles";
 import HiddenLabels from "./HiddenLabels";
 import ToggleFullscreen from "./ToggleFullscreen";
 import { useAtomValue } from "jotai";
@@ -85,6 +86,7 @@ export default () => {
     () => isActualGroup || isDynamicGroup,
     [isActualGroup, isDynamicGroup],
   );
+  const groupTilesOwnVisibility = useGroupTilesOwnVisibility();
 
   const [defaultXCoord, setDefaultXCoord] = fos.useBrowserStorage<number>(
     "modal-actions-row-x-coord",
@@ -109,7 +111,9 @@ export default () => {
         <ColorScheme modal />
         {mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
         <Options modal />
-        {isGroup && <GroupVisibility />}
+        {/* for a regular group in explore mode, which content shows is
+            decided by which tiles are open, so the popout would fight it */}
+        {isGroup && !groupTilesOwnVisibility && <GroupVisibility />}
         <BrowseOperations modal />
         <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
         <ToggleFullscreen />

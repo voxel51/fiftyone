@@ -7,6 +7,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import { rawTileStreamAtom, type RawTileStreams } from "./raw-message-binding";
 import { TILE_TYPE } from "./tile-types";
+import { useEpisodeStore } from "../../../extensions/host/episode-store";
 
 /** Canonical raw-stream binding plus the user-facing name used for titles. */
 export interface RawMessageTileTarget {
@@ -21,10 +22,11 @@ export interface RawMessageTileTarget {
 export function useOpenRawMessageTile(): (
   target: RawMessageTileTarget,
 ) => void {
+  const store = useEpisodeStore();
   const { addTile, setFocusedTileId, setTileTitle, tiles } = useTiling();
   const registeredTiles = useRegisteredTiles();
-  const streamsByTile = useAtomValue(rawTileStreamAtom);
-  const setStreamsByTile = useSetAtom(rawTileStreamAtom);
+  const streamsByTile = useAtomValue(rawTileStreamAtom, { store });
+  const setStreamsByTile = useSetAtom(rawTileStreamAtom, { store });
   const stateRef = useRef({ registeredTiles, tiles, streamsByTile });
   stateRef.current = { registeredTiles, tiles, streamsByTile };
 

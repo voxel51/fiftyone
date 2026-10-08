@@ -20,6 +20,7 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
+        "@fiftyone/tiling": "*",
         "@fiftyone/utilities": "*",
         "@monaco-editor/react": "^4.5.0",
         "@mui/icons-material": "catalog:",

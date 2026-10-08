@@ -21,15 +21,17 @@ import {
 import type { ModalSample } from "../../recoil";
 import type { Sample } from "@fiftyone/looker";
 import {
-  State,
   activeFields,
   activeModalSample,
+  activeSliceDescriptorLabel,
   currentSampleId,
   fieldSchema,
+  groupId,
   lookerOptions,
   modalSample,
   selectedLabelMap,
   selectedMediaField,
+  State,
 } from "../../recoil";
 import { GroupSampleNotFound } from "../../recoil/modal";
 
@@ -234,4 +236,18 @@ export const useReportAnnotationSurface = (
       set((current) => (current === surface ? null : current));
     };
   }, [set, surface]);
+};
+
+/** The current modal group's id, or `null` outside a group dataset. */
+export const useGroupId = () => useRecoilValue(groupId);
+
+/**
+ * Label of the slice the modal is focused on, or `null` while it resolves
+ * or when no slice is active. Never suspends.
+ */
+export const useActiveSliceDescriptorLabel = (): string | null => {
+  const loadable = useRecoilValueLoadable(activeSliceDescriptorLabel);
+  return loadable.state === "hasValue" && loadable.contents
+    ? loadable.contents
+    : null;
 };

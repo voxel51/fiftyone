@@ -8,6 +8,7 @@ import { GroupSuspense } from "../../GroupSuspense";
 import { DynamicGroupCarousel } from ".././carousel/DynamicGroupCarousel";
 import { GroupElementsLinkBar } from "../pagination";
 import { is3d } from "@fiftyone/utilities";
+import { useHostsPaginator } from "../../../Tiles/host-context";
 
 const RootContainer = styled.div`
   height: 100%;
@@ -32,6 +33,7 @@ export const NonNestedDynamicGroup = () => {
   );
   const parent = useRecoilValue(fos.parentMediaTypeSelector);
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
+  const hostsPaginator = useHostsPaginator();
 
   // This effect ensures the main 2D viewer stays visible outside carousel mode (skipped in annotate mode)
   useEffect(() => {
@@ -53,7 +55,9 @@ export const NonNestedDynamicGroup = () => {
             </GroupSuspense>
           )}
         </>
-        {viewMode === "pagination" && <GroupElementsLinkBar />}
+        {viewMode === "pagination" && !hostsPaginator && (
+          <GroupElementsLinkBar />
+        )}
       </ElementsContainer>
     </RootContainer>
   );

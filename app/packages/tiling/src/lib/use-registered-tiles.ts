@@ -1,5 +1,6 @@
 import { useAtomValue } from "jotai";
 import { registeredTilesAtom } from "./atoms";
+import { useTilingStore } from "./store-context";
 import type { RegisteredTile } from "./types";
 
 /**
@@ -11,5 +12,6 @@ import type { RegisteredTile } from "./types";
  * need the raw flat list.
  */
 export function useRegisteredTiles(): RegisteredTile[] {
-  return useAtomValue(registeredTilesAtom);
+  const store = useTilingStore();
+  return useAtomValue(registeredTilesAtom, { store });
 }
