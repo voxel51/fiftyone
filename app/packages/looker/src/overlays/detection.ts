@@ -182,10 +182,12 @@ export default class DetectionOverlay<
     if (this.label.convexHull) {
       // only fill 3d when 'convexHull' is defined
       this.fillRectFor3d(ctx, state, strokeColor);
-    } else {
+    } else if (!this.isBoxHidden(state) || doesInstanceMatch) {
+      // a hidden box still outlines while its instance is hovered
       this.strokeRect(ctx, state, strokeColor);
     }
 
+    // ...and gets its dashed outline while selected
     if (overlayStrokeColor && overlayDash) {
       this.strokeRect(ctx, state, overlayStrokeColor, overlayDash);
     }
@@ -254,22 +256,16 @@ export default class DetectionOverlay<
       return;
     }
 
-    const color = this.getColor(state);
-
-    // the header stays unrotated, anchored to the stored box's top-left —
-    // matches the annotate-mode (lighter) header, which keeps the anchor
-    // stationary while a box rotates
-    const [tlx, tly] = this.label.bounding_box;
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    let [ox, oy] = t(state, tlx, tly);
-    [ox, oy] = [ox - state.strokeWidth / 2, oy];
-    ctx.moveTo(ox, oy);
     const { width } = ctx.measureText(labelText);
     const height = state.fontSize;
     const bpad = state.textPad * 3 + state.strokeWidth;
+    const [ox, oy] = this.getLabelOrigin(state, width + bpad, height + bpad);
     const btrx = ox + width + bpad;
     const btry = oy - height - bpad;
+
+    ctx.beginPath();
+    ctx.fillStyle = this.getColor(state);
+    ctx.moveTo(ox, oy);
     ctx.lineTo(btrx, oy);
     ctx.lineTo(btrx, btry);
     ctx.lineTo(ox, btry);
@@ -279,13 +275,43 @@ export default class DetectionOverlay<
     const pad = state.textPad + state.strokeWidth;
     ctx.fillText(labelText, ox + pad, oy - pad);
 
-    const rHeight = (height + bpad) / state.canvasBBox[3];
+    const [ctlx, ctly, cw, ch] = state.canvasBBox;
     this.labelBoundingBox = [
-      tlx - state.strokeWidth / state.canvasBBox[2],
-      tly - rHeight,
-      (width + bpad + state.strokeWidth / 2) / state.canvasBBox[2],
-      rHeight + state.strokeWidth / state.canvasBBox[3],
+      (ox - state.strokeWidth / 2 - ctlx) / cw,
+      (btry - ctly) / ch,
+      (width + bpad + state.strokeWidth / 2) / cw,
+      (height + bpad + state.strokeWidth) / ch,
     ];
+  }
+
+  /**
+   * The canvas-space bottom-left corner of a label header of the given size;
+   * the header is drawn upward from there.
+   *
+   * The header stays unrotated. With the box drawn, it is anchored to the
+   * stored box's top-left — matches the annotate-mode (lighter) header, which
+   * keeps the anchor stationary while a box rotates. With the box hidden, it
+   * centers on the box.
+   */
+  private getLabelOrigin(
+    state: Readonly<State>,
+    headerWidth: number,
+    headerHeight: number,
+  ): [number, number] {
+    if (this.isBoxHidden(state)) {
+      const [tlx, tly, w, h] = this.label.bounding_box;
+      const [cx, cy] = t(state, tlx + w / 2, tly + h / 2);
+      return [cx - headerWidth / 2, cy + headerHeight / 2];
+    }
+
+    const [tlx, tly] = this.label.bounding_box;
+    const [x, y] = t(state, tlx, tly);
+    return [x - state.strokeWidth / 2, y];
+  }
+
+  /** Whether the box outline is toggled off for this label's field. */
+  private isBoxHidden(state: Readonly<State>): boolean {
+    return state.options.hiddenBoundingBoxes?.includes(this.field) ?? false;
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
