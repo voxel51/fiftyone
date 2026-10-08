@@ -21,6 +21,11 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { PendingRunCard, RunScreen } from "@fiftyone/components";
+import {
+  usePendingRunScreen,
+  type PendingRunWithView,
+} from "@fiftyone/operators";
 import { useEffect, useState } from "react";
 import { LandingCTA } from "./LandingCTA";
 import "./panel.css";
@@ -61,6 +66,7 @@ const lastUpdated = (timestamp: string | null): string | null => {
 
 export default function RunsList({
   runs,
+  pendingRuns = [],
   actionError = null,
   showUpsell = true,
   onCreate,
@@ -68,6 +74,8 @@ export default function RunsList({
   onDelete,
 }: {
   runs: VisualizationRun[] | null;
+  /** Delegated runs not yet registered as runs, shown above them */
+  pendingRuns?: PendingRunWithView[];
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
@@ -149,6 +157,15 @@ export default function RunsList({
     );
   };
 
+  const unregistered = pendingRuns.filter(
+    (pending) => !runs?.some((run) => run.brainKey === pending.brain_key),
+  );
+
+  const { open: openPending, screen: pendingScreen } =
+    usePendingRunScreen(unregistered);
+
+  if (pendingScreen) return <RunScreen {...pendingScreen} />;
+
   if (!runs) {
     return (
       <div className="emb-runs-page">
@@ -191,7 +208,7 @@ export default function RunsList({
             </Text>
           </div>
         )}
-        {runs.length === 0 ? (
+        {runs.length === 0 && unregistered.length === 0 ? (
           showUpsell ? (
             // Builds that can't compute in-app show the enterprise
             // landing instead of a dead-end empty state (FOEPD-4369)
@@ -222,6 +239,15 @@ export default function RunsList({
           )
         ) : (
           <div className="emb-runs-stack">
+            {unregistered.map((pending) => (
+              <PendingRunCard
+                key={pending.id}
+                title={pending.brain_key ?? pending.label ?? pending.operator}
+                runState={pending.run_state}
+                onOpen={() => openPending(pending.id)}
+                onViewRun={pending.onView}
+              />
+            ))}
             {runs.map((run) => (
               <RunCard
                 key={run.brainKey}
