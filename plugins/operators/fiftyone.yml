@@ -68,3 +68,4 @@ operators:
   # dataset
   - delete_brain_run
   - get_field_schema
+  - clean_up_undeclared_fields
