@@ -34,12 +34,21 @@ const DEFAULT_SCHEMA_LABEL = "Default schema (all fields)";
 const PickerTrigger = styled(DropdownTrigger)`
   && {
     width: 260px;
+  }
+
+  /* voodo centers the label and the caret together: span the button so
+     the label takes the free space and the caret sits at the far right */
+  && > div {
+    width: 100%;
+    min-width: 0;
     justify-content: space-between;
   }
 `;
 
 const PickerLabel = styled.span`
+  flex: 1;
   min-width: 0;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
