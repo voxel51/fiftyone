@@ -40,6 +40,8 @@ export const getFilterItemsProps = (
   skeleton: (field: string) => KeypointSkeleton | null,
   // the label field's unexpanded sidebar path, e.g. "frames.ground_truth"
   labelPath: string,
+  // 3D datasets draw detections as cuboids, which the box toggle can't hide
+  is3dDataset: boolean,
 ): FilterItem[] => {
   if (path === "_label_tags") {
     return [
@@ -112,7 +114,7 @@ export const getFilterItemsProps = (
   }
 
   const docType = parent.embeddedDocType;
-  if (docType && BOUNDING_BOX_TYPES.includes(docType)) {
+  if (!is3dDataset && docType && BOUNDING_BOX_TYPES.includes(docType)) {
     extra.push({
       color,
       path: [path, "bounding_box"].join("."),
@@ -170,6 +172,7 @@ const useFilterData = (
   );
 
   const skeleton = useRecoilValue(getSkeleton);
+  const is3dDataset = useRecoilValue(fos.is3DDataset);
   return useMemo(() => {
     const data = getFilterItemsProps(
       color,
@@ -179,6 +182,7 @@ const useFilterData = (
       fields,
       skeleton,
       path,
+      is3dDataset,
     );
     const filtered = filter ? data.filter(({ path }) => filter(path)) : data;
     const rest = filter ? data.filter(({ path }) => !filter(path)) : data;
@@ -186,7 +190,17 @@ const useFilterData = (
       data: filtered,
       removed: rest,
     };
-  }, [color, expandedPath, field, fields, filter, modal, path, skeleton]);
+  }, [
+    color,
+    expandedPath,
+    field,
+    fields,
+    filter,
+    is3dDataset,
+    modal,
+    path,
+    skeleton,
+  ]);
 };
 
 export default useFilterData;

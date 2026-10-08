@@ -33,6 +33,7 @@ describe("getFilterItemsProps", () => {
       [],
       noSkeleton,
       "ground_truth",
+      false,
     );
 
     expect(items).toContainEqual(
@@ -53,6 +54,7 @@ describe("getFilterItemsProps", () => {
       [],
       noSkeleton,
       "ground_truth",
+      false,
     );
 
     expect(items).toContainEqual(
@@ -74,6 +76,7 @@ describe("getFilterItemsProps", () => {
       [],
       noSkeleton,
       "frames.ground_truth",
+      false,
     );
 
     expect(items).toContainEqual(
@@ -93,6 +96,23 @@ describe("getFilterItemsProps", () => {
       [],
       noSkeleton,
       "ground_truth",
+      false,
+    );
+
+    expect(items.map(({ ftype }) => ftype)).not.toContain("_BOUNDING_BOX");
+  });
+
+  it("adds no bounding box row in a 3D dataset", () => {
+    // 3D detections are cuboids, which the box toggle can't hide
+    const items = getFilterItemsProps(
+      "#ffffff",
+      "ground_truth.detections",
+      false,
+      labelField(DETECTIONS),
+      [],
+      noSkeleton,
+      "ground_truth",
+      true,
     );
 
     expect(items.map(({ ftype }) => ftype)).not.toContain("_BOUNDING_BOX");
