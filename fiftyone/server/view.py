@@ -24,6 +24,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.hooks as fosh
 from fiftyone.server.scalars import BSONArray, JSON
 
 _LABEL_TAGS = "_label_tags"
@@ -134,7 +135,9 @@ def get_view(
             dataset = fod.load_dataset(dataset, reload=reload)
 
         if view_name is not None:
-            return dataset.load_saved_view(view_name)
+            return fosh.get().transform_view(
+                dataset.load_saved_view(view_name)
+            )
 
         if stages:
             view = fov.DatasetView._build(dataset, stages)
@@ -169,7 +172,7 @@ def get_view(
                 desc=desc,
             )
 
-        return view
+        return fosh.get().transform_view(view)
 
     if awaitable:
         return fou.run_sync_task(run, dataset, stages)
@@ -444,6 +447,12 @@ def _project_pagination_paths(
         # include instance, even it is missing from schema
         if field.document_type in fol._INSTANCE_FIELDS:
             selected_fields.append(f"{path}.instance")
+
+        # include a detection's rotation, even if it is missing from schema:
+        # it is a dynamic attribute, and the grid needs it to draw rotated
+        # boxes
+        if issubclass(field.document_type, fol.Detection):
+            selected_fields.append(f"{path}.rotation")
 
     return view.add_stage(
         fosg.SelectFields(

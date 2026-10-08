@@ -19,10 +19,8 @@ import { TAB_JSON } from "./constants";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
 import {
-  useActivateFields,
   useCurrentField,
   useCurrentFieldValue,
-  useDeactivateFields,
   useNewFieldMode,
   useSchemaEditorGUIJSONToggle,
   useSchemaManagerCleanup,
@@ -30,6 +28,12 @@ import {
   useSelectedFieldCounts,
 } from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
+import {
+  useHideSelectedFields,
+  useUnhideSelectedFields,
+} from "./useVisibilityMoves";
+import { useBackdropDismiss } from "./useBackdropDismiss";
+import { useOpenOnCurrentSchema } from "./useSchemaDocs";
 import {
   BackButton,
   ModalBackground,
@@ -56,7 +60,16 @@ const Heading = () => {
   }
 
   if (!field) {
-    return <Text variant={TextVariant.Xl}>Schema manager</Text>;
+    return (
+      <div>
+        <Text variant={TextVariant.Xl}>Schema manager</Text>
+        <div style={{ marginTop: 4 }}>
+          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+            Label schemas decide which fields annotators and explorers see.
+          </Text>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -70,22 +83,6 @@ const Heading = () => {
     </ItemLeft>
   );
 };
-
-const Subheading = () => {
-  const field = useCurrentFieldValue();
-  const { isNewField: newFieldMode } = useNewFieldMode();
-
-  if (field || newFieldMode) {
-    return null;
-  }
-
-  return (
-    <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
-      Manage your field schemas
-    </Text>
-  );
-};
-
 const Page = () => {
   const field = useCurrentFieldValue();
   const { isNewField: newFieldMode } = useNewFieldMode();
@@ -106,8 +103,8 @@ const SchemaManagerFooter = () => {
   const { tab } = useSchemaEditorGUIJSONToggle();
   const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
     useSelectedFieldCounts();
-  const activateFields = useActivateFields();
-  const deactivateFields = useDeactivateFields();
+  const unhideFields = useUnhideSelectedFields();
+  const hideFields = useHideSelectedFields();
 
   // Don't show footer when editing a field (it has its own footer)
   if (field) {
@@ -130,7 +127,7 @@ const SchemaManagerFooter = () => {
   const selectedCount = isMovingToVisible
     ? hiddenSelectedCount
     : activeSelectedCount;
-  const onMove = isMovingToVisible ? activateFields : deactivateFields;
+  const onMove = isMovingToVisible ? unhideFields : hideFields;
 
   return (
     <ModalFooter>
@@ -158,7 +155,7 @@ const SchemaManagerFooter = () => {
               style={{ marginRight: 4 }}
             />
           )}
-          Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
+          Move {selectedCount} to {isMovingToVisible ? "active" : "hidden"}{" "}
           fields
         </Button>
       </Stack>
@@ -172,7 +169,14 @@ const Modal = () => {
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
 
+  // Open on the schema currently IN USE — the active workflow task's
+  // schema, else the Explore lens — instead of always defaulting to
+  // dataset mode. One-shot per open (cleanup nulls the selection on
+  // close), so switching to "Dataset schema" afterwards sticks.
+  useOpenOnCurrentSchema();
+
   const { closeSchemaManager } = useSchemaManagerModal();
+  const backdropHandlers = useBackdropDismiss(closeSchemaManager);
 
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
@@ -191,9 +195,11 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => closeSchemaManager()}>
+    <ModalBackground {...backdropHandlers}>
       <ModalContainer
         data-cy="schema-manager"
+        // React events bubble through the portal to the components that
+        // render this modal; clicks inside it are not theirs
         onClick={(e) => e.stopPropagation()}
       >
         <ModalHeader>
@@ -213,8 +219,6 @@ const Modal = () => {
             />
           </Button>
         </ModalHeader>
-
-        <Subheading />
 
         <Page />
 

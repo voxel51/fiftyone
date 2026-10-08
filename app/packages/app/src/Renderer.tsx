@@ -9,6 +9,7 @@ import { Pending } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
+  activeSchemaWireExclusions,
   theme,
   themeConfig,
   useSetExpandedSample,
@@ -32,6 +33,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { useRouterContext } from "./routing";
+import { resolveURL } from "./utils";
 import Pixelating from "./Pixelating";
 
 export const pendingEntry = atom<boolean>({
@@ -55,6 +57,55 @@ const ColorScheme = () => {
       setMode(current);
     }
   }, [current, setMode, setTheme]);
+
+  return null;
+};
+
+/**
+ * Syncs the active schema-policy exclusions (workflow task policy +
+ * the admin Explore schema lens) into the
+ * router's location state, reloading the page query with a silent
+ * `ExcludeFields` in `$extendedView` (see `makeRoutes`). The server
+ * then serializes the dataset schema, sample payloads, and counts
+ * WITHOUT the hidden fields — the same mechanism Field Visibility
+ * uses, on a parallel channel so it survives view changes and renders
+ * no view-bar chip. The client-side `fieldSchema`/`labelFields`
+ * filtering stays as the instant-apply layer while this reload is in
+ * flight.
+ */
+const TaskSchemaExclusions = () => {
+  const router = useRouterContext();
+  const exclusions = useRecoilValue(activeSchemaWireExclusions);
+
+  useEffect(() => {
+    const state = router.get().state;
+    const current = state.schemaExclusion ?? [];
+    const next = [...(exclusions ?? [])].sort();
+    const sameExclusions =
+      current.length === next.length &&
+      current.every((path, i) => path === next[i]);
+    // Keyed on the exclusion list itself: switching between schemas that
+    // hide the same fields (or editing a schema without changing what it
+    // hides) costs no reload.
+    if (sameExclusions) {
+      return;
+    }
+    router.history.replace(
+      resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+      }),
+      {
+        ...state,
+        // A non-"modal" event makes the router treat this as a HARD
+        // load (network-only, no entry reuse) — the same trick the
+        // Field Visibility setter uses; without it, modal-tagged
+        // states reuse the current page and skip the reload entirely.
+        event: "schemaExclusion",
+        schemaExclusion: next.length ? next : undefined,
+      },
+    );
+  }, [exclusions, router]);
 
   return null;
 };
@@ -112,6 +163,7 @@ const Renderer = () => {
     <Suspense fallback={loading}>
       <ColorScheme key={"color-scheme"} />
       <Modal key={"modal"} />
+      <TaskSchemaExclusions key={"task-schema-exclusions"} />
       <Route key={"route"} route={routeEntry} />
       {(pending || viewPending) && <Pending key={"pending"} />}
     </Suspense>
