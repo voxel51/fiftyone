@@ -53,6 +53,8 @@ class GroupDatasetSchemaTests(unittest.TestCase):
     def test_protected_paths_include_the_group_field(self):
         dataset = _group_dataset()
         self.assertIn("group", docs.protected_paths(dataset))
+        self.assertIn("group.id", docs.protected_paths(dataset))
+        self.assertIn("group.name", docs.protected_paths(dataset))
         self.assertIn("media_reference", docs.protected_paths(dataset))
         self.assertNotIn("group", docs.protected_paths(fo.Dataset()))
 
@@ -76,6 +78,33 @@ class GroupDatasetSchemaTests(unittest.TestCase):
         self.assertEqual(
             sorted(out["excluded_paths"]), ["frames.fgt", "left_gt"]
         )
+
+    @drop_datasets
+    def test_the_groups_id_and_name_are_never_hidden(self):
+        dataset = _group_dataset()
+        doc = {
+            "id": "d",
+            "name": "n",
+            "label_schema": {},
+            "visibility": {
+                "fields": {
+                    "group.id": {"tier": "hidden"},
+                    "group.name": {"tier": "hidden"},
+                    # as attributes of the group field, too
+                    "group": {
+                        "tier": "explore",
+                        "attributes": {"id": "hidden", "name": "hidden"},
+                    },
+                }
+            },
+        }
+        out = docs.resolve(
+            doc,
+            docs.schema_universe(dataset),
+            protected=docs.protected_paths(dataset),
+        )
+        self.assertEqual(out["excluded_paths"], [])
+        self.assertEqual(out["excluded_attr_paths"], [])
 
 
 if __name__ == "__main__":

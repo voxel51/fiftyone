@@ -52,8 +52,17 @@ describe("docFieldTier", () => {
     expect(docFieldTier(d, "media_reference")).toBe("explore");
     // the group field is protected when the dataset's set includes it
     expect(docFieldTier(d, "group")).toBe("hidden");
-    const groupProtected = new Set([...PROTECTED_PATHS, "group"]);
+    const groupProtected = new Set([
+      ...PROTECTED_PATHS,
+      "group",
+      "group.id",
+      "group.name",
+    ]);
     expect(docFieldTier(d, "group", groupProtected)).toBe("explore");
+    const nested = doc({
+      visibility: { fields: { "group.name": { tier: "hidden" } } },
+    });
+    expect(docFieldTier(nested, "group.name", groupProtected)).toBe("explore");
   });
 
   it("content membership implies annotate; default covers the rest", () => {

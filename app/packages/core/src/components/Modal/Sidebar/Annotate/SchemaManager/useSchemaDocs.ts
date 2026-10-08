@@ -108,14 +108,22 @@ export interface SchemaDocsApi {
 
 /**
  * The paths no schema can hide on the current dataset: `PROTECTED_PATHS`
- * plus a group dataset's group field, which ties its slices together
- * (mirrors `fiftyone.core.label_schema_docs.protected_paths`).
+ * plus a group dataset's group field and the group's `id` and `name`,
+ * which tie its slices together (mirrors
+ * `fiftyone.core.label_schema_docs.protected_paths`).
  */
 export const useProtectedPaths = (): ReadonlySet<string> => {
   const groupField = useRecoilValue(fos.groupField);
   return useMemo(
     () =>
-      groupField ? new Set([...PROTECTED_PATHS, groupField]) : PROTECTED_PATHS,
+      groupField
+        ? new Set([
+            ...PROTECTED_PATHS,
+            groupField,
+            `${groupField}.id`,
+            `${groupField}.name`,
+          ])
+        : PROTECTED_PATHS,
     [groupField],
   );
 };

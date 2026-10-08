@@ -284,7 +284,8 @@ def snapshot_content(dataset) -> dict:
 
 def protected_paths(dataset) -> frozenset:
     """The paths no schema can hide on ``dataset``: :data:`PROTECTED_PATHS`
-    plus its group field, which ties a group dataset's slices together.
+    plus its group field and the group's ``id`` and ``name``, which tie a
+    group dataset's slices together.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`, or ``None``
@@ -296,7 +297,11 @@ def protected_paths(dataset) -> frozenset:
     if not group_field:
         return PROTECTED_PATHS
 
-    return PROTECTED_PATHS | {group_field}
+    return PROTECTED_PATHS | {
+        group_field,
+        f"{group_field}.id",
+        f"{group_field}.name",
+    }
 
 
 def schema_universe(dataset) -> tuple:
@@ -757,6 +762,8 @@ def resolve(
                     and isinstance(name, str)
                     and name
                     and name not in PROTECTED_ATTRIBUTES
+                    # e.g. a group's ``id`` and ``name``
+                    and f"{path}.{name}" not in protected
                 ]
                 excluded_attrs.update(
                     f"{path}.{name}" for name in hidden_names
