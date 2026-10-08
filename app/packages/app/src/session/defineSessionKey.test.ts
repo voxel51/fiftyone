@@ -43,6 +43,7 @@ describe("defined session fields", () => {
     // silently stops being registered is the failure this catches.
     expect(new Set(Object.keys(EVENTS))).toEqual(
       new Set([
+        "app_count_update",
         "deactivate_notebook_cell",
         "refresh",
         "select_labels",

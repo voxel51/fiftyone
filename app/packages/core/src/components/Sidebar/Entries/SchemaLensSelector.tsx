@@ -42,10 +42,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { useSchemaManagerModal } from "../../Modal/Sidebar/Annotate/SchemaManager/hooks";
-import {
-  schemaManagerDisplayedAtom,
-  taskLabelSchemaDoc,
-} from "../../Modal/Sidebar/Annotate/state";
+import { taskLabelSchemaDoc } from "../../Modal/Sidebar/Annotate/state";
 import useCanManageSchema from "../../Modal/Sidebar/Annotate/useCanManageSchema";
 import {
   LIST_LABEL_SCHEMA_DOCS_OPERATOR,
@@ -162,7 +159,7 @@ const SchemaLensSelector = ({
   maxValueWidth?: number;
 }) => {
   const api = useSchemaDocs();
-  const schemaManagerDisplayed = useAtomValue(schemaManagerDisplayedAtom);
+  const { schemaManagerDisplayed } = useSchemaManagerModal();
   // The schema-doc operators register after the sidebar mounts; listing
   // before that fails (and used to read as "No custom schemas" for good).
   const docsAvailable = useOperatorAvailability(
