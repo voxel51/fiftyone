@@ -2,6 +2,7 @@ import Editor, { EditorProps } from "@monaco-editor/react";
 import { useColorScheme } from "@mui/material";
 import { useEffect, useState } from "react";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function Code(props: CodeProps) {
   const { readOnly, options = {}, defaultValue, value, ...editorProps } = props;
   const { mode } = useColorScheme();

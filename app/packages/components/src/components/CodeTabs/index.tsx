@@ -1,7 +1,6 @@
-import { CodeBlock } from "@fiftyone/components";
-import { Box, Tab, Tabs } from "@mui/material";
-import { useMemo, useState } from "react";
-import { CodeBlockProps } from "../CodeBlock";
+import { Orientation, Spacing, Stack, Tab, Tabs } from "@voxel51/voodo";
+import { useState } from "react";
+import CodeBlock, { type CodeBlockProps } from "../CodeBlock";
 
 type CodeTab = Omit<CodeBlockProps, "text"> & {
   id: string;
@@ -15,46 +14,29 @@ type CodeTabsProps = {
   onChange?: (tabId: string) => void;
 };
 
-export default function CodeTabs(props: CodeTabsProps) {
-  const { tabs, selected, onChange } = props;
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
+export default function CodeTabs({ tabs, selected, onChange }: CodeTabsProps) {
   const [tab, setTab] = useState(tabs[0].id);
-
-  const tabsById = useMemo(
-    () =>
-      tabs.reduce((currentTabsById, tab) => {
-        currentTabsById[tab.id] = tab;
-        return currentTabsById;
-      }, {}),
-    [tabs],
-  );
   const computedTab = selected || tab;
-  const tabProps = tabsById?.[computedTab] || {};
+  const active = tabs.find(({ id }) => id === computedTab);
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs
-          value={computedTab}
-          onChange={(_e, value) => {
-            setTab(value);
-            if (typeof onChange === "function") onChange(value);
-          }}
-          aria-label={computedTab}
-          sx={{ padding: 0 }}
-        >
-          {tabs.map(({ label, id }) => (
-            <Tab
-              key={id}
-              label={label}
-              value={id}
-              sx={{ padding: 0, alignItems: "center" }}
-            />
-          ))}
-        </Tabs>
-      </Box>
-      <Box mt={1} sx={{ cursor: "pointer", minWidth: 720 }}>
-        <CodeBlock {...tabProps} text={tabProps.code} />
-      </Box>
-    </Box>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Tabs aria-label={computedTab}>
+        {tabs.map(({ label, id }) => (
+          <Tab
+            key={id}
+            active={id === computedTab}
+            onClick={() => {
+              setTab(id);
+              onChange?.(id);
+            }}
+          >
+            {label}
+          </Tab>
+        ))}
+      </Tabs>
+      {active && <CodeBlock {...active} text={active.code} />}
+    </Stack>
   );
 }

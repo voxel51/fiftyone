@@ -6,6 +6,7 @@ import {
   Typography,
 } from "@mui/material";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function TextField(props: TextFieldProps) {
   const { label, ...otherProps } = props;
   return (

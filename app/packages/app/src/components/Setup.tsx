@@ -4,7 +4,7 @@
  * What the App shows with no session to connect to: how to start one.
  */
 
-import { Header } from "@fiftyone/components";
+import { CodeBlock, Highlighted } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
 import {
   Align,
@@ -24,6 +24,8 @@ import {
 import { useState } from "react";
 import { useRecoilValue } from "recoil";
 
+import { useProduct } from "../product";
+import Header from "./Header";
 import HeaderLinks from "./HeaderLinks";
 import styles from "./Setup.module.css";
 
@@ -43,10 +45,6 @@ dataset = fo.load_dataset(...)
 session = fo.launch_app(dataset, remote=True, port=XXXX)
 `;
 
-const Code = ({ children }: { children: string }) => (
-  <pre className={styles.code}>{children}</pre>
-);
-
 const LocalInstructions = () => {
   const localSnippet = `import fiftyone as fo
 
@@ -62,7 +60,9 @@ session = fo.launch_app(dataset, port=${port})
       <Text color={TextColor.Secondary}>
         Here&apos;s how to connect to a local session from Python:
       </Text>
-      <Code>{localSnippet}</Code>
+      <CodeBlock code={localSnippet} lineNumbers>
+        <Highlighted code={localSnippet} />
+      </CodeBlock>
     </Stack>
   );
 };
@@ -83,6 +83,7 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         You can work with data on a remote machine by launching a remote App
         session and connecting to it from your local machine. See{" "}
         <a
+          className={styles.link}
           target="_blank"
           href="https://docs.voxel51.com/user_guide/app.html#remote-sessions"
           rel="noreferrer"
@@ -92,9 +93,13 @@ fiftyone app connect --destination [<username>@]<hostname> \\
         for more information.
       </Text>
       <Heading level={HeadingLevel.H3}>On your remote machine</Heading>
-      <Code>{remoteSnippet}</Code>
+      <CodeBlock code={remoteSnippet} lineNumbers>
+        <Highlighted code={remoteSnippet} />
+      </CodeBlock>
       <Heading level={HeadingLevel.H3}>On your local machine</Heading>
-      <Code>{bashSnippet}</Code>
+      <CodeBlock code={bashSnippet} lineNumbers>
+        <Highlighted code={bashSnippet} language="bash" />
+      </CodeBlock>
     </Stack>
   );
 };
@@ -116,10 +121,11 @@ const TABS = [
 const Setup = () => {
   const [activeTab, setActiveTab] = useState<"local" | "remote">("local");
   const notebook = useRecoilValue(isNotebook);
+  const { title } = useProduct();
 
   return (
-    <div data-cy="setup-page">
-      <Header title={"FiftyOne"}>
+    <div className={styles.setup} data-cy="setup-page">
+      <Header title={title}>
         <Stack
           orientation={Orientation.Row}
           align={Align.Center}

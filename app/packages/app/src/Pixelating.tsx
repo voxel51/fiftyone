@@ -7,7 +7,7 @@
  * @module Pixelating
  */
 
-import { Loading } from "@fiftyone/components";
+import { LoadingScreen } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import React, { useEffect } from "react";
 
@@ -28,7 +28,7 @@ const Pixelating = React.memo(() => {
     );
   }, []);
 
-  return <Loading>Pixelating...</Loading>;
+  return <LoadingScreen text="Pixelating" />;
 });
 
 Pixelating.displayName = "Pixelating";

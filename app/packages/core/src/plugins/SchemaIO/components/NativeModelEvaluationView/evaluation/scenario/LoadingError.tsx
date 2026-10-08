@@ -1,4 +1,4 @@
-import { CodeBlock, TooltipProvider } from "@fiftyone/components";
+import { CodeBlock, Highlighted, TooltipProvider } from "@fiftyone/components";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { Box, Stack, Typography } from "@mui/material";
 import Button from "../../../Button";
@@ -64,7 +64,9 @@ export default function LoadingError(props: LoadingErrorProps) {
         </Stack>
         {showTrace && trace && (
           <Box sx={{ width: "50%" }}>
-            <CodeBlock text={trace} language="python" />
+            <CodeBlock code={trace} lineNumbers>
+              <Highlighted code={trace} />
+            </CodeBlock>
           </Box>
         )}
       </Stack>

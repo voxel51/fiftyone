@@ -1,0 +1,43 @@
+.block {
+  position: relative;
+  display: flex;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  font-family: "Roboto Mono", monospace;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.lines {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px 12px 12px 16px;
+  list-style: none;
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid;
+}
+
+.code {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 16px;
+  overflow-x: auto;
+}
+
+/* The copy button belongs to the code, so it stays out of the way until the
+   pointer is over the block it acts on */
+.copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.block:hover .copy,
+.copy:focus-visible {
+  opacity: 1;
+}

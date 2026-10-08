@@ -41,13 +41,13 @@ import { type CameraAdapterFactory, type InteractionMode } from "./renderer";
 import { NONE_FIELD, useRunPlotData } from "./useRunPlotData";
 
 const TOKEN_VARS = {
-  "--emb-bg": `${getColorCssVar(BackgroundColor.Background)}`,
-  "--emb-card-bg": `${getColorCssVar(BackgroundColor.CardNested)}`,
-  "--emb-card-elevated": `${getColorCssVar(BackgroundColor.CardElevated)}`,
-  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
-  "--emb-border-strong": `${getColorCssVar(BorderColor.Strong)}`,
-  "--emb-brand": `${getColorCssVar(BrandColor.Primary)}`,
-  "--emb-fg": `${getColorCssVar(TextColor.Foreground)}`,
+  "--emb-bg": getColorCssVar(BackgroundColor.Background),
+  "--emb-card-bg": getColorCssVar(BackgroundColor.CardNested),
+  "--emb-card-elevated": getColorCssVar(BackgroundColor.CardElevated),
+  "--emb-border-subtle": getColorCssVar(BorderColor.Subtle),
+  "--emb-border-strong": getColorCssVar(BorderColor.Strong),
+  "--emb-brand": getColorCssVar(BrandColor.Primary),
+  "--emb-fg": getColorCssVar(TextColor.Foreground),
 } as CSSProperties;
 
 function ModeSegment({

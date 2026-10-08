@@ -37,6 +37,7 @@ import {
 import { useRouterContext } from "./routing";
 import { resolveURL } from "./utils";
 import Pixelating from "./Pixelating";
+import styles from "./Renderer.module.css";
 
 /** e2e specs wait on the route that a navigation commits */
 type RendererE2EEvents = {
@@ -173,7 +174,11 @@ const Renderer = () => {
       <Modal key={"modal"} />
       <TaskSchemaExclusions key={"task-schema-exclusions"} />
       <Route key={"route"} route={routeEntry} />
-      {(pending || viewPending) && <Pending key={"pending"} />}
+      {(pending || viewPending) && (
+        <div className={styles.pending} key={"pending"}>
+          <Pending />
+        </div>
+      )}
     </Suspense>
   );
 };

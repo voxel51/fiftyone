@@ -19,6 +19,7 @@
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@voxel51/voodo": "catalog:",
+        "clsx": "catalog:",
         "react-relay": "catalog:"
     },
     "devDependencies": {

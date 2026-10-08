@@ -51,7 +51,20 @@ if (typeof window !== "undefined") {
   window.ReactDOM = ReactDOM;
   window.recoil = recoil;
   window.__fos__ = fos;
-  window.__foc__ = foc;
+  // Only plugins read this global; the App imports the package directly
+  let warnedFoc = false;
+  Object.defineProperty(window, "__foc__", {
+    configurable: true,
+    get: () => {
+      if (!warnedFoc) {
+        warnedFoc = true;
+        console.warn(
+          "@fiftyone/components is deprecated and will be removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.",
+        );
+      }
+      return foc;
+    },
+  });
   window.__fou__ = fou;
   window.__foo__ = foo;
   window.__fosp__ = fosp;

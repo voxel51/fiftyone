@@ -1,5 +1,6 @@
 import styled from "styled-components";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default styled.div`
   margin: 0 -0.5rem;
   padding: 0 0.5rem;

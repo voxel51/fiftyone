@@ -10,6 +10,7 @@ type MuiIconFontProps = IconProps & {
 const defaultProps = { variant: "filled" as const };
 
 // Available Icons: https://github.com/marella/material-icons?tab=readme-ov-file#available-icons
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const MuiIconFont = React.memo(function MuiIconFont(props: MuiIconFontProps) {
   const { name, variant = defaultProps.variant, ...iconProps } = props;
 

@@ -6,6 +6,8 @@ import { Stack, Typography } from "@mui/material";
  * @param label Optional field label
  * @param formControl Field form control
  * @param description Optional field description
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export const LabeledField = ({
   formControl,

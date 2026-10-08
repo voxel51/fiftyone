@@ -1,79 +1,32 @@
-import { CopyButton } from "@fiftyone/components";
-import { Box, useColorScheme } from "@mui/material";
-// Use the `Light` build and register only the languages we render. The default
-// `react-syntax-highlighter` export bundles all ~190 hljs languages (~1.4MB) onto
-// the eager critical path; this keeps it to the handful we actually use.
-import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
-import bash from "react-syntax-highlighter/dist/esm/languages/hljs/bash";
-import javascript from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
-import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
-import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
-import typescript from "react-syntax-highlighter/dist/esm/languages/hljs/typescript";
-import yaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
-import a11yDark from "react-syntax-highlighter/dist/esm/styles/hljs/a11y-dark";
-import a11yLight from "react-syntax-highlighter/dist/esm/styles/hljs/a11y-light";
+import {
+  BackgroundColor,
+  BorderColor,
+  Button,
+  CheckIcon,
+  ContentCopyIcon,
+  getColorCssVar,
+  Size,
+  TextColor,
+  Variant,
+} from "@voxel51/voodo";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
+
 import scrollableStyles from "../../scrollable.module.css";
+import Highlighted, { type HighlightedLanguage } from "../Highlighted";
+import styles from "./CodeBlock.module.css";
 
-SyntaxHighlighter.registerLanguage("bash", bash);
-SyntaxHighlighter.registerLanguage("javascript", javascript);
-SyntaxHighlighter.registerLanguage("json", json);
-SyntaxHighlighter.registerLanguage("python", python);
-SyntaxHighlighter.registerLanguage("typescript", typescript);
-SyntaxHighlighter.registerLanguage("yaml", yaml);
+const COPIED_DURATION = 2000;
 
-export default function CodeBlock({
-  text,
-  language,
-  ...props
-}: CodeBlockProps) {
-  const { mode } = useColorScheme();
+type FrameProps = {
+  children?: ReactNode;
+  code: string;
+  copyable?: boolean;
+  lineNumbers?: boolean;
+};
 
-  return (
-    <Box
-      sx={{
-        width: "100%",
-        height: "100%",
-        position: "relative",
-        fontFamily: "Roboto Mono, monospace",
-        fontSize: props?.fontSize || 14,
-        "&:hover": {
-          "& > button": {
-            opacity: 1,
-          },
-        },
-      }}
-    >
-      <CopyButton
-        variant="contained"
-        text={text}
-        sx={{
-          position: "absolute",
-          top: 3,
-          right: 3,
-          opacity: 0,
-          transition: "opacity 0.3s",
-        }}
-        color="secondary"
-        size="small"
-      />
-      <SyntaxHighlighter
-        showLineNumbers
-        className={scrollableStyles.scrollable}
-        language={(language ?? "python").toLowerCase()}
-        customStyle={{ margin: 0, lineHeight: 1.75 }}
-        // The app's base theme is dark, and `mode` is undefined when this
-        // renders outside the theme provider — an error boundary's trace,
-        // for one — so unknown falls to dark rather than black-on-dark
-        style={mode === "light" ? a11yLight : a11yDark}
-        {...props}
-      >
-        {text}
-      </SyntaxHighlighter>
-    </Box>
-  );
-}
-
-export type CodeBlockProps = {
+/** The props plugins were given before `code`; it is highlighted for them. */
+type LegacyProps = {
   text: string;
   language?: string;
   showLineNumbers?: boolean;
@@ -83,3 +36,92 @@ export type CodeBlockProps = {
   onCopy?: (text: string) => void;
   fontSize?: number;
 };
+
+export type CodeBlockProps = FrameProps | LegacyProps;
+
+/**
+ * A block of code, with copying it one click away.
+ *
+ * The block renders `code` as written. A caller that highlights its own code
+ * passes the marked-up result as `children`; `code` is still what the copy
+ * control puts on the clipboard, so a highlighter's markup never reaches it.
+ */
+const Frame = ({
+  children,
+  code,
+  copyable = true,
+  lineNumbers = false,
+}: FrameProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const copy = useCallback(() => {
+    navigator.clipboard?.writeText(code).then(
+      () => setCopied(true),
+      () => undefined,
+    );
+  }, [code]);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+
+    const timeout = setTimeout(() => setCopied(false), COPIED_DURATION);
+    return () => clearTimeout(timeout);
+  }, [copied]);
+
+  return (
+    <div
+      className={styles.block}
+      style={{
+        background: getColorCssVar(BackgroundColor.CardNested),
+        color: getColorCssVar(TextColor.Primary),
+      }}
+    >
+      {lineNumbers && (
+        <ol
+          aria-hidden
+          className={styles.lines}
+          style={{
+            borderColor: getColorCssVar(BorderColor.Default),
+            color: getColorCssVar(TextColor.Muted),
+          }}
+        >
+          {code.split("\n").map((_, index) => (
+            <li key={index}>{index + 1}</li>
+          ))}
+        </ol>
+      )}
+      <pre
+        className={`${styles.code} ${scrollableStyles.scrollable}`}
+        translate="no"
+      >
+        <code>{children ?? code}</code>
+      </pre>
+      {copyable && (
+        <Button
+          aria-label={copied ? "Copied" : "Copy"}
+          className={styles.copy}
+          leadingIcon={copied ? CheckIcon : ContentCopyIcon}
+          onClick={copy}
+          size={Size.Sm}
+          title={copied ? "Copied" : "Copy"}
+          variant={Variant.Secondary}
+        />
+      )}
+    </div>
+  );
+};
+
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
+export default function CodeBlock(props: CodeBlockProps) {
+  if ("code" in props) return <Frame {...props} />;
+
+  const { text, language, showLineNumbers = true } = props;
+  return (
+    <Frame code={text} lineNumbers={showLineNumbers}>
+      <Highlighted
+        code={text}
+        language={(language ?? "python").toLowerCase() as HighlightedLanguage}
+      />
+    </Frame>
+  );
+}

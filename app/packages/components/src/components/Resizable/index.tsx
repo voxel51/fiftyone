@@ -7,6 +7,8 @@ import styles from "./index.module.css";
 
 /**
  * Currently, only supports resizing left and right
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export default function Resizable(props: ResizableProps) {
   const { direction, onResizeStop, onResizeReset, style, ...otherProps } =

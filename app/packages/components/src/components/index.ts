@@ -27,6 +27,8 @@ export type {
 export { default as Header } from "./Header";
 export { default as HelpPanel } from "./HelpPanel";
 export { default as HelpTooltip } from "./HelpTooltip";
+export { default as Highlighted } from "./Highlighted";
+export type { HighlightedLanguage } from "./Highlighted";
 export { default as IconButton } from "./IconButton";
 export * from "./Icons";
 export { default as JSONPanel } from "./JSONPanel";
@@ -34,6 +36,7 @@ export { default as JSONViewer } from "./JSONViewer";
 export * from "./LabeledField";
 export { default as Link } from "./Link";
 export { default as Loading, LoadingDots, LoadingSpinner } from "./Loading";
+export { default as LoadingScreen } from "./LoadingScreen";
 export { default as Markdown } from "./Markdown";
 export { default as MuiButton } from "./MuiButton";
 export { default as MuiIconFont } from "./MuiIconFont";

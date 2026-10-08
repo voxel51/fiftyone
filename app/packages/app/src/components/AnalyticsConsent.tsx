@@ -7,8 +7,21 @@ import {
   useAnalyticsInfo,
   useTrackEvent,
 } from "@fiftyone/analytics";
-import { Box, Button, Grid, Link, Typography } from "@mui/material";
+import {
+  Align,
+  Button,
+  Heading,
+  HeadingLevel,
+  Justify,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Text,
+  Variant,
+} from "@voxel51/voodo";
 import React, { useCallback, useEffect, useState } from "react";
+import styles from "./AnalyticsConsent.module.css";
 import type { Analytics$data } from "./__generated__/Analytics.graphql";
 
 const FIFTYONE_DO_NOT_TRACK_LS = "fiftyone-do-not-track";
@@ -84,51 +97,49 @@ export default function AnalyticsConsent({
   return (
     <PinBottom>
       <ConsentTracker />
-      <Grid
-        container
-        direction="column"
-        alignItems="center"
-        sx={{
-          borderTop: (theme) => `1px solid ${theme.palette.divider}`,
-          backgroundColor: "background.paper",
-        }}
+      <Stack
+        orientation={Orientation.Column}
+        spacing={Spacing.Sm}
+        className={styles.copy}
       >
-        <Grid padding={2}>
-          <Typography variant="h6" marginBottom={1}>
-            Help us improve FiftyOne
-          </Typography>
-          <Typography marginBottom={1}>
-            We use cookies to understand how FiftyOne is used and improve the
-            product. You can help us by allowing anonymous analytics.
-          </Typography>
-          <Grid container gap={2} justifyContent="end" direction="row">
-            <Grid item alignContent="center">
-              <Link
-                style={{ cursor: "pointer" }}
-                onClick={handleDisable}
-                data-cy="btn-disable-cookies"
-              >
-                Disable
-              </Link>
-            </Grid>
-            <Grid item>
-              <Button variant="contained" onClick={handleAllow}>
-                Allow
-              </Button>
-            </Grid>
-          </Grid>
-        </Grid>
-      </Grid>
+        <Heading level={HeadingLevel.H4}>Help us improve FiftyOne</Heading>
+        <Text>
+          We use cookies to understand how FiftyOne is used and improve the
+          product. You can help us by allowing anonymous analytics.
+        </Text>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Md}
+          justify={Justify.End}
+          align={Align.Center}
+        >
+          <Button
+            data-cy="btn-disable-cookies"
+            onClick={handleDisable}
+            size={Size.Sm}
+            variant={Variant.Borderless}
+          >
+            Disable
+          </Button>
+          <Button onClick={handleAllow} size={Size.Sm}>
+            Allow
+          </Button>
+        </Stack>
+      </Stack>
     </PinBottom>
   );
 }
 
-// a component that pins the content to the bottom of the screen, floating
+/** Pins the content to the bottom of the screen, floating over it. */
 function PinBottom({ children }: React.PropsWithChildren) {
   return (
-    <Box position="fixed" bottom={0} width="100%" zIndex={51}>
+    <Stack
+      align={Align.Center}
+      className={styles.bar}
+      orientation={Orientation.Column}
+    >
       {children}
-    </Box>
+    </Stack>
   );
 }
 

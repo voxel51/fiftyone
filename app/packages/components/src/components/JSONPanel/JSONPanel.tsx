@@ -11,6 +11,7 @@ import React, { useEffect } from "react";
 import jsonStyles from "./json.module.css";
 import panelStyles from "./panel.module.css";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export default function JSONPanel(props: JSONPanelPropsType) {
   const { containerRef, onClose, onCopy, json } = props;
   const parsed = JSON.parse(json);

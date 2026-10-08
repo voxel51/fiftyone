@@ -1,5 +1,6 @@
 import styled from "styled-components";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 const Arrow = styled.span<{ $isRight?: boolean }>`
   cursor: pointer;
   position: absolute;

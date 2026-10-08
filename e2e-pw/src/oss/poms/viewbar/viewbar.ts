@@ -6,8 +6,8 @@ const EXPRESSION_MOUNTED = "e2e:view-bar:expression-mounted";
 
 /**
  * The view bar: a search row in the header, with the stage cards in a
- * second row the stages toggle opens under it. The popover for the stage
- * being edited is its own POM — {@link StageEditorPom} — returned by
+ * second row the stages toggle opens. A host may place that row outside the
+ * bar. The popover for the stage being edited is its own POM — {@link StageEditorPom} — returned by
  * `addStage` and `editStage`.
  */
 export class ViewBarPom {
@@ -28,9 +28,12 @@ export class ViewBarPom {
     this.stageEditor = new StageEditorPom(page);
   }
 
-  /** The stages row: the bar's second row, present while open. */
+  /**
+   * The stages row, present while open. A host may place it outside the bar,
+   * so it is found on the page rather than under the bar.
+   */
   get stagesRow() {
-    return this.locator.getByTestId("view-bar-stages-row");
+    return this.page.getByTestId("view-bar-stages-row");
   }
 
   /** The search row's right-edge toggle that opens the stages row. */

@@ -2,10 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Snackbar, Starter } from "@fiftyone/core";
+import { Snackbar } from "@fiftyone/core";
 import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";
+import { AddDataset, SelectDataset } from "../components/Starter";
 import type { Route } from "../routing";
 import type { IndexPageQuery } from "./__generated__/IndexPageQuery.graphql";
 import style from "./index.module.css";
@@ -32,9 +33,7 @@ const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
   return (
     <Nav fragment={queryRef} hasDataset={false}>
       <div className={style.page} data-cy={"index-page"}>
-        <Starter
-          mode={totalDatasets === 0 ? "ADD_DATASET" : "SELECT_DATASET"}
-        />
+        {totalDatasets === 0 ? <AddDataset /> : <SelectDataset />}
       </div>
       <Snackbar />
     </Nav>

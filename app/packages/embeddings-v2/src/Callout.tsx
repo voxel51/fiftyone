@@ -31,9 +31,9 @@ export interface CalloutProps {
 }
 
 const TOKEN_VARS = {
-  "--emb-brand": `${getColorCssVar(BrandColor.Primary)}`,
-  "--emb-card-bg": `${getColorCssVar(BackgroundColor.Card)}`,
-  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
+  "--emb-brand": getColorCssVar(BrandColor.Primary),
+  "--emb-card-bg": getColorCssVar(BackgroundColor.Card),
+  "--emb-border-subtle": getColorCssVar(BorderColor.Subtle),
 } as CSSProperties;
 
 export function Callout({

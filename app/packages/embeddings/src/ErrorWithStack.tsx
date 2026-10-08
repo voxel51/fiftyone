@@ -1,5 +1,5 @@
+import { CodeBlock, Highlighted } from "@fiftyone/components";
 import { Typography, Box } from "@mui/material";
-import { CodeBlock } from "@fiftyone/components";
 
 export default function ErrorWithStack({ error }) {
   return (
@@ -24,9 +24,14 @@ export default function ErrorWithStack({ error }) {
       {error.stack && (
         <Box sx={{ width: "100%" }}>
           <CodeBlock
-            text={error.stack.trim().replace(/\n+/g, "\n")}
-            language="javascript"
-          />
+            code={error.stack.trim().replace(/\n+/g, "\n")}
+            lineNumbers
+          >
+            <Highlighted
+              code={error.stack.trim().replace(/\n+/g, "\n")}
+              language="javascript"
+            />
+          </CodeBlock>
         </Box>
       )}
     </Box>

@@ -1,6 +1,11 @@
 import { SvgIcon, SvgIconProps } from "@mui/material";
-import { Info as InfoIcon } from "@mui/icons-material";
+import {
+  Info as MuiInfoIcon,
+  KeyboardArrowDown as MuiKeyboardArrowDown,
+  KeyboardArrowUp as MuiKeyboardArrowUp,
+} from "@mui/icons-material";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function Copy(props: SvgIconProps) {
   return (
     <SvgIcon {...props}>
@@ -8,6 +13,7 @@ export function Copy(props: SvgIconProps) {
     </SvgIcon>
   );
 }
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function Close(props: SvgIconProps) {
   return (
     <SvgIcon {...props}>
@@ -15,6 +21,7 @@ export function Close(props: SvgIconProps) {
     </SvgIcon>
   );
 }
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function JSONIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon {...props}>
@@ -22,6 +29,7 @@ export function JSONIcon(props: SvgIconProps = {}) {
     </SvgIcon>
   );
 }
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function HelpIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon {...props}>
@@ -33,6 +41,7 @@ export function HelpIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function LookerArrowLeftIcon(props: SvgIconProps) {
   return (
     <SvgIcon {...props}>
@@ -41,6 +50,7 @@ export function LookerArrowLeftIcon(props: SvgIconProps) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function LookerArrowRightIcon(props: SvgIconProps) {
   return (
     <SvgIcon {...props}>
@@ -49,6 +59,7 @@ export function LookerArrowRightIcon(props: SvgIconProps) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function EraserIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon {...props}>
@@ -57,6 +68,7 @@ export function EraserIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function SelectIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon
@@ -74,6 +86,7 @@ export function SelectIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function ClassificationIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon
@@ -87,6 +100,7 @@ export function ClassificationIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function DetectionIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon
@@ -100,6 +114,7 @@ export function DetectionIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function SegmentationIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon
@@ -116,6 +131,7 @@ export function SegmentationIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function UndoIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon
@@ -129,6 +145,7 @@ export function UndoIcon(props: SvgIconProps = {}) {
   );
 }
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export function RedoIcon(props: SvgIconProps = {}) {
   return (
     <SvgIcon
@@ -142,6 +159,10 @@ export function RedoIcon(props: SvgIconProps = {}) {
   );
 }
 
-export { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
+export const KeyboardArrowDown = MuiKeyboardArrowDown;
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
+export const KeyboardArrowUp = MuiKeyboardArrowUp;
 export { IconButton } from "@mui/material";
-export { InfoIcon };
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
+export const InfoIcon = MuiInfoIcon;

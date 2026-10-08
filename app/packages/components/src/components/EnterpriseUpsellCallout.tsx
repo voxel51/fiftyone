@@ -18,10 +18,15 @@ import {
 /** Accent for the icon, border, and CTA — the "AI" orange used across upsells. */
 const AI_ACCENT = "#F5821F";
 
-/** Default destination for the "Learn more" CTA. */
+/**
+ * Default destination for the "Learn more" CTA.
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
+ */
 export const ENTERPRISE_LEARN_MORE_URL =
   "https://voxel51.com/why-upgrade?utm_source=FiftyOneApp";
 
+/** @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead. */
 export interface EnterpriseUpsellCalloutProps {
   title: string;
   description: string;
@@ -46,6 +51,8 @@ export interface EnterpriseUpsellCalloutProps {
  * Enterprise-upgrade callout card: an AI-accented heading, body copy, a
  * link-out CTA, and an optional dismiss action. Shared across surfaces that
  * promote FiftyOne Enterprise (annotation sidebar, agent selector).
+ *
+ * @deprecated Removed from plugin environments in FiftyOne 2.0 and Voxel51 3.0. Use @voxel51/voodo instead.
  */
 export default function EnterpriseUpsellCallout({
   title,

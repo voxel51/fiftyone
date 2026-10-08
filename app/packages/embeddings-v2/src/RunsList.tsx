@@ -273,7 +273,7 @@ export default function RunsList({
           sx={{
             zIndex: 9999,
             "& .MuiPaper-root": {
-              backgroundColor: `${getColorCssVar(BackgroundColor.Muted)}`,
+              backgroundColor: getColorCssVar(BackgroundColor.Muted),
               // Kill MUI's elevation overlay so the grey matches exactly.
               backgroundImage: "none",
             },
@@ -285,7 +285,7 @@ export default function RunsList({
               setMenu(null);
             }}
             sx={{
-              color: `${getColorCssVar(TextColor.Failure)}`,
+              color: getColorCssVar(TextColor.Failure),
               "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
                 color: "inherit",
               },

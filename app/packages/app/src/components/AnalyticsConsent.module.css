@@ -1,0 +1,17 @@
+/* Floats over the bottom of whatever is already on screen, above the grid's
+   own layers but below a modal */
+.bar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  z-index: 51;
+  box-sizing: border-box;
+  padding: 1rem;
+  border-top: 1px solid var(--fo-palette-divider);
+  background-color: var(--fo-palette-background-level1);
+}
+
+/* The prose reads as a column; the controls sit at its right edge */
+.copy {
+  max-width: 44rem;
+}

@@ -46,12 +46,12 @@ export interface RunCardProps {
 }
 
 const TOKEN_VARS = {
-  "--emb-card-bg": `${getColorCssVar(BackgroundColor.CardNested)}`,
-  "--emb-card-hover": `${getColorCssVar(BackgroundColor.CardElevated)}`,
-  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
-  "--emb-border-strong": `${getColorCssVar(BorderColor.Strong)}`,
-  "--emb-brand": `${getColorCssVar(BrandColor.Primary)}`,
-  "--emb-text-secondary": `${getColorCssVar(TextColor.Secondary)}`,
+  "--emb-card-bg": getColorCssVar(BackgroundColor.CardNested),
+  "--emb-card-hover": getColorCssVar(BackgroundColor.CardElevated),
+  "--emb-border-subtle": getColorCssVar(BorderColor.Subtle),
+  "--emb-border-strong": getColorCssVar(BorderColor.Strong),
+  "--emb-brand": getColorCssVar(BrandColor.Primary),
+  "--emb-text-secondary": getColorCssVar(TextColor.Secondary),
 } as CSSProperties;
 
 export function RunCard({

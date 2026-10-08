@@ -2,7 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
+import { ThemeProvider } from "@fiftyone/components";
+import ErrorBoundary from "./components/ErrorBoundary";
 import {
   GatedDynamicImports,
   type GatedDynamicImport,
