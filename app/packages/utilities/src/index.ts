@@ -342,11 +342,6 @@ export const VALID_LIST_LABEL_FIELDS = [
   POLYLINES_FIELD,
 ];
 
-export const DISABLED_LABEL_FIELDS_VISIBILITY = [
-  ...VALID_NON_LIST_LABEL_TYPES,
-  ...VALID_LIST_LABEL_FIELDS,
-];
-
 export const VALID_PRIMITIVE_TYPES = [
   BOOLEAN_FIELD,
   DATE_FIELD,
@@ -415,78 +410,6 @@ export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
   "Polylines",
 ]);
 
-export const DISABLED_PATHS = ["id", "filepath", "tags", "metadata"];
-
-const BASE_DISABLED_PATHS = ["id", "tags", "label", "confidence"];
-
-export const DETECTION_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "bounding_box",
-  "mask",
-  "index",
-];
-
-export const POLYLINE_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "points",
-  "closed",
-  "filled",
-  "index",
-];
-
-export const CLASSIFICATION_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "logits",
-];
-
-export const REGRESSION_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "value",
-  "confidence",
-];
-
-export const KEYPOINT_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "points",
-  "index",
-];
-
-export const SEGMENTATION_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "mask",
-  "mask_path",
-];
-
-export const HEATMAP_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "map",
-  "map_path",
-  "range",
-];
-
-export const TEMPORAL_DETECTION_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "support",
-];
-
-export const GEOLOCATION_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "point",
-  "line",
-  "polygon",
-];
-
-export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "point",
-  "line",
-  "polygons",
-];
 export const BUILT_IN_PANEL_PRIORITY_CONST = 51000;
 
 export function withPath(path: string, types: string): string;
