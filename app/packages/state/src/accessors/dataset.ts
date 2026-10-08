@@ -10,6 +10,7 @@ import {
   extendedStages,
   fieldSchema,
   filters,
+  groupField,
   groupMediaTypes,
   isGroup,
   isOrderedDynamicGroup,
@@ -155,6 +156,15 @@ export const useSelectedMediaFieldGrid = () => {
 export const useIsGroupDataset = () => {
   return useRecoilValue(isGroup);
 };
+
+/**
+ * The current dataset's group field.
+ *
+ * @returns The group field's name, or null if the dataset is not a group
+ *   dataset
+ */
+export const useGroupField = (): string | null =>
+  useRecoilValue(groupField) || null;
 
 export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 

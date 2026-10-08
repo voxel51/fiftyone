@@ -113,7 +113,7 @@ export interface SchemaDocsApi {
  * `fiftyone.core.label_schema_docs.protected_paths`).
  */
 export const useProtectedPaths = (): ReadonlySet<string> => {
-  const groupField = useRecoilValue(fos.groupField);
+  const groupField = fos.useGroupField();
   return useMemo(
     () =>
       groupField
