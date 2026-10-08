@@ -117,8 +117,10 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
       modalSample: "loaded",
     });
     const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-    await fresh.sidebar.annotate.afterLabelList(() =>
-      fresh.sidebar.switchMode("annotate"),
+    await fresh.afterLighterReady(() =>
+      fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      ),
     );
     const rows = fresh.sidebar.annotate.labelRowsFor("instances");
     // both polygons were committed as their own detections
