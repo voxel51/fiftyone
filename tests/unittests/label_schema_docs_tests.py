@@ -340,6 +340,41 @@ def test_resolve_never_excludes_media_reference_or_given_protected_paths():
     assert resolve(doc, universe)["excluded_paths"] == ["group", "gt"]
 
 
+def test_resolve_never_excludes_children_of_protected_fields():
+    # hiding metadata.width makes the server re-read each sample's media
+    doc = {
+        "id": "d",
+        "name": "n",
+        "label_schema": {},
+        "visibility": {
+            "fields": {
+                "metadata.width": {"tier": "hidden"},
+                "metadata.frame_rate": {"tier": "hidden"},
+                "metadata": {
+                    "tier": "explore",
+                    "attributes": {"height": "hidden"},
+                },
+                # frames holds every frame field: they stay hideable
+                "frames.gt": {"tier": "hidden"},
+            },
+        },
+    }
+
+    out = resolve(doc, ["gt"])
+    assert out["excluded_paths"] == ["frames.gt"]
+    assert out["excluded_attr_paths"] == []
+
+
+def test_is_protected():
+    assert docs.is_protected("metadata")
+    assert docs.is_protected("metadata.width")
+    assert docs.is_protected("frames.id")
+    assert not docs.is_protected("frames.gt")
+    assert not docs.is_protected("frames.gt.detections")
+    assert not docs.is_protected("gt.detections.label")
+    assert docs.is_protected("group.name", docs.PROTECTED_PATHS | {"group"})
+
+
 def test_synthesize_default_empty_dataset():
     doc = synthesize_default(None)
     out = resolve(doc, universe=["car", "gt"])

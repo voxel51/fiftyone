@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   docFieldTier,
+  isProtectedPath,
   PROTECTED_PATHS,
   withoutFieldTier,
   withAttributeTier,
@@ -63,6 +64,24 @@ describe("docFieldTier", () => {
       visibility: { fields: { "group.name": { tier: "hidden" } } },
     });
     expect(docFieldTier(nested, "group.name", groupProtected)).toBe("explore");
+  });
+
+  it("never hides a protected field's children, except under frames", () => {
+    const d = doc({
+      visibility: {
+        default: "hidden",
+        fields: {
+          "metadata.width": { tier: "hidden" },
+          "frames.gt": { tier: "hidden" },
+        },
+      },
+    });
+    expect(docFieldTier(d, "metadata.width")).toBe("explore");
+    expect(docFieldTier(d, "frames.gt")).toBe("hidden");
+    expect(isProtectedPath("metadata.width")).toBe(true);
+    expect(isProtectedPath("frames.id")).toBe(true);
+    expect(isProtectedPath("frames.gt")).toBe(false);
+    expect(isProtectedPath("gt.detections")).toBe(false);
   });
 
   it("content membership implies annotate; default covers the rest", () => {

@@ -19,7 +19,7 @@ import { useCallback } from "react";
 import type { RowData } from "./overviewRows";
 import type { OverviewStyles } from "./overviewStyles";
 import SecondaryText from "./SecondaryText";
-import { useProtectedPaths } from "./useSchemaDocs";
+import { isProtectedPath, useProtectedPaths } from "./useSchemaDocs";
 
 export const useFieldRowItem = ({
   rowTypes,
@@ -48,7 +48,9 @@ export const useFieldRowItem = ({
       // schemas hide, and protected fields can never be hidden. Fields
       // that cannot be annotated can still be hidden.
       const canSelect =
-        docMode && !row.system && (hidden || !protectedPaths.has(row.path));
+        docMode &&
+        !row.system &&
+        (hidden || !isProtectedPath(row.path, protectedPaths));
       return {
         id: row.path,
         data: {

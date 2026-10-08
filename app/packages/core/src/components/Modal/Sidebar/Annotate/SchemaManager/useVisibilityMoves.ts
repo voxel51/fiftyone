@@ -11,6 +11,7 @@ import { useAtom } from "jotai";
 import { useCallback } from "react";
 import { selectedActiveFields, selectedHiddenFields } from "./state";
 import {
+  isProtectedPath,
   useManagerDocMode,
   useProtectedPaths,
   withFieldTier,
@@ -31,7 +32,9 @@ export const useHideSelectedFields = () => {
   return useCallback(() => {
     if (!docMode) return;
     const { docId, doc, setDoc, api } = docMode;
-    const paths = Array.from(selected).filter((p) => !protectedPaths.has(p));
+    const paths = Array.from(selected).filter(
+      (p) => !isProtectedPath(p, protectedPaths),
+    );
     if (!paths.length) return;
     let visibility = doc.visibility;
     for (const path of paths) {

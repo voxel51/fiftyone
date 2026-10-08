@@ -27,6 +27,25 @@ export const PROTECTED_PATHS = new Set([
 ]);
 
 /**
+ * Whether a schema can never hide `path` (mirrors the server's
+ * `is_protected`): it is protected, or nested under a protected field
+ * like `metadata.width` or `group.name`. Fields under `frames` are only
+ * protected when listed themselves.
+ */
+export const isProtectedPath = (
+  path: string,
+  protectedPaths: ReadonlySet<string> = PROTECTED_PATHS,
+): boolean => {
+  if (protectedPaths.has(path)) return true;
+  let parent = path;
+  while (parent.includes(".")) {
+    parent = parent.slice(0, parent.lastIndexOf("."));
+    if (parent !== "frames" && protectedPaths.has(parent)) return true;
+  }
+  return false;
+};
+
+/**
  * Label attributes a schema can never hide (mirrors the server's
  * ``PROTECTED_ATTRIBUTES``): identity (``id``), tagging (``tags``),
  * instance linking (``index``) and geometry the renderer needs. A
@@ -139,7 +158,7 @@ export const docFieldTier = (
   // Required/system fields can never be hidden (the server refuses to
   // exclude them — see PROTECTED_PATHS and `useProtectedPaths`); they
   // always read as visible.
-  if (protectedPaths.has(path)) {
+  if (isProtectedPath(path, protectedPaths)) {
     return path in doc.label_schema ? "annotate" : "explore";
   }
   if (explicit === "hidden") return "hidden";
