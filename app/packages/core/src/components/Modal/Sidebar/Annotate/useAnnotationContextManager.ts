@@ -20,6 +20,7 @@ import useSave from "./Edit/useSave";
 import {
   activeLabelSchemas,
   labelSchemasData,
+  schemaDatasetName,
   useAnnotationSchemaContext,
 } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
@@ -83,6 +84,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // clear annotation state, keeping what was loaded so a failure can
       // put it back: nothing else refills the atoms once they are cleared
       // on this dataset (useEnsureSchemasLoaded fetches once per dataset)
+      const previousDataset = jotaiStore.get(schemaDatasetName);
       const previousSchema = jotaiStore.get(labelSchemasData);
       const previousActivePaths = jotaiStore.get(activeLabelSchemas);
       setLabelSchema(null);
@@ -119,8 +121,12 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         };
       } catch (error) {
         console.error(`Error initializing schema for field ${field}`, error);
-        setLabelSchema(previousSchema);
-        setActiveSchemaPaths(previousActivePaths);
+        // the atoms are scoped to the dataset they're written under: after
+        // a dataset switch, the previous schemas belong to another dataset
+        if (jotaiStore.get(schemaDatasetName) === previousDataset) {
+          setLabelSchema(previousSchema);
+          setActiveSchemaPaths(previousActivePaths);
+        }
         return {
           status: InitializationStatus.ServerError,
           message: error instanceof Error ? error.message : `${error}`,

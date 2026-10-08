@@ -12,6 +12,8 @@ let mockCanManageSchema = true;
 // stand-ins for the schema atoms, read through jotaiStore.get()
 const LABEL_SCHEMAS_ATOM = { atom: "labelSchemasData" };
 const ACTIVE_SCHEMAS_ATOM = { atom: "activeLabelSchemas" };
+const SCHEMA_DATASET_ATOM = { atom: "schemaDatasetName" };
+let mockSchemaDataset: string | null = "quickstart";
 let mockLoadedSchemas: ListSchemasResponse["label_schemas"] | null = null;
 let mockLoadedActivePaths: string[] | null = null;
 
@@ -70,6 +72,7 @@ vi.mock("@fiftyone/state/src/jotai", () => ({
     get: vi.fn((atom: unknown) => {
       if (atom === LABEL_SCHEMAS_ATOM) return mockLoadedSchemas;
       if (atom === ACTIVE_SCHEMAS_ATOM) return mockLoadedActivePaths;
+      if (atom === SCHEMA_DATASET_ATOM) return mockSchemaDataset;
       return mockMgmtOps;
     }),
   },
@@ -89,6 +92,7 @@ vi.mock("./Edit/useSave", () => ({
 vi.mock("./state", () => ({
   activeLabelSchemas: ACTIVE_SCHEMAS_ATOM,
   labelSchemasData: LABEL_SCHEMAS_ATOM,
+  schemaDatasetName: SCHEMA_DATASET_ATOM,
   useAnnotationSchemaContext: () => ({
     setLabelSchema: mockSetLabelSchema,
     setActiveSchemaPaths: mockSetActiveSchemaPaths,
@@ -123,6 +127,7 @@ describe("activateField", () => {
     mockCanManageSchema = true;
     mockLoadedSchemas = null;
     mockLoadedActivePaths = null;
+    mockSchemaDataset = "quickstart";
     mockListSchemas.mockResolvedValue(emptyListResponse);
     mockInitializeSchema.mockResolvedValue({ label_schema: {} });
     mockActivateSchemas.mockResolvedValue({});
@@ -236,6 +241,25 @@ describe("activateField", () => {
       [null],
       [loaded.active_label_schemas],
     ]);
+  });
+
+  it("does not restore another dataset's schemas after a switch", async () => {
+    mockLoadedSchemas = listResponseWithSchema("ground_truth").label_schemas;
+    mockLoadedActivePaths = ["ground_truth"];
+    mockActivateSchemas.mockImplementation(async () => {
+      // the user switches datasets while activation is in flight
+      mockSchemaDataset = "other-dataset";
+      throw new Error("forbidden");
+    });
+
+    const { result } = renderHook(() => useAnnotationContextManager());
+
+    await act(async () => {
+      await result.current.activateField("predictions");
+    });
+
+    expect(mockSetLabelSchema.mock.calls).toEqual([[null]]);
+    expect(mockSetActiveSchemaPaths.mock.calls).toEqual([[null]]);
   });
 
   it("sets the refreshed schemas when activation succeeds", async () => {
