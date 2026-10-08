@@ -5,8 +5,8 @@
  * refetches whenever the user enters the Annotate sidebar inside a sample
  * modal. That loader doesn't run on the grid, so when the Schema Manager
  * is opened from the grid (`?schemaManager=open` via `SchemaManagerOutlet`)
- * the atoms stay `null` and downstream components like
- * `ActiveFieldsSection` hit "Maximum update depth exceeded".
+ * the atoms stay `null` and the Schema Manager has no schemas to
+ * render.
  *
  * This hook is the minimal complement: one fetch per dataset that fills
  * the atoms iff they're null — which, because the atoms are scoped to the
