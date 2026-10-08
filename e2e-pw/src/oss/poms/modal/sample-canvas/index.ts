@@ -10,6 +10,12 @@ import { TooltipPom } from "./tooltip";
  * A corner of the canvas, clear of anything these tests draw around the
  * center. Used by {@link SampleCanvasPom.clickEmptyArea}.
  */
+// a Lighter canvas screenshot before its sample is revealed captures nothing
+const LIGHTER_REVEALED = [
+  "e2e:modal:lighter-revealed",
+  "e2e:video-annotation:surface-revealed",
+];
+
 const EMPTY_AREA = 0.05;
 
 /** Events each hover affordance sends with `{ visible }` as it shows and hides */
@@ -439,6 +445,17 @@ class SampleCanvasAsserter {
    * @param name the name of the screenshot
    */
   async hasMediaScreenshot(name: string) {
+    const reveals = await Promise.all(
+      LIGHTER_REVEALED.map((event) =>
+        this.sampleCanvasPom.eventUtils.recorded(event),
+      ),
+    );
+    if (!reveals.some((records) => records.length)) {
+      throw new Error(
+        `${name}: the Lighter canvas has not revealed a sample on this page; ` +
+          "wait for it, e.g. modal.afterLighterReady(() => switch to annotate)",
+      );
+    }
     await this.#hasScreenshot(
       this.sampleCanvasPom.locator.locator("[data-lighter-surface]"),
       name,
