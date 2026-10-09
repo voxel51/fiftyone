@@ -35,7 +35,10 @@ vi.mock("../samplePages", () => ({
     next: null,
     previous: null,
   }),
+  forgetPage: () => () => undefined,
   routeWheel: () => () => undefined,
+  STRIP_INSTANCE_PAGES: 20,
+  STRIP_PAGES: 4,
 }));
 vi.mock("../useSpotlightPager", () => ({ PAGE_SIZE: 20 }));
 

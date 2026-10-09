@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useRef } from "react";
+import { useCallback } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
@@ -13,7 +13,14 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import type { Subscription } from "relay-runtime";
+import {
+  cursorLinks,
+  createPageCursors,
+  forgetCursors,
+  seekFor,
+} from "./pageCursors";
 import type { Records } from "./useRecords";
+import { collectPages } from "./samplePages";
 import usePanelMemo from "./panelMemory";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
@@ -96,31 +103,19 @@ const useSpotlightPager = ({
   );
   const handleTimeout = useTimeout();
 
-  const keys = useRef(new Set<string>());
-
   /** Track already requested pages, across mounts in this panel */
   const pages = usePanelMemo("pages", clearRequests, () => new Set<number>());
+  // cleared alongside `pages` (same lifecycle)
+  const cursors = usePanelMemo("pageCursors", clearRequests, createPageCursors);
 
-  // Per-page cursor caches, used when `cursorPagination` is active so
-  // page N's request can seek from page N±1's boundary. Spotlight only
-  // knows about page numbers; the server's cursor-mode pagination needs
-  // the previous edge's sort-field value to seek correctly.
-  //
-  //   pageEndCursors[N]   = last sample's sort value in page N
-  //   pageStartCursors[N] = first sample's sort value in page N
-  //
-  // Forward fetch of page N (>0) uses pageEndCursors[N-1] as `after`;
-  // backward fetch of page N (<0) uses pageStartCursors[N+1] as `before`.
-  // Cleared alongside `pages` (same lifecycle).
-  const pageEndCursors = usePanelMemo(
-    "pageEndCursors",
-    clearRequests,
-    () => new Map<number, string>(),
-  );
-  const pageStartCursors = usePanelMemo(
-    "pageStartCursors",
-    clearRequests,
-    () => new Map<number, string>(),
+  /** Drops what a page left behind once the panel's pages let it go. */
+  const forget = useCallback(
+    (pageNumber: number) => {
+      pages.delete(pageNumber);
+      forgetCursors(cursors, pageNumber);
+      collectPages(environment);
+    },
+    [cursors, environment, pages],
   );
 
   const page = useReverbCallback(
@@ -143,7 +138,7 @@ const useSpotlightPager = ({
         const [min, max] = bounds;
         return sort?.descending ? cursor < max : cursor > min;
       };
-      return async (pageNumber: number) => {
+      return async (pageNumber: number, signal?: AbortSignal) => {
         const variables = pager(pageNumber, PAGE_SIZE);
         type CursorVars = {
           cursorPagination?: boolean;
@@ -151,24 +146,19 @@ const useSpotlightPager = ({
           before?: string | null;
         };
         const vars = variables as unknown as CursorVars;
-        if (vars.cursorPagination && pageNumber > 0) {
-          // Forward seek: thread the previous page's `endCursor` (a
-          // sort-field value encoded as a string) into this request's
-          // `after`. The default index-based encoding from
-          // `pageParameters` (`page * pageSize - 1`) would be
-          // misinterpreted by the server's cursor branch as a literal
-          // sort value, so we must override it here.
-          const prev = pageEndCursors.get(pageNumber - 1);
-          if (prev !== undefined) vars.after = prev;
-        } else if (vars.cursorPagination && pageNumber < 0) {
-          // Backward seek: clear `after` and pass the start-cursor of
-          // the page going-forward as `before`, so the server fetches
-          // the N rows immediately preceding it.
+        const cursorMode = Boolean(vars.cursorPagination);
+        // The default index-based `after` from `pageParameters`
+        // (`page * pageSize - 1`) would be misinterpreted by the server's
+        // cursor branch as a literal sort value, so a neighbor's boundary
+        // replaces it.
+        const seek = cursorMode ? seekFor(cursors, pageNumber) : undefined;
+        if (seek && "after" in seek) vars.after = seek.after;
+        if (seek && "before" in seek) {
           vars.after = null;
-          const nextStart = pageStartCursors.get(pageNumber + 1);
-          if (nextStart !== undefined) vars.before = nextStart;
+          vars.before = seek.before;
         }
-        let subscription: Subscription;
+        if (cursorMode && pageNumber < 0 && !seek) vars.after = null;
+        let subscription: Subscription | undefined;
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
@@ -177,7 +167,7 @@ const useSpotlightPager = ({
         // front so the synchronous subscription callback below doesn't
         // need to be async. Only meaningful for cursor page 0.
         const seekedOriginHasPrev =
-          Boolean(vars.cursorPagination) && pageNumber === 0
+          cursorMode && pageNumber === 0
             ? await canScrollBeforeCursor(vars)
             : false;
 
@@ -186,9 +176,17 @@ const useSpotlightPager = ({
         const fetchPolicy = pages.has(pageNumber)
           ? "store-or-network"
           : "network-only";
-        pages.add(pageNumber);
 
-        return new Promise<Response<number, fos.Sample>>((resolve) => {
+        return new Promise<Response<number, fos.Sample>>((resolve, reject) => {
+          if (signal?.aborted) {
+            reject(signal.reason);
+            return;
+          }
+          signal?.addEventListener("abort", () => {
+            subscription?.unsubscribe();
+            reject(signal.reason);
+          });
+          pages.add(pageNumber);
           subscription = fetchQuery<foq.paginateSamplesQuery>(
             environment,
             foq.paginateSamples,
@@ -221,44 +219,29 @@ const useSpotlightPager = ({
                 records,
                 aspectRatioOverride,
               );
-              for (const item of items) keys.current.add(item.id.description);
 
               // Cache this page's cursor boundaries so adjacent pages
               // (in either direction) can seek from them.
-              if (connection.pageInfo.endCursor) {
-                pageEndCursors.set(pageNumber, connection.pageInfo.endCursor);
-              }
-              if (connection.pageInfo.startCursor) {
-                pageStartCursors.set(
-                  pageNumber,
-                  connection.pageInfo.startCursor,
-                );
-              }
+              const { endCursor, startCursor } = connection.pageInfo;
+              endCursor && cursors.ends.set(pageNumber, endCursor);
+              startCursor && cursors.starts.set(pageNumber, startCursor);
 
-              // Under cursor pagination, the server reports
-              // `hasPreviousPage` for backward fetches (negative pages).
-              // For the seeked origin (page 0), the server has no way to
-              // know without a second query — but the client already
-              // has the sort-field bounds, so we can decide locally:
-              // there's room behind the cursor iff the committed value
-              // is past the boundary (min for ascending, max for desc).
-              const cursorMode = Boolean(vars.cursorPagination);
-              let hasPrev: boolean;
-              if (!cursorMode) {
-                hasPrev = pageNumber > 0;
-              } else if (pageNumber === 0) {
-                hasPrev = seekedOriginHasPrev;
-              } else if (pageNumber > 0) {
-                hasPrev = true;
-              } else {
-                hasPrev = connection.pageInfo.hasPreviousPage;
-              }
+              const links = cursorMode
+                ? cursorLinks({
+                    hasNext: connection.pageInfo.hasNextPage,
+                    hasPrevious: connection.pageInfo.hasPreviousPage,
+                    originHasPrevious: seekedOriginHasPrev,
+                    page: pageNumber,
+                    seek,
+                  })
+                : {
+                    next: connection.pageInfo.hasNextPage
+                      ? pageNumber + 1
+                      : null,
+                    previous: pageNumber > 0 ? pageNumber - 1 : null,
+                  };
 
-              resolve({
-                items,
-                next: connection.pageInfo.hasNextPage ? pageNumber + 1 : null,
-                previous: hasPrev ? pageNumber - 1 : null,
-              });
+              resolve({ items, ...links });
             },
             complete: () => {
               subscription?.unsubscribe();
@@ -270,18 +253,18 @@ const useSpotlightPager = ({
     },
     [
       aspectRatioOverride,
+      cursors,
       environment,
       handleError,
       handleTimeout,
-      pageEndCursors,
-      pageStartCursors,
       pager,
+      pages,
       store,
       zoom,
     ],
   );
 
-  return { page, records, store };
+  return { forget, page, records, store };
 };
 
 export default useSpotlightPager;

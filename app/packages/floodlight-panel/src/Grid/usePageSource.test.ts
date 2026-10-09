@@ -9,27 +9,32 @@ import usePageSource from "./usePageSource";
 vi.mock("@fiftyone/spaces", () => ({ usePanelId: () => "panel" }));
 
 const ids = (page: string[]) => page;
+const onEvict = () => undefined;
 
 describe("usePageSource", () => {
   it("gives a remount the pages it left, read through the new fetch", async () => {
     const before = vi.fn(async (key: number) => [`a-${key}`]);
-    const first = renderHook(() => usePageSource("k1", 0, before, ids));
+    const first = renderHook(() =>
+      usePageSource("k1", 0, before, ids, onEvict),
+    );
     await first.result.current.get(0);
     first.unmount();
 
     const after = vi.fn(async (key: number) => [`b-${key}`]);
-    const second = renderHook(() => usePageSource("k1", 0, after, ids));
+    const second = renderHook(() =>
+      usePageSource("k1", 0, after, ids, onEvict),
+    );
     expect(second.result.current.peek(0)).toEqual(["a-0"]);
 
     await second.result.current.get(1);
-    expect(after).toHaveBeenCalledWith(1);
+    expect(after).toHaveBeenCalledWith(1, expect.any(AbortSignal));
     expect(before).toHaveBeenCalledTimes(1);
   });
 
   it("drops the pages on a refresh, while mounted or not", async () => {
     const fetch = vi.fn(async (key: number) => [`${key}`]);
     const mounted = renderHook(
-      ({ refresh }) => usePageSource("k2", refresh, fetch, ids),
+      ({ refresh }) => usePageSource("k2", refresh, fetch, ids, onEvict),
       { initialProps: { refresh: 0 } },
     );
     await mounted.result.current.get(0);
@@ -39,7 +44,9 @@ describe("usePageSource", () => {
     await mounted.result.current.get(0);
     mounted.unmount();
 
-    const remount = renderHook(() => usePageSource("k2", 2, fetch, ids));
+    const remount = renderHook(() =>
+      usePageSource("k2", 2, fetch, ids, onEvict),
+    );
     expect(remount.result.current.peek(0)).toBeUndefined();
   });
 });

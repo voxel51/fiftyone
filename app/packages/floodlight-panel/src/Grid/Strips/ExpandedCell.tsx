@@ -24,7 +24,9 @@ import {
 import type { Scoped } from "../../host/ownership";
 import useHost from "../../host/useHost";
 import useZoomSetting from "../useZoomSetting";
-import { instanceGet } from "./cellSource";
+import type { Lease } from "../../host/pageSource";
+import { STRIP_INSTANCE_PAGES } from "../samplePages";
+import { type CellPage, instanceGet, instancePeek } from "./cellSource";
 import { StripsContext } from "./context";
 import { type Expansion, ExpanderContext } from "./expansion";
 import { fadeIn, flipFrom, type Rects, reducedMotion } from "./flip";
@@ -50,6 +52,7 @@ export default function ExpandedCell({ expansion }: { expansion: Expansion }) {
   const tiles = useRef(new Map<string, HTMLDivElement>());
   const registrations = useRef(new Map<Instance, () => void>());
   const scopes = useRef(new WeakMap<Instance, Scoped<number, fos.Sample>>());
+  const leases = useRef(new WeakMap<Instance, Lease<number, CellPage>>());
   const settle = useRef<ReturnType<typeof setTimeout>>();
   const hostRef = useRef<{ instance?: Instance; rebuild: () => void }>();
   const opened = useRef(false);
@@ -81,10 +84,13 @@ export default function ExpandedCell({ expansion }: { expansion: Expansion }) {
       );
       // the visible instance keeps its lookers until the swap hands them over
       hostRef.current?.instance && scoped.defer();
+      const shown = context?.quiet ? hostRef.current?.instance : undefined;
+      const lease = expansion.source.lease(shown && leases.current.get(shown));
       const spotlight = new Spotlight<number, fos.Sample>({
         ...scoped,
         at: start.at,
-        get: instanceGet(expansion.source),
+        get: instanceGet(lease),
+        peek: context?.quiet ? instancePeek(lease) : undefined,
         key: start.key,
         offset: 0,
         rowAspectRatioThreshold: zoom,
@@ -96,6 +102,7 @@ export default function ExpandedCell({ expansion }: { expansion: Expansion }) {
         spacing: strips.spacing,
       });
       scopes.current.set(spotlight, scoped);
+      leases.current.set(spotlight, lease);
       if (opening) {
         // added before the host's own listener, so tiles fly before paint
         const onLoad = () => {
@@ -119,9 +126,12 @@ export default function ExpandedCell({ expansion }: { expansion: Expansion }) {
       scopes.current.get(next)?.flush();
     },
     onDispose: (instance) => {
+      leases.current.get(instance)?.release();
       registrations.current.get(instance)?.();
       registrations.current.delete(instance);
     },
+    outgrown: (instance) =>
+      (leases.current.get(instance)?.size ?? 0) > STRIP_INSTANCE_PAGES,
   });
   hostRef.current = host;
   useEffect(() => () => clearTimeout(settle.current), []);

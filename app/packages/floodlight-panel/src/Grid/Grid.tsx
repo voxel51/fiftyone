@@ -29,7 +29,9 @@ import {
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./atoms";
+import { BoundedMap } from "../host/bounded";
 import { createOwnership } from "../host/ownership";
+import type { Lease } from "../host/pageSource";
 import { SLOT } from "../host/createHost";
 import useHost from "../host/useHost";
 import { createGridRenderer, type GridRenderer } from "./gridRenderer";
@@ -44,7 +46,7 @@ import useItemCache from "./useItemCache";
 import useLabelVisibility from "./useLabelVisibility";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
-import useRelayout, { excluding } from "./useRelayout";
+import useRelayout, { type Excluded, excluding } from "./useRelayout";
 import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
@@ -57,6 +59,11 @@ import useUpdates from "./useUpdates";
 import useZoomSetting, { useSettledZoom } from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
+// fifty pages (1000 samples) read by one instance before it is rebuilt
+const MAX_INSTANCE_PAGES = 50;
+// each looker's last size; more than the cache holds hidden plus a dense view
+const MAX_SIZES = 2048;
+const MAX_EXCLUDED = 1024;
 
 const SHIMMER = {
   detachItem: () => {},
@@ -67,6 +74,8 @@ const SHIMMER = {
   },
 };
 const MAX_ROWS = 200;
+
+type Page = Response<number, fos.Sample>;
 
 function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const id = useMemoOne(() => uuid(), []);
@@ -116,7 +125,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
 
   // a refresh (the logo) forgets which pages were requested, so they are
   // fetched again rather than served from the store
-  const { page, store } = useSpotlightPager({
+  const { forget, page, store } = useSpotlightPager({
     clearRecords: reset,
     clearRequests: refreshReset,
     pageSelector: pageParameters,
@@ -155,12 +164,17 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   // pages outlive instances and mounts, so a rebuild at a new size or a
   // return from a sample's page reads from memory; the key is what the pages
   // were fetched with
-  const excluded = useRef(new Set<string>());
+  const excluded = useRef<Excluded>(new BoundedMap(MAX_EXCLUDED));
   const source = usePageSource(
     JSON.stringify([reset, pageReset, crop, aspectRatioOverride ?? null]),
     dataReset,
-    (key) => page(key).then((result) => excluding(result, excluded.current)),
+    (key, signal) =>
+      page(key, signal).then((result) => excluding(result, excluded.current)),
     (result) => result.items.map((item) => item.id.description),
+    (key, result) => {
+      for (const { id } of result.items) records.delete(id.description);
+      forget(key);
+    },
   );
 
   // a click opens the sample; its page steps through the pages held above
@@ -188,9 +202,11 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const interims = useRef(new WeakSet<object>());
   const cleanups = useRef(new WeakMap<object, () => void>());
   const scopes = useRef(new WeakMap<object, GridRenderer<fos.Sample>>());
-  const lastSizes = useRef(new Map<string, [number, number]>());
+  const lastSizes = useRef(new BoundedMap<string, [number, number]>(MAX_SIZES));
   // items each instance has loaded, for the rail thumb's scrollbar length
   const loadedItems = useRef(new WeakMap<object, { items: number }>());
+  // each instance's reads, released with it
+  const leases = useRef(new WeakMap<object, Lease<number, Page>>());
   const hostRef = useRef<{ instance?: object }>();
 
   const { host, instance, status } = useHost<
@@ -199,7 +215,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   >({
     ref: container,
     axis: strip ? "height" : "width",
-    build: (anchor, { interim }) => {
+    build: (anchor, { interim, quiet }) => {
       // Teardown must reach the renderer that created the items: swimlane
       // rows own inner instances that only its detachItem destroys.
       const kind = useSwimlanes ? "swimlane" : "standard";
@@ -217,6 +233,10 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         sizes: lastSizes.current,
       });
       const loaded = { items: 0 };
+      const shown = hostRef.current?.instance;
+      const lease = sourceRef.current.lease(
+        quiet && shown ? leases.current.get(shown) : undefined,
+      );
       const toPage = (result: Response<number, fos.Sample>) => {
         loaded.items += result.items.length;
         return withRowAspects(result, aspects);
@@ -236,19 +256,22 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         // swimlane rows abut so the view reads as one continuous stack
         spacing: useSwimlanes ? 0 : spacing,
         onItemClick: (item) => setSampleRef.current(item),
-        get: (key) => sourceRef.current.get(key).then(toPage),
-        // nothing on screen (a mount): pages in memory lay out before paint;
-        // a rebuild behind a visible instance keeps its asynchronous swap
-        peek: hostRef.current?.instance
-          ? undefined
-          : (key) => {
-              const result = sourceRef.current.peek(key);
-              return result && toPage(result);
-            },
+        get: (key) => lease.get(key).then(toPage),
+        // nothing on screen (a mount) or a quiet rebuild: pages in memory lay
+        // out before paint; a rebuild behind a visible instance keeps its
+        // asynchronous swap
+        peek:
+          hostRef.current?.instance && !quiet
+            ? undefined
+            : (key) => {
+                const result = lease.peek(key);
+                return result && toPage(result);
+              },
         // swimlanes and strips place one item per row
         rowAspectRatioThreshold: useSwimlanes || strip ? () => 0 : zoom,
       });
       scopes.current.set(next, scoped);
+      leases.current.set(next, lease);
       loadedItems.current.set(next, loaded);
       if (interim) interims.current.add(next);
       else cleanups.current.set(next, wire(next));
@@ -258,6 +281,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     // a panel resize (the sidebar showing or hiding) moves the tiles, like
     // a relayout
     onResize: () => animateRef.current(),
+    outgrown: (instance) =>
+      (leases.current.get(instance)?.size ?? 0) > MAX_INSTANCE_PAGES,
+    busy: () => animatingRef.current(),
     onAnchor: (anchor) =>
       set({
         at: { description: anchor.at?.description ?? "" },
@@ -265,6 +291,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         page: anchor.key,
       }),
     onDispose: (disposed) => {
+      leases.current.get(disposed)?.release();
       cleanups.current.get(disposed)?.();
       freeVideos();
     },
@@ -294,6 +321,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   swapRef.current = relayout.swap;
   const animateRef = useRef(relayout.animate);
   animateRef.current = relayout.animate;
+  const animatingRef = useRef(relayout.animating);
+  animatingRef.current = relayout.animating;
   const rail = useRail({
     // scroll events do not bubble; the container hears them while capturing
     onScroll: (listener) => {

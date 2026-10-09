@@ -20,6 +20,7 @@ import {
   pageParameters,
 } from "../atoms";
 import { type FieldValue, useMatchStage } from "../categorical";
+import { BoundedMap } from "../../host/bounded";
 import { createLimiter } from "../samplePages";
 import { createOwnership } from "../../host/ownership";
 import useItemCache from "../useItemCache";
@@ -33,6 +34,8 @@ import type { Strips, Updatable } from "./context";
 
 const MAX_HIDDEN = 200;
 const MAX_CONCURRENT_PAGES = 4;
+// each looker's last size; more than the cache holds hidden plus a dense view
+const MAX_SIZES = 2048;
 
 type Vars = VariablesOf<foq.paginateSamplesQuery>;
 
@@ -95,7 +98,7 @@ export default function useStrips(id: string, root: HTMLElement | null) {
   const ownership = useMemo(() => createOwnership(), []);
   const lastSizes = useMemo(() => {
     reset;
-    return new Map<string, [number, number]>();
+    return new BoundedMap<string, [number, number]>(MAX_SIZES);
   }, [reset]);
   const hasItem = useCallback(
     (key: string) => cache.get(key) !== undefined,

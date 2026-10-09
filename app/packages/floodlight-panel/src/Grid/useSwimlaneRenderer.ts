@@ -32,13 +32,21 @@ import { gridSpacing, groupSiblingsPageParameters } from "./atoms";
 import { createPageSource } from "../host/pageSource";
 import { SLOT } from "../host/createHost";
 import { createOwnership, scopeRenderer } from "../host/ownership";
-import { connectionItems, fetchSamplePage, routeWheel } from "./samplePages";
+import {
+  collectPages,
+  connectionItems,
+  fetchSamplePage,
+  routeWheel,
+} from "./samplePages";
 import type { ItemCache } from "./types";
 import useRenderer from "./useRenderer";
 import useSwimlaneResize, { groupIdOf } from "./useSwimlaneResize";
 import type { SampleStore } from "./useSpotlightPager";
 
 const SIBLINGS_PAGE_SIZE = 20;
+// a rebuilt outer instance releases each row's siblings before its new row
+// reads them again, so this covers a screen of rows
+const SIBLING_PAGES = 64;
 
 export default function useSwimlaneRenderer({
   cache,
@@ -65,6 +73,8 @@ export default function useSwimlaneRenderer({
   const wheelHandlers = useRef(new Map<string, () => void>());
   // the row element each inner instance is attached to
   const innerRows = useRef(new Map<string, HTMLElement>());
+  // each inner instance's sibling page reads, released with it
+  const innerLeases = useRef(new Map<string, { release(): void }>());
   const { bind, heights, rowAspects, scaffold } = useSwimlaneResize(groupField);
 
   // separate from the grid's: outer rows and inner strips both key by the cover id
@@ -72,14 +82,18 @@ export default function useSwimlaneRenderer({
   // keyed by the exact query, so a view change misses instead of serving stale siblings
   const siblingPages = useMemo(
     () =>
-      createPageSource(async (json: string) => {
-        const connection = await fetchSamplePage(
-          environment,
-          JSON.parse(json) as VariablesOf<foq.paginateSamplesQuery>,
-        );
-        if (!connection) throw new Error("sibling page timed out");
-        return connection;
-      }),
+      createPageSource(
+        async (json: string, signal) => {
+          const connection = await fetchSamplePage(
+            environment,
+            JSON.parse(json) as VariablesOf<foq.paginateSamplesQuery>,
+            signal,
+          );
+          if (!connection) throw new Error("sibling page timed out");
+          return connection;
+        },
+        { capacity: SIBLING_PAGES, onEvict: () => collectPages(environment) },
+      ),
     [environment, store],
   );
 
@@ -94,6 +108,8 @@ export default function useSwimlaneRenderer({
     innerSpotlights.current.get(key)?.destroy();
     innerSpotlights.current.delete(key);
     innerRows.current.delete(key);
+    innerLeases.current.get(key)?.release();
+    innerLeases.current.delete(key);
     wheelHandlers.current.get(key)?.();
     wheelHandlers.current.delete(key);
   }, []);
@@ -177,6 +193,7 @@ export default function useSwimlaneRenderer({
         });
       };
 
+      const siblings = siblingPages.lease();
       const innerGet: Get<number, fos.Sample> = async (cursor) => {
         if (cursor === 0) {
           // Page 0 = cover + spacer, returned synchronously. Cover
@@ -208,7 +225,7 @@ export default function useSwimlaneRenderer({
         // Page 1+ = siblings via paginateSamples filtered by groupId.
         const factory = await resolveSiblingPager(groupId!);
         const variables = factory(cursor - 1, SIBLINGS_PAGE_SIZE);
-        const connection = await siblingPages
+        const connection = await siblings
           .get(JSON.stringify(variables))
           .catch(() => null);
         if (!connection) {
@@ -217,7 +234,7 @@ export default function useSwimlaneRenderer({
           hideShimmer();
           return { items: [], next: null, previous: null };
         }
-        const siblings = connectionItems(connection, cursor, store, {
+        const items = connectionItems(connection, cursor, store, {
           skip: coverNode.id,
         });
         const next = connection.pageInfo.hasNextPage ? cursor + 1 : null;
@@ -225,7 +242,7 @@ export default function useSwimlaneRenderer({
         // fully loaded, drop the shimmer.
         if (next === null) hideShimmer();
         return {
-          items: siblings,
+          items,
           next,
           previous: cursor > 1 ? cursor - 1 : null,
         };
@@ -270,6 +287,7 @@ export default function useSwimlaneRenderer({
       });
       innerSpotlights.current.set(key, innerSpotlight);
       innerRows.current.set(key, row);
+      innerLeases.current.set(key, siblings);
       // Shimmer removal is driven from `innerGet` when the pager
       // returns `next: null` (siblings exhausted). Spotlight's own
       // `load` event isn't reliable here — the inner's first

@@ -6,10 +6,14 @@
  * registered in the shared sample store so the base renderer resolves them.
  */
 
-import type { Get, ID, ItemData } from "@fiftyone/floodlight";
+import type { ID, ItemData, Response } from "@fiftyone/floodlight";
 import * as foq from "@fiftyone/relay";
 import type * as fos from "@fiftyone/state";
-import type { IEnvironment } from "relay-runtime";
+import {
+  createOperationDescriptor,
+  getRequest,
+  type IEnvironment,
+} from "relay-runtime";
 import { fetchQuery } from "react-relay";
 import type { VariablesOf } from "react-relay";
 import type { SampleStore } from "./useSpotlightPager";
@@ -20,22 +24,62 @@ export type PageVariables = (
   pageSize: number,
 ) => VariablesOf<foq.paginateSamplesQuery>;
 
-/** Resolves with the page's connection, or `null` on a query timeout. */
-export const fetchSamplePage = async (
+/**
+ * Resolves with the page's connection, or `null` on a query timeout. An
+ * abort unsubscribes the request and rejects.
+ */
+export const fetchSamplePage = (
   environment: IEnvironment,
   variables: VariablesOf<foq.paginateSamplesQuery>,
-) => {
-  const data = await fetchQuery<foq.paginateSamplesQuery>(
-    environment,
-    foq.paginateSamples,
-    variables,
-    { fetchPolicy: "network-only" },
-  ).toPromise();
+  signal?: AbortSignal,
+) =>
+  new Promise<foq.PaginateSamplesConnection | null>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const subscription = fetchQuery<foq.paginateSamplesQuery>(
+      environment,
+      foq.paginateSamples,
+      variables,
+      { fetchPolicy: "network-only" },
+    ).subscribe({
+      next: (data) =>
+        resolve(
+          foq.isPaginateSamplesConnection(data.samples) ? data.samples : null,
+        ),
+      complete: () => resolve(null),
+      error: reject,
+    });
+    signal?.addEventListener("abort", () => {
+      subscription.unsubscribe();
+      reject(signal.reason);
+    });
+  });
 
-  return data && foq.isPaginateSamplesConnection(data.samples)
-    ? data.samples
-    : null;
-};
+/** Pages an inner strip keeps beyond those its live instances hold. */
+export const STRIP_PAGES = 4;
+
+/** Pages one inner instance reads before it is rebuilt at its anchor. */
+export const STRIP_INSTANCE_PAGES = 20;
+
+/**
+ * Relay collects records only when a retained query is released, and
+ * fetchQuery retains nothing, so dropping a page releases one to collect
+ * the pages no query holds.
+ */
+export const collectPages = (environment: IEnvironment) =>
+  environment
+    .retain(createOperationDescriptor(getRequest(foq.paginateSamples), {}))
+    .dispose();
+
+/** An eviction callback that drops a page's records and its Relay data. */
+export const forgetPage =
+  (environment: IEnvironment, records: Map<string, number>) =>
+  <P extends { items: { id: ID }[] }>(_key: number, page: P) => {
+    for (const { id } of page.items) records.delete(id.description);
+    collectPages(environment);
+  };
 
 const finite = (value: unknown) =>
   typeof value === "number" && Number.isFinite(value) ? value : 1;
@@ -65,28 +109,48 @@ export const connectionItems = (
     ];
   });
 
-/** Caps concurrent page requests so many lazily mounted strips queue. */
+/**
+ * Caps concurrent page requests so many lazily mounted strips queue. A task
+ * whose `signal` aborts while queued is dropped and never settles.
+ */
 export const createLimiter = (max: number) => {
   let active = 0;
   const queue: (() => void)[] = [];
-
-  return async <T>(task: () => Promise<T>): Promise<T> => {
-    if (active >= max) {
-      await new Promise<void>((resolve) => queue.push(resolve));
-    }
-    active++;
-    try {
-      return await task();
-    } finally {
-      active--;
-      queue.shift()?.();
-    }
+  const next = () => {
+    while (active < max && queue.length) queue.shift()?.();
   };
+
+  return <T>(task: () => Promise<T>, signal?: AbortSignal) =>
+    new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) return;
+      const drop = () => {
+        const index = queue.indexOf(run);
+        index >= 0 && queue.splice(index, 1);
+      };
+      function run() {
+        signal?.removeEventListener("abort", drop);
+        active++;
+        task()
+          .then(resolve, reject)
+          .finally(() => {
+            active--;
+            next();
+          });
+      }
+      signal?.addEventListener("abort", drop);
+      queue.push(run);
+      next();
+    });
 };
 
 export type Limiter = ReturnType<typeof createLimiter>;
 
-/** Turns a variables factory into a Floodlight `get`. */
+export type PageGetter = (
+  page: number,
+  signal?: AbortSignal,
+) => Promise<Response<number, fos.Sample>>;
+
+/** Turns a variables factory into a page source's fetch. */
 export const createPageGetter = ({
   aspectRatio,
   environment,
@@ -103,10 +167,11 @@ export const createPageGetter = ({
   pageSize: number;
   store: SampleStore;
   variables: PageVariables;
-}): Get<number, fos.Sample> => {
-  return async (page) => {
-    const connection = await limit(() =>
-      fetchSamplePage(environment, variables(page, pageSize)),
+}): PageGetter => {
+  return async (page, signal?: AbortSignal) => {
+    const connection = await limit(
+      () => fetchSamplePage(environment, variables(page, pageSize), signal),
+      signal,
     );
     const items = connection
       ? connectionItems(connection, page, store, { aspectRatio })

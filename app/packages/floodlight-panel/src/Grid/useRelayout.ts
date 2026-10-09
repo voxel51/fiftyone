@@ -7,6 +7,7 @@
 
 import type { Response } from "@fiftyone/floodlight";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
+import type { BoundedMap } from "../host/bounded";
 import type { Anchor, Host, Instance } from "../host/createHost";
 import type { PageSource } from "../host/pageSource";
 import type { GridRenderer } from "./gridRenderer";
@@ -15,10 +16,13 @@ import { animateSwap, measure, nearestSurvivor } from "./relayout";
 import { useRelayoutDemo } from "./relayoutDemo";
 import type { ItemCache } from "./types";
 
+/** Ids the demo removed from view, the oldest forgotten past its limit. */
+export type Excluded = BoundedMap<string, true>;
+
 /** `page` without the ids in `excluded`. */
 export const excluding = <P extends Response<number, unknown>>(
   page: P,
-  excluded: Set<string>,
+  excluded: Excluded,
 ): P =>
   excluded.size
     ? {
@@ -42,7 +46,7 @@ export default function useRelayout<I extends Instance, V>({
   container: RefObject<HTMLElement>;
   dataReset: unknown;
   /** Ids the demo removed from view; the page source filters them out. */
-  excluded: Set<string>;
+  excluded: Excluded;
   interims: WeakSet<object>;
   overlay: RefObject<HTMLElement>;
   scopes: WeakMap<object, GridRenderer<V>>;
@@ -54,6 +58,7 @@ export default function useRelayout<I extends Instance, V>({
   // and stays cached, since it may come back
   const reorderNext = useRef(false);
   const host = useRef<Host<number, I>>();
+  const animations = useRef(0);
 
   const swap = useCallback(
     (next: I, previous: I | undefined) => {
@@ -106,6 +111,7 @@ export default function useRelayout<I extends Instance, V>({
       }
 
       if (!before || !to || !root || !overlay.current) return;
+      animations.current++;
       animateSwap({
         before,
         gone,
@@ -113,6 +119,7 @@ export default function useRelayout<I extends Instance, V>({
         root,
         tiles: to.tiles,
       }).then(() => {
+        animations.current--;
         if (reorder) return;
         for (const id of gone.keys()) !cache.isShown(id) && cache.evict(id);
       });
@@ -164,7 +171,7 @@ export default function useRelayout<I extends Instance, V>({
           ? { key: anchor.key, at: { description: next, fraction: 0 } }
           : { key: anchor.key };
       }
-      for (const id of ids) excluded.add(id);
+      for (const id of ids) excluded.set(id, true);
       relayout(start);
     });
     return () => demo?.answer(undefined);
@@ -184,6 +191,8 @@ export default function useRelayout<I extends Instance, V>({
 
   return {
     animate,
+    /** Whether a swap is still animating its tiles. */
+    animating: useCallback(() => animations.current > 0, []),
     reorder,
     /** Call with the host once it exists. */
     setHost: (next: Host<number, I> | undefined) => {

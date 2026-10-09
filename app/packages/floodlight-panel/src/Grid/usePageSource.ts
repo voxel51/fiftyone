@@ -7,23 +7,28 @@ import usePanelMemo from "./panelMemory";
  * sample's page) lays out the pages it left from memory. Fetches go through
  * the latest `fetch`, whose closure belongs to the current mount. A new
  * `refresh` drops the pages, including one that happened while the grid was
- * not mounted.
+ * not mounted. `onEvict` hears each page the bounded source lets go.
  */
 export default function usePageSource<P>(
   key: string,
   refresh: unknown,
-  fetch: (key: number) => Promise<P>,
+  fetch: (key: number, signal: AbortSignal) => Promise<P>,
   ids: (page: P) => Iterable<string>,
+  onEvict: (key: number, page: P) => void,
 ) {
   const held = usePanelMemo("pageSource", key, () => {
-    const latest = { fetch };
+    const latest = { fetch, onEvict };
     return {
       latest,
       refresh,
-      source: createPageSource((page: number) => latest.fetch(page), { ids }),
+      source: createPageSource(
+        (page: number, signal: AbortSignal) => latest.fetch(page, signal),
+        { ids, onEvict: (page, value) => latest.onEvict(page, value) },
+      ),
     };
   });
   held.latest.fetch = fetch;
+  held.latest.onEvict = onEvict;
 
   // before the host's first build, which reads the pages
   useLayoutEffect(() => {

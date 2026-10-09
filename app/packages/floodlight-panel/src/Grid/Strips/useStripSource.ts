@@ -4,7 +4,12 @@
 
 import { useContext, useMemo, useRef, useState } from "react";
 import { createPageSource, type PageSource } from "../../host/pageSource";
-import { createPageGetter, type PageVariables } from "../samplePages";
+import {
+  createPageGetter,
+  forgetPage,
+  type PageVariables,
+  STRIP_PAGES,
+} from "../samplePages";
 import { PAGE_SIZE } from "../useSpotlightPager";
 import { StripsContext } from "./context";
 
@@ -54,6 +59,7 @@ export default function useStripSource(
         store,
         variables: (page, size) => latest.current(page, size),
       }),
+      { capacity: STRIP_PAGES, onEvict: forgetPage(environment, records) },
     );
     return next;
   }, [aspectRatio, environment, limit, query, recordBase, records, store]);

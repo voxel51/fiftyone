@@ -16,7 +16,7 @@ import type { Scoped } from "../../host/ownership";
 import useHost from "../../host/useHost";
 import { createGridRenderer } from "../gridRenderer";
 import { handOff } from "../handoff";
-import { routeWheel } from "../samplePages";
+import { routeWheel, STRIP_INSTANCE_PAGES } from "../samplePages";
 import { StripsContext } from "./context";
 import type { StripSource } from "./useStripSource";
 
@@ -63,13 +63,19 @@ export default function useStrip(source: StripSource, scrollbar = true) {
   latest.current = { scrollbar, source, strips };
   const scopes = useRef(new WeakMap<object, Scoped<number, fos.Sample>>());
   const cleanups = useRef(new WeakMap<object, () => void>());
+  const leases = useRef(
+    new WeakMap<object, ReturnType<StripSource["lease"]>>(),
+  );
   const visible = useRef(false);
+  const hostRef = useRef<{ instance?: object }>();
 
   const { host, instance } = useHost<number, Spotlight<number, fos.Sample>>({
     ref,
     axis: "height",
-    build: (anchor, { interim }) => {
+    build: (anchor, { interim, quiet }) => {
       const { scrollbar, source, strips } = latest.current;
+      const shown = quiet ? hostRef.current?.instance : undefined;
+      const lease = source.lease(shown && leases.current.get(shown));
       const scoped = createGridRenderer<fos.Sample>({
         base: () => latest.current.strips.renderer.current,
         cached: strips.hasItem,
@@ -88,10 +94,12 @@ export default function useStrip(source: StripSource, scrollbar = true) {
         scrollbar,
         spacing: strips.spacing,
         rowAspectRatioThreshold: () => 0,
-        get: (page) => source.get(page),
+        get: (page) => lease.get(page),
+        peek: quiet ? (page) => lease.peek(page) : undefined,
         ...scoped,
       });
       scopes.current.set(spotlight, scoped);
+      leases.current.set(spotlight, lease);
       interim || cleanups.current.set(spotlight, strips.register(spotlight));
       return spotlight;
     },
@@ -103,8 +111,15 @@ export default function useStrip(source: StripSource, scrollbar = true) {
         previous: previous && scopes.current.get(previous),
       });
     },
-    onDispose: (disposed) => cleanups.current.get(disposed)?.(),
+    onDispose: (disposed) => {
+      leases.current.get(disposed)?.release();
+      cleanups.current.get(disposed)?.();
+    },
+    outgrown: (instance) =>
+      (leases.current.get(instance)?.size ?? 0) > STRIP_INSTANCE_PAGES,
   });
+
+  hostRef.current = host;
 
   // a new query starts at the strip's beginning; anything else keeps its place
   const built = useRef<StripSource>();

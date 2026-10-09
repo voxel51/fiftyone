@@ -8,13 +8,26 @@
 import type { Get, Response } from "@fiftyone/floodlight";
 import type * as fos from "@fiftyone/state";
 import type { ValueCount } from "../categorical";
-import { createPageSource, type PageSource } from "../../host/pageSource";
-import { createPageGetter, type PageVariables } from "../samplePages";
+import { BoundedMap } from "../../host/bounded";
+import {
+  createPageSource,
+  type PageReader,
+  type PageSource,
+} from "../../host/pageSource";
+import {
+  createPageGetter,
+  forgetPage,
+  type PageVariables,
+  STRIP_PAGES,
+} from "../samplePages";
 import { PAGE_SIZE } from "../useSpotlightPager";
 import type { Strips } from "./context";
 
 export type CellPage = Response<number, fos.Sample>;
 export type CellSource = PageSource<number, CellPage>;
+
+// enough for the stacks and expanded grids near the viewport
+const MAX_CELLS = 128;
 
 export const createCellSource = (
   strips: Strips,
@@ -37,6 +50,10 @@ export const createCellSource = (
       store: strips.store,
       variables,
     }),
+    {
+      capacity: STRIP_PAGES,
+      onEvict: forgetPage(strips.environment, strips.records),
+    },
   );
 
 /**
@@ -44,15 +61,24 @@ export const createCellSource = (
  * the page it starts from, so each instance reads its own copy.
  */
 export const instanceGet =
-  (source: CellSource): Get<number, fos.Sample> =>
+  (reader: PageReader<number, CellPage>): Get<number, fos.Sample> =>
   async (key) => {
-    const page = await source.get(key);
+    const page = await reader.get(key);
     return { ...page, items: [...page.items] };
+  };
+
+/** A Floodlight `peek` over a lease, copied like {@link instanceGet}. */
+export const instancePeek =
+  (reader: PageReader<number, CellPage>) =>
+  (key: number): CellPage | undefined => {
+    const page = reader.peek(key);
+    return page && { ...page, items: [...page.items] };
   };
 
 /**
  * Every cell's source, created on first use and kept while the matrix is,
- * so a row that scrolls away and back reads its pages from memory.
+ * up to the most recently used {@link MAX_CELLS}, so a row that scrolls
+ * away and back reads its pages from memory.
  */
 export const createCellSources = (
   strips: Strips,
@@ -60,12 +86,14 @@ export const createCellSources = (
   colField: string,
   span: number,
 ) => {
-  const sources = new Map<string, CellSource>();
+  const sources = new BoundedMap<string, CellSource>(MAX_CELLS);
 
   return (row: ValueCount, col: ValueCount, index: number) => {
     const key = `${JSON.stringify(row.value)}|${JSON.stringify(col.value)}`;
     let source = sources.get(key);
-    if (!source) {
+    if (source) {
+      sources.set(key, source);
+    } else {
       source = createCellSource(
         strips,
         strips.variables([

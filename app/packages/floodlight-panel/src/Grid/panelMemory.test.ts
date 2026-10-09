@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { panelValue } from "./panelMemory";
+import { MAX_IDLE_PANELS, mountPanel, panelValue } from "./panelMemory";
 
 describe("panelValue", () => {
   it("keeps a panel's value while its key holds", () => {
@@ -19,5 +19,22 @@ describe("panelValue", () => {
     const value = panelValue("r", "a", "k", () => ({}));
     expect(panelValue("s", "a", "k", () => ({}))).not.toBe(value);
     expect(panelValue("r", "b", "k", () => ({}))).not.toBe(value);
+  });
+
+  it("holds a bounded number of idle panels, never a mounted one", () => {
+    const dispose = vi.fn();
+    const unmount = mountPanel("open");
+    const open = panelValue("open", "items", "k", () => ({}), dispose);
+
+    for (let i = 0; i < 100; i++) {
+      const closed = mountPanel(`closed-${i}`);
+      panelValue(`closed-${i}`, "items", "k", () => ({}), dispose);
+      closed();
+    }
+
+    expect(dispose).toHaveBeenCalledTimes(100 - MAX_IDLE_PANELS);
+    expect(panelValue("open", "items", "k", () => ({}))).toBe(open);
+    expect(dispose.mock.calls.some(([value]) => value === open)).toBe(false);
+    unmount();
   });
 });
