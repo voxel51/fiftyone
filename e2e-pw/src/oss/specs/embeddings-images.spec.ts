@@ -32,7 +32,7 @@ import {
   tabsWorkspace,
   TOTAL,
   twoClusters,
-} from "./seed";
+} from "./embeddings-data";
 
 /** A saved view holding only cluster `a` */
 const LEFT_VIEW = "left-cluster";

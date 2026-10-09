@@ -15,7 +15,7 @@ import {
   GROUPS,
   LEFT_HALF,
   RIGHT_BRAIN_KEY,
-} from "./seed";
+} from "./embeddings-data";
 
 const test = base.extend<{
   datasetName: string;

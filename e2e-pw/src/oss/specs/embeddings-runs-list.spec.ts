@@ -8,7 +8,7 @@ import { test as base } from "src/oss/fixtures";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
 import { EmbeddingsV2Pom } from "src/oss/poms/panels/embeddings-v2-panel";
 import { Duration, getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { BRAIN_KEY, plantedPoint, TOTAL, twoClusters } from "./seed";
+import { BRAIN_KEY, plantedPoint, TOTAL, twoClusters } from "./embeddings-data";
 
 const BRAIN_KEY_3D = "viz3d";
 

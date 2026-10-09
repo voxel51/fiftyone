@@ -24,7 +24,7 @@ import {
   PROBE_FILE,
   probePatches,
   twoPatchesEach,
-} from "./seed";
+} from "./embeddings-data";
 
 const LABEL_PATH = "ground_truth.detections.label";
 
