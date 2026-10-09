@@ -22,6 +22,7 @@ import { useExtensionGeneration } from "./extensions";
 import PlotView from "./PlotView";
 import { fetchRunsStatus, type RunStatus } from "./protocol";
 import RunsList from "./RunsList";
+import { useClearPublishedSelection } from "./state";
 import { useClearSelectionOnClose } from "./useClearSelectionOnClose";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
@@ -49,6 +50,10 @@ export default function EmbeddingsV2Panel() {
   // Closing the tab clears the plot's selection: the grid would otherwise
   // stay narrowed by a lasso with nothing left in the UI to clear it
   useClearSelectionOnClose();
+  // Back leaves the plot, the only place a lasso shows, so it clears the
+  // selection the way closing does: otherwise the grid stays narrowed with
+  // nothing on screen to undo it
+  const clearSelection = useClearPublishedSelection();
   // Shared, not local: workspaces and the session persist only shared
   // panel state (see the header for the key names)
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
@@ -185,7 +190,10 @@ export default function EmbeddingsV2Panel() {
         key={extensionGeneration}
         datasetName={datasetName}
         run={openRun}
-        onBack={() => setOpenKey(null)}
+        onBack={() => {
+          clearSelection();
+          setOpenKey(null);
+        }}
       />
     );
   }

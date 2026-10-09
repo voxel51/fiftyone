@@ -66,6 +66,7 @@ function ModeSegment({
       type="button"
       className="emb-mode-segment"
       data-active={active ? "true" : "false"}
+      data-cy={`embeddings-mode-${label.toLowerCase()}`}
       onClick={onClick}
     >
       <Icon
@@ -205,7 +206,7 @@ export default function PlotView({
     : null;
 
   return (
-    <div className="emb-plot" style={TOKEN_VARS}>
+    <div className="emb-plot" data-cy="embeddings-plot" style={TOKEN_VARS}>
       <div className="emb-plot-header">
         <Button
           variant={Variant.Icon}
@@ -404,7 +405,10 @@ export default function PlotView({
           />
         )}
         {chipCount ? (
-          <div className="emb-plot-overlay emb-plot-chip">
+          <div
+            className="emb-plot-overlay emb-plot-chip"
+            data-cy="embeddings-selection-chip"
+          >
             <Icon
               name={IconName.Check}
               size={Size.Md}
@@ -445,7 +449,10 @@ export default function PlotView({
           </div>
         )}
         {loaded && (
-          <div className="emb-plot-overlay emb-plot-counter">
+          <div
+            className="emb-plot-overlay emb-plot-counter"
+            data-cy="embeddings-plot-counter"
+          >
             {/* Beside the count, because the count is what a pending filter is
                 about to change — silence here reads as "nothing matched" */}
             {features.filterLoading && (

@@ -3,7 +3,7 @@
  */
 
 import { groupIndexToId } from "../utils";
-import { build, type BuildOptions } from "./build";
+import { build, type BuildOptions, type BuildVisualization } from "./build";
 import {
   frameSpecs,
   generateMedia,
@@ -130,6 +130,8 @@ const createImageDataset = async (options: ImageDatasetOptions) => {
     numSamples = 1,
     numbered = false,
     schema = {},
+    visualizations = [],
+    workspaces,
     withSampleData = () => ({}),
   } = options;
   const helpers = makeHelpers();
@@ -159,6 +161,17 @@ const createImageDataset = async (options: ImageDatasetOptions) => {
       data: { index, ...withSampleData({ _id, filepath, index }, helpers) },
     })),
     schema: { index: "IntField", ...schema },
+    visualizations: visualizations.map(
+      ({ brainKey, patchesField, points }): BuildVisualization => ({
+        brainKey,
+        patchesField: patchesField ?? null,
+        slice: null,
+        points: Object.fromEntries(
+          media.map(({ _id, index }) => [_id, points(index)]),
+        ),
+      }),
+    ),
+    workspaces,
   });
 };
 
@@ -204,6 +217,7 @@ const createGroupDataset = async (options: GroupDatasetOptions) => {
     schema,
     slices = DEFAULT_GROUP_SLICES,
     videoOptions,
+    visualizations = [],
     withFrameData,
     withSampleData = () => ({}),
   } = options;
@@ -270,6 +284,18 @@ const createGroupDataset = async (options: GroupDatasetOptions) => {
     ),
     sampleFrames,
     schema,
+    visualizations: visualizations.map(
+      ({ brainKey, slice, points }): BuildVisualization => ({
+        brainKey,
+        patchesField: null,
+        slice,
+        points: Object.fromEntries(
+          media
+            .filter(({ index }) => entries[index].slice.name === slice)
+            .map(({ _id, index }) => [_id, points(entries[index].groupIndex)]),
+        ),
+      }),
+    ),
   });
 };
 

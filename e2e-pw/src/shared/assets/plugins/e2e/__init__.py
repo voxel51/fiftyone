@@ -25,6 +25,47 @@ class E2ESetView(foo.Operator):
         return {}
 
 
+class E2ESetExtendedSelection(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="e2e_set_extended_selection",
+            label="E2E: Set extended selection",
+            risk_level=types.RiskLevel.LOW,
+        )
+
+    def execute(self, ctx):
+        # What another panel writes, e.g. the Map panel's lasso: sample ids
+        ids = ctx.dataset.limit(3).values("id")
+        ctx.ops.set_extended_selection(selection=ids)
+        return {}
+
+
+class E2EComputeVisualization(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="e2e_compute_visualization",
+            label="E2E: Compute visualization",
+            risk_level=types.RiskLevel.LOW,
+        )
+
+    def execute(self, ctx):
+        # A run that appears after the page loaded, as one computed from the
+        # SDK or by another user would. Precomputed points on a plain grid:
+        # no model, no UMAP, and where they land doesn't matter
+        import numpy as np
+        import fiftyone.brain as fob
+
+        points = np.array(
+            [[i % 10, i // 10] for i in range(len(ctx.dataset))], dtype=float
+        )
+        fob.compute_visualization(
+            ctx.dataset, points=points, brain_key="e2e_late_viz"
+        )
+        return {}
+
+
 class E2ESayHelloInModal(foo.Operator):
     @property
     def config(self):
@@ -158,6 +199,8 @@ class E2ECounterPythonPanel(foo.Panel):
 
 def register(p):
     p.register(E2ESetView)
+    p.register(E2ESetExtendedSelection)
+    p.register(E2EComputeVisualization)
     p.register(E2ESayHelloInModal)
     p.register(E2ESayHelloInDrawer)
     p.register(E2EProgress)
