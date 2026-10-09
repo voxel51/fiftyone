@@ -50,6 +50,18 @@ describe("PendingRunCard", () => {
     expect(screen.getByText("Scheduled")).toBeTruthy();
   });
 
+  it("renders a custom icon", () => {
+    render(
+      <PendingRunCard
+        title="UMAP"
+        runState="running"
+        icon={<i data-testid="custom-icon" />}
+      />,
+    );
+
+    expect(screen.getByTestId("custom-icon")).toBeTruthy();
+  });
+
   it("is status-only without onOpen", () => {
     render(<PendingRunCard title="UMAP" runState="running" />);
 

@@ -1,4 +1,5 @@
 import { Size, StatusColor, VisibilityIcon } from "@voxel51/voodo";
+import type { ReactNode } from "react";
 import RunCard from "./RunCard";
 
 const STATE_LABELS: Record<string, string> = {
@@ -12,6 +13,8 @@ const STATE_LABELS: Record<string, string> = {
 export interface PendingRunCardProps {
   title: string;
   runState: string;
+  /** Defaults to the layers icon; null hides it */
+  icon?: ReactNode;
   /** Makes the card clickable; omit for a status-only card */
   onOpen?: () => void;
   /** Adds a "View run" menu item; omit where there is no run page */
@@ -21,12 +24,14 @@ export interface PendingRunCardProps {
 export default function PendingRunCard({
   title,
   runState,
+  icon,
   onOpen,
   onViewRun,
 }: PendingRunCardProps) {
   return (
     <RunCard
       title={title}
+      icon={icon}
       status={{
         label: STATE_LABELS[runState] ?? runState,
         color:

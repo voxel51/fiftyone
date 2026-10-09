@@ -42,6 +42,8 @@ export { default as PendingRunCard } from "./PendingRunCard";
 export type { PendingRunCardProps } from "./PendingRunCard";
 export { default as RunCard } from "./RunCard";
 export type { RunCardAction, RunCardProps } from "./RunCard";
+export { default as PendingRunsNotice } from "./PendingRunsNotice";
+export type { PendingRunsNoticeProps } from "./PendingRunsNotice";
 export { default as RunScreen } from "./RunScreen";
 export type { RunScreenProps, RunScreenStatus } from "./RunScreen";
 export { default as Pending } from "./Pending";
