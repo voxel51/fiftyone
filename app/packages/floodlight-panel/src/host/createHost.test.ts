@@ -67,7 +67,10 @@ describe("createHost", () => {
     host.reset();
 
     expect(built[0].destroy).toHaveBeenCalled();
-    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    expect(build).toHaveBeenLastCalledWith(undefined, {
+      interim: false,
+      quiet: false,
+    });
     const [slot] = slots(element);
     expect(slots(element)).toHaveLength(1);
     expect(slot.getAttribute(SLOT)).toBe("active");
@@ -111,7 +114,7 @@ describe("createHost", () => {
     expect(build).toHaveBeenCalledTimes(2);
     expect(build).toHaveBeenLastCalledWith(
       { key: 3, at: { description: "sample", fraction: 0.25 } },
-      { interim: false },
+      { interim: false, quiet: false },
     );
     expect(host.instance).toBe(built[0]);
 
@@ -138,7 +141,10 @@ describe("createHost", () => {
     expect(build).toHaveBeenCalledTimes(2);
     vi.advanceTimersByTime(1);
     expect(build).toHaveBeenCalledTimes(3);
-    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    expect(build).toHaveBeenLastCalledWith(undefined, {
+      interim: false,
+      quiet: false,
+    });
     expect(onResize).toHaveBeenCalledTimes(2);
 
     built[2].load();
@@ -169,7 +175,10 @@ describe("createHost", () => {
 
     built[0].load();
     expect(build).toHaveBeenCalledTimes(2);
-    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    expect(build).toHaveBeenLastCalledWith(undefined, {
+      interim: false,
+      quiet: false,
+    });
     built[1].load();
     vi.advanceTimersByTime(SETTLE * 2);
     expect(build).toHaveBeenCalledTimes(2);

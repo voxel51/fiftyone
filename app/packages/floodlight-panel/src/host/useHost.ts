@@ -5,6 +5,7 @@ import {
   createHost,
   type CrossAxis,
   type Host,
+  type HostOptions,
   type HostStatus,
   type Instance,
 } from "./createHost";
@@ -17,6 +18,8 @@ export interface UseHostOptions<K, I extends Instance> {
   onDispose?: (instance: I) => void;
   onSwap?: (next: I, previous: I | undefined) => void;
   onResize?: () => void;
+  outgrown?: HostOptions<K, I>["outgrown"];
+  busy?: HostOptions<K, I>["busy"];
 }
 
 /**
@@ -50,6 +53,8 @@ export default function useHost<K, I extends Instance>(
       onStatus: (status, instance) => setState({ instance, status }),
       onSwap: (next, previous) => latest.current.onSwap?.(next, previous),
       onResize: () => latest.current.onResize?.(),
+      outgrown: (instance) => latest.current.outgrown?.(instance) ?? false,
+      busy: () => latest.current.busy?.() ?? false,
     });
     setHost(created);
 

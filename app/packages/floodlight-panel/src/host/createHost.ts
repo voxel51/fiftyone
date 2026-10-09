@@ -17,9 +17,11 @@ export type CrossAxis = "width" | "height";
 
 export type HostStatus = "building" | "ready";
 
-/** An interim build runs during a resize and should skip item content. */
 export interface BuildContext {
+  /** Built during a resize: skip item content. */
   interim: boolean;
+  /** Replaces a large instance unseen: lay out from pages in memory. */
+  quiet: boolean;
 }
 
 export interface HostOptions<K, I extends Instance> {
@@ -35,19 +37,28 @@ export interface HostOptions<K, I extends Instance> {
   onSwap?: (next: I, previous: I | undefined) => void;
   /** Runs before each rebuild a resize causes, whose swap may animate. */
   onResize?: () => void;
+  /**
+   * Whether an instance holds too much (e.g. pages read). Once scrolling
+   * stops on such an instance, a quiet rebuild at its anchor replaces it, so
+   * no instance grows with how far it was scrolled.
+   */
+  outgrown?: (instance: I) => boolean;
+  /** Whether something else (an animation) owns the instances right now. */
+  busy?: () => boolean;
 }
 
 /** Milliseconds after the last resize tick before the content build. */
 export const SETTLE = 150;
 export const SLOT = "data-floodlight-slot";
 
-type Entry<I> = { instance: I; slot: HTMLElement };
+type Entry<I> = { instance: I; slot: HTMLElement; quiet: boolean };
 
 /**
  * Keeps one short-lived instance on screen. A rebuild renders the next
  * instance in a hidden slot and swaps it in at its `load`. During a
  * cross-axis resize each tick builds an interim instance (at most one in
- * flight), and the resize settling builds the content instance.
+ * flight), and the resize settling builds the content instance. An
+ * outgrown instance is rebuilt at its anchor once scrolling stops.
  */
 export const createHost = <K, I extends Instance>(
   options: HostOptions<K, I>,
@@ -62,6 +73,7 @@ export const createHost = <K, I extends Instance>(
   let resizing: ReturnType<typeof setTimeout> | undefined;
   let continued = false;
   let destroyed = false;
+  let frame: number | undefined;
 
   const dispose = (entry: Entry<I>) => {
     options.onDispose?.(entry.instance);
@@ -75,7 +87,11 @@ export const createHost = <K, I extends Instance>(
     options.onAnchor?.(anchor);
   };
 
-  const rebuild = (start: Anchor<K> | undefined = anchor, interim = false) => {
+  const rebuild = (
+    start: Anchor<K> | undefined = anchor,
+    interim = false,
+    quiet = false,
+  ) => {
     if (destroyed) return;
     pending && dispose(pending);
     anchor = start;
@@ -87,7 +103,7 @@ export const createHost = <K, I extends Instance>(
     if (current) slot.style.visibility = "hidden";
     element.appendChild(slot);
 
-    const entry = { instance: build(start, { interim }), slot };
+    const entry = { instance: build(start, { interim, quiet }), slot, quiet };
     pending = entry;
     entry.instance.addEventListener(
       "load",
@@ -144,6 +160,34 @@ export const createHost = <K, I extends Instance>(
   });
   observer.observe(element);
 
+  const compact = () => {
+    frame = undefined;
+    const { busy, outgrown } = options;
+    if (destroyed || pending || resizing !== undefined || !current) return;
+    if (!outgrown?.(current.instance) || busy?.()) return;
+    rebuild(anchor, false, true);
+  };
+  const onScrollEnd = () => {
+    frame !== undefined && cancelAnimationFrame(frame);
+    // the engine reports its final row in the frame after scrollend
+    frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(compact);
+    });
+  };
+  // a quiet build still fetching would land at a stale anchor: scrolling
+  // the visible instance abandons it
+  const onScroll = (event: Event) => {
+    if (!pending?.quiet || !current?.slot.contains(event.target as Node)) {
+      return;
+    }
+    dispose(pending);
+    pending = undefined;
+  };
+  if (options.outgrown) {
+    element.addEventListener("scrollend", onScrollEnd, true);
+    element.addEventListener("scroll", onScroll, true);
+  }
+
   return {
     get anchor() {
       return anchor;
@@ -164,6 +208,9 @@ export const createHost = <K, I extends Instance>(
     destroy: () => {
       destroyed = true;
       clearTimeout(resizing);
+      frame !== undefined && cancelAnimationFrame(frame);
+      element.removeEventListener("scrollend", onScrollEnd, true);
+      element.removeEventListener("scroll", onScroll, true);
       observer.disconnect();
       pending && dispose(pending);
       current && dispose(current);
