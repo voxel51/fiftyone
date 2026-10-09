@@ -22,6 +22,7 @@ import {
   type ComponentType,
   createContext,
   type ReactNode,
+  useRef,
   useState,
 } from "react";
 import styled from "styled-components";
@@ -194,11 +195,16 @@ function TabIndicator() {
 }
 
 /** What the grid shows, once it is counted. */
-function SampleCount() {
+export function SampleCount() {
   const count = useReverbValueLoadable(
     fos.count({ path: "", extended: true, modal: false }),
   );
-  if (count.state !== "hasValue") return null;
+  // a recount keeps the last total rather than dropping the pill
+  const last = useRef<number>();
+  if (count.state === "hasValue" && typeof count.contents === "number") {
+    last.current = count.contents;
+  }
+  if (last.current === undefined) return null;
 
   return (
     <Pill
@@ -207,7 +213,7 @@ function SampleCount() {
       color={TextColor.Secondary}
       data-cy="samples-tab-count"
     >
-      {(count.contents as number).toLocaleString()}
+      {last.current.toLocaleString()}
     </Pill>
   );
 }
