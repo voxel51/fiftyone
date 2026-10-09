@@ -1,5 +1,5 @@
 import React, { MouseEventHandler, ReactNode, useRef } from "react";
-import { animated, SpringValue } from "@react-spring/web";
+import { animated } from "@react-spring/web";
 import styled from "styled-components";
 import Draggable from "./Draggable";
 
@@ -20,7 +20,7 @@ const Header = styled.div`
 `;
 
 type RegularEntryProps = React.PropsWithChildren<{
-  backgroundColor?: SpringValue<string>;
+  backgroundColor?: string;
   entryKey?: string;
   color?: string;
   clickable?: boolean;

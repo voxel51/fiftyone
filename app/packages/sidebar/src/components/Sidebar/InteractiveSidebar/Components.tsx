@@ -1,3 +1,4 @@
+import { cssVar } from "@voxel51/voodo";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -24,7 +25,7 @@ export const SidebarColumn = styled.div`
   &::-webkit-scrollbar-thumb {
     background-color: color-mix(
       in srgb,
-      var(--color-content-text-primary) 14%,
+      ${cssVar.color.text.primary} 14%,
       transparent
     );
     background-clip: content-box;
@@ -36,7 +37,7 @@ export const SidebarColumn = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background-color: color-mix(
       in srgb,
-      var(--color-content-text-primary) 26%,
+      ${cssVar.color.text.primary} 26%,
       transparent
     );
   }
@@ -46,13 +47,13 @@ export const SidebarColumn = styled.div`
     scrollbar-width: thin;
     scrollbar-color: color-mix(
         in srgb,
-        var(--color-content-text-primary) 14%,
+        ${cssVar.color.text.primary} 14%,
         transparent
       )
       transparent;
   }
 
-  background: var(--color-content-bg-card);
+  background: ${cssVar.color.bg.card};
 `;
 
 export const Container = animated(styled.div`

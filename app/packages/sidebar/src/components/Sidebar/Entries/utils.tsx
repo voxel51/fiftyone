@@ -1,3 +1,4 @@
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 
 export const InputDiv = styled.div`
@@ -11,14 +12,14 @@ export const InputDiv = styled.div`
   display: flex;
   justify-content: space-between;
   & > input {
-    color: ${({ theme }) => theme.text.secondary};
+    color: ${cssVar.color.text.secondary};
     font-size: 1rem;
     width: 100%;
     background: transparent;
     box-shadow: none;
     border: none;
     outline: none;
-    border-bottom: 2px solid ${({ theme }) => theme.background.level1};
+    border-bottom: 2px solid ${cssVar.color.bg["card-elevated"]};
     font-weight: bold;
     padding: 3px;
   }
@@ -26,7 +27,7 @@ export const InputDiv = styled.div`
 
 /** Compact dropdown for the sidebar header row (mode + schema lens). */
 export const FilterInputDiv = styled.div`
-  background: var(--color-content-bg-card);
+  background: ${cssVar.color.bg.card};
   box-sizing: border-box;
   cursor: pointer;
   font-weight: bold;
@@ -37,7 +38,7 @@ export const FilterInputDiv = styled.div`
   justify-content: space-between;
 
   & > input {
-    color: ${({ theme }) => theme.text.secondary};
+    color: ${cssVar.color.text.secondary};
     font-size: 14px !important;
     font-size: 1rem;
     width: 100%;
@@ -45,7 +46,7 @@ export const FilterInputDiv = styled.div`
     box-shadow: none;
     border: none;
     outline: none;
-    border-bottom: 2px solid ${({ theme }) => theme.background.level1};
+    border-bottom: 2px solid ${cssVar.color.bg["card-elevated"]};
     font-weight: bold;
     padding: 3px;
   }

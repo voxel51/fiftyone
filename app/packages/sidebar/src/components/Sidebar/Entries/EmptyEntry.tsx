@@ -1,8 +1,5 @@
+import { cssVar, LoadingDots } from "@voxel51/voodo";
 import React from "react";
-import { useTheme } from "@fiftyone/components";
-import { useSpring } from "@react-spring/web";
-
-import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 
@@ -11,23 +8,19 @@ const EmptyEntry = ({
 }: {
   useText: () => { text: string; loading: boolean };
 }) => {
-  const theme = useTheme();
   const { text, loading } = useText();
-  const { backgroundColor } = useSpring({
-    backgroundColor: "var(--color-content-bg-card-nested)",
-  });
 
   return (
     <RegularEntry
       heading={
         <NameAndCountContainer>
-          <span style={{ color: theme.text.tertiary }}>
+          <span style={{ color: cssVar.color.text.tertiary }}>
             {loading ? <LoadingDots text={text} /> : text}
           </span>
         </NameAndCountContainer>
       }
       title={text}
-      backgroundColor={backgroundColor}
+      backgroundColor={cssVar.color.bg["card-nested"]}
     />
   );
 };

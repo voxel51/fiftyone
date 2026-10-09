@@ -1,5 +1,4 @@
-import { DragIndicatorIcon } from "@voxel51/voodo";
-import { useTheme } from "@fiftyone/components";
+import { cssVar, DragIndicatorIcon } from "@voxel51/voodo";
 import * as fos from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useMemo, useState } from "react";
@@ -16,7 +15,6 @@ const Draggable: React.FC<
     ) => void;
   }>
 > = ({ children, color, entryKey, trigger }) => {
-  const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
   const canModifySidebarGroup = useReverbValue(fos.canModifySidebarGroup);
@@ -89,7 +87,7 @@ const Draggable: React.FC<
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
+          boxShadow: `0 2px 20px ${cssVar.color.scrim.light}`,
           overflow: "hidden",
           ...style,
           ...(disabled ? { cursor: "not-allowed" } : {}),
@@ -97,7 +95,7 @@ const Draggable: React.FC<
         title={title}
       >
         {active && (
-          <DragIndicatorIcon size={24} color={theme.background.level2} />
+          <DragIndicatorIcon size={24} color={cssVar.color.bg.background} />
         )}
       </animated.div>
       <div style={{ width: "100%" }}>{children}</div>

@@ -1,7 +1,11 @@
-import { KeyboardArrowDownIcon, KeyboardArrowRightIcon } from "@voxel51/voodo";
-import { Tooltip } from "@fiftyone/components";
+import {
+  cssVar,
+  KeyboardArrowDownIcon,
+  KeyboardArrowRightIcon,
+  TextColor,
+  Tooltip,
+} from "@voxel51/voodo";
 import { type ReverbState, useReverbState } from "@fiftyone/reverb";
-import { useTheme } from "styled-components";
 import { FRAME_FILTERING_DISABLED } from "@fiftyone/utilities";
 import DisabledReason from "./DisabledReason";
 
@@ -20,26 +24,25 @@ export default ({
 }) => {
   const [isExpanded, setExpanded] = useReverbState(expanded);
   const Arrow = isExpanded ? KeyboardArrowDownIcon : KeyboardArrowRightIcon;
-  const theme = useTheme();
   const arrow = (
     <span
       data-cy={`sidebar-field-arrow-disabled-${id}`}
       style={{ display: "flex" }}
     >
-      <Arrow size={16} color={theme.text.secondary} />
+      <Arrow size={16} color={TextColor.Secondary} />
     </span>
   );
 
   if (frameFilterDisabledPath) {
     return (
       <Tooltip
-        text={
+        interactive
+        content={
           <DisabledReason
             text={"frame filtering is disabled"}
             href={FRAME_FILTERING_DISABLED}
           />
         }
-        placement="top-center"
       >
         {arrow}
       </Tooltip>
@@ -56,7 +59,7 @@ export default ({
       style={{
         cursor: "pointer",
         display: "flex",
-        color: theme.text.secondary,
+        color: cssVar.color.text.secondary,
       }}
       onClick={(event) => {
         event.preventDefault();

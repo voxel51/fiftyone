@@ -1,12 +1,15 @@
 import {
+  cssVar,
   FilterAltIcon,
+  Text as VoodoText,
+  TextColor,
+  TextVariant,
+  Tooltip,
   VisibilityIcon,
   VisibilityOffIcon,
 } from "@voxel51/voodo";
-import { Tooltip, useTheme } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
-import { Box, Typography } from "@mui/material";
 import React, { useEffect } from "react";
 import {
   useReverbState,
@@ -19,8 +22,10 @@ import { FilterInputDiv } from "./utils";
 
 const Text = styled.div`
   font-size: 1rem;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
 `;
+
+const FLEX = { display: "flex" };
 
 /** e2e specs wait on the sidebar showing a mode */
 type SidebarModeE2EEvents = {
@@ -31,20 +36,20 @@ const ModeIcon = styled.span`
   display: flex;
   margin: auto 0.25rem;
   cursor: pointer;
-  color: ${({ theme }) => theme.text.tertiary};
+  color: ${cssVar.color.text.tertiary};
 
   &:hover {
-    color: ${({ theme }) => theme.text.primary};
+    color: ${cssVar.color.text.primary};
   }
 `;
 
 const ClearIcon = styled.span`
   display: flex;
   margin-right: 0.25rem;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
 
   &:hover {
-    color: ${({ theme }) => theme.text.primary};
+    color: ${cssVar.color.text.primary};
   }
 `;
 
@@ -53,7 +58,6 @@ const ClearIcon = styled.span`
  * the query-performance bolt on the right.
  */
 const Filter = (_props: { modal?: boolean }) => {
-  const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useReverbState(
     fos.isSidebarFilterMode,
   );
@@ -75,51 +79,48 @@ const Filter = (_props: { modal?: boolean }) => {
 
   return (
     <FilterInputDiv>
-      <Box alignItems="center" display="flex">
+      <div style={{ display: "flex", alignItems: "center" }}>
         {isFilterMode && (
-          <Box display="flex" onClick={() => setIsFilterMode(false)}>
-            <Tooltip
-              text={"Toggle to visibility mode"}
-              placement="bottom-start"
-            >
+          <div style={FLEX} onClick={() => setIsFilterMode(false)}>
+            <Tooltip content="Toggle to visibility mode" anchor="bottom">
               <ModeIcon>
                 <FilterAltIcon size={14} />
               </ModeIcon>
             </Tooltip>
             <Tooltip
-              text="Use the controls below to create filtered views into your data"
-              placement="bottom-start"
+              content="Use the controls below to create filtered views into your data"
+              anchor="bottom"
             >
               <Text data-cy="sidebar-mode-status">FILTER</Text>
             </Tooltip>
-          </Box>
+          </div>
         )}
         {!isFilterMode && (
-          <Box display="flex" onClick={() => setIsFilterMode(true)}>
-            <Tooltip text="Toggle to filter mode" placement="bottom-start">
+          <div style={FLEX} onClick={() => setIsFilterMode(true)}>
+            <Tooltip content="Toggle to filter mode" anchor="bottom">
               <ModeIcon>
                 <VisibilityIcon size={14} />
               </ModeIcon>
             </Tooltip>
             <Tooltip
-              text="Use the controls below to toggle the visibility of field values in the grid"
-              placement="bottom-start"
+              content="Use the controls below to toggle the visibility of field values in the grid"
+              anchor="bottom"
             >
               <Text data-cy="sidebar-mode-status">VISIBILITY</Text>
             </Tooltip>
-          </Box>
+          </div>
         )}
-      </Box>
+      </div>
 
-      <Box display="flex" alignItems="center" gap="4px">
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         {isFieldVisibilityActive && (
-          <Tooltip text="Clear field selection" placement="bottom-center">
-            <Box
+          <Tooltip content="Clear field selection" anchor="bottom">
+            <div
               data-cy="field-visibility-btn-clear"
-              sx={{
+              style={{
                 minWidth: "50px",
                 maxWidth: "100px",
-                background: theme.background.level1,
+                background: cssVar.color.bg["card-elevated"],
                 borderRadius: "25px",
                 display: "flex",
                 alignItems: "center",
@@ -131,22 +132,22 @@ const Filter = (_props: { modal?: boolean }) => {
               }}
             >
               {affectedPathCount > 0 && (
-                <Typography
-                  fontSize={"0.75rem"}
-                  sx={{ color: theme.text.tertiary }}
+                <VoodoText
+                  variant={TextVariant.Caption}
+                  color={TextColor.Tertiary}
                   style={{ marginRight: "0.25rem" }}
                 >
                   {affectedPathCount}
-                </Typography>
+                </VoodoText>
               )}
               <ClearIcon>
                 <VisibilityOffIcon size={14} />
               </ClearIcon>
-            </Box>
+            </div>
           </Tooltip>
         )}
         {queryPerformance && <QueryPerformanceIcon />}
-      </Box>
+      </div>
     </FilterInputDiv>
   );
 };

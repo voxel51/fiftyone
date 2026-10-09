@@ -1,9 +1,7 @@
-import { Checkbox, Size } from "@voxel51/voodo";
-import { useTheme } from "@fiftyone/components";
+import { Checkbox, cssVar, Size } from "@voxel51/voodo";
 import * as fos from "@fiftyone/state";
 import { useSidebarExpandedState } from "@fiftyone/state";
 import { makePseudoField } from "@fiftyone/utilities";
-import Color from "color";
 import React, { Suspense } from "react";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
@@ -58,15 +56,14 @@ const FilterableEntry = ({
     path: expandedPath,
   });
   const onChange = useOnChange({ modal, path });
-  const theme = useTheme();
-  const color = disabled ? theme.background.paper : pathColor;
+  const color = disabled ? cssVar.color.bg.background : pathColor;
 
   return (
     <RegularEntry
       backgroundColor={
         fieldIsFiltered
-          ? Color(color).alpha(0.25).string()
-          : "var(--color-content-bg-card-nested)"
+          ? `color-mix(in srgb, ${color} 25%, transparent)`
+          : cssVar.color.bg["card-nested"]
       }
       clickable={!disabled}
       color={color}

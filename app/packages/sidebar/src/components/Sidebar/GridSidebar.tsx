@@ -1,3 +1,4 @@
+import { cssVar } from "@voxel51/voodo";
 import * as fos from "@fiftyone/state";
 import type { Controller } from "@react-spring/web";
 import React, { useCallback, type ReactNode } from "react";
@@ -10,7 +11,7 @@ import SidebarContainer from "./SidebarContainer";
 
 const TopContainer = styled.div`
   padding: 1rem 1rem 0.5rem 1rem;
-  background: var(--color-content-bg-card);
+  background: ${cssVar.color.bg.card};
   display: flex;
   flex-direction: column;
   row-gap: 0.5rem;

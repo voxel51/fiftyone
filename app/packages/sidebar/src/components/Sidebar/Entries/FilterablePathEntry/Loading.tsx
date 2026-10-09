@@ -1,4 +1,4 @@
-import { LoadingDots } from "@fiftyone/components";
+import { LoadingDots } from "@voxel51/voodo";
 import { useLayoutEffect, useState } from "react";
 import Container from "./Container";
 

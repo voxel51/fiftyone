@@ -1,13 +1,13 @@
 import {
   CheckIcon,
   CloseIcon,
+  cssVar,
   EditIcon,
   FilterListIcon,
   KeyboardArrowDownIcon,
   KeyboardArrowRightIcon,
   VisibilityIcon,
 } from "@voxel51/voodo";
-import { PillButton, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   useClearActive,
@@ -27,43 +27,21 @@ import {
   useReverbStateLoadable,
   useReverbValue,
   useReverbValueLoadable,
+  useSetReverbState,
 } from "@fiftyone/reverb";
 import styled from "styled-components";
+import CountPill from "./CountPill";
 import Draggable from "./Draggable";
 
-type PillEntry = {
-  dataCy?: string;
-  icon?: React.ReactNode;
-  onClick: () => void;
-  text: string;
-  title: string;
-};
+type PillEntry = React.ComponentProps<typeof CountPill>;
 
-const Pills = ({ entries }: { entries: PillEntry[] }) => {
-  const theme = useTheme();
-
-  return (
-    <>
-      {entries.map(({ dataCy, ...data }, i) => (
-        <PillButton
-          {...data}
-          data-cy={dataCy}
-          highlight={false}
-          key={i}
-          open={false}
-          style={{
-            height: "1.5rem",
-            fontSize: "0.8rem",
-            lineHeight: "1rem",
-            color: theme.text.primary,
-            padding: "0.25rem 0.5rem",
-            margin: "0 0.25rem",
-          }}
-        />
-      ))}
-    </>
-  );
-};
+const Pills = ({ entries }: { entries: PillEntry[] }) => (
+  <>
+    {entries.map((entry, i) => (
+      <CountPill key={i} {...entry} />
+    ))}
+  </>
+);
 
 const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
   expanded ? (
@@ -73,7 +51,7 @@ const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
   );
 
 const GroupHeader = styled.div`
-  border-bottom: 2px solid ${({ theme }) => theme.primary.softBorder};
+  border-bottom: 2px solid ${cssVar.color.border.default};
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   margin-left: 2px;
@@ -83,7 +61,7 @@ const GroupHeader = styled.div`
   vertical-align: middle;
   align-items: center;
   font-weight: bold;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
   background: transparent;
   user-select: text;
 
@@ -100,7 +78,7 @@ const GroupInput = styled.input`
   border: none;
   outline: none;
   font-weight: bold;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
 `;
 
 type GroupEntryProps = {
@@ -134,8 +112,7 @@ const GroupEntry = React.memo(
     const [hovering, setHovering] = useState(false);
     const ref = useRef<HTMLInputElement>(null);
     const canCommit = useRef(false);
-    const theme = useTheme();
-    const notify = fos.useNotification();
+    const setErrors = useSetReverbState(fos.snackbarErrors);
     const canModifySidebarGroup = useReverbValue(fos.canModifySidebarGroup);
     const disabled = canModifySidebarGroup.enabled !== true;
 
@@ -143,12 +120,12 @@ const GroupEntry = React.memo(
       <div
         data-cy={`sidebar-group-entry-${title.toUpperCase()}`}
         style={{
-          boxShadow: `0 2px 20px ${theme.custom.shadow}`,
+          boxShadow: `0 2px 20px ${cssVar.color.scrim.light}`,
         }}
       >
         <div style={{ position: "relative", cursor: "pointer" }}>
           <Draggable
-            color={theme.primary.softBorder}
+            color={cssVar.color.border.default}
             entryKey={entryKey}
             trigger={trigger}
           >
@@ -164,8 +141,8 @@ const GroupEntry = React.memo(
               style={{
                 cursor: "unset",
                 borderBottomColor: editing
-                  ? theme.primary.plainColor
-                  : theme.primary.softBorder,
+                  ? cssVar.color.brand.primary
+                  : cssVar.color.border.default,
               }}
               onMouseUp={(event) => {
                 canCommit.current && onClick && onClick(event);
@@ -192,10 +169,7 @@ const GroupEntry = React.memo(
                     setValue?.(updatedTitle).then((success) => {
                       if (!success) {
                         inputElem.value = title;
-                        notify({
-                          msg: "Failed to rename the group",
-                          variant: "error",
-                        });
+                        setErrors(["Failed to rename the group"]);
                       }
                       inputElem.blur();
                     });
@@ -315,7 +289,7 @@ export const PathGroupEntry = React.memo(
                   numGroupFieldsFiltered({ modal, group: name }),
                 ),
                 dataCy: `clear-filters-${name}`,
-                icon: <FilterListIcon size={16} />,
+                icon: FilterListIcon,
                 onClick: useClearFiltered(modal, name),
 
                 title: `Clear ${name} filters`,
@@ -325,7 +299,7 @@ export const PathGroupEntry = React.memo(
                   numGroupFieldsVisible({ modal, group: name }),
                 ),
                 dataCy: `clear-visibility-${name}`,
-                icon: <VisibilityIcon size={16} />,
+                icon: VisibilityIcon,
                 onClick: useClearVisibility(modal, name),
                 title: `Clear ${name} visibility`,
               },
@@ -334,7 +308,7 @@ export const PathGroupEntry = React.memo(
                   numGroupFieldsActive({ modal, group: name }),
                 ),
                 dataCy: `clear-shown-${name}`,
-                icon: <CheckIcon size={16} />,
+                icon: CheckIcon,
                 onClick: useClearActive(modal, name),
                 title: `Clear shown ${name}`,
               },

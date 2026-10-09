@@ -1,5 +1,9 @@
-import { KeyboardArrowDownIcon, KeyboardArrowRightIcon } from "@voxel51/voodo";
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import {
+  cssVar,
+  KeyboardArrowDownIcon,
+  KeyboardArrowRightIcon,
+  LoadingDots,
+} from "@voxel51/voodo";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import type { Primitive, Schema } from "@fiftyone/utilities";
@@ -8,7 +12,6 @@ import {
   formatPrimitive,
   makePseudoField,
 } from "@fiftyone/utilities";
-import { useSpring } from "@react-spring/web";
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   atomFamily,
@@ -51,7 +54,7 @@ const expandedPathValueEntry = atomFamily<boolean, string>({
 
 const TitleDiv = styled.div`
   font-size: 0.8rem;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
 `;
 
 const ScalarDiv = styled.div`
@@ -75,7 +78,7 @@ const ScalarDiv = styled.div`
   }
 
   & a {
-    color: ${({ theme }) => theme.text.primary};
+    color: ${cssVar.color.text.primary};
   }
 `;
 
@@ -96,9 +99,6 @@ const ScalarValueEntry = ({
   ) => void;
   slices?: boolean;
 }) => {
-  const { backgroundColor } = useSpring({
-    backgroundColor: "var(--color-content-bg-card-nested)",
-  });
   const color = useReverbValue(fos.pathColor(path));
   const field = useReverbValue(fos.field(path));
   const pseudoField = makePseudoField(path);
@@ -107,7 +107,7 @@ const ScalarValueEntry = ({
   return (
     <RegularEntry
       entryKey={entryKey}
-      backgroundColor={backgroundColor}
+      backgroundColor={cssVar.color.bg["card-nested"]}
       color={color}
       heading={null}
       trigger={trigger}
@@ -139,10 +139,10 @@ const ScalarValueEntry = ({
 };
 
 const ListContainer = styled(ScalarDiv)`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
+  background: ${cssVar.color.bg.background};
+  border: 1px solid ${cssVar.color.border.default};
   border-radius: 2px;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
   display: flex;
@@ -175,10 +175,6 @@ const ListValueEntry = ({
   const Arrow = expanded ? KeyboardArrowDownIcon : KeyboardArrowRightIcon;
 
   const color = useReverbValue(fos.pathColor(path));
-  const theme = useTheme();
-  const { backgroundColor } = useSpring({
-    backgroundColor: "var(--color-content-bg-card-nested)",
-  });
   const field = useReverbValue(fos.field(path));
   const pseudoField = makePseudoField(path);
   const { ftype, subfield, embeddedDocType } =
@@ -194,7 +190,7 @@ const ListValueEntry = ({
             ? `${ftype}(${subfield})`
             : ftype
       })`}
-      backgroundColor={backgroundColor}
+      backgroundColor={cssVar.color.bg["card-nested"]}
       clickable
       color={color}
       onHeaderClick={() => setExpanded(!expanded)}
@@ -225,7 +221,7 @@ const ListValueEntry = ({
             key="arrow"
             data-cy={`sidebar-field-arrow-enabled-${path}`}
             style={{
-              color: theme.text.secondary,
+              color: cssVar.color.text.secondary,
               cursor: "pointer",
               display: "flex",
             }}
@@ -316,7 +312,6 @@ const ListLoadable = ({ path }: { path: string }) => {
 
 const SlicesListLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<(string | number | null)[]>(path);
-  const theme = useTheme();
   const textExpanded = useReverbValue(expandedPathValueEntry(path));
 
   return (
@@ -326,8 +321,8 @@ const SlicesListLoadable = ({ path }: { path: string }) => {
           <ListContainer key={slice} className={textExpanded ? "expanded" : ""}>
             <div
               style={{
-                color: theme.text.secondary,
-                borderBottom: `1px solid ${theme.text.secondary}`,
+                color: cssVar.color.text.secondary,
+                borderBottom: `1px solid ${cssVar.color.text.secondary}`,
               }}
             >
               {slice}
@@ -349,7 +344,6 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   const { ftype } = useReverbValue(fos.field(path)) ?? makePseudoField(path);
   const color = useReverbValue(fos.pathColor(path));
   const timeZone = useReverbValue(fos.timeZone);
-  const theme = useTheme();
   const textExpanded = useReverbValue(expandedPathValueEntry(path));
 
   const shown = Object.entries(values).map(([slice, value]) => {
@@ -391,7 +385,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
             }}
             key={i.toString()}
           >
-            <div style={{ color: theme.text.secondary }}>{slice}</div>
+            <div style={{ color: cssVar.color.text.secondary }}>{slice}</div>
             <div
               data-cy={`sidebar-entry-${slice}-${path}`}
               style={{

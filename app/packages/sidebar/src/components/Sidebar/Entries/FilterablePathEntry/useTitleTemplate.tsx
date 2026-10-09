@@ -1,5 +1,4 @@
 import { VisibilityOffIcon } from "@voxel51/voodo";
-import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useState } from "react";
 import {
@@ -9,6 +8,7 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import { NameAndCountContainer } from "../../../utils";
+import CountPill from "../CountPill";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
 import { FieldAction } from "../../FieldAction";
@@ -75,19 +75,11 @@ const Hidden = ({ path }: { path: string }) => {
   const text = num.toLocaleString();
 
   return num ? (
-    <PillButton
+    <CountPill
       title={text}
       text={text}
-      icon={<VisibilityOffIcon size={24} />}
+      icon={VisibilityOffIcon}
       onClick={() => set([])}
-      open={false}
-      highlight={false}
-      style={{
-        height: "1.5rem",
-        lineHeight: "1rem",
-        padding: "0.25rem 0.5rem",
-        margin: "0 0.5rem",
-      }}
     />
   ) : null;
 };
