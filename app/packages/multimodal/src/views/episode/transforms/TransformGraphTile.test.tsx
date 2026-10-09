@@ -321,7 +321,7 @@ describe("TransformGraphTile", () => {
     };
     render(<TransformGraphTile />);
 
-    const button = screen.getByRole("button", { name: "Analyzing…" });
+    const button = screen.getByRole("button", { name: /Analyzing…/ });
     expect((button as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Partial analysis")).toBeTruthy();
   });

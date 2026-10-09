@@ -41,6 +41,7 @@ from .annotation import (
     ValidateLabelSchemas,
 )
 from .dataset import DeleteBrainRun, GetFieldSchema
+from .pending_runs import ListPendingRuns
 
 logger = logging.getLogger(__name__)
 
@@ -3389,3 +3390,4 @@ def register(p):
     # dataset
     p.register(DeleteBrainRun)
     p.register(GetFieldSchema)
+    p.register(ListPendingRuns)
