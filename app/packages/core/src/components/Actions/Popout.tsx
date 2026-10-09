@@ -1,7 +1,13 @@
+import { getEventBus } from "@fiftyone/events";
 import { useSpring } from "@react-spring/web";
 import type { MutableRefObject, RefObject } from "react";
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import { PopoutDiv } from "../utils";
+
+/** e2e specs wait on an action popout mounting and unmounting */
+type PopoutE2EEvents = {
+  "e2e:actions:popout": { id: string; open: boolean };
+};
 
 const useAlign = (
   anchorRef: MutableRefObject<HTMLElement>,
@@ -40,6 +46,13 @@ const Popout = ({
     },
   });
   const alignStyle = useAlign(anchorRef, modal);
+  const id = testId ?? "popout";
+
+  useEffect(() => {
+    const bus = getEventBus<PopoutE2EEvents>();
+    bus.dispatch("e2e:actions:popout", { id, open: true });
+    return () => bus.dispatch("e2e:actions:popout", { id, open: false });
+  }, [id]);
 
   const positionStyle = fixed ? { position: "fixed" } : {};
 
@@ -52,7 +65,7 @@ const Popout = ({
         ...alignStyle,
         ...positionStyle,
       }}
-      data-cy={testId ?? "popout"}
+      data-cy={id}
     >
       {children}
     </PopoutDiv>

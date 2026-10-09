@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import * as foq from "@fiftyone/relay";
 import { BufferManager } from "@fiftyone/utilities";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
@@ -7,6 +8,7 @@ import {
   ImaVidFrameSamples,
   ModalSampleExtendedWithImage,
 } from "./ima-vid-frame-samples";
+import { IMAVID_FETCHED_EVENT, type ImaVidEvents } from "./events";
 import { ImaVidStore } from "./store";
 
 const BUFFER_METADATA_FETCHING = "fetching";
@@ -279,14 +281,9 @@ export class ImaVidFramesController {
 
                 this.storeBufferManager.addNewRange(newRange);
 
-                window.dispatchEvent(
-                  new CustomEvent("fetchMore", {
-                    detail: {
-                      id: this.key,
-                    },
-                    bubbles: false,
-                  }),
-                );
+                getEventBus<ImaVidEvents>().dispatch(IMAVID_FETCHED_EVENT, {
+                  id: this.key,
+                });
               });
           }
         },

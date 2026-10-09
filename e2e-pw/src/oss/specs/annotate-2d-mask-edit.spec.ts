@@ -8,7 +8,7 @@
  * resolution on commit, and the seeded detection carries `_cls` so its numpy
  * mask decodes.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -19,35 +19,58 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
 
-/** The rendered mask preview's covered fraction once the mask has decoded. */
-const maskCoverage = async (modal: ModalPom) => {
-  await expect
-    .poll(() => modal.sidebar.edit.maskPreviewCoverage())
-    .toBeGreaterThan(0);
-  return modal.sidebar.edit.maskPreviewCoverage();
-};
+/** The seeded detection's bounding box width */
+const SEED_WIDTH = 0.2;
+/** The persisted width after the Add stroke, as the editor renders it */
+const GROWN_WIDTH = "0.4971774193548387";
+/**
+ * The persisted mask's covered fraction after the Remove stroke; the brush
+ * rasterizes differently per platform, like screenshot baselines
+ */
+const ERASED_COVERAGE = {
+  darwin: 0.8824259440104166,
+  linux: 0.8823445638020834,
+}[process.platform as "darwin" | "linux"];
 
 /** Open the seeded detection's editor in a brand-new browser context. */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await freshModal.waitForSampleLoadDomAttribute();
-    await freshModal.assert.isOpen();
-    await freshModal.sidebar.switchMode("annotate");
-    await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  await freshModal.assert.isOpen();
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
+  // the seeded label is masked; its preview draws once the form opens
+  await freshModal.sidebar.edit.afterMaskPreview(() =>
+    freshModal.sidebar.annotate.selectActiveLabel("cat", 0),
+  );
+  await verify(freshModal);
+};
+
+/** Brush-erase across the seeded bbox center. */
+const eraseSeedCenter = async (modal: ModalPom) => {
+  await modal.sidebar.edit.afterMaskPreview(() =>
+    modal.sidebar.annotate.selectActiveLabel("cat", 0),
+  );
+  await modal.sidebar.edit.assert.inSegmentationMode(true);
+
+  // seed mask is fully set within its bbox → coverage starts at 1.0.
+  expect(await modal.sidebar.edit.maskPreviewCoverage()).toBe(1);
+
+  await modal.sidebar.annotate.pickTool("Brush");
+  await modal.sidebar.annotate.pickMaskMode("Remove");
+
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5),
+  );
 };
 
 const test = base.extend<{ modal: ModalPom }>({
@@ -98,77 +121,71 @@ test.describe.serial("2D annotation mask edit (brush)", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("an Add brush stroke grows the mask and persists", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
-    const before = Number(
-      await modal.sidebar.edit.getFieldValue("dimensions.width"),
+    expect(await modal.sidebar.edit.getFieldValue("dimensions.width")).toBe(
+      String(SEED_WIDTH),
     );
-    expect(before).toBeGreaterThan(0);
 
     await modal.sidebar.annotate.pickTool("Brush");
     await modal.sidebar.annotate.pickMaskMode("Add");
 
     // paint a stroke well outside the seeded bbox ([0.4,0.4]+0.2) so the mask
     // grows rather than re-covering already-set pixels.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5),
+    );
 
     // the persisted mask reaches past the seeded box: its bounding box widened
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
       await fresh.sidebar.edit.assert.hasMaskPreview();
-      expect(
-        Number(await fresh.sidebar.edit.getFieldValue("dimensions.width")),
-      ).toBeGreaterThan(before);
+      expect(await fresh.sidebar.edit.getFieldValue("dimensions.width")).toBe(
+        GROWN_WIDTH,
+      );
     });
   });
 
-  test("a Remove brush stroke erases pixels and is undoable", async ({
-    browser,
+  test("a Remove brush stroke erases pixels", async ({
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
-    await modal.sidebar.annotate.selectActiveLabel("cat", 0);
-    await modal.sidebar.edit.assert.inSegmentationMode(true);
-
-    // seed mask is fully set within its bbox → coverage starts at 1.0.
-    const before = await maskCoverage(modal);
-    expect(before).toBeGreaterThan(0);
-
-    await modal.sidebar.annotate.pickTool("Brush");
-    await modal.sidebar.annotate.pickMaskMode("Remove");
-
-    // erase across the seeded bbox center.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5);
-    await saved;
+    await eraseSeedCenter(modal);
 
     // coverage drops — raw pixel count is unreliable across the commit's mask
     // re-rasterization, the covered FRACTION is not.
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await maskCoverage(fresh)).toBeLessThan(before);
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(
+        ERASED_COVERAGE,
+      );
     });
+  });
+
+  test("a Remove brush stroke is undoable", async ({
+    fiftyoneLoader,
+    modal,
+    openFreshPage,
+  }) => {
+    await eraseSeedCenter(modal);
 
     // the erase is one undoable engine unit — undo restores full coverage.
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
-    await inFreshContext(browser, fiftyoneLoader, async (fresh) => {
-      expect(await maskCoverage(fresh)).toBe(before);
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(1);
     });
   });
 });

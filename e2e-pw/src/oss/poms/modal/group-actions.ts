@@ -1,15 +1,26 @@
 import { Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
+import { afterPopout } from "../action-row/popout";
 import { DynamicGroupPaginationPom } from "./dynamic-group-pagination-bar";
 
+const MEDIA_CHECKBOX = {
+  "3d": "checkbox-3D Viewer",
+  carousel: "checkbox-Carousel",
+  viewer: "checkbox-2D Viewer",
+} as const;
+
+const NAVIGATION_MODE_OPTIONS = {
+  carousel: "Sequential Access",
+  pagination: "Random Access",
+  video: "Video",
+} as const;
+
 export class ModalGroupActionsPom {
-  readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: ModalGroupActionsAsserter;
   readonly dynamicGroupPagination: DynamicGroupPaginationPom;
 
   constructor(page: Page, modal: ModalPom) {
-    this.page = page;
     this.modal = modal;
     this.dynamicGroupPagination = new DynamicGroupPaginationPom(page, modal);
     this.assert = new ModalGroupActionsAsserter(this);
@@ -21,28 +32,29 @@ export class ModalGroupActionsPom {
     );
   }
 
-  get groupMediaVisibilityPopout() {
-    return this.modal.locator.getByTestId("group-media-visibility-popout");
+  async openMediaVisibility() {
+    await afterPopout(
+      this.modal.eventUtils,
+      "group-media-visibility-popout",
+      true,
+      () => this.toggleMediaButton.click(),
+    );
   }
 
-  async toggleMedia(media: "3d" | "carousel" | "viewer") {
-    if (!(await this.groupMediaVisibilityPopout.isVisible())) {
-      // using force=true because react-draggable is intercepting click event
-      await this.toggleMediaButton.click({ force: true });
-    }
+  /** Toggle one renderer; open the popout first with `openMediaVisibility` */
+  async toggleMedia(media: keyof typeof MEDIA_CHECKBOX) {
+    await this.modal.locator.getByTestId(MEDIA_CHECKBOX[media]).click();
+  }
 
-    switch (media) {
-      case "3d":
-        await this.modal.locator.getByTestId("checkbox-3D Viewer").click();
-        break;
-      case "carousel":
-        await this.modal.locator.getByTestId("checkbox-Carousel").click();
-        break;
-      case "viewer":
-        await this.modal.locator.getByTestId("checkbox-2D Viewer").click();
-        break;
-      default:
-        throw new Error(`Unknown media type: ${media}`);
+  /**
+   * Show one renderer, toggling it only if its checkbox is off; open the
+   * popout first with `openMediaVisibility`, which renders the checkboxes
+   * from the visibility state
+   */
+  async showMedia(media: keyof typeof MEDIA_CHECKBOX) {
+    const checkbox = this.modal.locator.getByTestId(MEDIA_CHECKBOX[media]);
+    if (!(await checkbox.getByRole("checkbox").isChecked())) {
+      await checkbox.click();
     }
   }
 
@@ -56,28 +68,14 @@ export class ModalGroupActionsPom {
   async setDynamicGroupsNavigationMode(
     mode: "carousel" | "pagination" | "video",
   ) {
-    // using force=true because react-draggable is intercepting click event
-    await this.modal.toggleDisplayOptionsButton.click({ force: true });
-
-    switch (mode) {
-      case "carousel":
-        await this.modal.locator
-          .getByTestId("tab-option-Sequential Access")
-          .click();
-        break;
-      case "pagination":
-        await this.modal.locator
-          .getByTestId("tab-option-Random Access")
-          .click();
-        break;
-      case "video":
-        await this.modal.locator.getByTestId("tab-option-Video").click();
-        break;
-      default:
-        throw new Error(`Unknown mode: ${mode}`);
-    }
-    // using force=true because react-draggable is intercepting click event
-    await this.modal.toggleDisplayOptionsButton.click({ force: true });
+    const option = this.modal.locator.getByTestId(
+      `tab-option-${NAVIGATION_MODE_OPTIONS[mode]}`,
+    );
+    await this.modal.toggleDisplayOptionsButton.click();
+    await option.click();
+    await afterPopout(this.modal.eventUtils, "popout", false, () =>
+      this.modal.toggleDisplayOptionsButton.click(),
+    );
   }
 }
 
@@ -85,22 +83,22 @@ class ModalGroupActionsAsserter {
   constructor(private readonly groupActionsPom: ModalGroupActionsPom) {}
 
   async assertIsCarouselVisible() {
-    await expect(this.groupActionsPom.modal.carousel).toBeVisible();
+    expect(await this.groupActionsPom.modal.carousel.isVisible()).toBe(true);
   }
 
   async assertIsCarouselNotVisible() {
-    await expect(this.groupActionsPom.modal.carousel).toBeHidden();
+    expect(await this.groupActionsPom.modal.carousel.isVisible()).toBe(false);
   }
 
   async assertIsPaginationBarVisible() {
-    await expect(
-      this.groupActionsPom.dynamicGroupPagination.locator,
-    ).toBeVisible();
+    expect(
+      await this.groupActionsPom.dynamicGroupPagination.locator.isVisible(),
+    ).toBe(true);
   }
 
   async assertIsPaginationBarNotVisible() {
-    await expect(
-      this.groupActionsPom.dynamicGroupPagination.locator,
-    ).toBeHidden();
+    expect(
+      await this.groupActionsPom.dynamicGroupPagination.locator.isVisible(),
+    ).toBe(false);
   }
 }

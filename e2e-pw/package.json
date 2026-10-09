@@ -26,7 +26,7 @@
         "wait-on": "^8.0.2"
     },
     "scripts": {
-        "lint": "bash -c 'set +e; eslint ./src; set -e; tsc --skipLibCheck --noImplicitAny --sourceMap false'",
+        "lint": "bash -c 'set +e; eslint ./src; set -e; tsc --skipLibCheck --noImplicitAny --sourceMap false; node scripts/check-unused-poms.mjs'",
         "unittests": "vitest",
         "check-flaky": "./scripts/check-flaky.sh",
         "kill-port": "./scripts/kill-port.sh",

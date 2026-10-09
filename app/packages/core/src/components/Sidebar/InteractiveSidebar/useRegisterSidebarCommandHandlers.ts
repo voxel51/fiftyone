@@ -3,6 +3,7 @@
  */
 
 import { useRegisterCommandHandler } from "@fiftyone/command-bus";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback } from "recoil";
@@ -16,7 +17,7 @@ import {
   ScrollToFieldInGridCommand,
   ScrollToFieldInModalCommand,
 } from "../../../commands";
-import { InteractiveItems } from "./types";
+import { InteractiveItems, type SidebarEvents } from "./types";
 import { getEntryKey } from "./utils";
 
 /**
@@ -134,16 +135,14 @@ export const useRegisterSidebarCommandHandlers = (
         // Wait for animation to complete
         if (container.current) {
           await new Promise<void>((resolve) => {
-            const onAnimationRest = () => {
-              container.current?.removeEventListener(
-                "animation-onRest",
-                onAnimationRest,
-              );
-              resolve();
-            };
-            container.current.addEventListener(
+            const off = getEventBus<SidebarEvents>().on(
               "animation-onRest",
-              onAnimationRest,
+              (rested) => {
+                if (rested.container === container.current) {
+                  off();
+                  resolve();
+                }
+              },
             );
           });
         }

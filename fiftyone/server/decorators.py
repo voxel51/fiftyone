@@ -19,6 +19,7 @@ from starlette.requests import Request
 from fiftyone.core.utils import create_response
 from fiftyone.server import utils
 from fiftyone.server.exceptions import DbVersionMismatchError
+import fiftyone.server.hooks as fosh
 
 _BODY_METHOD_NAMES = {"post", "put", "patch"}
 
@@ -54,8 +55,10 @@ def route(func=None, *, parse_body: t.Optional[bool] = None):
                             detail="Malformed JSON body",
                         ) from e
 
+                    await fosh.get().on_request(request, data)
                     response = await func(endpoint, request, data, *args)
                 else:
+                    await fosh.get().on_request(request, request.query_params)
                     response = await func(endpoint, request, *args)
 
                 if isinstance(response, Response):

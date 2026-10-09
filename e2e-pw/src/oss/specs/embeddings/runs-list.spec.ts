@@ -40,8 +40,8 @@ const test = base.extend<{
   embeddings: async ({ eventUtils, page }, use) => {
     await use(new EmbeddingsV2Pom(page, eventUtils));
   },
-  operatorsBrowser: async ({ page }, use) => {
-    await use(new OperatorsBrowserPom(page));
+  operatorsBrowser: async ({ eventUtils, page }, use) => {
+    await use(new OperatorsBrowserPom(page, eventUtils));
   },
 });
 

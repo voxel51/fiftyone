@@ -56,6 +56,10 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 
+  protected get mediaPending() {
+    return Boolean(this.state.config.thumbnail) && !this.state.hasPoster;
+  }
+
   detach() {
     this.pause();
     if (LOOKER_WITH_READER === this) {

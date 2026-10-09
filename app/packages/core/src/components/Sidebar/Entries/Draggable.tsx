@@ -50,7 +50,7 @@ const Draggable: React.FC<
       !trigger || disableDrag ? "default" : dragging ? "grabbing" : "grab",
   });
   const isDraggable = useMemo(
-    () => !disableDrag && trigger && !disabled,
+    () => Boolean(!disableDrag && trigger && !disabled),
     [disableDrag, trigger, disabled],
   );
 

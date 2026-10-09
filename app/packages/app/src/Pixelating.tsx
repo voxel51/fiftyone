@@ -4,37 +4,28 @@
  * Global loading screen component — rendered by {@link Renderer} during
  * initial page load only.
  *
- * Dispatches a {@link GlobalLoadingScreenEvent} on `document` on mount so
- * that tests can assert the global loading screen fires exactly once. Any
- * subsequent fire indicates that suspension has escaped to the top-level
- * Suspense boundary, which is a regression.
- *
  * @module Pixelating
  */
 
 import { Loading } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import React, { useEffect } from "react";
 
 /**
- * Fired on `document` each time the global loading screen mounts.
- * Should be dispatched exactly once, on initial page load.
+ * e2e specs count the global loading screen: it should mount once per page
+ * load, and a second mount means suspension escaped to the top-level
+ * Suspense boundary
  */
-export class GlobalLoadingScreenEvent extends Event {
-  static readonly eventName = "global-loading-screen" as const;
+type GlobalLoadingScreenE2EEvents = {
+  "e2e:app:global-loading-screen": undefined;
+};
 
-  constructor() {
-    super(GlobalLoadingScreenEvent.eventName);
-  }
-}
-
-/**
- * Renders the "Pixelating..." global loading screen and signals each mount via
- * a {@link GlobalLoadingScreenEvent} on `document`. Should only ever mount
- * once, on initial page load.
- */
+/** Renders the "Pixelating..." global loading screen. */
 const Pixelating = React.memo(() => {
   useEffect(() => {
-    document.dispatchEvent(new GlobalLoadingScreenEvent());
+    getEventBus<GlobalLoadingScreenE2EEvents>().dispatch(
+      "e2e:app:global-loading-screen",
+    );
   }, []);
 
   return <Loading>Pixelating...</Loading>;

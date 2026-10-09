@@ -9,16 +9,16 @@
  * the PATCH be checked against its slice, and the dataset is re-seeded per
  * test.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { DatasetFactory, JSONObject } from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
 import { createId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-grouped-video");
-const videoId = "000000000000000000000000";
-const imageId = "000000000000000000000001";
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
@@ -174,10 +174,30 @@ test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
  * it.
  */
 const enterVideoAnnotate = async (grid: GridPom, modal: ModalPom) => {
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
+};
+
+/**
+ * Enter annotate on the video slice in a brand-new browser context, which
+ * reads only what the server stored, and run `verify` there. The session's
+ * open modal would carry over to the new page, so `modal` closes first.
+ */
+const inFreshContext = async (
+  openFreshPage: () => Promise<Page>,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  modal: ModalPom,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  await modal.close();
+  const freshPage = await openFreshPage();
+  const eventUtils = new EventUtils(freshPage);
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+  const freshModal = new ModalPom(freshPage, eventUtils);
+  await enterVideoAnnotate(new GridPom(freshPage, eventUtils), freshModal);
+  await verify(freshModal);
 };
 
 test.describe.serial("grouped video annotation", () => {
@@ -197,21 +217,13 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    await expect
-      .poll(() => modal.videoAnnotate.listedLabelPaths())
-      .toEqual(
-        expect.arrayContaining([
-          "frames.detections",
-          "classification",
-          "events",
-        ]),
-      );
-
     // the sample-level `detections` field is filtered out on a video slice
     // (spatial sample-level labels live in `frames.*` on video)
-    expect(await modal.videoAnnotate.listedLabelPaths()).not.toContain(
-      "detections",
-    );
+    expect(await modal.videoAnnotate.listedLabelPaths()).toEqual([
+      "frames.detections",
+      "classification",
+      "events",
+    ]);
   });
 
   test("the image slice offers sample detections + classification, not frame or temporal schemas", async ({
@@ -220,16 +232,16 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    await modal.sidebar.annotate.selectAnnotationSlice("image");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("image"),
+    );
 
-    await expect
-      .poll(() => modal.videoAnnotate.listedLabelPaths())
-      .toEqual(expect.arrayContaining(["detections", "classification"]));
-
-    const paths = await modal.videoAnnotate.listedLabelPaths();
-    expect(paths).not.toContain("frames.detections");
-    expect(paths).not.toContain("events");
+    for (const path of ["detections", "classification"]) {
+      await modal.videoAnnotate.assert.listsPath(path);
+    }
+    for (const path of ["frames.detections", "events"]) {
+      await modal.videoAnnotate.assert.listsPath(path, false);
+    }
   });
 
   test("the annotation slice selector offers both the video and image slices", async ({
@@ -238,21 +250,23 @@ test.describe.serial("grouped video annotation", () => {
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    const slices = (
-      await modal.sidebar.annotate.getAvailableAnnotationSlices()
-    ).map((s) => s.trim());
-    expect(slices).toContain("image");
-    expect(slices).toContain("video");
+    await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices([
+      "video",
+      "image",
+    ]);
   });
 
   test("editing on the video slice writes to the video sample", async ({
+    openFreshPage,
+    fiftyoneLoader,
     grid,
     modal,
     page,
   }) => {
     // the sample-scope guard: selecting + editing a track on a grouped video
     // slice drives the exact path that regressed (surface actions resolving the
-    // sample), and the autosave must PATCH the VIDEO sample — not the image one.
+    // sample), and the autosave must store the edit on the VIDEO sample — not
+    // the image one.
     const pageErrors: string[] = [];
     page.on("pageerror", (e) => pageErrors.push(e.message));
 
@@ -261,43 +275,59 @@ test.describe.serial("grouped video annotation", () => {
     await modal.videoAnnotate.assert.labelListed("vehicle");
     await modal.videoAnnotate.selectLabel("vehicle");
     // the editor opened => select() didn't throw resolving its sample scope
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
-    const patch = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.setFieldValue("position.x", "0.5");
-    const response = await patch;
-
-    // scoped to the video sample
-    expect(response.url()).toContain(videoId);
-    expect(response.url()).not.toContain(imageId);
-    await expect
-      .poll(async () =>
-        Number(await modal.sidebar.edit.getFieldValue("position.x")),
-      )
-      .toBeCloseTo(0.5, 4);
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.5"),
+    );
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
 
     expect(pageErrors).toEqual([]);
+
+    // stored on the video sample: a fresh context shows it on the video slice
+    await inFreshContext(
+      openFreshPage,
+      fiftyoneLoader,
+      modal,
+      async (fresh) => {
+        await fresh.videoAnnotate.selectLabel("vehicle");
+        await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
+      },
+    );
   });
 
   test("editing on the image slice writes to the image sample", async ({
+    openFreshPage,
+    fiftyoneLoader,
     grid,
     modal,
   }) => {
     await enterVideoAnnotate(grid, modal);
 
-    await modal.sidebar.annotate.selectAnnotationSlice("image");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("image"),
+    );
 
     await modal.videoAnnotate.assert.labelListed("vehicle");
     await modal.videoAnnotate.selectLabel("vehicle");
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
+    await modal.sidebar.edit.assert.isOpen();
 
-    const patch = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.setFieldValue("position.x", "0.5");
-    const response = await patch;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.setFieldValue("position.x", "0.5"),
+    );
 
-    // scoped to the image sample
-    expect(response.url()).toContain(imageId);
-    expect(response.url()).not.toContain(videoId);
+    // stored on the image sample: a fresh context shows it on the image slice
+    await inFreshContext(
+      openFreshPage,
+      fiftyoneLoader,
+      modal,
+      async (fresh) => {
+        await fresh.afterLighterReady(() =>
+          fresh.sidebar.annotate.selectAnnotationSlice("image"),
+        );
+        await fresh.videoAnnotate.selectLabel("vehicle");
+        await fresh.sidebar.edit.assert.verifyFieldValue("position.x", "0.5");
+      },
+    );
   });
 });

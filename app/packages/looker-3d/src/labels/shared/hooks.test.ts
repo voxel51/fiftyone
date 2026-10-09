@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   },
   atomValues: new Map<symbol, unknown>(),
   setSpy: vi.fn(),
-  emitSpy: vi.fn(),
+  dispatchSpy: vi.fn(),
   setHoveredSpy: vi.fn(),
   getHoveredSpy: vi.fn(() => [] as { instanceId: string }[]),
   isAnnotateMode: false,
@@ -55,14 +55,9 @@ vi.mock("@fiftyone/annotation", () => ({
 }));
 
 vi.mock("@fiftyone/looker", () => ({
-  LabelHoveredEvent: class LabelHoveredEvent {
-    detail: unknown;
-    constructor(detail: unknown) {
-      this.detail = detail;
-    }
-  },
-  LabelUnhoveredEvent: class LabelUnhoveredEvent {},
-  selectiveRenderingEventBus: { emit: mocks.emitSpy, on: vi.fn() },
+  FO_LABEL_HOVERED_EVENT: "fo:labelHovered",
+  FO_LABEL_UNHOVERED_EVENT: "fo:labelUnhovered",
+  selectiveRenderingEventBus: { dispatch: mocks.dispatchSpy, on: vi.fn() },
 }));
 
 vi.mock("@react-three/drei", () => ({
@@ -172,12 +167,12 @@ describe("useEventHandlers", () => {
     act(() => {
       result.current.onPointerOver(withInstance, undefined);
     });
-    expect(mocks.emitSpy).toHaveBeenCalledTimes(1);
+    expect(mocks.dispatchSpy).toHaveBeenCalledTimes(1);
 
     act(() => {
       result.current.onPointerOver(withoutInstance, undefined);
     });
-    expect(mocks.emitSpy).toHaveBeenCalledTimes(1);
+    expect(mocks.dispatchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("only writes the engine's hovered set in annotate mode, keyed by the call-time label", () => {

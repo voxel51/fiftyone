@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ActionBar } from "./action-bar";
 import { useWorkingLabel } from "./annotation/store/working";
-import { CAMERA_LOOK_AT_SETTLED_EVENT, SCENE_READY_EVENT } from "./constants";
+import {
+  CAMERA_LOOK_AT_SETTLED_EVENT,
+  DRAFT_VERTICES_EVENT,
+  type Looker3dE2EEvents,
+  SCENE_READY_EVENT,
+  SELECTED_VERTICES_EVENT,
+} from "./constants";
 import { LoadingDots } from "@fiftyone/components";
 import { Container, LoadingCover } from "./containers";
 import { Fo3dErrorBoundary } from "./ErrorBoundary";
@@ -12,6 +18,7 @@ import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { getMediaPathForFo3dSample } from "./fo3d/utils";
 import { useHotkey } from "./hooks";
+import { useLooker3dEventHandler } from "./hooks/use-looker3d-event-handler";
 import { getLooker3dRenderKey } from "./looker3d-render-key";
 import {
   currentActionAtom,
@@ -26,6 +33,7 @@ import {
   useFo3dSceneReady,
 } from "./state/accessors";
 import { isPolyline3dOverlay } from "./types";
+import { getEventBus } from "@fiftyone/events";
 
 /**
  * This component renders all supported 3D contexts through the FO3D pipeline,
@@ -80,6 +88,18 @@ export const Looker3d = () => {
       : undefined;
 
   useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(DRAFT_VERTICES_EVENT, {
+      count: draftVertexCount,
+    });
+  }, [draftVertexCount]);
+
+  useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(SELECTED_VERTICES_EVENT, {
+      count: selectedVertexCount ?? 0,
+    });
+  }, [selectedVertexCount]);
+
+  useEffect(() => {
     return () => {
       setFo3dHasBackground(false);
     };
@@ -114,12 +134,13 @@ export const Looker3d = () => {
   // raycastable; the e2e draw helpers gate on it through `data-scene-ready`
   const sceneReady = useFo3dSceneReady();
   const [cameraSettledKey, setCameraSettledKey] = useState<string | null>(null);
-  useEffect(() => {
-    const onSettled = () => setCameraSettledKey(looker3dSceneKey);
-    document.addEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
-    return () =>
-      document.removeEventListener(CAMERA_LOOK_AT_SETTLED_EVENT, onSettled);
-  }, [looker3dSceneKey]);
+  useLooker3dEventHandler(
+    CAMERA_LOOK_AT_SETTLED_EVENT,
+    useCallback(
+      () => setCameraSettledKey(looker3dSceneKey),
+      [looker3dSceneKey],
+    ),
+  );
 
   useHotkey(
     "KeyG",
@@ -224,12 +245,14 @@ export const Looker3d = () => {
   const revealed = sceneReady && cameraSettledKey === looker3dSceneKey;
   useEffect(() => {
     if (revealed) {
-      document.dispatchEvent(
-        new CustomEvent(SCENE_READY_EVENT, {
-          detail: { sceneKey: looker3dSceneKey },
-        }),
-      );
+      getEventBus<Looker3dE2EEvents>().dispatch(SCENE_READY_EVENT, {
+        sceneKey: looker3dSceneKey,
+        slices: Object.keys(sampleMap).sort().join(","),
+      });
     }
+    // a slice toggle keeps the replaced scene revealed until it unmounts, so
+    // only a reveal announces the slices
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealed, looker3dSceneKey]);
 
   if (!sample) return null;

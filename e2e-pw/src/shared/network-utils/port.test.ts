@@ -1,6 +1,29 @@
 import { createServer, Server } from "net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { reserveWorkerPort } from "./port";
+
+// a port whose connects are reset, as a listener mid-shutdown resets them
+const resetting = vi.hoisted(() => ({ port: -1 }));
+
+vi.mock("net", async (importOriginal) => {
+  const net = await importOriginal<typeof import("net")>();
+  return {
+    ...net,
+    createConnection: (options: { port: number; host: string }) => {
+      if (options.port !== resetting.port) {
+        return net.createConnection(options);
+      }
+      const socket = new net.Socket();
+      process.nextTick(() =>
+        socket.emit(
+          "error",
+          Object.assign(new Error("reset"), { code: "ECONNRESET" }),
+        ),
+      );
+      return socket;
+    },
+  };
+});
 
 // well clear of the windows any real worker count reaches, so an e2e run on
 // the same machine cannot influence these
@@ -20,6 +43,7 @@ const occupy = (port: number) =>
   });
 
 afterEach(async () => {
+  resetting.port = -1;
   await Promise.all(
     listening.splice(0).map(
       (server) =>
@@ -56,5 +80,11 @@ describe("reserveWorkerPort", () => {
     await expect(reserveWorkerPort(TEST_PARALLEL_INDEX)).rejects.toThrow(
       `no free port in [${WINDOW_FIRST}, ${WINDOW_FIRST + 9}]`,
     );
+  });
+
+  it("skips a port whose listener is still shutting down", async () => {
+    resetting.port = WINDOW_FIRST;
+
+    expect(await reserveWorkerPort(TEST_PARALLEL_INDEX)).toBe(WINDOW_FIRST + 1);
   });
 });

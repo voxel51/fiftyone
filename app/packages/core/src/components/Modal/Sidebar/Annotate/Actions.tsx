@@ -52,6 +52,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemRight } from "./Components";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
+import { useSchemaLensAvailable } from "../../../Sidebar/Entries/SchemaLensSelector";
 import useCanManageSchema from "./useCanManageSchema";
 import {
   useAnnotationContext,
@@ -316,6 +317,7 @@ export const Undo = () => {
       <Round
         onClick={undo}
         className={undoEnabled ? "" : "disabled"}
+        aria-disabled={!undoEnabled}
         data-cy="undo-button"
       >
         <UndoIcon />
@@ -332,6 +334,7 @@ export const Redo = () => {
       <Round
         onClick={redo}
         className={redoEnabled ? "" : "disabled"}
+        aria-disabled={!redoEnabled}
         data-cy="redo-button"
       >
         <RedoIcon />
@@ -341,12 +344,15 @@ export const Redo = () => {
 };
 
 // Schema manager entry point for the Create section. Gated on manage
-// permission — hidden entirely when the user can't edit the schema.
+// permission — hidden entirely when the user can't edit the schema —
+// and absent while the modal's schema row (which carries its own gear)
+// is shown, i.e. on the Samples tab; it remains for workflow tasks.
 const SchemaManager = () => {
   const canManage = useCanManageSchema();
   const { openSchemaManager } = useSchemaManagerModal();
+  const { available: schemaRowShown } = useSchemaLensAvailable();
 
-  if (!canManage) {
+  if (!canManage || schemaRowShown) {
     return null;
   }
 

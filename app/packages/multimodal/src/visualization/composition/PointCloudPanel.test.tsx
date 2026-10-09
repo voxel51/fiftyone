@@ -25,6 +25,7 @@ const graphicsHarness = vi.hoisted(() => ({
 }));
 
 vi.mock("@react-three/fiber", () => ({
+  addAfterEffect: () => () => undefined,
   useFrame: vi.fn(),
   useThree: (
     selector: (state: {

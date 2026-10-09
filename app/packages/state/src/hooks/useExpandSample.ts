@@ -21,7 +21,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         item,
         iter: cursor,
       }: Parameters<SpotlightConfig<number, Sample>["onItemClick"]>["0"]) => {
-        if (event.ctrlKey || event.metaKey) {
+        if (event?.ctrlKey || event?.metaKey) {
           set(atoms.selectedSamples, (selected) => {
             const newSelected = new Map(selected);
             if (newSelected.has(item.id.description)) {
@@ -29,7 +29,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
             } else {
               newSelected.set(
                 item.id.description,
-                event.altKey ? "alt" : "default",
+                event?.altKey ? "alt" : "default",
               );
             }
 

@@ -5,7 +5,7 @@ import {
   savedViewsFragmentQuery,
 } from "@fiftyone/relay";
 import { datasetQueryContext } from "@fiftyone/state";
-import { useContext } from "react";
+import { startTransition, useContext } from "react";
 import { RefetchFnDynamic, useRefetchableFragment } from "react-relay";
 
 // Mirror the exact refetch signature Relay produces for this fragment so the
@@ -22,7 +22,8 @@ type RefetchableSavedViews = [savedViewsFragment$data, SavedViewsRefetch];
 // The no-provider branch never actually refetches, so accept the real
 // `(variables, options?)` arguments and return a Relay `Disposable` whose
 // `dispose()` is a no-op.
-const NOOP_REFETCH: SavedViewsRefetch = () => ({ dispose: () => {} });
+const NOOP_DISPOSABLE: ReturnType<SavedViewsRefetch> = { dispose: () => {} };
+const NOOP_REFETCH: SavedViewsRefetch = () => NOOP_DISPOSABLE;
 
 export default function useRefetchableSavedViews(): RefetchableSavedViews {
   const fragmentRef = useContext(datasetQueryContext);
@@ -39,8 +40,21 @@ export default function useRefetchableSavedViews(): RefetchableSavedViews {
     ] as unknown as RefetchableSavedViews;
   }
 
-  return useRefetchableFragment<
+  const [data, refetch] = useRefetchableFragment<
     savedViewsFragmentQuery,
     savedViewsFragment$key
   >(savedViewsFragment, fragmentRef);
+
+  // A refetch suspends its caller until the response arrives, and no boundary
+  // sits between the saved views selector and the page's top-level one; as a
+  // transition the current list stays on screen instead
+  const refetchInTransition: SavedViewsRefetch = (variables, options) => {
+    let disposable = NOOP_DISPOSABLE;
+    startTransition(() => {
+      disposable = refetch(variables, options);
+    });
+    return disposable;
+  };
+
+  return [data, refetchInTransition];
 }

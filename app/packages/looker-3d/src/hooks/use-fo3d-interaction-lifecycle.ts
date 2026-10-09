@@ -1,3 +1,4 @@
+import { isLegacyDomMirror } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -15,6 +16,7 @@ import {
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
 } from "../state";
+import { useLooker3dEventHandler } from "./use-looker3d-event-handler";
 import { useZoomToSelected } from "./use-zoom-to-selected";
 
 interface UseFo3dInteractionLifecycleArgs {
@@ -88,7 +90,14 @@ export const useFo3dInteractionLifecycle = ({
     useLegacyCoordinates,
   });
 
-  fos.useEventHandler(window, SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);
+  useLooker3dEventHandler(SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);
+  // plugins may still send the window event this command used to be; the
+  // App's own mirror of its bus event is skipped
+  fos.useEventHandler(
+    window,
+    SET_ZOOM_TO_SELECTED_EVENT,
+    (e: Event) => !isLegacyDomMirror(e) && handleZoomToSelected(),
+  );
 
   return {
     resetActiveNode,

@@ -22,6 +22,12 @@ import {
   hasPythonJobs,
 } from "./python-section.mjs";
 import { buildSuiteRows } from "./suite-rows.mjs";
+import { listSpecFiles, readTimings } from "./shard-plan.mjs";
+import {
+  measureTestSeconds,
+  renderTimingDrift,
+  timingDrift,
+} from "./timing-drift.mjs";
 
 // The synced copy of this suite runs in fiftyone-teams too; flavor-scoped
 // markers and headings let the OSS and FOE comments coexist on the OSS PR.
@@ -91,7 +97,7 @@ const byLocation = (a, b) => a.location.localeCompare(b.location);
 failed.sort(byLocation);
 flaky.sort(byLocation);
 
-// Burn-in: new/modified spec files repeated 10x with retries disabled in
+// Burn-in: new/modified spec files repeated 5x with retries disabled in
 // their own job; its report merges separately so repeats don't inflate the
 // suite counts above.
 const burnInCount = Number(process.env.BURN_IN_COUNT || "0");
@@ -269,6 +275,18 @@ if (failed.length) {
 if (flaky.length) {
   lines.push("", "### Flaky (passed on retry)", ...itemize(flaky));
 }
+
+// drift between this run and the per-test timings the shards are packed by
+lines.push(
+  ...renderTimingDrift(
+    timingDrift(
+      measureTestSeconds(report),
+      readTimings(),
+      listSpecFiles(),
+      expectedShards,
+    ),
+  ),
+);
 if (burnInUnhealthy) {
   lines.push("", "### Burn-in failures");
   if (burnInFailed.length) {
@@ -296,8 +314,8 @@ if (burnInUnhealthy) {
   }
   lines.push(
     "",
-    "New and modified tests must pass 10 consecutive runs. Reproduce with" +
-      " `cd e2e-pw && yarn e2e <file:line> --repeat-each=10 --retries=0`.",
+    "New and modified tests must pass 5 consecutive runs. Reproduce with" +
+      " `cd e2e-pw && yarn e2e <file:line> --repeat-each=5 --retries=0`.",
   );
 }
 if (hasPythonJobs(jobs)) {

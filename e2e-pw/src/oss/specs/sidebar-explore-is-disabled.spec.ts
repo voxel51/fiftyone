@@ -1,16 +1,12 @@
 import { test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("explore-is-disabled");
 
-const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
+const test = base.extend<{ sidebar: SidebarPom }>({
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
-  },
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
   },
 });
 

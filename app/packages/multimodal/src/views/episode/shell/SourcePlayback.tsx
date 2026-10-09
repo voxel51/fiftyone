@@ -108,6 +108,7 @@ import {
   VisibleStreamsProvider,
   useVisibleStreamIds,
 } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -580,6 +581,13 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       data-episode-playback-shell=""
       data-episode-source-transitioning={transitioning || undefined}
     >
+      <ShownSignal event="e2e:multimodal:episode-shell" detail={{ fileName }} />
+      {transitioning ? null : (
+        <ShownSignal
+          event="e2e:multimodal:episode-ready"
+          detail={{ fileName }}
+        />
+      )}
       <PlaybackSessionStateProviders
         cameraViewStateScopeKey={cameraViewStateScopeKey}
         sources={shellSources}
@@ -1013,6 +1021,9 @@ function PlaybackState({
 }) {
   return (
     <div className={styles.state} data-testid="episode-modal-state">
+      {text ? (
+        <ShownSignal event="e2e:multimodal:episode-state" detail={{ text }} />
+      ) : null}
       {children}
       {text ? (
         <span className={clsx(styles.stateText, error && styles.stateError)}>

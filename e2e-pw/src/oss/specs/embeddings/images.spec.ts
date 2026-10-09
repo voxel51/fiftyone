@@ -61,8 +61,8 @@ const test = base.extend<{
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  operatorsBrowser: async ({ page }, use) => {
-    await use(new OperatorsBrowserPom(page));
+  operatorsBrowser: async ({ eventUtils, page }, use) => {
+    await use(new OperatorsBrowserPom(page, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));

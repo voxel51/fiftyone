@@ -198,6 +198,56 @@ describe("useFo3dCameraInitialization", () => {
     expect(update).toHaveBeenCalledTimes(2);
   });
 
+  it("restores the saved pose on the camera that remounts with a new scene", () => {
+    const first = makeCameraHarness();
+    const dispatchCameraLifecycle = vi.fn();
+
+    vi.mocked(getSavedCameraState).mockReturnValue({
+      position: [7, 8, 9],
+      target: [0, 0, 0],
+    });
+
+    const { rerender } = renderHook(
+      ({
+        harness,
+        foScene,
+      }: {
+        harness: CameraHarness;
+        foScene: ReturnType<typeof makeFoScene> | null;
+      }) =>
+        useFo3dCameraInitialization({
+          cameraRef: harness.cameraRef,
+          cameraControlsRef: harness.cameraControlsRef,
+          currentRenderPath: "main",
+          foScene,
+          sceneBoundingBox: null,
+          upVector: new Vector3(0, 1, 0),
+          settings: null,
+          isBoundsResolved: true,
+          dispatchCameraLifecycle,
+        }),
+      { initialProps: { harness: first, foScene: makeFoScene() } },
+    );
+
+    // the user moves the camera, then a slice toggle reloads the scene
+    vi.mocked(getSavedCameraState).mockReturnValue({
+      position: [0, 0, 40],
+      target: [1, 2, 0],
+    });
+    rerender({ harness: first, foScene: null });
+
+    const remounted = makeCameraHarness();
+    rerender({ harness: remounted, foScene: makeFoScene() });
+
+    expect(remounted.cameraRef.current?.position.toArray()).toEqual([0, 0, 40]);
+    expect(remounted.cameraControlsRef.current?.target.toArray()).toEqual([
+      1, 2, 0,
+    ]);
+    expect(dispatchCameraLifecycle).toHaveBeenLastCalledWith({
+      type: FO3D_CAMERA_LIFECYCLE_ACTION.MARK_READY,
+    });
+  });
+
   it("applies post-init override only when override changes after mount", () => {
     const { cameraRef, cameraControlsRef, update } = makeCameraHarness();
     const dispatchCameraLifecycle = vi.fn();

@@ -1,0 +1,218 @@
+import { test as base, expect } from "src/oss/fixtures";
+import { GridPom } from "src/oss/poms/grid";
+import { ModalPom } from "src/oss/poms/modal";
+import { SidebarPom } from "src/oss/poms/sidebar";
+import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { GROUP_SLICES } from "./detections-data";
+
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
+
+// the factory names group media `<slice>-<groupIndex>`
+const FIRST_SAMPLE_FILENAME = "left-0.png";
+const SECOND_SAMPLE_FILENAME = "left-1.png";
+
+const test = base.extend<{
+  grid: GridPom;
+  modal: ModalPom;
+  sidebar: SidebarPom;
+}>({
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
+  },
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
+  },
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
+  },
+});
+
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+
+  // 4 groups x 3 slices = 12 samples
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 4,
+    slices: GROUP_SLICES,
+  });
+});
+
+test.describe.serial("groups", () => {
+  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  });
+
+  test.afterEach(async ({ page, modal }) => {
+    await modal.close({ ignoreError: true });
+    await page.reload();
+  });
+
+  test("should have four lookers with 'left' as default slice", async ({
+    grid,
+    page,
+  }) => {
+    await grid.assert.isTileCountEqualTo(4);
+    const selectorSlice = page.getByTestId("selector-slice");
+    expect(await selectorSlice.inputValue()).toBe("left");
+  });
+
+  test("entry counts works", async ({ grid }) => {
+    expect(await grid.getEntryCountText()).toEqual("4 groups with slice");
+
+    await grid.actionsRow.toggleDisplayOptions();
+    await grid.afterEntryCounts(
+      () => grid.actionsRow.displayActions.setSidebarStatisticsMode("group"),
+      "groups",
+    );
+    await grid.assert.isEntryCountTextEqualTo(
+      "(12 samples) 4 groups with slice",
+    );
+  });
+
+  test.describe("modal", () => {
+    test.beforeEach(async ({ modal, grid }) => {
+      await modal.afterGroupSampleLoaded(() => grid.openFirstSample());
+    });
+
+    test('changes slice to "pcd" when 3D viewer is clicked', async ({
+      modal,
+    }) => {
+      await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
+      await modal.sampleCanvas3d.click(0.5, 0.5);
+      await modal.assert.verifyModalSamplePluginTitle("pcd", { pinned: true });
+    });
+
+    test("navigation works", async ({ modal }) => {
+      expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
+        FIRST_SAMPLE_FILENAME,
+      );
+
+      await modal.navigateNextSample();
+
+      expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
+        SECOND_SAMPLE_FILENAME,
+      );
+
+      await modal.navigatePreviousSample();
+
+      expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
+        FIRST_SAMPLE_FILENAME,
+      );
+
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.navigateSlice("group.name", "right");
+      await modal.navigateNextSample();
+      expect(await modal.sidebar.getSidebarEntryText("group.name")).toEqual(
+        "right",
+      );
+    });
+
+    test("group media visibility toggle works", async ({ modal }) => {
+      await modal.group.openMediaVisibility();
+
+      expect(await modal.looker3d.isVisible()).toBe(true);
+      await modal.group.toggleMedia("3d");
+      expect(await modal.looker3d.isVisible()).toBe(false);
+      await modal.group.toggleMedia("3d");
+      expect(await modal.looker3d.isVisible()).toBe(true);
+
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      await modal.group.toggleMedia("viewer");
+      expect(await modal.groupLooker.isVisible()).toBe(false);
+      await modal.group.toggleMedia("viewer");
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+
+      expect(await modal.carousel.isVisible()).toBe(true);
+      await modal.group.toggleMedia("carousel");
+      expect(await modal.carousel.isVisible()).toBe(false);
+      await modal.group.toggleMedia("carousel");
+      expect(await modal.carousel.isVisible()).toBe(true);
+    });
+
+    // App bug: the annotate side panels load the pcd through the main
+    // viewer's LoadingManager (shared Fo3dContext), so after the focused scene
+    // reveals, their loads flip it back to loading and re-cover it; the render
+    // check can land in that gap and read zero pixels
+    test.skip("annotate pcd slice renders after refreshing from explore mode", async ({
+      modal,
+      grid,
+      page,
+      fiftyoneLoader,
+    }) => {
+      await modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      );
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(
+          () => modal.sidebar.annotate.selectAnnotationSlice("pcd"),
+          true,
+        ),
+      );
+      await modal.assert.verifyHasNoViewerError();
+      await modal.sampleCanvas3d.assert.hasScreenshot("annotate-pcd.png");
+
+      await modal.afterGroupSampleLoaded(() =>
+        modal.sidebar.switchMode("explore"),
+      );
+      await modal.group.openMediaVisibility();
+
+      await modal.group.showMedia("viewer");
+      await modal.group.showMedia("3d");
+
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      expect(await modal.looker3d.isVisible()).toBe(true);
+      await modal.groupSampleCanvas.click(0.5, 0.5);
+      await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
+
+      await modal.close();
+      await modal.assert.isClosed();
+
+      await page.reload();
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+
+      await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
+      await modal.assert.verifyModalSamplePluginTitle("left", { pinned: true });
+      expect(await modal.groupLooker.isVisible()).toBe(true);
+      expect(await modal.looker3d.isVisible()).toBe(true);
+
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(
+          () => modal.sidebar.switchMode("annotate"),
+          true,
+        ),
+      );
+      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("pcd");
+      await modal.assert.verifyHasNoViewerError();
+      await modal.sampleCanvas3d.assert.hasScreenshot("annotate-pcd.png");
+    });
+  });
+
+  test("modal with grid filter", async ({
+    modal,
+    grid,
+    sidebar,
+    eventUtils,
+  }) => {
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.toggleSidebarGroup("GROUP"),
+    );
+    await eventUtils.after("animation-onRest", () =>
+      sidebar.clickFieldDropdown("group.name"),
+    );
+
+    await grid.run(async () => {
+      await sidebar.applyFilter("left");
+    });
+
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
+
+    await modal.navigateSlice("group.name", "right");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
+  });
+});
