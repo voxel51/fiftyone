@@ -27,7 +27,9 @@ const SidebarContainer = ({
       }}
       onResizeReset={resetWidth}
       style={{
+        borderRadius: modal ? undefined : 8,
         borderTopRightRadius: 8,
+        overflow: modal ? undefined : "hidden",
         zIndex: modal ? muiTheme.zIndex.tooltip + 1 : undefined,
       }}
     >

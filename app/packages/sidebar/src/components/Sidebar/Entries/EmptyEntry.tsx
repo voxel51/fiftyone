@@ -14,7 +14,7 @@ const EmptyEntry = ({
   const theme = useTheme();
   const { text, loading } = useText();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.background.level1,
+    backgroundColor: "var(--color-content-bg-card-nested)",
   });
 
   return (

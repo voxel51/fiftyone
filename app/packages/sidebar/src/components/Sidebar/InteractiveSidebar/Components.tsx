@@ -1,4 +1,3 @@
-import { styles } from "@fiftyone/utilities";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
@@ -8,12 +7,12 @@ export const SidebarColumn = styled.div`
   width: 100%;
   flex: 1;
 
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
 
-  background: var(--color-content-bg-background);
-
-  ${styles.scrollbarStyles}
+  background: var(--color-content-bg-card);
 `;
 
 export const Container = animated(styled.div`

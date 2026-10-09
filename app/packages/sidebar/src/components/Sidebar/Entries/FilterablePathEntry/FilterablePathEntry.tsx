@@ -67,7 +67,7 @@ const FilterableEntry = ({
       backgroundColor={
         fieldIsFiltered
           ? Color(color).alpha(0.25).string()
-          : theme.background.level1
+          : "var(--color-content-bg-card-nested)"
       }
       clickable={!disabled}
       color={color}

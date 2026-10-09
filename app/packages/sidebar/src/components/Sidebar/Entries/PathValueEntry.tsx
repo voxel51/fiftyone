@@ -98,7 +98,7 @@ const ScalarValueEntry = ({
 }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.background.level1,
+    backgroundColor: "var(--color-content-bg-card-nested)",
   });
   const color = useReverbValue(fos.pathColor(path));
   const field = useReverbValue(fos.field(path));
@@ -178,7 +178,7 @@ const ListValueEntry = ({
   const color = useReverbValue(fos.pathColor(path));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
-    backgroundColor: theme.background.level1,
+    backgroundColor: "var(--color-content-bg-card-nested)",
   });
   const field = useReverbValue(fos.field(path));
   const pseudoField = makePseudoField(path);

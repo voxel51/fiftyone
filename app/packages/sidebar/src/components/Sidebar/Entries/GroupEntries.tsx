@@ -81,7 +81,7 @@ const GroupHeader = styled.div`
   align-items: center;
   font-weight: bold;
   color: ${({ theme }) => theme.text.secondary};
-  background: ${({ theme }) => theme.neutral.softBg};
+  background: transparent;
   user-select: text;
 
   svg {

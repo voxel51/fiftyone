@@ -22,8 +22,11 @@ import SchemaLensRow from "../components/SchemaLens/SchemaLensRow";
 
 const Container = styled.div`
   display: flex;
+  gap: 8px;
   height: 100%;
   overflow: hidden;
+  padding: 0 4px 4px;
+  box-sizing: border-box;
 `;
 
 const GridArea = styled.div`

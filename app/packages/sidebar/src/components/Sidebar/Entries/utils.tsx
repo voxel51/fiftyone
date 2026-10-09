@@ -27,7 +27,7 @@ export const InputDiv = styled.div`
 
 /** Compact dropdown for the sidebar header row (mode + schema lens). */
 export const FilterInputDiv = styled.div`
-  background: var(--color-content-bg-background);
+  background: var(--color-content-bg-card);
   box-sizing: border-box;
   cursor: pointer;
   font-weight: bold;

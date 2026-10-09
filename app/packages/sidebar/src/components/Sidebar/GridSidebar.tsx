@@ -10,7 +10,7 @@ import SidebarContainer from "./SidebarContainer";
 
 const TopContainer = styled.div`
   padding: 1rem 1rem 0.5rem 1rem;
-  background: var(--color-content-bg-background);
+  background: var(--color-content-bg-card);
   display: flex;
   flex-direction: column;
   row-gap: 0.5rem;
