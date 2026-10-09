@@ -96,53 +96,6 @@ export const createStorm = (
     }
   };
 
-  const LIGHT = "205, 220, 255";
-  const beams = [0.2, 0.8].map((base) => ({
-    x: width * (base + (random() - 0.5) * 0.1),
-    speed: 0.07 + random() * 0.06,
-    phase: random() * Math.PI * 2,
-  }));
-
-  // a cone from above the stage: narrow at the lamp, wide and faint below
-  const beam = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    angle: number,
-    alpha: number,
-  ) => {
-    const reach = Math.hypot(width, height) * 1.1;
-    ctx.save();
-    ctx.translate(x, -20);
-    ctx.rotate(angle);
-    const fade = ctx.createLinearGradient(0, 0, 0, reach);
-    fade.addColorStop(0, `rgba(${LIGHT}, ${alpha})`);
-    fade.addColorStop(0.6, `rgba(${LIGHT}, ${alpha * 0.35})`);
-    fade.addColorStop(1, `rgba(${LIGHT}, 0)`);
-    ctx.fillStyle = fade;
-    // nested cones stand in for a blur: brighter core, softer edges
-    for (const spread of [0.05, 0.09, 0.14]) {
-      ctx.beginPath();
-      ctx.moveTo(-4, 0);
-      ctx.lineTo(4, 0);
-      ctx.lineTo(reach * spread, reach);
-      ctx.lineTo(-reach * spread, reach);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-  };
-
-  // far behind the rain: two sweeping floodlights. No glow over the whole
-  // canvas, which would tint it off the page background it sits on
-  const moonlight = (ctx: CanvasRenderingContext2D, t: number) => {
-    for (const b of beams) {
-      // lean inward, sweep about +/-30 degrees
-      const lean = b.x < width / 2 ? -0.25 : 0.25;
-      const angle = lean + 0.52 * Math.sin(t * b.speed + b.phase);
-      beam(ctx, b.x, angle, 0.012 + 0.006 * Math.sin(t * 0.4 + b.phase));
-    }
-  };
-
   // pixel-art drop as [column offset, width] runs; the tip row leans upwind
   const DROP_ROWS: [number, number][] = [
     [1, 1],
@@ -166,9 +119,8 @@ export const createStorm = (
     });
   };
 
-  const draw = (ctx: CanvasRenderingContext2D, t: number) => {
+  const draw = (ctx: CanvasRenderingContext2D) => {
     ctx.clearRect(0, 0, width, height);
-    moonlight(ctx, t);
     for (const d of drops) {
       const size = 1 + d.z * 3;
       ctx.globalAlpha = 0.25 + d.z * 0.6;

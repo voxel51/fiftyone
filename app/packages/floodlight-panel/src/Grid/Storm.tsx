@@ -38,7 +38,7 @@ const Storm = ({ className }: { className?: string }) => {
       canvas.height = height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       storm = createStorm(width, height, paletteFor(canvas));
-      storm.draw(ctx, performance.now() / 1000);
+      storm.draw(ctx);
     };
 
     const tick = (now: number) => {
@@ -51,7 +51,7 @@ const Storm = ({ className }: { className?: string }) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       storm.step(now / 1000, dt);
-      storm.draw(ctx, now / 1000);
+      storm.draw(ctx);
     };
 
     const observer = new ResizeObserver(fit);
