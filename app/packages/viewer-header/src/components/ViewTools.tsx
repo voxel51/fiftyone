@@ -3,27 +3,12 @@
  */
 
 import { ActionIconSizeContext, ColorScheme, Options } from "@fiftyone/actions";
-import { Link2Icon, MaximizeIcon, MinimizeIcon } from "@voxel51/voodo";
+import { Link2Icon } from "@voxel51/voodo";
 import type { ReactNode } from "react";
-import { useCopySampleLink, useViewerFullscreen } from "../hooks";
+import { useCopySampleLink } from "../hooks";
 import styles from "../ViewerHeader.module.css";
+import Fullscreen from "./Fullscreen";
 import HeaderAction from "./HeaderAction";
-
-const Fullscreen = () => {
-  const { fullscreen, toggle } = useViewerFullscreen();
-  const label = fullscreen ? "Exit fullscreen" : "Enter fullscreen";
-
-  return (
-    <HeaderAction
-      active={fullscreen}
-      data-cy="action-toggle-fullscreen"
-      icon={fullscreen ? MinimizeIcon : MaximizeIcon}
-      label={label}
-      tooltip={`${label} (f)`}
-      onClick={toggle}
-    />
-  );
-};
 
 /** How the sample shows, and sharing it. */
 const ViewTools = ({ utilities }: { utilities?: ReactNode }) => {

@@ -246,6 +246,15 @@ describe("ViewerHeader", () => {
     expect(harness.copyLink).toHaveBeenCalled();
   });
 
+  it("leaves only a way out of fullscreen", () => {
+    harness.fullscreen = true;
+    const get = renderHeader();
+
+    expect(get("sample-page-header")).toBeNull();
+    fireEvent.click(get("action-toggle-fullscreen")!);
+    expect(harness.toggleFullscreen).toHaveBeenCalled();
+  });
+
   it("opens the group visibility popout from its action", () => {
     harness.context = { exploring: true, group: true, multimodal: false };
     const get = renderHeader();

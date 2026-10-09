@@ -72,6 +72,9 @@ const PAGE_CONTAINER = {
   boxShadow: "none",
 } as const;
 
+// sized like the overlay's fullscreen, which e2e reads from the style
+const PAGE_FULLSCREEN = { ...PAGE_CONTAINER, height: "100%" } as const;
+
 const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -430,7 +433,13 @@ const Modal = ({
         />
         <ModalContainer
           data-cy="modal-content"
-          style={page ? PAGE_CONTAINER : screenParams}
+          style={
+            page
+              ? isFullScreen
+                ? PAGE_FULLSCREEN
+                : PAGE_CONTAINER
+              : screenParams
+          }
         >
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}

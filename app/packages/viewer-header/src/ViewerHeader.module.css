@@ -10,6 +10,17 @@
   box-sizing: border-box;
 }
 
+/* above the sample, whose container stacks at 10001 */
+.fullscreenExit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10002;
+  border-radius: 999px;
+  background: var(--color-content-bg-card);
+  box-shadow: 0 1px 3px var(--color-content-scrim-light);
+}
+
 .left {
   display: flex;
   flex: 1;
