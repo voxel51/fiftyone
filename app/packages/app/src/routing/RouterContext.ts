@@ -238,6 +238,14 @@ const viewOf = (state: unknown) =>
  */
 export const isParamMove = (to: Seen, from: Seen, action: Action) => {
   if (pageOf(to.pathname) !== pageOf(from.pathname)) return false;
+  // a layout change (a panel opening or closing) writes the workspace to the
+  // URL but leaves the page and its data as they are
+  if (
+    (to.state as { event?: string } | null)?.event === "spaces" &&
+    viewsAreEqual(viewOf(to.state), viewOf(from.state))
+  ) {
+    return true;
+  }
   if (action !== "POP") return isMarked(to.state);
   return (
     (isMarked(to.state) || isMarked(from.state)) &&

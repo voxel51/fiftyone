@@ -66,6 +66,27 @@ describe("param moves", () => {
     ).toBe(false);
   });
 
+  it("keeps the page for a layout change", () => {
+    expect(
+      isParamMove(
+        at("/datasets/a", { view: [], event: "spaces" }),
+        at("/datasets/a", { view: [] }),
+        Action.Replace,
+      ),
+    ).toBe(true);
+  });
+
+  it("routes a layout change that also changes the view", () => {
+    const stage = { _cls: "fiftyone.core.stages.Limit", kwargs: [] };
+    expect(
+      isParamMove(
+        at("/datasets/a", { view: [stage], event: "spaces" }),
+        at("/datasets/a", { view: [] }),
+        Action.Replace,
+      ),
+    ).toBe(false);
+  });
+
   it("keeps the entry on Back from a marked entry to its grid", () => {
     expect(
       isParamMove(
