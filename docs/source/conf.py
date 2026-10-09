@@ -115,11 +115,6 @@ autoclass_content = "class"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
-# Single backticks render as code on every page. Without this, Sphinx never
-# resets a page's `.. default-role::`, so the role leaks between pages in
-# serial builds and differs between workers in parallel builds
-default_role = "code"
-
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of strings.
 source_suffix = [".rst", ".md"]
