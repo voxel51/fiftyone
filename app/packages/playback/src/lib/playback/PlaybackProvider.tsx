@@ -44,6 +44,13 @@ function normalizeTimelineMode(mode: TimelineMode): TimelineMode {
   }
 }
 
+function displayModeFor(
+  display: "configured" | "duration",
+  configured: TimelineMode,
+): TimelineMode {
+  return display === "duration" ? DEFAULT_MODE : configured;
+}
+
 /**
  * How the timeline's shared clock is *presented* — the domain ruler ticks,
  * the playhead readout and the loop-bound readouts render in.
@@ -159,6 +166,7 @@ export function PlaybackProvider({
   snapToFrameOnSettle,
   mode,
   defaultDisplay = "configured",
+  onDisplayChange,
   seekFetchDebounceMs,
 }: PlaybackConfig & { children: React.ReactNode }) {
   // Frozen at mount to match `usePlaybackEngine`'s mount-scoped store: that
@@ -177,23 +185,17 @@ export function PlaybackProvider({
 
   // What the ruler / readouts render in. Seeded from the configured mode —
   // or from plain elapsed time when the surface asks for that — and then
-  // owned by the user; the engine never reads it. Frozen at mount like
-  // `resolvedMode`, so this only ever picks the opening domain.
-  const initialDisplayModeRef = useRef<TimelineMode>();
-  if (initialDisplayModeRef.current === undefined) {
-    initialDisplayModeRef.current =
-      defaultDisplay === "duration" ? DEFAULT_MODE : resolvedMode;
-  }
-  const [displayMode, setDisplayMode] = useState<TimelineMode>(
-    initialDisplayModeRef.current,
+  // owned by the user; the engine never reads it.
+  const [displayMode, setDisplayMode] = useState(() =>
+    displayModeFor(defaultDisplay, resolvedMode),
   );
   const canToggleMode = resolvedMode.kind !== "duration";
   const toggleMode = useCallback(() => {
     if (!canToggleMode) return;
-    setDisplayMode((current) =>
-      current.kind === "duration" ? resolvedMode : DEFAULT_MODE,
-    );
-  }, [canToggleMode, resolvedMode]);
+    const next = displayMode.kind === "duration" ? "configured" : "duration";
+    setDisplayMode(displayModeFor(next, resolvedMode));
+    onDisplayChange?.(next);
+  }, [canToggleMode, displayMode, resolvedMode, onDisplayChange]);
   const modeControl = useMemo<TimelineModeControl>(
     () => ({
       mode: displayMode,

@@ -317,6 +317,8 @@ export interface PlaybackConfig {
    * @default "configured"
    */
   defaultDisplay?: "configured" | "duration";
+  /** Called when the user toggles the readout. */
+  onDisplayChange?: (display: "configured" | "duration") => void;
   /**
    * Trailing delay before a seek asks missing blocking streams to prefetch.
    * The visual playhead and commits into already-buffered data stay immediate.

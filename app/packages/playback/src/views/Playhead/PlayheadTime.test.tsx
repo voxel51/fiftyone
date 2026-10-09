@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   PlaybackProvider,
   usePlayback,
@@ -142,6 +142,28 @@ describe("PlayheadTime", () => {
       // Still swappable: the CONFIGURED mode is still `sequence`.
       fireEvent.click(screen.getByRole("button"));
       expect(screen.getByText("# 5 / #10")).toBeTruthy();
+    });
+
+    it("reports each toggle through onDisplayChange", () => {
+      const onDisplayChange = vi.fn();
+      render(
+        <PlaybackProvider
+          duration={1}
+          mode={{ kind: "sequence", fps: 10 }}
+          defaultDisplay="duration"
+          onDisplayChange={onDisplayChange}
+        >
+          <PlayheadTime />
+        </PlaybackProvider>,
+      );
+
+      fireEvent.click(screen.getByRole("button"));
+      fireEvent.click(screen.getByRole("button"));
+
+      expect(onDisplayChange.mock.calls).toEqual([
+        ["configured"],
+        ["duration"],
+      ]);
     });
 
     it("leaves the step interval alone across a toggle", () => {

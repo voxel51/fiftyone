@@ -3,6 +3,7 @@ import {
   useDimensions,
   useIsImageDynamicGroupVideo,
   useReportAnnotationSurface,
+  useVideoTimelineDisplay,
 } from "@fiftyone/state";
 import type { ModalSample } from "@fiftyone/state";
 import {
@@ -239,6 +240,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
   const [tracksReady, setTracksReady] = useState(false);
   const engine = useAnnotationEngine();
   const activeSampleId = useActiveSampleId();
+  const { defaultDisplay, onDisplayChange } = useVideoTimelineDisplay();
   const storeReady = useEngineSelector(
     engine,
     (reads) => activeSampleId !== null && reads.isSampleReady(activeSampleId),
@@ -361,7 +363,12 @@ const VideoAnnotationSurfaceForSample: React.FC<
     // Annotation wants the playhead to rest on a real frame after a pause or
     // scrub-drag, so the labels snapshot and any keyframe op align to a frame.
     // Scrubbing stays continuous — only the settle position snaps.
-    <PlaybackProvider snapToFrameOnSettle mode={mode}>
+    <PlaybackProvider
+      snapToFrameOnSettle
+      mode={mode}
+      defaultDisplay={defaultDisplay}
+      onDisplayChange={onDisplayChange}
+    >
       <VideoAnnotationHandlerRegistration />
       {AUDIO_ONLY_STRATEGIES.has(strategy) && (
         <RegisterTimelineAudio

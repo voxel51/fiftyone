@@ -91,6 +91,7 @@ test("frame primitives follow the playhead and the frame number is read-only", a
   const sidebar = modal.sidebar.annotate;
   await sidebar.assert.primitiveValue("frames.weather", weatherAt(1));
   await sidebar.assert.primitiveValue("frames.frame_number", "1");
+  await modal.videoAnnotate.toggleClockDisplay();
   // the current frame pads to the total's width
   await modal.videoAnnotate.assert.clock("# 1 / #20");
 

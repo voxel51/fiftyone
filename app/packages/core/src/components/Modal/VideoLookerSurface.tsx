@@ -86,8 +86,15 @@ export const VideoLookerSurface: React.FC<{ sample: fos.ModalSample }> = ({
   const playbackKey =
     mode.kind === "sequence" ? `sequence:${mode.fps}` : mode.kind;
 
+  const { defaultDisplay, onDisplayChange } = fos.useVideoTimelineDisplay();
+
   return (
-    <PlaybackProvider key={playbackKey} mode={mode} defaultDisplay="duration">
+    <PlaybackProvider
+      key={playbackKey}
+      mode={mode}
+      defaultDisplay={defaultDisplay}
+      onDisplayChange={onDisplayChange}
+    >
       {/* Registers the label stream the tracks read. A SIBLING of the media:
           it re-keys on the resolved frame count, and nesting the looker under
           it would rebuild the looker on the way to ready. */}

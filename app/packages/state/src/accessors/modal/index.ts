@@ -3,7 +3,7 @@ export * from "./dynamicGroups";
 export * from "./use-active-modal-sample-value";
 
 import type { Schema } from "@fiftyone/utilities";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useRecoilState,
@@ -17,6 +17,7 @@ import type { AnnotationSurface, ModalViewportState } from "../../jotai/modal";
 import {
   __unsafeAnnotationSurfaceAtom,
   __unsafeModalViewportAtom,
+  __unsafeVideoTimelineDisplayAtom,
 } from "../../jotai/modal";
 import type { ModalSample } from "../../recoil";
 import type { Sample } from "@fiftyone/looker";
@@ -24,6 +25,7 @@ import {
   State,
   activeFields,
   activeModalSample,
+  appConfigOption,
   currentSampleId,
   fieldSchema,
   lookerOptions,
@@ -210,6 +212,31 @@ export const useModalMediaPath = (): string | null => {
     ? (sample.urls.find((u) => u.field === mediaField)?.url ??
         sample.urls[0]?.url)
     : sample.urls[mediaField];
+};
+
+/**
+ * Frames vs. time for the modal video timeline. Read without subscribing:
+ * the provider only uses it at mount.
+ */
+export const useVideoTimelineDisplay = () => {
+  const store = useStore();
+  const useFrameNumber = useRecoilValue(
+    appConfigOption({ modal: true, key: "useFrameNumber" }),
+  );
+  const setDisplay = useSetAtom(__unsafeVideoTimelineDisplayAtom);
+  const onDisplayChange = useCallback(
+    (next: "configured" | "duration") =>
+      setDisplay(next === "configured" ? "frames" : "time"),
+    [setDisplay],
+  );
+  return {
+    defaultDisplay:
+      (store.get(__unsafeVideoTimelineDisplayAtom) ??
+        (useFrameNumber ? "frames" : "time")) === "frames"
+        ? ("configured" as const)
+        : ("duration" as const),
+    onDisplayChange,
+  };
 };
 
 /** The annotation surface currently mounted in the modal, if any. */
