@@ -10391,6 +10391,8 @@ def _clone_collection(
         or dataset.has_runs
     ):
         _clone_extras(dataset, clone_dataset, now)
+    elif view is not None:
+        _clone_view_extras(view, clone_dataset, now)
 
     return clone_dataset
 
@@ -10809,6 +10811,10 @@ def _update_no_overwrite(d, dnew):
 # :func:`register_extras_cloner`.
 _extras_cloners = []
 
+# Hooks invoked when a view is cloned, as ``cloner(view, dst_dataset, now)``.
+# See :func:`register_view_cloner`.
+_view_cloners = []
+
 
 def register_extras_cloner(cloner):
     """Registers a callable to be invoked during :func:`_clone_extras`.
@@ -10825,6 +10831,34 @@ def register_extras_cloner(cloner):
     """
     if cloner not in _extras_cloners:
         _extras_cloners.append(cloner)
+
+
+def register_view_cloner(cloner):
+    """Registers a callable to be invoked when a view is cloned.
+
+    Each registered cloner is called as ``cloner(view, dst_dataset, now)``
+    after the view's samples are written to ``dst_dataset``, in registration
+    order. A view's clone carries none of its dataset's saved views,
+    workspaces or runs, so a cloner decides what else it does carry. Failures
+    in a cloner are logged but do not abort the clone.
+
+    Args:
+        cloner: a callable with signature ``cloner(view, dst_dataset, now)``
+    """
+    if cloner not in _view_cloners:
+        _view_cloners.append(cloner)
+
+
+def _clone_view_extras(view, dst_dataset, now):
+    # Best-effort, as for a full dataset: the clone already holds the view's
+    # samples
+    for cloner in _view_cloners:
+        try:
+            cloner(view, dst_dataset, now)
+        except Exception:
+            logger.warning(
+                "Failed to run view cloner %r", cloner, exc_info=True
+            )
 
 
 def _clone_extras(src_dataset, dst_dataset, now):
