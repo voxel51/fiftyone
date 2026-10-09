@@ -27,6 +27,8 @@ export interface UseRailOptions {
 export interface Rail {
   /** Fraction of the item at the top of the view, once known. */
   fraction?: number;
+  /** The instance whose row set `fraction`. */
+  from?: EventTarget;
   /** How many items fill the viewport at the loaded rows' density. */
   visible?: number;
   /** Hears the top's fraction as the view scrolls, between rows too. */
@@ -48,7 +50,7 @@ export default function useRail({
   onScroll,
   perItem,
 }: UseRailOptions): Rail {
-  const [fraction, setFraction] = useState<number>();
+  const [top, setTop] = useState<{ fraction: number; from?: EventTarget }>();
   const [visible, setVisible] = useState<number>();
   const measure = useRef(extent);
   measure.current = extent;
@@ -57,12 +59,12 @@ export default function useRail({
   const followers = useRef(new Set<(fraction: number) => void>());
 
   // a new order starts at the top
-  useEffect(() => setFraction(undefined), [fractionOf]);
+  useEffect(() => setTop(undefined), [fractionOf]);
 
   useEffect(() => {
     const at = host?.anchor?.at?.description;
     const anchored = at === undefined ? undefined : fractionOf(at);
-    anchored !== undefined && setFraction(anchored);
+    anchored !== undefined && setTop({ fraction: anchored, from: instance });
     if (!instance) return undefined;
 
     let base: Mark | undefined;
@@ -77,7 +79,7 @@ export default function useRail({
         pace = (next - base.fraction) / (scrolled - base.scrolled);
       }
       base = { fraction: next, scrolled };
-      setFraction(next);
+      setTop({ fraction: next, from: instance });
       setVisible(view && extentVisible(view));
     };
     const onScroll = () => {
@@ -104,5 +106,5 @@ export default function useRail({
     return () => void followers.current.delete(listener);
   }, []);
 
-  return { follow, fraction, visible };
+  return { follow, fraction: top?.fraction, from: top?.from, visible };
 }

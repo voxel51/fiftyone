@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Anchor } from "../host/createHost";
 import type { Extent } from "../rail/model";
 import useRail from "../rail/useRail";
@@ -21,6 +21,10 @@ interface RailHost {
  * The grid's rail for its order: the thumb follows the top item, a release
  * jumps in place when the target is loaded, otherwise rebuilds at its page
  * (SMALL) or seeks once from a new origin (INDEXED).
+ *
+ * A release holds the thumb where it was let go until the instance the jump
+ * builds is on screen and reports its top row, so the outgoing instance
+ * never pulls it back. A new drag drops the hold.
  */
 export default function useGridRail({
   extent,
@@ -32,6 +36,7 @@ export default function useGridRail({
   origin,
   pageSize,
   paged,
+  ready,
   seek,
   sequences,
 }: {
@@ -44,6 +49,8 @@ export default function useGridRail({
   origin: Origin;
   pageSize: number;
   paged: boolean;
+  /** The host shows its newest instance. */
+  ready: boolean;
   seek: (to: OrderSeek) => void;
   sequences: Records;
 }) {
@@ -62,6 +69,16 @@ export default function useGridRail({
     perItem: railed?.perItem,
   });
 
+  // the released position, and the instance on screen at the release
+  const [held, setHeld] = useState<{ position: number; from?: EventTarget }>();
+  const holding = useRef(held);
+  holding.current = held;
+  const settled =
+    held && ready && rail.from !== undefined && rail.from !== held.from;
+  useLayoutEffect(() => {
+    settled && setHeld(undefined);
+  }, [settled]);
+
   // a seek rebuilds at its page; new data resets the origin, and the grid
   // starts over or reorders on its own
   const shown = useRef(origin);
@@ -74,6 +91,7 @@ export default function useGridRail({
   const jump = useCallback(
     (position: number) => {
       if (!railed) return;
+      setHeld({ position, from: instance });
       const plan = railed.jump(
         position,
         rail.visible,
@@ -82,26 +100,43 @@ export default function useGridRail({
       );
       "anchor" in plan ? host?.rebuild(plan.anchor) : seek(plan.seek);
     },
-    [fractions, host, pageSize, rail.visible, railed, seek, sequences],
+    [
+      fractions,
+      host,
+      instance,
+      pageSize,
+      rail.visible,
+      railed,
+      seek,
+      sequences,
+    ],
   );
 
   const follow = useCallback(
     (listener: (position: number) => void) =>
       rail.follow(
         (fraction) =>
-          railed && listener(railed.position(fraction, rail.visible)),
+          railed &&
+          !holding.current &&
+          listener(railed.position(fraction, rail.visible)),
       ),
     [rail, railed],
   );
 
   return {
+    /** Hears a rail drag start or end; a start drops the hold. */
+    drag: useCallback((dragging: boolean) => {
+      dragging && setHeld(undefined);
+    }, []),
     follow,
     jump,
     mode,
     position:
-      railed && rail.fraction !== undefined
-        ? railed.position(rail.fraction, rail.visible)
-        : undefined,
+      railed && held && !settled
+        ? held.position
+        : railed && rail.fraction !== undefined
+          ? railed.position(rail.fraction, rail.visible)
+          : undefined,
     seekValue: useCallback((value: unknown) => seek({ value }), [seek]),
     visible: rail.visible,
   };

@@ -40,12 +40,14 @@ export const mountHost = ({
   capacity,
   config = {},
   limit,
+  onPage,
   onRejected,
   pages = createFakePages({ pages: 10, perPage: 20 }),
   remount,
   rowAspect,
   scoped = true,
   size,
+  sourceOf,
 }: {
   axis?: "width" | "height";
   /** Pages the source keeps beyond the live instances'. */
@@ -53,6 +55,8 @@ export const mountHost = ({
   config?: Partial<EngineOptions>;
   /** Pages an instance reads before a quiet rebuild replaces it. */
   limit?: number;
+  /** Hears each page an instance's lease reads, as the panel's warming does. */
+  onPage?: (key: number, start: number, page: Page) => void;
   /** Runs at an instance's `rejected`, as the panel's recommendation does. */
   onRejected?: (recommended: number) => void;
   pages?: ReturnType<typeof createFakePages>;
@@ -62,6 +66,8 @@ export const mountHost = ({
   scoped?: boolean;
   /** Each looker's byte size, which a deferred show reports too. */
   size?: (key: string) => Promise<number>;
+  /** The source each build leases from, as the panel keys one per origin. */
+  sourceOf?: () => PageSource<number, Page>;
 } = {}) => {
   const container = createContainer();
   const fetches = remount?.fetches ?? countCalls(pages.fetch);
@@ -101,7 +107,7 @@ export const mountHost = ({
     anchor: Anchor<number> | undefined,
     { interim, quiet }: BuildContext,
   ) => {
-    const lease = source.lease(
+    const lease = (sourceOf?.() ?? source).lease(
       quiet && host.instance ? leases.get(host.instance) : undefined,
     );
     const label = `i${labels.size}`;
@@ -122,7 +128,11 @@ export const mountHost = ({
     const { spotlight } = createEngine({
       key: anchor?.key ?? 0,
       at: anchor?.at,
-      get: (key) => lease.get(key),
+      get: (key) =>
+        lease.get(key).then((page) => {
+          onPage?.(key, anchor?.key ?? 0, page);
+          return page;
+        }),
       peek: host.instance && !quiet ? undefined : (key) => lease.peek(key),
       ...(scoped ? grid : counted),
       ...(ar === undefined ? {} : { rowAspectRatioThreshold: () => ar }),

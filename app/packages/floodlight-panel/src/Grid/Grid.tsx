@@ -416,16 +416,19 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     origin,
     pageSize: PAGE_SIZE,
     paged,
+    ready: status === "ready",
     seek,
     sequences: records,
   });
   const railVisible = rail.mode.kind === "offset" || rail.mode.kind === "value";
+  const railDrag = rail.drag;
   const onRailDrag = useCallback(
     (next: boolean) => {
       dragging.current = next;
       next && source.dispose();
+      railDrag(next);
     },
-    [source],
+    [railDrag, source],
   );
 
   // a setting that changes layout means a new instance, at the saved location
