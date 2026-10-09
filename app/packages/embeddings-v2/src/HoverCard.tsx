@@ -6,6 +6,7 @@
  * the grid. Renders nothing until the image has loaded (or the sample
  * has no hover media) — an empty box must never appear.
  */
+import { getEventBus } from "@fiftyone/events";
 import {
   BackgroundColor,
   BorderColor,
@@ -31,6 +32,11 @@ import { createPortal } from "react-dom";
 import "./panel.css";
 import { patchRect, type Bounds } from "./patchCrop";
 import type { HoverHit } from "./renderer";
+
+/** e2e specs read the card once it is placed and its image has settled */
+type HoverCardE2EEvents = {
+  "e2e:embeddings:hover-shown": { image: boolean };
+};
 
 // Portaled to body, so the tokens its CSS reads must be declared here
 /** Pointer travel still counted as a click rather than a drag */
@@ -175,6 +181,15 @@ export default function HoverCard({
       stale = true;
     };
   }, [src]);
+
+  // e2e specs read the card once it is placed and its image has settled
+  const imageSettled = settled?.src === src;
+  useEffect(() => {
+    if (!pos || !imageSettled) return;
+    getEventBus<HoverCardE2EEvents>().dispatch("e2e:embeddings:hover-shown", {
+      image: showImage,
+    });
+  }, [pos, imageSettled, showImage]);
 
   // A click elsewhere in the plot dismisses the frozen card, and still
   // propagates. Clicks outside the plot leave it alone — pinning it is how
@@ -323,7 +338,11 @@ export default function HoverCard({
       )}
       {filename && (
         <span className="emb-hover-text">
-          <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+          <Text
+            variant={TextVariant.Sm}
+            color={TextColor.Muted}
+            data-cy="embeddings-hover-filename"
+          >
             {filename}
           </Text>
         </span>

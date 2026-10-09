@@ -5,6 +5,7 @@
  * provides. Deleting a run is a two-step confirmation handled inline
  * on the card.
  */
+import { getEventBus } from "@fiftyone/events";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import {
@@ -27,6 +28,11 @@ import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
 import { UpsellBanner } from "./UpsellBanner";
+
+/** e2e specs wait for the list to render a run count before reading it */
+type RunsListE2EEvents = {
+  "e2e:embeddings:runs-listed": { count: number };
+};
 
 // MM/DD/YYYY per the card spec — a fixed format, not the viewer locale
 const formatTimestamp = (timestamp: string | null): string | null => {
@@ -104,6 +110,16 @@ export default function RunsList({
     if (confirmKey && !isActionable(confirmKey)) setConfirmKey(null);
   }, [runs, menu, confirmKey]);
 
+  // The list renders from the page's data: a run computed or deleted
+  // elsewhere arrives with a page refresh, which e2e specs wait out
+  const count = runs?.length ?? null;
+  useEffect(() => {
+    if (count === null) return;
+    getEventBus<RunsListE2EEvents>().dispatch("e2e:embeddings:runs-listed", {
+      count,
+    });
+  }, [count]);
+
   const runActions = (run: VisualizationRun) => {
     // No actions on pending runs: Refresh needs results, and Delete
     // would remove the run record without stopping the computation
@@ -163,7 +179,11 @@ export default function RunsList({
     <div className="emb-runs-page" data-cy="embeddings-runs-page">
       {runs.length > 0 && (
         <div className="emb-runs-header">
-          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            data-cy="embeddings-runs-count"
+          >
             {runs.length} visualization{runs.length === 1 ? "" : "s"}
           </Text>
           {onCreate && (

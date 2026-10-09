@@ -6,6 +6,7 @@
  */
 import { test as base } from "src/oss/fixtures";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
+import { OperatorsPromptPom } from "src/oss/poms/operators/operators-prompt";
 import { EmbeddingsV2Pom } from "src/oss/poms/panels/embeddings-v2-panel";
 import { Duration, getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { BRAIN_KEY, plantedPoint, TOTAL, twoClusters } from "./embeddings-data";
@@ -19,6 +20,7 @@ const test = base.extend<{
   datasetName: string;
   embeddings: EmbeddingsV2Pom;
   operatorsBrowser: OperatorsBrowserPom;
+  operatorsPrompt: OperatorsPromptPom;
 }>({
   // A dataset per test: the server keeps ONE session, and a page opened on
   // the same dataset inherits its layout and open run
@@ -42,6 +44,9 @@ const test = base.extend<{
   },
   operatorsBrowser: async ({ eventUtils, page }, use) => {
     await use(new OperatorsBrowserPom(page, eventUtils));
+  },
+  operatorsPrompt: async ({ eventUtils, page }, use) => {
+    await use(new OperatorsPromptPom(page, eventUtils));
   },
 });
 
@@ -125,21 +130,22 @@ test("a run computed after the page loaded appears when the panel opens", async 
   embeddings,
   fiftyoneLoader,
   operatorsBrowser,
+  operatorsPrompt,
   page,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
-  // The run registers server-side while the page holds its loaded run list.
-  // The operator executes synchronously, so its response means the run exists
-  const executed = page.waitForResponse(
-    (response) => new URL(response.url()).pathname === "/operators/execute",
-  );
+  // The run registers server-side while the page holds its loaded run list;
+  // the prompt closes once the operator's run has finished
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
-  await operatorsBrowser.choose("E2E: Compute visualization");
-  await executed;
+  await operatorsPrompt.afterClosed(() =>
+    operatorsBrowser.choose("E2E: Compute visualization"),
+  );
 
-  await embeddings.open();
+  // The panel checks the server's runs as it opens, and the page refresh
+  // that follows lists the new one
+  await embeddings.afterRunsListed(3, () => embeddings.open());
 
   await embeddings.assert.hasRunCount(3);
   await embeddings.assert.runCardShows(LATE_BRAIN_KEY, ["Ready"]);

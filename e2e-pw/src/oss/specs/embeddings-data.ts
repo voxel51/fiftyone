@@ -5,12 +5,50 @@
  * every sample lands exactly where these helpers put it and a lasso over a
  * region of the canvas selects a known set.
  */
+import type { SampleCanvasPom } from "src/oss/poms/modal/sample-canvas";
 import type {
   GroupDatasetOptions,
   ImageDatasetOptions,
   LabelBuilders,
 } from "src/shared/dataset-factory";
-import type { RelativeRect } from "src/oss/poms/panels/embeddings-v2-panel";
+
+/** A rectangle in [0, 1] coordinates relative to the plot canvas */
+export interface RelativeRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/**
+ * Drags a closed lasso around a rectangle of the plot, corner to corner. A
+ * straight drag encloses no area, so it would select nothing
+ */
+export const lasso = async (
+  canvas: SampleCanvasPom,
+  { x1, y1, x2, y2 }: RelativeRect,
+) => {
+  await canvas.move(x1, y1);
+  await canvas.down();
+  for (const [x, y] of [
+    [x2, y1],
+    [x2, y2],
+    [x1, y2],
+    [x1, y1],
+  ]) {
+    await canvas.move(x, y);
+  }
+  await canvas.up();
+};
+
+/**
+ * Moves the pointer onto a spot of the plot from a little to its left, so
+ * the hover picker sees the pointer arrive rather than appear
+ */
+export const hover = async (canvas: SampleCanvasPom, x: number, y: number) => {
+  await canvas.move(x - 0.05, y);
+  await canvas.move(x, y);
+};
 
 export type ImageSeed = Omit<ImageDatasetOptions, "datasetName">;
 export type GroupSeed = Omit<GroupDatasetOptions, "datasetName">;
@@ -65,6 +103,9 @@ export const plantedPoint = (index: number): number[] =>
 /** 40 images in two clusters, with one visualization run over them */
 export const twoClusters = {
   numSamples: TOTAL,
+  // The e2e server's pool is one color; coloring by cluster draws the two
+  // clusters in two
+  appConfig: { color_scheme: { color_pool: ["#FA5300", "#009999"] } },
   // `score` is a float, so coloring by it draws a continuous legend
   schema: { cluster: "StringField", score: "FloatField" },
   withSampleData: ({ index }) => ({

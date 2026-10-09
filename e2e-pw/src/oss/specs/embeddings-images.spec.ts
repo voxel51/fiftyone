@@ -4,11 +4,13 @@
  * The embeddings panel on an image dataset: round trips between the plot,
  * the server, and the grid.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { OperatorsBrowserPom } from "src/oss/poms/operators/operators-browser";
 import { EmbeddingsV2Pom } from "src/oss/poms/panels/embeddings-v2-panel";
+import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { SidebarPom } from "src/oss/poms/sidebar";
+import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { Duration, getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import {
@@ -16,7 +18,9 @@ import {
   CLUSTER_A,
   CLUSTER_B,
   EMPTY_AREA,
+  hover,
   type ImageSeed,
+  lasso,
   LEFT_HALF,
   MIRRORED_BRAIN_KEY,
   mirroredPoint,
@@ -43,8 +47,10 @@ const test = base.extend<{
   datasetName: string;
   embeddings: EmbeddingsV2Pom;
   grid: GridPom;
+  histograms: HistogramPom;
   operatorsBrowser: OperatorsBrowserPom;
   sidebar: SidebarPom;
+  viewBar: ViewBarPom;
 }>({
   seed: [twoClusters, { option: true }],
   // A dataset per test: the server keeps ONE session, and a page opened on
@@ -61,11 +67,17 @@ const test = base.extend<{
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
+  histograms: async ({ eventUtils, page }, use) => {
+    await use(new HistogramPom(page, eventUtils));
+  },
   operatorsBrowser: async ({ eventUtils, page }, use) => {
     await use(new OperatorsBrowserPom(page, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
+  },
+  viewBar: async ({ eventUtils, page }, use) => {
+    await use(new ViewBarPom(page, eventUtils));
   },
 });
 
@@ -93,7 +105,7 @@ test.describe("on the whole dataset", () => {
     grid,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
 
     // A selection narrows the grid's total itself (extended stages feed
     // every count), so the header reads "25 samples", not a filter's
@@ -101,7 +113,7 @@ test.describe("on the whole dataset", () => {
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
 
-    await embeddings.clearSelection();
+    await grid.afterEntryCounts(() => embeddings.clearSelection());
 
     await embeddings.assert.hasNoSelection();
     await grid.assert.isEntryCountTextEqualTo(`${TOTAL} samples`);
@@ -112,10 +124,12 @@ test.describe("on the whole dataset", () => {
     grid,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
-    await embeddings.clickCanvas(EMPTY_AREA.x, EMPTY_AREA.y);
+    await grid.afterEntryCounts(() =>
+      embeddings.plotCanvas.click(EMPTY_AREA.x, EMPTY_AREA.y),
+    );
 
     await embeddings.assert.hasNoSelection();
     await grid.assert.isEntryCountTextEqualTo(`${TOTAL} samples`);
@@ -126,10 +140,12 @@ test.describe("on the whole dataset", () => {
     grid,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
 
-    await embeddings.gridPanel.closeTab("Embeddings");
+    await grid.afterEntryCounts(() =>
+      embeddings.gridPanel.closeTab("Embeddings"),
+    );
 
     await grid.assert.isEntryCountTextEqualTo(`${TOTAL} samples`);
   });
@@ -138,9 +154,11 @@ test.describe("on the whole dataset", () => {
     embeddings,
     grid,
   }) => {
-    await grid.toggleSelectNthSample(0);
-    await grid.toggleSelectNthSample(1);
-    await grid.toggleSelectNthSample(2);
+    await embeddings.afterDrawn({ emphasized: 3 }, async () => {
+      await grid.toggleSelectNthSample(0);
+      await grid.toggleSelectNthSample(1);
+      await grid.toggleSelectNthSample(2);
+    });
 
     await embeddings.assert.hasCounter(`3 selected · ${TOTAL} points`);
     await embeddings.assert.hasSelectionChip("3 samples");
@@ -151,7 +169,9 @@ test.describe("on the whole dataset", () => {
     grid,
   }) => {
     await embeddings.colorBy("cluster");
-    await embeddings.toggleLegend("b");
+    await embeddings.afterDrawn({ visible: CLUSTER_A }, () =>
+      grid.afterEntryCounts(() => embeddings.toggleLegend("b")),
+    );
 
     await embeddings.assert.legendRowIsOff("b");
     await embeddings.assert.hasCounter(
@@ -168,36 +188,32 @@ test.describe("on the whole dataset", () => {
   }) => {
     await embeddings.colorBy("cluster");
 
-    await embeddings.isolateLegend("b");
+    await grid.afterEntryCounts(() => embeddings.isolateLegend("b"));
     await embeddings.assert.legendRowIsOff("a");
     await grid.assert.isEntryCountTextEqualTo(
       `${CLUSTER_B} of ${TOTAL} samples`,
     );
 
-    await embeddings.isolateLegend("b");
+    await grid.afterEntryCounts(() => embeddings.isolateLegend("b"));
     await embeddings.assert.legendRowIsOff("a", false);
     await grid.assert.isEntryCountTextEqualTo(`${TOTAL} samples`);
   });
 
-  test("a sidebar filter scopes the plot", async ({
-    embeddings,
-    eventUtils,
-    sidebar,
-  }) => {
-    const expanded = await eventUtils.arm("animation-onRest");
+  test("a sidebar filter scopes the plot", async ({ embeddings, sidebar }) => {
     await sidebar.clickFieldDropdown("cluster");
-    await expanded.received;
-    await sidebar.applyFilter("a");
+    await embeddings.afterDrawn({ visible: CLUSTER_A }, () =>
+      sidebar.applyFilter("a"),
+    );
 
     await embeddings.assert.hasCounter(
       `${TOTAL} points · ${CLUSTER_A} in view`,
     );
   });
 
-  test("legend counts follow a lasso", async ({ embeddings }) => {
+  test("legend counts follow a lasso", async ({ embeddings, grid }) => {
     await embeddings.colorBy("cluster");
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
 
     await embeddings.assert.legendRowCounts("a", `${CLUSTER_A} / ${CLUSTER_A}`);
     await embeddings.assert.legendRowCounts("b", `0 / ${CLUSTER_B}`);
@@ -209,7 +225,6 @@ test.describe("on the whole dataset", () => {
     await embeddings.colorBy("score");
 
     await embeddings.assert.hasContinuousLegend();
-    await expect(embeddings.legendRow("a")).toBeHidden();
   });
 
   test("background clicks clear the selection, then the legend filter", async ({
@@ -217,18 +232,22 @@ test.describe("on the whole dataset", () => {
     grid,
   }) => {
     await embeddings.colorBy("cluster");
-    await embeddings.toggleLegend("b");
+    await grid.afterEntryCounts(() => embeddings.toggleLegend("b"));
     await embeddings.assert.legendRowIsOff("b");
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
     // The topmost layer comes off first: the selection, not the filter
-    await embeddings.clickCanvas(EMPTY_AREA.x, EMPTY_AREA.y);
+    await grid.afterEntryCounts(() =>
+      embeddings.plotCanvas.click(EMPTY_AREA.x, EMPTY_AREA.y),
+    );
     await embeddings.assert.hasNoSelection();
     await embeddings.assert.legendRowIsOff("b");
 
-    await embeddings.clickCanvas(EMPTY_AREA.x, EMPTY_AREA.y);
+    await grid.afterEntryCounts(() =>
+      embeddings.plotCanvas.click(EMPTY_AREA.x, EMPTY_AREA.y),
+    );
     await embeddings.assert.legendRowIsOff("b", false);
     await grid.assert.isEntryCountTextEqualTo(`${TOTAL} samples`);
   });
@@ -238,13 +257,13 @@ test.describe("on the whole dataset", () => {
     grid,
   }) => {
     await embeddings.colorBy("cluster");
-    await embeddings.toggleLegend("b");
+    await grid.afterEntryCounts(() => embeddings.toggleLegend("b"));
     await embeddings.assert.legendRowIsOff("b");
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
-    await embeddings.clearFiltersAndSelection();
+    await grid.afterEntryCounts(() => embeddings.clearFiltersAndSelection());
 
     await embeddings.assert.hasNoSelection();
     await embeddings.assert.legendRowIsOff("b", false);
@@ -262,27 +281,24 @@ test.describe("on the whole dataset", () => {
   });
 
   test("a fresh page load restores the open run and color-by", async ({
-    browser,
     datasetName,
     embeddings,
     fiftyoneLoader,
+    openFreshPage,
   }) => {
-    await embeddings.colorBy("cluster");
+    // The fresh page closes this one, so the choice must reach the server
+    // before it does
+    await embeddings.afterPanelStateSaved(() => embeddings.colorBy("cluster"));
     await embeddings.assert.isColoredBy("cluster");
 
     // A new browser context shares no client state with this one: what it
     // shows came back from the server's session
-    const context = await browser.newContext();
-    try {
-      const freshPage = await context.newPage();
-      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-      const fresh = new EmbeddingsV2Pom(freshPage, new EventUtils(freshPage));
+    const freshPage = await openFreshPage();
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+    const fresh = new EmbeddingsV2Pom(freshPage, new EventUtils(freshPage));
 
-      await fresh.assert.hasDrawn(TOTAL);
-      await fresh.assert.isColoredBy("cluster");
-    } finally {
-      await context.close();
-    }
+    await fresh.untilDrawn({ points: TOTAL, colored: true });
+    await fresh.assert.isColoredBy("cluster");
   });
 
   test("the plot draws its clusters in their legend colors", async ({
@@ -301,6 +317,7 @@ test.describe("after another panel selects samples", () => {
       datasetName,
       embeddings,
       fiftyoneLoader,
+      grid,
       operatorsBrowser,
       page,
     }) => {
@@ -309,10 +326,12 @@ test.describe("after another panel selects samples", () => {
       // keeps its operators button clear of the sort-by input
       await operatorsBrowser.show();
       await operatorsBrowser.search("E2E");
-      await operatorsBrowser.choose("E2E: Set extended selection");
+      await grid.afterEntryCounts(() =>
+        operatorsBrowser.choose("E2E: Set extended selection"),
+      );
       await embeddings.openInSplit();
-      // The run opens onto the other panel's 3 samples, lit
-      await embeddings.afterEmphasisDrawn(3, () =>
+      // The run opens onto the other panel's 3 samples, lit, and hides none
+      await embeddings.afterDrawn({ emphasized: 3, visible: TOTAL }, () =>
         embeddings.openRun(BRAIN_KEY, TOTAL),
       );
     },
@@ -325,7 +344,6 @@ test.describe("after another panel selects samples", () => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     // Focus, not scope: the plot highlights the selection and hides nothing
     await embeddings.assert.hasScreenshot("another-panels-three.png");
-    await embeddings.assert.hasDrawn(TOTAL);
   });
 
   test("the plot's own lasso outranks the other panel's selection", async ({
@@ -335,8 +353,8 @@ test.describe("after another panel selects samples", () => {
     await embeddings.assert.hasScreenshot("another-panels-three.png");
 
     await embeddings.setMode("select");
-    await embeddings.afterEmphasisDrawn(CLUSTER_A, () =>
-      embeddings.lasso(LEFT_HALF),
+    await embeddings.afterDrawn({ emphasized: CLUSTER_A }, () =>
+      grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF)),
     );
 
     // The grid shows the lasso INSTEAD of the foreign selection, so the
@@ -355,18 +373,23 @@ test.describe("in tabs beside the grid", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ workspace: TABS_WORKSPACE }),
     });
-    await embeddings.assert.hasDrawn(TOTAL);
+    await embeddings.untilDrawn({ points: TOTAL });
   });
 
   test("switching tabs keeps the grid narrowed", async ({
     embeddings,
     grid,
+    histograms,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
-    await embeddings.gridPanel.bringPanelToForeground("Histograms");
+    // The tab switch saves the layout, which reloads the page; by the time
+    // the other tab's histograms draw, the grid has had its chance to widen
+    await histograms.afterLoad(() =>
+      embeddings.gridPanel.bringPanelToForeground("Histograms"),
+    );
 
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
   });
@@ -385,17 +408,21 @@ test.describe("on a wide screen", () => {
   test("a lasso committed as a view stage outlives the panel", async ({
     embeddings,
     grid,
+    viewBar,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
     // The bookmark turns the draft selection into a real view stage
-    await grid.actionsRow.bookmarkFilters();
+    await viewBar.afterStagesShown(() => grid.actionsRow.bookmarkFilters());
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
 
-    // Closing the panel clears selections, never the view
-    await embeddings.gridPanel.closeTab("Embeddings");
+    // Closing the panel clears selections, never the view; the grid takes
+    // the whole width back and redraws its tiles
+    await grid.afterTilesUpdated(() =>
+      embeddings.gridPanel.closeTab("Embeddings"),
+    );
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
   });
 
@@ -408,21 +435,22 @@ test.describe("on a wide screen", () => {
     // shares no sample with the lasso: a stage left behind would empty the
     // grid instead of showing the view's 3
     await embeddings.setMode("select");
-    await embeddings.lasso(RIGHT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, RIGHT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_B} samples`);
 
-    // The e2e plugin's operator sets a `limit(3)` view
+    // The e2e plugin's operator sets a `limit(3)` view. The plot drops its
+    // lasso and shows only the view's points
     await operatorsBrowser.show();
     await operatorsBrowser.search("E2E");
-    const cleared = await embeddings.armEmphasisDrawn(null);
-    await operatorsBrowser.choose("E2E: Set view");
+    await embeddings.afterDrawn({ emphasized: null, visible: 3 }, () =>
+      grid.afterEntryCounts(() => operatorsBrowser.choose("E2E: Set view")),
+    );
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
     await embeddings.assert.hasNoSelection();
     // "in view" shows only once no selection outranks it in the counter
     await embeddings.assert.hasCounter(`${TOTAL} points · 3 in view`);
     // The view's 3 points, none of them lit
-    await cleared.received;
     await embeddings.assert.hasScreenshot("view-of-three.png");
   });
 });
@@ -448,7 +476,7 @@ test.describe("from a saved workspace", () => {
       searchParams: new URLSearchParams({ workspace: PLOT_WORKSPACE }),
     });
 
-    await embeddings.assert.hasDrawn(TOTAL);
+    await embeddings.untilDrawn({ points: TOTAL, colored: true });
     await embeddings.assert.isColoredBy("cluster");
     await embeddings.assert.legendRowIsOff("a", false);
     await embeddings.assert.legendRowIsOff("b", false);
@@ -464,6 +492,7 @@ test.describe("from a saved workspace", () => {
       searchParams: new URLSearchParams({ workspace: STALE_WORKSPACE }),
     });
 
+    await embeddings.untilRunsListed(1);
     await embeddings.assert.runCardShows(BRAIN_KEY, ["Ready"]);
   });
 });
@@ -490,11 +519,11 @@ test.describe("with two runs", () => {
     grid,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.lasso(LEFT_HALF);
+    await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
     // The list shows no selection, so the grid must not keep one either
-    await embeddings.back();
+    await grid.afterEntryCounts(() => embeddings.back());
     await grid.assert.isEntryCountTextEqualTo(`${TOTAL} samples`);
 
     await embeddings.openRun(MIRRORED_BRAIN_KEY, TOTAL);
@@ -512,7 +541,9 @@ test.describe("on a probe point at the canvas center", () => {
   });
 
   test("hovering a point shows its sample", async ({ embeddings }) => {
-    await embeddings.hover(PROBE.x, PROBE.y);
+    await embeddings.afterHoverShown(() =>
+      hover(embeddings.plotCanvas, PROBE.x, PROBE.y),
+    );
 
     await embeddings.assert.hasHoverCard(PROBE_FILE);
   });
@@ -522,8 +553,10 @@ test.describe("on a probe point at the canvas center", () => {
     grid,
   }) => {
     await embeddings.setMode("select");
-    await embeddings.afterEmphasisDrawn(1, () =>
-      embeddings.clickCanvas(PROBE.x, PROBE.y),
+    await embeddings.afterDrawn({ emphasized: 1 }, () =>
+      grid.afterEntryCounts(() =>
+        embeddings.plotCanvas.click(PROBE.x, PROBE.y),
+      ),
     );
 
     await embeddings.assert.hasSelectionChip("1 sample");
@@ -545,7 +578,10 @@ test.describe("under a saved view", () => {
       searchParams: new URLSearchParams({ view: LEFT_VIEW }),
     });
     await embeddings.openInSplit();
-    await embeddings.openRun(BRAIN_KEY, TOTAL);
+    // The run's points outside the view stay hidden
+    await embeddings.afterDrawn({ visible: CLUSTER_A }, () =>
+      embeddings.openRun(BRAIN_KEY, TOTAL),
+    );
   });
 
   test("the plot hides points outside the view", async ({

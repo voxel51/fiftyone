@@ -126,6 +126,7 @@ export function ColorLegend({
                   className="emb-legend-count"
                   variant={TextVariant.Md}
                   color={TextColor.Tertiary}
+                  data-cy={`embeddings-legend-count-${label}`}
                 >
                   {scopedCounts
                     ? `${scopedCounts[index]?.toLocaleString() ?? 0} / ${cls.count.toLocaleString()}`

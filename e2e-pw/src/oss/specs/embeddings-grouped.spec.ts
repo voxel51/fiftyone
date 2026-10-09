@@ -13,6 +13,7 @@ import {
   GROUP_A,
   groupClusters,
   GROUPS,
+  lasso,
   LEFT_HALF,
   RIGHT_BRAIN_KEY,
 } from "./embeddings-data";
@@ -60,7 +61,8 @@ test("a lasso on the default slice scopes the grid", async ({
   await embeddings.openInSplit();
   await embeddings.openRun(BRAIN_KEY, GROUPS);
   await embeddings.setMode("select");
-  await embeddings.lasso(LEFT_HALF);
+  // The grid counts groups with a slice in its element count
+  await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
 
   await embeddings.assert.hasSelectionChip(`${GROUP_A} samples`);
   await grid.assert.isEntryCountTextEqualTo(`${GROUP_A} groups with slice`);
@@ -77,7 +79,9 @@ test("a run on a non-default slice colors and filters its points", async ({
   await embeddings.colorBy("cluster");
   await embeddings.assert.legendRowIsOff("a", false);
 
-  await embeddings.toggleLegend("b");
+  await embeddings.afterDrawn({ visible: GROUP_A }, () =>
+    embeddings.toggleLegend("b"),
+  );
 
   await embeddings.assert.legendRowIsOff("b");
   await embeddings.assert.hasCounter(`${GROUPS} points · ${GROUP_A} in view`);

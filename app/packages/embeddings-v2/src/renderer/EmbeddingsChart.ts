@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -49,6 +50,20 @@ import type {
   Polygon,
   RenderSettings,
 } from "./types";
+
+/**
+ * e2e specs wait on a drawn frame before reading or capturing the plot.
+ * `emphasized` is null when nothing is selected (a selection of zero points
+ * dims every point); `colored` is false under the default label palette.
+ */
+type EmbeddingsChartE2EEvents = {
+  "e2e:embeddings:drawn": {
+    points: number;
+    visible: number;
+    emphasized: number | null;
+    colored: boolean;
+  };
+};
 
 export interface EmbeddingsChartCallbacks {
   /**
@@ -151,10 +166,10 @@ export class EmbeddingsChart {
   private renderQueued = false;
   private rafHandle: number | null = null;
   private disposed = false;
-  /** Point count of the last drawn frame, or -1 before the first */
-  private drawnPoints = -1;
   /** Distinct points the current selection emphasizes */
   private emphasizedPoints = 0;
+  /** Host colors are set (false: the default label palette) */
+  private colored = false;
 
   constructor(
     container: HTMLElement,
@@ -294,6 +309,7 @@ export class EmbeddingsChart {
       colorsFromLabels(cols, PALETTE),
       3,
     );
+    this.colored = false;
     geometry.setAttribute("color", this.colorAttribute);
     this.emphasisMask = new Float32Array(cols.n);
     this.emphasisAttribute = new BufferAttribute(this.emphasisMask, 1).setUsage(
@@ -336,6 +352,7 @@ export class EmbeddingsChart {
     }
     (colorAttribute.array as Float32Array).set(next);
     colorAttribute.needsUpdate = true;
+    this.colored = colors !== null;
     this.requestRender();
   }
 
@@ -646,28 +663,29 @@ export class EmbeddingsChart {
   }
 
   /**
-   * Readiness for hosts and tests, like the looker's `canvas-loaded`: every
-   * DRAWN frame says so. Handing the chart data is not enough — the chunk
-   * loads lazily and the camera frames on setData, so only a drawn frame
-   * proves points are visible and hit-testable where the camera put them.
-   * The detail names the frame, so a wait can pick the one it needs: its
-   * point count, and how many points it emphasizes (null when nothing is
-   * selected, since a selection of zero points dims every point).
+   * e2e readiness: every DRAWN frame says so. Handing the chart data is not
+   * enough — the chunk loads lazily and the camera frames on setData, so
+   * only a drawn frame proves points are visible and hit-testable where the
+   * camera put them. The payload names the frame, so a wait can pick the
+   * one it needs; it is built only under automation (it scans the mask).
    */
   private announceDrawn(): void {
-    const n = this.cols?.n ?? 0;
-    if (n !== this.drawnPoints) {
-      this.drawnPoints = n;
-      this.canvas.setAttribute("data-drawn-points", String(n));
-    }
-    this.canvas.dispatchEvent(
-      new CustomEvent("embeddings-chart-drawn", {
-        bubbles: true,
-        detail: {
+    getEventBus<EmbeddingsChartE2EEvents>().dispatch(
+      "e2e:embeddings:drawn",
+      () => {
+        const n = this.cols?.n ?? 0;
+        let visible = n;
+        if (this.visibleMask) {
+          visible = 0;
+          for (let i = 0; i < n; i++) visible += this.visibleMask[i];
+        }
+        return {
           points: n,
+          visible,
           emphasized: this.hasSelection ? this.emphasizedPoints : null,
-        },
-      }),
+          colored: this.colored,
+        };
+      },
     );
   }
 }

@@ -196,7 +196,11 @@ export function ColorByMenu({
               Color by
             </Text>
             <span className="emb-facet-trigger-label">
-              <Text variant={TextVariant.Md} color={TextColor.Foreground}>
+              <Text
+                variant={TextVariant.Md}
+                color={TextColor.Foreground}
+                data-cy="embeddings-color-by-value"
+              >
                 {selectedLabel}
               </Text>
             </span>

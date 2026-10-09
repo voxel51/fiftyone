@@ -1,174 +1,208 @@
-import path from "node:path";
-import { Locator, Page, expect } from "src/oss/fixtures";
-import type { EventUtils } from "src/shared/event-utils";
+import { expect, type Page } from "src/oss/fixtures";
+import type { EventUtils, ObservedEvent } from "src/shared/event-utils";
+import { type CanvasCapture, SampleCanvasPom } from "../modal/sample-canvas";
 import { GridPanelPom } from "./grid-panel";
-
-/** A rectangle in [0, 1] coordinates relative to the plot canvas */
-export interface RelativeRect {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-}
 
 export type EmbeddingsMode = "explore" | "select";
 
-/** The chart's drawn event names its point count; match one frame by it */
-const drewPoints =
-  (n: number) =>
-  (e: { detail?: unknown }): boolean =>
-    typeof e.detail === "object" &&
-    e.detail !== null &&
-    "points" in e.detail &&
-    e.detail.points === n;
+/** Every frame the plot's chart draws (see EmbeddingsChart.ts) */
+const DRAWN = "e2e:embeddings:drawn";
+/** The runs list rendering a count of runs (see RunsList.tsx) */
+const RUNS_LISTED = "e2e:embeddings:runs-listed";
+/** The hover card placed, its image settled (see HoverCard.tsx) */
+const HOVER_SHOWN = "e2e:embeddings:hover-shown";
 
-/** ...and how many points it emphasizes, null when nothing is selected */
-const drewEmphasis =
-  (n: number | null) =>
-  (e: { detail?: unknown }): boolean =>
-    typeof e.detail === "object" &&
-    e.detail !== null &&
-    "emphasized" in e.detail &&
-    e.detail.emphasized === n;
+/** A drawn frame's payload; it picks which frame ends a wait */
+interface DrawnFrame {
+  points: number;
+  visible: number;
+  /** null when nothing is selected */
+  emphasized: number | null;
+  /** false under the default label palette */
+  colored: boolean;
+}
 
-/** Hides the DOM over the plot's canvas for a screenshot */
-const CANVAS_ONLY = path.resolve(__dirname, "embeddings-canvas-only.css");
+const asFrame = (detail: unknown) => detail as DrawnFrame;
+
+/** Whether `frame` carries every field `match` names */
+const drew = (frame: DrawnFrame, match: Partial<DrawnFrame>) =>
+  (match.points === undefined || frame.points === match.points) &&
+  (match.visible === undefined || frame.visible === match.visible) &&
+  (!("emphasized" in match) || frame.emphasized === match.emphasized) &&
+  (match.colored === undefined || frame.colored === match.colored);
+
+const listed = (e: ObservedEvent, count: number) =>
+  (e.detail as { count: number }).count === count;
+
+/** The plot scene's corner radius, in px (0.5rem in panel.css) */
+const PLOT_SCENE_RADIUS = 8;
+
+/**
+ * The plot's canvas alone: every element in the plot that holds no canvas
+ * (legend, hint, chip, counter, lasso, hover ring) is hidden, while the
+ * canvas's containers keep painting the scene's background. The hover card
+ * is portaled to the body, so it is hidden by its own id. Hovering never
+ * redraws the canvas, so the pointer needs no parking. Inset past the
+ * scene's rounded corners and border, which antialias differently run to run
+ */
+const PLOT_CAPTURE: CanvasCapture = {
+  inset: PLOT_SCENE_RADIUS,
+  style: [
+    "[data-cy=embeddings-plot] *:not(:has(canvas)):not(canvas) { visibility: hidden !important; }",
+    "[data-cy=embeddings-hover-card] { visibility: hidden !important; }",
+  ].join("\n"),
+};
+
+/** Text as a reader sees it: whitespace runs collapse */
+const readable = (text: string | null) =>
+  text?.replace(/\s+/g, " ").trim() ?? null;
 
 export class EmbeddingsV2Pom {
   readonly assert: EmbeddingsV2Asserter;
-  readonly runsPage: Locator;
-  readonly plot: Locator;
-  readonly canvas: Locator;
-  readonly counter: Locator;
-  readonly selectionChip: Locator;
-  /** Portaled to the document body, so it is found from the page */
-  readonly hoverCard: Locator;
   readonly gridPanel: GridPanelPom;
+  /** The plot's canvas: every pointer input to it and every capture of it */
+  readonly plotCanvas: SampleCanvasPom;
 
   constructor(
     readonly page: Page,
-    readonly eventUtils: EventUtils,
+    private readonly eventUtils: EventUtils,
   ) {
     this.gridPanel = new GridPanelPom(page);
-    this.runsPage = page.getByTestId("embeddings-runs-page");
-    this.plot = page.getByTestId("embeddings-plot");
-    this.canvas = this.plot.getByTestId("embeddings-chart-canvas");
-    this.counter = this.plot.getByTestId("embeddings-plot-counter");
-    this.selectionChip = this.plot.getByTestId("embeddings-selection-chip");
-    this.hoverCard = page.getByTestId("embeddings-hover-card");
+    this.plotCanvas = new SampleCanvasPom(
+      page,
+      eventUtils,
+      this.plot.getByTestId("embeddings-chart-canvas"),
+      PLOT_CAPTURE,
+    );
     this.assert = new EmbeddingsV2Asserter(this);
   }
 
-  /** Opens the panel full-screen, replacing the grid */
+  get runsPage() {
+    return this.page.getByTestId("embeddings-runs-page");
+  }
+
+  get runCount() {
+    return this.runsPage.getByTestId("embeddings-runs-count");
+  }
+
+  get plot() {
+    return this.page.getByTestId("embeddings-plot");
+  }
+
+  get counter() {
+    return this.plot.getByTestId("embeddings-plot-counter");
+  }
+
+  get selectionChip() {
+    return this.plot.getByTestId("embeddings-selection-chip");
+  }
+
+  get colorByValue() {
+    return this.plot.getByTestId("embeddings-color-by-value");
+  }
+
+  get legendRamp() {
+    return this.plot.getByTestId("embeddings-legend-ramp");
+  }
+
+  /** Portaled to the document body, so it is found from the page */
+  get hoverCard() {
+    return this.page.getByTestId("embeddings-hover-card");
+  }
+
+  getRun(brainKey: string) {
+    return this.runsPage.getByTestId(`embeddings-run-${brainKey}`);
+  }
+
+  getLegendRow(label: string) {
+    return this.plot.getByTestId(`embeddings-legend-row-${label}`);
+  }
+
+  /** Opens the panel full-screen, replacing the grid, onto its runs list */
   async open() {
-    await this.gridPanel.open("Embeddings");
+    await this.eventUtils.after(RUNS_LISTED, () =>
+      this.gridPanel.open("Embeddings"),
+    );
   }
 
   /** Opens the panel beside the grid, so the grid's count stays readable */
   async openInSplit() {
-    await this.gridPanel.openInSplit("Embeddings");
-  }
-
-  run(brainKey: string) {
-    return this.runsPage.getByTestId(`embeddings-run-${brainKey}`);
+    await this.eventUtils.after(RUNS_LISTED, () =>
+      this.gridPanel.openInSplit("Embeddings"),
+    );
   }
 
   /**
-   * Opens a run from the runs list and waits until the chart has DRAWN all
-   * `points` of it — the moment the plot is hit-testable
+   * Opens a run and resolves once the chart has drawn all `points` of it,
+   * the moment the plot is hit-testable
    */
   async openRun(brainKey: string, points: number) {
-    await this.eventUtils.after(
-      "embeddings-chart-drawn",
-      () => this.run(brainKey).click(),
-      drewPoints(points),
+    await this.afterDrawn({ points }, () => this.getRun(brainKey).click());
+  }
+
+  /**
+   * Resolves once a plot the page restored on its own (a workspace, the
+   * session's open run) has drawn a frame matching `frame`
+   */
+  async untilDrawn(frame: Partial<DrawnFrame>) {
+    await this.eventUtils.untilState(
+      DRAWN,
+      async () =>
+        (await this.eventUtils.recorded(DRAWN)).some((d) =>
+          drew(asFrame(d), frame),
+        ),
+      (e) => drew(asFrame(e.detail), frame),
     );
   }
 
   /**
-   * Runs `action` and resolves once the chart draws a frame emphasizing
-   * `points` points (null: no selection). Screenshot after this, not after
-   * the action alone: a selection reaches the canvas a frame or more later,
-   * and the frame before it is just as stable.
+   * Runs `action` and resolves once the chart draws a frame matching
+   * `frame`: say, `{ emphasized: 3 }` for a selection or `{ visible: 25 }`
+   * for a filter. Its effect reaches the canvas a frame or more after the
+   * action, so screenshot after this
    */
-  async afterEmphasisDrawn<T>(
-    points: number | null,
+  async afterDrawn<T>(
+    frame: Partial<DrawnFrame>,
     action: () => Promise<T>,
   ): Promise<T> {
-    return this.eventUtils.after(
-      "embeddings-chart-drawn",
-      action,
-      drewEmphasis(points),
+    return this.eventUtils.after(DRAWN, action, (e) =>
+      drew(asFrame(e.detail), frame),
     );
   }
 
-  /**
-   * {@link afterEmphasisDrawn} for a wait that spans assertions: arm before
-   * the action, assert, then await `received` before the screenshot
-   */
-  async armEmphasisDrawn(points: number | null) {
-    return this.eventUtils.arm("embeddings-chart-drawn", drewEmphasis(points));
+  /** Runs `action` and resolves once the runs list shows `count` runs */
+  async afterRunsListed<T>(count: number, action: () => Promise<T>) {
+    return this.eventUtils.after(RUNS_LISTED, action, (e) => listed(e, count));
+  }
+
+  /** Resolves once a runs list the page restored on its own shows `count` */
+  async untilRunsListed(count: number) {
+    await this.eventUtils.untilState(
+      RUNS_LISTED,
+      async () =>
+        (await this.eventUtils.recorded(RUNS_LISTED)).some(
+          (detail) => detail.count === count,
+        ),
+      (e) => listed(e, count),
+    );
+  }
+
+  /** Runs `action` and resolves once the hover card shows with its image */
+  async afterHoverShown<T>(action: () => Promise<T>) {
+    return this.eventUtils.after(
+      HOVER_SHOWN,
+      action,
+      (e: ObservedEvent) => (e.detail as { image: boolean }).image,
+    );
   }
 
   async setMode(mode: EmbeddingsMode) {
-    const segment = this.plot.getByTestId(`embeddings-mode-${mode}`);
-    await segment.click();
-    await expect(segment).toHaveAttribute("data-active", "true");
-  }
-
-  /**
-   * Drags a closed lasso around a rectangle of the canvas, corner to corner.
-   * A straight drag encloses no area, so it would select nothing.
-   */
-  async lasso({ x1, y1, x2, y2 }: RelativeRect) {
-    const at = await this.toScreen();
-    const [start, ...rest] = [
-      at(x1, y1),
-      at(x2, y1),
-      at(x2, y2),
-      at(x1, y2),
-      at(x1, y1),
-    ];
-
-    await this.page.mouse.move(start.x, start.y);
-    await this.page.mouse.down();
-    for (const corner of rest) {
-      await this.page.mouse.move(corner.x, corner.y, { steps: 5 });
-    }
-    await this.page.mouse.up();
+    await this.plot.getByTestId(`embeddings-mode-${mode}`).click();
   }
 
   /** Esc clears the plot's selection and the grid scope it published */
   async clearSelection() {
     await this.page.keyboard.press("Escape");
-  }
-
-  /** A plain click on the canvas, in [0, 1] coordinates */
-  async clickCanvas(x: number, y: number) {
-    const at = (await this.toScreen())(x, y);
-    await this.page.mouse.click(at.x, at.y);
-  }
-
-  /**
-   * Moves the pointer onto a spot of the canvas from a little to its left,
-   * so the hover picker sees the pointer arrive rather than appear
-   */
-  async hover(x: number, y: number) {
-    const at = (await this.toScreen())(x, y);
-    await this.page.mouse.move(at.x - 40, at.y);
-    await this.page.mouse.move(at.x, at.y, { steps: 5 });
-  }
-
-  /** Maps [0, 1] canvas coordinates to page coordinates */
-  private async toScreen() {
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("the embeddings canvas is not visible");
-    }
-    return (x: number, y: number) => ({
-      x: box.x + x * box.width,
-      y: box.y + y * box.height,
-    });
   }
 
   /** The header's reset: clears the legend filter and the selection */
@@ -178,137 +212,136 @@ export class EmbeddingsV2Pom {
       .click();
   }
 
+  /** Back to the runs list, which renders as the plot unmounts */
   async back() {
-    await this.plot
-      .getByRole("button", { name: "Back to visualizations" })
-      .click();
+    await this.eventUtils.after(RUNS_LISTED, () =>
+      this.plot.getByRole("button", { name: "Back to visualizations" }).click(),
+    );
   }
 
+  /**
+   * Runs `action` and resolves once the panel state it changed (the open run,
+   * the color-by field) is saved: the save writes the layout, which reloads
+   * the page, and the route commit that follows says so
+   */
+  async afterPanelStateSaved<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:app:page-change", action);
+  }
+
+  /** Colors the plot by `field`; resolves once its colors are drawn */
   async colorBy(field: string) {
     await this.plot.getByRole("button", { name: "Color by" }).click();
-    await this.plot.getByRole("option", { name: field, exact: true }).click();
-  }
-
-  legendRow(label: string) {
-    return this.plot.getByTestId(`embeddings-legend-row-${label}`);
+    await this.afterDrawn({ colored: true }, () =>
+      this.plot.getByRole("option", { name: field, exact: true }).click(),
+    );
   }
 
   /** Hides or shows one class. The legend defers a single click briefly, so
    * a double click can cancel it */
   async toggleLegend(label: string) {
-    await this.legendRow(label).click();
+    await this.getLegendRow(label).click();
   }
 
   /** Shows only one class, or restores every class when it is already alone */
   async isolateLegend(label: string) {
-    await this.legendRow(label).dblclick();
+    await this.getLegendRow(label).dblclick();
   }
 
-  /** Deletes a run through its card's kebab and inline confirmation */
+  /**
+   * Deletes a run through its card's kebab and inline confirmation; resolves
+   * once the refreshed list renders without it
+   */
   async deleteRun(brainKey: string) {
-    const card = this.run(brainKey);
+    const card = this.getRun(brainKey);
     await card.getByRole("button", { name: "Run actions" }).click();
     await this.page.getByRole("menuitem", { name: "Delete" }).click();
-    await card.getByRole("button", { name: "Delete run" }).click();
+    await this.eventUtils.after(RUNS_LISTED, () =>
+      card.getByRole("button", { name: "Delete run" }).click(),
+    );
   }
 }
 
 class EmbeddingsV2Asserter {
   constructor(private readonly pom: EmbeddingsV2Pom) {}
 
+  /** The loaded runs page; the read waits for it to mount */
   async verifyPanelLoaded() {
-    await expect(this.pom.runsPage).toBeVisible();
+    expect(await this.pom.runsPage.getAttribute("class")).toBe("emb-runs-page");
     // No empty-state text assertion: this suite also runs against
     // enterprise builds, and the two app modes deliberately render
     // different no-runs states (upsell landing vs. neutral empty
     // state). The per-mode rendering is unit-tested in RunsList.
-    await expect(this.pom.gridPanel.errorBoundary).toBeHidden();
+    expect(await this.pom.gridPanel.errorBoundary.isVisible()).toBe(false);
   }
 
   async hasCounter(text: string) {
-    await expect(this.pom.counter).toHaveText(text);
+    expect(readable(await this.pom.counter.textContent())).toBe(text);
   }
 
   async hasSelectionChip(text: string) {
-    await expect(this.pom.selectionChip).toHaveText(text);
+    expect(readable(await this.pom.selectionChip.textContent())).toBe(text);
   }
 
   async hasNoSelection() {
-    await expect(this.pom.selectionChip).toBeHidden();
-  }
-
-  /** The chart has drawn a frame of exactly `points` points */
-  async hasDrawn(points: number) {
-    await expect(this.pom.canvas).toHaveAttribute(
-      "data-drawn-points",
-      String(points),
-    );
+    expect(await this.pom.selectionChip.count()).toBe(0);
   }
 
   async isColoredBy(field: string) {
-    await expect(
-      this.pom.plot.getByRole("button", { name: "Color by" }),
-    ).toContainText(field);
+    expect(await this.pom.colorByValue.textContent()).toBe(field);
   }
 
   /** A numeric field's legend: a color ramp instead of class rows */
   async hasContinuousLegend() {
-    await expect(
-      this.pom.plot.getByTestId("embeddings-legend-ramp"),
-    ).toBeVisible();
+    expect(await this.pom.legendRamp.isVisible()).toBe(true);
+    const classRows = this.pom.plot.locator(
+      '[data-cy^="embeddings-legend-row-"]',
+    );
+    expect(await classRows.count()).toBe(0);
   }
 
-  /** e.g. "25 / 25" — a legend row's count, scoped to a selection */
+  /** e.g. "25 / 25": a legend row's count, scoped to a selection */
   async legendRowCounts(label: string, text: string) {
-    await expect(this.pom.legendRow(label)).toContainText(text);
-  }
-
-  async hasHoverCard(title: string) {
-    await expect(this.pom.hoverCard).toBeVisible();
-    await expect(this.pom.hoverCard).toContainText(title);
-  }
-
-  /** The hover card shows the hovered patch's box, not the whole image */
-  async hoverCardIsCropped() {
-    await expect(
-      this.pom.hoverCard.getByTestId("embeddings-hover-crop"),
-    ).toBeVisible();
-  }
-
-  /**
-   * The canvas matches its baseline exactly. Only the drawing is captured
-   * (see CANVAS_ONLY), so a baseline changes only when the drawing does.
-   */
-  async hasScreenshot(name: string) {
-    await expect(this.pom.canvas).toHaveScreenshot(name, {
-      maxDiffPixelRatio: 0,
-      threshold: 0,
-      stylePath: CANVAS_ONLY,
-    });
+    const count = this.pom.plot.getByTestId(`embeddings-legend-count-${label}`);
+    expect(readable(await count.textContent())).toBe(text);
   }
 
   async legendRowIsOff(label: string, off = true) {
-    await expect(this.pom.legendRow(label)).toHaveAttribute(
-      "data-off",
+    expect(await this.pom.getLegendRow(label).getAttribute("data-off")).toBe(
       off ? "true" : "false",
     );
   }
 
+  async hasHoverCard(filename: string) {
+    const name = this.pom.hoverCard.getByTestId("embeddings-hover-filename");
+    expect(await name.textContent()).toBe(filename);
+  }
+
+  /** The hover card shows the hovered patch's box, not the whole image */
+  async hoverCardIsCropped() {
+    const crop = this.pom.hoverCard.getByTestId("embeddings-hover-crop");
+    expect(await crop.isVisible()).toBe(true);
+  }
+
+  /** The plot's drawing matches its baseline exactly (see PLOT_CAPTURE) */
+  async hasScreenshot(name: string) {
+    await this.pom.plotCanvas.assert.hasScreenshot(name);
+  }
+
   async hasRunCount(n: number) {
-    await expect(this.pom.runsPage).toContainText(
+    expect(await this.pom.runCount.textContent()).toBe(
       `${n} visualization${n === 1 ? "" : "s"}`,
     );
   }
 
-  /** The card shows every given piece of text (badge, status, meta) */
+  /** The card shows each given text as its own element (badge, status) */
   async runCardShows(brainKey: string, texts: string[]) {
-    const card = this.pom.run(brainKey);
+    const card = this.pom.getRun(brainKey);
     for (const text of texts) {
-      await expect(card).toContainText(text);
+      expect(await card.getByText(text, { exact: true }).count()).toBe(1);
     }
   }
 
   async hasNoRun(brainKey: string) {
-    await expect(this.pom.run(brainKey)).toBeHidden();
+    expect(await this.pom.getRun(brainKey).count()).toBe(0);
   }
 }
