@@ -60,7 +60,7 @@ export const GridBackdropContext = createContext<HTMLElement | null>(null);
 
 const Backdrop = styled.div`
   position: absolute;
-  inset: ${ACTIONS_ROW_HEIGHT}px 0 0;
+  inset: 0;
   z-index: 1;
   pointer-events: none;
 `;

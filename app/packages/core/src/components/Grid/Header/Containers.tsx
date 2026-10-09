@@ -27,7 +27,8 @@ export const ActionsRow = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1;
+  /* above the grid, the loading storm and the sidebar */
+  z-index: 3;
   box-sizing: border-box;
   height: ${ACTIONS_ROW_HEIGHT}px;
   display: flex;
