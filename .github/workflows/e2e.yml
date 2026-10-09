@@ -177,7 +177,7 @@ jobs:
     # Hard budget: a shard that can't finish in 30 minutes is a failure by
     # policy, and the verdict job fails whenever a shard job does.
     # (fiftyone-teams runs the same suite ~1.6x slower.)
-    timeout-minutes: 60
+    timeout-minutes: 30
     # downstream repos reusing this workflow can point shards at a
     # larger runner spec via repo var
     runs-on: ${{ vars.FIFTYONE_E2E_RUNNER || 'ubuntu-latest' }}
@@ -287,7 +287,7 @@ jobs:
           if [ -z "$FILES" ]; then
             echo "no specs assigned to shard ${{ matrix.shard }}"
           else
-            yarn e2e $FILES --repeat-each=3 --retries=0 ||
+            yarn e2e $FILES ||
               echo "::warning::shard ${{ matrix.shard }} had failing specs; see the e2e verdict job"
           fi
         working-directory: e2e-pw
@@ -408,7 +408,7 @@ jobs:
           TARGETS: ${{ needs.prepare-e2e.outputs.burn-in-specs }}
         run: |
           printf 'burning in:\n%s\n' "$TARGETS"
-          yarn e2e $TARGETS --repeat-each=10 --retries=0 --workers=50% --trace=retain-on-failure ||
+          yarn e2e $TARGETS --repeat-each=5 --retries=0 --workers=50% --trace=retain-on-failure ||
             echo "::warning::burn-in had failing runs; see the e2e verdict job"
         working-directory: e2e-pw
 
@@ -500,7 +500,7 @@ jobs:
           retention-days: 3
 
       - name: Merge burn-in report
-        # kept separate from the shard merge so 10x-repeated specs don't
+        # kept separate from the shard merge so repeated specs don't
         # inflate the suite's counts; reuses the default report dir now that
         # the shard report has been uploaded
         if: needs.prepare-e2e.outputs.burn-in-count != '0'

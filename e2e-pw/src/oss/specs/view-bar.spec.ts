@@ -116,7 +116,6 @@ test.describe("view bar", () => {
     page,
     viewBar,
     grid,
-    request,
     baseURL,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
@@ -130,7 +129,7 @@ test.describe("view bar", () => {
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
-    const stages = await getSessionView(request, baseURL, datasetName);
+    const stages = await getSessionView(baseURL, datasetName);
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("Limit");
     expect(kwargsOf(stages[0])).toEqual({ limit: 3 });
@@ -147,7 +146,6 @@ test.describe("view bar", () => {
     page,
     viewBar,
     grid,
-    request,
     baseURL,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
@@ -158,7 +156,7 @@ test.describe("view bar", () => {
 
     await grid.run(() => editor.commit("filter"));
 
-    const stages = await getSessionView(request, baseURL, datasetName);
+    const stages = await getSessionView(baseURL, datasetName);
     expect(stages).toHaveLength(1);
     expect(clsOf(stages[0])).toBe("FilterLabels");
 

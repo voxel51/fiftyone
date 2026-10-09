@@ -98,8 +98,10 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
       modalSample: "loaded",
     });
     const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-    await fresh.sidebar.annotate.afterLabelList(() =>
-      fresh.sidebar.switchMode("annotate"),
+    await fresh.afterLighterReady(() =>
+      fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      ),
     );
     const rows = fresh.sidebar.annotate.labelRowsFor("instances");
     expect(await rows.count()).toBe(1);

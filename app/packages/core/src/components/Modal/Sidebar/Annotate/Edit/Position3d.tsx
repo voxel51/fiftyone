@@ -76,13 +76,17 @@ export interface Position3dProps {
 }
 
 export default function Position3d({ readOnly = false }: Position3dProps) {
-  const [transformState, setTransformState] = useState<Coordinates3d>({
-    position: {},
-    dimensions: {},
-    rotation: {},
-  });
   const { selected } = useAnnotationContext();
   const data = (selected?.data ?? null) as DetectionLabel | null;
+  // starts from the selection so a remount never renders empty inputs
+  const [transformState, setTransformState] = useState<Coordinates3d>(
+    () =>
+      deriveTransformState(data) ?? {
+        position: {},
+        dimensions: {},
+        rotation: {},
+      },
+  );
   const field = selected?.field ?? null;
   const { updateCuboid } = useCuboidOperations();
   const labelId = data?._id ?? "";

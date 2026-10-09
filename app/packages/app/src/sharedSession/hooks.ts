@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus } from "@fiftyone/events";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { appCountAtom } from "./model/atoms";
@@ -35,26 +34,4 @@ export const useSharedSessionCount = (): number | null => {
   }, [count]);
 
   return count !== null && settled !== null && settled > 1 ? settled : null;
-};
-
-/**
- * e2e specs wait for the server to count their page as its only App, since a
- * closed page that still counts brings the banner in mid-test
- */
-type SoleAppE2EEvents = {
-  "e2e:app:sole-app": undefined;
-};
-
-/**
- * Signals each time the server counts this App as its only one. An App that
- * does not share its session is always alone.
- */
-export const useSoleAppSignal = (shares: boolean) => {
-  const count = useAtomValue(appCountAtom);
-
-  useEffect(() => {
-    if (!shares || count === 1) {
-      getEventBus<SoleAppE2EEvents>().dispatch("e2e:app:sole-app");
-    }
-  }, [count, shares]);
 };
