@@ -24,7 +24,7 @@ export default ({
   const arrow = (
     <Arrow
       data-cy={`sidebar-field-arrow-disabled-${id}`}
-      size={24}
+      size={16}
       color={theme.text.secondary}
     />
   );
@@ -71,7 +71,7 @@ export default ({
         event.preventDefault();
       }}
     >
-      <Arrow size={24} />
+      <Arrow size={16} />
     </span>
   );
 };

@@ -9,8 +9,48 @@ export const SidebarColumn = styled.div`
 
   overflow-y: auto;
   overflow-x: hidden;
+  padding-right: 8px;
+  box-sizing: border-box;
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: color-mix(
+      in srgb,
+      var(--color-content-text-primary) 14%,
+      transparent
+    );
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    min-height: 32px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--color-content-text-primary) 26%,
+      transparent
+    );
+  }
+
+  /* Chromium drops the pseudo-elements above once scrollbar-width is set */
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(
+        in srgb,
+        var(--color-content-text-primary) 14%,
+        transparent
+      )
+      transparent;
+  }
 
   background: var(--color-content-bg-card);
 `;

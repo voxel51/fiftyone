@@ -6,10 +6,14 @@ import {
   useReverbValue,
   useReverbValueLoadable,
   useResetReverbState,
+  useSetReverbState,
 } from "@fiftyone/reverb";
 import {
   BackgroundColor,
+  CloseIcon,
+  getColorCssVar,
   GridViewIcon,
+  IconAction,
   Pill,
   Size,
   TextColor,
@@ -29,6 +33,21 @@ const Container = styled.div`
   box-sizing: border-box;
 `;
 
+const HeaderRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  & > [data-cy="schema-lens-row"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  & > [data-cy="sidebar-close"] {
+    margin-left: auto;
+  }
+`;
+
 const GridArea = styled.div`
   position: relative;
   flex: 1;
@@ -40,12 +59,28 @@ const GridArea = styled.div`
 // layout settles; it returns as the panel's toolbar
 const SamplesPanel = () => {
   const showSidebar = useReverbValue(fos.sidebarVisible(false));
+  const setShowSidebar = useSetReverbState(fos.sidebarVisible(false));
 
   return (
     <Container>
       {showSidebar && (
         <FieldActionContext.Provider value={QuickEditEntry}>
-          <GridSidebar header={<SchemaLensRow padded={false} />} />
+          <GridSidebar
+            header={
+              <HeaderRow>
+                <SchemaLensRow padded={false} />
+                <IconAction
+                  aria-label="Hide sidebar"
+                  data-cy="sidebar-close"
+                  icon={CloseIcon}
+                  size={Size.Sm}
+                  title="Hide sidebar"
+                  style={{ color: getColorCssVar(TextColor.Secondary) }}
+                  onClick={() => setShowSidebar(false)}
+                />
+              </HeaderRow>
+            }
+          />
         </FieldActionContext.Provider>
       )}
       <GridArea>

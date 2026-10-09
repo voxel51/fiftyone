@@ -1,4 +1,4 @@
-import { BoltIcon } from "@voxel51/voodo";
+import { ZapIcon } from "@voxel51/voodo";
 import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
@@ -6,7 +6,7 @@ import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import Arrow from "./Arrow";
 
-const LightningIcon = styled(BoltIcon)`
+const LightningIcon = styled(ZapIcon)`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
@@ -21,7 +21,7 @@ export const LightningBolt = ({
     <Tooltip placement="top-center" text={tooltip}>
       <LightningIcon
         data-cy={"query-performance"}
-        size={16}
+        size={14}
         style={{ marginRight: 2, color }}
       />
     </Tooltip>

@@ -1,10 +1,10 @@
 import {
-  AddIcon,
   CheckIcon,
   CloseIcon,
   EditIcon,
   FilterListIcon,
-  RemoveIcon,
+  KeyboardArrowDownIcon,
+  KeyboardArrowRightIcon,
   VisibilityIcon,
 } from "@voxel51/voodo";
 import { PillButton, useTheme } from "@fiftyone/components";
@@ -66,7 +66,11 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
 };
 
 const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
-  expanded ? <RemoveIcon size={24} /> : <AddIcon size={24} />;
+  expanded ? (
+    <KeyboardArrowDownIcon size={16} />
+  ) : (
+    <KeyboardArrowRightIcon size={16} />
+  );
 
 const GroupHeader = styled.div`
   border-bottom: 2px solid ${({ theme }) => theme.primary.softBorder};
@@ -74,7 +78,6 @@ const GroupHeader = styled.div`
   border-top-right-radius: 3px;
   margin-left: 2px;
   padding: 3px 3px 3px 8px;
-  text-transform: uppercase;
   display: flex;
   justify-content: space-between;
   vertical-align: middle;
@@ -96,7 +99,6 @@ const GroupInput = styled.input`
   background: transparent;
   border: none;
   outline: none;
-  text-transform: uppercase;
   font-weight: bold;
   color: ${({ theme }) => theme.text.secondary};
 `;
@@ -139,7 +141,7 @@ const GroupEntry = React.memo(
 
     return (
       <div
-        data-cy={`sidebar-group-entry-${title}`}
+        data-cy={`sidebar-group-entry-${title.toUpperCase()}`}
         style={{
           boxShadow: `0 2px 20px ${theme.custom.shadow}`,
         }}
@@ -152,7 +154,7 @@ const GroupEntry = React.memo(
           >
             <GroupHeader
               title={title}
-              data-cy={`sidebar-group-${title}`}
+              data-cy={`sidebar-group-${title.toUpperCase()}`}
               onMouseEnter={() => !hovering && setHovering(true)}
               onMouseLeave={() => hovering && setHovering(false)}
               onMouseDown={(event) => {
@@ -230,7 +232,7 @@ const GroupEntry = React.memo(
                     }
                   }}
                 >
-                  <EditIcon size={24} />
+                  <EditIcon size={16} />
                 </span>
               )}
               {pills}
@@ -244,7 +246,7 @@ const GroupEntry = React.memo(
                   }}
                   onClick={() => onDelete()}
                 >
-                  <CloseIcon size={24} />
+                  <CloseIcon size={16} />
                 </span>
               )}
               <span>
@@ -300,7 +302,7 @@ export const PathGroupEntry = React.memo(
     return (
       <GroupEntry
         entryKey={entryKey}
-        title={name.toUpperCase()}
+        title={name}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
         setValue={renameGroup}
@@ -313,7 +315,7 @@ export const PathGroupEntry = React.memo(
                   numGroupFieldsFiltered({ modal, group: name }),
                 ),
                 dataCy: `clear-filters-${name}`,
-                icon: <FilterListIcon size={24} />,
+                icon: <FilterListIcon size={16} />,
                 onClick: useClearFiltered(modal, name),
 
                 title: `Clear ${name} filters`,
@@ -323,7 +325,7 @@ export const PathGroupEntry = React.memo(
                   numGroupFieldsVisible({ modal, group: name }),
                 ),
                 dataCy: `clear-visibility-${name}`,
-                icon: <VisibilityIcon size={24} />,
+                icon: <VisibilityIcon size={16} />,
                 onClick: useClearVisibility(modal, name),
                 title: `Clear ${name} visibility`,
               },
@@ -332,7 +334,7 @@ export const PathGroupEntry = React.memo(
                   numGroupFieldsActive({ modal, group: name }),
                 ),
                 dataCy: `clear-shown-${name}`,
-                icon: <CheckIcon size={24} />,
+                icon: <CheckIcon size={16} />,
                 onClick: useClearActive(modal, name),
                 title: `Clear shown ${name}`,
               },

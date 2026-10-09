@@ -1,8 +1,8 @@
+import { Checkbox, Size } from "@voxel51/voodo";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useSidebarExpandedState } from "@fiftyone/state";
 import { makePseudoField } from "@fiftyone/utilities";
-import { Checkbox } from "@mui/material";
 import Color from "color";
 import React, { Suspense } from "react";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
@@ -12,11 +12,10 @@ import FilterablePathEntries from "./FilterablePathEntries";
 import Loading from "./Loading";
 import useTitleTemplate from "./useTitleTemplate";
 
-const useOnClick = ({ modal, path }: { modal: boolean; path: string }) => {
-  return useReverbCallback<[React.MouseEvent<HTMLButtonElement>], void>(
+const useOnChange = ({ modal, path }: { modal: boolean; path: string }) => {
+  return useReverbCallback<[boolean], void>(
     ({ set }) =>
-      async (event) => {
-        const checked = (event.target as HTMLInputElement).checked;
+      (checked) => {
         set(fos.activeField({ modal, path }), checked);
       },
     [modal, path],
@@ -58,7 +57,7 @@ const FilterableEntry = ({
     modal,
     path: expandedPath,
   });
-  const onClick = useOnClick({ modal, path });
+  const onChange = useOnChange({ modal, path });
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
 
@@ -80,13 +79,16 @@ const FilterableEntry = ({
               key="checkbox"
               checked={active}
               title={`Show ${path}`}
-              style={{
-                color: active ? color : theme.text.secondary,
-                marginLeft: 2,
-                padding: 0,
-              }}
+              size={Size.Sm}
+              // the field's color in place of the brand fill when checked
+              style={
+                {
+                  "--color-content-interactive-primary-default": color,
+                  "--color-content-border-active": color,
+                } as React.CSSProperties
+              }
               data-cy={`checkbox-${path}`}
-              onClick={onClick}
+              onChange={onChange}
               onMouseUp={(e) => e.stopPropagation()}
             />
           )}

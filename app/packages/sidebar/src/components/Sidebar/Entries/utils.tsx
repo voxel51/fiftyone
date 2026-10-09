@@ -19,7 +19,6 @@ export const InputDiv = styled.div`
     border: none;
     outline: none;
     border-bottom: 2px solid ${({ theme }) => theme.background.level1};
-    text-transform: uppercase;
     font-weight: bold;
     padding: 3px;
   }
@@ -47,7 +46,6 @@ export const FilterInputDiv = styled.div`
     border: none;
     outline: none;
     border-bottom: 2px solid ${({ theme }) => theme.background.level1};
-    text-transform: uppercase;
     font-weight: bold;
     padding: 3px;
   }

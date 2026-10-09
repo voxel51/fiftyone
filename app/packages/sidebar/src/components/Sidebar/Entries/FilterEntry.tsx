@@ -1,5 +1,5 @@
 import {
-  FilterListIcon,
+  FilterAltIcon,
   VisibilityIcon,
   VisibilityOffIcon,
 } from "@voxel51/voodo";
@@ -83,7 +83,7 @@ const Filter = (_props: { modal?: boolean }) => {
               placement="bottom-start"
             >
               <ModeIcon>
-                <FilterListIcon size={24} />
+                <FilterAltIcon size={14} />
               </ModeIcon>
             </Tooltip>
             <Tooltip
@@ -98,7 +98,7 @@ const Filter = (_props: { modal?: boolean }) => {
           <Box display="flex" onClick={() => setIsFilterMode(true)}>
             <Tooltip text="Toggle to filter mode" placement="bottom-start">
               <ModeIcon>
-                <VisibilityIcon size={24} />
+                <VisibilityIcon size={14} />
               </ModeIcon>
             </Tooltip>
             <Tooltip
@@ -140,7 +140,7 @@ const Filter = (_props: { modal?: boolean }) => {
                 </Typography>
               )}
               <ClearIcon>
-                <VisibilityOffIcon size={24} />
+                <VisibilityOffIcon size={14} />
               </ClearIcon>
             </Box>
           </Tooltip>

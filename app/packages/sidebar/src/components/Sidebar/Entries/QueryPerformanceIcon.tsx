@@ -1,4 +1,4 @@
-import { BoltIcon } from "@voxel51/voodo";
+import { ZapIcon } from "@voxel51/voodo";
 import { useTheme } from "@fiftyone/components";
 import { OPTIMIZING_QUERY_PERFORMANCE } from "@fiftyone/utilities";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
@@ -108,7 +108,7 @@ const QueryPerformanceIcon = () => {
         },
       }}
     >
-      <BoltIcon size={24} color={lightningBoltColor} />
+      <ZapIcon size={14} color={lightningBoltColor} />
     </Tooltip>
   );
 };

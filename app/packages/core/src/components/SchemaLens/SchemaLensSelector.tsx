@@ -28,7 +28,6 @@ import {
   Dropdown,
   DropdownAnchor,
   DropdownTrigger,
-  LayersIcon,
   MenuCheckItem,
   MenuIconTextItem,
   MenuSeparator,
@@ -286,7 +285,6 @@ const SchemaLensSelector = ({
           data-cy="schema-lens-select"
           aria-label="View the dataset through a label schema"
           title={currentLabel}
-          leadingIcon={LayersIcon}
           style={{ maxWidth: maxValueWidth + 40, minWidth: 0 }}
         >
           {!loaded || busy ? (

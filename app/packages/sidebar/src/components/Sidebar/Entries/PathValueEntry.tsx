@@ -244,7 +244,7 @@ const ListValueEntry = ({
               event.preventDefault();
             }}
           >
-            <Arrow size={24} />
+            <Arrow size={16} />
           </span>
         </NameAndCountContainer>
       }
