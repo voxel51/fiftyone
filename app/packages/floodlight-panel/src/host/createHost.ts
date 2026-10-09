@@ -96,24 +96,15 @@ export const createHost = <K, I extends Instance>(
     entry.slot.remove();
   };
 
-  // while a drag holds the grid, its slot keeps the size it was built at, so
-  // nothing in it resizes or clips, and it stays centered in the panel
-  // rather than riding the edge that moves
+  // while a drag holds the grid, it stays centered in the panel rather than
+  // riding the edge that moves
   const center = (entry: Entry<I>) => {
-    const built = entry.extent;
-    const size = axis === "width" ? "width" : "height";
-    const end = axis === "width" ? "right" : "bottom";
-    if (!built || built === extent) {
-      entry.slot.style[size] = "";
-      entry.slot.style[end] = "";
-      entry.slot.style.transform = "";
-      return;
-    }
-    const shift = ((extent ?? built) - built) / 2;
-    entry.slot.style[size] = `${built}px`;
-    entry.slot.style[end] = "auto";
-    entry.slot.style.transform =
-      axis === "width" ? `translateX(${shift}px)` : `translateY(${shift}px)`;
+    const shift = ((extent ?? 0) - (entry.extent ?? extent ?? 0)) / 2;
+    entry.slot.style.transform = shift
+      ? axis === "width"
+        ? `translateX(${shift}px)`
+        : `translateY(${shift}px)`
+      : "";
   };
 
   const track = (event: Event) => {
@@ -193,8 +184,6 @@ export const createHost = <K, I extends Instance>(
       return;
     }
 
-    center(current);
-
     // a single change (a sidebar toggling) rebuilds at once; a run of
     // changes (a drag) holds the grid still and rebuilds once it settles
     const continuing = resizing !== undefined;
@@ -208,6 +197,7 @@ export const createHost = <K, I extends Instance>(
     }, SETTLE);
     if (continuing) {
       continued = true;
+      center(current);
       return;
     }
     options.onResize?.();
