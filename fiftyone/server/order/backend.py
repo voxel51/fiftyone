@@ -211,3 +211,5 @@ class OrderHandle:
     total: t.Optional[int] = None
     bounds: t.Optional[Bounds] = None
     state: t.Dict[str, t.Any] = field(default_factory=dict)
+    #: the data version a page last read, and when (a monotonic time)
+    checked: t.Optional[t.Tuple[str, float]] = None

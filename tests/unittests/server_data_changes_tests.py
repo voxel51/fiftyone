@@ -227,6 +227,53 @@ class OrderDeletionTests(unittest.TestCase):
         )
         self.assertNotEqual(version, opened.handle.version)
 
+    def _page(self, service, token):
+        return service.page(
+            token,
+            OrderSpec(dataset=self.dataset.name, stages=[]),
+            None,
+            Direction.FORWARD,
+            PAGE,
+            None,
+            Budget(),
+        )
+
+    def test_pages_read_the_version_once_per_ttl(self):
+        now = [0.0]
+        service = OrderService(
+            MongoOrderBackend(), version_ttl=2.0, clock=lambda: now[0]
+        )
+        opened = service.open(self._spec(), Budget())
+        with patch.object(
+            service.backend, "version", wraps=service.backend.version
+        ) as version:
+            for _ in range(3):
+                self._page(service, opened.token)
+            self.assertEqual(version.call_count, 1)
+
+            self.dataset.delete_samples(self.dataset.first())
+            _, _, cached = self._page(service, opened.token)
+            self.assertEqual(cached, opened.handle.version)
+
+            now[0] = 2.0
+            _, _, fresh = self._page(service, opened.token)
+            self.assertNotEqual(fresh, opened.handle.version)
+            self.assertEqual(version.call_count, 2)
+
+    def test_a_reopen_has_its_next_page_read_the_version(self):
+        now = [0.0]
+        service = OrderService(
+            MongoOrderBackend(), version_ttl=60.0, clock=lambda: now[0]
+        )
+        opened = service.open(self._spec(), Budget())
+        self._page(service, opened.token)
+        reopened = service.open(self._spec(), Budget())
+        self.assertIs(reopened.handle, opened.handle)
+
+        self.dataset.delete_samples(self.dataset.first())
+        _, _, version = self._page(service, reopened.token)
+        self.assertNotEqual(version, opened.handle.version)
+
     @pytest.mark.xfail(
         strict=True,
         reason="the version fingerprints the whole dataset, so an edit "
