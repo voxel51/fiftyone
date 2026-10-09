@@ -273,7 +273,7 @@ const SchemaLensSelector = ({
           }}
           label={
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              {busy || (!loaded && current !== ALL_FIELDS_LENS) ? (
+              {busy || (!loaded && !currentLabel) ? (
                 <span
                   role="status"
                   aria-label={busy ? "Applying schema" : "Loading schemas"}
