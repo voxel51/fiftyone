@@ -10,7 +10,7 @@ import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import { useReverbValue } from "@fiftyone/reverb";
-import Input, { NumberInput } from "../../Common/Input";
+import { Input, NumberInput } from "@fiftyone/actions";
 import { Button } from "@fiftyone/sidebar";
 import {
   AddContainer,

@@ -1,7 +1,7 @@
 import { Button, Dialog } from "@fiftyone/components";
 import Selector from "@fiftyone/components/src/components/Selector/Selector";
 import { getRGBColorFromPool } from "@fiftyone/core/src/components/ColorModal/utils";
-import Input from "@fiftyone/core/src/components/Common/Input";
+import Input from "@fiftyone/actions/src/components/Common/Input";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { interpolateColorsHex, rgbStringToHex } from "@fiftyone/utilities";

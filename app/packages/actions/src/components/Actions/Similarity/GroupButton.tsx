@@ -1,10 +1,9 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
-import InfoIcon from "@mui/icons-material/Info";
-import SearchIcon from "@mui/icons-material/Search";
-import SettingsIcon from "@mui/icons-material/Settings";
 import CircularProgress from "@mui/material/CircularProgress";
 import type { CSSProperties } from "react";
+import { InfoIcon, SearchIcon, SettingsIcon } from "@voxel51/voodo";
 import styled from "styled-components";
+import { useActionIconSize } from "../iconSize";
 
 type GroupButtonProps = {
   buttons: ButtonDetail[];
@@ -25,6 +24,7 @@ const Container = styled.div`
 `;
 
 const GroupButton = ({ buttons }: GroupButtonProps) => {
+  const iconSize = useActionIconSize(24);
   return (
     <div style={{ display: "flex", flexDirection: "row" }}>
       {buttons.map((button) => (
@@ -39,12 +39,14 @@ const GroupButton = ({ buttons }: GroupButtonProps) => {
               size="small"
               sx={button.sx}
             >
-              {button.icon === "SearchIcon" && <SearchIcon />}
+              {button.icon === "SearchIcon" && <SearchIcon size={iconSize} />}
               {button.icon === "ProgressIcon" && (
                 <CircularProgress color="inherit" size={"20px"} />
               )}
-              {button.icon === "InfoIcon" && <InfoIcon />}
-              {button.icon === "SettingsIcon" && <SettingsIcon />}
+              {button.icon === "InfoIcon" && <InfoIcon size={iconSize} />}
+              {button.icon === "SettingsIcon" && (
+                <SettingsIcon size={iconSize} />
+              )}
             </IconButton>
           </Container>
         </Tooltip>

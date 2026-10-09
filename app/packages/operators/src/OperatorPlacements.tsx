@@ -19,7 +19,7 @@ import {
 } from "./state";
 import { Placement, Places } from "./types";
 
-import { getStringAndNumberProps } from "@fiftyone/core/src/components/Actions/utils";
+import { getStringAndNumberProps } from "@fiftyone/actions/src/components/Actions/utils";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { useCallback } from "react";
 

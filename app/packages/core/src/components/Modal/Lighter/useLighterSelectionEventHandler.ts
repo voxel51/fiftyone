@@ -16,7 +16,7 @@ import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import {
   overlayToSelectedLabel,
   type SelectableOverlay,
-} from "../../Actions/Selected/hooks";
+} from "@fiftyone/actions";
 
 /**
  * Set while {@link useSelectedLabelsSceneSync} is applying the atom to the

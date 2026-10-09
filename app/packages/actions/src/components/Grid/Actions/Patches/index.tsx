@@ -1,6 +1,6 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { FlipToBack } from "@mui/icons-material";
+import { FlipToBackIcon } from "@voxel51/voodo";
 import { useRef, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import Loading from "../../../Actions/Loading";
@@ -22,7 +22,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
       ref={ref}
     >
       <PillButton
-        icon={loading ? <Loading /> : <FlipToBack />}
+        icon={loading ? <Loading /> : <FlipToBackIcon size={24} />}
         open={open}
         onClick={() => !loading && setOpen(!open)}
         highlight={open || Boolean(fields.length)}

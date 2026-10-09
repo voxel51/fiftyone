@@ -1,7 +1,8 @@
 import { PillButton } from "@fiftyone/components";
 import { useOperatorBrowser } from "@fiftyone/operators";
-import { List } from "@mui/icons-material";
+import { ListIcon } from "@voxel51/voodo";
 import type { ActionProps } from "../types";
+import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 
 export default ({
@@ -9,12 +10,13 @@ export default ({
   modal,
 }: ActionProps & { modal?: boolean }) => {
   const browser = useOperatorBrowser();
+  const iconSize = useActionIconSize(24);
   return (
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
         highlight={browser.isVisible}
-        icon={<List />}
+        icon={<ListIcon size={iconSize} />}
         onClick={() => {
           browser.toggle();
           adaptiveMenuItemProps?.closeOverflow?.();

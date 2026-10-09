@@ -1,8 +1,8 @@
+import { ActionDiv } from "@fiftyone/actions";
 import { PillButton } from "@fiftyone/components";
 import { ModalMode, useModalMode, useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
 import React from "react";
-import { ActionDiv } from "../../../Actions/utils";
 import style from "../../Group/Group.module.css";
 import GroupVisibilityAction, { TITLE } from "./GroupVisibility";
 

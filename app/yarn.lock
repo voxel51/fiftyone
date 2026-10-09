@@ -1545,6 +1545,36 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fiftyone/actions@npm:*, @fiftyone/actions@workspace:packages/actions":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/actions@workspace:packages/actions"
+  dependencies:
+    "@fiftyone/analytics": "npm:*"
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/events": "npm:*"
+    "@fiftyone/lighter": "workspace:*"
+    "@fiftyone/looker": "npm:*"
+    "@fiftyone/operators": "npm:*"
+    "@fiftyone/playback": "workspace:*"
+    "@fiftyone/relay": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
+    "@fiftyone/sidebar": "npm:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@mui/material": "catalog:"
+    "@react-spring/web": "catalog:"
+    "@testing-library/react": "catalog:"
+    "@voxel51/voodo": "catalog:"
+    jotai: "catalog:"
+    numeral: "catalog:"
+    react: "catalog:"
+    styled-components: "catalog:"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/aggregations@npm:*, @fiftyone/aggregations@workspace:packages/aggregations":
   version: 0.0.0-use.local
   resolution: "@fiftyone/aggregations@workspace:packages/aggregations"
@@ -1757,6 +1787,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/core@workspace:packages/core"
   dependencies:
+    "@fiftyone/actions": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/events": "npm:*"
     "@fiftyone/feature-flags": "npm:*"

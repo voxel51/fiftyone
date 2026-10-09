@@ -1,8 +1,9 @@
 import { PillButton } from "@fiftyone/components";
 import { useOutsideClick } from "@fiftyone/state";
-import { Settings } from "@mui/icons-material";
+import { SettingsIcon } from "@voxel51/voodo";
 import { useRef, useState } from "react";
 import type { ActionProps } from "../types";
+import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Options from "./Options";
 
@@ -13,6 +14,7 @@ export default ({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
+  const iconSize = useActionIconSize(24);
 
   return (
     <ActionDiv
@@ -21,7 +23,7 @@ export default ({
     >
       <PillButton
         tooltipPlacement={modal ? "bottom" : "top"}
-        icon={<Settings />}
+        icon={<SettingsIcon size={iconSize} />}
         open={open}
         onClick={() => setOpen(!open)}
         highlight={open}

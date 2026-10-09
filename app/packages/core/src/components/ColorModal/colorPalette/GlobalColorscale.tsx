@@ -4,8 +4,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { isEmpty } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import Input from "../../Common/Input";
-import RadioGroup from "../../Common/RadioGroup";
+import { Input, RadioGroup } from "@fiftyone/actions";
 import { FieldCHILD_STYLE, Guide } from "../ShareStyledDiv";
 import ManualColorScaleList from "../controls/ManualColorScaleList";
 import {

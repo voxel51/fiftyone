@@ -1,12 +1,13 @@
 import { PillButton } from "@fiftyone/components";
 import type { Lookers } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { LocalOffer } from "@mui/icons-material";
+import { LocalOfferIcon } from "@voxel51/voodo";
 import type { MutableRefObject } from "react";
 import { useRef, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
+import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Tag from "./Tag";
 
@@ -30,6 +31,7 @@ export default ({
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const disabled = tagging || disableTag;
+  const iconSize = useActionIconSize(24);
 
   const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
 
@@ -59,7 +61,7 @@ export default ({
               ? "default"
               : "pointer",
         }}
-        icon={tagging ? <Loading /> : <LocalOffer />}
+        icon={tagging ? <Loading /> : <LocalOfferIcon size={iconSize} />}
         open={open}
         onClick={() => !disabled && available && !disableTag && setOpen(!open)}
         highlight={(selected || open) && available}

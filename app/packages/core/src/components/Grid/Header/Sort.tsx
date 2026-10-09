@@ -1,3 +1,4 @@
+import { ActionOption } from "@fiftyone/actions";
 import { Selector } from "@fiftyone/components";
 import {
   gridSortBy,
@@ -7,7 +8,6 @@ import {
 } from "@fiftyone/state";
 import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
-import { ActionOption } from "../../Actions/Common";
 import { SORT_BY_INDEXED_FIELDS } from "@fiftyone/utilities";
 import { RightDiv, SliderContainer } from "./Containers";
 

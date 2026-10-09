@@ -22,7 +22,7 @@ vi.mock("@fiftyone/components", () => ({
     </button>
   ),
 }));
-vi.mock("@fiftyone/core/src/components/Actions/utils", () => ({
+vi.mock("@fiftyone/actions/src/components/Actions/utils", () => ({
   getStringAndNumberProps: () => ({}),
 }));
 vi.mock("@fiftyone/plugins", () => ({

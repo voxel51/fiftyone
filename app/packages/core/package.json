@@ -9,6 +9,7 @@
         "test": "vitest"
     },
     "dependencies": {
+        "@fiftyone/actions": "*",
         "@fiftyone/components": "*",
         "@fiftyone/events": "*",
         "@fiftyone/feature-flags": "*",

@@ -72,7 +72,6 @@ vi.mock("@fiftyone/components", () => ({
     <button onClick={props.onClick}>{props.title}</button>
   ),
 }));
-vi.mock("@mui/icons-material", () => ({ Bookmark: () => null }));
 vi.mock("../../../Actions/Loading", () => ({ default: () => null }));
 vi.mock("../../../Actions/utils", () => ({
   ActionDiv: (props: { children: React.ReactNode }) => (
