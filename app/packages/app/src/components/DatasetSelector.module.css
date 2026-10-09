@@ -1,5 +1,82 @@
-/* Snug: a typical dataset name fits, and the view bar keeps its room */
-.selector {
-  width: 180px;
-  flex-shrink: 0;
+/* The dataset crumb: a pill that fills on hover and while its list is open */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9999px;
+  background: none;
+  cursor: pointer;
+}
+
+.trigger:hover,
+.open {
+  background: var(--color-content-interactive-secondary-hover);
+}
+
+.trigger:focus-visible,
+.open {
+  outline: 2px solid var(--color-content-focus-ring);
+  outline-offset: 0;
+}
+
+.trigger .name {
+  max-width: 220px;
+}
+
+@media (max-width: 1280px) {
+  .trigger .name {
+    max-width: 120px;
+  }
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel {
+  width: 256px;
+  padding: 6px;
+}
+
+.search {
+  padding: 0 0 6px;
+}
+
+.results {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row .name {
+  flex: 1;
+}
+
+.row:hover,
+.active {
+  background: var(--color-content-bg-card-nested);
+}
+
+.empty {
+  display: block;
+  padding: 6px 10px;
 }

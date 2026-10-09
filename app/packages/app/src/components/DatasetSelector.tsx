@@ -3,16 +3,27 @@
  */
 
 import { getEventBus } from "@fiftyone/events";
-import { datasetName, useSetDataset } from "@fiftyone/state";
-import { Combobox, type ComboboxOption, Size } from "@voxel51/voodo";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
 import { useReverbValue } from "@fiftyone/reverb";
+import { datasetName, useSetDataset } from "@fiftyone/state";
+import {
+  CaretDownIcon,
+  CheckIcon,
+  DatabaseIcon,
+  GridViewIcon,
+  IconColor,
+  Input,
+  MenuSectionTitle,
+  MenuSeparator,
+  Popover,
+  PopoverAnchor,
+  SearchIcon,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import clsx from "clsx";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { useDatasetDisplayName } from "../product";
 import styles from "./DatasetSelector.module.css";
@@ -25,99 +36,37 @@ type DatasetSelectorE2EEvents = {
 type UseSearch = (search: string) => { values: string[]; total?: number };
 
 /**
- * Dataset typeahead on voodo's `Combobox`. The option list is driven by the
- * parent's `useSearch` hook so server-side dataset search / pagination
- * continues to work for large installs.
+ * The dataset crumb: a pill naming the loaded dataset that opens a searchable
+ * list of datasets. The list is driven by the parent's `useSearch` hook so
+ * server-side dataset search and pagination keep working for large installs.
  */
 const DatasetSelector: React.FC<{
   useSearch: UseSearch;
-}> = ({ useSearch }) => {
+  /** The header is out of sight; an open list closes with it. */
+  hidden?: boolean;
+}> = ({ useSearch, hidden }) => {
   const setDataset = useSetDataset();
-  const dataset = useReverbValue(datasetName) as string;
-  // What the field shows. A product may display a dataset under a different
-  // name than the one the router loads, which stays `dataset` throughout.
+  const dataset = useReverbValue(datasetName) as string | null;
+  // A product may display a dataset under a different name than the one the
+  // router loads, which stays `dataset` throughout
   const displayName = useDatasetDisplayName();
-
-  // Visible text in the input. Decoupled from the *applied* dataset
-  // so the user can type a search without losing the active dataset
-  // name; the input snaps back when the list closes with nothing picked.
-  const [query, setQuery] = useState<string>(displayName ?? "");
   const [open, setOpen] = useState(false);
-  // The dataset just picked, held until `datasetName` catches up. Loading a
-  // dataset is asynchronous, so without this the snap-back below would
-  // overwrite the pick with the dataset still applied — blank, when picking
-  // the first dataset from the empty page.
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+  // Loading a dataset is asynchronous; the pill names the pick until the
+  // route catches up, rather than the dataset being left
   const [pending, setPending] = useState<string | null>(null);
-  // The close that follows a pick runs in the same event as the pick, before
-  // `pending` has re-rendered; the ref is what that handler reads
-  const pendingRef = useRef<string | null>(null);
-  // Whether the visible text is a search the user typed, as opposed to the
-  // seeded applied-dataset name. Searching by the seed is worse than useless:
-  // the picker opens to browse OTHER datasets, and the debounced refetch made
-  // the full list flash before collapsing to the one dataset matching its own
-  // name.
-  const [dirty, setDirty] = useState(false);
 
-  // `useSearch` debounces internally — re-runs the server query as
-  // `query` changes. Returns the current visible result set.
-  const { values } = useSearch(open && dirty ? query : "");
+  const { values } = useSearch(open ? query : "");
 
-  // Snap input text back to the applied dataset name when the
-  // dataset selection changes (e.g., via URL or external setter).
   useEffect(() => {
-    if (open) return;
+    if (pending !== null && dataset === pending) setPending(null);
+  }, [dataset, pending]);
 
-    if (pending !== null) {
-      if (dataset === pending) {
-        pendingRef.current = null;
-        setPending(null);
-      }
-      return;
-    }
+  useEffect(() => {
+    if (hidden) setOpen(false);
+  }, [hidden]);
 
-    setQuery(displayName ?? "");
-  }, [dataset, displayName, open, pending]);
-
-  const options = useMemo<ComboboxOption[]>(
-    () =>
-      values.map((name) => ({
-        id: name,
-        label: name,
-        "data-cy": `selector-result-${name}`,
-      })),
-    [values],
-  );
-
-  const value = useMemo<ComboboxOption | null>(
-    () => (dataset ? { id: dataset, label: displayName ?? dataset } : null),
-    [dataset, displayName],
-  );
-
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const pick = useCallback(
-    (option: ComboboxOption | null) => {
-      // Typing past the applied name reports null; nothing was picked
-      if (!option) return;
-
-      // Picking the dataset already open is a no-op, not a reload of it
-      if (option.id === dataset) {
-        setQuery(displayName ?? option.id);
-        rootRef.current?.querySelector("input")?.blur();
-        return;
-      }
-
-      pendingRef.current = option.id;
-      setPending(option.id);
-      setDataset(option.id);
-      setQuery(option.id);
-      // Choosing a dataset ends the interaction: the keyboard goes back to
-      // the page, as it did with the previous selector
-      rootRef.current?.querySelector("input")?.blur();
-    },
-    [dataset, displayName, setDataset],
-  );
-
-  // announced the same way as the legacy selector's results
   useEffect(() => {
     if (!open) return;
     getEventBus<DatasetSelectorE2EEvents>().dispatch(
@@ -126,39 +75,138 @@ const DatasetSelector: React.FC<{
     );
   }, [open, values]);
 
+  const changeOpen = useCallback((next: boolean) => {
+    setOpen(next);
+    setActive(0);
+    if (!next) setQuery("");
+  }, []);
+
+  const pick = (name: string | null) => {
+    changeOpen(false);
+    // Picking the dataset already open is a no-op, not a reload of it
+    if (name === dataset) return;
+    setPending(name);
+    setDataset(name);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!values.length) return;
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActive((index) => (index + step + values.length) % values.length);
+    } else if (event.key === "Enter" && values[active]) {
+      event.preventDefault();
+      pick(values[active]);
+    }
+  };
+
+  const label = pending ?? displayName;
+
   return (
-    <div ref={rootRef} data-cy="dataset" className={styles.selector}>
-      <Combobox
-        aria-label="Dataset"
-        placeholder="Select dataset"
-        size={Size.Sm}
-        options={options}
-        value={value}
-        inputValue={query}
-        onInputChange={(text) => {
-          setQuery(text);
-          setDirty(true);
-        }}
-        onChange={pick}
-        // Typing then Enter picks the top match
-        autoHighlight
-        // The header clips overflow — the list must escape it
-        portal
-        inputProps={{ "data-cy": "selector-dataset" }}
-        listProps={{ "data-cy": "selector-results-container-dataset" }}
-        onOpenChange={(isOpen) => {
-          setOpen(isOpen);
-          if (isOpen) {
-            // Fresh open browses everything; the seeded name is not a search
-            setDirty(false);
-          } else {
-            // Closed with nothing picked: back to the applied name
-            // A pick keeps its name in the field while the dataset loads
-            setQuery(pendingRef.current ?? displayName ?? "");
+    <Popover
+      open={open && !hidden}
+      onOpenChange={changeOpen}
+      anchor={PopoverAnchor.BottomStart}
+      panelClassName={styles.panel}
+      trigger={
+        <button
+          type="button"
+          className={clsx(styles.trigger, open && styles.open)}
+          onClick={() => changeOpen(!open)}
+          aria-label="Switch dataset"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          data-cy="selector-dataset"
+        >
+          <DatabaseIcon size={14} color={IconColor.Default} />
+          <Text
+            variant={TextVariant.HeadingSm}
+            color={label ? TextColor.Primary : TextColor.Secondary}
+            className={styles.name}
+          >
+            {label ?? "Select dataset"}
+          </Text>
+          <CaretDownIcon size={14} color={IconColor.Default} />
+        </button>
+      }
+    >
+      <div className={styles.search}>
+        <Input
+          type="search"
+          size={Size.Sm}
+          icon={SearchIcon}
+          placeholder="Find dataset"
+          aria-label="Find dataset"
+          role="combobox"
+          aria-expanded
+          aria-controls="dataset-selector-results"
+          aria-activedescendant={
+            values[active] ? `dataset-option-${active}` : undefined
           }
-        }}
-      />
-    </div>
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setActive(0);
+          }}
+          onKeyDown={onKeyDown}
+          data-cy="selector-dataset-search"
+        />
+      </div>
+      <MenuSectionTitle>Datasets</MenuSectionTitle>
+      <div
+        id="dataset-selector-results"
+        role="listbox"
+        aria-label="Datasets"
+        className={styles.results}
+        data-cy="selector-results-container-dataset"
+      >
+        {values.map((name, index) => (
+          <div
+            key={name}
+            id={`dataset-option-${index}`}
+            role="option"
+            aria-selected={name === dataset}
+            className={clsx(styles.row, index === active && styles.active)}
+            onMouseEnter={() => setActive(index)}
+            onClick={() => pick(name)}
+            data-cy={`selector-result-${name}`}
+          >
+            <Text
+              variant={TextVariant.BodySecondary}
+              color={TextColor.Primary}
+              className={styles.name}
+            >
+              {name}
+            </Text>
+            {name === dataset && (
+              <CheckIcon size={14} color={IconColor.Default} />
+            )}
+          </div>
+        ))}
+      </div>
+      {!values.length && (
+        <Text
+          variant={TextVariant.BodySecondary}
+          color={TextColor.Secondary}
+          className={styles.empty}
+        >
+          No datasets match
+        </Text>
+      )}
+      <MenuSeparator />
+      <button
+        type="button"
+        className={styles.row}
+        onClick={() => pick(null)}
+        data-cy="selector-all-datasets"
+      >
+        <GridViewIcon size={14} color={IconColor.Default} />
+        <Text variant={TextVariant.BodySecondary} color={TextColor.Primary}>
+          All datasets
+        </Text>
+      </button>
+    </Popover>
   );
 };
 

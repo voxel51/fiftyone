@@ -13,6 +13,19 @@ import logo from "../../images/logo.png";
 
 import style from "./Header.module.css";
 
+/** The breadcrumb's divider: a thin slanted stroke */
+const Slash = () => (
+  <svg viewBox="0 0 12 24" aria-hidden className={style.slash}>
+    <path
+      d="M8.5 3 3.5 21"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinecap="round"
+      fill="none"
+    />
+  </svg>
+);
+
 const Header: React.FC<
   React.PropsWithChildren<{
     /** The wordmark beside the logo, for pages without a breadcrumb. */
@@ -39,7 +52,7 @@ const Header: React.FC<
         <Stack
           orientation={Orientation.Row}
           align={Align.Center}
-          spacing={Spacing.Sm}
+          spacing={Spacing.None}
           className={style.left}
         >
           {onHome ? (
@@ -57,10 +70,14 @@ const Header: React.FC<
             <span className={style.home}>{mark}</span>
           )}
           {title && (
-            <Heading level={HeadingLevel.H1} className={style.wordmark}>
+            <Heading
+              level={HeadingLevel.H1}
+              className={clsx(style.wordmark, navChildren && style.beforeSlash)}
+            >
               {title}
             </Heading>
           )}
+          {navChildren && <Slash />}
           {navChildren}
         </Stack>
         {children}

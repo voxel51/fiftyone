@@ -86,9 +86,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
       if (datasetName) {
         await page.getByTestId(`selector-result-${datasetName}`).click();
       } else {
-        const firstSelectorResult = page.locator(
-          "[data-cy=selector-results-container] > div",
-        );
+        const firstSelectorResult = page
+          .locator(
+            "[data-cy=selector-results-container-dataset] > [role=option]",
+          )
+          .first();
         await firstSelectorResult.click();
       }
     };

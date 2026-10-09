@@ -1,17 +1,18 @@
 import { Page, expect } from "src/oss/fixtures";
-import { EventCounter, EventUtils } from "src/shared/event-utils";
-import { SelectorPom } from "./selector";
+import {
+  EventCounter,
+  EventUtils,
+  type ObservedEvent,
+} from "src/shared/event-utils";
 
 export class PagePom {
   readonly assert: PageAsserter;
-  readonly datasetSelector: SelectorPom;
 
   constructor(
     private readonly page: Page,
     private readonly eventUtils: EventUtils,
   ) {
     this.assert = new PageAsserter(this);
-    this.datasetSelector = new SelectorPom(page, eventUtils, "dataset");
   }
 
   /**
@@ -43,9 +44,21 @@ export class PagePom {
       );
       return;
     }
-    await this.datasetSelector.openResults();
+    const results = (e: ObservedEvent) =>
+      (e.detail as { cy?: string }).cy === "dataset";
+    await this.eventUtils.after(
+      "e2e:components:selector-results",
+      () => this.page.getByTestId("selector-dataset").click(),
+      results,
+    );
+    // The menu searches the server, so its list settles after the query
+    await this.eventUtils.after(
+      "e2e:components:selector-results",
+      () => this.page.getByTestId("selector-dataset-search").fill(dataset),
+      results,
+    );
     await this.eventUtils.after("e2e:app:page-change", () =>
-      this.datasetSelector.selectResult(dataset),
+      this.page.getByTestId(`selector-result-${dataset}`).click(),
     );
   }
 

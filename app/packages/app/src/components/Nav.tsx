@@ -113,7 +113,7 @@ const Nav: React.FC<
         title={hasDataset ? undefined : title}
         hidden={hidden}
         onHome={() => setDataset(null)}
-        navChildren={<DatasetSelector useSearch={useSearch} />}
+        navChildren={<DatasetSelector useSearch={useSearch} hidden={hidden} />}
         belowRow={
           hasDataset && (
             <Suspense fallback={null}>

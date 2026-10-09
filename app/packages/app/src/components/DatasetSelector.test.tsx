@@ -4,6 +4,7 @@ import { createStore } from "jotai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const setDatasetSpy = vi.fn();
+const searches: string[] = [];
 
 // Provide just the @fiftyone/state surface the component imports.
 vi.mock("@fiftyone/state", async () => {
@@ -25,9 +26,13 @@ vi.mock("@fiftyone/state", async () => {
 import { datasetName } from "@fiftyone/state";
 import DatasetSelector from "./DatasetSelector";
 
-const useSearch = () => ({ values: ["quickstart", "quickstart-video"] });
+const ALL = ["quickstart", "quickstart-video", "open-images"];
+const useSearch = (search: string) => {
+  searches.push(search);
+  return { values: ALL.filter((name) => name.includes(search)) };
+};
 
-const setup = (applied?: string) =>
+const setup = (applied?: string, hidden = false) =>
   render(
     // Its own store per render: the root initializes a store once, so tests
     // sharing the default one would only ever see the first initializer
@@ -37,63 +42,81 @@ const setup = (applied?: string) =>
         if (applied) set(datasetName, applied);
       }}
     >
-      <DatasetSelector useSearch={useSearch} />
+      <DatasetSelector useSearch={useSearch} hidden={hidden} />
     </ReverbRoot>,
   );
+
+const trigger = () => screen.getByRole("button", { name: "Switch dataset" });
+const search = () => screen.getByRole("combobox", { name: "Find dataset" });
 
 describe("DatasetSelector", () => {
   afterEach(() => {
     cleanup();
     setDatasetSpy.mockReset();
+    searches.length = 0;
   });
 
-  it("keeps the picked name in the field while the dataset loads", () => {
+  it("names the loaded dataset on the pill", () => {
+    setup("quickstart");
+    expect(trigger().textContent).toContain("quickstart");
+  });
+
+  it("searches the server with what is typed in the menu", () => {
+    setup("quickstart");
+    fireEvent.click(trigger());
+    fireEvent.change(search(), { target: { value: "open" } });
+
+    expect(searches.at(-1)).toBe("open");
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "open-images",
+    ]);
+  });
+
+  it("loads a picked dataset and names it while it loads", () => {
     setup();
-    const input = screen.getByRole("combobox", { name: "Dataset" });
+    fireEvent.click(trigger());
+    fireEvent.click(screen.getByRole("option", { name: "quickstart-video" }));
 
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "quick" } });
-    // voodo's Combobox picks on mousedown, then closes in the same event
-    fireEvent.mouseDown(screen.getByRole("option", { name: "quickstart" }));
+    expect(setDatasetSpy).toHaveBeenCalledWith("quickstart-video");
+    expect(trigger().textContent).toContain("quickstart-video");
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
 
-    expect(setDatasetSpy).toHaveBeenCalledWith("quickstart");
-    // The route has not resolved yet (`datasetName` is still null); the field
-    // must not blank out in the meantime
-    expect((input as HTMLInputElement).value).toBe("quickstart");
+  it("picks the highlighted match with the keyboard", () => {
+    setup();
+    fireEvent.click(trigger());
+    fireEvent.keyDown(search(), { key: "ArrowDown" });
+    fireEvent.keyDown(search(), { key: "Enter" });
+
+    expect(setDatasetSpy).toHaveBeenCalledWith("quickstart-video");
   });
 
   it("does not reload the dataset that is already open", () => {
     setup("quickstart");
-    const input = screen.getByRole("combobox", { name: "Dataset" });
-
-    fireEvent.focus(input);
-    fireEvent.mouseDown(screen.getByRole("option", { name: "quickstart" }));
+    fireEvent.click(trigger());
+    fireEvent.click(screen.getByRole("option", { name: "quickstart" }));
 
     expect(setDatasetSpy).not.toHaveBeenCalled();
-    expect((input as HTMLInputElement).value).toBe("quickstart");
   });
 
-  it("gives focus back to the page once a dataset is picked", () => {
-    setup();
-    const input = screen.getByRole("combobox", { name: "Dataset" });
+  it("goes to all datasets", () => {
+    setup("quickstart");
+    fireEvent.click(trigger());
+    fireEvent.click(screen.getByRole("button", { name: "All datasets" }));
 
-    input.focus();
-    fireEvent.focus(input);
-    expect(document.activeElement).toBe(input);
-    fireEvent.mouseDown(screen.getByRole("option", { name: "quickstart" }));
-
-    expect(document.activeElement).not.toBe(input);
+    expect(setDatasetSpy).toHaveBeenCalledWith(null);
   });
 
-  it("restores the current dataset when the list closes without a pick", () => {
-    setup();
-    const input = screen.getByRole("combobox", { name: "Dataset" });
+  it("closes when the header is hidden", () => {
+    const { rerender } = setup("quickstart");
+    fireEvent.click(trigger());
+    expect(screen.getByRole("listbox")).toBeTruthy();
 
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "quick" } });
-    fireEvent.keyDown(input, { key: "Escape" });
-
-    expect(setDatasetSpy).not.toHaveBeenCalled();
-    expect((input as HTMLInputElement).value).toBe("");
+    rerender(
+      <ReverbRoot store={createStore()}>
+        <DatasetSelector useSearch={useSearch} hidden />
+      </ReverbRoot>,
+    );
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 });

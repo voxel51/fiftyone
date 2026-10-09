@@ -60,6 +60,18 @@ button.home:hover {
   height: 18px;
 }
 
+.slash {
+  flex-shrink: 0;
+  width: 12px;
+  height: 20px;
+  color: var(--color-content-border-strong);
+}
+
 .wordmark {
   white-space: nowrap;
+  margin-left: var(--spacing-sm);
+}
+
+.beforeSlash {
+  margin-right: var(--spacing-xs);
 }
