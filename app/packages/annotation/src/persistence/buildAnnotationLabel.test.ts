@@ -75,6 +75,10 @@ const hoisted = vi.hoisted(() => {
   class MockKeypointOverlay extends MockBaseOverlay {
     public field = "kps";
     public label: Record<string, unknown> = { label: "kp" };
+    private _points: [number, number][] = [[0.5, 0.5]];
+    getRelativePoints() {
+      return this._points;
+    }
   }
   return {
     MockBaseOverlay,
@@ -285,14 +289,16 @@ describe("buildAnnotationLabel — non-Detection types", () => {
     expect(result?.path).toBe("lanes");
   });
 
-  it("Keypoint: emits type=Keypoint when label.label is set", () => {
+  it("Keypoint: emits type=Keypoint with live overlay geometry", () => {
     const overlay = new hoisted.MockKeypointOverlay();
     overlay.field = "kps";
     overlay.label = { label: "nose" };
 
     expect(buildAnnotationLabel(overlay as never)).toEqual({
       type: "Keypoint",
-      data: { label: "nose" },
+      // points come from the overlay's current geometry, not the label
+      // snapshot (mirrors the Polyline branch)
+      data: { label: "nose", points: [[0.5, 0.5]] },
       path: "kps",
     });
   });

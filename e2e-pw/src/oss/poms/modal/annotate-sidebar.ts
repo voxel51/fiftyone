@@ -190,6 +190,19 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
+   * Turn on keypoint placement (the Keypoint action button). Resolves once
+   * its placement handler is armed: the handler installs in an effect after
+   * the mode flips, and clicks before that reach nothing.
+   */
+  async keypointMode() {
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => this.page.getByTestId("keypoint-mode").click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
+  }
+
+  /**
    * Toggle segmentation mode: when inactive this enters it (selecting the
    * Select tool by default), when active it leaves it.
    */
@@ -327,6 +340,16 @@ class ModalAnnotateSidebarAsserter {
    */
   async detectionModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
+  }
+
+  /**
+   * Assert that keypoint mode is active or inactive
+   *
+   * @param active Whether keypoint mode should be active (default true)
+   */
+  async keypointModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("keypoint-mode");
     expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 

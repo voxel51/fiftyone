@@ -87,6 +87,7 @@ const buildWith = async (
     mediaFields = {},
     promptableIndexes,
     savedViews,
+    skeletons,
     staticTransforms,
   } = options;
   const fieldValues = await mediaFieldValues(
@@ -112,6 +113,7 @@ const buildWith = async (
     labelSchemas,
     promptableIndexes,
     savedViews,
+    skeletons,
     staticTransforms,
   });
   return build_.samples.map(({ id, filepath }) => ({ id, filepath }));

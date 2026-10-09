@@ -2,6 +2,9 @@ import { expect, Locator, Page } from "src/oss/fixtures";
 import { collapseWhitespace } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 
+/** A keypoint checklist row's status. */
+export type KeypointNodeStatus = "placed" | "target" | "skipped" | "pending";
+
 /**
  * The modal sidebar's edit form when in 'Annotate' mode. Applies to primitives
  * and labels
@@ -218,6 +221,79 @@ export class ModalAnnotateEditPom {
   }
 
   /**
+   * A row of the keypoint node checklist (`KeypointDetails`), by skeleton node
+   * index. Carries `data-cy-status` (placed | target | skipped | pending) and
+   * `data-cy-selected`.
+   */
+  keypointNodeRow(index: number) {
+    return this.locator.getByTestId(`keypoint-node-${index}`);
+  }
+
+  /** The "N of M placed" summary line above the keypoint node checklist. */
+  get keypointPlacedSummary() {
+    return this.locator.getByTestId("keypoint-placed-summary");
+  }
+
+  /** A node row's Place button (offered while the row is not an armed target). */
+  keypointPlaceButton(index: number) {
+    return this.locator.getByTestId(`keypoint-place-node-${index}`);
+  }
+
+  /** The target row's Skip button (offered while placement is armed). */
+  get keypointSkipButton() {
+    return this.locator.getByTestId("keypoint-skip-node");
+  }
+
+  /**
+   * Click a node row's Place button, which arms placement and force-targets
+   * the node. Resolves once the placement handler is armed.
+   */
+  async placeKeypointNode(index: number) {
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => this.keypointPlaceButton(index).click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the keypoint checklist has rendered the
+   * state it causes: new node statuses, placement arming or disarming, or a
+   * node selection (the node inspector renders with it)
+   */
+  async afterKeypointChecklist<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:keypoint-checklist", action);
+  }
+
+  /** Every checklist row's status, in skeleton node order. */
+  async keypointNodeStatuses(): Promise<(string | null)[]> {
+    const rows = await this.locator
+      .getByTestId("keypoint-node-list")
+      .locator("[data-cy-status]")
+      .all();
+    return Promise.all(rows.map((row) => row.getAttribute("data-cy-status")));
+  }
+
+  /** Click the target row's Skip button (guided placement passes the node). */
+  async skipKeypointNode() {
+    await this.keypointSkipButton.click();
+  }
+
+  /**
+   * The inspector's toggle for a point-scoped bool attribute.
+   *
+   * @param attribute The attribute name (e.g. "occluded")
+   */
+  keypointPointAttributeToggle(attribute: string) {
+    return this.locator.getByTestId(`keypoint-${attribute}-toggle`);
+  }
+
+  /** The edit form's title ("Edit Keypoint", "Edit Detection", …). */
+  get title() {
+    return this.locator.getByTestId("annotate-edit-title");
+  }
+
+  /**
    * The segmentation toolbar's Brush tool button. The toolbar (an on-canvas
    * `ActionToolbar`) renders only while segmentation mode is active and exposes
    * its tools via `aria-label`, so the Brush button's presence is a stable
@@ -259,6 +335,56 @@ class ModalAnnotateEditAsserter {
    */
   async isClosed() {
     expect(await this.modalAnnotateEdit.backButton.isVisible()).toBe(false);
+  }
+
+  /**
+   * Verify which label type the edit form is editing.
+   *
+   * @param type The label type as titled (e.g. "Keypoint")
+   */
+  async editsLabelType(type: string) {
+    expect(
+      collapseWhitespace(await this.modalAnnotateEdit.title.textContent()),
+    ).toBe(`Edit ${type}`);
+  }
+
+  /**
+   * Verify the keypoint checklist, one status per skeleton node in node
+   * order. Read after the checklist event of the step it checks.
+   *
+   * @param statuses The expected status of every node
+   */
+  async keypointNodeStatuses(statuses: KeypointNodeStatus[]) {
+    expect(await this.modalAnnotateEdit.keypointNodeStatuses()).toEqual(
+      statuses,
+    );
+  }
+
+  /**
+   * Verify the "N of M placed" summary above the keypoint checklist.
+   *
+   * @param text The full summary text (e.g. "3 of 4 placed · 1 skipped")
+   */
+  async keypointPlacedSummary(text: string) {
+    expect(
+      collapseWhitespace(
+        await this.modalAnnotateEdit.keypointPlacedSummary.textContent(),
+      ),
+    ).toBe(text);
+  }
+
+  /**
+   * Verify a point-scoped bool attribute's toggle in the node inspector.
+   *
+   * @param attribute The attribute name
+   * @param checked Whether the toggle should read on
+   */
+  async keypointPointAttributeChecked(attribute: string, checked: boolean) {
+    expect(
+      await this.modalAnnotateEdit
+        .keypointPointAttributeToggle(attribute)
+        .isChecked(),
+    ).toBe(checked);
   }
 
   /**

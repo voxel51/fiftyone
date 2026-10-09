@@ -70,11 +70,34 @@ export interface SyntheticPolyline {
 }
 
 /**
- * Either geometry propagation can interpolate between two keyframes. Agents
+ * A tracked keypoint as the propagation path sees it — the flat-geometry
+ * sibling of {@link SyntheticPolyline}. `points` is one normalized [x, y]
+ * pair per skeleton node; an unplaced/occluded node is `[NaN, NaN]` (the
+ * keypoint hole convention), which interpolation must preserve.
+ */
+export interface SyntheticKeypoint {
+  id: string;
+  /** Real MongoDB `_id` when the keypoint has been persisted. */
+  _id?: string;
+  label: string;
+  /** One normalized [x, y] pair per node; `[NaN, NaN]` marks a hole. */
+  points: [number, number][];
+  /** FiftyOne track index, when present. */
+  index?: number;
+  instance?: { _cls: "Instance"; _id?: string };
+  /** `true` for user-authored / propagation source; `false` for interpolated. */
+  keyframe: boolean;
+}
+
+/**
+ * Any geometry propagation can interpolate between two keyframes. Agents
  * narrow to the one they handle; `useVideoPropagate` picks the agent from the
  * field's label type, so the pairing is decided before an agent ever sees it.
  */
-export type SyntheticKeyframe = SyntheticBox | SyntheticPolyline;
+export type SyntheticKeyframe =
+  | SyntheticBox
+  | SyntheticPolyline
+  | SyntheticKeypoint;
 
 export interface FrameLabelSnapshot {
   frameNumber: number;

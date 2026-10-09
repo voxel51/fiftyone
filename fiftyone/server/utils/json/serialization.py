@@ -51,6 +51,8 @@ def deserialize(value: Any) -> Any:
                         fol.Classifications,
                         fol.Detection,
                         fol.Detections,
+                        fol.Keypoint,
+                        fol.Keypoints,
                         fol.Polyline,
                         fol.Polylines,
                         fol.TemporalDetection,
