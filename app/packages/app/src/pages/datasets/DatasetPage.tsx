@@ -127,8 +127,24 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
 
   return (
     <datasetQueryContext.Provider value={data}>
-      {!onSample && (
-        <Nav fragment={data} hasDataset={!isEmpty}>
+      {/* Mounted across the sample page, which covers it with its own
+          header, so closing a sample does not rebuild the nav */}
+      <Nav fragment={data} hasDataset={!isEmpty} hidden={onSample}>
+        {onSample ? (
+          <div className={style.samplePage} data-cy={"sample-page"}>
+            {isModalOpen && (
+              <Modal
+                page
+                header={
+                  <SamplePageHeader
+                    actions={<ModalActionItems />}
+                    mode={<ModalModeSwitch />}
+                  />
+                }
+              />
+            )}
+          </div>
+        ) : (
           <div className={style.page} data-cy={"dataset-page"}>
             <DatasetGridRendererFailover />
             {isEmpty ? (
@@ -140,23 +156,8 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
               </>
             )}
           </div>
-        </Nav>
-      )}
-      {onSample && (
-        <div className={style.samplePage} data-cy={"sample-page"}>
-          {isModalOpen && (
-            <Modal
-              page
-              header={
-                <SamplePageHeader
-                  actions={<ModalActionItems />}
-                  mode={<ModalModeSwitch />}
-                />
-              }
-            />
-          )}
-        </div>
-      )}
+        )}
+      </Nav>
       {/* Outside the isEmpty branch so `?schemaManager=open` works on an empty
           dataset, and outside the grid so the sample page can open it too. */}
       <SchemaManagerOutlet />

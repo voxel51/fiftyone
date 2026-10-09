@@ -15,6 +15,10 @@
   padding: 8px 0.25rem 8px 0.75rem;
 }
 
+.hidden {
+  visibility: hidden;
+}
+
 .row {
   width: 100%;
   min-width: 0;

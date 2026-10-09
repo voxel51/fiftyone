@@ -20,14 +20,16 @@ const Header: React.FC<
     navChildren?: React.ReactNode;
     /** Spans the window under the first row, for a surface that needs it. */
     belowRow?: React.ReactNode;
+    /** Out of sight and out of reach, still mounted. */
+    hidden?: boolean;
   }>
-> = ({ belowRow, children, title, navChildren, onRefresh }) => {
+> = ({ belowRow, children, hidden, title, navChildren, onRefresh }) => {
   // Each refresh spins the logo one full turn: the class toggles between two
   // rotations a full turn apart, and the transition carries it there
   const [turned, setTurned] = useState(false);
 
   return (
-    <div className={style.header}>
+    <div className={clsx(style.header, hidden && style.hidden)}>
       <Stack
         orientation={Orientation.Row}
         align={Align.Center}

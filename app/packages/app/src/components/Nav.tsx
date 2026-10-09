@@ -77,8 +77,9 @@ const Nav: React.FC<
   React.PropsWithChildren<{
     fragment: NavFragment$key;
     hasDataset: boolean;
+    hidden?: boolean;
   }>
-> = ({ children, fragment, hasDataset }) => {
+> = ({ children, fragment, hasDataset, hidden }) => {
   const data = useFragment(
     graphql`
       fragment NavFragment on Query {
@@ -113,6 +114,7 @@ const Nav: React.FC<
     <>
       <Header
         title={title}
+        hidden={hidden}
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
         belowRow={
