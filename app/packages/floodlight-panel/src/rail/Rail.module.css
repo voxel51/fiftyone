@@ -84,8 +84,8 @@
   transform: translateX(-50%);
   background: var(--color-brand-primary);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  /* no position transition: the thumb tracks the scroll frame by frame */
   transition:
-    top 180ms cubic-bezier(0.2, 0, 0, 1),
     height 180ms ease,
     width 160ms ease;
 }
@@ -166,7 +166,6 @@
   min-width: 24px;
   transform: translateY(-50%);
   transition:
-    left 180ms cubic-bezier(0.2, 0, 0, 1),
     width 180ms ease,
     height 160ms ease;
 }

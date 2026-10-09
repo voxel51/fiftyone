@@ -33,6 +33,11 @@ export interface Rail {
   visible?: number;
   /** Rebuilds the grid at a rail position. */
   jump: (position: number, total: number) => void;
+  /**
+   * Hears the top rank as the view scrolls, fractional between rows, for a
+   * thumb that tracks the scroll rather than stepping a row at a time.
+   */
+  follow: (listener: (rank: number) => void) => () => void;
 }
 
 /**
@@ -54,6 +59,7 @@ export default function useRail({
   measure.current = extent;
   const scroll = useRef(onScroll);
   scroll.current = onScroll;
+  const followers = useRef(new Set<(rank: number) => void>());
 
   // a new order starts at the top
   useEffect(() => setAnchorRank(undefined), [ranks]);
@@ -71,14 +77,32 @@ export default function useRail({
       rank !== undefined &&
       rank < pageSize;
 
+    // the last reported row, and how far the view was scrolled then
+    let base: { rank: number; scrolled: number } | undefined;
+
     const onRow = (event: Event) => {
       const rank = ranks.get((event as RowChange<number>).at.description);
       if (rank === undefined) return;
       const next = measure.current?.();
-      setAnchorRank(atStart(rank) ? 0 : rank);
+      const top = atStart(rank) ? 0 : rank;
+      base = { rank: top, scrolled: next?.scrolled ?? 0 };
+      setAnchorRank(top);
       setVisible(next && extentVisible(next));
     };
-    const onScroll = () => setAnchorRank((rank) => (atStart(rank) ? 0 : rank));
+    const onScroll = () => {
+      const next = measure.current?.();
+      if (!base || next?.scrolled === undefined || !next.loaded) return;
+      if (atStart(base.rank)) {
+        base = { rank: 0, scrolled: 0 };
+        setAnchorRank(0);
+      }
+      const perPixel = next.items / next.loaded;
+      const rank = Math.max(
+        0,
+        base.rank + (next.scrolled - base.scrolled) * perPixel,
+      );
+      for (const follower of followers.current) follower(rank);
+    };
     instance.addEventListener("rowchange", onRow);
     const unsubscribe = scroll.current?.(onScroll);
     return () => {
@@ -96,5 +120,10 @@ export default function useRail({
     [host, pageSize, ranks, visible],
   );
 
-  return { anchorRank, jump, visible };
+  const follow = useCallback((listener: (rank: number) => void) => {
+    followers.current.add(listener);
+    return () => void followers.current.delete(listener);
+  }, []);
+
+  return { anchorRank, follow, jump, visible };
 }

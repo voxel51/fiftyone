@@ -52,6 +52,16 @@ describe("useRail", () => {
     expect(result.current.anchorRank).toBe(0);
   });
 
+  it("follows the scroll between rows", () => {
+    const { result, row, scroll } = setup({ a: 20 });
+    const seen: number[] = [];
+    result.current.follow((rank) => seen.push(rank));
+    row("a");
+    // 50 items over 5000px: scrolling 150px past the row is 1.5 items
+    scroll(190);
+    expect(seen.at(-1)).toBe(21.5);
+  });
+
   it("does not take a later page's scroll start for the top", () => {
     const { result, row, scroll } = setup({ a: 250 });
     row("a");

@@ -36,6 +36,8 @@ export interface RankRailProps {
   visible?: number;
   /** Fires on release with the rail position in [0, 1]. */
   onJump: (position: number) => void;
+  /** Subscribes the thumb to the scrolling top rank, between rows too. */
+  follow?: (listener: (rank: number) => void) => () => void;
   orientation?: Orientation;
   /** Markers; evenly spaced ranks by default. */
   ticks?: readonly RailTick[];
@@ -55,6 +57,7 @@ const percent = (fraction: number) => `${fraction * 100}%`;
 function RankRail({
   anchorRank,
   className,
+  follow,
   label = rankLabel,
   onJump,
   orientation = "vertical",
@@ -64,6 +67,7 @@ function RankRail({
   "aria-label": ariaLabel = "Grid rail",
 }: RankRailProps) {
   const track = useRef<HTMLDivElement>(null);
+  const thumb = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [scrolling, setScrolling] = useState(false);
@@ -76,8 +80,6 @@ function RankRail({
     const timeout = setTimeout(() => setScrolling(false), AWAKE_MS);
     return () => clearTimeout(timeout);
   }, [anchorRank]);
-
-  if (total <= 0) return null;
 
   const horizontal = orientation === "horizontal";
   const start = horizontal ? "left" : "top";
@@ -94,6 +96,21 @@ function RankRail({
   const position = drag ?? thumbPosition(anchorRank, total, visible);
   const span = thumbSpan(visible, total, MIN_SPAN);
   const pointer = drag ?? hover;
+
+  // between rows the thumb follows the scroll directly, outside React
+  const dragging = drag !== null;
+  useEffect(() => {
+    if (!follow || dragging) return undefined;
+    return follow((rank) => {
+      const el = thumb.current;
+      if (!el) return;
+      el.style[start] = percent(
+        thumbTop(thumbPosition(rank, total, visible), span),
+      );
+    });
+  }, [dragging, follow, span, start, total, visible]);
+
+  if (total <= 0) return null;
   const mode = railMode({
     dragging: drag !== null,
     hovered: hover !== null,
@@ -160,6 +177,7 @@ function RankRail({
           </div>
         ))}
         <div
+          ref={thumb}
           className={styles.thumb}
           style={{
             [start]: percent(thumbTop(position, span)),

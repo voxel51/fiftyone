@@ -29,6 +29,7 @@ const GridRailContent = ({ horizontal, rail }: GridRailProps) => {
       visible={rail.visible}
       orientation={horizontal ? "horizontal" : "vertical"}
       onJump={(position) => rail.jump(position, total)}
+      follow={rail.follow}
     />
   );
 };
