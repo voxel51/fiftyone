@@ -39,6 +39,7 @@
 .dots {
   display: inline-flex;
   gap: 0.15em;
+  transition: opacity 250ms ease;
 }
 
 .dot {

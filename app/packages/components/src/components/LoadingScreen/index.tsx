@@ -69,7 +69,12 @@ export default function LoadingScreen({ text }: { text: string }) {
           <span ref={word} style={{ opacity: assembled ? 1 : 0 }}>
             {text.toLowerCase()}
           </span>
-          <span ref={dots} className={styles.dots} aria-hidden>
+          <span
+            ref={dots}
+            className={styles.dots}
+            style={{ opacity: assembled ? 1 : 0 }}
+            aria-hidden
+          >
             <span className={styles.dot} />
             <span className={styles.dot} />
             <span className={styles.dot} />
