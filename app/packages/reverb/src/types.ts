@@ -67,7 +67,8 @@ export interface AtomOptions<T> {
 
 export interface ReadOnlySelectorOptions<T> {
   key: string;
-  get: (accessors: { get: GetReverbValue }) => T;
+  /** May be async: the selector reads as loading until it settles */
+  get: (accessors: { get: GetReverbValue }) => T | Promise<T>;
 }
 
 export interface ReadWriteSelectorOptions<
@@ -85,7 +86,7 @@ export interface AtomFamilyOptions<T, P> {
 
 export interface ReadOnlySelectorFamilyOptions<T, P> {
   key: string;
-  get: (param: P) => (accessors: { get: GetReverbValue }) => T;
+  get: (param: P) => (accessors: { get: GetReverbValue }) => T | Promise<T>;
 }
 
 export interface ReadWriteSelectorFamilyOptions<
