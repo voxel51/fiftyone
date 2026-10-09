@@ -1,13 +1,14 @@
 import React, { MouseEventHandler, ReactNode, useRef } from "react";
 import { animated } from "@react-spring/web";
 import styled from "styled-components";
+import { FILTER_SPACING } from "../../Filters/styles";
 import Draggable from "./Draggable";
 
 const Container = animated(styled.div`
   display: flex;
   justify-content: space-between;
   position: relative;
-  padding: 3px 3px 3px 8px;
+  padding: 3px 3px 3px ${FILTER_SPACING.entryLeft};
   border-radius: 2px;
 `);
 

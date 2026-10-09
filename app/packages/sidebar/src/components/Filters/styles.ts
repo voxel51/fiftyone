@@ -5,6 +5,8 @@ import styles from "./underline.module.css";
 
 /** Expanded filter spacing; VOODO's scale has no 12px step. */
 export const FILTER_SPACING = {
+  // a sidebar row's content from its left edge: the 5px drag bar and 11px
+  entryLeft: "16px",
   // the field name's indent: a 14px checkbox and the label's 6px margin
   left: "20px",
   right: "12px",

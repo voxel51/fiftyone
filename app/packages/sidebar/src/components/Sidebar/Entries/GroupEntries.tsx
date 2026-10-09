@@ -30,6 +30,7 @@ import {
   useSetReverbState,
 } from "@fiftyone/reverb";
 import styled from "styled-components";
+import { FILTER_SPACING } from "../../Filters/styles";
 import CountPill from "./CountPill";
 import Draggable from "./Draggable";
 
@@ -55,7 +56,7 @@ const GroupHeader = styled.div`
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   margin-left: 2px;
-  padding: 3px 3px 3px 8px;
+  padding: 3px 3px 3px calc(${FILTER_SPACING.entryLeft} - 2px);
   display: flex;
   justify-content: space-between;
   vertical-align: middle;
