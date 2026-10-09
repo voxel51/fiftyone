@@ -5,6 +5,7 @@ import { useOperatorExecutor } from "./state";
 const LIST_PENDING_RUNS_URI = "@voxel51/operators/list_pending_runs";
 const POLL_MS = 5000;
 const FAILED = "failed";
+const NO_STAGE_OPERATORS: string[] = [];
 
 export type PendingRun = {
   id: string;
@@ -36,13 +37,18 @@ export type PendingRunsConfig = {
  * `config.stageOperators` must be referentially stable.
  */
 export default function usePendingRuns(
-  { operators, stageOperators = [], onViewRun }: PendingRunsConfig,
+  {
+    operators,
+    stageOperators = NO_STAGE_OPERATORS,
+    onViewRun,
+  }: PendingRunsConfig,
   refreshKey?: unknown,
 ) {
   const { execute } = useOperatorExecutor(LIST_PENDING_RUNS_URI);
   const executeRef = useRef(execute);
   executeRef.current = execute;
   const [runs, setRuns] = useState<PendingRun[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const datasetName = fos.useCurrentDatasetName();
 
   const refresh = useCallback(
@@ -52,6 +58,7 @@ export default function usePendingRuns(
         {
           callback: (result) => {
             if (!result?.error) setRuns((result?.result as PendingRun[]) ?? []);
+            setLoaded(true);
           },
         },
       ),
@@ -80,7 +87,7 @@ export default function usePendingRuns(
     [runs, datasetName, onViewRun],
   );
 
-  return { runs: withView, refresh };
+  return { runs: withView, loaded, refresh };
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -91,7 +98,10 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Failed",
 };
 
-export function usePendingRunScreen(runs: PendingRunWithView[]) {
+export function usePendingRunScreen(
+  runs: PendingRunWithView[],
+  description?: string,
+) {
   const [openId, setOpenId] = useState<string | null>(null);
   const run = runs.find((candidate) => candidate.id === openId);
 
@@ -99,6 +109,7 @@ export function usePendingRunScreen(runs: PendingRunWithView[]) {
     open: setOpenId,
     screen: run && {
       title: run.brain_key ?? run.label ?? run.operator,
+      description,
       status: (run.run_state === "processing" ? "running" : run.run_state) as
         | "scheduled"
         | "queued"

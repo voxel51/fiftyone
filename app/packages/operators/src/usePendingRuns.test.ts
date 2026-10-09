@@ -7,6 +7,7 @@ vi.mock("./state", () => ({ useOperatorExecutor: () => ({ execute }) }));
 
 import usePendingRuns, { usePendingRunScreen } from "./usePendingRuns";
 
+const withoutStages = { operators: ["op"] };
 const config = { operators: ["op"], stageOperators: ["stage"] };
 const run = (run_state: string) => ({
   id: "1",
@@ -26,6 +27,27 @@ describe("usePendingRuns", () => {
     execute.mockReset();
   });
   afterEach(() => vi.useRealTimers());
+
+  it("reports loaded once the first fetch returns", () => {
+    let finish: (result: unknown) => void = () => {};
+    execute.mockImplementation((_params, { callback }) => {
+      finish = callback;
+    });
+    const { result } = renderHook(() => usePendingRuns(config));
+    expect(result.current.loaded).toBe(false);
+
+    act(() => finish({ result: [] }));
+    expect(result.current.loaded).toBe(true);
+  });
+
+  it("fetches once when no stage operators are configured", () => {
+    execute.mockImplementation((_params, { callback }) =>
+      callback({ result: [run("failed")] }),
+    );
+    renderHook(() => usePendingRuns(withoutStages));
+
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
 
   it("fetches on mount with the configured operators", () => {
     respond([run("queued")]);
@@ -123,11 +145,12 @@ describe("usePendingRunScreen", () => {
   });
 
   it("describes the opened run and closes on back", () => {
-    const { result } = renderHook(() => usePendingRunScreen(runs));
+    const { result } = renderHook(() => usePendingRunScreen(runs, "Hello"));
 
     act(() => result.current.open("1"));
     expect(result.current.screen).toMatchObject({
       title: "viz",
+      description: "Hello",
       status: "running",
       runTitle: "Running",
       onViewStatus: onView,
