@@ -195,6 +195,7 @@ export const recommendedGridZoom = atom<number | null>({
     subscribe(
       ({ event }, { reset }, prev) =>
         event !== "modal" &&
+        event !== "spaces" &&
         prev?.event !== "modal" &&
         reset(recommendedGridZoom),
     ),

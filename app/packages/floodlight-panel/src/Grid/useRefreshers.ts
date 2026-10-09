@@ -84,7 +84,8 @@ export default function useRefreshers() {
 
   useEffect(() => {
     const unsubscribe = subscribe(({ event }, { reset }) => {
-      if (event === "fieldVisibility") return;
+      // a layout change (a panel opening or closing) is not new data
+      if (event === "fieldVisibility" || event === "spaces") return;
 
       // if not a modal page change, reset the grid location
       reset(gridAt);
