@@ -7,8 +7,19 @@ import type { Box } from "./objects";
 
 /** Size of one of the word's pixels, in CSS pixels */
 const CELL = 2;
-/** One storm pixel per this many square CSS pixels of screen */
-const DENSITY = 500;
+/** As in the grid's storm: one drop per this many square CSS pixels, capped */
+const DENSITY = 1300;
+const MAX_DROPS = 1100;
+/** Drops nearer than this are brand-colored teardrops, the rest grey squares */
+const NEAR = 0.55;
+/** The grid's storm canvas sits at this opacity; the word's pixels don't */
+const STORM_OPACITY = 0.45;
+/** A 3×3 pixel-art drop: [column offset, width] per row, as the grid draws it */
+const DROP_ROWS: [number, number][] = [
+  [1, 1],
+  [0, 3],
+  [0, 3],
+];
 const STORM_MS = 700;
 const FORM_MS = 1400;
 const STAGGER_MS = 600;
@@ -18,7 +29,8 @@ interface Pixel {
   x: number;
   y: number;
   speed: number;
-  size: number;
+  /** Depth, 0 far to 1 near, as in the grid's storm */
+  z: number;
   color: string;
   delay: number;
   /** The word's pixels gather to these; the rest of the storm fades */
@@ -99,15 +111,18 @@ export default function usePixelAssembly(
     ];
     const pick = (colors: string[]) =>
       colors[Math.floor(Math.random() * colors.length)];
-    const pixel = (target?: { x: number; y: number }): Pixel => ({
-      x: Math.random() * screen.width,
-      y: Math.random() * screen.height,
-      speed: 60 + Math.random() * 160,
-      size: target ? CELL : 2 + Math.round(Math.random()),
-      color: target || Math.random() < 0.5 ? pick(near) : pick(far),
-      delay: Math.random() * STAGGER_MS,
-      target,
-    });
+    const pixel = (target?: { x: number; y: number }): Pixel => {
+      const z = target ? 1 : Math.random() ** 1.6;
+      return {
+        x: Math.random() * screen.width,
+        y: Math.random() * screen.height,
+        speed: 60 + z * 200,
+        z,
+        color: z > NEAR ? pick(near) : pick(far),
+        delay: Math.random() * STAGGER_MS,
+        target,
+      };
+    };
     const points = sample(text, Math.ceil(box.width), Math.ceil(box.height));
     if (!points.length) {
       setAssembled(true);
@@ -116,7 +131,12 @@ export default function usePixelAssembly(
     const pixels = [
       ...points.map((p) => pixel({ x: at.x + p.x, y: at.y + p.y })),
       ...Array.from(
-        { length: Math.round((screen.width * screen.height) / DENSITY) },
+        {
+          length: Math.min(
+            MAX_DROPS,
+            Math.round((screen.width * screen.height) / DENSITY),
+          ),
+        },
         () => pixel(),
       ),
     ];
@@ -154,9 +174,26 @@ export default function usePixelAssembly(
         if (!gathering) {
           p.y = (p.y + p.speed * dt) % screen.height;
         }
-        ctx.globalAlpha = p.target ? 1 : 1 - fade;
         ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
+        if (p.target) {
+          ctx.globalAlpha = 1;
+          ctx.fillRect(p.x, p.y, CELL, CELL);
+          continue;
+        }
+        ctx.globalAlpha = STORM_OPACITY * (0.25 + p.z * 0.6) * (1 - fade);
+        if (p.z > NEAR) {
+          for (const [row, [offset, run]] of DROP_ROWS.entries()) {
+            ctx.fillRect(
+              Math.round(p.x) + offset - 1,
+              Math.round(p.y) + row - 2,
+              run,
+              1,
+            );
+          }
+        } else {
+          const size = 1 + p.z * 3;
+          ctx.fillRect(p.x, p.y, size, size);
+        }
       }
       if (minX < Infinity) {
         tracker.current?.({
