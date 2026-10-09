@@ -1,11 +1,24 @@
-import { RowChange } from "@fiftyone/floodlight";
+import { Rejected, RowChange } from "@fiftyone/floodlight";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { type Anchor, createHost, SETTLE, SLOT } from "./createHost";
+import {
+  type Anchor,
+  createHost,
+  SETTLE,
+  SLOT,
+  VALIDATE_TIMEOUT,
+} from "./createHost";
 
 class FakeInstance extends EventTarget {
   attach = vi.fn();
   destroy = vi.fn();
-  load = () => this.dispatchEvent(new Event("load"));
+  /** Lays out and validates at once, as without a byte budget. */
+  load = () => {
+    this.layOut();
+    this.validate();
+  };
+  layOut = () => this.dispatchEvent(new Event("load"));
+  validate = () => this.dispatchEvent(new Event("validated"));
+  reject = () => this.dispatchEvent(new Rejected(2));
 }
 
 let resize: (size: { width: number; height: number }) => void;
@@ -71,19 +84,85 @@ describe("createHost", () => {
       interim: false,
       quiet: false,
     });
-    const [slot] = slots(element);
     expect(slots(element)).toHaveLength(1);
+    built[1].load();
+    const [slot] = slots(element);
     expect(slot.getAttribute(SLOT)).toBe("active");
   });
 
-  test("shows the first instance immediately", () => {
+  test("reveals the first instance once it validates", () => {
     const { built, element, host } = setup();
     host.rebuild();
 
     const [slot] = slots(element);
     expect(built[0].attach).toHaveBeenCalledWith(slot);
+    expect(slot.style.visibility).toBe("hidden");
+
+    built[0].layOut();
+    expect(slot.style.visibility).toBe("hidden");
+    expect(host.instance).toBeUndefined();
+
+    built[0].validate();
     expect(slot.getAttribute(SLOT)).toBe("active");
     expect(slot.style.visibility).toBe("");
+    expect(host.instance).toBe(built[0]);
+  });
+
+  test("a first instance that is rejected is disposed unrevealed", () => {
+    const { built, element, host } = setup();
+    host.rebuild();
+    built[0].layOut();
+    built[0].reject();
+
+    expect(built[0].destroy).toHaveBeenCalled();
+    expect(slots(element)).toHaveLength(0);
+    expect(host.instance).toBeUndefined();
+
+    host.rebuild();
+    built[1].load();
+    expect(host.instance).toBe(built[1]);
+  });
+
+  test("a rejected rebuild keeps the visible instance until a valid one", () => {
+    const { built, element, host } = setup();
+    host.rebuild();
+    built[0].load();
+
+    host.rebuild();
+    built[1].layOut();
+    built[1].reject();
+    expect(built[1].destroy).toHaveBeenCalled();
+    expect(built[0].destroy).not.toHaveBeenCalled();
+    expect(host.instance).toBe(built[0]);
+
+    host.rebuild();
+    built[2].layOut();
+    expect(host.instance).toBe(built[0]);
+    built[2].validate();
+    expect(host.instance).toBe(built[2]);
+    expect(built[0].destroy).toHaveBeenCalled();
+    expect(slots(element)).toHaveLength(1);
+  });
+
+  test("reveals a laid-out instance whose sizes never arrive", () => {
+    const { built, host } = setup();
+    host.rebuild();
+    built[0].layOut();
+
+    vi.advanceTimersByTime(VALIDATE_TIMEOUT - 1);
+    expect(host.instance).toBeUndefined();
+    vi.advanceTimersByTime(1);
+    expect(host.instance).toBe(built[0]);
+  });
+
+  test("a rejection after the reveal leaves the instance shown", () => {
+    const { built, host } = setup();
+    host.rebuild();
+    built[0].load();
+    built[0].reject();
+
+    expect(built[0].destroy).not.toHaveBeenCalled();
+    expect(host.instance).toBe(built[0]);
   });
 
   test("keeps the old instance until the new one loads", () => {

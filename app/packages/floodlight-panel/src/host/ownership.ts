@@ -33,6 +33,9 @@ type ShowArgs<K, V> = Parameters<Show<K, V>>[0];
 export const scopeRenderer = <K, V>(
   renderer: Renderer<K, V>,
   shared: Ownership,
+  /** The size a deferred show reports, so the instance can validate before it takes its items. */
+  deferredSize: (args: ShowArgs<K, V>) => Promise<number> = () =>
+    Promise.resolve(0),
 ): Scoped<K, V> => {
   const scope = Symbol("instance");
   const owns = (id: ID) => shared.get(id.description) === scope;
@@ -50,7 +53,7 @@ export const scopeRenderer = <K, V>(
       if (retired) return Promise.resolve(0);
       if (!deferring) return show(args);
       deferred.set(args.id.description, args);
-      return Promise.resolve(0);
+      return deferredSize(args);
     },
     hideItem: (args) => {
       if (retired) return;

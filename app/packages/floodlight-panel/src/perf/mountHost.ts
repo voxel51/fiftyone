@@ -1,4 +1,4 @@
-import type { Response } from "@fiftyone/floodlight";
+import type { Rejected, Response } from "@fiftyone/floodlight";
 import { type Anchor, type BuildContext, createHost } from "../host/createHost";
 import { createOwnership, type Scoped } from "../host/ownership";
 import {
@@ -31,17 +31,21 @@ interface Remount {
  * A real host over real engine instances, wired with the same modules as
  * `Grid.tsx`: `createGridRenderer` per build and `handOff` at each swap, over
  * one page source and one ownership map, counted on the way. `log` records
- * builds, loads and disposals. `remount` passes an earlier mount's pages and
- * lookers, as the panel's memory does when the grid mounts again.
+ * builds, loads, rejections and disposals; `revealed` each swapped-in
+ * instance. `remount` passes an earlier mount's pages and lookers, as the
+ * panel's memory does when the grid mounts again.
  */
 export const mountHost = ({
   axis = "width",
   capacity,
   config = {},
   limit,
+  onRejected,
   pages = createFakePages({ pages: 10, perPage: 20 }),
   remount,
+  rowAspect,
   scoped = true,
+  size,
 }: {
   axis?: "width" | "height";
   /** Pages the source keeps beyond the live instances'. */
@@ -49,9 +53,15 @@ export const mountHost = ({
   config?: Partial<EngineOptions>;
   /** Pages an instance reads before a quiet rebuild replaces it. */
   limit?: number;
+  /** Runs at an instance's `rejected`, as the panel's recommendation does. */
+  onRejected?: (recommended: number) => void;
   pages?: ReturnType<typeof createFakePages>;
   remount?: Remount;
+  /** The row aspect ratio each build lays out at, read as it is built. */
+  rowAspect?: () => number;
   scoped?: boolean;
+  /** Each looker's byte size, which a deferred show reports too. */
+  size?: (key: string) => Promise<number>;
 } = {}) => {
   const container = createContainer();
   const fetches = remount?.fetches ?? countCalls(pages.fetch);
@@ -61,12 +71,13 @@ export const mountHost = ({
       capacity,
       ids: (page) => page.items.map((item) => item.id.description),
     });
-  const looker = remount?.looker ?? createCacheRenderer<number, Data>();
+  const looker = remount?.looker ?? createCacheRenderer<number, Data>({ size });
   const renderer = createCountingRenderer<number, Data>(looker);
   const ownership = createOwnership();
   const labels = new Map<Engine, string>();
   const anchors: (Anchor<number> | undefined)[] = [];
   const log: string[] = [];
+  const revealed: string[] = [];
   const interims = new Set<string>();
   const shimmers = new Map<string, number>();
   const sizes = new Map<string, [number, number]>();
@@ -104,15 +115,22 @@ export const mountHost = ({
       ownership,
       reattach: true,
       shimmer: shimmer(label),
+      size: size && (({ id }) => size(id.description)),
       sizes,
     });
+    const ar = rowAspect?.();
     const { spotlight } = createEngine({
       key: anchor?.key ?? 0,
       at: anchor?.at,
       get: (key) => lease.get(key),
       peek: host.instance && !quiet ? undefined : (key) => lease.peek(key),
       ...(scoped ? grid : counted),
+      ...(ar === undefined ? {} : { rowAspectRatioThreshold: () => ar }),
       ...config,
+    });
+    spotlight.addEventListener("rejected", (event: Rejected) => {
+      log.push(`reject ${label}`);
+      onRejected?.(event.recommendedRowAspectRatioThreshold);
     });
     scoped && scopes.set(spotlight, grid);
     spotlight.addEventListener("load", () => {
@@ -156,6 +174,7 @@ export const mountHost = ({
         previous: previous && scopes.get(previous),
       });
       const label = labels.get(next) ?? "";
+      revealed.push(label);
       unshownAtSwap.set(
         label,
         looker.tiles(label).filter((id) => !looker.cache.isShown(id)),
@@ -174,6 +193,7 @@ export const mountHost = ({
     looker,
     shimmers,
     log,
+    revealed,
     unshownAtSwap,
     pages,
     renderer,

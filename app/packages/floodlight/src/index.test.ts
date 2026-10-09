@@ -196,4 +196,80 @@ describe("Spotlight", () => {
       host.remove();
     });
   });
+
+  describe("validated", () => {
+    const pageOf = (page: number) => ({
+      items: Array.from({ length: 5 }, (_, i) => ({
+        id: { description: `${page}-${i}` },
+        aspectRatio: 1,
+        data: {},
+        key: page,
+      })),
+      next: page < 9 ? page + 1 : null,
+      previous: page > 0 ? page - 1 : null,
+    });
+
+    const mount = (sizes: Promise<number>, maxItemsSizeBytes?: number) => {
+      const spotlight = new Spotlight<number, object>({
+        key: 0,
+        get: async (page) => pageOf(page),
+        peek: pageOf,
+        detachItem: () => {},
+        hideItem: () => {},
+        showItem: () => sizes,
+        maxItemsSizeBytes,
+        rowAspectRatioThreshold: () => 5,
+      });
+      const events: string[] = [];
+      for (const type of ["load", "rejected", "validated"] as const) {
+        spotlight.addEventListener(type, () => events.push(type));
+      }
+      const host = document.createElement("div");
+      document.body.append(host);
+      spotlight.attach(host);
+      return { events, host, spotlight };
+    };
+
+    const deferred = () => {
+      let resolve: (bytes: number) => void = () => {};
+      const promise = new Promise<number>((done) => (resolve = done));
+      return { promise, resolve };
+    };
+
+    test("fires with the load when there is no budget", () => {
+      const { events, host, spotlight } = mount(deferred().promise);
+
+      expect(events).toEqual(["load", "validated"]);
+
+      spotlight.destroy();
+      host.remove();
+    });
+
+    test("waits for the measured sizes, then fires within budget", async () => {
+      const sizes = deferred();
+      const { events, host, spotlight } = mount(sizes.promise, 1e9);
+
+      await settle();
+      expect(events).toEqual(["load"]);
+
+      sizes.resolve(1);
+      await settle();
+      expect(events).toEqual(["load", "validated"]);
+
+      spotlight.destroy();
+      host.remove();
+    });
+
+    test("never fires once the sizes exceed the budget", async () => {
+      const sizes = deferred();
+      const { events, host, spotlight } = mount(sizes.promise, 1000);
+
+      sizes.resolve(1000);
+      await settle();
+      expect(events).toEqual(["load", "rejected"]);
+
+      spotlight.destroy();
+      host.remove();
+    });
+  });
 });

@@ -4,7 +4,7 @@
 
 import type { ID } from "./types";
 
-/** Fired on {@link Spotlight} when the initial fill has completed and items are ready to display. */
+/** Fired on {@link Spotlight} when the initial fill has laid out its rows. */
 export class Load<K> extends Event {
   /**
    * @param page - The pagination cursor that was active when loading completed.
@@ -25,6 +25,17 @@ export class Rejected extends Event {
    */
   constructor(readonly recommendedRowAspectRatioThreshold: number) {
     super("rejected");
+  }
+}
+
+/**
+ * Fired on {@link Spotlight} once the byte sizes of the items its initial fill
+ * shows have resolved within `maxItemsSizeBytes`, right after `load` when no
+ * budget is set. Never fired after a `rejected` event.
+ */
+export class Validated extends Event {
+  constructor() {
+    super("validated");
   }
 }
 

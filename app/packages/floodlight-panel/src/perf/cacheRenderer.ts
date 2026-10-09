@@ -42,7 +42,12 @@ const zero = (): CacheCounts => ({
  * with fake lookers. It keeps the grid's `isShown` early return so a
  * handoff behaves as it does in the app; builds call `cache.freeze()`.
  */
-export const createCacheRenderer = <K, V>() => {
+export const createCacheRenderer = <K, V>({
+  size = () => Promise.resolve(1),
+}: {
+  /** Each looker's byte size, as its show resolves it. */
+  size?: (key: string) => Promise<number>;
+} = {}) => {
   const cache = createCache<FakeLooker>({
     maxHiddenItems: 10_000,
     maxHiddenItemsSizeBytes: 1e12,
@@ -63,7 +68,7 @@ export const createCacheRenderer = <K, V>() => {
         const looker = cache.get(key);
         if (cache.isShown(key)) {
           looker?.element !== element && count.skipped++;
-          return Promise.resolve(1);
+          return size(key);
         }
         if (looker) {
           const [width, height] = looker.dimensions ?? [];
@@ -73,13 +78,13 @@ export const createCacheRenderer = <K, V>() => {
           count.reattaches++;
           looker.attach(element, dimensions);
           cache.show(key);
-          return Promise.resolve(1);
+          return size(key);
         }
         const created = new FakeLooker();
         count.creates++;
         cache.set(key, created);
         created.attach(element, dimensions);
-        return Promise.resolve(1);
+        return size(key);
       },
       hideItem: ({ id }) => {
         tiles.delete(id.description);

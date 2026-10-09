@@ -21,6 +21,8 @@ export interface GridRendererOptions<V> {
   /** Swimlane rows hold whole instances, so a resize never reattaches them. */
   reattach: boolean;
   shimmer: (args: ShowArgs<V>) => Promise<number>;
+  /** The byte size a deferred show reports, for validation before the swap. */
+  size?: (args: ShowArgs<V>) => Promise<number>;
   /** The dimensions each item was last shown at, shared across builds. */
   sizes: Map<string, [number, number]>;
 }
@@ -67,6 +69,7 @@ export const createGridRenderer = <V>(
       showItem,
     },
     options.ownership,
+    options.size,
   );
   options.deferred && scoped.defer();
   return Object.assign(scoped, { tiles });

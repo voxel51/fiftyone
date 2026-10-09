@@ -76,6 +76,15 @@ describe("scopeRenderer", () => {
     expect(renderer.detachItem).toHaveBeenCalledTimes(1);
   });
 
+  test("a deferred show reports the deferred size", async () => {
+    const next = scopeRenderer(base(), createOwnership(), ({ id }) =>
+      Promise.resolve(id.description.length),
+    );
+    next.defer();
+
+    await expect(show(next, "abc")).resolves.toBe(3);
+  });
+
   test("a retired instance can no longer show, hide or detach", () => {
     const renderer = base();
     const scoped = scopeRenderer(renderer, createOwnership());

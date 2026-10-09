@@ -21,7 +21,10 @@ vi.mock("@fiftyone/floodlight", () => ({
         slot.closest("[data-cy=lane]")?.querySelector("span")?.textContent ??
         "";
       built.push(this);
-      queueMicrotask(() => this.dispatchEvent(new Event("load")));
+      queueMicrotask(() => {
+        this.dispatchEvent(new Event("load"));
+        this.dispatchEvent(new Event("validated"));
+      });
     }
     destroy() {
       this.destroyed = true;

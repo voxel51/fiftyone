@@ -24,7 +24,7 @@ import {
 } from "./constants";
 import createScrollReader from "./createScrollReader";
 import type { EventCallback, RowChange } from "./events";
-import { Load, Rejected } from "./events";
+import { Load, Rejected, Validated } from "./events";
 import IterImpl from "./iter";
 import type { Renderer, Sibling } from "./section";
 import Section from "./section";
@@ -48,7 +48,7 @@ import {
   sum,
 } from "./utilities";
 
-export { Load, Rejected, RowChange } from "./events";
+export { Load, Rejected, RowChange, Validated } from "./events";
 export * from "./types";
 
 /**
@@ -84,6 +84,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
   #validate?: (key: string, add: number) => void;
+  #validated = false;
 
   /**
    * @param config - Grid configuration. `maxRows`, `offset`, and `spacing` default to {@link DEFAULT_MAX_ROWS}, {@link DEFAULT_OFFSET}, and {@link DEFAULT_SPACING} respectively.
@@ -107,7 +108,7 @@ export default class Spotlight<K, V> extends EventTarget {
     return Boolean(this.#element.parentElement);
   }
 
-  /** True after the initial fill has completed and a `load` event has fired. */
+  /** True after the initial fill has laid out and a `load` event has fired. */
   get loaded() {
     return this.#loaded;
   }
@@ -118,6 +119,7 @@ export default class Spotlight<K, V> extends EventTarget {
     type: "rowchange",
     callback: EventCallback<RowChange<K>>,
   ): void;
+  addEventListener(type: "validated", callback: EventCallback<Validated>): void;
   addEventListener(
     type: string,
     callback: EventListenerOrEventListenerObject,
@@ -133,6 +135,10 @@ export default class Spotlight<K, V> extends EventTarget {
   removeEventListener(
     type: "rowchange",
     callback: EventCallback<RowChange<K>>,
+  ): void;
+  removeEventListener(
+    type: "validated",
+    callback: EventCallback<Validated>,
   ): void;
   removeEventListener(
     type: string,
@@ -527,7 +533,7 @@ export default class Spotlight<K, V> extends EventTarget {
           map.set(item.id.description, add);
           bytes += add;
           count++;
-          const max = this.#loaded
+          const max = this.#validated
             ? this.#config.maxItemsSizeBytes
             : // For initial load, reduce by three as a simple adjustment
               // because only enough items to fill the screen have been
@@ -540,23 +546,12 @@ export default class Spotlight<K, V> extends EventTarget {
           }
         });
       },
-      close: async () => {
-        if (this.#rejected) {
-          return;
-        }
-
-        await Promise.allSettled(promises);
-        if (!this.#loaded) {
-          this.#loaded = true;
-          this.dispatchEvent(new Load(this.#config.key));
-        }
-      },
+      settled: () => Promise.allSettled(promises),
     };
   }
 
   #render({
     at,
-    close,
     dispatchOffset = false,
     go = true,
     measure,
@@ -564,7 +559,6 @@ export default class Spotlight<K, V> extends EventTarget {
     zooming,
   }: {
     at?: At;
-    close?: () => Promise<void>;
     dispatchOffset?: boolean;
     go?: boolean;
     offset?: number | false;
@@ -637,7 +631,6 @@ export default class Spotlight<K, V> extends EventTarget {
       ...this.#sections,
     });
     this.#attachScrollReader();
-    close?.();
     if (!zooming && backwardResult.more) this.#previous();
     if (!zooming && forwardResult.more) this.#next();
   }
@@ -705,17 +698,24 @@ export default class Spotlight<K, V> extends EventTarget {
         yield this.#load(true, false);
       }
     }
+    const { measure, settled } = this.#measure();
     this.#render({
       at: this.#config.at,
+      measure,
       offset: -this.#pivot,
       zooming: false,
-      ...this.#measure(),
     });
 
-    if (!this.#config.maxItemsSizeBytes) {
-      this.#loaded = true;
-      this.dispatchEvent(new Load(this.#config.key));
-    }
+    this.#loaded = true;
+    this.dispatchEvent(new Load(this.#config.key));
+    if (settled) settled().then(() => this.#markValid());
+    else this.#markValid();
+  }
+
+  #markValid() {
+    if (this.#rejected || this.#aborter.signal.aborted) return;
+    this.#validated = true;
+    this.dispatchEvent(new Validated());
   }
 
   #get(key: K): Response<K, V> | Promise<Response<K, V>> {

@@ -49,13 +49,25 @@ export interface HostOptions<K, I extends Instance> {
 
 /** Milliseconds after the last resize tick before the content build. */
 export const SETTLE = 150;
+/**
+ * Milliseconds a laid-out instance waits for `validated` (its item sizes
+ * within budget) before it is revealed anyway, e.g. when media fails to load.
+ */
+export const VALIDATE_TIMEOUT = 5000;
 export const SLOT = "data-floodlight-slot";
 
-type Entry<I> = { instance: I; slot: HTMLElement; quiet: boolean };
+type Entry<I> = {
+  instance: I;
+  slot: HTMLElement;
+  quiet: boolean;
+  timeout?: ReturnType<typeof setTimeout>;
+};
 
 /**
  * Keeps one short-lived instance on screen. A rebuild renders the next
- * instance in a hidden slot and swaps it in at its `load`. During a
+ * instance in a hidden slot and reveals it at its `validated`, or
+ * {@link VALIDATE_TIMEOUT} after its `load`; a `rejected` instance is
+ * disposed unrevealed, for a rebuild at a smaller size to replace. During a
  * cross-axis resize each tick builds an interim instance (at most one in
  * flight), and the resize settling builds the content instance. An
  * outgrown instance is rebuilt at its anchor once scrolling stops.
@@ -76,6 +88,7 @@ export const createHost = <K, I extends Instance>(
   let frame: number | undefined;
 
   const dispose = (entry: Entry<I>) => {
+    clearTimeout(entry.timeout);
     options.onDispose?.(entry.instance);
     entry.instance.destroy();
     entry.slot.remove();
@@ -99,31 +112,47 @@ export const createHost = <K, I extends Instance>(
     const slot = document.createElement("div");
     slot.style.position = "absolute";
     slot.style.inset = "0";
-    slot.setAttribute(SLOT, current ? "pending" : "active");
-    if (current) slot.style.visibility = "hidden";
+    slot.setAttribute(SLOT, "pending");
+    slot.style.visibility = "hidden";
     element.appendChild(slot);
 
-    const entry = { instance: build(start, { interim, quiet }), slot, quiet };
+    const entry: Entry<I> = {
+      instance: build(start, { interim, quiet }),
+      slot,
+      quiet,
+    };
     pending = entry;
+    const reveal = () => {
+      if (pending !== entry) return;
+      clearTimeout(entry.timeout);
+      pending = undefined;
+      options.onSwap?.(entry.instance, current?.instance);
+      current && dispose(current);
+      current = entry;
+      slot.style.visibility = "";
+      slot.setAttribute(SLOT, "active");
+      entry.instance.addEventListener("rowchange", track);
+      options.onStatus?.("ready", entry.instance);
+      if (resizedEarly) {
+        resizedEarly = false;
+        rebuild();
+      }
+    };
     entry.instance.addEventListener(
       "load",
       () => {
-        if (pending !== entry) return;
-        pending = undefined;
-        options.onSwap?.(entry.instance, current?.instance);
-        current && dispose(current);
-        current = entry;
-        slot.style.visibility = "";
-        slot.setAttribute(SLOT, "active");
-        entry.instance.addEventListener("rowchange", track);
-        options.onStatus?.("ready", entry.instance);
-        if (resizedEarly) {
-          resizedEarly = false;
-          rebuild();
+        if (pending === entry) {
+          entry.timeout = setTimeout(reveal, VALIDATE_TIMEOUT);
         }
       },
       { once: true },
     );
+    entry.instance.addEventListener("validated", reveal, { once: true });
+    entry.instance.addEventListener("rejected", () => {
+      if (pending !== entry) return;
+      pending = undefined;
+      dispose(entry);
+    });
     options.onStatus?.("building", entry.instance);
     entry.instance.attach(slot);
   };
