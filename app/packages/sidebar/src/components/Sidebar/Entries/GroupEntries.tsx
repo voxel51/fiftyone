@@ -207,7 +207,7 @@ const GroupEntry = React.memo(
                     }
                   }}
                 >
-                  <EditIcon size={16} />
+                  <EditIcon size={12} />
                 </span>
               )}
               {pills}
@@ -221,7 +221,7 @@ const GroupEntry = React.memo(
                   }}
                   onClick={() => onDelete()}
                 >
-                  <CloseIcon size={16} />
+                  <CloseIcon size={12} />
                 </span>
               )}
               <span>
