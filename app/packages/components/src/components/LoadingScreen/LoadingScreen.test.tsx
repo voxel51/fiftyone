@@ -27,7 +27,7 @@ describe("LoadingScreen", () => {
     const first = document.querySelector(
       '[data-cy="loading-detection"]',
     )?.textContent;
-    expect(first).toBe("loading 0.99");
+    expect(first).toBe("loading 0.951");
 
     act(() => vi.advanceTimersByTime(DWELL_MS));
     const next = document.querySelector(

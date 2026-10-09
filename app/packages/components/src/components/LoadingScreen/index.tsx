@@ -69,7 +69,7 @@ export default function LoadingScreen({ text }: { text: string }) {
             }
           >
             <span className={styles.tag}>
-              {detection[0].label} {detection[0].score.toFixed(2)}
+              {detection[0].label} {detection[0].score}
             </span>
           </div>
         )}
