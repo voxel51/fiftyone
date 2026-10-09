@@ -13,12 +13,14 @@ import pathlib
 import stat
 import mimetypes
 from contextlib import asynccontextmanager
+from typing import Optional
 
 import eta.core.utils as etau
 import strawberry as gql
 from strawberry.schema.config import StrawberryConfig
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
+from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
@@ -26,7 +28,7 @@ from starlette.middleware.base import (
 )
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, RedirectResponse, Response
+from starlette.responses import FileResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
@@ -52,6 +54,9 @@ logger = logging.getLogger(__name__)
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 
+_SAMPLE_PAGES = {"samples", "groups"}
+
+
 class Static(StaticFiles):
     def file_response(
         self,
@@ -75,22 +80,36 @@ class Static(StaticFiles):
         return response
 
     async def get_response(self, path: str, scope: Scope) -> Response:
-        response = await super().get_response(path, scope)
-        if response.status_code == 404:
-            parts = pathlib.Path(path).parts
-            path = str(pathlib.Path(*parts[1:]))
-            if parts and parts[0] == "datasets":
-                full_path, stat_result = self.lookup_path(path)
-                if stat_result and stat.S_ISREG(stat_result.st_mode):
-                    return self.file_response(full_path, stat_result, scope)
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as e:
+            response = e.status_code == 404 and self._dataset_page(path, scope)
+            if not response:
+                raise
 
-                if len(parts) == 2:
-                    full_path, stat_result = self.lookup_path("index.html")
-                    return self.file_response(full_path, stat_result, scope)
+            return response
 
-            return RedirectResponse(url="/")
+    def _dataset_page(self, path: str, scope: Scope) -> Optional[Response]:
+        parts = pathlib.Path(path).parts
+        if not parts or parts[0] != "datasets":
+            return None
 
-        return response
+        # a sample's path is its dataset's page one level deeper, and the
+        # page's relative asset URLs resolve under it
+        depth = 3 if len(parts) > 3 and parts[2] in _SAMPLE_PAGES else 1
+        if len(parts) > depth:
+            full_path, stat_result = self.lookup_path(
+                str(pathlib.Path(*parts[depth:]))
+            )
+            if stat_result and stat.S_ISREG(stat_result.st_mode):
+                return self.file_response(full_path, stat_result, scope)
+
+        if len(parts) == depth + 1:
+            full_path, stat_result = self.lookup_path("index.html")
+            if stat_result and stat.S_ISREG(stat_result.st_mode):
+                return self.file_response(full_path, stat_result, scope)
+
+        return None
 
 
 def _app_static(directory):

@@ -12,6 +12,21 @@ import { getTimelineNameFromSampleAndGroupId } from "./timeline-name";
 export const getTimelineSetFrameNumberEventName = (timelineName: string) =>
   `set-frame-number-${timelineName}`;
 
+// a `/samples/<id>` or `/groups/<id>` path, else the query a link used to use
+const openSampleFromUrl = () => {
+  const match = /\/(samples|groups)\/([^/]+)\/?$/.exec(
+    window.location.pathname,
+  );
+  if (match) {
+    const id = decodeURIComponent(match[2]);
+    return match[1] === "groups"
+      ? { groupId: id, sampleId: null }
+      : { groupId: null, sampleId: id };
+  }
+  const params = new URLSearchParams(window.location.search);
+  return { groupId: params.get("groupId"), sampleId: params.get("id") };
+};
+
 /**
  * Sets the frame number of a specific timeline, through the event bus.
  *
@@ -35,13 +50,11 @@ export const dispatchTimelineSetFrameNumberEvent = ({
 
   if (!mayBeTimelineName) {
     // get it from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const sampleId = urlParams.get("id");
-    const groupId = urlParams.get("groupId");
+    const { groupId, sampleId } = openSampleFromUrl();
 
     if (!sampleId && !groupId) {
       throw new Error(
-        "No timeline name provided and no 'id' or 'groupId' query param in URL",
+        "No timeline name provided and no sample or group open in the URL",
       );
     }
     timelineName = getTimelineNameFromSampleAndGroupId(sampleId, groupId);

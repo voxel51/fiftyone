@@ -5,9 +5,9 @@
 import type { Adapter } from "../model";
 
 /**
- * An adapter plus the two things the `Adapter` interface deliberately does not
- * expose. History depth and going back are the user's, not ours, so they are
- * observable to the conformance suite and to nothing else.
+ * An adapter plus what the `Adapter` interface deliberately does not expose.
+ * History depth is the user's, not ours, so it is observable to the
+ * conformance suite and to nothing else; `back` is the user pressing Back.
  */
 export interface AdapterHarness {
   adapter: Adapter;
@@ -20,9 +20,15 @@ export const memoryHarness = (initial = "/"): AdapterHarness => {
   let index = 0;
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((listener) => listener());
+  const back = () => {
+    if (index === 0) return;
+    index -= 1;
+    notify();
+  };
 
   return {
     adapter: {
+      back,
       get: () => entries[index],
       push(href) {
         entries.splice(index + 1);
@@ -39,11 +45,7 @@ export const memoryHarness = (initial = "/"): AdapterHarness => {
         return () => listeners.delete(listener);
       },
     },
-    back() {
-      if (index === 0) return;
-      index -= 1;
-      notify();
-    },
+    back,
     depth: () => entries.length,
   };
 };

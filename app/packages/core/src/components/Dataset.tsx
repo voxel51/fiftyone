@@ -31,7 +31,8 @@ const ModalWrapper = () => {
   return isModalOpen ? <Modal /> : null;
 };
 
-function Dataset() {
+/** `overlay={false}` leaves the open sample to the app, as its own page. */
+function Dataset({ overlay = true }: { overlay?: boolean }) {
   const isCustomizeColorModalActive = useReverbValue(activeColorEntry);
   const trackEvent = useTrackEvent();
 
@@ -52,7 +53,7 @@ function Dataset() {
 
   return (
     <>
-      <ModalWrapper key={"modal"} />
+      {overlay && <ModalWrapper key={"modal"} />}
       {isCustomizeColorModalActive && <ColorModal key={"color"} />}
       <Container key={"dataset"}>
         <Body key={"body"}>

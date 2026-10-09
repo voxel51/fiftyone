@@ -2,11 +2,12 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { samplePathSuffix, splitSamplePath } from "./location/routes";
 import { matchPath } from "./routing";
 
 export const getDatasetName = (pathname?: string) => {
   const result = matchPath(
-    pathname || window.location.pathname,
+    splitSamplePath(pathname || window.location.pathname).page,
     {
       path: "/datasets/:name",
     },
@@ -36,6 +37,25 @@ export function resolveURL(params: {
   extra?: { [key: string]: string | null };
 }): string {
   const searchParams = new URLSearchParams(params.currentSearch);
+  const current = splitSamplePath(params.currentPathname);
+  const { groupId, id, ...extra } = params.extra ?? {};
+
+  // the open sample is a path, kept while the dataset is
+  let sample =
+    params.nextDataset === undefined ||
+    current.page.endsWith(
+      `/datasets/${encodeURIComponent(params.nextDataset ?? "")}`,
+    )
+      ? current.sample
+      : undefined;
+  if (groupId !== undefined || id !== undefined) {
+    sample = groupId
+      ? { kind: "group", id: groupId }
+      : id
+        ? { kind: "sample", id }
+        : undefined;
+  }
+  const suffix = samplePathSuffix(sample);
 
   if (!params.nextDataset && params.nextView) {
     throw new Error("a view cannot be provided without a dataset");
@@ -47,8 +67,8 @@ export function resolveURL(params: {
       : searchParams.delete("view");
   }
 
-  for (const param in params.extra) {
-    const value = params.extra[param];
+  for (const param in extra) {
+    const value = extra[param];
     if (value === null) {
       searchParams.delete(param);
       continue;
@@ -64,7 +84,7 @@ export function resolveURL(params: {
 
   if (params.nextDataset === undefined) {
     // update search params only
-    return `${params.currentPathname}${newSearch}`;
+    return `${current.page}${suffix}${newSearch}`;
   }
 
   const path = decodeURIComponent(searchParams.get("proxy") ?? "");
@@ -76,5 +96,5 @@ export function resolveURL(params: {
   // go to dataset
   return `${
     path.endsWith("/") ? path.slice(0, -1) : path
-  }/datasets/${encodeURIComponent(params.nextDataset)}${newSearch}`;
+  }/datasets/${encodeURIComponent(params.nextDataset)}${suffix}${newSearch}`;
 }

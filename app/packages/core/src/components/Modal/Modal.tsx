@@ -54,6 +54,24 @@ import {
 import { modalContext } from "./modal-context";
 import { useModalLifecycleSignal } from "./modalLifecycle";
 
+// As a page it fills its layer, and its stacking stays inside it
+const PAGE_WRAPPER = {
+  position: "relative",
+  flexDirection: "column",
+  alignItems: "stretch",
+  zIndex: "auto",
+  isolation: "isolate",
+  backgroundColor: "transparent",
+} as const;
+
+const PAGE_CONTAINER = {
+  width: "100%",
+  flex: 1,
+  minHeight: 0,
+  border: "none",
+  boxShadow: "none",
+} as const;
+
 const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -124,7 +142,15 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
   );
 };
 
-const Modal = () => {
+/** The open sample, as an overlay on the grid or, with `page`, a page. */
+const Modal = ({
+  header,
+  page = false,
+}: {
+  /** As a page, drawn above the sample in place of the floating actions. */
+  header?: React.ReactNode;
+  page?: boolean;
+}) => {
   useAnnotationStatus();
   useModalLifecycleSignal();
 
@@ -364,17 +390,19 @@ const Modal = () => {
     [onLookerSet],
   );
 
-  return ReactDOM.createPortal(
+  const content = (
     <modalContext.Provider
       value={{
         activeLookerRef,
+        page,
         setActiveLookerRef,
       }}
     >
       <ModalWrapper
         ref={wrapperRef}
-        onPointerDown={onPointerDownModalWrapper}
-        onClick={onClickModalWrapper}
+        onPointerDown={page ? undefined : onPointerDownModalWrapper}
+        onClick={page ? undefined : onClickModalWrapper}
+        style={page ? PAGE_WRAPPER : undefined}
         data-cy="modal"
       >
         {/* Overlay chrome gets its own boundary: a render throw here (e.g. a
@@ -386,7 +414,7 @@ const Modal = () => {
           onError={trackBoundaryError}
           resetKeys={[modalSelector?.id, modalSelector?.groupId]}
         >
-          <Actions />
+          {page ? header : <Actions />}
         </ReactErrorBoundary>
         {isAnnotationEnabled && (
           <Suspense>
@@ -398,7 +426,10 @@ const Modal = () => {
           onError={trackBoundaryError}
           resetKeys={[modalSelector?.id, modalSelector?.groupId]}
         />
-        <ModalContainer data-cy="modal-content" style={{ ...screenParams }}>
+        <ModalContainer
+          data-cy="modal-content"
+          style={page ? PAGE_CONTAINER : screenParams}
+        >
           <ReactErrorBoundary
             FallbackComponent={ModalErrorFallback}
             onError={trackBoundaryError}
@@ -432,9 +463,15 @@ const Modal = () => {
           </ReactErrorBoundary>
         </ModalContainer>
       </ModalWrapper>
-    </modalContext.Provider>,
-    document.getElementById("modal") as HTMLDivElement,
+    </modalContext.Provider>
   );
+
+  return page
+    ? content
+    : ReactDOM.createPortal(
+        content,
+        document.getElementById("modal") as HTMLDivElement,
+      );
 };
 
 export default React.memo(Modal);

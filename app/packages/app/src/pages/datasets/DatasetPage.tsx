@@ -5,6 +5,9 @@
 import {
   ActivityToast,
   Dataset,
+  Modal,
+  ModalActionItems,
+  ModalModeSwitch,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
@@ -22,6 +25,8 @@ import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import { AddSample } from "../../components/Starter";
 import { useProduct } from "../../product";
+import SamplePageHeader from "../../samplePage/SamplePageHeader";
+import useSamplePage from "../../samplePage/useSamplePage";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
@@ -114,31 +119,56 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const count = useReverbValue(fos.datasetSampleCount);
   const isEmpty = count === 0;
   const { Panels } = useProduct();
+  const samplePage = useSamplePage();
+  const isModalOpen = useReverbValue(fos.isModalActive);
+
+  const { phase, ref } = samplePage;
 
   return (
-    <Nav fragment={data} hasDataset={!isEmpty}>
-      <div className={style.page} data-cy={"dataset-page"}>
-        <DatasetGridRendererFailover />
-        {/* Rendered outside the isEmpty branch so the schema manager URL
-            entry point (`?schemaManager=open`) works even on freshly-created
-            empty datasets, where defining a schema before adding samples is
-            a legitimate first-step workflow. SchemaManagerOutlet doesn't
-            depend on `datasetQueryContext.Provider`. */}
-        <SchemaManagerOutlet />
-        {isEmpty ? (
-          <AddSample />
-        ) : (
-          <datasetQueryContext.Provider value={data}>
-            <OperatorCore />
-            <Dataset />
-            {Panels && <Panels />}
-          </datasetQueryContext.Provider>
-        )}
-      </div>
+    <datasetQueryContext.Provider value={data}>
+      {phase !== "open" && (
+        <Nav fragment={data} hasDataset={!isEmpty}>
+          <div className={style.page} data-cy={"dataset-page"}>
+            <DatasetGridRendererFailover />
+            {isEmpty ? (
+              <AddSample />
+            ) : (
+              <>
+                <Dataset overlay={false} />
+                {Panels && <Panels />}
+              </>
+            )}
+          </div>
+        </Nav>
+      )}
+      {phase !== "grid" && (
+        <div
+          ref={ref}
+          className={style.samplePage}
+          style={{ opacity: phase === "opening" ? 0 : 1 }}
+          data-cy={"sample-page"}
+        >
+          {isModalOpen && (
+            <Modal
+              page
+              header={
+                <SamplePageHeader
+                  actions={<ModalActionItems />}
+                  mode={<ModalModeSwitch />}
+                />
+              }
+            />
+          )}
+        </div>
+      )}
+      {/* Outside the isEmpty branch so `?schemaManager=open` works on an empty
+          dataset, and outside the grid so the sample page can open it too. */}
+      <SchemaManagerOutlet />
+      {!isEmpty && <OperatorCore />}
       <Snackbar />
       <QueryPerformanceToast />
       <ActivityToast />
-    </Nav>
+    </datasetQueryContext.Provider>
   );
 };
 

@@ -21,6 +21,7 @@ import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
 import { matchPath } from "./matchPath";
+import { splitSamplePath } from "../location/routes";
 
 export interface RouteData<T extends OperationType> {
   path: string;
@@ -97,7 +98,7 @@ export const createRouter = <T extends OperationType>(
             environment,
             routes,
             location: location as FiftyOneLocation,
-            hard: location.state.event !== "modal",
+            hard: true,
             handleError,
           });
       } catch (e) {
@@ -132,9 +133,21 @@ export const createRouter = <T extends OperationType>(
     });
   };
 
+  // the history entry on screen, routed or not
+  let shown: Seen = history.location;
+
   const cleanup = history.listen(({ location, action }) => {
     if (!currentEntryResource) return;
-    update(location as FiftyOneLocation, action);
+    const from = shown;
+    shown = location;
+    if (isParamMove(location, from, action)) return;
+    update(
+      {
+        ...location,
+        state: routed((location.state ?? {}) as LocationState),
+      } as FiftyOneLocation,
+      action,
+    );
   });
 
   const context: RoutingContext<T> = {
@@ -175,11 +188,11 @@ export const createRouter = <T extends OperationType>(
     },
 
     push(to: string, state: LocationState) {
-      history.push(to, state);
+      history.push(to, routed(state));
     },
 
     replace(to: string, state: LocationState) {
-      history.replace(to, state);
+      history.replace(to, routed(state));
     },
 
     subscribe(cb, onPending) {
@@ -198,14 +211,53 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
-const SKIP_EVENTS = new Set(["modal", "slice", "spaces"]);
+const SKIP_EVENTS = new Set(["spaces"]);
+
+/**
+ * Marks an entry the location store wrote. Its params moved but its route did
+ * not, so the router keeps the entry; the store carries the entry's state
+ * forward, since it still holds what the URL cannot, like unsaved stages.
+ */
+export const LOCATION_WRITE = "fiftyoneLocationWrite";
+
+type Seen = Pick<Location, "pathname" | "state">;
+
+// the dataset page a path shows, whatever sample is open on it
+const pageOf = (pathname: string) => splitSamplePath(pathname).page;
+
+const isMarked = (state: unknown) =>
+  Boolean((state as Record<string, unknown> | null)?.[LOCATION_WRITE]);
+
+const viewOf = (state: unknown) =>
+  (state as LocationState | null)?.view ?? undefined;
+
+/**
+ * Whether moving `from` → `to` leaves the route where it is. A write is one
+ * when the store made it; a pop is one when either end is the store's entry
+ * and both show the same view, as Back from an open sample to its grid does.
+ */
+export const isParamMove = (to: Seen, from: Seen, action: Action) => {
+  if (pageOf(to.pathname) !== pageOf(from.pathname)) return false;
+  if (action !== "POP") return isMarked(to.state);
+  return (
+    (isMarked(to.state) || isMarked(from.state)) &&
+    viewsAreEqual(viewOf(to.state), viewOf(from.state))
+  );
+};
+
+/** A routed entry never inherits the mark from the state it was spread from. */
+const routed = (state: LocationState): LocationState => {
+  const { [LOCATION_WRITE]: _, ...rest } = state as LocationState &
+    Record<string, unknown>;
+  return rest as LocationState;
+};
 
 const makeGetEntryResource = <T extends OperationType>() => {
   let currentLocation: FiftyOneLocation;
   let currentResource: Resource<Entry<T>>;
 
   const isReusable = (location: FiftyOneLocation) => {
-    if (location.pathname !== currentLocation?.pathname) {
+    if (pageOf(location.pathname) !== pageOf(currentLocation?.pathname ?? "")) {
       return false;
     }
 
@@ -247,7 +299,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
     for (let index = 0; index < routes.length; index++) {
       route = routes[index];
       const match = matchPath<T>(
-        location.pathname,
+        pageOf(location.pathname),
         route,
         location.search,
         location.state,

@@ -10,6 +10,7 @@ import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
+import { useSampleTransition } from "../SamplePage";
 import { useShowClassicSidebar } from "./hooks";
 import {
   KnownCommands,
@@ -78,6 +79,12 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const modal = useReverbValue(fos.modalSelector);
 
   const modalRef = useRef(modal);
+  const transition = useSampleTransition();
+  const swipe = useCallback(
+    (direction: 1 | -1, change: () => void) =>
+      transition?.swipe ? transition.swipe(direction, change) : change(),
+    [transition],
+  );
 
   modalRef.current = modal;
 
@@ -93,7 +100,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.next(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(selector);
+              swipe(1, () => setModal(selector));
             });
           }
         },
@@ -102,7 +109,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         },
         debounceTime: 150,
       }),
-    [closePanels, setModal, clearUndo],
+    [closePanels, setModal, clearUndo, swipe],
   );
 
   const previousNavigator = useMemo(
@@ -115,7 +122,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.previous(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              setModal(selector);
+              swipe(-1, () => setModal(selector));
             });
           }
         },
@@ -124,7 +131,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         },
         debounceTime: 150,
       }),
-    [closePanels, setModal, clearUndo],
+    [closePanels, setModal, clearUndo, swipe],
   );
 
   useEffect(() => {

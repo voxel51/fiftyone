@@ -187,8 +187,7 @@ const Modal = () => {
   const active = Boolean(useReverbValue(isModalActive));
   const wasActive = useRef(false);
   useEffect(() => {
-    document.getElementById("modal")?.classList.toggle("modalon", active);
-    // closed once the modal layer stops taking the page's pointer
+    // e2e specs wait for the sample to close before reading the grid
     if (wasActive.current && !active) {
       getEventBus<RendererE2EEvents>().dispatch("e2e:modal:closed");
     }

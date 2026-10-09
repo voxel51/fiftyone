@@ -18,12 +18,12 @@ describe("appRoutes.parse", () => {
   });
 
   it("reads a sample and a group", () => {
-    expect(appRoutes.parse("/datasets/quickstart/sample/66a1")).toEqual({
+    expect(appRoutes.parse("/datasets/quickstart/samples/66a1")).toEqual({
       kind: "sample",
       name: "quickstart",
       id: "66a1",
     });
-    expect(appRoutes.parse("/datasets/quickstart/group/g-7")).toEqual({
+    expect(appRoutes.parse("/datasets/quickstart/groups/g-7")).toEqual({
       kind: "group",
       name: "quickstart",
       groupId: "g-7",
@@ -42,7 +42,7 @@ describe("appRoutes.parse", () => {
       "/datasets",
       "/settings/audit",
       "/datasets/quickstart/manage",
-      "/datasets/quickstart/sample",
+      "/datasets/quickstart/samples",
     ]) {
       expect(appRoutes.parse(path)).toEqual({ kind: "unknown", path });
     }
@@ -53,8 +53,8 @@ describe("appRoutes round trip", () => {
   it.each([
     "/",
     "/datasets/quickstart",
-    "/datasets/quickstart/sample/66a1",
-    "/datasets/quickstart/group/g-7",
+    "/datasets/quickstart/samples/66a1",
+    "/datasets/quickstart/groups/g-7",
     "/datasets/my%20dataset",
     "/settings/audit",
     "/datasets/quickstart/manage",

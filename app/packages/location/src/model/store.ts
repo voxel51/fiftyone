@@ -26,6 +26,8 @@ export interface LocationStore<R> {
   write<T>(def: ParamDef<T>, value: T): void;
   push(next: LocationModel<R>): void;
   replace(next: LocationModel<R>): void;
+  /** Leaves this entry for the previous one, as Back does. */
+  back(): void;
   update(
     mutate: (current: LocationModel<R>) => LocationModel<R>,
     history: HistoryPolicy,
@@ -130,6 +132,7 @@ export const createLocationStore = <R>(
 
     push: (next) => commit(next, "push"),
     replace: (next) => commit(next, "replace"),
+    back: () => adapter.back(),
     update,
   };
 };

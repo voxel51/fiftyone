@@ -25,6 +25,7 @@ import TileDecoratorPortals from "./TileDecoratorPortals";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
+import { PAGE_SIZE } from "./constants";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 import { useGroupMatchTileDecorator } from "./GroupMatchPills";
@@ -69,7 +70,20 @@ function Grid() {
   });
   const { get, set } = useScrollLocation(pageReset);
 
-  const setSample = fos.useExpandSample(store);
+  const pages = React.useMemo(
+    () => ({
+      get: page,
+      positionOf: (id: string) => {
+        const rank = records.get(id);
+        return rank === undefined
+          ? undefined
+          : { key: Math.floor(rank / PAGE_SIZE), index: rank % PAGE_SIZE };
+      },
+    }),
+    [page, records],
+  );
+  const setSample = fos.useExpandSample(pages);
+  const transition = useSampleTransition();
   const autosizing = useReverbValue(gridAutosizing);
 
   // `reset` is the grid's refresh signal. The callables below are routed

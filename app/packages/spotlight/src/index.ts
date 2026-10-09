@@ -520,15 +520,13 @@ export default class Spotlight<K, V> {
       const { items, next, previous } = await this.#get(key);
 
       return {
+        // records the focused item only: neither a click nor navigation
+        // moves the rows
         focus: (id?: ID) => {
           if (id) {
             this.#focused = id;
           }
 
-          this.#render({
-            at: { description: this.#focused.description, offset: ZERO },
-            ...this.#measure(),
-          });
           return this.#focused;
         },
         items,
@@ -594,15 +592,13 @@ export default class Spotlight<K, V> {
       const { items, next, previous } = await this.#get(key);
 
       return {
+        // records the focused item only: neither a click nor navigation
+        // moves the rows
         focus: (id?: ID) => {
           if (id) {
             this.#focused = id;
           }
 
-          this.#render({
-            at: { description: this.#focused.description, offset: ZERO },
-            ...this.#measure(),
-          });
           return this.#focused;
         },
         items: [...items].reverse(),

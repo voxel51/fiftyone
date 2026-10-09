@@ -20,6 +20,7 @@ vi.mock("@fiftyone/state", async () => {
 });
 
 import { datasetName } from "@fiftyone/state";
+import { appRoutes } from "./location/routes";
 import {
   type Product,
   registerProduct,
@@ -33,6 +34,7 @@ const REGISTERED: Product = {
   title: "A Product",
   enterpriseCta: false,
   useDatasetDisplayName: () => "quickstart (v1)",
+  routes: appRoutes,
 };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (

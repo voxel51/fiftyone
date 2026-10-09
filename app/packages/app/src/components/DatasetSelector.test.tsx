@@ -29,6 +29,8 @@ const useSearch = () => ({ values: ["quickstart", "quickstart-video"] });
 
 const setup = (applied?: string) =>
   render(
+    // Its own store per render: the root initializes a store once, so tests
+    // sharing the default one would only ever see the first initializer
     <ReverbRoot
       store={createStore()}
       initializeState={({ set }) => {

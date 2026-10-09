@@ -1,9 +1,10 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The App's own notices: errors, links, and messages it raises through Recoil.
+ * The App's own notices: errors, links, and messages it raises through Reverb.
  */
 
+import { useReverbState } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import {
   Anchor,
@@ -16,7 +17,6 @@ import {
 import { SnackbarProvider } from "notistack";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { useReverbState } from "@fiftyone/reverb";
 
 import styles from "./Snackbar.module.css";
 
