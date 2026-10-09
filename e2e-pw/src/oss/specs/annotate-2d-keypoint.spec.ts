@@ -224,8 +224,9 @@ test.describe("2D annotation keypoint", () => {
       "target",
     ]);
 
-    await edit.afterKeypointChecklist(() =>
-      sampleCanvas.click(...PLACEMENTS[3]),
+    // every placement writes the committed label, so the last one saves
+    await annotate.afterSave(() =>
+      edit.afterKeypointChecklist(() => sampleCanvas.click(...PLACEMENTS[3])),
     );
     await edit.assert.keypointNodeStatuses([
       "placed",
@@ -235,9 +236,10 @@ test.describe("2D annotation keypoint", () => {
     ]);
     await edit.assert.keypointPlacedSummary("3 of 4 placed · 1 skipped");
 
-    // assigning a class commits through the edit form
-    await annotate.afterSave(() => edit.selectFieldChoice("label", "person"));
-    await edit.assert.verifyFieldValue("label", "person");
+    // a new label starts with the field's first class (person), so the class
+    // edit picks the other one: an unchanged class would save nothing
+    await annotate.afterSave(() => edit.selectFieldChoice("label", "dog"));
+    await edit.assert.verifyFieldValue("label", "dog");
 
     // the render, deselected: the diamond without its right-eye corner. Three
     // dots, two edges, and nothing at the hole.
@@ -259,9 +261,9 @@ test.describe("2D annotation keypoint", () => {
           "keypoint-guided-skip.png",
         );
         await fresh.edit.afterKeypointChecklist(() =>
-          fresh.annotate.selectActiveLabel("person", 0),
+          fresh.annotate.selectActiveLabel("dog", 0),
         );
-        await fresh.edit.assert.verifyFieldValue("label", "person");
+        await fresh.edit.assert.verifyFieldValue("label", "dog");
         await fresh.edit.assert.keypointNodeStatuses([
           "placed",
           "placed",
@@ -302,8 +304,8 @@ test.describe("2D annotation keypoint", () => {
       edit.keypointPointAttributeToggle("occluded").click(),
     );
     await edit.assert.keypointPointAttributeChecked("occluded", true);
-    // a class, so the reopened sample's label row is addressable by name
-    await annotate.afterSave(() => edit.selectFieldChoice("label", "person"));
+    // the label already carries the field's first class (person), which
+    // addresses its row after the reopen
 
     // after a reopen, only node 1 reads occluded: the stored list is the full
     // parallel list, one entry per node
