@@ -42,6 +42,8 @@ const LaneList = ({ path }: { path: string }) => {
   const height = trackHeight(useReverbValue(gridZoom), 64, 16);
   const { heights, setHeight } = useLaneHeights();
   const root = useContext(StripsContext)?.root ?? null;
+  // a lane's rail jumps by offset, which a large dataset never addresses
+  const railed = !fos.useGridLargeCollection();
 
   if (!values.length) {
     return <div className={styles.none}>No values</div>;
@@ -54,7 +56,7 @@ const LaneList = ({ path }: { path: string }) => {
         heights={heights}
         onResize={setHeight}
         path={path}
-        railed
+        railed={railed}
         values={values}
       />
       <LaneListRail root={root} values={values} />

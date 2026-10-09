@@ -8,6 +8,7 @@
 
 import type { Updater } from "@fiftyone/floodlight";
 import type * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 import { useReverbValue } from "@fiftyone/reverb";
 import { useSyncLabelsRenderingStatus } from "@fiftyone/core/src/hooks";
 import { useCallback, useMemo, useRef } from "react";
@@ -21,7 +22,7 @@ import {
 } from "../atoms";
 import { type FieldValue, useMatchStage } from "../categorical";
 import { BoundedMap } from "../../host/bounded";
-import { createLimiter } from "../samplePages";
+import { createLimiter, type PageVariables } from "../samplePages";
 import { createOwnership } from "../../host/ownership";
 import useItemCache from "../useItemCache";
 import useLabelVisibility from "../useLabelVisibility";
@@ -61,12 +62,13 @@ const useFanout = () =>
 
 const useVariables = () => {
   const page = useReverbValue(pageParameters);
+  const input = fos.useGridOrderInput();
   const match = useMatchStage();
 
   return useCallback(
-    (matches: [string, FieldValue][]) => {
+    (matches: [string, FieldValue][]): PageVariables => {
       const stages = matches.map(([path, value]) => match(path, value));
-      return (index: number, pageSize: number) => {
+      const variables = (index: number, pageSize: number) => {
         const vars = page(index, pageSize) as { view: unknown[] };
         return {
           ...vars,
@@ -74,8 +76,11 @@ const useVariables = () => {
           after: index ? String(index * pageSize - 1) : null,
         } as unknown as Vars;
       };
+      return Object.assign(variables, {
+        input: { ...input, view: [...input.view, ...stages] },
+      });
     },
-    [match, page],
+    [input, match, page],
   );
 };
 

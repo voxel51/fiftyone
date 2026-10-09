@@ -17,12 +17,24 @@ import {
 import { fetchQuery } from "react-relay";
 import type { VariablesOf } from "react-relay";
 import type { SampleStore } from "./useSpotlightPager";
+import {
+  openOrder,
+  type OpenedOrder,
+  type OrderInput,
+  UNORDERED,
+} from "../order/order";
+import { fetchPage, placePage, planPage } from "./orderedPages";
+import { createPageCursors } from "./pageCursors";
 import { handleNode } from "./utils";
 
-export type PageVariables = (
+/**
+ * A page's `samples` variables by key; with an `input`, the pages are of
+ * that order, by cursor, rather than skipped to.
+ */
+export type PageVariables = ((
   page: number,
   pageSize: number,
-) => VariablesOf<foq.paginateSamplesQuery>;
+) => VariablesOf<foq.paginateSamplesQuery>) & { input?: OrderInput };
 
 /**
  * Resolves with the page's connection, or `null` on a query timeout. An
@@ -150,7 +162,11 @@ export type PageGetter = (
   signal?: AbortSignal,
 ) => Promise<Response<number, fos.Sample>>;
 
-/** Turns a variables factory into a page source's fetch. */
+/**
+ * Turns a variables factory into a page source's fetch. A strip with an
+ * order input opens its order on its first page and pages it by cursor from
+ * the start; a SMALL order also reaches any page by offset, for its rail.
+ */
 export const createPageGetter = ({
   aspectRatio,
   environment,
@@ -168,21 +184,46 @@ export const createPageGetter = ({
   store: SampleStore;
   variables: PageVariables;
 }): PageGetter => {
-  return async (page, signal?: AbortSignal) => {
-    const connection = await limit(
-      () => fetchSamplePage(environment, variables(page, pageSize), signal),
-      signal,
-    );
-    const items = connection
-      ? connectionItems(connection, page, store, { aspectRatio })
-      : [];
-    onPage?.(page, items);
+  const cursors = createPageCursors();
+  let order: Promise<OpenedOrder> | undefined;
+  const opened = () => {
+    const { input } = variables;
+    if (!input) return Promise.resolve(UNORDERED);
+    order ??= openOrder(environment, input, new AbortController().signal);
+    return order;
+  };
 
-    return {
-      items,
-      next: connection?.pageInfo.hasNextPage ? page + 1 : null,
-      previous: page > 0 ? page - 1 : null,
-    };
+  return async (page, signal?: AbortSignal) => {
+    const plan = planPage({
+      cursors,
+      key: page,
+      order: await opened(),
+      pageSize,
+      variables,
+    });
+    const result =
+      plan &&
+      (await limit(
+        () => fetchPage(environment, plan.variables, "network-only", signal),
+        signal,
+      ));
+    if (!plan || !result || "timeout" in result) {
+      onPage?.(page, []);
+      return { items: [], next: null, previous: null };
+    }
+
+    const items = connectionItems(result.connection, page, store, {
+      aspectRatio,
+    });
+    onPage?.(page, items);
+    const { next, previous } = placePage(
+      page,
+      plan,
+      result.connection,
+      cursors,
+      pageSize,
+    );
+    return { items, next, previous };
   };
 };
 

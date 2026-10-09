@@ -45,7 +45,7 @@ export interface Unordered {
 
 export type OpenedOrder = Order | Unordered;
 
-const UNORDERED: Unordered = { kind: "unordered" };
+export const UNORDERED: Unordered = { kind: "unordered" };
 
 const MODES = new Set<string>(["SMALL", "INDEXED", "SCROLL"]);
 const SCALES = new Set<string>(["NUMBER", "DATE", "ID"]);

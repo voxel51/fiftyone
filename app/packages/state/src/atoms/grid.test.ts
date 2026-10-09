@@ -39,3 +39,42 @@ describe("multimodalGridFit", () => {
     expect(fit()).toBe("contain");
   });
 });
+
+describe("grid sort fields", () => {
+  type Read<T> = () => T;
+
+  it("counts a dataset above the SMALL order size as large", async () => {
+    const { gridLargeCollection, SMALL_ORDER_SIZE } = await import("./grid");
+    const large = gridLargeCollection as unknown as Read<boolean>;
+    setMockAtoms({ datasetSampleCount: SMALL_ORDER_SIZE });
+    expect(large()).toBe(false);
+    setMockAtoms({ datasetSampleCount: SMALL_ORDER_SIZE + 1 });
+    expect(large()).toBe(true);
+  });
+
+  it("offers only indexed sortable fields above 100k, whatever their type", async () => {
+    const { gridSortFields } = await import("./grid");
+    const fields = gridSortFields as unknown as Read<string[]>;
+    setMockAtoms({
+      gridLargeCollection: true,
+      indexInfo: { indexedSortFields: ["score", "camera", "captured_at"] },
+      queryPerformance: false,
+    });
+    expect(fields()).toEqual(["camera", "captured_at", "score"]);
+
+    setMockAtoms({ indexInfo: { indexedSortFields: null } });
+    expect(fields()).toEqual([]);
+  });
+
+  it("offers numeric fields of a small dataset without query performance", async () => {
+    const { gridSortFields } = await import("./grid");
+    const fields = gridSortFields as unknown as Read<string[]>;
+    setMockAtoms({
+      gridLargeCollection: false,
+      queryPerformance: false,
+      fields: () => [{ path: "score" }, { path: "camera" }, { path: "a.b" }],
+      isNumericField: (path: string) => path !== "camera",
+    });
+    expect(fields()).toEqual(["score"]);
+  });
+});
