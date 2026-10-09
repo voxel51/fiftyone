@@ -38,30 +38,41 @@ export const logOnSetEffect =
  *   Otherwise uses simple string conversion. Defaults to false
  * @returns An atom effect that syncs the atom with browser storage
  */
-export const getBrowserStorageEffectForKey =
-  <T>(
-    key: string,
-    props: {
-      map?: (value: unknown) => unknown;
-      sessionStorage?: boolean;
-      valueClass?: "string" | "stringArray" | "number" | "boolean";
-      prependDatasetNameInKey?: boolean;
-      useJsonSerialization?: boolean;
-    } = {
-      sessionStorage: false,
-      valueClass: "string",
-      prependDatasetNameInKey: false,
-      useJsonSerialization: false,
-    },
-  ): AtomEffect<T> =>
-  ({ setSelf, onSet, getPromise }) => {
+export const getBrowserStorageEffectForKey = <T>(
+  key: string,
+  props: {
+    map?: (value: unknown) => unknown;
+    sessionStorage?: boolean;
+    valueClass?: "string" | "stringArray" | "number" | "boolean";
+    prependDatasetNameInKey?: boolean;
+    useJsonSerialization?: boolean;
+  } = {
+    sessionStorage: false,
+    valueClass: "string",
+    prependDatasetNameInKey: false,
+    useJsonSerialization: false,
+  },
+): AtomEffect<T> => {
+  const parse = (value: string | null) => {
+    const { valueClass, useJsonSerialization } = props;
+    if (useJsonSerialization) {
+      return JSON.parse(value);
+    }
+    if (valueClass === "number") {
+      return Number(value);
+    }
+    if (valueClass === "boolean") {
+      return value === "true";
+    }
+    if (valueClass === "stringArray") {
+      return value?.length > 0 ? value.split(",") : [];
+    }
+    return value;
+  };
+
+  const effect: AtomEffect<T> = ({ setSelf, onSet, getPromise }) => {
     (async () => {
-      const {
-        valueClass,
-        sessionStorage,
-        useJsonSerialization,
-        prependDatasetNameInKey,
-      } = props;
+      const { sessionStorage, prependDatasetNameInKey } = props;
 
       const storage = sessionStorage
         ? window.sessionStorage
@@ -73,25 +84,7 @@ export const getBrowserStorageEffectForKey =
       }
 
       const value = storage.getItem(key);
-      let procesedValue;
-
-      if (useJsonSerialization) {
-        procesedValue = JSON.parse(value);
-      } else if (valueClass === "number") {
-        procesedValue = Number(value);
-      } else if (valueClass === "boolean") {
-        procesedValue = value === "true";
-      } else if (valueClass === "stringArray") {
-        if (value?.length > 0) {
-          procesedValue = value?.split(",");
-        } else {
-          procesedValue = [];
-        }
-      } else {
-        procesedValue = value;
-      }
-
-      if (value != null) setSelf(procesedValue);
+      if (value != null) setSelf(parse(value));
 
       onSet((newValue, _oldValue, isReset) => {
         if (props.map) {
@@ -102,7 +95,7 @@ export const getBrowserStorageEffectForKey =
         } else {
           storage.setItem(
             key,
-            useJsonSerialization
+            props.useJsonSerialization
               ? JSON.stringify(newValue)
               : (newValue as string),
           );
@@ -110,3 +103,17 @@ export const getBrowserStorageEffectForKey =
       });
     })();
   };
+
+  // A dataset-prefixed key is only known once the dataset loads
+  if (!props.prependDatasetNameInKey) {
+    effect.seed = () => {
+      const storage = props.sessionStorage
+        ? window.sessionStorage
+        : window.localStorage;
+      const value = storage.getItem(key);
+      return value == null ? undefined : (parse(value) as T);
+    };
+  }
+
+  return effect;
+};

@@ -15,6 +15,9 @@ import type { AtomOptions, ReverbState, Write } from "./types";
  */
 const UNSET = Symbol("unset");
 
+/** Never written: the effects' seed, if any, stands in for the default. */
+const INITIAL = Symbol("initial");
+
 const isState = (value: unknown): value is Atom<unknown> => isReverb(value);
 
 export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
@@ -23,9 +26,16 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
    * derived read — so hold the written value separately and fall back to it.
    */
   const deferred = isState(options.default);
-  const base = primitive<T | typeof UNSET>(
-    // `deferred` having been checked, the remaining branch is a plain value.
-    deferred || options.resolve ? UNSET : (options.default as T),
+  const seeds = (options.effects ?? []).flatMap(({ seed }) =>
+    seed ? [seed] : [],
+  );
+  const base = primitive<T | typeof UNSET | typeof INITIAL>(
+    seeds.length
+      ? INITIAL
+      : // `deferred` having been checked, the remaining branch is a plain value.
+        deferred || options.resolve
+        ? UNSET
+        : (options.default as T),
   );
   base.debugLabel = `${options.key}/base`;
 
@@ -39,10 +49,27 @@ export function atom<T>(options: AtomOptions<T>): ReverbState<T> {
       : (options.default as T);
   };
 
-  const current = (get: Getter): T => {
-    const held = get(base);
+  /** With no dependencies, a seed is read once per store. */
+  const seeded = primitive(() => {
+    let value: T | typeof UNSET = UNSET;
+    for (const seed of seeds) {
+      const next = seed();
+      if (next !== undefined) {
+        value = next;
+      }
+    }
 
-    return held === UNSET ? fallback(get) : held;
+    return value;
+  });
+  seeded.debugLabel = `${options.key}/seed`;
+
+  const current = (get: Getter): T => {
+    let held = get(base);
+    if (held === INITIAL) {
+      held = get(seeded);
+    }
+
+    return held === UNSET ? fallback(get) : (held as T);
   };
 
   const host = effectHost<T>(options.key);

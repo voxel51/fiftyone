@@ -26,9 +26,16 @@ export type AtomEffectListener<T> = (
   isReset: boolean,
 ) => void;
 
-export type AtomEffect<T> = (
+export type AtomEffect<T> = ((
   params: AtomEffectParams<T>,
-) => void | (() => void);
+) => void | (() => void)) & {
+  /**
+   * The value the effect would `setSelf` as it starts, if it knows it
+   * synchronously. Effects start once the atom is mounted, after its first
+   * render; a seed is what that first render reads instead of the default.
+   */
+  seed?: () => T | undefined;
+};
 
 /** Per-atom listener set, notified by the write path rather than by jotai. */
 export class EffectHost<T> {
