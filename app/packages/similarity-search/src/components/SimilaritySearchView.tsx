@@ -14,6 +14,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   const panel = useSimilarityPanel(props);
   const { runs: pendingRuns, loaded: pendingLoaded } = usePendingSimilarityRuns(
     panel.brainKeys,
+    panel.unreadyBrainKeys,
   );
 
   if (!panel.loaded || !pendingLoaded) {
