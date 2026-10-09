@@ -220,9 +220,10 @@ export class EmbeddingsV2Pom {
   }
 
   /**
-   * Runs `action` and resolves once the panel state it changed (the open run,
-   * the color-by field) is saved: the save writes the layout, which reloads
-   * the page, and the route commit that follows says so
+   * Runs `action` and resolves once the layout change it made (the panel
+   * opening or closing, its open run, its color-by field) is saved: the save
+   * reloads the page, and the route commit that follows says so. The commit
+   * names no save, so no other save may be in flight
    */
   async afterPanelStateSaved<T>(action: () => Promise<T>): Promise<T> {
     return this.eventUtils.after("e2e:app:page-change", action);

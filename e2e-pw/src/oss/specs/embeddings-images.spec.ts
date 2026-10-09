@@ -96,8 +96,13 @@ test.afterAll(async ({ foWebServer }) => {
 test.describe("on the whole dataset", () => {
   test.beforeEach(async ({ datasetName, embeddings, fiftyoneLoader, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await embeddings.openInSplit();
-    await embeddings.openRun(BRAIN_KEY, TOTAL);
+    // Opening the panel and opening a run each save the layout, and each
+    // save reloads the page. Waiting out both leaves no reload in flight for
+    // a test's own save wait to mistake for its save
+    await embeddings.afterPanelStateSaved(() => embeddings.openInSplit());
+    await embeddings.afterPanelStateSaved(() =>
+      embeddings.openRun(BRAIN_KEY, TOTAL),
+    );
   });
 
   test("a lasso scopes the grid to the points it encloses", async ({
@@ -414,13 +419,18 @@ test.describe("on a wide screen", () => {
     await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
-    // The bookmark turns the draft selection into a real view stage
-    await viewBar.afterStagesShown(() => grid.actionsRow.bookmarkFilters());
+    // The bookmark turns the draft selection into a real view stage. The
+    // view change redraws the grid's tiles and the plot, now showing only
+    // the view's points, none lit; a click while they redraw can be lost
+    await embeddings.afterDrawn({ emphasized: null, visible: CLUSTER_A }, () =>
+      grid.afterTilesDrawn(CLUSTER_A, () =>
+        viewBar.afterStagesShown(() => grid.actionsRow.bookmarkFilters()),
+      ),
+    );
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
 
-    // Closing the panel clears selections, never the view; the grid takes
-    // the whole width back and redraws its tiles, in place or remounted
-    await grid.afterTilesDrawn(CLUSTER_A, () =>
+    // Closing the panel clears selections, never the view
+    await embeddings.afterPanelStateSaved(() =>
       embeddings.gridPanel.closeTab("Embeddings"),
     );
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
