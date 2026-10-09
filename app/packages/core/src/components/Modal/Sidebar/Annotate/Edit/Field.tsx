@@ -148,10 +148,11 @@ const Field = () => {
 
           // The transaction deletes the anchor's ref (its key includes the
           // path), so interaction GC prunes the selection and the form —
-          // which follows the anchor — would close mid-edit. Capture the
-          // anchor now and re-point it at the destination after the move,
-          // in both directions, so the edit session survives the swap.
-          const anchor = engine.interaction.getAnchor();
+          // which follows the anchor — closes. A keypoint keeps its edit
+          // session across a skeleton swap: capture the anchor now and
+          // re-point it at the destination after the move, in both
+          // directions. Other label types close the form, as on main.
+          const anchor = isKeypoint ? engine.interaction.getAnchor() : null;
 
           const rehome = () => {
             for (const { ref } of occurrences) {
