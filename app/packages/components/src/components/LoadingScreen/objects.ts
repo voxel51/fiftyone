@@ -19,13 +19,13 @@ export const DETECTIONS: Detection[] = [
   { label: "loading", score: "0.951", color: chart("blue"), target: "all" },
   {
     label: "pixel",
-    score: 0.98,
+    score: "0.851",
     color: chart("teal"),
     target: { text: "pixel" },
   },
   {
     label: "suffix",
-    score: 0.84,
+    score: "0.751",
     color: chart("yellow"),
     target: { text: "ating" },
   },
@@ -38,7 +38,7 @@ export const DETECTIONS: Detection[] = [
   { label: "cursor", score: "0.51", color: chart("red"), target: "cursor" },
   {
     label: "mood",
-    score: 0.51,
+    score: "0.551",
     color: chart("purple"),
     target: { text: "elating" },
   },
