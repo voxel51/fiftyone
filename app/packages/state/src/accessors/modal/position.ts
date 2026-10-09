@@ -71,5 +71,5 @@ export const useModalPosition = (): ModalPosition | null => {
     return () => subscription.unsubscribe();
   }, [environment, key]);
 
-  return position?.key === key ? position.value : null;
+  return position && position.key === key ? position.value : null;
 };

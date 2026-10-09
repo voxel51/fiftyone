@@ -17,7 +17,7 @@ const harness = vi.hoisted(() => ({
     slice: null as string | null,
     hasNext: true,
     hasPrevious: true,
-    position: null as { index: number; total: number } | null,
+    position: null as { index: number; total: number | null } | null,
   },
   context: { exploring: true, group: false, multimodal: false },
   hidden: 0,
@@ -151,6 +151,16 @@ describe("ViewerHeader", () => {
     };
     expect(renderHeader()("viewer-header-position")?.textContent).toBe(
       "1,234/5,000",
+    );
+  });
+
+  it("reads many samples when only the total timed out", () => {
+    harness.sample = {
+      ...harness.sample,
+      position: { index: 1234, total: null },
+    };
+    expect(renderHeader()("viewer-header-position")?.textContent).toBe(
+      "1,234 of many samples",
     );
   });
 

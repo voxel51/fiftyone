@@ -9,11 +9,15 @@ import {
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
+import type { ModalPosition } from "@fiftyone/state";
 import styles from "../ViewerHeader.module.css";
 import type { ViewerStepper } from "../types";
 import HeaderAction from "./HeaderAction";
 
-/** Previous and next sample, and where it is when that is known exactly. */
+/**
+ * Previous and next sample, and where it is: "n / total", or "n of many
+ * samples" when counting the total timed out.
+ */
 const Stepper = ({
   hasNext,
   hasPrevious,
@@ -22,7 +26,7 @@ const Stepper = ({
 }: {
   hasNext: boolean;
   hasPrevious: boolean;
-  position: { index: number; total: number } | null;
+  position: ModalPosition | null;
   stepper: ViewerStepper;
 }) => {
   if (!hasNext && !hasPrevious) return null;
@@ -47,8 +51,14 @@ const Stepper = ({
           <Text color={TextColor.Secondary} variant={TextVariant.CodePrimary}>
             {position.index.toLocaleString()}
           </Text>
-          <span className={styles.slash}>/</span>
-          {position.total.toLocaleString()}
+          {position.total === null ? (
+            " of many samples"
+          ) : (
+            <>
+              <span className={styles.slash}>/</span>
+              {position.total.toLocaleString()}
+            </>
+          )}
         </Text>
       )}
       <HeaderAction

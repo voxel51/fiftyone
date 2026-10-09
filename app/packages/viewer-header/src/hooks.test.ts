@@ -5,7 +5,7 @@ import { useCopySampleLink, useViewerSample } from "./hooks";
 const harness = vi.hoisted(() => ({
   selector: null as Record<string, unknown> | null,
   slice: null as string | null,
-  position: null as { index: number; total: number } | null,
+  position: null as { index: number; total: number | null } | null,
   setConfig: vi.fn(),
 }));
 

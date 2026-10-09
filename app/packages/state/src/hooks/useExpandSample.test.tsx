@@ -10,11 +10,11 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const harness = vi.hoisted(() => ({
-  counted: vi.fn(() => 40),
-  estimate: false,
   setExpanded: vi.fn(),
   setModalState: vi.fn(),
 }));
+
+const INPUT = { dataset: "d", view: [], sortBy: "score", desc: true };
 
 vi.mock("../atoms/atoms", async () => {
   const { atom } = await import("@fiftyone/reverb");
@@ -27,18 +27,16 @@ vi.mock("../atoms/groups", async () => {
     hasGroupSlices: constSelector(false),
   };
 });
-vi.mock("../atoms/modal", async () => {
-  const { atom } = await import("@fiftyone/reverb");
-  return { modalPositions: atom({ key: "t/positions", default: null }) };
-});
-vi.mock("../atoms/pathData/counts", async () => {
-  const { selector } = await import("@fiftyone/reverb");
-  const counted = selector({ key: "t/count", get: () => harness.counted() });
-  const estimate = selector({ key: "t/estimate", get: () => harness.estimate });
+vi.mock("../atoms/order", async () => {
+  const { atom, constSelector } = await import("@fiftyone/reverb");
   return {
-    GRID_COUNT: {},
-    count: () => counted,
-    countIsEstimate: () => estimate,
+    gridOrderInput: constSelector({
+      dataset: "d",
+      view: [],
+      sortBy: "score",
+      desc: true,
+    }),
+    modalOrderInput: atom({ key: "t/order", default: null }),
   };
 });
 vi.mock("./useSetExpandedSample", () => ({
@@ -48,9 +46,8 @@ vi.mock("./useSetModalState", () => ({
   default: () => harness.setModalState,
 }));
 
-import type { ModalNavigation, ModalPositions } from "../atoms/modal";
-import { modalPositions } from "../atoms/modal";
-import { count, GRID_COUNT } from "../atoms/pathData/counts";
+import type { ModalNavigation } from "../atoms/modal";
+import { modalOrderInput } from "../atoms/order";
 import useExpandSample from "./useExpandSample";
 
 // three pages of two, in the grid's order: s0 s1 | s2 s3 | s4 s5
@@ -66,7 +63,7 @@ const pages = {
   }),
   positionOf: (id: string) => {
     const offset = Number(id.slice(1));
-    return { key: Math.floor(offset / 2), index: offset % 2, offset };
+    return { key: Math.floor(offset / 2), index: offset % 2 };
   },
 };
 
@@ -82,44 +79,26 @@ const open = async (store: ReturnType<typeof createStore>, offset: number) => {
   );
   return {
     navigation: harness.setModalState.mock.calls.at(-1)?.[0] as ModalNavigation,
-    positions: () => store.get(modalPositions) as ModalPositions | null,
+    order: () => store.get(modalOrderInput),
   };
 };
 
-afterEach(() => {
-  harness.estimate = false;
-  vi.clearAllMocks();
-});
+afterEach(() => vi.clearAllMocks());
 
-describe("useExpandSample positions", () => {
-  it("never counts for a position", async () => {
-    const { positions } = await open(createStore(), 2);
+describe("useExpandSample", () => {
+  it("remembers the grid order it opened from, for the header's position", async () => {
+    const { order } = await open(createStore(), 2);
 
-    expect(positions()).toBeNull();
-    expect(harness.counted).not.toHaveBeenCalled();
+    expect(order()).toEqual(INPUT);
   });
 
-  it("places the sample from the grid's count, and keeps it while stepping", async () => {
-    const store = createStore();
-    store.sub(count(GRID_COUNT), () => undefined);
-    const { navigation, positions } = await open(store, 2);
-    expect(harness.counted).toHaveBeenCalledTimes(1);
+  it("steps through the grid's pages", async () => {
+    const { navigation } = await open(createStore(), 2);
 
-    expect(positions()?.total).toBe(40);
-    expect(positions()?.offsetOf("s2")).toBe(2);
-
-    await navigation.next();
-    expect(positions()?.offsetOf("s3")).toBe(3);
-    await navigation.previous(3);
-    expect(positions()?.offsetOf("s0")).toBe(0);
-    expect(harness.counted).toHaveBeenCalledTimes(1);
-  });
-
-  it("has no position when the count is an estimate", async () => {
-    harness.estimate = true;
-    const store = createStore();
-    store.sub(count(GRID_COUNT), () => undefined);
-
-    expect((await open(store, 2)).positions()).toBeNull();
+    expect((await navigation.next()).id).toBe("s3");
+    expect((await navigation.previous(3)).id).toBe("s0");
+    expect(harness.setExpanded).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "s2", hasNext: true, hasPrevious: true }),
+    );
   });
 });
