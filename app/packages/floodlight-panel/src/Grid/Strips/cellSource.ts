@@ -18,9 +18,9 @@ import {
   createPageGetter,
   forgetPage,
   type PageVariables,
+  STRIP_PAGE_SIZE,
   STRIP_PAGES,
 } from "../samplePages";
-import { PAGE_SIZE } from "../useSpotlightPager";
 import type { Strips } from "./context";
 
 export type CellPage = Response<number, fos.Sample>;
@@ -43,10 +43,10 @@ export const createCellSource = (
         items.forEach((item, i) =>
           strips.records.set(
             item.id.description,
-            recordBase + page * PAGE_SIZE + i,
+            recordBase + page * STRIP_PAGE_SIZE + i,
           ),
         ),
-      pageSize: PAGE_SIZE,
+      pageSize: STRIP_PAGE_SIZE,
       store: strips.store,
       variables,
     }),

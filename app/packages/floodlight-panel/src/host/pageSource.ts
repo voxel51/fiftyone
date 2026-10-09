@@ -58,11 +58,20 @@ export interface PageSourceOptions<K, P> {
 }
 
 /**
- * Two 20-item fetch pages fill a dense viewport, so 40 pages (800 samples)
- * hold a few viewports left behind plus the places a jump left, on top of
- * whatever the live instances hold.
+ * Items in one grid fetch page. One request covers the first screen at the
+ * default zoom with a screen of scroll-ahead (about 40 items on common
+ * displays), or a dense screen at the minimum zoom on a laptop. It is a
+ * constant: sequences, offsets and Pages-mode ranges divide by it.
  */
-export const PAGE_CAPACITY = 40;
+export const PAGE_SIZE = 50;
+
+/**
+ * Items kept beyond whatever the live instances hold: a few screens left
+ * behind plus the places a jump left.
+ */
+export const CACHED_ITEMS = 800;
+
+export const PAGE_CAPACITY = CACHED_ITEMS / PAGE_SIZE;
 
 /**
  * An instance keeps at most one fetch in flight per direction, and at most

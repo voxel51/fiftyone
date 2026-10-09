@@ -1,5 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { atom, selector, selectorFamily } from "@fiftyone/reverb";
+import { pageWindow } from "./pageCursors";
 
 // The panel's display settings are the App's, so the header drives them
 export {
@@ -115,8 +116,7 @@ export const pageParameters = selector({
 
     return (page: number, pageSize: number) => ({
       ...params,
-      after: page ? String(page * pageSize - 1) : null,
-      first: pageSize,
+      ...pageWindow(page, pageSize),
     });
   },
 });
@@ -166,8 +166,7 @@ export const groupSiblingsPageParameters = selectorFamily<
 
       return (page: number, pageSize: number) => ({
         ...params,
-        after: page ? String(page * pageSize - 1) : null,
-        first: pageSize,
+        ...pageWindow(page, pageSize),
       });
     },
 });

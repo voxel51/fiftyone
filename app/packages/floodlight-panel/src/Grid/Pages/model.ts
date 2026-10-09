@@ -7,10 +7,10 @@
 
 export type Paging = "scroll" | "pages";
 
-/** UI page sizes; each is a multiple of the 20-item fetch page. */
-export const PAGE_SIZES = [20, 40, 100, 200];
+/** UI page sizes; each is a multiple of the 50-item fetch page. */
+export const PAGE_SIZES = [50, 100, 200];
 
-export const DEFAULT_PAGE_SIZE = 40;
+export const DEFAULT_PAGE_SIZE = 50;
 
 /** A half-open range of fetch page keys, `[start, end)`. */
 export type KeyRange = readonly [start: number, end: number];

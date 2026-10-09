@@ -41,9 +41,9 @@ vi.mock("../samplePages", () => ({
   forgetPage: () => () => undefined,
   routeWheel: () => () => undefined,
   STRIP_INSTANCE_PAGES: 20,
+  STRIP_PAGE_SIZE: 20,
   STRIP_PAGES: 4,
 }));
-vi.mock("../useSpotlightPager", () => ({ PAGE_SIZE: 20 }));
 
 // createHost observes each strip's host element; `resize` plays layout
 const observed = new Map<Element, ResizeObserverCallback>();

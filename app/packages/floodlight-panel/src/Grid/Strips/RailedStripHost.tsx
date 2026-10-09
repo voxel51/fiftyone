@@ -18,7 +18,7 @@ import {
 import Rail from "../../rail/Rail";
 import useRail from "../../rail/useRail";
 import { MIN_SPAN } from "../railModes";
-import { PAGE_SIZE } from "../useSpotlightPager";
+import { STRIP_PAGE_SIZE } from "../samplePages";
 import { StripsContext } from "./context";
 import useStrip from "./useStrip";
 import type { StripSource } from "./useStripSource";
@@ -83,7 +83,7 @@ export default function RailedStripHost({
             host?.rebuild(
               offsetAnchor(
                 positionToOffset(position, total, rail.visible),
-                PAGE_SIZE,
+                STRIP_PAGE_SIZE,
                 offsets,
               ),
             )

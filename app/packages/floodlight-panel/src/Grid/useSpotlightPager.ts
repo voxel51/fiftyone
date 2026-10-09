@@ -12,6 +12,7 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import { BoundedMap } from "../host/bounded";
+import { PAGE_SIZE } from "../host/pageSource";
 import type { OpenedOrder } from "../order/order";
 import { MAX_CURSOR_PAGES, type OrderSeek } from "./pageCursors";
 import {
@@ -27,7 +28,7 @@ import usePanelMemo from "./panelMemory";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
 
-export const PAGE_SIZE = 20;
+export { PAGE_SIZE };
 
 export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
 

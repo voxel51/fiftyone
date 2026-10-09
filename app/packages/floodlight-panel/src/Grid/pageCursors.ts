@@ -121,6 +121,15 @@ export const rememberCursors = (
   endCursor && cursors.ends.set(key, endCursor);
 };
 
+/**
+ * The skip window of page `page`: `count` is the page size variable
+ * `paginateSamplesQuery` declares, so a page holds `pageSize` samples.
+ */
+export const pageWindow = (page: number, pageSize: number) => ({
+  after: page ? String(page * pageSize - 1) : null,
+  count: pageSize,
+});
+
 /** Request variables for `samples` from a page request. */
 export const requestVariables = (request: PageRequest) => ({
   after: "after" in request ? request.after : null,

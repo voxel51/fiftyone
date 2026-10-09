@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGE_SIZE } from "../../host/pageSource";
 import {
   clampPage,
   DEFAULT_PAGE_SIZE,
@@ -72,10 +73,21 @@ describe("pageAfterResize", () => {
 
 describe("normalizeSize", () => {
   it("accepts listed sizes and falls back otherwise", () => {
-    expect(PAGE_SIZES).toEqual([20, 40, 100, 200]);
+    expect(PAGE_SIZES).toEqual([50, 100, 200]);
     expect(normalizeSize(100)).toBe(100);
     expect(normalizeSize(30)).toBe(DEFAULT_PAGE_SIZE);
-    expect(normalizeSize(undefined)).toBe(40);
+    // a size stored before the fetch page grew falls back too
+    expect(normalizeSize(40)).toBe(DEFAULT_PAGE_SIZE);
+    expect(normalizeSize(undefined)).toBe(50);
+  });
+
+  it("lists only whole multiples of the fetch page", () => {
+    for (const size of PAGE_SIZES) {
+      expect(size % PAGE_SIZE).toBe(0);
+      const [start, end] = keyRange(1, size, PAGE_SIZE);
+      expect(Number.isInteger(start) && Number.isInteger(end)).toBe(true);
+    }
+    expect(PAGE_SIZES).toContain(DEFAULT_PAGE_SIZE);
   });
 });
 

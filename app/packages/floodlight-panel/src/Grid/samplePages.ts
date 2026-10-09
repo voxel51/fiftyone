@@ -69,6 +69,12 @@ export const fetchSamplePage = (
     });
   });
 
+/**
+ * Items in one inner strip's fetch page: a lane shows a handful, so it
+ * keeps the small page the grid's larger one is not needed for.
+ */
+export const STRIP_PAGE_SIZE = 20;
+
 /** Pages an inner strip keeps beyond those its live instances hold. */
 export const STRIP_PAGES = 4;
 

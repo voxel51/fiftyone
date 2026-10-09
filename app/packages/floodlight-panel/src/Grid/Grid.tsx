@@ -62,8 +62,9 @@ import useUpdates from "./useUpdates";
 import useZoomSetting, { useSettledZoom } from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
-// fifty pages (1000 samples) read by one instance before it is rebuilt
-const MAX_INSTANCE_PAGES = 50;
+// samples one instance reads before it is rebuilt
+const INSTANCE_ITEMS = 1000;
+const MAX_INSTANCE_PAGES = INSTANCE_ITEMS / PAGE_SIZE;
 // each looker's last size; more than the cache holds hidden plus a dense view
 const MAX_SIZES = 2048;
 const MAX_EXCLUDED = 1024;

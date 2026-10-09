@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import paginateSamplesQuery from "@fiftyone/relay/src/queries/__generated__/paginateSamplesQuery.graphql";
 import {
   createPageCursors,
   MAX_CURSOR_PAGES,
   pageLinks,
   pageRequest,
   pageSequence,
+  pageWindow,
   rememberCursors,
   requestVariables,
 } from "./pageCursors";
@@ -150,5 +152,17 @@ describe("cursors", () => {
     expect(requestVariables({ seek: { offset: 40 } }).seek).toEqual({
       offset: 40,
     });
+  });
+});
+
+describe("pageWindow", () => {
+  it("sizes the page by a variable the query declares", () => {
+    const declared = new Set(
+      paginateSamplesQuery.fragment.argumentDefinitions.map(({ name }) => name),
+    );
+    const window = pageWindow(2, 50);
+    for (const name of Object.keys(window)) expect(declared).toContain(name);
+    expect(window).toEqual({ after: "99", count: 50 });
+    expect(pageWindow(0, 50).after).toBeNull();
   });
 });

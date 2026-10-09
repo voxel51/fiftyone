@@ -8,9 +8,9 @@ import {
   createPageGetter,
   forgetPage,
   type PageVariables,
+  STRIP_PAGE_SIZE,
   STRIP_PAGES,
 } from "../samplePages";
-import { PAGE_SIZE } from "../useSpotlightPager";
 import { StripsContext } from "./context";
 
 export type StripSource = PageSource<
@@ -33,7 +33,7 @@ export default function useStripSource(
   const strips = useContext(StripsContext);
   if (!strips) throw new Error("useStripSource requires a StripsContext");
 
-  const query = JSON.stringify(variables(0, PAGE_SIZE));
+  const query = JSON.stringify(variables(0, STRIP_PAGE_SIZE));
   const latest = useRef(variables);
   latest.current = variables;
   const [first, setFirst] = useState<{
@@ -51,11 +51,14 @@ export default function useStripSource(
         limit,
         onPage: (page, items) => {
           items.forEach((item, i) =>
-            records.set(item.id.description, recordBase + page * PAGE_SIZE + i),
+            records.set(
+              item.id.description,
+              recordBase + page * STRIP_PAGE_SIZE + i,
+            ),
           );
           page === 0 && setFirst({ count: items.length, for: next });
         },
-        pageSize: PAGE_SIZE,
+        pageSize: STRIP_PAGE_SIZE,
         store,
         variables: (page, size) => latest.current(page, size),
       }),
