@@ -117,7 +117,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   // a refresh (the logo) forgets which pages were requested, so they are
   // fetched again rather than served from the store
   const { page, store } = useSpotlightPager({
-    clearRecords: refreshReset,
+    clearRecords: reset,
+    clearRequests: refreshReset,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,
@@ -157,6 +158,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const excluded = useRef(new Set<string>());
   const source = usePageSource(
     JSON.stringify([reset, pageReset, crop, aspectRatioOverride ?? null]),
+    dataReset,
     (key) => page(key).then((result) => excluding(result, excluded.current)),
     (result) => result.items.map((item) => item.id.description),
   );

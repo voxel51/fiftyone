@@ -67,12 +67,15 @@ const processSamplePageData = (
 
 const useSpotlightPager = ({
   clearRecords,
+  clearRequests,
   pageSelector,
   records,
   zoomSelector,
   aspectRatioOverride,
 }: {
   clearRecords: string;
+  /** Resets which pages were requested, so a refresh fetches from the network. */
+  clearRequests: string;
   pageSelector: ReverbValueReadOnly<
     (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
   >;
@@ -96,7 +99,7 @@ const useSpotlightPager = ({
   const keys = useRef(new Set<string>());
 
   /** Track already requested pages, across mounts in this panel */
-  const pages = usePanelMemo("pages", clearRecords, () => new Set<number>());
+  const pages = usePanelMemo("pages", clearRequests, () => new Set<number>());
 
   // Per-page cursor caches, used when `cursorPagination` is active so
   // page N's request can seek from page N±1's boundary. Spotlight only
@@ -111,12 +114,12 @@ const useSpotlightPager = ({
   // Cleared alongside `pages` (same lifecycle).
   const pageEndCursors = usePanelMemo(
     "pageEndCursors",
-    clearRecords,
+    clearRequests,
     () => new Map<number, string>(),
   );
   const pageStartCursors = usePanelMemo(
     "pageStartCursors",
-    clearRecords,
+    clearRequests,
     () => new Map<number, string>(),
   );
 
