@@ -1,4 +1,5 @@
 import { useTrackEvent } from "@fiftyone/analytics";
+import { getEventBus } from "@fiftyone/events";
 import {
   LoadingDots,
   PopoutSectionTitle,
@@ -11,7 +12,7 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
 import type { MutableRefObject } from "react";
-import React, { Suspense, useLayoutEffect, useState } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import type { RecoilState, RecoilValue } from "recoil";
 import {
   useRecoilCallback,
@@ -72,6 +73,11 @@ interface SectionProps {
   labels: boolean;
 }
 
+/** e2e specs read the tag input once its count has rendered */
+type TagE2EEvents = {
+  "e2e:tagger:count-shown": { labels: boolean; count: number };
+};
+
 const Section = ({
   countAndPlaceholder,
   submit,
@@ -94,6 +100,15 @@ const Section = ({
   useLayoutEffect(() => {
     setChanges({});
   }, [taggingAtom]);
+
+  useEffect(() => {
+    if (!tagging && typeof count === "number") {
+      getEventBus<TagE2EEvents>().dispatch("e2e:tagger:count-shown", {
+        labels,
+        count,
+      });
+    }
+  }, [count, labels, tagging]);
 
   useLayoutEffect(() => {
     tagging && setLocalTagging(true);

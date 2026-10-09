@@ -2,14 +2,11 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 import { ModalPom } from "../modal";
 
 export class ModalPanelPom {
-  readonly page: Page;
   readonly modal: ModalPom;
   readonly locator: Locator;
   readonly assert: ModalPanelAsserter;
-  readonly selectionCount: Locator;
 
   constructor(page: Page, modal: ModalPom) {
-    this.page = page;
     this.modal = modal;
 
     this.assert = new ModalPanelAsserter(this);

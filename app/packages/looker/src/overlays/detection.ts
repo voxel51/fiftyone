@@ -171,6 +171,17 @@ export default class DetectionOverlay<
         labelSelectionColor: labelVisuals?.color,
       });
 
+    if (this.label.convexHull) {
+      // only fill 3d when 'convexHull' is defined
+      this.fillRectFor3d(ctx, state, strokeColor);
+    }
+
+    // `bounding_box` is optional; without one there is no 2D placement for
+    // the mask, header, or box
+    if (!this.label.bounding_box) {
+      return;
+    }
+
     if (
       this.label.mask?.bitmap?.width &&
       this.label._renderStatus === RENDER_STATUS_PAINTED
@@ -178,11 +189,11 @@ export default class DetectionOverlay<
       this.drawMask(ctx, state);
     }
 
-    if (this.label.convexHull) {
-      // only fill 3d when 'convexHull' is defined
-      this.fillRectFor3d(ctx, state, strokeColor);
-    } else if (!this.isBoxHidden(state) || doesInstanceMatch) {
-      // a hidden box still outlines while its instance is hovered
+    // a hidden box still outlines while its instance is hovered
+    if (
+      !this.label.convexHull &&
+      (!this.isBoxHidden(state) || doesInstanceMatch)
+    ) {
       this.strokeRect(ctx, state, strokeColor);
     }
 
@@ -487,6 +498,10 @@ export default class DetectionOverlay<
 export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
   let points: Coordinates[] = [];
   labels.forEach((label) => {
+    if (!label.bounding_box) {
+      return;
+    }
+
     const [tlx, tly, w, h] = label.bounding_box;
     points = [
       ...points,

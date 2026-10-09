@@ -4,7 +4,7 @@
  * Two point-cloud slices with different static transforms render aligned in
  * the world frame.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -14,7 +14,7 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 );
 const QUARTER_TURN = [0, 0, 0.7071067811865476, 0.7071067811865476];
 
-const SCENE_REVEALED = "looker3d-scene-ready";
+const SCENE_REVEALED = "e2e:looker3d:scene-ready";
 // a reveal waits on a point-cloud fetch and a camera restore; Teams CI runs
 // this same spec several times slower
 
@@ -73,22 +73,28 @@ test("renders both point-cloud slices aligned in the world frame", async ({
 
   // each wait is armed before the action that causes the reveal, so no earlier
   // reveal can satisfy it
-  const firstSliceRevealed = await eventUtils.arm(SCENE_REVEALED);
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute(true);
-  await firstSliceRevealed.received;
+  await eventUtils.after(SCENE_REVEALED, async () => {
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
+  });
 
-  const bothSlicesRevealed = await eventUtils.arm(SCENE_REVEALED);
-  await modal.toggleLooker3dSlice("lidar_right");
-  await bothSlicesRevealed.received;
+  // the toggle remounts the canvas with a fresh camera, so only the reveal of
+  // the scene holding lidar_right comes after it; an earlier one may still
+  // arrive from the open
+  await eventUtils.after(
+    SCENE_REVEALED,
+    async () => {
+      await modal.toggleLooker3dSlice("lidar_right");
+    },
+    (e) =>
+      (e.detail as { slices: string }).slices
+        .split(",")
+        .includes("lidar_right"),
+  );
 
   // the reveal above means bounds are resolved and the camera is mounted, so
   // the top view frames both slices and its settle signal is dispatched
   await modal.looker3dControls.setTopView();
   await modal.looker3dControls.toggleGridHelper();
 
-  await expect(modal.modalContainer).toHaveScreenshot(
-    "world-aligned-slices.png",
-    { mask: modal.looker3dScreenshotMasks, animations: "allow" },
-  );
+  await modal.sampleCanvas3d.assert.hasScreenshot("world-aligned-slices.png");
 });

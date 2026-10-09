@@ -5,6 +5,8 @@ import {
   atom,
   atomFamily,
   DefaultValue,
+  type GetRecoilValue,
+  noWait,
   selector,
   useRecoilCallback,
   useRecoilValue,
@@ -74,21 +76,39 @@ const stableSceneSampleIdAtom = atom<string | undefined>({
 });
 
 /**
+ * The id the facade keys by: the bound scene id, else `currentSampleId` once
+ * it has loaded. With the 3D viewer pinned `currentSampleId` waits on the
+ * group's samples, and the annotation bridge reads the facade before its
+ * binding effect runs, so waiting here would suspend the whole page.
+ */
+const facadeSampleId = (get: GetRecoilValue): string | undefined => {
+  const sceneId = get(stableSceneSampleIdAtom);
+  if (sceneId !== undefined) {
+    return sceneId;
+  }
+  const current = get(noWait(fos.currentSampleId));
+  if (current.state === "hasError") {
+    throw current.contents;
+  }
+  return current.state === "hasValue" ? current.contents : undefined;
+};
+
+/**
  * Public facade selector for the working state of the active 3D scene, keyed by
  * the stable scene id (falling back to `currentSampleId` when no scene is
- * bound).
+ * bound). It never suspends: until an id is known it holds the default state.
  */
 export const workingAtom = selector<WorkingState>({
   key: "fo3d-workingStoreFacade",
   get: ({ get }) => {
-    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
+    const sampleId = facadeSampleId(get);
     if (!sampleId) {
       return defaultWorkingState;
     }
     return get(workingAtomFamily(sampleId));
   },
   set: ({ get, set }, newValue) => {
-    const sampleId = get(stableSceneSampleIdAtom) ?? get(fos.currentSampleId);
+    const sampleId = facadeSampleId(get);
     if (!sampleId || newValue instanceof DefaultValue) {
       return;
     }

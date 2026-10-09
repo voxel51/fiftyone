@@ -6,6 +6,7 @@ import type { Queries } from "./makeRoutes";
 import type { Entry } from "./routing";
 
 import { Pending } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
@@ -23,6 +24,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -35,6 +37,12 @@ import {
 import { useRouterContext } from "./routing";
 import { resolveURL } from "./utils";
 import Pixelating from "./Pixelating";
+
+/** e2e specs wait on the route that a navigation commits */
+type RendererE2EEvents = {
+  "e2e:app:page-change": undefined;
+  "e2e:modal:closed": undefined;
+};
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
@@ -172,8 +180,14 @@ const Renderer = () => {
 
 const Modal = () => {
   const active = Boolean(useRecoilValue(isModalActive));
+  const wasActive = useRef(false);
   useEffect(() => {
     document.getElementById("modal")?.classList.toggle("modalon", active);
+    // closed once the modal layer stops taking the page's pointer
+    if (wasActive.current && !active) {
+      getEventBus<RendererE2EEvents>().dispatch("e2e:modal:closed");
+    }
+    wasActive.current = active;
   }, [active]);
 
   return null;
@@ -182,8 +196,7 @@ const Route = ({ route }: { route: Entry<Queries> }) => {
   const Component = route.component;
 
   useEffect(() => {
-    route &&
-      document.dispatchEvent(new CustomEvent("page-change", { bubbles: true }));
+    route && getEventBus<RendererE2EEvents>().dispatch("e2e:app:page-change");
   }, [route]);
 
   return <Component prepared={route.preloadedQuery} />;

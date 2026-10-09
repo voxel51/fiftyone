@@ -1,9 +1,10 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { FilterList, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
-import React from "react";
+import React, { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import QueryPerformanceIcon from "./QueryPerformanceIcon";
@@ -14,6 +15,11 @@ const Text = styled.div`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
+/** e2e specs wait on the sidebar showing a mode */
+type SidebarModeE2EEvents = {
+  "e2e:sidebar:mode-shown": { filter: boolean };
+};
+
 /**
  * The sidebar's mode row: the Filter / Visibility toggle on the left,
  * the query-performance bolt on the right.
@@ -23,6 +29,12 @@ const Filter = (_props: { modal?: boolean }) => {
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode,
   );
+
+  useEffect(() => {
+    getEventBus<SidebarModeE2EEvents>().dispatch("e2e:sidebar:mode-shown", {
+      filter: isFilterMode,
+    });
+  }, [isFilterMode]);
 
   const resetSelectedFieldStages = useResetRecoilState(
     fos.fieldVisibilityStage,

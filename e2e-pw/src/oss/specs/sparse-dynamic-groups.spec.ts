@@ -18,47 +18,24 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-  import fiftyone as fo
-  dataset = fo.Dataset("${datasetName}")
-  dataset.persistent = True
-
-  first = fo.Group()
-  second = fo.Group()
-  third = fo.Group()
-  fourth = fo.Group()
-  
-  one = fo.Sample(
-      filepath="one.png",
-      group=first.element("left"),
-      scene="a",
-      frame=0,
-  )
-  two = fo.Sample(
-      filepath="two.png",
-      group=second.element("left"),
-      scene="a",
-      frame=1,
-  )
-  three = fo.Sample(
-      filepath="three.png",
-      group=third.element("right"),
-      scene="b",
-      frame=0,
-  )
-  four = fo.Sample(
-      filepath="four.png",
-      group=fourth.element("right"),
-      scene="b",
-      frame=1,
-  )
-  
-  dataset.add_samples([one, two, three, four])
-  view = dataset.group_by("scene", order_by="frame")
-  dataset.save_view("group", view)
-  `);
+  // scene "a" is two left-only groups, scene "b" two right-only groups
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 4,
+    slices: [
+      { name: "left", mediaType: "image", groupIndices: [0, 1] },
+      { name: "right", mediaType: "image", groupIndices: [2, 3] },
+    ],
+    schema: { scene: "StringField", frame: "IntField" },
+    withSampleData: ({ groupIndex }) => ({
+      scene: groupIndex < 2 ? "a" : "b",
+      frame: groupIndex % 2,
+    }),
+    savedViews: { group: 'dataset.group_by("scene", order_by="frame")' },
+  });
 });
 
 test.describe("sparse dynamic groups", () => {
@@ -78,7 +55,9 @@ test.describe("sparse dynamic groups", () => {
     });
 
     await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.openFirstSample();
+    await modal.group.dynamicGroupPagination.afterShown(() =>
+      grid.openFirstSample(),
+    );
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryTexts({
       frame: "0",
@@ -104,7 +83,9 @@ test.describe("sparse dynamic groups", () => {
     });
     await grid.selectSlice("right");
     await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.openFirstSample();
+    await modal.group.dynamicGroupPagination.afterShown(() =>
+      grid.openFirstSample(),
+    );
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryTexts({
       frame: "0",

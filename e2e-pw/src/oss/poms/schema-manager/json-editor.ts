@@ -19,7 +19,6 @@ export class JSONEditorPom {
   constructor(
     readonly page: Page,
     readonly eventUtils: EventUtils,
-    readonly field: string,
     readonly schemaManager: SchemaManagerPom,
   ) {
     this.assert = new JSONEditorAsserter(this);
@@ -91,18 +90,18 @@ export class JSONEditorPom {
    * Scan the dataset and populate label schema values
    */
   async scan() {
-    const event = await this.eventUtils.arm("schema-manager-scan-complete");
-    await this.schemaManager.locator.getByTestId("scan").click();
-    await event.received;
+    await this.eventUtils.after("schema-manager:scan-complete", async () => {
+      await this.schemaManager.locator.getByTestId("scan").click();
+    });
   }
 
   /**
    * Save the changes
    */
   async save() {
-    const event = await this.eventUtils.arm("schema-manager-save-complete");
-    await this.schemaManager.footer.getByTestId("primary-button").click();
-    await event.received;
+    await this.eventUtils.after("schema-manager:save-complete", async () => {
+      await this.schemaManager.footer.getByTestId("primary-button").click();
+    });
   }
 
   /**
@@ -113,19 +112,12 @@ export class JSONEditorPom {
   }
 
   /**
-   * Toggle the visibility, i.e. make the field active or hidden
-   */
-  async toggleVisibility() {
-    await this.schemaManager.locator.getByTestId("toggle-visibility").click();
-  }
-
-  /**
    * Wait for JSON validation to yield an invalid response
    *
    * @returns A promise
    */
-  armInvalidJSON() {
-    return this.eventUtils.arm("schema-manager-invalid-json");
+  afterInvalidJSON<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("schema-manager:invalid-json", action);
   }
 
   /**
@@ -133,8 +125,8 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  armValidJSON() {
-    return this.eventUtils.arm("schema-manager-valid-json");
+  afterValidJSON<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("schema-manager:valid-json", action);
   }
 }
 

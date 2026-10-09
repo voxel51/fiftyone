@@ -71,13 +71,6 @@ export const useCurrentFieldValue = () => {
   return useAtomValue(currentField);
 };
 
-/**
- * Hook to set the current field
- */
-export const useSetCurrentField = () => {
-  return useSetAtom(currentField);
-};
-
 // =============================================================================
 // Schema Manager Modal Hooks
 // =============================================================================
@@ -289,13 +282,6 @@ export const useIsPrimitiveField = () => {
  */
 export const useFieldSchemaData = (field: string) => {
   return useAtomValue(labelSchemaData(field));
-};
-
-/**
- * Hook to check if a field is read-only
- */
-export const useFieldIsReadOnly = (field: string) => {
-  return useAtomValue(fieldIsReadOnly(field));
 };
 
 /**

@@ -16,6 +16,7 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { TAB_JSON } from "./constants";
+import { useSchemaManagerOpenSignal } from "./e2eSignals";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
 import {
@@ -168,6 +169,7 @@ const Modal = () => {
   // Note: Selection state is reset by useSelectionCleanup in GUIContent,
   // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
+  useSchemaManagerOpenSignal();
 
   // Open on the schema currently IN USE — the active workflow task's
   // schema, else the Explore lens — instead of always defaulting to
@@ -198,6 +200,9 @@ const Modal = () => {
     <ModalBackground {...backdropHandlers}>
       <ModalContainer
         data-cy="schema-manager"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Schema manager"
         // React events bubble through the portal to the components that
         // render this modal; clicks inside it are not theirs
         onClick={(e) => e.stopPropagation()}

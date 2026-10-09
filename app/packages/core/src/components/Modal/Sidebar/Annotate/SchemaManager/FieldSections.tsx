@@ -18,6 +18,7 @@ import {
   Tooltip,
 } from "@voxel51/voodo";
 import type { MouseEvent } from "react";
+import { useFieldsShownSignal } from "./e2eSignals";
 import type { OverviewStyles } from "./overviewStyles";
 import SelectAllCheckbox from "./SelectAllCheckbox";
 import { CollapsibleHeader, GUISectionHeader, SelectableList } from "./styled";
@@ -87,6 +88,15 @@ const FieldSections = ({
   hiddenExpanded,
   setHiddenExpanded,
 }: FieldSectionsProps) => {
+  useFieldsShownSignal(
+    "active",
+    [...scannedItems, ...restItems].map((item) => item.id),
+  );
+  useFieldsShownSignal(
+    "hidden",
+    hiddenExpanded ? hiddenItems.map((item) => item.id) : [],
+  );
+
   return (
     <>
       <GUISectionHeader>

@@ -5,11 +5,11 @@
  * refetches whenever the user enters the Annotate sidebar inside a sample
  * modal. That loader doesn't run on the grid, so when the Schema Manager
  * is opened from the grid (`?schemaManager=open` via `SchemaManagerOutlet`)
- * the atoms stay `null` and downstream components like
- * `ActiveFieldsSection` hit "Maximum update depth exceeded".
+ * the atoms stay `null` and the Schema Manager has no schemas to
+ * render.
  *
- * This hook is the minimal complement: a fetch that fills the atoms iff
- * they're currently null — which, because the atoms are scoped to the
+ * This hook is the minimal complement: one fetch per dataset that fills
+ * the atoms iff they're null — which, because the atoms are scoped to the
  * dataset (see `schemaDatasetName`), is also the case right after a
  * dataset switch. It does NOT close the modal or clear existing data —
  * that responsibility stays with `useLoadSchemas`.
@@ -57,30 +57,35 @@ export const useEnsureSchemasLoaded = (enabled: boolean): void => {
   const datasetRef = useRef(datasetName);
   datasetRef.current = datasetName;
 
-  // One fetch per dataset at a time.
-  const inFlightRef = useRef<string | null>(null);
+  // The dataset this hook last fetched for. Annotation entry clears the
+  // atoms to null on purpose while it activates a field and refetches
+  // them itself; refilling them here then would write the pre-activation
+  // `active_label_schemas` over that clear.
+  const fetchedForRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled || !datasetName || schemasData !== null) return undefined;
-    if (inFlightRef.current === datasetName) return undefined;
-    inFlightRef.current = datasetName;
+    if (fetchedForRef.current === datasetName) return undefined;
+    fetchedForRef.current = datasetName;
 
     // No "cancelled" flag: if the effect re-runs while the fetch is in
-    // flight (e.g. `enabled` flips off and on) the in-flight guard above
+    // flight (e.g. `enabled` flips off and on) the fetched-for guard above
     // returns early, so discarding this result would leave the atoms
     // null for good. The ref re-checks below are the only guards needed:
     // the dataset one drops a result that outlived a dataset switch, the
     // data one keeps a stale fetch from clobbering another loader's data.
     operatorAsPromise(getRef.current, {})
       .then((result) => {
-        if (inFlightRef.current === datasetName) inFlightRef.current = null;
         if (datasetRef.current !== datasetName) return;
         if (schemasDataRef.current !== null) return;
         setData(result.label_schemas);
         setActive(result.active_label_schemas);
       })
       .catch(() => {
-        if (inFlightRef.current === datasetName) inFlightRef.current = null;
+        // allow a retry
+        if (fetchedForRef.current === datasetName) {
+          fetchedForRef.current = null;
+        }
         // `useOperatorExecutor`'s built-in error toast surfaces the
         // failure to the user; nothing further to do here.
       });

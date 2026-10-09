@@ -11,7 +11,8 @@ export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
   // The slowest legitimate test is ~30s; a tight cap bounds what a hung
-  // test can burn across retries. Slow specs set their own timeout.
+  // test can burn across retries. Every test runs under it: split a slow
+  // test rather than raising its timeout.
   timeout: Duration.Seconds(90),
 
   /* Run tests in files in parallel */
@@ -42,12 +43,6 @@ export default defineConfig({
     // todo: change this to data-testid after we migrate off of cypress
     testIdAttribute: "data-cy",
   },
-  expect: {
-    toHaveScreenshot: {
-      // since label color assignment is non-deterministic, we allow a small amount of pixel difference
-      maxDiffPixelRatio: 0.02,
-    },
-  },
   /* Configure projects for major browsers */
   projects: [
     {
@@ -59,7 +54,11 @@ export default defineConfig({
         },
         channel: "chromium",
         bypassCSP: true,
-        launchOptions: { args: ["--disable-web-security"] },
+        launchOptions: {
+          // macOS renders at 2x and downscales captures, so edges near half
+          // a pixel vary run to run; 1x matches CI's Linux rendering
+          args: ["--disable-web-security", "--force-device-scale-factor=1"],
+        },
       },
     },
   ],

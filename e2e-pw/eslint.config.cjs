@@ -22,6 +22,10 @@ module.exports = tseslint.config(
       // quarantining a flaky test IS the workflow: skips carry a reason
       // comment and the burn-in gate screens their return
       "playwright/no-skipped-test": "off",
+      // a read after an event is one exact read, so a missing wait fails
+      // instead of being retried away; plain UI uses web-first matchers by
+      // choice (CODING_STANDARDS.md), which this rule cannot tell apart
+      "playwright/prefer-web-first-assertions": "off",
     },
   },
   {

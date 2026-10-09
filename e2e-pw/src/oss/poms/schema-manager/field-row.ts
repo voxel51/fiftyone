@@ -5,7 +5,11 @@ import { JSONEditorPom } from "./json-editor";
 
 /**
  * A field row of the schema manager. May be active/hidden, checked/unchecked,
- * editable, and have pill attributes such as system and read-only
+ * editable, and have pill attributes such as system and read-only.
+ *
+ * Row controls are pressed from the keyboard: a row that cannot be dragged is
+ * `aria-disabled` (dnd-kit's draggable attributes), which Playwright's click
+ * treats as disabling every control inside it.
  */
 export class FieldRowPom {
   readonly assert: FieldRowAsserter;
@@ -17,13 +21,6 @@ export class FieldRowPom {
     readonly schemaManager: SchemaManagerPom,
   ) {
     this.assert = new FieldRowAsserter(this);
-  }
-
-  /**
-   * The pencil button locator, if it exists
-   */
-  get pencil() {
-    return this.locator.getByTestId("edit");
   }
 
   /**
@@ -57,43 +54,23 @@ export class FieldRowPom {
     return (text ?? "").split(" ")[0];
   }
 
+  // voodo's RichList marks rows that can't be dragged aria-disabled, so
+  // Playwright refuses to click their controls; key presses reach them until
+  // voodo stops disabling the whole row
+
   /**
    * Check the checkbox, if it exists
    */
   async clickCheckbox() {
-    // click must be forced because the field row has an aria-disabled
-    // attribute
-    await this.checkbox.click({ force: true });
-  }
-
-  /**
-   * Click the pencil button, if it exists
-   */
-  async edit() {
-    // click must be forced because the field row has an aria-disabled
-    // attribute
-    await this.pencil.click({ force: true });
-    return new JSONEditorPom(
-      this.page,
-      this.eventUtils,
-      this.field,
-      this.schemaManager,
-    );
+    await this.checkbox.press("Space");
   }
 
   /**
    * Click the scan button (for unconfigured fields)
    */
   async scan() {
-    // click must be forced because the field row has an aria-disabled
-    // attribute
-    await this.scanButton.click({ force: true });
-    return new JSONEditorPom(
-      this.page,
-      this.eventUtils,
-      this.field,
-      this.schemaManager,
-    );
+    await this.scanButton.press("Enter");
+    return new JSONEditorPom(this.page, this.eventUtils, this.schemaManager);
   }
 }
 
@@ -113,14 +90,6 @@ class FieldRowAsserter {
   }
 
   /**
-   * Does the field row have a checkbox, i.e. does it have a label schema
-   * configured.
-   */
-  async hasCheckbox() {
-    await expect(this.fieldRowPom.checkbox).toBeVisible();
-  }
-
-  /**
    * Is the field row in the 'Hidden fields' section
    */
   async isHiddenField() {
@@ -135,14 +104,7 @@ class FieldRowAsserter {
    * @param checked Whether the checkbox should checked or not
    */
   async isChecked(checked: boolean) {
-    await expect(this.fieldRowPom.checkbox).toBeChecked({ checked });
-  }
-
-  /**
-   * Is the field row editable, i.e. does it have a pencil button
-   */
-  async isEditable() {
-    await expect(this.fieldRowPom.pencil).toBeAttached();
+    expect(await this.fieldRowPom.checkbox.isChecked()).toBe(checked);
   }
 
   /**

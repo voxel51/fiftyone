@@ -1,3 +1,4 @@
+import { isLegacyDomMirror } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
@@ -9,6 +10,7 @@ import { FoScene } from "../fo3d/render-types";
 import type { Looker3dSettings } from "../settings";
 import { cameraPositionAtom } from "../state";
 import { useFo3dCameraLookAt } from "./use-fo3d-camera-look-at";
+import { useLooker3dEventHandler } from "./use-looker3d-event-handler";
 
 const BOUNDS_RETRY_DELAY_MS = 50;
 
@@ -101,11 +103,26 @@ export const useFo3dCameraViewEvents = ({
     };
   }, []);
 
-  fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
-    handleViewChangeEvent("top");
-  });
-
-  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
-    handleViewChangeEvent("pov");
-  });
+  const onTopView = useCallback(
+    () => handleViewChangeEvent("top"),
+    [handleViewChangeEvent],
+  );
+  const onEgoView = useCallback(
+    () => handleViewChangeEvent("pov"),
+    [handleViewChangeEvent],
+  );
+  useLooker3dEventHandler(SET_TOP_VIEW_EVENT, onTopView);
+  useLooker3dEventHandler(SET_EGO_VIEW_EVENT, onEgoView);
+  // plugins may still send the window events these commands used to be; the
+  // App's own mirrors of its bus events are skipped
+  fos.useEventHandler(
+    window,
+    SET_TOP_VIEW_EVENT,
+    (e: Event) => !isLegacyDomMirror(e) && onTopView(),
+  );
+  fos.useEventHandler(
+    window,
+    SET_EGO_VIEW_EVENT,
+    (e: Event) => !isLegacyDomMirror(e) && onEgoView(),
+  );
 };

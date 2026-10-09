@@ -11,8 +11,12 @@ import { expect, test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-nav");
+
+/** Each sample's tracked instance; an object track's id is its instance id */
+const INSTANCE_IDS = [indexToId(0xa0), indexToId(0xa1)];
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
@@ -23,7 +27,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
   // both samples carry their own tracked instance, so the object track id
-  // differs between samples — a reliable "the surface switched" signal.
+  // names the sample on the surface — a reliable "the surface switched" signal.
   await datasetFactory.createDataset({
     mediaType: "video",
     datasetName,
@@ -80,7 +84,10 @@ test.beforeAll(async ({ foWebServer, datasetFactory }) => {
           label: "vehicle",
           bounding_box: [0.3, 0.3, 0.2, 0.2],
           index: 1,
-          instance: label.instance(`${sampleIndex}-vehicle-1`),
+          instance: {
+            _id: { $oid: INSTANCE_IDS[sampleIndex] },
+            _cls: "Instance",
+          },
         }),
       ]),
     }),
@@ -104,40 +111,23 @@ test.describe.serial("video annotation sample navigation", () => {
     });
 
     // open the modal from the grid so it carries the sample sequence
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      withGrid: true,
-    });
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.videoAnnotate.waitForSurface();
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     const va = modal.videoAnnotate;
-    await va.assert.objectTrackCount(1);
-    const [firstTrack] = await va.objectTrackIds();
+    expect(await va.objectTrackIds()).toEqual([INSTANCE_IDS[0]]);
 
     // page forward to the next video sample (ArrowRight = ModalNextSample)
-    await page.keyboard.press("ArrowRight");
-    await expect
-      .poll(async () => {
-        const ids = await va.objectTrackIds();
-        return ids.length === 1 && ids[0] !== firstTrack;
-      })
-      .toBe(true);
-    await va.waitForSurface();
-    const [secondTrack] = await va.objectTrackIds();
+    await va.navigateSample("next");
+    expect(await va.objectTrackIds()).toEqual([INSTANCE_IDS[1]]);
 
     // page back to the first sample
-    await page.keyboard.press("ArrowLeft");
-    await expect
-      .poll(async () => {
-        const ids = await va.objectTrackIds();
-        return ids.length === 1 && ids[0] === firstTrack;
-      })
-      .toBe(true);
-    await va.waitForSurface();
+    await va.navigateSample("previous");
+    expect(await va.objectTrackIds()).toEqual([INSTANCE_IDS[0]]);
 
-    expect(secondTrack).not.toBe(firstTrack);
     // no "a store for sample X is already registered" (or similar) was thrown
     expect(storeErrors).toEqual([]);
   });
