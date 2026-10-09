@@ -1,23 +1,12 @@
-import type { Response } from "@fiftyone/floodlight";
-import type * as foq from "@fiftyone/relay";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { planPage, placePage } from "../Grid/orderedPages";
-import {
-  createPageCursors,
-  type OrderSeek,
-  pageWindow,
-} from "../Grid/pageCursors";
 import { gridRailMode, isRailed } from "../Grid/railModes";
 import { warmKeys } from "../Grid/warming";
 import { createPageSource, PAGE_SIZE } from "../host/pageSource";
 import type { Order } from "../order/order";
 import { type Environment, installEnvironment } from "./environment";
-import type { FakeItem } from "./fakePages";
+import { createServer, N, pagerFor } from "./fakeOrder";
 import { mountHost } from "./mountHost";
 
-type Page = Response<number, FakeItem["data"]>;
-
-const N = 2000;
 const LATENCY = 40;
 const SIZE = { width: 1028, height: 600 };
 
@@ -50,98 +39,6 @@ const order = (scale: "NUMBER" | "ID"): Order => ({
   ticks: [],
 });
 
-interface Sent {
-  variables: Record<string, unknown>;
-  signal: AbortSignal;
-}
-
-/**
- * An INDEXED order of N samples whose fractions are i / N, answering
- * `samples` variables the way the server does: a seek starts at the first
- * sample at or past its fraction, a cursor pages after or before it.
- */
-const createServer = () => {
-  const sent: Sent[] = [];
-  const answer = (variables: Record<string, unknown>) => {
-    const count = variables.count as number;
-    const seek = variables.seek as OrderSeek | null;
-    const after = variables.after as string | null;
-    const before = variables.before as string | null;
-    let start: number;
-    if (seek) start = Math.ceil((seek.fraction ?? 0) * N);
-    else if (before !== null) start = Math.max(0, Number(before) - count);
-    else start = after === null ? 0 : Number(after) + 1;
-    const end = before !== null ? Number(before) : Math.min(N, start + count);
-    const edges = [];
-    for (let i = start; i < end; i++) {
-      edges.push({
-        cursor: String(i),
-        fraction: i / N,
-        offset: null,
-        value: i / N,
-        node: { id: `s${i}` },
-      });
-    }
-    return {
-      edges,
-      pageInfo: {
-        hasNextPage: end < N,
-        hasPreviousPage: start > 0,
-        startCursor: edges.length ? String(start) : null,
-        endCursor: edges.length ? String(end - 1) : null,
-      },
-    } as unknown as foq.PaginateSamplesConnection;
-  };
-  const fetch = (variables: Record<string, unknown>, signal: AbortSignal) =>
-    new Promise<foq.PaginateSamplesConnection>((resolve, reject) => {
-      sent.push({ variables, signal });
-      const timer = setTimeout(() => resolve(answer(variables)), LATENCY);
-      signal.addEventListener("abort", () => {
-        clearTimeout(timer);
-        reject(signal.reason);
-      });
-    });
-  return { fetch, sent };
-};
-
-/** The panel's pager for one origin: the order's cursors, seek and places. */
-const pagerFor = (
-  server: ReturnType<typeof createServer>,
-  opened: Order,
-  seek: OrderSeek | undefined,
-  fractions: Map<string, number>,
-) => {
-  const cursors = createPageCursors();
-  return async (key: number, signal: AbortSignal): Promise<Page> => {
-    const plan = planPage({
-      cursors,
-      key,
-      order: opened,
-      pageSize: PAGE_SIZE,
-      seek,
-      variables: (page, size) =>
-        ({ dataset: "d", ...pageWindow(page, size) }) as never,
-    });
-    if (!plan) return { items: [], next: null, previous: null };
-    const connection = await server.fetch(
-      plan.variables as Record<string, unknown>,
-      signal,
-    );
-    const placed = placePage(key, plan, connection, cursors, PAGE_SIZE);
-    const items = connection.edges.map((edge, index) => {
-      const id = (edge.node as unknown as { id: string }).id;
-      fractions.set(id, placed.place(index).fraction ?? 0);
-      return {
-        aspectRatio: 1,
-        data: { page: key, index },
-        id: { description: id },
-        key,
-      };
-    });
-    return { items, next: placed.next, previous: placed.previous };
-  };
-};
-
 const settle = async () => {
   for (let i = 0; i < 12; i++) {
     await env.tick(LATENCY);
@@ -154,7 +51,7 @@ describe.each(["NUMBER", "ID"] as const)(
   (scale) => {
     test("seeks once, lands the seek page, and warms around it", async () => {
       const opened = order(scale);
-      const server = createServer();
+      const server = createServer(LATENCY);
       const fractions = new Map<string, number>();
       let source = createPageSource(
         pagerFor(server, opened, undefined, fractions),

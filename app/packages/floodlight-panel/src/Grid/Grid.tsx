@@ -34,6 +34,7 @@ import { BoundedMap } from "../host/bounded";
 import { createOwnership } from "../host/ownership";
 import type { Lease } from "../host/pageSource";
 import { SLOT } from "../host/createHost";
+import { span } from "../host/marks";
 import useHost from "../host/useHost";
 import { createGridRenderer, type GridRenderer } from "./gridRenderer";
 import GridPagesBar from "./Pages/GridPagesBar";
@@ -247,6 +248,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const loadedItems = useRef(new WeakMap<object, { items: number }>());
   // each instance's reads, released with it
   const leases = useRef(new WeakMap<object, Lease<number, Page>>());
+  // each instance's build timing, measured at its load, validation and swap
+  const measures = useRef(new WeakMap<object, (phase: string) => void>());
   const hostRef = useRef<{ instance?: object }>();
 
   const { host, instance, status } = useHost<
@@ -326,6 +329,10 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
           ? (width) => Math.min(zoom(width), start ?? Infinity)
           : () => 0,
       });
+      const measure = span(`build:${first}`);
+      next.addEventListener("load", () => measure("load"));
+      next.addEventListener("validated", () => measure("validated"));
+      measures.current.set(next, measure);
       scopes.current.set(next, scoped);
       leases.current.set(next, lease);
       loadedItems.current.set(next, loaded);
@@ -333,7 +340,10 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       else cleanups.current.set(next, wire(next));
       return next;
     },
-    onSwap: (next, previous) => swapRef.current(next, previous),
+    onSwap: (next, previous) => {
+      measures.current.get(next)?.("ready");
+      swapRef.current(next, previous);
+    },
     // a panel resize (the sidebar showing or hiding) moves the tiles, like
     // a relayout
     onResize: () => animateRef.current(),

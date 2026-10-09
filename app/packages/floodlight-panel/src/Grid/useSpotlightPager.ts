@@ -12,6 +12,7 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import { BoundedMap } from "../host/bounded";
+import { span } from "../host/marks";
 import { PAGE_SIZE } from "../host/pageSource";
 import type { OpenedOrder } from "../order/order";
 import { MAX_CURSOR_PAGES, type OrderSeek } from "./pageCursors";
@@ -176,6 +177,7 @@ const useSpotlightPager = ({
         // the open's first page, else a page this panel has not requested
         // comes from the network
         const first = takeFirstPage(opened, plan);
+        const measure = span(`page:${key}`);
         const fetchPolicy = pages.has(key)
           ? "store-or-network"
           : "network-only";
@@ -192,6 +194,7 @@ const useSpotlightPager = ({
               handleError(error);
               return undefined;
             });
+        measure(first ? "seeded" : "response");
         if (!result) return EMPTY;
         if ("timeout" in result) {
           result.timeout && handleTimeout(result.timeout);
@@ -216,6 +219,7 @@ const useSpotlightPager = ({
           fractions,
           aspectRatioOverride,
         );
+        measure("normalized");
 
         return { items, next: placed.next, previous: placed.previous };
       },

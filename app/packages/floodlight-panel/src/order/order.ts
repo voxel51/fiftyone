@@ -9,6 +9,7 @@ import * as foq from "@fiftyone/relay";
 import { fetchQuery } from "react-relay";
 import type { IEnvironment } from "relay-runtime";
 import type { OrderMode } from "../Grid/pageCursors";
+import { span } from "../host/marks";
 
 export type OrderInput = foq.openOrderQuery$variables["input"];
 
@@ -125,6 +126,7 @@ export const openOrder = (
   first?: FirstPageArgs,
 ): Promise<OpenedOrder> =>
   new Promise<OpenedOrder>((resolve) => {
+    const measure = span("openOrder");
     const subscription = fetchQuery<foq.openOrderQuery>(
       environment,
       foq.openOrder,
@@ -140,7 +142,10 @@ export const openOrder = (
         : { input },
       { fetchPolicy: "network-only" },
     ).subscribe({
-      next: (data) => resolve(toOrder(data, Boolean(input.desc), first)),
+      next: (data) => {
+        measure("response");
+        resolve(toOrder(data, Boolean(input.desc), first));
+      },
       error: () =>
         resolve(
           first && !signal.aborted
