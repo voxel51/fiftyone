@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { KeypointOverlay, useLighter } from "@fiftyone/lighter";
 import type { KeypointAnnotationLabel } from "@fiftyone/state";
 import {
@@ -32,6 +33,19 @@ import {
 } from "./keypointPointAttributes";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { useGuidedKeypoints } from "./useKeypointMode";
+
+/**
+ * e2e specs read the checklist and the node inspector once they have rendered
+ * a new state: the node statuses in order, whether placement is armed, and
+ * the selected node (-1 for none)
+ */
+type KeypointChecklistE2EEvents = {
+  "e2e:annotate:keypoint-checklist": {
+    statuses: string;
+    armed: boolean;
+    selected: number;
+  };
+};
 
 const isPlaced = (point: readonly unknown[] | undefined): boolean =>
   typeof point?.[0] === "number" &&
@@ -477,6 +491,25 @@ export const KeypointDetails = () => {
 
   // A skeleton is at most a few dozen nodes; no memoization needed
   const placedCount = currentPoints.filter((p) => isPlaced(p)).length;
+  const statusOf = (i: number): NodeStatus =>
+    isPlaced(currentPoints[i])
+      ? "placed"
+      : i === targetIndex
+        ? "target"
+        : skipped.includes(i)
+          ? "skipped"
+          : "pending";
+  const statuses = Array.from({ length: nodeCount }, (_, i) =>
+    statusOf(i),
+  ).join(",");
+
+  const selectedNode = selectedNodeIndex ?? -1;
+  useEffect(() => {
+    getEventBus<KeypointChecklistE2EEvents>().dispatch(
+      "e2e:annotate:keypoint-checklist",
+      { statuses, armed: modeActive, selected: selectedNode },
+    );
+  }, [statuses, modeActive, selectedNode, overlayId]);
 
   if (!nodeCount) {
     return (
@@ -514,14 +547,7 @@ export const KeypointDetails = () => {
 
       <NodeList data-cy="keypoint-node-list">
         {Array.from({ length: nodeCount }, (_, i) => {
-          const placed = isPlaced(currentPoints[i]);
-          const status: NodeStatus = placed
-            ? "placed"
-            : i === targetIndex
-              ? "target"
-              : skipped.includes(i)
-                ? "skipped"
-                : "pending";
+          const status = statusOf(i);
           const action = nodeRowAction(status, modeActive);
           const name = nodeLabels?.[i] ?? `point ${i + 1}`;
 

@@ -7,7 +7,7 @@
  *     skeleton in order: each canvas click places the next node, Skip leaves a
  *     NaN hole and advances, and the checklist tracks per-node status,
  *   - the committed label persists across a true server round-trip, read back
- *     through the App in a fresh browser context: placed nodes as placed, the
+ *     through the App on a fresh page: placed nodes as placed, the
  *     skipped node as an unplaced hole (the next target),
  *   - a point-scoped schema attribute edited in the node inspector reads back
  *     node by node after a reopen (the value-fill encoding's ODM guard lives
@@ -16,7 +16,7 @@
  *     row's Place button is its way into placement: once armed, the canvas
  *     click places the node instead of selecting the detection underneath it.
  */
-import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
+import { expect, test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -54,27 +54,37 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-/** Reopen `sampleId` in a new browser context (nothing cached) and verify it. */
-const inFreshContext = async (
-  browser: Browser,
+/** Open `sampleId` in the modal and switch it to annotate. */
+const openAnnotate = async (
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  modal: ModalPom,
+  page: Page,
+  sampleId: string,
+) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ id: sampleId }),
+    modalSample: "loaded",
+  });
+  await modal.assert.isOpen();
+  await modal.sidebar.annotate.afterLabelList(() =>
+    modal.afterLighterReady(() => modal.sidebar.switchMode("annotate")),
+  );
+};
+
+/**
+ * Reopen `sampleId` on a fresh page (nothing cached) and verify what the App
+ * renders there. The fixture closes the test's page first, so call it last.
+ */
+const inFreshPage = async (
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   sampleId: string,
-  verify: (modal: ModalPom, page: Page) => Promise<void>,
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id: sampleId }),
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.waitForSampleLoadDomAttribute();
-    await freshModal.sidebar.switchMode("annotate");
-    await freshModal.waitForLighterReady();
-    await verify(freshModal, freshPage);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage, sampleId);
+  await verify(freshModal);
 };
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
@@ -164,130 +174,154 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-/** Open the modal in annotate mode, deep-linked to one sample. */
-const openAnnotate = async (
-  fiftyoneLoader: AbstractFiftyoneLoader,
-  modal: ModalPom,
-  page: Page,
-  sampleId: string,
-) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    searchParams: new URLSearchParams({ id: sampleId }),
-  });
-  await modal.waitForSampleLoadDomAttribute();
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
-};
-
 test.describe("2D annotation keypoint", () => {
   test("guided placement with a skip persists points and the NaN hole", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
     page,
   }) => {
     await openAnnotate(fiftyoneLoader, modal, page, indexToId(0));
-    await modal.sidebar.annotate.keypointMode();
-    await modal.sidebar.annotate.assert.keypointModeIsActive();
-    const { edit } = modal.sidebar;
+    const { annotate, edit } = modal.sidebar;
+    const { sampleCanvas } = modal;
 
-    // the mode opens a draft; the checklist targets node 0.
-    await edit.assert.keypointNodeStatus(0, "target");
+    // the mode opens a draft; the checklist targets node 0
+    await edit.afterKeypointChecklist(() => annotate.keypointMode());
+    await annotate.assert.keypointModeIsActive();
+    await edit.assert.keypointNodeStatuses([
+      "target",
+      "pending",
+      "pending",
+      "pending",
+    ]);
 
-    // guided placement walks the skeleton in order.
-    await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[0]);
-    await edit.assert.keypointNodeStatus(0, "placed");
-    await edit.assert.keypointNodeStatus(1, "target");
+    // guided placement walks the skeleton in order
+    await edit.afterKeypointChecklist(() =>
+      sampleCanvas.click(...PLACEMENTS[0]),
+    );
+    await edit.assert.keypointNodeStatuses([
+      "placed",
+      "target",
+      "pending",
+      "pending",
+    ]);
+    await edit.afterKeypointChecklist(() =>
+      sampleCanvas.click(...PLACEMENTS[1]),
+    );
+    await edit.assert.keypointNodeStatuses([
+      "placed",
+      "placed",
+      "target",
+      "pending",
+    ]);
 
-    await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[1]);
-    await edit.assert.keypointNodeStatus(1, "placed");
-    await edit.assert.keypointNodeStatus(2, "target");
+    // skipping leaves a hole and advances the target
+    await edit.afterKeypointChecklist(() => edit.skipKeypointNode());
+    await edit.assert.keypointNodeStatuses([
+      "placed",
+      "placed",
+      "skipped",
+      "target",
+    ]);
 
-    // skipping leaves a hole and advances the target.
-    await edit.skipKeypointNode();
-    await edit.assert.keypointNodeStatus(2, "skipped");
-    await edit.assert.keypointNodeStatus(3, "target");
-
-    await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[3]);
-    await edit.assert.keypointNodeStatus(3, "placed");
+    await edit.afterKeypointChecklist(() =>
+      sampleCanvas.click(...PLACEMENTS[3]),
+    );
+    await edit.assert.keypointNodeStatuses([
+      "placed",
+      "placed",
+      "skipped",
+      "placed",
+    ]);
     await edit.assert.keypointPlacedSummary("3 of 4 placed · 1 skipped");
 
-    // assigning a class commits through the edit form.
-    await edit.selectFieldChoice("label", "person");
+    // assigning a class commits through the edit form
+    await annotate.afterSave(() => edit.selectFieldChoice("label", "person"));
     await edit.assert.verifyFieldValue("label", "person");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the render, deselected: the diamond without its right-eye corner. Three
     // dots, two edges, and nothing at the hole.
-    await edit.backButton.click();
-    await edit.assert.isClosed();
-    await modal.sampleCanvas.assert.hasScreenshot("keypoint-guided-skip.png");
+    await annotate.afterEditing(() => edit.exitToList(), false);
+    await sampleCanvas.assert.hasMediaScreenshot("keypoint-guided-skip.png");
 
     // true round-trip through the App's real read path (where holes arrive
-    // as "nan" strings): placed nodes read back placed, and the hole reads
-    // back as the next placement target (skips are session state).
-    await inFreshContext(
-      browser,
+    // as "nan" strings): the same render from a cold load, placed nodes read
+    // back placed, and the hole reads back as the next placement target
+    // (skips are session state)
+    await inFreshPage(
+      openFreshPage,
       fiftyoneLoader,
       indexToId(0),
       async (freshModal) => {
-        const freshEdit = freshModal.sidebar.edit;
-        await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
-        // the same render as before the save, from a cold load
-        await freshModal.sampleCanvas.assert.hasScreenshot(
+        const fresh = freshModal.sidebar;
+        await fresh.annotate.assert.hasActiveLabelsCount(1);
+        await freshModal.sampleCanvas.assert.hasMediaScreenshot(
           "keypoint-guided-skip.png",
         );
-        await freshModal.sidebar.annotate.selectActiveLabel("person", 0);
-        await freshEdit.assert.verifyFieldValue("label", "person");
-        await freshEdit.assert.keypointNodeStatus(0, "placed");
-        await freshEdit.assert.keypointNodeStatus(1, "placed");
-        await freshEdit.assert.keypointNodeStatus(2, "target");
-        await freshEdit.assert.keypointNodeStatus(3, "placed");
-        await freshEdit.assert.keypointPlacedSummary("3 of 4 placed");
+        await fresh.edit.afterKeypointChecklist(() =>
+          fresh.annotate.selectActiveLabel("person", 0),
+        );
+        await fresh.edit.assert.verifyFieldValue("label", "person");
+        await fresh.edit.assert.keypointNodeStatuses([
+          "placed",
+          "placed",
+          "target",
+          "placed",
+        ]);
+        await fresh.edit.assert.keypointPlacedSummary("3 of 4 placed");
       },
     );
   });
 
   test("a point-scoped attribute reads back node by node", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
     page,
   }) => {
     await openAnnotate(fiftyoneLoader, modal, page, indexToId(1));
-    await modal.sidebar.annotate.keypointMode();
-    await modal.sidebar.annotate.assert.keypointModeIsActive();
-    const { edit } = modal.sidebar;
+    const { annotate, edit } = modal.sidebar;
 
-    // place the full skeleton.
-    for (const [index, placement] of PLACEMENTS.entries()) {
-      await modal.sampleCanvas.placeKeypointNode(...placement);
-      await edit.assert.keypointNodeStatus(index, "placed");
+    // place the full skeleton
+    await edit.afterKeypointChecklist(() => annotate.keypointMode());
+    for (const placement of PLACEMENTS) {
+      await edit.afterKeypointChecklist(() =>
+        modal.sampleCanvas.click(...placement),
+      );
     }
-    // select node 1 and toggle its point-scoped bool in the inspector.
-    await edit.keypointNodeRow(1).click();
-    await expect(edit.keypointNodeInspector).toBeVisible();
-    await edit.keypointPointAttributeToggle("occluded").click();
+    await edit.assert.keypointNodeStatuses([
+      "placed",
+      "placed",
+      "placed",
+      "placed",
+    ]);
+
+    // select node 1 and toggle its point-scoped bool in the inspector
+    await edit.afterKeypointChecklist(() => edit.keypointNodeRow(1).click());
+    await annotate.afterSave(() =>
+      edit.keypointPointAttributeToggle("occluded").click(),
+    );
     await edit.assert.keypointPointAttributeChecked("occluded", true);
     // a class, so the reopened sample's label row is addressable by name
-    await edit.selectFieldChoice("label", "person");
-    await modal.sidebar.annotate.waitForSavesSettled();
+    await annotate.afterSave(() => edit.selectFieldChoice("label", "person"));
 
     // after a reopen, only node 1 reads occluded: the stored list is the full
     // parallel list, one entry per node
-    await inFreshContext(
-      browser,
+    await inFreshPage(
+      openFreshPage,
       fiftyoneLoader,
       indexToId(1),
       async (freshModal) => {
-        const freshEdit = freshModal.sidebar.edit;
-        await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
-        await freshModal.sidebar.annotate.selectActiveLabel("person", 0);
+        const fresh = freshModal.sidebar;
+        await fresh.annotate.assert.hasActiveLabelsCount(1);
+        await fresh.edit.afterKeypointChecklist(() =>
+          fresh.annotate.selectActiveLabel("person", 0),
+        );
         for (const index of [0, 1, 2, 3]) {
-          await freshEdit.keypointNodeRow(index).click();
-          await expect(freshEdit.keypointNodeInspector).toBeVisible();
-          await freshEdit.assert.keypointPointAttributeChecked(
+          await fresh.edit.afterKeypointChecklist(() =>
+            fresh.edit.keypointNodeRow(index).click(),
+          );
+          await fresh.edit.assert.keypointPointAttributeChecked(
             "occluded",
             index === 1,
           );
@@ -297,53 +331,70 @@ test.describe("2D annotation keypoint", () => {
   });
 
   test("an existing keypoint arms placement from the target row's Place button", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
     page,
   }) => {
     // sample 2 carries the pre-existing keypoint and the box under it (seeded
-    // at creation).
+    // at creation)
     await openAnnotate(fiftyoneLoader, modal, page, indexToId(2));
-    const { edit } = modal.sidebar;
+    const { annotate, edit } = modal.sidebar;
     // the keypoint and the box
-    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
-    await modal.sidebar.annotate.selectActiveLabel("person", 0);
+    await annotate.assert.hasActiveLabelsCount(2);
+    await edit.afterKeypointChecklist(() =>
+      annotate.selectActiveLabel("person", 0),
+    );
 
     // an existing label opens PASSIVELY: node 0 is the target, but nothing is
-    // armed, so the row offers Place (Skip alone would be a dead end).
-    await modal.sidebar.annotate.assert.keypointModeIsActive(false);
-    await edit.assert.keypointNodeStatus(0, "target");
-    await expect(edit.keypointPlaceButton(0)).toBeVisible();
-    await expect(edit.keypointSkipButton).toBeHidden();
+    // armed, so the row offers Place (Skip alone would be a dead end)
+    await annotate.assert.keypointModeIsActive(false);
+    await edit.assert.keypointNodeStatuses([
+      "target",
+      "pending",
+      "pending",
+      "pending",
+    ]);
+    expect(await edit.keypointPlaceButton(0).isVisible()).toBe(true);
+    expect(await edit.keypointSkipButton.isVisible()).toBe(false);
 
     // Place arms the mode and force-targets the node; an ARMED target places
-    // by canvas click, so Skip becomes the row's only button.
-    await edit.placeKeypointNode(0);
-    await modal.sidebar.annotate.assert.keypointModeIsActive(true);
-    await expect(edit.keypointSkipButton).toBeVisible();
-    await expect(edit.keypointPlaceButton(0)).toBeHidden();
+    // by canvas click, so Skip becomes the row's only button
+    await edit.afterKeypointChecklist(() => edit.placeKeypointNode(0));
+    await annotate.assert.keypointModeIsActive(true);
+    expect(await edit.keypointSkipButton.isVisible()).toBe(true);
+    expect(await edit.keypointPlaceButton(0).isVisible()).toBe(false);
 
-    // the click places node 0 — it is NOT a Select click on the box under it,
+    // the click places node 0. It is NOT a Select click on the box under it,
     // which would swap the form to the detection.
-    await modal.sampleCanvas.placeKeypointNode(0.5, 0.5);
-    await edit.assert.keypointNodeStatus(0, "placed");
+    await annotate.afterSave(() =>
+      edit.afterKeypointChecklist(() => modal.sampleCanvas.click(0.5, 0.5)),
+    );
+    await edit.assert.keypointNodeStatuses([
+      "placed",
+      "target",
+      "pending",
+      "pending",
+    ]);
     await edit.assert.editsLabelType("Keypoint");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // after a reopen, node 0 reads placed and the rest stay unplaced
-    await inFreshContext(
-      browser,
+    await inFreshPage(
+      openFreshPage,
       fiftyoneLoader,
       indexToId(2),
       async (freshModal) => {
-        const freshEdit = freshModal.sidebar.edit;
-        await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(2);
-        await freshModal.sidebar.annotate.selectActiveLabel("person", 0);
-        await freshEdit.assert.keypointNodeStatus(0, "placed");
-        await freshEdit.assert.keypointNodeStatus(1, "target");
-        await freshEdit.assert.keypointNodeStatus(2, "pending");
-        await freshEdit.assert.keypointNodeStatus(3, "pending");
+        const fresh = freshModal.sidebar;
+        await fresh.annotate.assert.hasActiveLabelsCount(2);
+        await fresh.edit.afterKeypointChecklist(() =>
+          fresh.annotate.selectActiveLabel("person", 0),
+        );
+        await fresh.edit.assert.keypointNodeStatuses([
+          "placed",
+          "target",
+          "pending",
+          "pending",
+        ]);
       },
     );
   });
@@ -358,6 +409,8 @@ test.describe("2D annotation keypoint", () => {
     await openAnnotate(fiftyoneLoader, modal, page, indexToId(3));
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
-    await modal.sampleCanvas.assert.hasScreenshot("keypoint-seeded-hole.png");
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
+      "keypoint-seeded-hole.png",
+    );
   });
 });

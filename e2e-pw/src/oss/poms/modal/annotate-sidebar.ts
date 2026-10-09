@@ -189,9 +189,17 @@ export class ModalAnnotateSidebarPom {
     );
   }
 
-  /** Activate keypoint-placement mode (the Keypoint action button). */
+  /**
+   * Turn on keypoint placement (the Keypoint action button). Resolves once
+   * its placement handler is armed: the handler installs in an effect after
+   * the mode flips, and clicks before that reach nothing.
+   */
   async keypointMode() {
-    await this.page.getByTestId("keypoint-mode").click();
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => this.page.getByTestId("keypoint-mode").click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
   }
 
   /**
@@ -342,7 +350,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async keypointModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("keypoint-mode");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**

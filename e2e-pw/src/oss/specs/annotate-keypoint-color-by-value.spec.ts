@@ -3,8 +3,9 @@
  *
  * Per-point color-by-value on a keypoint. With the field colored by value on
  * a per-point attribute, each node fills by its own entry while the edges
- * keep the label color. The color scheme is dataset setup (its own dataset,
- * so it recolors no other spec's baselines); the check is the render.
+ * keep the label color. The color scheme is dataset setup through the
+ * factory's `appConfig` (its own dataset, so it recolors no other spec's
+ * baselines); the check is the render.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -37,11 +38,29 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
     numSamples: 1,
+    // the dataset's color scheme colors the field by its per-point attribute;
+    // the pinned one-color pool keeps the label (edge) color deterministic
+    appConfig: {
+      color_scheme: {
+        color_by: "value",
+        color_pool: ["#FA5300"],
+        fields: [
+          {
+            path: FIELD,
+            colorByAttribute: "occluded",
+            valueColors: [
+              { value: "true", color: "#ff00ff" },
+              { value: "false", color: "#0000ff" },
+            ],
+          },
+        ],
+      },
+    },
     imageOptions: { fillColor: "white", width: 640, height: 480 },
     schema: {
       [FIELD]: "Keypoints",
@@ -83,28 +102,6 @@ test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
       ]),
     }),
   });
-
-  // setup only: the dataset's default color scheme colors the field by its
-  // per-point attribute
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.load_dataset("${datasetName}")
-dataset.app_config.color_scheme = fo.ColorScheme(
-    color_by="value",
-    fields=[
-        {
-            "path": "${FIELD}",
-            "colorByAttribute": "occluded",
-            "valueColors": [
-                {"value": "true", "color": "#ff00ff"},
-                {"value": "false", "color": "#0000ff"},
-            ],
-        }
-    ],
-)
-dataset.save()
-`);
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -119,17 +116,16 @@ test.describe("keypoint color by value", () => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id: indexToId(0) }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.afterLighterReady(() => modal.sidebar.switchMode("annotate")),
+    );
     await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
-    // magenta where occluded, blue where not; the edges keep the label color.
-    // Magenta, not red: the default pool's first color is a red, which the
-    // label color can land on.
-    await modal.sampleCanvas.assert.hasScreenshot(
+    // magenta where occluded, blue where not; the edges keep the label color
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "keypoint-color-by-value.png",
     );
   });

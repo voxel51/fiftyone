@@ -17,8 +17,9 @@
  * Two same-type `Keypoints` fields with DIFFERENT skeletons (4 nodes vs 3)
  * give the dropdown a destination whose node count the checklist must follow.
  */
-import { type Browser, test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
+import type { KeypointNodeStatus } from "src/oss/poms/modal/annotate-edit";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 import type { LabelSchema } from "src/shared/dataset-factory";
@@ -58,7 +59,7 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-/** Open the modal in annotate mode, deep-linked to one sample. */
+/** Open the modal on one sample and switch it to annotate. */
 const openAnnotate = async (
   fiftyoneLoader: AbstractFiftyoneLoader,
   modal: ModalPom,
@@ -67,40 +68,36 @@ const openAnnotate = async (
 ) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id: sampleId }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.waitForLighterReady();
+  await modal.sidebar.annotate.afterLabelList(() =>
+    modal.afterLighterReady(() => modal.sidebar.switchMode("annotate")),
+  );
 };
 
 /**
- * Reopen a sample in a new browser context (nothing cached) and check its
- * one keypoint through the App: it lives on `FIELD`, with these node statuses.
+ * Reopen a sample on a fresh page (nothing cached) and check its one keypoint
+ * through the App: it lives on `FIELD`, with these node statuses. The fixture
+ * closes the test's page first, so call it last.
  */
 const expectPersisted = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   sampleId: string,
-  statuses: Array<"placed" | "target" | "pending">,
+  statuses: KeypointNodeStatus[],
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage, sampleId);
-    // one label: the undone move left nothing behind at the destination
-    await freshModal.sidebar.annotate.assert.hasActiveLabelsCount(1);
-    await freshModal.sidebar.annotate.selectActiveLabel("person", 0);
-
-    const freshEdit = freshModal.sidebar.edit;
-    await freshEdit.assert.currentField(FIELD);
-    for (const [index, status] of statuses.entries()) {
-      await freshEdit.assert.keypointNodeStatus(index, status);
-    }
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage, sampleId);
+  const fresh = freshModal.sidebar;
+  // one label: the undone move left nothing behind at the destination
+  await fresh.annotate.assert.hasActiveLabelsCount(1);
+  await fresh.edit.afterKeypointChecklist(() =>
+    fresh.annotate.selectActiveLabel("person", 0),
+  );
+  await fresh.edit.assert.currentField(FIELD);
+  await fresh.edit.assert.keypointNodeStatuses(statuses);
 };
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
@@ -160,39 +157,46 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.describe("keypoint field swap", () => {
   test("a fresh keypoint survives a field swap and undo restores its placements", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
     page,
   }) => {
-    const edit = modal.sidebar.edit;
+    const { annotate, edit } = modal.sidebar;
 
     await test.step("arm keypoint placement on the 4-node field", async () => {
       await openAnnotate(fiftyoneLoader, modal, page, indexToId(0));
-      await modal.sidebar.annotate.keypointMode();
-      await modal.sidebar.annotate.assert.keypointModeIsActive();
+      await edit.afterKeypointChecklist(() => annotate.keypointMode());
+      await annotate.assert.keypointModeIsActive();
 
       // The mode opens a draft in the last-used/default keypoints field; pin
       // it to FIELD so the placements below belong to the 4-node skeleton.
       if ((await edit.getCurrentField()) !== FIELD) {
-        await edit.moveFieldTo(FIELD);
+        await edit.afterKeypointChecklist(() => edit.moveFieldTo(FIELD));
       }
       await edit.assert.currentField(FIELD);
     });
 
     await test.step("place nodes 0 and 1", async () => {
-      await edit.assert.keypointNodeStatus(0, "target");
-      await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[0]);
-      await edit.assert.keypointNodeStatus(0, "placed");
-
-      await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[1]);
-      await edit.assert.keypointNodeStatus(1, "placed");
-
+      await edit.afterKeypointChecklist(() =>
+        modal.sampleCanvas.click(...PLACEMENTS[0]),
+      );
+      await edit.afterKeypointChecklist(() =>
+        modal.sampleCanvas.click(...PLACEMENTS[1]),
+      );
+      await edit.assert.keypointNodeStatuses([
+        "placed",
+        "placed",
+        "target",
+        "pending",
+      ]);
       await edit.assert.keypointPlacedSummary("2 of 4 placed");
     });
 
     await test.step("move the label to the 3-node field", async () => {
-      await edit.moveFieldTo(ALT_FIELD);
+      await annotate.afterSave(() =>
+        edit.afterKeypointChecklist(() => edit.moveFieldTo(ALT_FIELD)),
+      );
     });
 
     await test.step("the form stays open with the destination's empty checklist", async () => {
@@ -201,29 +205,28 @@ test.describe("keypoint field swap", () => {
       await edit.assert.keypointPlacedSummary("0 of 3 placed");
     });
 
-    await test.step("the session survives the autosave settle", async () => {
-      await modal.sidebar.annotate.waitForSavesSettled();
-      await edit.assert.isOpen();
-    });
-
     await test.step("undo the move", async () => {
       await edit.assert.undoIsEnabled();
-      await edit.undo();
+      await annotate.afterSave(() =>
+        edit.afterKeypointChecklist(() => edit.undo()),
+      );
     });
 
     await test.step("the source field and its placements come back", async () => {
       await edit.assert.isOpen();
       await edit.assert.currentField(FIELD);
       await edit.assert.keypointPlacedSummary("2 of 4 placed");
-      await edit.assert.keypointNodeStatus(0, "placed");
-      await edit.assert.keypointNodeStatus(1, "placed");
+      await edit.assert.keypointNodeStatuses([
+        "placed",
+        "placed",
+        "target",
+        "pending",
+      ]);
     });
 
     await test.step("the restored geometry persists", async () => {
-      await modal.sidebar.annotate.waitForSavesSettled();
-
       // placed nodes read back placed, the never-placed ones stay holes
-      await expectPersisted(browser, fiftyoneLoader, indexToId(0), [
+      await expectPersisted(openFreshPage, fiftyoneLoader, indexToId(0), [
         "placed",
         "placed",
         "target",
@@ -233,28 +236,32 @@ test.describe("keypoint field swap", () => {
   });
 
   test("an existing keypoint survives a field swap and undo restores its placements", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
     page,
   }) => {
-    const edit = modal.sidebar.edit;
+    const { annotate, edit } = modal.sidebar;
 
     await test.step("open the seeded keypoint from the label list", async () => {
       await openAnnotate(fiftyoneLoader, modal, page, indexToId(1));
-      await modal.sampleCanvas.assert.hasScreenshot(
+      await modal.sampleCanvas.assert.hasMediaScreenshot(
         "keypoint-field-swap-seeded.png",
       );
-      await modal.sidebar.annotate.selectActiveLabel("person", 0);
+      await edit.afterKeypointChecklist(() =>
+        annotate.selectActiveLabel("person", 0),
+      );
 
       await edit.assert.isOpen();
       await edit.assert.keypointPlacedSummary("4 of 4 placed");
-      // an existing label opens PASSIVELY: placement is not armed.
-      await modal.sidebar.annotate.assert.keypointModeIsActive(false);
+      // an existing label opens PASSIVELY: placement is not armed
+      await annotate.assert.keypointModeIsActive(false);
     });
 
     await test.step("move the label to the 3-node field", async () => {
-      await edit.moveFieldTo(ALT_FIELD);
+      await annotate.afterSave(() =>
+        edit.afterKeypointChecklist(() => edit.moveFieldTo(ALT_FIELD)),
+      );
     });
 
     await test.step("the form stays open with the destination's empty checklist", async () => {
@@ -263,35 +270,25 @@ test.describe("keypoint field swap", () => {
       await edit.assert.keypointPlacedSummary("0 of 3 placed");
     });
 
-    await test.step("the session survives the autosave settle", async () => {
-      await modal.sidebar.annotate.waitForSavesSettled();
-      await edit.assert.isOpen();
-    });
-
     await test.step("the erased destination draws nothing", async () => {
       // taken with the form still open: the undo below runs from it
-      await modal.sampleCanvas.assert.hasScreenshot(
+      await modal.sampleCanvas.assert.hasMediaScreenshot(
         "keypoint-field-swap-destination.png",
       );
     });
 
     await test.step("undo the move", async () => {
       await edit.assert.undoIsEnabled();
-      await edit.undo();
+      await annotate.afterSave(() =>
+        edit.afterKeypointChecklist(() => edit.undo()),
+      );
     });
 
     await test.step("the source field and its placements come back", async () => {
       await edit.assert.isOpen();
       await edit.assert.currentField(FIELD);
       await edit.assert.keypointPlacedSummary("4 of 4 placed");
-      for (const index of SEEDED_POINTS.keys()) {
-        await edit.assert.keypointNodeStatus(index, "placed");
-      }
-    });
-
-    await test.step("the restored geometry persists", async () => {
-      await modal.sidebar.annotate.waitForSavesSettled();
-      await expectPersisted(browser, fiftyoneLoader, indexToId(1), [
+      await edit.assert.keypointNodeStatuses([
         "placed",
         "placed",
         "placed",
@@ -300,11 +297,19 @@ test.describe("keypoint field swap", () => {
     });
 
     await test.step("the restored nodes draw where they were seeded", async () => {
-      await edit.backButton.click();
-      await edit.assert.isClosed();
-      await modal.sampleCanvas.assert.hasScreenshot(
+      await annotate.afterEditing(() => edit.exitToList(), false);
+      await modal.sampleCanvas.assert.hasMediaScreenshot(
         "keypoint-field-swap-seeded.png",
       );
+    });
+
+    await test.step("the restored geometry persists", async () => {
+      await expectPersisted(openFreshPage, fiftyoneLoader, indexToId(1), [
+        "placed",
+        "placed",
+        "placed",
+        "placed",
+      ]);
     });
   });
 });

@@ -7,11 +7,11 @@
  *   - guided placement works on the video canvas: clicks place nodes in
  *     skeleton order, Skip leaves a NaN hole,
  *   - the creation adds exactly one object track to the timeline,
- *   - the frame label survives a true server round-trip: a fresh browser
- *     context draws it on frame 1 and lists it with its placed nodes, and the
- *     skipped node comes back as a hole.
+ *   - the frame label survives a true server round-trip: a fresh page draws
+ *     it on frame 1 and lists it with its placed nodes, and the skipped node
+ *     comes back as a hole.
  */
-import { type Browser, test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -50,26 +50,26 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.sidebar.annotate.afterLabelList(() =>
+    modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    ),
+  );
 };
 
-/** Verify persisted state from a brand-new browser context (true round-trip). */
-const inFreshContext = async (
-  browser: Browser,
+/**
+ * Verify persisted state on a fresh page (a true round-trip). The fixture
+ * closes the test's page first, so call it last.
+ */
+const inFreshPage = async (
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
-  verify: (modal: ModalPom, page: Page) => Promise<void>,
+  verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal, freshPage);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 test.beforeAll(async ({ datasetFactory, foWebServer }) => {
@@ -109,69 +109,69 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.describe("video keypoint creation", () => {
   test("guided placement creates a track and persists the frame label", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
     page,
   }) => {
     await openAnnotate(fiftyoneLoader, modal, page);
+    const { annotate, edit } = modal.sidebar;
+    const { sampleCanvas, videoAnnotate } = modal;
 
-    // clean slate: no object tracks yet.
-    await modal.videoAnnotate.assert.objectTrackCount(0);
+    // clean slate: no object tracks yet
+    await videoAnnotate.assert.objectTrackCount(0);
 
-    const edit = modal.sidebar.edit;
-
-    await modal.sidebar.annotate.keypointMode();
-    await modal.sidebar.annotate.assert.keypointModeIsActive();
-    await edit.assert.keypointNodeStatus(0, "target");
+    await edit.afterKeypointChecklist(() => annotate.keypointMode());
+    await annotate.assert.keypointModeIsActive();
+    await edit.assert.keypointNodeStatuses(["target", "pending", "pending"]);
 
     // place node 0, skip node 1, place node 2. The establish on first
-    // placement re-keys the draft into a track; the mode must survive it.
-    await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[0]);
-    await edit.assert.keypointNodeStatus(0, "placed");
-    await edit.assert.keypointNodeStatus(1, "target");
-    await modal.sidebar.annotate.assert.keypointModeIsActive();
+    // placement re-keys the draft into a track (exactly one new timeline
+    // row); the mode must survive it.
+    await videoAnnotate.afterTracksChange(() =>
+      edit.afterKeypointChecklist(() => sampleCanvas.click(...PLACEMENTS[0])),
+    );
+    await videoAnnotate.assert.objectTrackCount(1);
+    await edit.assert.keypointNodeStatuses(["placed", "target", "pending"]);
+    await annotate.assert.keypointModeIsActive();
 
-    await edit.skipKeypointNode();
-    await edit.assert.keypointNodeStatus(1, "skipped");
-    await edit.assert.keypointNodeStatus(2, "target");
-    await modal.sidebar.annotate.assert.keypointModeIsActive();
+    await edit.afterKeypointChecklist(() => edit.skipKeypointNode());
+    await edit.assert.keypointNodeStatuses(["placed", "skipped", "target"]);
+    await annotate.assert.keypointModeIsActive();
 
-    await modal.sampleCanvas.placeKeypointNode(...PLACEMENTS[2]);
-    await edit.assert.keypointNodeStatus(2, "placed");
+    await edit.afterKeypointChecklist(() =>
+      sampleCanvas.click(...PLACEMENTS[2]),
+    );
+    await edit.assert.keypointNodeStatuses(["placed", "skipped", "placed"]);
 
-    // the creation establishes exactly one object track on the timeline.
-    await modal.videoAnnotate.assert.objectTrackCount(1);
-
-    await edit.selectFieldChoice("label", "person");
+    await annotate.afterSave(() => edit.selectFieldChoice("label", "person"));
     await edit.assert.verifyFieldValue("label", "person");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
-    // true round-trip: a fresh browser context finds the track and the frame
-    // label. The skip was session state, so node 1 reads back as the first
-    // hole: the next placement target.
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    // true round-trip: a fresh page finds the track and the frame label. The
+    // skip was session state, so node 1 reads back as the first hole: the
+    // next placement target.
+    await inFreshPage(openFreshPage, fiftyoneLoader, async (freshModal) => {
+      const fresh = freshModal.sidebar;
       await freshModal.videoAnnotate.assert.objectTrackCount(1);
       await freshModal.videoAnnotate.assert.labelListed("person");
 
       // frame 1 from a cold load: two dots, no edge through the hole
-      await freshModal.videoAnnotate.assert.canvasRendersField(
-        `frames.${FIELD}`,
-      );
-      await freshModal.sampleCanvas.assert.hasScreenshot(
+      await freshModal.sampleCanvas.assert.hasMediaScreenshot(
         "keypoint-video-frame.png",
       );
 
-      await freshModal.videoAnnotate.selectLabel("person");
-
-      const freshEdit = freshModal.sidebar.edit;
-      await freshEdit.assert.editsLabelType("Keypoint");
-      await freshEdit.assert.keypointPlacedSummary(
+      await fresh.edit.afterKeypointChecklist(() =>
+        freshModal.videoAnnotate.selectLabel("person"),
+      );
+      await fresh.edit.assert.editsLabelType("Keypoint");
+      await fresh.edit.assert.keypointPlacedSummary(
         `2 of ${SKELETON_NODES.length} placed`,
       );
-      await freshEdit.assert.keypointNodeStatus(0, "placed");
-      await freshEdit.assert.keypointNodeStatus(1, "target");
-      await freshEdit.assert.keypointNodeStatus(2, "placed");
+      await fresh.edit.assert.keypointNodeStatuses([
+        "placed",
+        "target",
+        "placed",
+      ]);
     });
   });
 });
