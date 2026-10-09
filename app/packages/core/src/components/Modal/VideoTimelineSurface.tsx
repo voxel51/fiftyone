@@ -184,8 +184,10 @@ export const VideoTimelineSurface: React.FC<VideoTimelineSurfaceProps> = ({
   // if not. The readout in the controls row switches between the two at a
   // click, which is where the frame-number preference now lives.
   //
-  // The DISPLAY still opens on timecode (`defaultDisplay` below): frames were
-  // opt-in on the looker too, behind `UseFrameNumberOptionElement`.
+  // The DISPLAY opens on the user's last pick, which `PlaybackProvider`
+  // remembers; until they first toggle, on timecode (`defaultDisplay` below),
+  // as frames were opt-in on the looker too, behind
+  // `UseFrameNumberOptionElement`.
   const mode = useMemo<TimelineMode>(
     () =>
       frameRate && Number.isFinite(frameRate) && frameRate > 0
