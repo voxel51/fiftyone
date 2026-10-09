@@ -1,10 +1,14 @@
 /* Lifted clear of the bottom of the window, as the notices were before */
 .notice {
   bottom: 50px;
+  /* fit one-line notices instead of voodo's fixed 28rem, which wraps them */
+  width: auto;
+  max-width: min(90vw, 40rem);
 }
 
 .link {
   color: inherit;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
