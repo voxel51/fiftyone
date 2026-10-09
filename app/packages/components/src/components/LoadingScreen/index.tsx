@@ -63,7 +63,9 @@ export default function LoadingScreen({ text }: { text: string }) {
             className={styles.box}
             style={
               {
-                ...detection[1],
+                transform: `translate(${detection[1].left}px, ${detection[1].top}px)`,
+                width: detection[1].width,
+                height: detection[1].height,
                 "--detection": detection[0].color,
               } as CSSProperties
             }

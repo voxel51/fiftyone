@@ -82,11 +82,13 @@
       transparent 1px
     );
   background-size: 6px 6px;
+  left: 0;
+  top: 0;
+  will-change: transform, width, height;
   transition:
-    left 260ms cubic-bezier(0.2, 0, 0, 1),
-    top 260ms cubic-bezier(0.2, 0, 0, 1),
-    width 260ms cubic-bezier(0.2, 0, 0, 1),
-    height 260ms cubic-bezier(0.2, 0, 0, 1),
+    transform 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 320ms cubic-bezier(0.4, 0, 0.2, 1),
     border-color 200ms ease,
     background-color 200ms ease;
 }
