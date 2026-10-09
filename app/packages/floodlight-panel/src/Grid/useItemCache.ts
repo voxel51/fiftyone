@@ -1,6 +1,6 @@
 import { createCache } from "@fiftyone/looker";
 import { useEffect } from "react";
-import { useMemoOne } from "use-memo-one";
+import usePanelMemo from "./panelMemory";
 
 export default function useItemCache({
   maxHiddenItems,
@@ -15,21 +15,20 @@ export default function useItemCache({
   onSet?: (key: string) => void;
   reset: string;
 }) {
-  const cache = useMemoOne(() => {
-    /** CLEAR CACHE WHEN reset CHANGES */
-    reset;
-    /** CLEAR CACHE WHEN reset CHANGES */
-
-    return createCache({
-      maxHiddenItems,
-      maxHiddenItemsSizeBytes,
-      onDispose,
-      onSet,
-    });
-  }, [maxHiddenItems, maxHiddenItemsSizeBytes, onDispose, onSet, reset]);
-
-  // delete cache during cleanup
-  useEffect(() => () => cache.delete(), [cache]);
+  // the cache outlives the grid's mount, so returning from a sample's page
+  // shows its tiles as they were; a new reset (or limit) replaces it
+  const cache = usePanelMemo(
+    "items",
+    `${reset}:${maxHiddenItems}:${maxHiddenItemsSizeBytes}`,
+    () =>
+      createCache({
+        maxHiddenItems,
+        maxHiddenItemsSizeBytes,
+        onDispose,
+        onSet,
+      }),
+    (previous) => previous.delete(),
+  );
 
   useEffect(() => {
     const listener = () => cache.empty();

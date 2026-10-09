@@ -14,6 +14,7 @@ import {
 } from "@fiftyone/reverb";
 import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
+import usePanelMemo from "./panelMemory";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
 
@@ -89,11 +90,8 @@ const useSpotlightPager = ({
 
   const keys = useRef(new Set<string>());
 
-  const pages = useMemo(() => {
-    /** Track already requested pages */
-    clearRecords;
-    return new Set();
-  }, [clearRecords]);
+  /** Track already requested pages, across mounts in this panel */
+  const pages = usePanelMemo("pages", clearRecords, () => new Set<number>());
 
   // Per-page cursor caches, used when `cursorPagination` is active so
   // page N's request can seek from page N±1's boundary. Spotlight only
@@ -106,14 +104,16 @@ const useSpotlightPager = ({
   // Forward fetch of page N (>0) uses pageEndCursors[N-1] as `after`;
   // backward fetch of page N (<0) uses pageStartCursors[N+1] as `before`.
   // Cleared alongside `pages` (same lifecycle).
-  const pageEndCursors = useMemo(() => {
-    clearRecords;
-    return new Map<number, string>();
-  }, [clearRecords]);
-  const pageStartCursors = useMemo(() => {
-    clearRecords;
-    return new Map<number, string>();
-  }, [clearRecords]);
+  const pageEndCursors = usePanelMemo(
+    "pageEndCursors",
+    clearRecords,
+    () => new Map<number, string>(),
+  );
+  const pageStartCursors = usePanelMemo(
+    "pageStartCursors",
+    clearRecords,
+    () => new Map<number, string>(),
+  );
 
   const page = useReverbCallback(
     ({ snapshot }) => {

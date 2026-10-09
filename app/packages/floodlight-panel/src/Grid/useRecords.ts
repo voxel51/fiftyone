@@ -1,10 +1,6 @@
-import { useMemo } from "react";
+import usePanelMemo from "./panelMemory";
 
 export type Records = Map<string, number>;
 
-export default (clear: string) => {
-  return useMemo(() => {
-    clear;
-    return new Map<string, number>();
-  }, [clear]);
-};
+export default (clear: string) =>
+  usePanelMemo("records", clear, () => new Map<string, number>());

@@ -2,6 +2,7 @@ import type { ID } from "@fiftyone/floodlight";
 import { useMemo } from "react";
 import { useReverbCallback, useReverbTransaction } from "@fiftyone/reverb";
 import { gridAt, gridFraction, gridPage } from "./atoms";
+import usePanelMemo from "./panelMemory";
 
 export interface ScrollLocation {
   at: ID;
@@ -18,9 +19,13 @@ export default function useScrollLocation(pageReset: string) {
     [],
   );
 
+  // the first read after new data starts at the top; a remount in the same
+  // panel (returning from a sample's page) keeps its place
+  const marker = usePanelMemo("scrollMarker", pageReset, () => ({
+    current: -1 as number | null,
+  }));
   const getKey = useMemo(() => {
-    pageReset;
-    const ref: { current: number | null } = { current: -1 };
+    const ref = marker;
 
     return () => {
       if (ref.current === -1) {
@@ -32,7 +37,7 @@ export default function useScrollLocation(pageReset: string) {
 
       return ref.current;
     };
-  }, [getPage, pageReset]);
+  }, [getPage, marker]);
 
   const get = useReverbCallback(
     ({ snapshot }) =>

@@ -49,6 +49,7 @@ import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
 import useRail from "../rail/useRail";
+import usePanelMemo from "./panelMemory";
 import Storm from "./Storm";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
 import useUpdates from "./useUpdates";
@@ -346,7 +347,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const { reorder } = relayout;
   const lastPageReset = useRef(pageReset);
   const lastItemsReset = useRef(itemsReset);
-  const loaded = useRef(false);
+  // whether this panel's grid has shown this data, across mounts: returning
+  // from a sample's page shows the grid, not the storm
+  const loaded = usePanelMemo("loaded", pageReset, () => ({ current: false }));
   useEffect(() => {
     if (lastPageReset.current !== pageReset) {
       lastPageReset.current = pageReset;
