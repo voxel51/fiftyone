@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import { useOperatorBrowser } from "@fiftyone/operators";
 import { ListIcon } from "@voxel51/voodo";
 import type { ActionProps } from "../types";
@@ -13,7 +13,7 @@ export default ({
   const iconSize = useActionIconSize(24);
   return (
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
-      <PillButton
+      <ActionButton
         open={false}
         highlight={browser.isVisible}
         icon={<ListIcon size={iconSize} />}

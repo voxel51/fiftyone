@@ -1,3 +1,4 @@
+import { TextAction } from "@voxel51/voodo";
 import {
   AdaptiveMenuItemComponentPropsType,
   ErrorBoundary,
@@ -121,11 +122,34 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     />
   );
 
+  // the grid toolbar's borderless text actions
   if (
     place === types.Places.SAMPLES_GRID_ACTIONS ||
-    place === types.Places.SAMPLES_GRID_SECONDARY_ACTIONS ||
-    place === types.Places.SAMPLES_VIEWER_ACTIONS
+    place === types.Places.SAMPLES_GRID_SECONDARY_ACTIONS
   ) {
+    return (
+      <TextAction
+        size="md"
+        title={title}
+        style={{ height: 28, padding: "0 8px", gap: 4 }}
+        onClick={execute}
+      >
+        {showIcon && (
+          <OperatorIcon
+            {...operator}
+            icon={icon}
+            darkIcon={darkIcon}
+            lightIcon={lightIcon}
+            canExecute={canExecute}
+            iconProps={{ sx: { fontSize: 12 } }}
+          />
+        )}
+        {title}
+      </TextAction>
+    );
+  }
+
+  if (place === types.Places.SAMPLES_VIEWER_ACTIONS) {
     return (
       <PillButton
         {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
@@ -133,7 +157,6 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         icon={showIcon && IconComponent}
         text={!showIcon && title}
         title={title}
-        highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
         style={{ whiteSpace: "nowrap" }}
         tooltipPlacement={modal ? "top" : "bottom"}
       />

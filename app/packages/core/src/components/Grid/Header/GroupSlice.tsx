@@ -1,45 +1,40 @@
-import { Selector } from "@fiftyone/components";
+import { ToolbarAction } from "@fiftyone/actions";
 import { groupSlice, groupSlices, useSetGroupSlice } from "@fiftyone/state";
-import { useCallback } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
+import { Dropdown, DropdownAnchor, MenuCheckItem } from "@voxel51/voodo";
 
-const Slice = ({ value }: { className?: string; value: string }) => {
-  return <>{value}</>;
-};
-
+/** The group slice the grid shows */
 const GroupSlice = () => {
   const slice = useReverbValue(groupSlice);
   if (!slice) {
     throw new Error("slice not defined");
   }
   const setSlice = useSetGroupSlice();
-  const groupSlicesValue = useReverbValue(groupSlices);
-
-  const useSearch = useCallback(
-    (search: string) => {
-      const values = groupSlicesValue.filter((name) => name.includes(search));
-      return { values, total: values.length };
-    },
-    [groupSlicesValue],
-  );
+  const slices = useReverbValue(groupSlices);
 
   return (
-    <Selector
-      inputStyle={{ height: 28 }}
-      component={Slice}
-      containerStyle={{
-        marginLeft: "0.5rem",
-        position: "relative",
-      }}
-      onSelect={async (slice) => {
-        setSlice(slice);
-        return slice;
-      }}
-      overflow={true}
-      placeholder={"slice"}
-      useSearch={useSearch}
-      value={slice}
-    />
+    <Dropdown
+      portal
+      anchor={DropdownAnchor.BottomEnd}
+      trigger={
+        <ToolbarAction
+          aria-label={`Group slice: ${slice}`}
+          data-cy="group-slice"
+          label={slice}
+          menu
+        />
+      }
+    >
+      {slices.map((name) => (
+        <MenuCheckItem
+          key={name}
+          checked={name === slice}
+          onClick={() => setSlice(name)}
+        >
+          {name}
+        </MenuCheckItem>
+      ))}
+    </Dropdown>
   );
 };
 

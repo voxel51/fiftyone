@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../../../Actions/ActionButton";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { BookmarkIcon } from "@voxel51/voodo";
@@ -101,7 +101,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
 
   return shouldToggleBookMarkIconOn ? (
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
-      <PillButton
+      <ActionButton
         open={false}
         highlight={true}
         icon={loading ? <Loading /> : <BookmarkIcon size={24} />}

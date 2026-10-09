@@ -20,5 +20,9 @@ export { default as ToggleSidebar } from "./components/Actions/ToggleSidebar";
 export { ActionDiv } from "./components/Actions/utils";
 export { default as Input, NumberInput } from "./components/Common/Input";
 export { default as RadioGroup } from "./components/Common/RadioGroup";
-export { default as GridActions } from "./components/Grid/Actions";
+export { default as GridToolbar } from "./components/Grid/Toolbar";
+export {
+  default as ToolbarAction,
+  type ToolbarActionProps,
+} from "./components/Grid/Toolbar/ToolbarAction";
 export { shouldToggleBookMarkIconOnSelector } from "./components/Grid/Actions/SaveFilters";

@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import type { Lookers } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { LocalOfferIcon } from "@voxel51/voodo";
@@ -52,7 +52,7 @@ export default ({
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       ref={ref}
     >
-      <PillButton
+      <ActionButton
         tooltipPlacement={modal ? "bottom" : "top"}
         style={{
           cursor: disableTag

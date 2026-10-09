@@ -18,6 +18,16 @@ export const SamplesHeader = styled.div`
   gap: 8px;
 `;
 
+/** The grid's actions row, above the sidebar and the grid in the Samples panel */
+export const ActionsRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 8px 16px 6px;
+  min-width: 0;
+`;
+
 export const RightDiv = styled.div`
   display: flex;
   justify-content: center;
@@ -33,7 +43,9 @@ export const RightDiv = styled.div`
 
 export const RightContainer = styled.div`
   display: flex;
-  color: ${({ theme }) => theme.text.secondary};
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 `;
 
 export const SliderContainer = styled.div`

@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
 import { SearchIcon, WallpaperIcon } from "@voxel51/voodo";
@@ -59,7 +59,7 @@ const Similarity = ({
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       ref={ref}
     >
-      <PillButton
+      <ActionButton
         key={"button"}
         icon={icon}
         open={open}

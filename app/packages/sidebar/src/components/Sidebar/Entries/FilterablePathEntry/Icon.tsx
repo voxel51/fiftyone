@@ -19,11 +19,9 @@ export const LightningBolt = ({
 }) => {
   return (
     <Tooltip placement="top-center" text={tooltip}>
-      <LightningIcon
-        data-cy={"query-performance"}
-        size={14}
-        style={{ marginRight: 2, color }}
-      />
+      <span data-cy={"query-performance"} style={{ display: "flex" }}>
+        <LightningIcon size={14} style={{ marginRight: 2, color }} />
+      </span>
     </Tooltip>
   );
 };

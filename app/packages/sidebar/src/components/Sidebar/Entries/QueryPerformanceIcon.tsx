@@ -108,7 +108,9 @@ const QueryPerformanceIcon = () => {
         },
       }}
     >
-      <ZapIcon size={14} color={lightningBoltColor} />
+      <span style={{ display: "flex" }}>
+        <ZapIcon size={14} color={lightningBoltColor} />
+      </span>
     </Tooltip>
   );
 };

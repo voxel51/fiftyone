@@ -1,4 +1,4 @@
-import { KeyboardArrowDownIcon, KeyboardArrowUpIcon } from "@voxel51/voodo";
+import { KeyboardArrowDownIcon, KeyboardArrowRightIcon } from "@voxel51/voodo";
 import { Tooltip } from "@fiftyone/components";
 import { type ReverbState, useReverbState } from "@fiftyone/reverb";
 import { useTheme } from "styled-components";
@@ -19,14 +19,15 @@ export default ({
   unindexed?: boolean;
 }) => {
   const [isExpanded, setExpanded] = useReverbState(expanded);
-  const Arrow = isExpanded ? KeyboardArrowUpIcon : KeyboardArrowDownIcon;
+  const Arrow = isExpanded ? KeyboardArrowDownIcon : KeyboardArrowRightIcon;
   const theme = useTheme();
   const arrow = (
-    <Arrow
+    <span
       data-cy={`sidebar-field-arrow-disabled-${id}`}
-      size={16}
-      color={theme.text.secondary}
-    />
+      style={{ display: "flex" }}
+    >
+      <Arrow size={16} color={theme.text.secondary} />
+    </span>
   );
 
   if (frameFilterDisabledPath) {

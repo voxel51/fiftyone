@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import { useOutsideClick } from "@fiftyone/state";
 import { SettingsIcon } from "@voxel51/voodo";
 import { useRef, useState } from "react";
@@ -21,7 +21,7 @@ export default ({
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       ref={ref}
     >
-      <PillButton
+      <ActionButton
         tooltipPlacement={modal ? "bottom" : "top"}
         icon={<SettingsIcon size={iconSize} />}
         open={open}

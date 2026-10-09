@@ -2259,6 +2259,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     "@testing-library/dom": "catalog:"
     "@testing-library/react": "catalog:"
+    "@voxel51/voodo": "catalog:"
     prettier: "catalog:"
     react: "catalog:"
     react-dom: "catalog:"

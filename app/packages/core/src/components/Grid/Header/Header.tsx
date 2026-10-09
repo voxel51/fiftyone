@@ -1,117 +1,27 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { GridToolbar } from "@fiftyone/actions";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
-import { Apps, ImageAspectRatio } from "@mui/icons-material";
-import { Suspense, useMemo } from "react";
-import {
-  constSelector,
-  useReverbValue,
-  useResetReverbState,
-} from "@fiftyone/reverb";
-import { GridActions } from "@fiftyone/actions";
-import { Slider } from "@fiftyone/sidebar";
-import ResourceCount from "../../ResourceCount";
-import { gridSpacing, gridZoom } from "../atoms";
-import { ZOOM_RANGE } from "../useZoomSetting";
-import {
-  RightContainer,
-  RightDiv,
-  SamplesHeader,
-  SliderContainer,
-} from "./Containers";
+import { useReverbValue } from "@fiftyone/reverb";
+import { ActionsRow, RightContainer } from "./Containers";
+import Display from "./Display";
 import GridHeaderSampleRendererControls from "./GridHeaderSampleRendererControls";
 import GroupSlice from "./GroupSlice";
 import Sort from "./Sort";
 
-const Spacing = () => {
-  const theme = useTheme();
-  const resetSpacing = useResetReverbState(gridSpacing);
-  return (
-    <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Spacing"}>
-        <Slider
-          valueAtom={gridSpacing}
-          boundsAtom={constSelector([0, 64])}
-          color={theme.primary.plainColor}
-          showBounds={false}
-          persistValue={false}
-          showValue={false}
-          style={{ padding: 0, margin: 0 }}
-        />
-      </div>
-      <div
-        title={"Reset spacing"}
-        onClick={resetSpacing}
-        onKeyDown={() => null}
-        style={{ cursor: "pointer", display: "flex" }}
-      >
-        <Apps />
-      </div>
-    </SliderContainer>
-  );
-};
-
-const Zoom = () => {
-  const resetZoom = useResetReverbState(gridZoom);
-
-  const theme = useTheme();
-  return (
-    <SliderContainer>
-      <div style={{ flexGrow: 1 }} title={"Zoom"}>
-        <Slider
-          valueAtom={gridZoom}
-          boundsAtom={constSelector(ZOOM_RANGE)}
-          color={theme.primary.plainColor}
-          showBounds={false}
-          persistValue={false}
-          showValue={false}
-          style={{ padding: 0, margin: 0 }}
-        />
-      </div>
-      <div
-        title={"Reset zoom"}
-        onClick={resetZoom}
-        onKeyDown={() => null}
-        style={{ cursor: "pointer", display: "flex" }}
-      >
-        <ImageAspectRatio />
-      </div>
-    </SliderContainer>
-  );
-};
-
 const Header = () => {
   const isGroup = useReverbValue(isGroupAtom);
   const groupSlices = useReverbValue(fos.groupSlices);
-  const shouldShowSliceSelector = useMemo(
-    () => isGroup && groupSlices.length > 1,
-    [isGroup, groupSlices],
-  );
 
   return (
-    <SamplesHeader data-cy={"fo-grid-actions"}>
-      <GridActions key={"actions"} />
-      <RightContainer key={"options"}>
-        <Suspense
-          fallback={
-            <RightDiv>
-              <LoadingDots />
-            </RightDiv>
-          }
-        >
-          <ResourceCount />
-        </Suspense>
+    <ActionsRow data-cy={"fo-grid-actions"}>
+      <GridToolbar />
+      <RightContainer>
         <GridHeaderSampleRendererControls />
-        {shouldShowSliceSelector && (
-          <RightDiv>
-            <GroupSlice />
-          </RightDiv>
-        )}
+        {isGroup && groupSlices.length > 1 && <GroupSlice />}
         <Sort />
-        <Spacing />
-        <Zoom />
+        <Display />
       </RightContainer>
-    </SamplesHeader>
+    </ActionsRow>
   );
 };
 

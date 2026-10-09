@@ -1,6 +1,6 @@
 import { ACTIVE_FIELD, activeColorEntry } from "@fiftyone/state";
 import { useTrackEvent } from "@fiftyone/analytics";
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import { ColorLensIcon } from "@voxel51/voodo";
 import { useEffect, useRef, useState } from "react";
 import { useReverbState } from "@fiftyone/reverb";
@@ -36,7 +36,7 @@ export default ({
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       ref={ref}
     >
-      <PillButton
+      <ActionButton
         data-cy="action-color-settings"
         highlight={open}
         icon={<ColorLensIcon size={iconSize} />}

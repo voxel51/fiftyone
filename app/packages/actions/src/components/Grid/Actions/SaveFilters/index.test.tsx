@@ -67,8 +67,8 @@ vi.mock("@fiftyone/reverb", async (importOriginal) => ({
     }),
 }));
 
-vi.mock("@fiftyone/components", () => ({
-  PillButton: (props: { onClick: () => void; title: string }) => (
+vi.mock("../../../Actions/ActionButton", () => ({
+  default: (props: { onClick: () => void; title: string }) => (
     <button onClick={props.onClick}>{props.title}</button>
   ),
 }));

@@ -19,7 +19,8 @@
         "README.md"
     ],
     "dependencies": {
-        "@fiftyone/reverb": "workspace:*"
+        "@fiftyone/reverb": "workspace:*",
+        "@voxel51/voodo": "catalog:"
     },
     "devDependencies": {
         "@fiftyone/utilities": "workspace:^",

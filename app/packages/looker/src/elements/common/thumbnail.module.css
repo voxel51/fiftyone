@@ -68,3 +68,38 @@
   width: 0;
   cursor: unset;
 }
+
+/* VOODO's checkbox: an outlined box at rest, filled with a white check when
+   selected. A plugin's selection icon classes the input, and keeps its own
+   glyph. The class repeats to outrank the label's default checkbox. */
+.lookerThumbnailSelector.lookerThumbnailSelector
+  label
+  input[type="checkbox"]:not([class*="selectionIcon"])
+  ~ span {
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-content-icon-default);
+  border-radius: 4px;
+  background-color: color-mix(in srgb, black 40%, transparent);
+  background-image: none;
+}
+
+.lookerThumbnailSelector.lookerThumbnailSelector
+  label:hover
+  input[type="checkbox"]:not([class*="selectionIcon"])
+  ~ span {
+  border-color: var(--color-content-interactive-primary-hover);
+}
+
+.lookerThumbnailSelector.lookerThumbnailSelector
+  label
+  input[type="checkbox"]:not([class*="selectionIcon"]):checked
+  ~ span {
+  border-color: var(--color-content-interactive-primary-default);
+  background-color: var(--color-content-interactive-primary-default);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M20 6L9 17L4 12' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px;
+}

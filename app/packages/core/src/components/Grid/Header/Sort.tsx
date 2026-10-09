@@ -1,20 +1,25 @@
-import { ActionOption } from "@fiftyone/actions";
-import { Selector } from "@fiftyone/components";
+import { ToolbarAction } from "@fiftyone/actions";
 import {
   gridSortBy,
   gridSortFields,
   queryPerformance,
   similarityParameters,
 } from "@fiftyone/state";
-import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import { SORT_BY_INDEXED_FIELDS } from "@fiftyone/utilities";
-import { RightDiv, SliderContainer } from "./Containers";
+import {
+  ArrowDownWideNarrowIcon,
+  ArrowUpNarrowWideIcon,
+  Dropdown,
+  DropdownAnchor,
+  LaunchIcon,
+  MenuCheckItem,
+  MenuIconTextItem,
+  MenuSectionTitle,
+  MenuSeparator,
+} from "@voxel51/voodo";
 
-const Field = ({ value }: { className?: string; value: string }) => {
-  return <>{value}</>;
-};
-
+/** Orders the grid by a field, ascending or descending */
 export default function Sort() {
   const fields = useReverbValue(gridSortFields);
   const [value, select] = useReverbState(gridSortBy);
@@ -24,64 +29,70 @@ export default function Sort() {
     return null;
   }
 
-  const footer = isQPEnabled ? (
-    <ActionOption
-      text="Add additional fields"
-      href={SORT_BY_INDEXED_FIELDS}
-      title="More on sorting with Query Performance"
-      style={{ background: "unset", paddingTop: 0, paddingBottom: 0 }}
-      svgStyles={{ height: "1rem" }}
-    />
-  ) : undefined;
+  const descending = Boolean(value?.descending);
+  const setDescending = (next: boolean) =>
+    select((current) => (current ? { ...current, descending: next } : current));
 
   return (
-    <SliderContainer style={{ width: "auto" }}>
-      <RightDiv style={{ paddingRight: 0, border: "unset" }}>
-        <Selector
-          inputStyle={{ height: 28 }}
-          component={Field}
-          containerStyle={{
-            margin: "0 0.5rem",
-            position: "relative",
-          }}
-          value={value?.field}
-          onSelect={(_, v) => {
-            if (!v) {
-              return;
-            }
-            if (v === "-") {
-              select(null);
-              return;
-            }
-
-            select((current) => ({
-              field: v,
-              descending: Boolean(current?.descending),
-            }));
-          }}
-          useSearch={(v) => {
-            const values = fields.filter((field) => field.startsWith(v));
-            return { values: ["-", ...values] };
-          }}
-          overflow={true}
-          placeholder="Sort by"
-          footer={footer}
+    <Dropdown
+      portal
+      anchor={DropdownAnchor.BottomEnd}
+      trigger={
+        <ToolbarAction
+          aria-label={`Sort: ${value?.field ?? "Default"}`}
+          data-cy="grid-sort"
+          icon={descending ? ArrowDownWideNarrowIcon : ArrowUpNarrowWideIcon}
+          label={value?.field ?? "Default"}
+          menu
         />
-      </RightDiv>
-      {value !== null && (
-        <div
-          title={value?.descending ? "Descending" : "Ascending"}
+      }
+    >
+      <MenuSectionTitle>Sort by</MenuSectionTitle>
+      <MenuCheckItem checked={!value} onClick={() => select(null)}>
+        Default
+      </MenuCheckItem>
+      {fields.map((field) => (
+        <MenuCheckItem
+          key={field}
+          checked={value?.field === field}
           onClick={() =>
             select((current) => ({
-              ...current,
-              descending: !current.descending,
+              field,
+              descending: Boolean(current?.descending),
             }))
           }
-          style={{ cursor: "pointer", display: "flex" }}
         >
-          {value?.descending ? <ArrowDownward /> : <ArrowUpward />}
-        </div>
+          {field}
+        </MenuCheckItem>
+      ))}
+      <MenuSeparator />
+      <MenuSectionTitle>Order</MenuSectionTitle>
+      <MenuCheckItem
+        checked={Boolean(value) && !descending}
+        disabled={!value}
+        onClick={() => setDescending(false)}
+      >
+        Ascending
+      </MenuCheckItem>
+      <MenuCheckItem
+        checked={descending}
+        disabled={!value}
+        onClick={() => setDescending(true)}
+      >
+        Descending
+      </MenuCheckItem>
+      {isQPEnabled && (
+        <>
+          <MenuSeparator />
+          <MenuIconTextItem
+            icon={<LaunchIcon size={14} />}
+            text="Add additional fields"
+            onClick={() =>
+              window.open(SORT_BY_INDEXED_FIELDS, "_blank", "noopener")
+            }
+          />
+        </>
       )}
-    </SliderContainer>
+    </Dropdown>
   );
 }

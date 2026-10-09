@@ -10,7 +10,7 @@
  * a separate control.
  */
 
-import { AccountTreeIcon, IconColor } from "@voxel51/voodo";
+import { ListTreeIcon, IconColor } from "@voxel51/voodo";
 import styled from "styled-components";
 import SchemaLensSelector, {
   useSchemaLensAvailable,
@@ -37,7 +37,7 @@ const SchemaLensRow = ({
 
   return (
     <Row data-cy="schema-lens-row" $padded={padded}>
-      <AccountTreeIcon aria-hidden size={14} color={IconColor.Default} />
+      <ListTreeIcon aria-hidden size={14} color={IconColor.Default} />
       <SchemaLensSelector maxValueWidth={180} />
     </Row>
   );

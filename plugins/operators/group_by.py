@@ -23,14 +23,6 @@ class GroupBy(foo.Operator):
             risk_level=types.RiskLevel.LOW,
         )
 
-    def resolve_placement(self, ctx):
-        return types.Placement(
-            types.Places.SAMPLES_GRID_ACTIONS,
-            types.Button(
-                label="Create dynamic groups", icon="merge", prompt=True
-            ),
-        )
-
     def resolve_input(self, ctx):
         inputs = types.Object()
 

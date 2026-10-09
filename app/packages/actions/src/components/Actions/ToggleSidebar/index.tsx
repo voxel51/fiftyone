@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import { sidebarVisible } from "@fiftyone/state";
 import { KeyboardArrowLeftIcon, KeyboardArrowRightIcon } from "@voxel51/voodo";
 import React from "react";
@@ -17,7 +17,7 @@ const ToggleSidebar = React.forwardRef<
   const iconSize = useActionIconSize(24);
 
   return (
-    <PillButton
+    <ActionButton
       onClick={() => {
         setVisible(!visible);
       }}

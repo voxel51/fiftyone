@@ -105,7 +105,7 @@ function Grid() {
 
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
-      // no actions row above the grid while it is hidden
+      // the actions row sits above the grid, not over it
       offset: spacing,
       scrollbar: true,
       spacing,

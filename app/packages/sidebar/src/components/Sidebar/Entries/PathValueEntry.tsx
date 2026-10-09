@@ -1,4 +1,4 @@
-import { KeyboardArrowDownIcon, KeyboardArrowUpIcon } from "@voxel51/voodo";
+import { KeyboardArrowDownIcon, KeyboardArrowRightIcon } from "@voxel51/voodo";
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
@@ -96,7 +96,6 @@ const ScalarValueEntry = ({
   ) => void;
   slices?: boolean;
 }) => {
-  const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: "var(--color-content-bg-card-nested)",
   });
@@ -173,7 +172,7 @@ const ListValueEntry = ({
   slices?: boolean;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const Arrow = expanded ? KeyboardArrowUpIcon : KeyboardArrowDownIcon;
+  const Arrow = expanded ? KeyboardArrowDownIcon : KeyboardArrowRightIcon;
 
   const color = useReverbValue(fos.pathColor(path));
   const theme = useTheme();

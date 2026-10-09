@@ -1,4 +1,4 @@
-import { PillButton } from "@fiftyone/components";
+import ActionButton from "../ActionButton";
 import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
@@ -96,7 +96,7 @@ export default ({
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
       ref={ref}
     >
-      <PillButton
+      <ActionButton
         icon={loading ? <Loading /> : <CheckIcon size={iconSize} />}
         open={open}
         onClick={() => {
