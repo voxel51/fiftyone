@@ -11,6 +11,7 @@ import {
   useSetReverbState,
 } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
+import type { savedViewsFragment$data } from "@fiftyone/relay";
 import { toSlug } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -23,7 +24,7 @@ type SavedQueriesE2EEvents = {
   "e2e:saved-views:listed": { count: number; search: string };
 };
 
-export type SavedQuery = fos.State.SavedView;
+export type SavedQuery = savedViewsFragment$data["savedViews"][number];
 
 /**
  * A saved query is a search when its view is a text similarity search, and a
@@ -51,7 +52,7 @@ export const kindOf = (query: SavedQuery): "search" | "stages" =>
 export default function useSavedQueries(search: string) {
   const datasetName = fos.useCurrentDatasetName();
   const [data, refetch] = useRefetchableSavedViews();
-  const all = useMemo(() => (data.savedViews ?? []) as SavedQuery[], [data]);
+  const all: readonly SavedQuery[] = data.savedViews ?? [];
   const loaded = fos.useLoadedViewName();
   const setViewName = useSetReverbState(fos.viewName);
   const resetView = useResetReverbState(fos.view);
@@ -117,7 +118,7 @@ export default function useSavedQueries(search: string) {
   );
 
   const onEditSuccess = useCallback(
-    (saved: SavedQuery, reload?: boolean) => {
+    (saved: { slug: string }, reload?: boolean) => {
       refetch(
         { name: datasetName },
         {

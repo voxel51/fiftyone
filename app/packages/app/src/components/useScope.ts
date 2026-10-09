@@ -20,6 +20,6 @@ export default function useScope(): {
     count({ path: "", extended: true, modal: false }),
   );
   const last = useRef<number | null>(null);
-  if (loadable.state === "hasValue") last.current = loadable.contents;
+  if (loadable.state === "hasValue") last.current = loadable.contents as number;
   return { name, total: last.current };
 }

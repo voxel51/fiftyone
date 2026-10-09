@@ -20,7 +20,7 @@ export default function useFocusMode(enabled: boolean) {
   const exit = useCallback(() => setFocused(false), []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setFocused(false);

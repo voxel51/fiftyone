@@ -33,7 +33,8 @@ import {
 
 interface Props {
   id: string;
-  savedViews: fos.State.SavedView[];
+  /** Existing saved views, whose slugs a new name must not take */
+  savedViews: readonly { slug: string }[];
   onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
   canEdit?: boolean;
@@ -112,9 +113,7 @@ export default function ViewDialog(props: Props) {
     description: "",
   });
 
-  const savedViewSlugs = new Set(
-    savedViews.map((sv: fos.State.SavedView) => sv.slug.toLowerCase()),
-  );
+  const savedViewSlugs = new Set(savedViews.map((sv) => sv.slug.toLowerCase()));
   const slugValue = toSlug(nameValue);
   const nameExists =
     nameValue &&
