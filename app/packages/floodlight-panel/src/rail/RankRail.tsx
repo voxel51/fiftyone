@@ -7,6 +7,7 @@ import React, {
   type KeyboardEvent,
   type PointerEvent,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -21,9 +22,9 @@ import {
   rankTicks,
   thumbPosition,
   thumbSpan,
-  thumbTop,
 } from "./model";
 import styles from "./Rail.module.css";
+import useThumbMotion from "./useThumbMotion";
 
 const TICKS = 5;
 const MIN_SPAN = 0.03;
@@ -100,18 +101,17 @@ function RankRail({
   const span = thumbSpan(visible, total, MIN_SPAN);
   const pointer = drag ?? hover;
 
-  // between rows the thumb follows the scroll directly, outside React
+  // the thumb moves outside React: a drag places it, everything else eases it
+  const aim = useThumbMotion({ span, start, thumb });
   const dragging = drag !== null;
+  useLayoutEffect(() => {
+    if (drag !== null) aim(drag, true);
+    else aim(thumbPosition(anchorRank, total, visible));
+  }, [aim, anchorRank, drag, total, visible]);
   useEffect(() => {
     if (!follow || dragging) return undefined;
-    return follow((rank) => {
-      const el = thumb.current;
-      if (!el) return;
-      el.style[start] = percent(
-        thumbTop(thumbPosition(rank, total, visible), span),
-      );
-    });
-  }, [dragging, follow, span, start, total, visible]);
+    return follow((rank) => aim(thumbPosition(rank, total, visible)));
+  }, [aim, dragging, follow, total, visible]);
 
   if (total <= 0) return null;
   const mode = railMode({
@@ -183,10 +183,7 @@ function RankRail({
         <div
           ref={thumb}
           className={styles.thumb}
-          style={{
-            [start]: percent(thumbTop(position, span)),
-            [extent]: percent(span),
-          }}
+          style={{ [extent]: percent(span) }}
         />
         {pointer !== null && (
           <div className={styles.pill} style={{ [start]: percent(pointer) }}>
