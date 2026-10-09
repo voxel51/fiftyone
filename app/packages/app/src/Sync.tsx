@@ -29,7 +29,6 @@ import {
   commitMutation,
 } from "relay-runtime";
 import Setup from "./components/Setup";
-import SharedSessionBanner from "./components/SharedSessionBanner";
 import type { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import type {
   DatasetPageQuery,
@@ -69,7 +68,6 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
       {readyState === AppReadyState.CONNECTING && (
         <LoadingScreen text="Pixelating" />
       )}
-      {readyState === AppReadyState.OPEN && <SharedSessionBanner />}
       {readyState === AppReadyState.OPEN && (
         <Writer<OperationType>
           read={() => {
