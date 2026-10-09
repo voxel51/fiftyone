@@ -1,4 +1,4 @@
-import { TextAction } from "@voxel51/voodo";
+import { ExtensionIcon, TextAction } from "@voxel51/voodo";
 import {
   AdaptiveMenuItemComponentPropsType,
   ErrorBoundary,
@@ -134,17 +134,16 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         style={{ height: 28, padding: "0 8px", gap: 4 }}
         onClick={execute}
       >
-        {showIcon && (
-          <OperatorIcon
-            {...operator}
-            icon={icon}
-            darkIcon={darkIcon}
-            lightIcon={lightIcon}
-            canExecute={canExecute}
-            iconProps={{ sx: { fontSize: 12 } }}
-          />
-        )}
-        {title}
+        <OperatorIcon
+          {...operator}
+          icon={icon}
+          darkIcon={darkIcon}
+          lightIcon={lightIcon}
+          Fallback={ToolbarFallbackIcon}
+          canExecute={canExecute}
+          iconProps={{ sx: { fontSize: 12 }, style: { width: 12, height: 12 } }}
+        />
+        <span>{title}</span>
       </TextAction>
     );
   }
@@ -181,6 +180,8 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     </SquareButton>
   );
 }
+
+const ToolbarFallbackIcon = () => <ExtensionIcon size={12} />;
 
 function ComponentPlacement(props: OperatorPlacementProps) {
   const componentPlugins = useActivePlugins(PluginComponentType.Component, {});
