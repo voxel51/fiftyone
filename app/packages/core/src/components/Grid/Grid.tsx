@@ -12,7 +12,7 @@ import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
 import useLookerCache from "./useLookerCache";
-import useRecords from "./useRecords";
+import useGridItems from "./itemCache";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import TileDecoratorPortals from "./TileDecoratorPortals";
@@ -37,21 +37,21 @@ function Grid() {
 
   useSyncLabelsRenderingStatus();
 
-  const records = useRecords(pageReset);
+  const items = useGridItems(reset);
+  const { records } = items;
 
   // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useReverbValue(fos.maxGridItemsSizeBytes) / 2;
   const cache = useLookerCache({
+    items,
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
-    reset,
     ...useLabelVisibility(),
   });
 
   const { page, store } = useSpotlightPager({
-    clearRecords: reset,
+    items,
     pageSelector: pageParameters,
-    records,
     zoomSelector: gridCrop,
   });
 
@@ -105,8 +105,6 @@ function Grid() {
 
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
-      // the actions row sits above the grid, not over it
-      offset: spacing,
       scrollbar: true,
       spacing,
 

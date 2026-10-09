@@ -4,7 +4,7 @@ import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
 import { useRef } from "react";
 import { useReverbCallback } from "@fiftyone/reverb";
-import type { Records } from "./useRecords";
+import type { Records } from "./itemCache";
 
 export const addRange = (
   index: number,

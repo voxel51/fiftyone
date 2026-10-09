@@ -23,6 +23,7 @@
         "@fiftyone/plugins": "*",
         "@fiftyone/reverb": "workspace:*",
         "@fiftyone/sidebar": "*",
+        "@fiftyone/spaces": "*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",

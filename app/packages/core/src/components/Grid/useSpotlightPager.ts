@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
@@ -13,7 +13,7 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import type { Subscription } from "relay-runtime";
-import type { Records } from "./useRecords";
+import type { GridItems } from "./itemCache";
 import useTimeout from "./useTimeout";
 import { handleNode } from "./utils";
 
@@ -54,32 +54,25 @@ const processSamplePageData = (
 };
 
 const useSpotlightPager = ({
-  clearRecords,
+  items,
   pageSelector,
-  records,
   zoomSelector,
 }: {
-  clearRecords: string;
+  items: GridItems;
   pageSelector: ReverbValueReadOnly<
     (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
   >;
-  records: Records;
   zoomSelector: ReverbValueReadOnly<boolean>;
 }) => {
   const environment = useRelayEnvironment();
   const pager = useReverbValue(pageSelector);
   const zoom = useReverbValue(zoomSelector);
   const handleError = useErrorHandler();
-  const store: SampleStore = useMemo(() => new WeakMap(), []);
   const handleTimeout = useTimeout();
 
   const keys = useRef(new Set<string>());
 
-  const pages = useMemo(() => {
-    /** Track already requested pages */
-    clearRecords;
-    return new Set();
-  }, [clearRecords]);
+  const { pages, records, store } = items;
 
   const page = useReverbCallback(
     ({ snapshot }) => {

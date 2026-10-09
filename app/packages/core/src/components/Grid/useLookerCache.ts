@@ -1,35 +1,29 @@
 import { createCache } from "@fiftyone/looker";
 import { useEffect } from "react";
-import { useMemoOne } from "use-memo-one";
+import type { GridItems } from "./itemCache";
 
 export default function useLookerCache({
+  items,
   maxHiddenItems,
   maxHiddenItemsSizeBytes,
   onDispose,
   onSet,
-  reset,
 }: {
+  items: GridItems;
   maxHiddenItems: number;
   maxHiddenItemsSizeBytes: number;
   onDispose?: (key: string) => void;
   onSet?: (key: string) => void;
-  reset: string;
 }) {
-  const cache = useMemoOne(() => {
-    /** CLEAR CACHE WHEN reset CHANGES */
-    reset;
-    /** CLEAR CACHE WHEN reset CHANGES */
-
-    return createCache({
-      maxHiddenItems,
-      maxHiddenItemsSizeBytes,
-      onDispose,
-      onSet,
-    });
-  }, [maxHiddenItems, maxHiddenItemsSizeBytes, onDispose, onSet, reset]);
-
-  // delete cache during cleanup
-  useEffect(() => () => cache.delete(), [cache]);
+  // kept with the grid's items, which are disposed when the grid resets, not
+  // when it unmounts
+  items.lookers ??= createCache({
+    maxHiddenItems,
+    maxHiddenItemsSizeBytes,
+    onDispose,
+    onSet,
+  });
+  const cache = items.lookers;
 
   useEffect(() => {
     const listener = () => cache.empty();

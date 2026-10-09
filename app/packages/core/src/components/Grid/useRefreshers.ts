@@ -1,9 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import uuid from "react-uuid";
 import { useReverbValue } from "@fiftyone/reverb";
-import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./atoms";
 
 export default function useRefreshers() {
@@ -29,15 +27,11 @@ export default function useRefreshers() {
   const sort = useReverbValue(fos.gridSortBy);
   const view = fos.filterView(useReverbValue(fos.view) ?? []);
 
+  // The keys are the values themselves, so the same view returns the same
+  // keys after the grid remounts and its cached items stay valid
+
   // only reload, attempt to return to the last grid location
-  const layoutReset = useMemoOne(() => {
-    cropToContent;
-    fieldVisibilityStage;
-    mediaField;
-    queryPerformanceSetting;
-    refresher;
-    return uuid();
-  }, [
+  const layoutReset = JSON.stringify([
     cropToContent,
     fieldVisibilityStage,
     mediaField,
@@ -46,16 +40,7 @@ export default function useRefreshers() {
   ]);
 
   // the values reset the page, i.e. return to the top
-  const pageReset = useMemoOne(() => {
-    datasetName;
-    extendedStagesUnsorted;
-    filters;
-    groupSlice;
-    shouldRenderImaVidLooker;
-    similarityParameters;
-    view;
-    return uuid();
-  }, [
+  const pageReset = JSON.stringify([
     datasetName,
     extendedStagesUnsorted,
     filters,
@@ -66,11 +51,7 @@ export default function useRefreshers() {
     view,
   ]);
 
-  const reset = useMemoOne(() => {
-    layoutReset;
-    pageReset;
-    return uuid();
-  }, [layoutReset, pageReset]);
+  const reset = layoutReset + pageReset;
 
   useEffect(() => {
     const unsubscribe = subscribe(({ event }, { reset }) => {
