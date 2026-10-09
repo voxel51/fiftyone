@@ -1,9 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
-import uuid from "react-uuid";
 import { useReverbValue } from "@fiftyone/reverb";
-import { useMemoOne } from "use-memo-one";
 import { gridAt, gridFraction, gridPage } from "./atoms";
 
 export default function useRefreshers() {
@@ -31,14 +29,11 @@ export default function useRefreshers() {
   const dsid = useReverbValue(fos.datasetId) ?? "";
   const scrubCursor = useReverbValue(fos.gridScrubCursor(dsid));
 
+  // keys are the inputs themselves, so a remount in the same panel (after a
+  // sample's page) finds the grid it left
+
   // only reload, attempt to return to the last grid location
-  const layoutReset = useMemoOne(() => {
-    cropToContent;
-    fieldVisibilityStage;
-    mediaField;
-    queryPerformanceSetting;
-    return uuid();
-  }, [
+  const layoutReset = JSON.stringify([
     cropToContent,
     fieldVisibilityStage,
     mediaField,
@@ -46,23 +41,14 @@ export default function useRefreshers() {
   ]);
 
   // new data: the grid starts over, and the items it holds are stale
-  const itemsReset = useMemoOne(() => {
-    datasetName;
-    extendedStagesUnsorted;
-    filters;
-    groupSlice;
-    shouldRenderImaVidLooker;
-    similarityParameters;
-    view;
-    return uuid();
-  }, [
+  const itemsReset = JSON.stringify([
     datasetName,
     extendedStagesUnsorted,
     filters,
     groupSlice,
     // A committed scrub cursor seeks pagination to a sort-field value;
     // remount Spotlight at the new AT location.
-    scrubCursor,
+    scrubCursor ?? null,
     shouldRenderImaVidLooker,
     similarityParameters,
     view,
@@ -70,24 +56,12 @@ export default function useRefreshers() {
 
   // the values reset the page, i.e. return to the top; a new sort reorders
   // the same items
-  const pageReset = useMemoOne(() => {
-    itemsReset;
-    sort;
-    return uuid();
-  }, [itemsReset, sort]);
+  const pageReset = JSON.stringify([itemsReset, sort ?? null]);
 
   // the item cache outlives a new sort, so its items can move to their places
-  const gridReset = useMemoOne(() => {
-    layoutReset;
-    itemsReset;
-    return uuid();
-  }, [layoutReset, itemsReset]);
+  const gridReset = JSON.stringify([layoutReset, itemsReset]);
 
-  const reset = useMemoOne(() => {
-    gridReset;
-    refresher;
-    return uuid();
-  }, [gridReset, refresher]);
+  const reset = JSON.stringify([gridReset, refresher]);
 
   useEffect(() => {
     const unsubscribe = subscribe(({ event }, { reset }) => {
