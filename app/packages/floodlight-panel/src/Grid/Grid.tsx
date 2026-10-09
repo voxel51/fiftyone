@@ -40,7 +40,6 @@ import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
 import useRail from "../rail/useRail";
-import Pixelating from "./Pixelating";
 import Storm from "./Storm";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
 import useUpdates from "./useUpdates";
@@ -344,7 +343,6 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         className={clsx(styles.fallingPixels, !storm && styles.hidden)}
       >
         <Storm className={styles.storm} />
-        <Pixelating />
       </div>
       <div ref={overlay} className={styles.relayoutOverlay} />
       {pending && (
