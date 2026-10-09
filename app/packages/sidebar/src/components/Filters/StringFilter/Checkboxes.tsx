@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/reverb";
 import Checkbox from "../../Common/Checkbox";
 import FilterOption from "../FilterOption/FilterOption";
+import { ActionRow } from "../styles";
 import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
@@ -254,7 +255,7 @@ const Checkboxes = ({
         })}
       </div>
       {!!selectedSet.size && (
-        <>
+        <ActionRow>
           <FilterOption
             color={color}
             excludeAtom={excludeAtom}
@@ -264,7 +265,7 @@ const Checkboxes = ({
             valueName={name}
           />
           <Reset color={color} modal={modal} path={path} />
-        </>
+        </ActionRow>
       )}
     </>
   );

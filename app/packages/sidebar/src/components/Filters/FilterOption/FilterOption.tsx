@@ -11,6 +11,8 @@ import useOptions from "./useOptions";
 
 const FilterOptionContainer = styled.div`
   position: relative;
+  flex: 1;
+  min-width: 0;
 `;
 
 const FilterMode = styled.div`
@@ -51,39 +53,41 @@ const FilterOption: React.FC<Props> = ({
     path,
   });
 
+  if (options.length < 2) {
+    return null;
+  }
+
   return (
     <FilterOptionContainer>
-      {options.length > 1 && (
-        <FilterMode
-          data-cy="filter-mode-div"
-          onClick={() => !open && setOpen(true)}
+      <FilterMode
+        data-cy="filter-mode-div"
+        onClick={() => !open && setOpen(true)}
+      >
+        <Selected
+          color={color}
+          filterKey={filterKey}
+          options={options}
+          visibilityKey={visibilityKey}
+        />
+        <Tooltip
+          content={selected ?? ""}
+          anchor={modal ? "left" : "right"}
+          style={{ display: "flex", minWidth: 0 }}
         >
-          <Selected
-            color={color}
-            filterKey={filterKey}
-            options={options}
-            visibilityKey={visibilityKey}
-          />
-          <Tooltip
-            content={selected ?? ""}
-            anchor={modal ? "left" : "right"}
-            style={{ display: "flex", minWidth: 0 }}
+          <Text
+            variant={TextVariant.BodyTertiary}
+            color={TextColor.Secondary}
+            onClick={() => setOpen(!open)}
+            style={{
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+            }}
           >
-            <Text
-              variant={TextVariant.BodyTertiary}
-              color={TextColor.Secondary}
-              onClick={() => setOpen(!open)}
-              style={{
-                whiteSpace: "nowrap",
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-              }}
-            >
-              {selected}
-            </Text>
-          </Tooltip>
-        </FilterMode>
-      )}
+            {selected}
+          </Text>
+        </Tooltip>
+      </FilterMode>
       {open && (
         <Popout
           close={(e) => {

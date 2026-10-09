@@ -8,7 +8,8 @@ const Container = animated(styled.div`
   display: flex;
   justify-content: space-between;
   position: relative;
-  padding: 3px 3px 3px ${FILTER_SPACING.entryLeft};
+  padding: 3px ${FILTER_SPACING.entryRight} ${FILTER_SPACING.entryBottom}
+    ${FILTER_SPACING.entryLeft};
   border-radius: 2px;
 `);
 

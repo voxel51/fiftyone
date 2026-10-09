@@ -38,7 +38,7 @@ const StyledCheckbox = styled(ItemAction)`
   margin: 0;
   min-height: 28px;
   box-sizing: border-box;
-  padding: 0 0.375rem;
+  padding: 0;
   border-radius: 4px;
 `;
 

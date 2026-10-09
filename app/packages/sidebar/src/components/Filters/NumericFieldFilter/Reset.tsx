@@ -42,7 +42,7 @@ function Reset({
       size={Size.Sm}
       data-cy="button-Reset"
       onClick={reset}
-      style={{ alignSelf: "flex-start" }}
+      style={{ marginLeft: "auto" }}
     >
       Reset
     </TextAction>

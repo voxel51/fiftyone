@@ -5,7 +5,7 @@ import styled from "styled-components";
 
 const Panel = styled.div`
   position: relative;
-  margin-top: 0.6rem;
+  margin-top: 4px;
   min-width: 14rem;
   box-sizing: border-box;
   border: 1px solid ${cssVar.color.border.subtle};

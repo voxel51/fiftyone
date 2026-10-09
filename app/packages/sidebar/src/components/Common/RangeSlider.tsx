@@ -83,8 +83,14 @@ export const RangeSlider = ({
         step={getStep(bounds, fieldType)}
         value={sliderValue}
         onChangeCommitted={onCommit}
-        // the field's color in place of the brand fill
-        style={{ "--color-brand-primary": color } as React.CSSProperties}
+        style={
+          {
+            // the field's color in place of the brand fill
+            "--color-brand-primary": color,
+            // end labels sit tight to the track
+            gap: 4,
+          } as React.CSSProperties
+        }
       />
     </SliderContainer>
   );

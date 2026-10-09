@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
 import { useReverbValue } from "@fiftyone/reverb";
 import CommonRangeSlider from "../../Common/RangeSlider";
-import { FilterBody } from "../styles";
+import { ActionRow, FilterBody } from "../styles";
 import Box from "./Box";
 import FilterOption from "./FilterOption";
 import Inputs from "./Inputs";
@@ -80,8 +80,10 @@ const RangeSlider = ({
       )}
       <Inputs modal={modal} path={path} color={color} />
       {defaultRange && <Nonfinites modal={modal} path={path} />}
-      <FilterOption color={color} modal={modal} path={path} />
-      <Reset color={color} modal={modal} path={path} />
+      <ActionRow>
+        <FilterOption color={color} modal={modal} path={path} />
+        <Reset color={color} modal={modal} path={path} />
+      </ActionRow>
     </FilterBody>
   );
 };

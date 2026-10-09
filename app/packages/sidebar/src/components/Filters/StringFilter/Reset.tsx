@@ -23,7 +23,7 @@ export default function (params: {
       size={Size.Sm}
       data-cy="button-Reset"
       onClick={handleReset}
-      style={{ alignSelf: "flex-start" }}
+      style={{ marginLeft: "auto" }}
     >
       Reset
     </TextAction>

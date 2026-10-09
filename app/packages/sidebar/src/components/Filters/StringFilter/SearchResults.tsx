@@ -23,7 +23,6 @@ const Row = styled.div<{ $active: boolean }>`
   align-items: center;
   gap: 8px;
   min-height: ${ROW_HEIGHT}px;
-  padding: 0 0.375rem;
   border-radius: 4px;
   cursor: pointer;
   background: ${({ $active }) =>
