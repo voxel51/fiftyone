@@ -2,22 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { shouldToggleBookMarkIconOnSelector } from "@fiftyone/actions";
 import { useTrackEvent } from "@fiftyone/analytics";
 import { getEventBus } from "@fiftyone/events";
-import {
-  useResetReverbState,
-  useReverbValue,
-  useSetReverbState,
-} from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import type { savedViewsFragment$data } from "@fiftyone/relay";
 import { toSlug } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo } from "react";
 
-import { viewDialogOpen } from ".";
+import { useViewDialog } from ".";
 import useRefetchableSavedViews from "../../hooks/useRefetchableSavedViews";
-import { viewDialogContent } from "./ViewDialog";
 
 /** e2e specs wait on the list a refetch or search leaves on screen */
 type SavedQueriesE2EEvents = {
@@ -52,21 +45,14 @@ export const kindOf = (query: SavedQuery): "search" | "stages" =>
 export default function useSavedQueries(search: string) {
   const datasetName = fos.useCurrentDatasetName();
   const [data, refetch] = useRefetchableSavedViews();
-  const all: readonly SavedQuery[] = data.savedViews ?? [];
+  const all = useMemo<readonly SavedQuery[]>(
+    () => data.savedViews ?? [],
+    [data],
+  );
   const loaded = fos.useLoadedViewName();
-  const setViewName = useSetReverbState(fos.viewName);
-  const resetView = useResetReverbState(fos.view);
-  const canEdit = useReverbValue(fos.canEditSavedViews);
-  const setDialogOpen = useSetReverbState(viewDialogOpen);
-  const setDialogContent = useSetReverbState(viewDialogContent);
-  const resetDialogContent = useResetReverbState(viewDialogContent);
+  const controls = fos.useSavedViewControls();
+  const dialog = useViewDialog();
   const trackEvent = useTrackEvent();
-
-  // Nothing to save: the root view, with no filters beyond it
-  const bookmarkable = useReverbValue(shouldToggleBookMarkIconOnSelector);
-  const view = useReverbValue(fos.view);
-  const extended = useReverbValue(fos.extendedStages);
-  const empty = !bookmarkable && !view?.length && extended?.length > 2;
 
   useEffect(() => {
     refetch({ name: datasetName });
@@ -91,30 +77,23 @@ export default function useSavedQueries(search: string) {
     });
   }, [shown, search]);
 
+  const { load: loadSlug, clear } = controls;
   const load = useCallback(
     (query: SavedQuery) => {
-      setViewName(query.slug);
+      loadSlug(query.slug);
       trackEvent("select_saved_view");
     },
-    [setViewName, trackEvent],
+    [loadSlug, trackEvent],
   );
 
-  const create = useCallback(() => {
-    resetDialogContent();
-    setDialogOpen(true);
-  }, [resetDialogContent, setDialogOpen]);
-
   const edit = useCallback(
-    (query: SavedQuery) => {
-      setDialogContent({
+    (query: SavedQuery) =>
+      dialog.edit({
         color: query.color || "",
         description: query.description || "",
-        isCreating: false,
         name: query.name,
-      });
-      setDialogOpen(true);
-    },
-    [setDialogContent, setDialogOpen],
+      }),
+    [dialog],
   );
 
   const onEditSuccess = useCallback(
@@ -125,14 +104,14 @@ export default function useSavedQueries(search: string) {
           fetchPolicy: "network-only",
           onComplete: () => {
             if (saved && reload) {
-              setViewName(saved.slug);
+              loadSlug(saved.slug);
               trackEvent("created_saved_view");
             }
           },
         },
       );
     },
-    [datasetName, refetch, setViewName, trackEvent],
+    [datasetName, loadSlug, refetch, trackEvent],
   );
 
   const onDeleteSuccess = useCallback(
@@ -142,24 +121,24 @@ export default function useSavedQueries(search: string) {
         {
           fetchPolicy: "network-only",
           onComplete: () => {
-            if (loaded && toSlug(loaded) === toSlug(deleted)) resetView();
+            if (loaded && toSlug(loaded) === toSlug(deleted)) clear();
           },
         },
       );
     },
-    [datasetName, loaded, refetch, resetView],
+    [datasetName, loaded, refetch, clear],
   );
 
   return {
     all,
     shown,
     loaded,
-    canEdit: canEdit.enabled === true,
-    cannotEditReason: canEdit.message,
-    canSave: canEdit.enabled === true && !empty,
+    canEdit: controls.canEdit,
+    cannotEditReason: controls.cannotEditReason,
+    canSave: controls.canEdit,
     load,
-    clear: resetView,
-    create,
+    clear,
+    create: dialog.create,
     edit,
     onEditSuccess,
     onDeleteSuccess,

@@ -29,6 +29,24 @@ export const viewDialogOpen = atom<boolean>({
   default: false,
 });
 
+/** Opens the saved view dialog, empty to save the current view or filled to edit one. */
+export const useViewDialog = () => {
+  const setOpen = useSetReverbState(viewDialogOpen);
+  const setContent = useSetReverbState(viewDialogContent);
+  const resetContent = useResetReverbState(viewDialogContent);
+
+  return {
+    create: () => {
+      resetContent();
+      setOpen(true);
+    },
+    edit: (content: { name: string; description: string; color: string }) => {
+      setContent({ ...content, isCreating: false });
+      setOpen(true);
+    },
+  };
+};
+
 export interface DatasetView {
   id: string;
   name: string;
