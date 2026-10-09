@@ -123,9 +123,10 @@
   }
 }
 
-/* the mock's toggle: 28px tall with 10px sides, 14px icons beside the label */
+/* the mock's toggle: 28px tall with 10px sides, 14px icons beside the label;
+   the track and each tab draw a 1px border around a 20px line */
 .modeSwitch [role="tab"] {
-  padding: 3px 10px;
+  padding: 2px 10px;
 }
 
 .mode {
