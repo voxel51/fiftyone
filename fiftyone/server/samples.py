@@ -28,13 +28,14 @@ from fiftyone.multimodal.media_reference.field_model import (
     resolve_sample_media,
 )
 from fiftyone.server.order.backend import (
+    ORDER_MAX_TIME_MS,
     Direction,
-    OrderError,
     OrderMismatch,
     OrderSpec,
     SeekTarget,
 )
-from fiftyone.server.order.schema import get_service, to_graphql_error
+from fiftyone.server.order.rail import sample_fraction
+from fiftyone.server.order.schema import call, get_service, to_graphql_error
 from fiftyone.server.scalars import BSON, JSON, BSONArray
 from fiftyone.server.utils import from_dict
 import fiftyone.server.view as fosv
@@ -102,9 +103,20 @@ class SamplePageInfo:
 class SampleEdge:
     cursor: str
     node: SampleItem
-    rank: t.Optional[int] = gql.field(
+    offset: t.Optional[int] = gql.field(
         default=None,
-        description="The sample's rank in the order, when paging one",
+        description="How many samples sort before this one, when paging a "
+        "SMALL order",
+    )
+    value: t.Optional[JSON] = gql.field(
+        default=None,
+        description="The sample's sort value (its id when unsorted), when "
+        "paging an order",
+    )
+    fraction: t.Optional[float] = gql.field(
+        default=None,
+        description="The sample's place on the order's rail, 0 at the "
+        "order's start and 1 at its end, when the order has a rail",
     )
 
 
@@ -112,7 +124,9 @@ class SampleEdge:
 class SampleConnection:
     page_info: SamplePageInfo
     edges: t.List[SampleEdge]
-    total: t.Optional[int] = None
+    total: t.Optional[int] = gql.field(
+        default=None, description="The total of a SMALL order"
+    )
     order_version: t.Optional[str] = gql.field(
         default=None,
         description="The data's current version, when paging an order",
@@ -148,13 +162,16 @@ async def paginate_samples(
     cursor_pagination: t.Optional[bool] = False,
     order: t.Optional[str] = None,
     seek: t.Optional[SeekTarget] = None,
+    info=None,
 ) -> SampleConnection:
     """Paginates samples in the given view.
 
     With ``order`` (an order token), ``after`` and ``before`` are positions
-    in that order, every edge carries its ``rank``, and ``sort_by``,
-    ``desc``, ``hint`` and ``cursor_pagination`` are ignored. ``seek``
-    starts the page at a rank, fraction or sort value instead.
+    in that order, edges carry their sort ``value``, ``fraction`` and
+    ``offset`` when the order has them, and ``sort_by``, ``desc``, ``hint``
+    and ``cursor_pagination`` are ignored. ``seek`` starts the page at an
+    offset, fraction or sort value instead. The order's queries are killed
+    when the request behind ``info`` is abandoned.
 
     Two cursor strategies are supported:
 
@@ -184,6 +201,7 @@ async def paginate_samples(
             dynamic_group=dynamic_group,
             max_query_time=max_query_time,
             seek=seek,
+            info=info,
         )
 
     run = lambda: fosv.get_view(
@@ -344,6 +362,7 @@ async def _paginate_ordered(
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
     seek: t.Optional[SeekTarget] = None,
+    info=None,
 ) -> SampleConnection:
     group = sample_filter.group if sample_filter else None
     if group and group.id:
@@ -362,18 +381,16 @@ async def _paginate_ordered(
     backward = seek is None and before is not None and after is None
     direction = Direction.BACKWARD if backward else Direction.FORWARD
     position = before if backward else after
-    try:
-        handle, page, version = await run_sync_task(
-            get_service().page,
-            order,
-            view_spec,
-            position,
-            direction,
-            first,
-            seek,
-        )
-    except OrderError as err:
-        raise to_graphql_error(err) from err
+    handle, page, version = await call(
+        info,
+        get_service().page,
+        order,
+        view_spec,
+        position,
+        direction,
+        first,
+        seek,
+    )
 
     samples = []
     view = None
@@ -392,32 +409,40 @@ async def _paginate_ordered(
             ).select(page.ids, ordered=True)
         )
         pipeline = await get_samples_pipeline(view, sample_filter)
-        maxTimeMS = max_query_time * 1000 if max_query_time else None
+        maxTimeMS = (
+            max_query_time * 1000 if max_query_time else ORDER_MAX_TIME_MS
+        )
         samples = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             pipeline,
             maxTimeMS=maxTimeMS,
         ).to_list(len(page.ids))
 
-    # a sample deleted since its id was ranked drops out of the page
+    # a sample deleted since its page was read drops out of the page
     by_id = {sample["_id"]: sample for sample in samples}
     kept = [i for i, _id in enumerate(page.ids) if _id in by_id]
     samples = [by_id[page.ids[i]] for i in kept]
     nodes = (
         await _shape_nodes(view, samples, pagination_data) if samples else []
     )
+    offsets = page.offsets or [None] * len(page.ids)
     edges = [
-        SampleEdge(node=node, cursor=page.positions[i], rank=page.ranks[i])
+        SampleEdge(
+            node=node,
+            cursor=page.positions[i],
+            offset=offsets[i],
+            value=page.values[i],
+            fraction=sample_fraction(handle, page.values[i], offsets[i]),
+        )
         for node, i in zip(nodes, kept)
     ]
 
     if backward:
         has_previous, has_next = page.has_more, position is not None
-    elif page.ranks:
-        has_previous, has_next = page.ranks[0] > 0, page.has_more
+    elif page.offsets:
+        has_previous, has_next = page.offsets[0] > 0, page.has_more
     else:
-        has_previous = position is not None or seek is not None
-        has_next = False
+        has_previous, has_next = not page.from_start, page.has_more
 
     return SampleConnection(
         page_info=SamplePageInfo(

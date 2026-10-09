@@ -33,12 +33,14 @@ def _get(doc: dict, path: str):
 
 class Walker:
     """Walks ``limit`` rows from a start in one direction of the ascending
-    order (``o=1`` up, ``o=-1`` down). ``path=None`` orders by ``_id``."""
+    order (``o=1`` up, ``o=-1`` down). ``path=None`` orders by ``_id``.
+    Every query runs under ``budget``."""
 
-    def __init__(self, collection, pipeline: t.List[dict], path):
+    def __init__(self, collection, pipeline: t.List[dict], path, budget):
         self._collection = collection
         self._pipeline = pipeline
         self._path = path
+        self._budget = budget
 
     def walk(
         self, start: t.Optional[Row], inclusive: bool, o: int, limit: int
@@ -99,6 +101,7 @@ class Walker:
         if limit <= 0:
             return []
 
+        self._budget.check()
         f = self._path
         project = {"_id": 1} if f is None else {f: 1}
         pipeline = self._pipeline + [
@@ -108,7 +111,9 @@ class Walker:
             {"$project": project},
         ]
         rows = []
-        for doc in self._collection.aggregate(pipeline):
+        for doc in self._collection.aggregate(
+            pipeline, **self._budget.options()
+        ):
             if f is None:
                 rows.append(Row(segment=1, value=None, id=doc["_id"]))
                 continue

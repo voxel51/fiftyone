@@ -43,16 +43,17 @@ from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.paginator import Connection, get_paginator_resolver
+from fiftyone.server.order.mongo import indexed_sort_fields
 from fiftyone.server.order.schema import (
     OpenOrderResult,
     OrderInput,
     OrderSeek,
     OrderStatus,
     OrderToken,
-    SeekResult,
+    SamplePosition,
     open_order,
     order_status,
-    seek_order,
+    sample_position,
     seek_target,
 )
 from fiftyone.server.samples import (
@@ -352,6 +353,11 @@ class Dataset:
     estimated_sample_count: int
     frame_indexes: t.Optional[t.List[Index]]
     sample_indexes: t.Optional[t.List[Index]]
+    indexed_sort_fields: t.Optional[t.List[str]] = gql.field(
+        default=None,
+        description="The sample fields an index can sort, which are the "
+        "sorts a collection above the SMALL order size offers",
+    )
 
     frame_collection_name: gql.Private[t.Optional[str]]
     sample_collection_name: gql.Private[t.Optional[str]]
@@ -586,26 +592,36 @@ class Query(fosa.AggregateQuery):
                 cursor_pagination=cursor_pagination,
                 order=order,
                 seek=seek_target(seek) if seek else None,
+                info=info,
             )
         except ExecutionTimeout:
             return QueryTimeout(query_time=max_query_time)
 
     @gql.field
-    async def open_order(self, input: OrderInput) -> OpenOrderResult:
-        return await open_order(input)
+    async def open_order(
+        self, input: OrderInput, info: Info = None
+    ) -> OpenOrderResult:
+        return await open_order(input, info)
 
     @gql.field
-    async def seek_order(
+    async def order_status(
+        self, token: OrderToken, info: Info = None
+    ) -> OrderStatus:
+        return await order_status(token, info)
+
+    @gql.field(
+        description="A sample's offset in its view's order and the view's "
+        "total. The only count of a large view: run it only on request"
+    )
+    async def sample_position(
         self,
-        token: OrderToken,
-        rank: t.Optional[int] = None,
-        fraction: t.Optional[float] = None,
-    ) -> SeekResult:
-        return await seek_order(token, rank, fraction)
-
-    @gql.field
-    async def order_status(self, token: OrderToken) -> OrderStatus:
-        return await order_status(token)
+        input: OrderInput,
+        sample_id: t.Optional[str] = None,
+        group_id: t.Optional[str] = None,
+        info: Info = None,
+    ) -> SamplePosition:
+        await fosh.on_graphql_request(info, input.dataset)
+        return sample_position(input, sample_id, group_id)
 
     @gql.field
     async def sample(
@@ -866,4 +882,7 @@ def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
         fo_dataset.get_index_information(
             include_stats=True, _keep_index_names=True
         )
+    )
+    dataset.indexed_sort_fields = indexed_sort_fields(
+        fo_dataset, dataset.sample_indexes
     )

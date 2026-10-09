@@ -1,6 +1,6 @@
 """
-FiftyOne Server order service: tokens and a per-process handle cache over an
-:class:`OrderBackend`.
+FiftyOne Server order service: tokens and a per-process handle cache over
+:class:`fiftyone.server.order.mongo.MongoOrderBackend`.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -15,13 +15,13 @@ import typing as t
 from fiftyone.server.order.backend import (
     Budget,
     Direction,
-    OrderBackend,
     OrderHandle,
     OrderMismatch,
     OrderSpec,
     Page,
     SeekTarget,
 )
+from fiftyone.server.order.mongo import MongoOrderBackend
 from fiftyone.server.order.positions import decode_token, encode_token
 
 MAX_HANDLES = 32
@@ -37,52 +37,48 @@ class Opened:
 class Status:
     stale: bool
     version: str
-    total: int
+    total: t.Optional[int]
 
 
-class OrderService:
-    """Opens orders and serves their seeks and pages. Tokens carry their
-    spec, so any process can serve a token it did not open."""
+class OrderService(object):
+    """Opens orders and serves their pages. Tokens carry their spec, so any
+    process can serve a token it did not open."""
 
     def __init__(
         self,
-        backend: OrderBackend,
-        budget: t.Optional[Budget] = None,
+        backend: MongoOrderBackend,
         max_handles: int = MAX_HANDLES,
     ):
         self._backend = backend
-        self._budget = budget or Budget()
         self._max = max_handles
         self._handles: "OrderedDict[str, OrderHandle]" = OrderedDict()
         self._lock = threading.Lock()
 
-    def open(self, spec: OrderSpec) -> Opened:
+    @property
+    def backend(self) -> MongoOrderBackend:
+        return self._backend
+
+    def open(self, spec: OrderSpec, budget: Budget) -> Opened:
         key = spec.digest()
         cached = self._get(key)
         if cached is not None:
-            if self._backend.version(cached) == cached.version:
+            if self._backend.version(cached, budget) == cached.version:
                 return Opened(encode_token(spec, cached.version), cached)
 
-        handle = self._backend.open(spec, self._budget)
+        handle = self._backend.open(spec, budget)
         self._put(key, handle)
         return Opened(encode_token(spec, handle.version), handle)
 
-    def handle(self, token: str) -> OrderHandle:
+    def handle(self, token: str, budget: Budget) -> OrderHandle:
         spec, _ = decode_token(token)
         key = spec.digest()
         cached = self._get(key)
         if cached is not None:
             return cached
 
-        handle = self._backend.open(spec, self._budget)
+        handle = self._backend.open(spec, budget)
         self._put(key, handle)
         return handle
-
-    def seek(self, token: str, target: SeekTarget) -> t.Tuple[str, int]:
-        return self._backend.seek(self.handle(token), target)
-
-    def boundaries(self, handle: OrderHandle, count: int):
-        return self._backend.boundaries(handle, count)
 
     def page(
         self,
@@ -91,7 +87,8 @@ class OrderService:
         position: t.Optional[str],
         direction: Direction,
         limit: int,
-        seek: t.Optional[SeekTarget] = None,
+        seek: t.Optional[SeekTarget],
+        budget: Budget,
     ) -> t.Tuple[OrderHandle, Page, str]:
         """A page of the order, from ``position`` or from the ``seek``
         target, with the data's current version."""
@@ -99,18 +96,18 @@ class OrderService:
         if spec.view_digest() != view_spec.view_digest():
             raise OrderMismatch("the view differs from the order's view")
 
-        handle = self.handle(token)
+        handle = self.handle(token, budget)
         if seek is not None:
-            position, _ = self._backend.seek(handle, seek)
+            position = self._backend.seek(handle, seek, budget)
             direction = Direction.FORWARD
 
-        page = self._backend.page(handle, position, direction, limit)
-        return handle, page, self._backend.version(handle)
+        page = self._backend.page(handle, position, direction, limit, budget)
+        return handle, page, self._backend.version(handle, budget)
 
-    def status(self, token: str) -> Status:
+    def status(self, token: str, budget: Budget) -> Status:
         _, version = decode_token(token)
-        handle = self.handle(token)
-        current = self._backend.version(handle)
+        handle = self.handle(token, budget)
+        current = self._backend.version(handle, budget)
         return Status(
             stale=current != version, version=current, total=handle.total
         )
@@ -125,11 +122,7 @@ class OrderService:
 
     def _put(self, key: str, handle: OrderHandle) -> None:
         with self._lock:
-            previous = self._handles.pop(key, None)
+            self._handles.pop(key, None)
             self._handles[key] = handle
-            evicted = []
             while len(self._handles) > self._max:
-                evicted.append(self._handles.popitem(last=False)[1])
-
-        for old in ([previous] if previous else []) + evicted:
-            self._backend.release(old)
+                self._handles.popitem(last=False)

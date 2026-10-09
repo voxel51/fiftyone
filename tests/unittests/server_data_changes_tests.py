@@ -142,7 +142,7 @@ class SkipPagingDeletionTests(unittest.IsolatedAsyncioTestCase):
 
 
 class OrderDeletionTests(unittest.TestCase):
-    """LIVE orders page by ``(value, _id)`` positions."""
+    """Orders page by ``(value, _id)`` positions."""
 
     def setUp(self):
         self.dataset = _make_dataset()
@@ -161,11 +161,13 @@ class OrderDeletionTests(unittest.TestCase):
         before it after the second page."""
         handle = self.backend.open(self._spec(), Budget())
         expected = _order(self.dataset, "u")
-        ids, ranks, position, pages = [], [], None, 0
+        ids, offsets, position, pages = [], [], None, 0
         while True:
-            page = self.backend.page(handle, position, Direction.FORWARD, PAGE)
+            page = self.backend.page(
+                handle, position, Direction.FORWARD, PAGE, Budget()
+            )
             ids += page.ids
-            ranks += page.ranks
+            offsets += page.offsets
             pages += 1
             if pages == 2:
                 deleted = [page.ids[-1], expected[0]]
@@ -175,7 +177,7 @@ class OrderDeletionTests(unittest.TestCase):
 
             position = page.positions[-1]
 
-        return ids, ranks, deleted
+        return ids, offsets, deleted
 
     def test_a_walk_continues_past_a_deleted_position(self):
         ids, _, deleted = self._walk_with_deletion()
@@ -186,28 +188,27 @@ class OrderDeletionTests(unittest.TestCase):
 
     @pytest.mark.xfail(
         strict=True,
-        reason="edge ranks count from the position's rank, which was taken "
-        "before the deletion; later ranks are off by the samples deleted "
-        "before them",
+        reason="edge offsets count from the position's offset, which was "
+        "taken before the deletion; later offsets are off by the samples "
+        "deleted before them",
     )
-    def test_ranks_after_a_deletion_count_survivors(self):
-        ids, ranks, _ = self._walk_with_deletion()
+    def test_offsets_after_a_deletion_count_survivors(self):
+        ids, offsets, _ = self._walk_with_deletion()
         survivors = _order(self.dataset, "u")
         after = ids[2 * PAGE :]
 
         self.assertEqual(
-            ranks[2 * PAGE :], [survivors.index(i) for i in after]
+            offsets[2 * PAGE :], [survivors.index(i) for i in after]
         )
 
     @pytest.mark.xfail(
         strict=True,
         reason="OrderService.handle() reuses the cached handle whatever the "
-        "version: stale boundaries land a rank seek one sample late",
+        "version: a stale total clamps an offset seek past the end",
     )
-    def test_rank_seek_after_a_deletion_lands_on_the_rank(self):
+    def test_offset_seek_after_a_deletion_lands_on_the_offset(self):
         service = OrderService(MongoOrderBackend())
-        opened = service.open(self._spec())
-        service.seek(opened.token, SeekTarget(rank=40))
+        opened = service.open(self._spec(), Budget())
         self.dataset.delete_samples(str(_order(self.dataset, "u")[10]))
 
         survivors = _order(self.dataset, "u")
@@ -217,10 +218,10 @@ class OrderDeletionTests(unittest.TestCase):
             None,
             Direction.FORWARD,
             3,
-            seek=SeekTarget(rank=40),
+            SeekTarget(offset=N - 1),
+            Budget(),
         )
-        self.assertEqual(page.ids, survivors[40:43])
-        self.assertEqual(page.ranks, [40, 41, 42])
+        self.assertEqual(page.ids, survivors[N - 2 :])
 
     @pytest.mark.xfail(
         strict=True,
@@ -228,16 +229,16 @@ class OrderDeletionTests(unittest.TestCase):
     )
     def test_status_after_a_deletion_reports_the_new_total(self):
         service = OrderService(MongoOrderBackend())
-        opened = service.open(self._spec())
+        opened = service.open(self._spec(), Budget())
         self.dataset.delete_samples(self.dataset.first())
 
-        status = service.status(opened.token)
+        status = service.status(opened.token, Budget())
         self.assertEqual(status.stale, True)
         self.assertEqual(status.total, N - 1)
 
     def test_a_page_after_a_deletion_reports_a_new_version(self):
         service = OrderService(MongoOrderBackend())
-        opened = service.open(self._spec())
+        opened = service.open(self._spec(), Budget())
         self.dataset.delete_samples(self.dataset.first())
 
         _, _, version = service.page(
@@ -246,6 +247,8 @@ class OrderDeletionTests(unittest.TestCase):
             None,
             Direction.FORWARD,
             PAGE,
+            None,
+            Budget(),
         )
         self.assertNotEqual(version, opened.handle.version)
 
@@ -261,4 +264,6 @@ class OrderDeletionTests(unittest.TestCase):
         outside["u"] = 2.0
         outside.save()
 
-        self.assertEqual(self.backend.version(handle), handle.version)
+        self.assertEqual(
+            self.backend.version(handle, Budget()), handle.version
+        )

@@ -6,12 +6,12 @@ FiftyOne Server MongoDB order backend.
 |
 """
 
-import bisect
+import contextlib
 import hashlib
 import typing as t
 
 from bson import MaxKey, MinKey, ObjectId
-from pymongo.errors import ExecutionTimeout
+from pymongo.errors import ExecutionTimeout, OperationFailure
 
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
@@ -19,22 +19,25 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.lightning as fosl
 from fiftyone.server.order.backend import (
     BadPosition,
-    Boundary,
+    Bounds,
     Budget,
     BudgetExceeded,
+    Cancelled,
     Direction,
+    Mode,
     OrderHandle,
     OrderPlan,
     OrderSpec,
     Page,
     Reason,
+    Scale,
+    SeekNotAllowed,
     SeekTarget,
-    Strategy,
 )
-from fiftyone.server.order.boundaries import build_boundaries
-from fiftyone.server.order.explain import explain_streams
+from fiftyone.server.order.explain import explain_serves
 from fiftyone.server.order.positions import (
     GAP,
     ITEM,
@@ -43,17 +46,29 @@ from fiftyone.server.order.positions import (
     decode_key,
     encode_key,
 )
+from fiftyone.server.order.rail import scale_of, value_at
 from fiftyone.server.order.walk import Row, Walker
 import fiftyone.server.view as fosv
 
+#: collections of at most this many documents are addressed by offset
+SMALL_COLLECTION_SIZE = 100000
+
 PLAN_MAX_TIME_MS = 2000
+
+_INTERRUPTED = 11601
 
 # stages whose order the grid shows when it has no sort of its own
 _REORDERING = (fosg.SortBy, fosg.SortBySimilarity, fosg.Shuffle, fosg.GeoNear)
 
+# stages that only shape documents, which an order never reads
+_PROJECTIONS = {
+    "fiftyone.core.stages.ExcludeFields",
+    "fiftyone.core.stages.SelectFields",
+}
+
 
 def spec_view(spec: OrderSpec, pagination_data: bool = False):
-    """The view an order ranks, without the order's sort."""
+    """The view an order sorts, without the order's sort."""
     args = spec.view_args()
     sample_filter = None
     if args["group_slice"]:
@@ -73,128 +88,72 @@ def spec_view(spec: OrderSpec, pagination_data: bool = False):
     )
 
 
-class MongoOrderBackend:
-    """Serves LIVE orders: views whose sort runs as one streaming index scan.
-    Other views are reported as without random access.
+def order_view(spec: OrderSpec):
+    """The view whose pipeline order queries run: :func:`spec_view` without
+    its projections, which can keep MongoDB from streaming a sort."""
+    stages = [
+        s for s in spec.stages or [] if s.get("_cls") not in _PROJECTIONS
+    ]
+    return spec_view(
+        OrderSpec(**{**spec.to_dict(), "stages": stages}),
+    )
+
+
+@contextlib.contextmanager
+def bounded(budget: Budget):
+    """Raises a timed out query as :class:`BudgetExceeded` and a killed one
+    as :class:`Cancelled`."""
+    try:
+        yield
+    except ExecutionTimeout as err:
+        raise BudgetExceeded("the query took too long") from err
+    except OperationFailure as err:
+        if budget.cancelled:
+            raise Cancelled("the request was abandoned") from err
+
+        if err.code == _INTERRUPTED:
+            raise BudgetExceeded("the query was interrupted") from err
+
+        raise
+
+
+class MongoOrderBackend(object):
+    """Orders the samples of a view: the sort value, then the sample id,
+    both reversed when descending. Unsorted views order by id.
     """
 
-    def plan(self, spec: OrderSpec) -> OrderPlan:
-        view = spec_view(spec)
-        return self._plan(spec, view)[0]
-
     def open(self, spec: OrderSpec, budget: Budget) -> OrderHandle:
-        view = spec_view(spec)
-        plan, path = self._plan(spec, view)
-        total = 0
-        pipeline = view._pipeline()
-        if plan.supports_random_access:
-            total = self._count(view, pipeline, budget)
+        view = order_view(spec)
+        with bounded(budget):
+            plan = self._plan(spec, view, budget)
+            pipeline = view._pipeline()
+            handle = OrderHandle(
+                spec=spec,
+                plan=plan,
+                version=self._version(view, budget),
+                state={"view": view, "pipeline": pipeline},
+            )
+            if plan.mode == Mode.SMALL:
+                handle.total = self._count(handle, None, budget)
+            elif plan.mode == Mode.INDEXED:
+                handle.bounds = self._bounds(handle, budget)
 
-        return OrderHandle(
-            spec=spec,
-            plan=plan,
-            total=total,
-            version=self._version(view),
-            budget=budget,
-            state={"view": view, "pipeline": pipeline, "path": path},
-        )
-
-    def boundaries(self, handle: OrderHandle, count: int) -> t.List[Boundary]:
-        stored = self._stored(handle)
-        if count <= 0 or not stored:
-            return []
-
-        if len(stored) <= count:
-            return list(stored)
-
-        picked = []
-        for i in range(count):
-            index = (i * len(stored)) // count
-            picked.append(stored[index])
-
-        return picked
+        return handle
 
     def seek(
-        self, handle: OrderHandle, target: SeekTarget
-    ) -> t.Tuple[str, int]:
-        if handle.total == 0:
-            return encode_key(Key(kind=START, rank=0, id=None)), 0
+        self, handle: OrderHandle, target: SeekTarget, budget: Budget
+    ) -> str:
+        """The place just before the target sample. A forward page from it
+        starts at the target."""
+        mode = handle.plan.mode
+        if mode not in (Mode.SMALL, Mode.INDEXED):
+            raise SeekNotAllowed("this order pages in order only")
 
-        if target.has_value:
-            return self._seek_value(handle, target.value)
+        with bounded(budget):
+            if mode == Mode.SMALL:
+                return self._seek_small(handle, target, budget)
 
-        rank = target.rank
-        if rank is None:
-            fraction = min(max(target.fraction or 0.0, 0.0), 1.0)
-            rank = int(fraction * handle.total)
-
-        return self._seek_rank(handle, min(max(rank, 0), handle.total - 1))
-
-    def _seek_rank(self, handle: OrderHandle, rank: int) -> t.Tuple[str, int]:
-        """Walks from the nearest stored boundary at or before ``rank``, at
-        most one boundary step."""
-        stored = self._stored(handle)
-        index = bisect.bisect_right([b.rank for b in stored], rank) - 1
-        boundary = stored[max(index, 0)]
-        if boundary.rank == rank:
-            return boundary.position, rank
-
-        key = decode_key(boundary.position)
-        o = -1 if handle.spec.desc else 1
-        rows = self._walker(handle).walk(
-            _walk_start(key), True, o, rank - boundary.rank + 1
-        )
-        if not rows:
-            return boundary.position, boundary.rank
-
-        row = rows[-1]
-        rank = boundary.rank + len(rows) - 1
-        position = Key(
-            kind=GAP,
-            rank=rank,
-            id=row.id,
-            segment=row.segment,
-            value=row.value,
-        )
-        return encode_key(position), rank
-
-    def _seek_value(self, handle: OrderHandle, value) -> t.Tuple[str, int]:
-        """The first sample at or past ``value`` in view order. Its rank is a
-        count of the samples before it."""
-        path = handle.state["path"]
-        if path is None:
-            raise BadPosition("a value seek needs a sorted order")
-
-        value = _coerce(handle.state["view"], handle.spec.sort_by, value)
-        segment = 0 if value is None else 1
-        desc = bool(handle.spec.desc)
-        # an id bound that admits every sample of the value's tie block
-        bound = MaxKey() if desc else MinKey()
-        if segment == 0:
-            before = {path: {"$ne": None}} if desc else None
-        elif desc:
-            before = {path: {"$gt": value}}
-        else:
-            before = {"$or": [{path: None}, {path: {"$lt": value}}]}
-
-        rank = self._count_where(handle, before) if before else 0
-        key = Key(kind=GAP, rank=rank, id=bound, segment=segment, value=value)
-        return encode_key(key), rank
-
-    def _count_where(self, handle: OrderHandle, match: dict) -> int:
-        coll = handle.state["view"]._dataset._sample_collection
-        pipeline = handle.state["pipeline"] + [
-            {"$match": match},
-            {"$count": "n"},
-        ]
-        try:
-            result = list(
-                coll.aggregate(pipeline, maxTimeMS=handle.budget.max_time_ms)
-            )
-        except ExecutionTimeout as err:
-            raise BudgetExceeded("counting the view took too long") from err
-
-        return result[0]["n"] if result else 0
+            return self._seek_indexed(handle, target)
 
     def page(
         self,
@@ -202,154 +161,402 @@ class MongoOrderBackend:
         position: t.Optional[str],
         direction: Direction,
         limit: int,
+        budget: Budget,
     ) -> Page:
         key = _start_key(position)
         forward = direction == Direction.FORWARD
+        if key is None and not forward and handle.plan.mode == Mode.SCROLL:
+            raise SeekNotAllowed("this order pages forward from its start")
+
         desc = bool(handle.spec.desc)
         # the walk moves through ascending (value, _id) order
         o = 1 if forward != desc else -1
-        walker = self._walker(handle)
-        start = _walk_start(key)
         inclusive = key is not None and key.kind == GAP and forward
-        rows = walker.walk(start, inclusive, o, limit + 1)
+        with bounded(budget):
+            rows = self._walker(handle, budget).walk(
+                _walk_start(key), inclusive, o, limit + 1
+            )
 
         has_more = len(rows) > limit
         rows = rows[:limit]
-        ranks = _ranks(key, forward, len(rows), handle.total)
+        offsets = _offsets(key, forward, len(rows), handle.total)
         positions = [
             encode_key(
                 Key(
                     kind=ITEM,
-                    rank=rank,
+                    offset=offsets[i] if offsets else None,
                     id=row.id,
                     segment=row.segment,
                     value=row.value,
                 )
             )
-            for row, rank in zip(rows, ranks)
+            for i, row in enumerate(rows)
         ]
         ids = [row.id for row in rows]
+        values = [row.value if handle.plan.path else row.id for row in rows]
         if not forward:
-            ids.reverse()
-            positions.reverse()
-            ranks.reverse()
+            for items in (ids, positions, values, offsets):
+                if items:
+                    items.reverse()
 
         return Page(
-            ids=ids, positions=positions, ranks=ranks, has_more=has_more
+            ids=ids,
+            positions=positions,
+            values=values,
+            offsets=offsets,
+            has_more=has_more,
+            from_start=forward and key is None,
         )
 
-    def version(self, handle: OrderHandle) -> str:
-        return self._version(handle.state["view"])
+    def version(self, handle: OrderHandle, budget: Budget) -> str:
+        with bounded(budget):
+            return self._version(handle.state["view"], budget)
 
-    def release(self, handle: OrderHandle) -> None:
-        """LIVE orders hold no database resources, and a released handle may
-        still be serving a page on another thread."""
+    def sample_offset(
+        self,
+        spec: OrderSpec,
+        sample_id: t.Optional[str],
+        group_id: t.Optional[str],
+        budget: Budget,
+    ) -> t.Optional[int]:
+        """How many samples sort before a sample of the view, or None when
+        the view does not hold it or the order is unsupported."""
+        view = order_view(spec)
+        plan = _supported(spec, view)
+        if plan.reason is not None:
+            return None
 
-    def _plan(
-        self, spec: OrderSpec, view
-    ) -> t.Tuple[OrderPlan, t.Optional[str]]:
-        unavailable = lambda reason: (
-            OrderPlan(
-                strategy=None, supports_random_access=False, reason=reason
-            ),
-            None,
-        )
-        if spec.unit != "SAMPLE" or spec.partition or spec.dynamic_group:
-            return unavailable(Reason.UNSUPPORTED_STAGE)
+        if group_id is not None:
+            group_field = view._dataset.group_field
+            if group_field is None:
+                raise BadPosition("the view has no groups")
 
-        stages = view._stages
-        if any(isinstance(s, fosg.GroupBy) for s in stages):
-            return unavailable(Reason.UNSUPPORTED_STAGE)
+            match = {group_field + "._id": _object_id(group_id)}
+        else:
+            match = {"_id": _object_id(sample_id)}
 
-        if any(_is_ordered_select(s) for s in stages):
-            return unavailable(Reason.UNSUPPORTED_STAGE)
-
-        path = None
-        if spec.sort_by:
-            if view._is_frame_field(spec.sort_by):
-                return unavailable(Reason.FRAME_SORT)
-
-            path = _sort_path(view, spec.sort_by)
-            if path is None:
-                return unavailable(Reason.UNSUPPORTED_STAGE)
-        elif any(isinstance(s, _REORDERING) for s in stages):
-            return unavailable(Reason.UNSUPPORTED_STAGE)
-
-        if not self._streams(view, path, spec.desc):
-            return unavailable(Reason.UNSUPPORTED_STAGE)
-
-        return (
-            OrderPlan(strategy=Strategy.LIVE, supports_random_access=True),
-            path,
-        )
-
-    def _streams(self, view, path: t.Optional[str], desc: bool) -> bool:
-        """Whether the view's sort runs as one index scan with no blocking
-        sort, which is what makes a seek cost independent of the view size.
-        """
-        o = -1 if desc else 1
-        field = path or "_id"
-        pipeline = view._pipeline() + [{"$sort": {field: o}}, {"$limit": 20}]
+        pipeline = view._pipeline() + [
+            {"$match": match},
+            {"$project": {plan.path or "_id": 1}},
+            {"$limit": 1},
+        ]
         coll = view._dataset._sample_collection
+        with bounded(budget):
+            docs = list(coll.aggregate(pipeline, **budget.options()))
+            if not docs:
+                return None
+
+            value = _get(docs[0], plan.path) if plan.path else None
+            before = _before(plan.path, spec.desc, value, docs[0]["_id"])
+            return _count_view(view, view._pipeline(), before, budget)
+
+    def view_total(self, spec: OrderSpec, budget: Budget) -> int:
+        view = order_view(spec)
+        with bounded(budget):
+            return _count_view(view, view._pipeline(), None, budget)
+
+    def _plan(self, spec: OrderSpec, view, budget: Budget) -> OrderPlan:
+        plan = _supported(spec, view)
+        if plan.reason is not None:
+            return plan
+
+        size = view._dataset._sample_collection.estimated_document_count()
+        if size <= SMALL_COLLECTION_SIZE:
+            plan.mode = Mode.SMALL
+        elif self._served(view, plan.path, spec.desc, budget):
+            plan.mode = Mode.INDEXED
+        else:
+            plan.mode = Mode.SCROLL
+
+        return plan
+
+    def _served(self, view, path, desc: bool, budget: Budget) -> bool:
+        """Whether an index serves the sort and the view's filter, from one
+        explain of a page query."""
+        field = path or "_id"
+        pipeline = view._pipeline() + [
+            {"$match": {field: {"$ne": None}}},
+            {"$sort": {field: -1 if desc else 1}},
+            {"$limit": 1},
+        ]
+        coll = view._dataset._sample_collection
+        options = {**budget.options(), "maxTimeMS": PLAN_MAX_TIME_MS}
         try:
             explain = coll.database.command(
                 "aggregate",
                 coll.name,
                 pipeline=pipeline,
                 explain=True,
-                maxTimeMS=PLAN_MAX_TIME_MS,
+                **options,
             )
         except ExecutionTimeout:
             return False
 
-        return explain_streams(explain, field)
+        return explain_serves(explain, field)
 
-    def _count(self, view, pipeline, budget: Budget) -> int:
+    def _bounds(self, handle: OrderHandle, budget: Budget) -> Bounds:
+        """The first and last keys of the sort index, and whether any sort
+        value is None: three index lookups."""
+        view = handle.state["view"]
+        path = handle.plan.path
+        field = view.get_field(handle.spec.sort_by) if path else None
         coll = view._dataset._sample_collection
-        try:
-            result = list(
-                coll.aggregate(
-                    pipeline + [{"$count": "n"}],
-                    allowDiskUse=True,
-                    maxTimeMS=budget.max_time_ms,
+        run = lambda stages: list(
+            coll.aggregate(
+                handle.state["pipeline"] + stages, **budget.options()
+            )
+        )
+        f = path or "_id"
+        lo = fosl._parse_result(run(fosl._first(f, view, 1, False)))
+        hi = fosl._parse_result(run(fosl._first(f, view, -1, False)))
+        has_none = bool(path) and bool(run(fosl._match(f, None)))
+        return Bounds(
+            min=lo,
+            max=hi,
+            has_none=has_none,
+            scale=scale_of(field) if path else Scale.ID,
+        )
+
+    def _seek_small(
+        self, handle: OrderHandle, target: SeekTarget, budget: Budget
+    ) -> str:
+        total = handle.total
+        if total == 0:
+            return encode_key(Key(kind=START, offset=0, id=None))
+
+        if target.has_value:
+            key = _value_key(handle, _coerce(handle, target.value))
+            path = handle.plan.path
+            if path is None:
+                before = _before(None, handle.spec.desc, None, key.id)
+            else:
+                before = _before(path, handle.spec.desc, key.value, None)
+
+            offset = self._count(handle, before, budget)
+            return encode_key(
+                Key(
+                    kind=GAP,
+                    offset=offset,
+                    id=key.id,
+                    segment=key.segment,
+                    value=key.value,
                 )
             )
-        except ExecutionTimeout as err:
-            raise BudgetExceeded("counting the view took too long") from err
 
-        return result[0]["n"] if result else 0
+        offset = target.offset
+        if offset is None:
+            offset = int(min(max(target.fraction or 0.0, 0.0), 1.0) * total)
 
-    def _version(self, view) -> str:
+        offset = min(max(offset, 0), total - 1)
+        row = self._row_at(handle, offset, budget)
+        return encode_key(
+            Key(
+                kind=GAP,
+                offset=offset,
+                id=row.id,
+                segment=row.segment,
+                value=row.value,
+            )
+        )
+
+    def _seek_indexed(self, handle: OrderHandle, target: SeekTarget) -> str:
+        if target.offset is not None:
+            raise SeekNotAllowed("an indexed order seeks by value")
+
+        if target.has_value:
+            return encode_key(
+                _value_key(handle, _coerce(handle, target.value))
+            )
+
+        if handle.bounds.scale is None:
+            raise SeekNotAllowed("this sort has no scale to seek on")
+
+        if (target.fraction or 0.0) <= 0.0 or handle.bounds.min is None:
+            return encode_key(Key(kind=START, offset=None, id=None))
+
+        value = value_at(target.fraction, handle.bounds, handle.spec.desc)
+        return encode_key(_value_key(handle, value))
+
+    def _row_at(self, handle: OrderHandle, offset: int, budget: Budget) -> Row:
+        """The sample at an offset of a ``SMALL`` order."""
+        path = handle.plan.path
+        o = -1 if handle.spec.desc else 1
+        if path:
+            stages = [
+                {"$project": {path: 1}},
+                {"$sort": {path: o, "_id": o}},
+            ]
+        else:
+            stages = [{"$project": {"_id": 1}}, {"$sort": {"_id": o}}]
+
+        coll = handle.state["view"]._dataset._sample_collection
+        docs = list(
+            coll.aggregate(
+                handle.state["pipeline"]
+                + stages
+                + [{"$skip": offset}, {"$limit": 1}],
+                allowDiskUse=True,
+                **budget.options(),
+            )
+        )
+        if not docs:
+            raise BadPosition("no sample at that offset")
+
+        value = _get(docs[0], path) if path else None
+        return Row(
+            segment=0 if path and value is None else 1,
+            value=value,
+            id=docs[0]["_id"],
+        )
+
+    def _count(self, handle: OrderHandle, match, budget: Budget) -> int:
+        return _count_view(
+            handle.state["view"], handle.state["pipeline"], match, budget
+        )
+
+    def _version(self, view, budget: Budget) -> str:
         coll = view._dataset._sample_collection
+        options = {
+            "max_time_ms": budget.max_time_ms,
+            "comment": budget.comment,
+        }
         latest = next(
-            coll.find({}, {"last_modified_at": 1})
+            coll.find({}, {"last_modified_at": 1}, **options)
             .sort("last_modified_at", -1)
             .limit(1),
             {},
         ).get("last_modified_at")
         doc = foo.get_db_conn().datasets.find_one(
-            {"_id": view._root_dataset._doc.id}, {"last_deletion_at": 1}
+            {"_id": view._root_dataset._doc.id},
+            {"last_deletion_at": 1},
+            **options,
         )
         deleted = (doc or {}).get("last_deletion_at")
         count = coll.estimated_document_count()
         raw = f"{latest}|{deleted}|{count}"
         return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
-    def _walker(self, handle: OrderHandle) -> Walker:
+    def _walker(self, handle: OrderHandle, budget: Budget) -> Walker:
         view = handle.state["view"]
         return Walker(
             view._dataset._sample_collection,
             handle.state["pipeline"],
-            handle.state["path"],
+            handle.plan.path,
+            budget,
         )
 
-    def _stored(self, handle: OrderHandle) -> t.List[Boundary]:
-        stored = handle.state.get("boundaries")
-        if stored is None:
-            stored = build_boundaries(handle)
-            handle.state["boundaries"] = stored
 
-        return stored
+def indexed_sort_fields(collection, indexes) -> t.List[str]:
+    """The fields that lead an index and can be sorted by, which are the
+    fields an index can serve a sort of.
+
+    Args:
+        collection: a :class:`fiftyone.core.collections.SampleCollection`
+        indexes: the collection's sample
+            :class:`fiftyone.server.indexes.Index` list
+
+    Returns:
+        a list of field names
+    """
+    db_fields = collection._get_db_fields_map(reverse=True) or {}
+    fields = []
+    for index in indexes or []:
+        path = index.key[0].field
+        name = db_fields.get(path, path)
+        if name not in fields and _sort_path(collection, name) is not None:
+            fields.append(name)
+
+    return fields
+
+
+def _count_view(view, pipeline, match, budget: Budget) -> int:
+    budget.check()
+    stages = [{"$match": match}] if match else []
+    coll = view._dataset._sample_collection
+    result = list(
+        coll.aggregate(
+            pipeline + stages + [{"$count": "n"}], **budget.options()
+        )
+    )
+    return result[0]["n"] if result else 0
+
+
+def _supported(spec: OrderSpec, view) -> OrderPlan:
+    """The order's sort path, or the reason the view cannot be ordered."""
+    unavailable = lambda reason: OrderPlan(mode=None, reason=reason)
+    if spec.unit != "SAMPLE" or spec.partition or spec.dynamic_group:
+        return unavailable(Reason.UNSUPPORTED_STAGE)
+
+    stages = view._stages
+    if any(isinstance(s, fosg.GroupBy) for s in stages):
+        return unavailable(Reason.UNSUPPORTED_STAGE)
+
+    if any(_is_ordered_select(s) for s in stages):
+        return unavailable(Reason.UNSUPPORTED_STAGE)
+
+    path = None
+    if spec.sort_by:
+        if view._is_frame_field(spec.sort_by):
+            return unavailable(Reason.FRAME_SORT)
+
+        path = _sort_path(view, spec.sort_by)
+        if path is None:
+            return unavailable(Reason.UNSUPPORTED_STAGE)
+    elif any(isinstance(s, _REORDERING) for s in stages):
+        return unavailable(Reason.UNSUPPORTED_STAGE)
+
+    return OrderPlan(mode=None, path=path)
+
+
+def _before(path, desc: bool, value, _id) -> dict:
+    """A match for the samples that sort before ``(value, _id)``. A None
+    ``_id`` places the target before every sample of its value."""
+    if path is None:
+        return {"_id": {"$gt" if desc else "$lt": _id}}
+
+    ties = (
+        [{path: value, "_id": {"$gt" if desc else "$lt": _id}}]
+        if _id is not None
+        else []
+    )
+    if value is None:
+        before = [{path: {"$ne": None}}] if desc else []
+    elif desc:
+        before = [{path: {"$gt": value}}]
+    else:
+        before = [{path: None}, {path: {"$lt": value}}]
+
+    clauses = before + ties
+    if not clauses:
+        return {"_id": {"$exists": False}}
+
+    return {"$or": clauses}
+
+
+def _value_key(handle: OrderHandle, value) -> Key:
+    """The place just before the first sample at or past a sort value. Its
+    id bound admits every sample of the value's tie block; unsorted orders
+    seek an id."""
+    if handle.plan.path is None:
+        return Key(kind=GAP, offset=None, id=value, segment=1, value=None)
+
+    return Key(
+        kind=GAP,
+        offset=None,
+        id=MaxKey() if handle.spec.desc else MinKey(),
+        segment=0 if value is None else 1,
+        value=value,
+    )
+
+
+def _get(doc: dict, path: str):
+    value = doc
+    for part in path.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+
+    return value
 
 
 def _start_key(position: t.Optional[str]) -> t.Optional[Key]:
@@ -367,24 +574,24 @@ def _walk_start(key: t.Optional[Key]) -> t.Optional[Row]:
     return Row(segment=key.segment, value=key.value, id=key.id)
 
 
-def _ranks(
-    key: t.Optional[Key], forward: bool, count: int, total: int
-) -> t.List[int]:
+def _offsets(
+    key: t.Optional[Key], forward: bool, count: int, total: t.Optional[int]
+) -> t.Optional[t.List[int]]:
+    """The offsets of a page's samples, when the order knows them."""
+    if total is None or (key is not None and key.offset is None):
+        return None
+
     if forward:
         if key is None:
             first = 0
         elif key.kind == GAP:
-            first = key.rank
+            first = key.offset
         else:
-            first = key.rank + 1
+            first = key.offset + 1
 
         return [first + i for i in range(count)]
 
-    if key is None:
-        last = total - 1
-    else:
-        last = key.rank - 1
-
+    last = total - 1 if key is None else key.offset - 1
     return [last - i for i in range(count)]
 
 
@@ -422,22 +629,30 @@ def _sort_path(view, field_name: str) -> t.Optional[str]:
     return path
 
 
-def _coerce(view, field_name: str, value):
+def _object_id(value: str) -> ObjectId:
+    try:
+        return ObjectId(value)
+    except Exception as err:
+        raise BadPosition("invalid id") from err
+
+
+def _coerce(handle: OrderHandle, value):
     """A JSON seek value as the field stores it."""
-    field = view.get_field(field_name)
     if value is None:
         return None
 
-    if isinstance(field, (fof.DateTimeField, fof.DateField)) and isinstance(
-        value, (int, float)
-    ):
-        dt = fou.timestamp_to_datetime(value)
-        return dt if isinstance(field, fof.DateTimeField) else dt.date()
+    if handle.plan.path is None:
+        return _object_id(value)
+
+    field = handle.state["view"].get_field(handle.spec.sort_by)
+    if isinstance(field, (fof.DateTimeField, fof.DateField)):
+        if isinstance(value, dict) and value.get("_cls") == "DateTime":
+            value = value.get("datetime")
+
+        if isinstance(value, (int, float)):
+            return fou.timestamp_to_datetime(value)
 
     if isinstance(field, fof.ObjectIdField) and isinstance(value, str):
-        try:
-            return ObjectId(value)
-        except Exception as err:
-            raise BadPosition("invalid id value") from err
+        return _object_id(value)
 
     return value

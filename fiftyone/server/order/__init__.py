@@ -1,5 +1,7 @@
 """
-FiftyOne Server orders: rank-addressable orderings of views.
+FiftyOne Server orders: orderings of views paged by cursor, addressed by
+offset in small collections and by sort value through an index in large
+ones.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,11 +10,12 @@ FiftyOne Server orders: rank-addressable orderings of views.
 
 from .backend import (
     BadPosition,
-    Boundary,
+    Bounds,
     Budget,
     BudgetExceeded,
+    Cancelled,
     Direction,
-    OrderBackend,
+    Mode,
     OrderError,
     OrderExpired,
     OrderHandle,
@@ -21,6 +24,8 @@ from .backend import (
     OrderSpec,
     Page,
     Reason,
-    Strategy,
+    Scale,
+    SeekNotAllowed,
+    SeekTarget,
 )
 from .service import OrderService

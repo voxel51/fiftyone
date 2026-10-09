@@ -1,8 +1,8 @@
 """
 FiftyOne Server Order API: GraphQL types and resolvers.
 
-Nothing here names a database: tokens and positions are opaque strings and
-the resolvers call an :class:`OrderBackend` through :class:`OrderService`.
+Tokens and positions are opaque strings. Every resolver runs its queries
+under a time limit and kills them when the request is abandoned.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -16,8 +16,10 @@ import typing as t
 from graphql import GraphQLError
 import strawberry as gql
 
-from fiftyone.core.utils import run_sync_task
+import fiftyone as fo
 
+from fiftyone.server.data import Info
+from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.order.backend import (
     BudgetExceeded,
     OrderError,
@@ -26,8 +28,13 @@ from fiftyone.server.order.backend import (
     Reason,
     SeekTarget,
 )
-from fiftyone.server.order.labels import format_label
+from fiftyone.server.order.cancel import run_bounded
 from fiftyone.server.order.mongo import MongoOrderBackend
+from fiftyone.server.order.rail import (
+    DEFAULT_TICKS,
+    offset_ticks,
+    value_ticks,
+)
 from fiftyone.server.order.service import OrderService
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 
@@ -47,17 +54,30 @@ Position = gql.scalar(
 
 
 @gql.enum
-class RankUnit(Enum):
+class OrderUnit(Enum):
     SAMPLE = "SAMPLE"
     GROUP = "GROUP"
     DYNAMIC_GROUP = "DYNAMIC_GROUP"
 
 
+@gql.enum(
+    description=(
+        "SMALL: at most 100,000 samples in the collection, addressed by "
+        "offset. INDEXED: an index serves the sort and the filter, so the "
+        "order seeks by value. SCROLL: pages in order only."
+    )
+)
+class OrderMode(Enum):
+    SMALL = "SMALL"
+    INDEXED = "INDEXED"
+    SCROLL = "SCROLL"
+
+
 @gql.enum
-class OrderStrategy(Enum):
-    LIVE = "LIVE"
-    SNAPSHOT = "SNAPSHOT"
-    LIST = "LIST"
+class OrderScale(Enum):
+    NUMBER = "NUMBER"
+    DATE = "DATE"
+    ID = "ID"
 
 
 @gql.enum
@@ -83,16 +103,19 @@ class OrderInput:
     dynamic_group: t.Optional[BSON] = None
     sort_by: t.Optional[str] = None
     desc: t.Optional[bool] = False
-    unit: t.Optional[RankUnit] = RankUnit.SAMPLE
+    unit: t.Optional[OrderUnit] = OrderUnit.SAMPLE
     partition: t.Optional[t.List[PartitionKey]] = None
 
 
-@gql.input
+@gql.input(
+    description=(
+        "Where a page starts: an offset (SMALL), a fraction of the rail "
+        "(SMALL, or INDEXED with a scale), or the first sample at or past a "
+        "sort value in view order (SMALL, INDEXED)."
+    )
+)
 class OrderSeek:
-    """Where a page starts: a rank, a fraction of the total, or the first
-    sample at or past a sort value in view order."""
-
-    rank: t.Optional[int] = None
+    offset: t.Optional[int] = None
     fraction: t.Optional[float] = None
     value: t.Optional[JSON] = gql.UNSET
 
@@ -100,7 +123,7 @@ class OrderSeek:
 def seek_target(seek: OrderSeek) -> SeekTarget:
     has_value = seek.value is not gql.UNSET
     return SeekTarget(
-        rank=seek.rank,
+        offset=seek.offset,
         fraction=seek.fraction,
         value=seek.value if has_value else None,
         has_value=has_value,
@@ -108,41 +131,56 @@ def seek_target(seek: OrderSeek) -> SeekTarget:
 
 
 @gql.type
-class Boundary:
-    rank: int
-    position: Position
+class OrderBounds:
+    min: t.Optional[JSON]
+    max: t.Optional[JSON]
+    has_none: bool
+    scale: t.Optional[OrderScale] = gql.field(
+        description="None when values do not map onto a rail (strings and "
+        "booleans): such orders seek by value only"
+    )
+
+
+@gql.type
+class OrderTick:
     value: t.Optional[JSON]
+    fraction: float
     label: str
 
 
 @gql.type
 class Order:
     token: OrderToken
-    total: int
-    random_access: bool
-    strategy: OrderStrategy
+    mode: OrderMode
     version: str
     handle: gql.Private[OrderHandle]
+    total: t.Optional[int] = gql.field(description="SMALL only")
+    bounds: t.Optional[OrderBounds] = gql.field(description="INDEXED only")
 
-    @gql.field
-    async def boundaries(self, count: int = 100) -> t.List[Boundary]:
-        stored = await _call(get_service().boundaries, self.handle, count)
-        sorted_ = bool(self.handle.spec.sort_by)
+    @gql.field(
+        description="Evenly spaced ticks: offsets in SMALL mode, round "
+        "numbers or calendar steps in INDEXED mode, none in SCROLL mode"
+    )
+    def ticks(self, count: int = DEFAULT_TICKS) -> t.List[OrderTick]:
+        handle = self.handle
+        if handle.total is not None:
+            ticks = offset_ticks(handle.total, count)
+        elif handle.bounds is not None:
+            ticks = value_ticks(handle.bounds, handle.spec.desc, count)
+        else:
+            ticks = []
+
         return [
-            Boundary(
-                rank=b.rank,
-                position=b.position,
-                value=b.value,
-                label=format_label(b.value, b.rank, sorted_),
+            OrderTick(
+                value=tick.value, fraction=tick.fraction, label=tick.label
             )
-            for b in stored
+            for tick in ticks
         ]
 
 
 @gql.type
 class OrderUnavailable:
     reason: Unavailable
-    total: t.Optional[int] = None
 
 
 OpenOrderResult = t.Annotated[
@@ -151,16 +189,52 @@ OpenOrderResult = t.Annotated[
 
 
 @gql.type
-class SeekResult:
-    position: Position
-    rank: int
-
-
-@gql.type
 class OrderStatus:
     stale: bool
     version: str
-    total: int
+    total: t.Optional[int] = gql.field(description="SMALL only")
+
+
+@gql.type
+class SamplePositionValue:
+    value: int
+
+
+SamplePositionPart = t.Annotated[
+    t.Union[SamplePositionValue, QueryTimeout],
+    gql.union("SamplePositionPart"),
+]
+
+
+@gql.type
+class SamplePosition:
+    """A sample's offset in its view's order and the view's total, each
+    counted separately under the App's query time limit."""
+
+    spec: gql.Private[OrderSpec]
+    sample_id: gql.Private[t.Optional[str]]
+    group_id: gql.Private[t.Optional[str]]
+
+    @gql.field(
+        description="How many samples sort before the sample, or null when "
+        "the view does not hold it or cannot be ordered"
+    )
+    async def offset(
+        self, info: Info = None
+    ) -> t.Optional[SamplePositionPart]:
+        return await _timed_count(
+            info,
+            get_service().backend.sample_offset,
+            self.spec,
+            self.sample_id,
+            self.group_id,
+        )
+
+    @gql.field
+    async def total(self, info: Info = None) -> SamplePositionPart:
+        return await _timed_count(
+            info, get_service().backend.view_total, self.spec
+        )
 
 
 @functools.lru_cache(maxsize=1)
@@ -172,15 +246,21 @@ def to_graphql_error(err: OrderError) -> GraphQLError:
     return GraphQLError(str(err), extensions={"code": err.code})
 
 
-async def _call(fn, *args):
+def get_request(info: t.Optional[Info]):
+    return info.context.request if info is not None else None
+
+
+async def call(info: t.Optional[Info], fn, *args):
+    """Runs an order call as a bounded request, raising order errors as
+    GraphQL errors."""
     try:
-        return await run_sync_task(fn, *args)
+        return await run_bounded(get_request(info), fn, *args)
     except OrderError as err:
         raise to_graphql_error(err) from err
 
 
 def spec_from_input(input: OrderInput) -> OrderSpec:
-    unit = input.unit or RankUnit.SAMPLE
+    unit = input.unit or OrderUnit.SAMPLE
     return OrderSpec(
         dataset=input.dataset,
         stages=input.view or [],
@@ -199,42 +279,73 @@ def spec_from_input(input: OrderInput) -> OrderSpec:
     )
 
 
-async def open_order(input: OrderInput) -> OpenOrderResult:
+async def open_order(
+    input: OrderInput, info: t.Optional[Info] = None
+) -> OpenOrderResult:
     spec = spec_from_input(input)
     try:
-        opened = await run_sync_task(get_service().open, spec)
+        opened = await run_bounded(get_request(info), get_service().open, spec)
     except BudgetExceeded:
         return OrderUnavailable(reason=Unavailable.BUDGET_EXCEEDED)
     except OrderError as err:
         raise to_graphql_error(err) from err
 
     handle = opened.handle
-    if not handle.plan.supports_random_access:
+    if handle.plan.mode is None:
         reason = handle.plan.reason or Reason.UNSUPPORTED_STAGE
         return OrderUnavailable(reason=Unavailable(reason.value))
 
+    bounds = None
+    if handle.bounds is not None:
+        b = handle.bounds
+        bounds = OrderBounds(
+            min=b.min,
+            max=b.max,
+            has_none=b.has_none,
+            scale=OrderScale(b.scale.value) if b.scale else None,
+        )
+
     return Order(
         token=opened.token,
-        total=handle.total,
-        random_access=True,
-        strategy=OrderStrategy(handle.plan.strategy.value),
+        mode=OrderMode(handle.plan.mode.value),
         version=handle.version,
+        total=handle.total,
+        bounds=bounds,
         handle=handle,
     )
 
 
-async def seek_order(
-    token: OrderToken,
-    rank: t.Optional[int] = None,
-    fraction: t.Optional[float] = None,
-) -> SeekResult:
-    target = SeekTarget(rank=rank, fraction=fraction)
-    position, landed = await _call(get_service().seek, token, target)
-    return SeekResult(position=position, rank=landed)
-
-
-async def order_status(token: OrderToken) -> OrderStatus:
-    status = await _call(get_service().status, token)
+async def order_status(
+    token: OrderToken, info: t.Optional[Info] = None
+) -> OrderStatus:
+    status = await call(info, get_service().status, token)
     return OrderStatus(
         stale=status.stale, version=status.version, total=status.total
     )
+
+
+def sample_position(
+    input: OrderInput,
+    sample_id: t.Optional[str] = None,
+    group_id: t.Optional[str] = None,
+) -> SamplePosition:
+    if (sample_id is None) == (group_id is None):
+        raise GraphQLError("pass one of sampleId or groupId")
+
+    return SamplePosition(
+        spec=spec_from_input(input), sample_id=sample_id, group_id=group_id
+    )
+
+
+async def _timed_count(info, fn, *args):
+    query_time = fo.app_config.max_query_time
+    try:
+        value = await run_bounded(
+            get_request(info), fn, *args, max_time_ms=query_time * 1000
+        )
+    except BudgetExceeded:
+        return QueryTimeout(query_time=query_time)
+    except OrderError as err:
+        raise to_graphql_error(err) from err
+
+    return None if value is None else SamplePositionValue(value=value)

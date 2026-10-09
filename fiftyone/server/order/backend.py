@@ -1,5 +1,5 @@
 """
-FiftyOne Server order backend protocol.
+FiftyOne Server order types.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -13,11 +13,30 @@ import typing as t
 
 from bson import json_util
 
+#: the time limit of every query an order request runs
+ORDER_MAX_TIME_MS = 10000
 
-class Strategy(str, Enum):
-    LIVE = "LIVE"
-    SNAPSHOT = "SNAPSHOT"
-    LIST = "LIST"
+
+class Mode(str, Enum):
+    """How an order is addressed.
+
+    ``SMALL`` collections are addressed by offset. Larger collections are
+    ``INDEXED`` when an index serves the sort and the view's filter, which
+    allows seeks by value, and ``SCROLL`` otherwise, which pages in order
+    only.
+    """
+
+    SMALL = "SMALL"
+    INDEXED = "INDEXED"
+    SCROLL = "SCROLL"
+
+
+class Scale(str, Enum):
+    """How sort values map linearly onto a rail."""
+
+    NUMBER = "NUMBER"
+    DATE = "DATE"
+    ID = "ID"
 
 
 class Reason(str, Enum):
@@ -49,8 +68,16 @@ class BadPosition(OrderError):
     code = "BAD_POSITION"
 
 
+class SeekNotAllowed(OrderError):
+    code = "SEEK_NOT_ALLOWED"
+
+
 class BudgetExceeded(OrderError):
     code = "BUDGET_EXCEEDED"
+
+
+class Cancelled(OrderError):
+    code = "CANCELLED"
 
 
 def _normalize(value):
@@ -91,15 +118,7 @@ class OrderSpec:
         return _digest(self.view_args())
 
     def digest(self) -> str:
-        return _digest(
-            {
-                **self.view_args(),
-                "sort_by": self.sort_by,
-                "desc": bool(self.desc),
-                "unit": self.unit,
-                "partition": self.partition,
-            }
-        )
+        return _digest(self.to_dict())
 
     def to_dict(self) -> dict:
         return {
@@ -122,10 +141,11 @@ def _digest(value) -> str:
 
 @dataclass
 class SeekTarget:
-    """Where a seek lands: a rank, a fraction of the total, or the first
-    sample at or past a sort value (``has_value`` tells None from unset)."""
+    """Where a seek lands: an offset (``SMALL`` only), a fraction of the
+    rail, or the first sample at or past a sort value (``has_value`` tells
+    None from unset)."""
 
-    rank: t.Optional[int] = None
+    offset: t.Optional[int] = None
     fraction: t.Optional[float] = None
     value: t.Any = None
     has_value: bool = False
@@ -133,75 +153,61 @@ class SeekTarget:
 
 @dataclass
 class Budget:
-    max_time_ms: int = 10000
+    """The limits of one request's queries. ``comment`` tags them so an
+    abandoned request can kill them."""
+
+    max_time_ms: int = ORDER_MAX_TIME_MS
+    comment: t.Optional[str] = None
+    cancelled: bool = False
+
+    def options(self) -> dict:
+        options = {"maxTimeMS": self.max_time_ms}
+        if self.comment:
+            options["comment"] = self.comment
+
+        return options
+
+    def check(self) -> None:
+        if self.cancelled:
+            raise Cancelled("the request was abandoned")
 
 
 @dataclass
 class OrderPlan:
-    strategy: t.Optional[Strategy]
-    supports_random_access: bool
+    mode: t.Optional[Mode]
+    path: t.Optional[str] = None
     reason: t.Optional[Reason] = None
-    exact_total: bool = True
-    live: bool = True
-    boundary_values: bool = True
 
 
 @dataclass
-class Boundary:
-    rank: int
-    position: str
-    value: t.Any
+class Bounds:
+    """The ends of an ``INDEXED`` order's sort index, in ascending order.
+    ``scale`` is None when values do not map linearly onto a rail."""
+
+    min: t.Any
+    max: t.Any
+    has_none: bool
+    scale: t.Optional[Scale]
 
 
 @dataclass
 class Page:
     ids: t.List[t.Any]
     positions: t.List[str]
-    ranks: t.List[int]
+    values: t.List[t.Any]
+    offsets: t.Optional[t.List[int]]
     has_more: bool
+    from_start: bool
 
 
 @dataclass
 class OrderHandle:
-    """What an opened order needs between calls. Backends may attach their
-    own state to ``state``."""
+    """What an opened order needs between calls. ``total`` is set in
+    ``SMALL`` mode and ``bounds`` in ``INDEXED`` mode."""
 
     spec: OrderSpec
     plan: OrderPlan
-    total: int
     version: str
-    budget: Budget = field(default_factory=Budget)
+    total: t.Optional[int] = None
+    bounds: t.Optional[Bounds] = None
     state: t.Dict[str, t.Any] = field(default_factory=dict)
-
-
-class OrderBackend(t.Protocol):
-    """Ranks the samples of a view in a total order: the sort value, then the
-    sample id, both reversed when descending. Unsorted views order by id.
-    """
-
-    def plan(self, spec: OrderSpec) -> OrderPlan: ...
-
-    def open(self, spec: OrderSpec, budget: Budget) -> OrderHandle: ...
-
-    def boundaries(
-        self, handle: OrderHandle, count: int
-    ) -> t.List[Boundary]: ...
-
-    def seek(
-        self, handle: OrderHandle, target: SeekTarget
-    ) -> t.Tuple[str, int]:
-        """The place just before the target sample, and its rank. A forward
-        page from it starts at the target."""
-
-    def page(
-        self,
-        handle: OrderHandle,
-        position: t.Optional[str],
-        direction: Direction,
-        limit: int,
-    ) -> Page: ...
-
-    def version(self, handle: OrderHandle) -> str:
-        """A fingerprint of the data under the handle's view now."""
-
-    def release(self, handle: OrderHandle) -> None: ...

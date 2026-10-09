@@ -30,10 +30,11 @@ TOKEN_VERSION = 1
 class Key:
     """A place in the order. ``ITEM`` is a sample; ``GAP`` is the place just
     before the sample, so a forward page from it starts at that sample;
-    ``START`` is the start of the order."""
+    ``START`` is the start of the order. ``offset`` is known in ``SMALL``
+    mode only."""
 
     kind: str
-    rank: int
+    offset: t.Optional[int]
     id: t.Any
     segment: int = 1
     value: t.Any = None
@@ -58,7 +59,7 @@ def encode_key(key: Key) -> str:
     return _encode(
         {
             "k": key.kind,
-            "r": key.rank,
+            "r": key.offset,
             "i": key.id,
             "s": key.segment,
             "v": key.value,
@@ -71,7 +72,7 @@ def decode_key(position: str) -> Key:
         d = _decode(position)
         key = Key(
             kind=d["k"],
-            rank=int(d["r"]),
+            offset=None if d.get("r") is None else int(d["r"]),
             id=d["i"],
             segment=int(d["s"]),
             value=d.get("v"),
