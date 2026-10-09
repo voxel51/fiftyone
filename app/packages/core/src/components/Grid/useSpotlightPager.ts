@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
@@ -75,10 +75,10 @@ const useSpotlightPager = ({
   const pages = useMemo(() => {
     /** Track already requested pages */
     clearRecords;
-    return new Set();
+    return new Set<number>();
   }, [clearRecords]);
 
-  const page = useRecoilCallback(
+  const request = useRecoilCallback(
     ({ snapshot }) => {
       return async (pageNumber: number) => {
         const variables = pager(pageNumber, PAGE_SIZE);
@@ -139,7 +139,37 @@ const useSpotlightPager = ({
         });
       };
     },
-    [environment, handleError, handleTimeout, pager, store, zoom],
+    [environment, handleError, handleTimeout, pager, pages, store, zoom],
+  );
+
+  const pending = useMemo(() => {
+    /** The prefetched next page, dropped along with the requested pages */
+    pages;
+    request;
+    return new Map<number, Promise<Response<number, fos.Sample>>>();
+  }, [pages, request]);
+
+  /**
+   * Serves a prefetched page when there is one, and prefetches the page after
+   * it so that it is in flight while the current one is rendered
+   */
+  const page = useCallback(
+    (pageNumber: number): Promise<Response<number, fos.Sample>> => {
+      let response = pending.get(pageNumber);
+      if (response) {
+        pending.delete(pageNumber);
+      } else {
+        response = request(pageNumber);
+      }
+
+      const next = pageNumber + 1;
+      if (!pages.has(next) && !pending.has(next)) {
+        pending.set(next, request(next));
+      }
+
+      return response;
+    },
+    [pages, pending, request],
   );
 
   return { page, records, store };
