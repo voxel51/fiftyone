@@ -25,6 +25,7 @@ import { ACTIONS_ROW_HEIGHT } from "../components/Grid/Header/Containers";
 import { FieldActionContext, GridSidebar } from "@fiftyone/sidebar";
 import { QuickEditEntry } from "../components/Modal/Sidebar/Annotate";
 import SchemaLensRow from "../components/SchemaLens/SchemaLensRow";
+import useSidebarSlide from "./useSidebarSlide";
 
 const Panel = styled.div`
   position: relative;
@@ -35,6 +36,7 @@ const Panel = styled.div`
 `;
 
 const Container = styled.div`
+  position: relative;
   display: flex;
   flex: 1;
   gap: 8px;
@@ -76,13 +78,15 @@ const GridArea = styled.div`
 const SamplesPanel = ({ grid }: { grid: ReactNode }) => {
   const showSidebar = useReverbValue(fos.sidebarVisible(false));
   const setShowSidebar = useSetReverbState(fos.sidebarVisible(false));
+  const { gridStyle, rendered, sidebar, sidebarStyle } =
+    useSidebarSlide(showSidebar);
 
   return (
     <Panel>
       <Header />
       <Container>
-        {showSidebar && (
-          <Sidebar>
+        {rendered && (
+          <Sidebar ref={sidebar} style={sidebarStyle}>
             <FieldActionContext.Provider value={QuickEditEntry}>
               <GridSidebar
                 header={
@@ -103,7 +107,7 @@ const SamplesPanel = ({ grid }: { grid: ReactNode }) => {
             </FieldActionContext.Provider>
           </Sidebar>
         )}
-        <GridArea>{grid}</GridArea>
+        <GridArea style={gridStyle}>{grid}</GridArea>
       </Container>
     </Panel>
   );
