@@ -9,11 +9,9 @@ import {
   CaretDownIcon,
   CheckIcon,
   DatabaseIcon,
-  GridViewIcon,
   IconColor,
   Input,
   MenuSectionTitle,
-  MenuSeparator,
   Popover,
   PopoverAnchor,
   SearchIcon,
@@ -81,7 +79,7 @@ const DatasetSelector: React.FC<{
     if (!next) setQuery("");
   }, []);
 
-  const pick = (name: string | null) => {
+  const pick = (name: string) => {
     changeOpen(false);
     // Picking the dataset already open is a no-op, not a reload of it
     if (name === dataset) return;
@@ -194,18 +192,6 @@ const DatasetSelector: React.FC<{
           No datasets match
         </Text>
       )}
-      <MenuSeparator />
-      <button
-        type="button"
-        className={styles.row}
-        onClick={() => pick(null)}
-        data-cy="selector-all-datasets"
-      >
-        <GridViewIcon size={14} color={IconColor.Default} />
-        <Text variant={TextVariant.BodySecondary} color={TextColor.Primary}>
-          All datasets
-        </Text>
-      </button>
     </Popover>
   );
 };

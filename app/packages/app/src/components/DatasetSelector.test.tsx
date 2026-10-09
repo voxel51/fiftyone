@@ -99,14 +99,6 @@ describe("DatasetSelector", () => {
     expect(setDatasetSpy).not.toHaveBeenCalled();
   });
 
-  it("goes to all datasets", () => {
-    setup("quickstart");
-    fireEvent.click(trigger());
-    fireEvent.click(screen.getByRole("button", { name: "All datasets" }));
-
-    expect(setDatasetSpy).toHaveBeenCalledWith(null);
-  });
-
   it("closes when the header is hidden", () => {
     const { rerender } = setup("quickstart");
     fireEvent.click(trigger());
