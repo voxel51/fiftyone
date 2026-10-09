@@ -59,6 +59,7 @@ export const createHost = <K, I extends Instance>(
   // resized before anything loaded: nothing to move, so rebuild once after it loads
   let resizedEarly = false;
   let resizing: ReturnType<typeof setTimeout> | undefined;
+  let continued = false;
   let destroyed = false;
 
   const dispose = (entry: Entry<I>) => {
@@ -125,12 +126,22 @@ export const createHost = <K, I extends Instance>(
       return;
     }
 
+    // a single change (a sidebar toggling) rebuilds once with content, the
+    // old instance shown until it loads; only a run of changes (a drag)
+    // goes through interim instances and settles after
+    const continuing = resizing !== undefined;
     clearTimeout(resizing);
     resizing = setTimeout(() => {
       resizing = undefined;
-      stale = false;
+      if (!continued) return;
+      continued = stale = false;
       rebuild();
     }, SETTLE);
+    if (!continuing) {
+      rebuild(anchor);
+      return;
+    }
+    continued = true;
     if (pending) stale = true;
     else rebuild(anchor, true);
   });

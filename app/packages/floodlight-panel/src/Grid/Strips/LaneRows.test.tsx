@@ -229,9 +229,9 @@ describe("LaneRows", () => {
 
     const cat = builds("cat");
     const dog = builds("dog");
-    // the first build, then the resize's interim and settled builds
-    expect(cat.length).toBe(3);
-    expect(cat.map((b) => b.destroyed)).toEqual([true, true, false]);
+    // the first build, then the resize's one content build
+    expect(cat.length).toBe(2);
+    expect(cat.map((b) => b.destroyed)).toEqual([true, false]);
     expect(dog.length).toBe(1);
     expect(dog[0].destroyed).toBe(false);
   });

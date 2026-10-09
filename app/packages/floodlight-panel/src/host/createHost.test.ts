@@ -94,7 +94,7 @@ describe("createHost", () => {
     expect(host.instance).toBe(built[1]);
   });
 
-  test("rebuilds an interim instance per resize tick, at the last anchor", () => {
+  test("a single resize rebuilds once with content, at the last anchor", () => {
     const { build, built, host } = setup();
     host.rebuild();
     built[0].load();
@@ -103,6 +103,29 @@ describe("createHost", () => {
     resize({ width: 800, height: 600 });
     resize({ width: 820, height: 600 });
     expect(build).toHaveBeenCalledTimes(2);
+    expect(build).toHaveBeenLastCalledWith(
+      { key: 3, at: { description: "sample", fraction: 0.25 } },
+      { interim: false },
+    );
+    expect(host.instance).toBe(built[0]);
+
+    built[1].load();
+    vi.advanceTimersByTime(SETTLE);
+    expect(build).toHaveBeenCalledTimes(2);
+    expect(host.instance).toBe(built[1]);
+  });
+
+  test("a run of resizes rebuilds interim instances at the last anchor", () => {
+    const { build, built, host } = setup();
+    host.rebuild();
+    built[0].load();
+    built[0].dispatchEvent(new RowChange({ description: "sample" }, 3, 0.25));
+
+    resize({ width: 800, height: 600 });
+    resize({ width: 820, height: 600 });
+    built[1].load();
+    resize({ width: 840, height: 600 });
+    expect(build).toHaveBeenCalledTimes(3);
     expect(build).toHaveBeenLastCalledWith(
       { key: 3, at: { description: "sample", fraction: 0.25 } },
       { interim: true },
@@ -127,22 +150,24 @@ describe("createHost", () => {
     expect(build).toHaveBeenCalledTimes(3);
   });
 
-  test("builds the content instance once the resize settles", () => {
+  test("builds the content instance once a run of resizes settles", () => {
     const { build, built, host } = setup();
     host.rebuild();
     built[0].load();
     resize({ width: 800, height: 600 });
     resize({ width: 820, height: 600 });
     built[1].load();
+    resize({ width: 840, height: 600 });
+    built[2].load();
 
     vi.advanceTimersByTime(SETTLE - 1);
-    expect(build).toHaveBeenCalledTimes(2);
-    vi.advanceTimersByTime(1);
     expect(build).toHaveBeenCalledTimes(3);
+    vi.advanceTimersByTime(1);
+    expect(build).toHaveBeenCalledTimes(4);
     expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
 
-    built[2].load();
-    expect(host.instance).toBe(built[2]);
+    built[3].load();
+    expect(host.instance).toBe(built[3]);
   });
 
   test("the settled content build replaces a pending interim one", () => {
@@ -151,9 +176,11 @@ describe("createHost", () => {
     built[0].load();
     resize({ width: 800, height: 600 });
     resize({ width: 820, height: 600 });
+    built[1].load();
+    resize({ width: 840, height: 600 });
 
     vi.advanceTimersByTime(SETTLE);
-    expect(built[1].destroy).toHaveBeenCalled();
+    expect(built[2].destroy).toHaveBeenCalled();
     expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
   });
 

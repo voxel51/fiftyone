@@ -57,11 +57,11 @@ const kinds = (violations: { kind: string }[], kind: string) =>
 const NONE = { creates: 0, reattaches: 0, resizes: 0, skipped: 0 };
 
 describe("host contracts: cross-axis resize", () => {
-  test("a burst builds one interim, one catch-up, then the content", async () => {
+  test("a burst builds the content, one interim catch-up, then the content", async () => {
     const mounted = await setup();
     await burst();
     expect(mounted.log).toEqual([
-      "build i1 interim",
+      "build i1",
       "load i1",
       "dispose i0",
       "build i2 interim",
@@ -81,34 +81,33 @@ describe("host contracts: cross-axis resize", () => {
     const { looker, renderer } = await setup();
     await burst();
 
-    // the 50 visible lookers move without resizing; nothing is created
-    for (const label of ["i1", "i2"]) {
-      expect(looker.counts(label)).toEqual({
-        creates: 0,
-        reattaches: 50,
-        resizes: 0,
-        skipped: 0,
-      });
-    }
+    // the 60 lookers the first content build laid out move without
+    // resizing; nothing is created
+    expect(looker.counts("i2")).toEqual({
+      creates: 0,
+      reattaches: 60,
+      resizes: 0,
+      skipped: 0,
+    });
     // the retired content instance's teardown detaches nothing
     expect(renderer.instance("i0").detaches).toBe(0);
     expect(renderer.violations).toEqual([]);
   });
 
-  test("the settled content build reattaches every held looker", async () => {
+  test("the first content build reattaches every held looker", async () => {
     const { held, looker, renderer, ...mounted } = await setup();
     await burst();
     await settle();
 
     // 50 held lookers move and resize; the narrower tiles bring in 10
     // items that were never held, so nothing held is created again
-    expect(looker.counts("i3")).toEqual({
+    expect(looker.counts("i1")).toEqual({
       creates: 10,
       reattaches: 50,
       resizes: 50,
       skipped: 0,
     });
-    expect(looker.tiles("i3").filter((id) => !held.includes(id))).toHaveLength(
+    expect(looker.tiles("i1").filter((id) => !held.includes(id))).toHaveLength(
       10,
     );
     expect(looker.tiles("i3")).toHaveLength(60);
@@ -146,14 +145,7 @@ describe("host contracts: cross-axis resize", () => {
     env.resize({ width: 1400, height: 500 });
     await env.idle();
     await settle();
-    expect(mounted.log).toEqual([
-      "build i1 interim",
-      "load i1",
-      "dispose i0",
-      "build i2",
-      "load i2",
-      "dispose i1",
-    ]);
+    expect(mounted.log).toEqual(["build i1", "load i1", "dispose i0"]);
   });
 
   test("a rebuild anchored mid-page leaves the cached page whole", async () => {
