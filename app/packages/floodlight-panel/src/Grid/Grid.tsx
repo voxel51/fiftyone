@@ -243,6 +243,16 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const animateRef = useRef(relayout.animate);
   animateRef.current = relayout.animate;
   const rail = useRail({
+    // scroll events do not bubble; the container hears them while capturing
+    onScroll: (listener) => {
+      const element = container.current;
+      element?.addEventListener("scroll", listener, {
+        capture: true,
+        passive: true,
+      });
+      return () =>
+        element?.removeEventListener("scroll", listener, { capture: true });
+    },
     extent: () => {
       const scroller = container.current?.querySelector(`[${SLOT}="active"]`)
         ?.lastElementChild as HTMLElement | null | undefined;
@@ -252,11 +262,13 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         ? {
             items,
             loaded: scroller.scrollWidth,
+            scrolled: scroller.scrollLeft,
             viewport: scroller.clientWidth,
           }
         : {
             items,
             loaded: scroller.scrollHeight,
+            scrolled: scroller.scrollTop,
             viewport: scroller.clientHeight,
           };
     },

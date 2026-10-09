@@ -22,6 +22,8 @@ export interface UseRailOptions {
   pageSize: number;
   /** The instance's extents, for a thumb sized like a scrollbar's. */
   extent?: () => Extent | undefined;
+  /** Subscribes to the view scrolling; returns the unsubscribe. */
+  onScroll?: (listener: () => void) => () => void;
 }
 
 export interface Rail {
@@ -42,6 +44,7 @@ export default function useRail({
   extent,
   host,
   instance,
+  onScroll,
   pageSize,
   ranks,
 }: UseRailOptions): Rail {
@@ -49,6 +52,8 @@ export default function useRail({
   const [visible, setVisible] = useState<number>();
   const measure = useRef(extent);
   measure.current = extent;
+  const scroll = useRef(onScroll);
+  scroll.current = onScroll;
 
   // a new order starts at the top
   useEffect(() => setAnchorRank(undefined), [ranks]);
@@ -59,16 +64,28 @@ export default function useRail({
     rank !== undefined && setAnchorRank(rank);
     if (!instance) return undefined;
 
+    // the reported row can sit a row down from the top, and reaching the top
+    // need not change rows, so a view scrolled to the start reads as rank 0
+    const atStart = (rank: number | undefined) =>
+      measure.current?.()?.scrolled === 0 &&
+      rank !== undefined &&
+      rank < pageSize;
+
     const onRow = (event: Event) => {
       const rank = ranks.get((event as RowChange<number>).at.description);
       if (rank === undefined) return;
-      setAnchorRank(rank);
       const next = measure.current?.();
+      setAnchorRank(atStart(rank) ? 0 : rank);
       setVisible(next && extentVisible(next));
     };
+    const onScroll = () => setAnchorRank((rank) => (atStart(rank) ? 0 : rank));
     instance.addEventListener("rowchange", onRow);
-    return () => instance.removeEventListener("rowchange", onRow);
-  }, [host, instance, ranks]);
+    const unsubscribe = scroll.current?.(onScroll);
+    return () => {
+      instance.removeEventListener("rowchange", onRow);
+      unsubscribe?.();
+    };
+  }, [host, instance, pageSize, ranks]);
 
   const jump = useCallback(
     (position: number, total: number) => {

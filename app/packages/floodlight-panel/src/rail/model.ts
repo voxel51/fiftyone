@@ -160,6 +160,8 @@ export interface Extent {
   loaded: number;
   /** Items those rows hold. */
   items: number;
+  /** How far the view is scrolled along the primary axis. */
+  scrolled?: number;
 }
 
 /**
