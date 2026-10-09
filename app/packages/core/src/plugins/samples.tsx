@@ -48,7 +48,7 @@ const Container = styled.div`
   gap: 8px;
   min-height: 0;
   overflow: hidden;
-  padding: 0 8px 8px;
+  padding: 0 8px;
   box-sizing: border-box;
 `;
 
@@ -71,6 +71,8 @@ const Sidebar = styled.div`
   z-index: 3;
   display: flex;
   margin-top: ${ACTIONS_ROW_HEIGHT}px;
+  /* the grid runs to the panel's bottom edge; the sidebar card sits above it */
+  margin-bottom: 8px;
   min-height: 0;
 `;
 
