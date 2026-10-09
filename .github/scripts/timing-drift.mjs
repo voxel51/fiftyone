@@ -1,7 +1,8 @@
 // Compares a run with e2e-pw/ci/spec-timings.json, the per-test seconds the
 // shards are packed by, and reports only what drifted: tests that got much
 // slower or faster, tests missing from or gone from the timings, and shards
-// that ran much longer than packed. A test counts its first attempt, averaged
+// that ran much longer than the run's typical shard (a slower environment
+// slows every shard alike, so shards compare with each other). A test counts its first attempt, averaged
 // over the repeats Playwright reports as separate spec entries, so retries
 // and repeat-each don't inflate it.
 
@@ -76,19 +77,27 @@ export const timingDrift = (measured, timings, specFiles, shards) => {
 
   const slowShards = [];
   if (shards) {
-    packShards(specFiles, timings, shards).forEach((bin, i) => {
-      const ran = bin.files.filter((file) => file in measured);
-      if (ran.length !== bin.files.length) return;
-      const actual = ran
-        .map((file) => Object.values(measured[file]).reduce((a, b) => a + b, 0))
-        .reduce((a, b) => a + b, 0);
+    const ranShards = packShards(specFiles, timings, shards)
+      .map((bin, i) => ({ shard: i + 1, files: bin.files }))
+      .filter(({ files }) => files.every((file) => file in measured))
+      .map(({ shard, files }) => ({
+        shard,
+        actual: files
+          .map((file) =>
+            Object.values(measured[file]).reduce((a, b) => a + b, 0),
+          )
+          .reduce((a, b) => a + b, 0),
+      }));
+    const sorted = ranShards.map((s) => s.actual).sort((a, b) => a - b);
+    const typical = sorted[Math.floor((sorted.length - 1) / 2)];
+    for (const { shard, actual } of ranShards) {
       if (
-        actual - bin.weight >= SHARD_MIN_SECONDS &&
-        actual >= bin.weight * SHARD_RATIO
+        actual - typical >= SHARD_MIN_SECONDS &&
+        actual >= typical * SHARD_RATIO
       ) {
-        slowShards.push({ shard: i + 1, expected: bin.weight, actual });
+        slowShards.push({ shard, typical, actual });
       }
-    });
+    }
   }
 
   const byKey = (a, b) =>
@@ -115,8 +124,8 @@ export const renderTimingDrift = ({ added, removed, drifted, slowShards }) => {
     `<summary>⚠️ Test timings drifted (${count}): refresh <code>e2e-pw/ci/spec-timings.json</code></summary>`,
     "",
     ...slowShards.map(
-      ({ shard, expected, actual }) =>
-        `- shard ${shard}: packed at ${s(expected)}, ran ${s(actual)}`,
+      ({ shard, typical, actual }) =>
+        `- shard ${shard}: ran ${s(actual)}, the typical shard ${s(typical)}`,
     ),
     ...drifted.map(
       (d) =>

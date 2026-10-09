@@ -92,17 +92,35 @@ describe("timingDrift", () => {
     });
   });
 
-  it("flags a shard that ran far longer than it was packed at", () => {
+  it("flags a shard that ran far longer than the run's typical shard", () => {
+    const even = {
+      "a.spec.ts": { x: 100 },
+      "b.spec.ts": { x: 100 },
+      "c.spec.ts": { x: 100 },
+    };
+    const files = Object.keys(even);
     const drift = timingDrift(
       {
-        "a.spec.ts": { slow: 300, same: 30, gone: 5 },
-        "unrun.spec.ts": { x: 3 },
+        "a.spec.ts": { x: 400 },
+        "b.spec.ts": { x: 110 },
+        "c.spec.ts": { x: 100 },
       },
-      timings,
-      specFiles,
-      1,
+      even,
+      files,
+      3,
     );
-    expect(drift.slowShards).toEqual([{ shard: 1, expected: 48, actual: 338 }]);
+    expect(drift.slowShards).toEqual([{ shard: 1, typical: 110, actual: 400 }]);
+  });
+
+  it("does not flag shards that a slower environment slowed alike", () => {
+    const even = { "a.spec.ts": { x: 100 }, "b.spec.ts": { x: 100 } };
+    const drift = timingDrift(
+      { "a.spec.ts": { x: 150 }, "b.spec.ts": { x: 150 } },
+      even,
+      Object.keys(even),
+      2,
+    );
+    expect(drift.slowShards).toEqual([]);
   });
 
   it("renders nothing when the timings hold", () => {
@@ -121,10 +139,10 @@ describe("timingDrift", () => {
       added: [],
       removed: [],
       drifted: [{ file: "a.spec.ts", test: "slow", expected: 10, actual: 25 }],
-      slowShards: [{ shard: 4, expected: 600, actual: 2100 }],
+      slowShards: [{ shard: 4, typical: 600, actual: 2100 }],
     }).join("\n");
     expect(text).toContain("Test timings drifted (2)");
-    expect(text).toContain("- shard 4: packed at 600.0s, ran 2100.0s");
+    expect(text).toContain("- shard 4: ran 2100.0s, the typical shard 600.0s");
     expect(text).toContain(
       "`a.spec.ts` › slow: 10.0s in the timings, 25.0s this run",
     );
