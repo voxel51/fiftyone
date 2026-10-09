@@ -5,9 +5,11 @@ import {
   isPlayingAtom,
   seekEventAtom,
   speedAtom,
+  stepIntervalAtom,
 } from "./atoms";
 import { usePlaybackStore } from "./playback-store-context";
 import { concedeMasterMuteToAutoplayPolicy } from "./store-access";
+import { videoSeekTime } from "./utils";
 
 /**
  * Bind an `<video>` element to the playback atoms. Its responsibilities:
@@ -130,7 +132,7 @@ export function useVideoSync(
       if (!v) return;
       const ev = store.get(seekEventAtom);
       if (!ev) return;
-      v.currentTime = ev.time;
+      v.currentTime = videoSeekTime(ev.time, store.get(stepIntervalAtom));
     });
   }, [store, videoRef]);
 
