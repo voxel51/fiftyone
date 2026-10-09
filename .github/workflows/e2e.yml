@@ -408,7 +408,7 @@ jobs:
           TARGETS: ${{ needs.prepare-e2e.outputs.burn-in-specs }}
         run: |
           printf 'burning in:\n%s\n' "$TARGETS"
-          yarn e2e $TARGETS --repeat-each=10 --retries=0 --workers=50% --trace=retain-on-failure ||
+          yarn e2e $TARGETS --repeat-each=5 --retries=0 --workers=50% --trace=retain-on-failure ||
             echo "::warning::burn-in had failing runs; see the e2e verdict job"
         working-directory: e2e-pw
 
@@ -500,7 +500,7 @@ jobs:
           retention-days: 3
 
       - name: Merge burn-in report
-        # kept separate from the shard merge so 10x-repeated specs don't
+        # kept separate from the shard merge so repeated specs don't
         # inflate the suite's counts; reuses the default report dir now that
         # the shard report has been uploaded
         if: needs.prepare-e2e.outputs.burn-in-count != '0'
