@@ -26,7 +26,7 @@ import { useReverbValue } from "@fiftyone/reverb";
 
 import { useProduct } from "../product";
 import Header from "./Header";
-import HelpMenu from "./HelpMenu";
+import HeaderLinks from "./HeaderLinks";
 import styles from "./Setup.module.css";
 
 const port = (() => {
@@ -133,7 +133,7 @@ const Setup = () => {
           spacing={Spacing.Sm}
           className={styles.links}
         >
-          <HelpMenu />
+          <HeaderLinks />
         </Stack>
       </Header>
       <div className={styles.page}>

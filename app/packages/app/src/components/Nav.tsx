@@ -12,13 +12,17 @@ import { useColorScheme } from "@mui/material";
 import {
   Align,
   Anchor,
+  Button,
+  DarkModeIcon,
   IconAction,
+  LightModeIcon,
   MaximizeIcon,
   Orientation,
   Size,
   Spacing,
   Stack,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
@@ -31,7 +35,7 @@ import DatasetMenu from "./DatasetMenu";
 import DatasetSelector from "./DatasetSelector";
 import Header from "./Header";
 import ScopeCrumb from "./ScopeCrumb";
-import HelpMenu from "./HelpMenu";
+import HeaderLinks from "./HeaderLinks";
 import styles from "./Nav.module.css";
 import Teams from "./Teams";
 import useFocusMode from "./useFocusMode";
@@ -169,11 +173,17 @@ const Nav: React.FC<
                 />
               </Tooltip>
             )}
-            <HelpMenu
-              theme={mode === "dark" ? "dark" : "light"}
-              onToggleTheme={toggleTheme}
-            />
           </React.Fragment>
+          <Button
+            variant={Variant.Icon}
+            size={Size.Md}
+            borderless
+            leadingIcon={mode === "dark" ? LightModeIcon : DarkModeIcon}
+            title={mode === "dark" ? "Light mode" : "Dark mode"}
+            aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
+            onClick={toggleTheme}
+          />
+          <HeaderLinks />
         </Stack>
       </Header>
       {children}

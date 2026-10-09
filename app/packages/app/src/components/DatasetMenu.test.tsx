@@ -16,7 +16,6 @@ vi.mock("@fiftyone/state", () => ({
 }));
 
 import DatasetMenu from "./DatasetMenu";
-import HelpMenu from "./HelpMenu";
 
 const open = async (name: string) => {
   await act(async () => {
@@ -24,7 +23,7 @@ const open = async (name: string) => {
   });
 };
 
-describe("header menus", () => {
+describe("DatasetMenu", () => {
   afterEach(() => {
     cleanup();
     refresh.mockReset();
@@ -52,23 +51,5 @@ describe("header menus", () => {
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({ msg: "Link copied" }),
     );
-  });
-
-  it("toggles the theme from the help menu", async () => {
-    const onToggleTheme = vi.fn();
-    render(<HelpMenu theme="dark" onToggleTheme={onToggleTheme} />);
-    await open("Help");
-    fireEvent.click(screen.getByRole("menuitem", { name: "Light mode" }));
-
-    expect(onToggleTheme).toHaveBeenCalledOnce();
-  });
-
-  it("offers only links without a theme toggle", async () => {
-    render(<HelpMenu />);
-    await open("Help");
-
-    expect(
-      screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Documentation", "GitHub", "Discord"]);
   });
 });
