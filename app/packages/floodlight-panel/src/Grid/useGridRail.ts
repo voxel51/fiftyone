@@ -20,8 +20,7 @@ interface RailHost {
 /**
  * The grid's rail for its order: the thumb follows the top item, a release
  * jumps in place when the target is loaded, otherwise rebuilds at its page
- * (SMALL) or seeks once from a new origin (INDEXED). A new origin rebuilds
- * the grid at its first page.
+ * (SMALL) or seeks once from a new origin (INDEXED).
  */
 export default function useGridRail({
   extent,
@@ -63,12 +62,14 @@ export default function useGridRail({
     perItem: railed?.perItem,
   });
 
-  const shown = useRef(origin.id);
+  // a seek rebuilds at its page; new data resets the origin, and the grid
+  // starts over or reorders on its own
+  const shown = useRef(origin);
   useLayoutEffect(() => {
-    if (shown.current === origin.id) return;
-    shown.current = origin.id;
-    host?.rebuild({ key: 0 });
-  }, [host, origin.id]);
+    if (shown.current === origin) return;
+    shown.current = origin;
+    origin.seek && host?.rebuild({ key: 0 });
+  }, [host, origin]);
 
   const jump = useCallback(
     (position: number) => {
