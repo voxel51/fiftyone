@@ -675,7 +675,12 @@ export abstract class AbstractLooker<
 
         this.isSampleUpdating = true;
         try {
-          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+          // a reload requested before the first load returned has no sample;
+          // posting none would transfer away the painted bitmaps for nothing
+          this.loadSample(
+            sample ?? this.sample,
+            retrieveTransferables(this.sampleOverlays),
+          );
         } catch (error) {
           this.isSampleUpdating = false;
           console.error(error);
