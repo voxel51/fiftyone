@@ -21,14 +21,35 @@ export const SamplesHeader = styled.div`
 /** Height of the actions row the grid scrolls under */
 export const ACTIONS_ROW_HEIGHT = 42;
 
+/**
+ * Dims tiles scrolling up under the actions row: near solid behind the
+ * actions, then a long fade. It sits under the loading storm, so the storm
+ * shows behind the actions too.
+ */
+export const ActionsFade = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: ${ACTIONS_ROW_HEIGHT * 2}px;
+  z-index: 1;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-content-bg-background) 0%,
+    color-mix(in srgb, var(--color-content-bg-background) 90%, transparent) 45%,
+    transparent 100%
+  );
+`;
+
 /** The grid's actions row, over the top of the Samples panel */
 export const ActionsRow = styled.div`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  /* above the grid, the loading storm and the sidebar */
-  z-index: 3;
+  /* above the grid, its fade, the loading storm and the sidebar */
+  z-index: 4;
   box-sizing: border-box;
   height: ${ACTIONS_ROW_HEIGHT}px;
   display: flex;
@@ -37,25 +58,6 @@ export const ActionsRow = styled.div`
   gap: 4px;
   padding: 8px 16px 6px;
   min-width: 0;
-
-  /* near solid behind the actions, then a long fade over the tiles below */
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: ${ACTIONS_ROW_HEIGHT * 2}px;
-    z-index: -1;
-    pointer-events: none;
-    background-image: linear-gradient(
-      to bottom,
-      var(--color-content-bg-background) 0%,
-      color-mix(in srgb, var(--color-content-bg-background) 90%, transparent)
-        45%,
-      transparent 100%
-    );
-  }
 `;
 
 export const RightDiv = styled.div`

@@ -61,13 +61,13 @@ export const GridBackdropContext = createContext<HTMLElement | null>(null);
 const Backdrop = styled.div`
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
 `;
 
 const Sidebar = styled.div`
   position: relative;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   margin-top: ${ACTIONS_ROW_HEIGHT}px;
   min-height: 0;

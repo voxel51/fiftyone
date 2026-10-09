@@ -60,7 +60,7 @@ export default function useSidebarSlide(show: boolean) {
     top: 0,
     bottom: GAP,
     left: GAP,
-    zIndex: 2,
+    zIndex: 3,
   };
 
   return {
