@@ -64,10 +64,8 @@ export default function useRelayout<I extends Instance, V>({
         animateNext.current &&
         root &&
         from &&
-        to &&
-        // an interim's tiles sit where the grid last was, so a settled build
-        // animates from them too
-        !interims.has(next);
+        // a drag's interim builds animate too, so tiles follow the resize
+        to;
       const reorder = reorderNext.current && !interims.has(next);
       if (!interims.has(next)) {
         animateNext.current = false;

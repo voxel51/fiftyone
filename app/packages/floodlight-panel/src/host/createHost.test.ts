@@ -121,7 +121,7 @@ describe("createHost", () => {
     expect(host.instance).toBe(built[1]);
   });
 
-  test("content rebuilds report the resize; interim ones do not", () => {
+  test("every rebuild a resize causes reports it", () => {
     const { built, host, onResize } = setup();
     host.rebuild();
     built[0].load();
@@ -130,10 +130,10 @@ describe("createHost", () => {
     resize({ width: 820, height: 600 });
     built[1].load();
     resize({ width: 840, height: 600 });
-    expect(onResize).toHaveBeenCalledTimes(1);
+    expect(onResize).toHaveBeenCalledTimes(2);
 
     vi.advanceTimersByTime(SETTLE);
-    expect(onResize).toHaveBeenCalledTimes(2);
+    expect(onResize).toHaveBeenCalledTimes(3);
   });
 
   test("a run of resizes rebuilds interim instances at the last anchor", () => {
