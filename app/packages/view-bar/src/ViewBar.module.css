@@ -1,68 +1,61 @@
 /* The bar: one framed region of one or two rows. The search row is always
-   there; the stages row opens under it, in the flow, so the page below moves
-   down rather than being covered. */
+   there; the stages row opens under it, inside the same frame and in the
+   flow, so the page below moves down rather than being covered. */
 .bar {
   display: flex;
   flex-direction: column;
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+  background: var(--color-content-bg-background);
+  border: 1px solid var(--color-content-border-default);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
 }
 
-/* The gutter: the search row's canvas. It sits in the header, which is on the
-   shell's palette, so it keeps the shell's surface and border; the tokens
-   come when the shell moves as a whole. */
+.bar:hover {
+  border-color: var(--color-content-border-input-hover);
+}
+
+.bar:focus-within {
+  border-color: var(--color-content-border-input-focus);
+}
+
 .gutter {
   display: flex;
   align-items: center;
+  gap: var(--spacing-xs);
   min-width: 0;
-  box-sizing: border-box;
-  background: var(--color-content-bg-background);
-  border: 1px solid var(--fo-palette-primary-plainBorder);
-  border-radius: 4px;
-}
-
-/* With the stages row under it the gutter is the frame's top half: the row
-   brings the divider and the bottom edge */
-.gutter.open {
-  border-bottom-width: 0;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  padding-right: 6px;
 }
 
 .clearSlot {
   flex-shrink: 0;
   height: 100%;
-  padding: 0 6px;
 }
 
 .stagesToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
   flex-shrink: 0;
-  height: 100%;
-  padding: 0 10px;
-  /* Inside the gutter, so it divides with the gutter's own border color */
-  border-left: 1px solid var(--fo-palette-primary-plainBorder);
+}
+
+/* With stages applied the toggle is a filled chip holding their count */
+.stagesApplied {
+  padding: 0 8px;
+  background: var(--color-content-bg-card);
+}
+
+.stagesOpen {
+  color: var(--color-content-text-primary);
 }
 
 .stagesCount {
   line-height: 1;
 }
 
-/* The stages row: the frame's bottom half, on the gutter's surface, with the
-   divider above it and the frame's bottom edge */
 .stagesRow {
   min-width: 0;
   box-sizing: border-box;
-  background: var(--color-content-bg-background);
-  border: 1px solid var(--fo-palette-primary-plainBorder);
-  border-radius: 0 0 4px 4px;
-}
-
-/* Rendered away from the search row, the stages row is a frame of its own */
-.stagesRow.detached {
-  border-radius: 4px;
+  border-top: 1px solid var(--color-content-border-subtle);
 }
 
 /* Scrolls sideways for long stage chains. The breathing room lives inside the

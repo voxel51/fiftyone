@@ -19,21 +19,17 @@ import * as fos from "@fiftyone/state";
 import {
   Align,
   Anchor,
-  Clickable,
-  Icon,
-  IconName,
   Orientation,
   Size,
+  SlidersHorizontalIcon,
   Spacing,
   Stack,
-  Text,
+  TextAction,
   TextBadge,
   TextColor,
-  TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import { createPortal } from "react-dom";
 import React, {
   useCallback,
   useEffect,
@@ -124,10 +120,9 @@ const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
 ];
 
 /**
- * Where a press is still "in the bar": the bar itself, the stages row — which
- * a host may place outside the bar — the stage editor and search settings
- * popovers, and any portaled popout — a list, a select menu, a tooltip — that
- * a control in the bar opened.
+ * Where a press is still "in the bar": the bar itself, the stage editor and
+ * search settings popovers, and any portaled popout — a list, a select menu,
+ * a tooltip — that a control in the bar opened.
  */
 const STILL_IN_BAR = [
   "[data-cy='view-bar']",
@@ -141,13 +136,7 @@ const STILL_IN_BAR = [
 const ViewBarInner: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
-  /**
-   * Where the stages row renders, for a host whose search row shares its line
-   * with other chrome and wants the stages to have the window's width. Without
-   * one the row opens under the search, framed with it.
-   */
-  stagesHost?: HTMLElement | null;
-}> = ({ capabilities = OPEN_CAPABILITIES, stagesHost }) => {
+}> = ({ capabilities = OPEN_CAPABILITIES }) => {
   const servedDefs = fos.useStageDefinitions();
   const stageDefs = useMemo(
     () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
@@ -887,14 +876,7 @@ const ViewBarInner: React.FC<{
    * with the bar, and the page below moves down rather than being covered.
    */
   const gutter = (
-    <div
-      className={
-        stagesRowOpen && !stagesHost
-          ? `${styles.gutter} ${styles.open}`
-          : styles.gutter
-      }
-      style={{ height: CHROME_CONTROL_HEIGHT }}
-    >
+    <div className={styles.gutter} style={{ height: CHROME_CONTROL_HEIGHT }}>
       <LanguageSearch
         key={`search-${searchEpoch}`}
         onHasTextChange={setSearchHasText}
@@ -915,44 +897,36 @@ const ViewBarInner: React.FC<{
         </Stack>
       )}
       {/* The stages toggle: opens the second row where the view is built.
-            Carries the stage count so an applied view stays discoverable
-            while the row is folded away. */}
+            With stages applied it shows their count instead of its label, so
+            an applied view stays discoverable while the row is folded away. */}
       <Tooltip
         anchor={Anchor.Bottom}
         content={stagesRowOpen ? "Hide view stages" : "View stages"}
       >
-        <Clickable
-          role="button"
-          tabIndex={0}
+        <TextAction
+          size={Size.Sm}
+          leadingIcon={SlidersHorizontalIcon}
           aria-label="View stages"
           aria-expanded={stagesRowOpen}
           data-cy="view-bar-stages-toggle"
           onClick={toggleStagesRow}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggleStagesRow();
-            }
-          }}
-          className={styles.stagesToggle}
+          className={clsx(
+            styles.stagesToggle,
+            state.stages.length > 0 && styles.stagesApplied,
+            stagesRowOpen && styles.stagesOpen,
+          )}
         >
-          <Icon
-            name={IconName.Sliders}
-            size={Size.Sm}
-            color={stagesRowOpen ? TextColor.Primary : TextColor.Secondary}
-          />
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            Stages
-          </Text>
-          {state.stages.length > 0 && (
+          {state.stages.length > 0 ? (
             <TextBadge
               color={TextColor.Secondary}
               className={styles.stagesCount}
             >
               {state.stages.length}
             </TextBadge>
+          ) : (
+            "Stages"
           )}
-        </Clickable>
+        </TextAction>
       </Tooltip>
     </div>
   );
@@ -963,7 +937,7 @@ const ViewBarInner: React.FC<{
       spacing={Spacing.None}
       align={Align.Center}
       data-cy="view-bar-stages-row"
-      className={clsx(styles.stagesRow, stagesHost && styles.detached)}
+      className={styles.stagesRow}
       style={{ height: CHROME_CONTROL_HEIGHT }}
     >
       <Stack
@@ -1051,9 +1025,7 @@ const ViewBarInner: React.FC<{
   return (
     <div className={styles.bar} data-cy="view-bar" onKeyDown={onBarKeyDown}>
       {gutter}
-      {stagesHost
-        ? stagesRow && createPortal(stagesRow, stagesHost)
-        : stagesRow}
+      {stagesRow}
     </div>
   );
 };
@@ -1066,7 +1038,6 @@ const ViewBarInner: React.FC<{
  */
 const ViewBar: React.FC<{
   capabilities?: ViewBarCapabilities;
-  stagesHost?: HTMLElement | null;
 }> = (props) => {
   const datasetName = fos.useCurrentDatasetName();
   return <ViewBarInner key={datasetName ?? ""} {...props} />;

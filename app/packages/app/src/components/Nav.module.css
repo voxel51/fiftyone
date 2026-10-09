@@ -1,26 +1,5 @@
-/* The bar takes what the title, selector and right-side actions leave */
-.bar {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Where the view bar's stages row lands: the window's width, inset by the
-   header row that holds it. Closed, it holds no row and takes no space, so
-   the gutter sits here rather than on the row that hosts it. */
-.stagesHost {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding-top: 8px;
-}
-
-.stagesHost:empty {
-  display: none;
-}
-
-/* The right-side actions share the first row's height so they stay level with
-   the title and the selector, and hold the right edge when no view bar is
-   there to take up the slack */
+/* The right-side actions hold the right edge, level with the title and the
+   selector */
 .actions {
   height: 40px;
   margin-left: auto;

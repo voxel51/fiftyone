@@ -19,7 +19,7 @@ import {
   Stack,
   Variant,
 } from "@voxel51/voodo";
-import React, { Suspense, useCallback, useMemo, useState } from "react";
+import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
@@ -100,9 +100,6 @@ const Nav: React.FC<
   const setTheme = useSetReverbState(fos.theme);
   const trackEvent = useTrackEvent();
   const { enterpriseCta, Status, title } = useProduct();
-  // The view bar's search stays in the row; its stages row renders here, under
-  // the row, where it has the window's width
-  const [stagesHost, setStagesHost] = useState<HTMLDivElement | null>(null);
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";
     setMode(nextMode);
@@ -119,18 +116,13 @@ const Nav: React.FC<
         navChildren={<DatasetSelector useSearch={useSearch} />}
         belowRow={
           hasDataset && (
-            <div className={styles.stagesHost} ref={setStagesHost} />
+            <Suspense fallback={null}>
+              <ViewBar />
+            </Suspense>
           )
         }
       >
         {Status && <Status />}
-        {hasDataset && (
-          <Suspense fallback={null}>
-            <div className={styles.bar}>
-              <ViewBar stagesHost={stagesHost} />
-            </div>
-          </Suspense>
-        )}
         <Stack
           orientation={Orientation.Row}
           align={Align.Center}

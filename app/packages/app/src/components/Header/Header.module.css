@@ -1,5 +1,5 @@
-/* The title, dataset selector and right-side actions sit on one 40px row,
-   centered within it; anything the shell puts under that row spans the window.
+/* The title, dataset selector and right-side actions sit on one row; anything
+   the shell puts under that row, the view bar, spans the window.
    The surface is the shell's own until the shell moves to design-system tokens
    as a whole — no voodo surface token matches it in the dark theme, and a
    header on a different grey than the panels around it reads as a seam. */
@@ -8,11 +8,6 @@
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
-  min-height: 56px;
-  /* The right-side icon buttons carry their own hit padding, so the header
-     contributes the difference — the rightmost glyph sits as far from the
-     edge as the logo does on the left */
-  padding: 8px 0.25rem 8px 0.75rem;
 }
 
 .hidden {
@@ -22,15 +17,19 @@
 .row {
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+  min-height: 56px;
+  /* The right-side icon buttons carry their own hit padding, so the header
+     contributes the difference — the rightmost glyph sits as far from the
+     edge as the logo does on the left */
+  padding: 8px 0.25rem 8px 0.75rem;
 }
 
-/* Full width, inset to the header's own gutters, so a view bar under the row
-   uses the window rather than the gap between the selector and the actions */
 .belowRow {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0 0.5rem 0 0;
+  padding: 10px 16px;
 }
 
 /* The row the title and selector share with the view bar's search row */
