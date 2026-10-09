@@ -560,36 +560,33 @@ def _first(
             + _filter_result(dataset, full_path, sort)
         )
 
+    # matching before sorting keeps None and non-finite values out of the
+    # index bounds, so the first value is read without a scan
+    pipeline.insert(
+        -1, {"$match": {path: _first_filter(dataset, full_path, sort)}}
+    )
     pipeline.append({"$project": {"_id": f"${path}"}})
 
-    return (
-        pipeline + _filter_result(dataset, full_path, sort) + [{"$limit": 1}]
-    )
+    return pipeline + [{"$limit": 1}]
 
 
 def _filter_result(dataset, path, sort):
+    return [{"$match": {"_id": _first_filter(dataset, path, sort)}}]
+
+
+def _first_filter(dataset, path, sort):
     field = dataset.get_field(path)
     while isinstance(field, fo.ListField):
         field = field.field
 
-    if isinstance(field, (fo.DateField, fo.DateTimeField)):
-        return [{"$match": {"_id": {"$ne": None}}}]
+    if isinstance(field, (fo.FloatField, fo.IntField)):
+        return _handle_nonfinites(sort)
 
-    return _handle_nonfinites(sort)
+    return {"$ne": None}
 
 
 def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
-    return [
-        {
-            "$match": {
-                "_id": (
-                    {"$gt": float("-inf")}
-                    if sort == 1
-                    else {"$lt": float("inf")}
-                )
-            }
-        }
-    ]
+    return {"$gt": float("-inf")} if sort == 1 else {"$lt": float("inf")}
 
 
 async def _handle_pipeline(
