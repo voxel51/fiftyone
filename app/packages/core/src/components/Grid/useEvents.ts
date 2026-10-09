@@ -1,3 +1,4 @@
+import { QP_WAIT, type QueryPerformanceEvents } from "@fiftyone/sidebar";
 import styles from "./Grid.module.css";
 
 import { getEventBus } from "@fiftyone/events";
@@ -7,8 +8,8 @@ import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
 import { useSetReverbState } from "@fiftyone/reverb";
-import { MANAGING_GRID_MEMORY } from "../../utils/links";
-import { QP_WAIT, type QueryPerformanceEvents } from "../QueryPerformanceToast";
+import { MANAGING_GRID_MEMORY } from "@fiftyone/utilities";
+
 import { recommendedGridZoom } from "./atoms";
 import type { LookerCache } from "./types";
 import type { ScrollLocation } from "./useScrollLocation";

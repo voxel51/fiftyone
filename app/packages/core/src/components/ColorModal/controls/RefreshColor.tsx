@@ -7,7 +7,7 @@ import {
 import { Autorenew } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { useSetReverbState } from "@fiftyone/reverb";
-import { Button } from "../../utils";
+import { Button } from "@fiftyone/sidebar";
 
 const ShuffleColor: React.FC = () => {
   const setColorSeed = useSetReverbState(fos.colorSeed);

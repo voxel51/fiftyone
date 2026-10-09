@@ -1,11 +1,5 @@
-import { field } from "@fiftyone/state";
-import { atom, selector } from "@fiftyone/reverb";
-import { ACTIVE_FIELD } from "./utils";
-
-export const activeColorEntry = atom<{ path: string } | ACTIVE_FIELD | null>({
-  key: "activeColorEntry",
-  default: null,
-});
+import { activeColorEntry, field } from "@fiftyone/state";
+import { selector } from "@fiftyone/reverb";
 
 export const activeColorPath = selector<string>({
   key: "activeColorPath",

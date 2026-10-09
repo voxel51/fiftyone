@@ -1,9 +1,8 @@
+import { ItemAction, useHighlightHover } from "@fiftyone/sidebar";
 import { ExternalLink, useTheme } from "@fiftyone/components";
 import { Launch } from "@mui/icons-material";
 import type { MouseEventHandler } from "react";
 import React from "react";
-import { ItemAction } from "./ItemAction";
-import { useHighlightHover } from "./utils";
 
 export type ActionOptionProps = {
   id?: string;

@@ -14,7 +14,7 @@ import { cloneDeep } from "lodash";
 import React from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
-import Item from "../../Filters/FilterOption/FilterItem";
+import { FilterItem as Item } from "@fiftyone/sidebar";
 import { activeColorPath } from "../state";
 
 const ActionDiv = styled.div`

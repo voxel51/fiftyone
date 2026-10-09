@@ -9,8 +9,8 @@ import {
   useReverbState,
   useReverbValue,
 } from "@fiftyone/reverb";
-import { NAME_COLORSCALE } from "../../../utils/links";
-import Checkbox from "../../Common/Checkbox";
+import { NAME_COLORSCALE } from "@fiftyone/utilities";
+import { Checkbox } from "@fiftyone/sidebar";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
 import {

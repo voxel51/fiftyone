@@ -1,3 +1,4 @@
+import { activeColorEntry } from "@fiftyone/state";
 import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -9,7 +10,6 @@ import {
   useSetReverbState,
 } from "@fiftyone/reverb";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
-import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
   const canEditCustomColors = useReverbValue(fos.canEditCustomColors);

@@ -5,8 +5,7 @@ import {
 } from "@fiftyone/state";
 import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
 import styled from "styled-components";
-import TimedOut from "./Common/TimedOut";
-import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
+import { PathEntryCounts, TimedOut } from "@fiftyone/sidebar";
 
 const RightDiv = styled.div`
   display: flex;

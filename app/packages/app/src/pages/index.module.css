@@ -20,5 +20,5 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--fo-palette-background-level2);
+  background: var(--color-content-bg-background);
 }

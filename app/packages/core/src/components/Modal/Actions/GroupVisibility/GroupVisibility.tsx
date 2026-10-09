@@ -4,7 +4,7 @@ import type { MutableRefObject, ReactNode } from "react";
 import { useMemo } from "react";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import Popout from "../../../Actions/Popout";
-import Checkbox from "../../../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 
 export const TITLE = "Toggle renderer configuration";
 

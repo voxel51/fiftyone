@@ -1,3 +1,4 @@
+import { activeColorEntry } from "@fiftyone/state";
 import { useTrackEvent } from "@fiftyone/analytics";
 import { subscribe } from "@fiftyone/relay";
 import { isModalActive, useCurrentDatasetId } from "@fiftyone/state";
@@ -6,7 +7,7 @@ import React, { useEffect } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import ColorModal from "./ColorModal/ColorModal";
-import { activeColorEntry } from "./ColorModal/state";
+
 import EventTracker from "./EventTracker";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";

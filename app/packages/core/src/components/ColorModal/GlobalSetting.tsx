@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
 import { useReverbState } from "@fiftyone/reverb";
-import Checkbox from "../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 import RadioGroup from "../Common/RadioGroup";
 import {
   ControlGroupWrapper,

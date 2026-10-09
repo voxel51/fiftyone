@@ -1,6 +1,4 @@
-import { useTheme } from "@fiftyone/components";
-import { animated, useSpring } from "@react-spring/web";
-import { useState } from "react";
+import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
 export const ActionDiv = styled.div.withConfig({
@@ -31,36 +29,6 @@ export const SwitchDiv = animated(styled.div`
   border-bottom-width: 2px;
   text-transform: capitalize;
 `);
-
-export const useHighlightHover = (
-  disabled: boolean,
-  override: null | boolean = null,
-  color: null | string = null,
-) => {
-  const [hovering, setHovering] = useState(false);
-  const theme = useTheme();
-  const on =
-    typeof override === "boolean"
-      ? override && !disabled
-      : hovering && !disabled;
-  const style = useSpring({
-    backgroundColor: on ? theme.background.level1 : theme.background.level2,
-    color: color ? color : on ? theme.text.primary : theme.text.secondary,
-  });
-
-  const onMouseEnter = () => setHovering(true);
-
-  const onMouseLeave = () => setHovering(false);
-
-  return {
-    style: {
-      ...style,
-      cursor: disabled ? "default" : "pointer",
-    },
-    onMouseEnter,
-    onMouseLeave,
-  };
-};
 
 /**
  * This function is used to filter out non-string or non-number props. Like

@@ -14,7 +14,7 @@ export const PanelContainer = styled.div`
 
 export const PanelTabs = styled.div<{ $isModal?: boolean }>`
   display: flex;
-  background: var(--fo-palette-background-header);
+  background: var(--color-content-bg-background);
   padding-bottom: 0px;
 `;
 
@@ -22,7 +22,7 @@ export const StyledPanel = styled.div<{ $isModalPanel?: boolean }>`
   width: 100%;
   height: calc(100% - 28px);
   overflow: auto;
-  background: var(--fo-palette-background-mediaSpace);
+  background: var(--color-content-bg-background);
 `;
 
 export const AddPanelButtonContainer = styled.div`
@@ -35,9 +35,7 @@ export const StyledTab = styled.button<{ $active?: boolean }>`
   align-items: center;
   cursor: pointer;
   background: ${(props) =>
-    props.$active
-      ? "var(--fo-palette-background-level2)"
-      : "var(--fo-palette-background-inactiveTab)"};
+    props.$active ? "var(--color-content-bg-background)" : "transparent"};
   border: none;
   color: ${(props) =>
     props.$active

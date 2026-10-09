@@ -1,7 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { DefaultValue, atom, atomFamily, selector } from "@fiftyone/reverb";
-import { MANAGING_GRID_MEMORY } from "../../utils/links";
+import { MANAGING_GRID_MEMORY } from "@fiftyone/utilities";
 
 /**
  * Convert a [0, 10] zoom setting to [-15, -1]

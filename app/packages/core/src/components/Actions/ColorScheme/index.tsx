@@ -1,10 +1,10 @@
+import { ACTIVE_FIELD, activeColorEntry } from "@fiftyone/state";
 import { useTrackEvent } from "@fiftyone/analytics";
 import { PillButton } from "@fiftyone/components";
 import { ColorLens } from "@mui/icons-material";
 import { useEffect, useRef, useState } from "react";
 import { useReverbState } from "@fiftyone/reverb";
-import { activeColorEntry } from "../../ColorModal/state";
-import { ACTIVE_FIELD } from "../../ColorModal/utils";
+
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 

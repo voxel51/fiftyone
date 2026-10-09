@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import { selector, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
-import Checkbox from "../../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 import { isSameArray } from "../utils";
 import { colorPicker } from "./Colorpicker.module.css";
 

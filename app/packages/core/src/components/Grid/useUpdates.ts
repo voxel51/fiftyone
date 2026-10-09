@@ -1,3 +1,4 @@
+import { useDetectNewActiveLabelFields } from "@fiftyone/state";
 import { getEventBus } from "@fiftyone/events";
 import { Coloring, ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { Colorscale } from "@fiftyone/looker/src/state";
@@ -7,7 +8,6 @@ import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
 /** e2e specs wait on a grid update pass, then on each updated tile's draws */

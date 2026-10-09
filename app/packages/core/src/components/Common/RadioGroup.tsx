@@ -1,11 +1,10 @@
+import { ItemAction, useHighlightHover } from "@fiftyone/sidebar";
 import { Radio as MaterialRadio } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useLayoutEffect } from "react";
 import styled from "styled-components";
 
 import { useTheme } from "@fiftyone/components";
-import { ItemAction } from "../Actions/ItemAction";
-import { useHighlightHover } from "../Actions/utils";
 
 const StyledRadioContainer = styled.div``;
 

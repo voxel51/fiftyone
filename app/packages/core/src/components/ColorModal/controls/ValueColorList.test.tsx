@@ -29,7 +29,7 @@ vi.mock("@fiftyone/looker/src/overlays/util", () => ({
   isValidColor: () => true,
 }));
 vi.mock("react-color", () => ({ ChromePicker: () => null }));
-vi.mock("../../utils", () => ({ Button: () => null }));
+vi.mock("@fiftyone/sidebar", () => ({ Button: () => null }));
 vi.mock("../ShareStyledDiv", () => ({
   AddContainer: "div",
   ChromePickerWrapper: "div",

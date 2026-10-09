@@ -96,3 +96,5 @@ export { default as withSuspense } from "./withSuspense";
 
 // types
 export * from "./types";
+export * from "./syncAndGetNewLabels";
+export * from "./useDetectNewActiveLabelFields";

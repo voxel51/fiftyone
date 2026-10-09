@@ -8,14 +8,18 @@ import {
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import ExploreSidebar from "../../Sidebar";
-import { createExploreIsDisabled } from "../../Sidebar/InteractiveSidebar";
-import SidebarContainer from "../../Sidebar/SidebarContainer";
+import {
+  createExploreIsDisabled,
+  Sidebar as ExploreSidebar,
+  FieldActionContext,
+  SidebarContainer,
+} from "@fiftyone/sidebar";
 import Annotate from "./Annotate";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
-import SchemaLensRow from "../../Sidebar/SchemaLensRow";
+import SchemaLensRow from "../../SchemaLens/SchemaLensRow";
+import { QuickEditEntry } from "./Annotate";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const Explore = () => {
@@ -23,12 +27,14 @@ const Explore = () => {
   const disabled = useDisabledCheckboxPaths();
 
   return (
-    <ExploreSidebar
-      isDisabled={createExploreIsDisabled(disabled)}
-      render={renderEntry}
-      useEntries={useModalExplorEntries}
-      modal={true}
-    />
+    <FieldActionContext.Provider value={QuickEditEntry}>
+      <ExploreSidebar
+        isDisabled={createExploreIsDisabled(disabled)}
+        render={renderEntry}
+        useEntries={useModalExplorEntries}
+        modal={true}
+      />
+    </FieldActionContext.Provider>
   );
 };
 

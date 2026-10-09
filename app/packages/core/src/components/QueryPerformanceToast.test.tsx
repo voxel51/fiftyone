@@ -2,13 +2,19 @@ import { clearChannel, getEventBus } from "@fiftyone/events";
 import { act, render, renderHook, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import useQueryPerformanceTimeout from "./Filters/use-query-performance-timeout";
-import QueryPerformanceToast, {
+import {
   QP_WAIT,
   type QueryPerformanceEvents,
-} from "./QueryPerformanceToast";
+} from "@fiftyone/sidebar/src/components/queryPerformance";
+import useQueryPerformanceTimeout from "@fiftyone/sidebar/src/components/Filters/use-query-performance-timeout";
+import QueryPerformanceToast from "./QueryPerformanceToast";
 
 const shouldOptimize = vi.hoisted(() => vi.fn());
+
+// the toast reads only the query performance contract from the sidebar
+vi.mock("@fiftyone/sidebar", async () => ({
+  ...(await import("@fiftyone/sidebar/src/components/queryPerformance")),
+}));
 
 vi.mock("@fiftyone/reverb", () => ({
   atom: (options: unknown) => options,

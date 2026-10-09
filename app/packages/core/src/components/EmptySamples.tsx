@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import ErrorImg from "../images/error.svg";
-import { ExternalLink } from "../utils/generic";
+import { ExternalLink } from "@fiftyone/sidebar";
 import { SamplesHeader } from "./Grid/Header/Containers";
 
 const BaseContainer = styled.div`

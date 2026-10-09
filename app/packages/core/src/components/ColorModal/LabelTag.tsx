@@ -12,7 +12,7 @@ import {
   useReverbState,
   useReverbValue,
 } from "@fiftyone/reverb";
-import Checkbox from "../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 import Input from "../Common/Input";
 import {
   FieldColorSquare,

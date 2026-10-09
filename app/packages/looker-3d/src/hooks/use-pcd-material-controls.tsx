@@ -1,5 +1,5 @@
 import { Button, useTheme } from "@fiftyone/components";
-import { RangeSlider } from "@fiftyone/core/src/components/Common/RangeSlider";
+import { RangeSlider } from "@fiftyone/sidebar/src/components/Common/RangeSlider";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import type { Range } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";

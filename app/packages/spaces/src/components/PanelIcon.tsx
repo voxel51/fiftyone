@@ -32,7 +32,15 @@ export default function PanelIcon(props: PanelIconProps) {
     toRenderableIcon(panel.Icon) ?? toRenderableIcon(ExtensionIcon);
   if (!PanelTabIcon) return null;
   return (
-    <Box sx={{ mr: "0.75rem", width: "1rem", height: "1.5rem" }}>
+    <Box
+      sx={{
+        mr: "0.75rem",
+        width: "1rem",
+        height: "1.5rem",
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
       <PanelTabIcon
         style={{
           width: "1rem",

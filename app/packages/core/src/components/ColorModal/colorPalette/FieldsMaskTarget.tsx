@@ -3,7 +3,7 @@ import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect } from "react";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
-import Checkbox from "../../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 import { fieldColorSetting } from "../FieldSetting";
 import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";

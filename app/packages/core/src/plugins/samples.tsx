@@ -16,7 +16,9 @@ import {
 } from "@voxel51/voodo";
 import styled from "styled-components";
 import Grid from "../components/Grid";
-import GridSidebar from "../components/Sidebar/GridSidebar";
+import { FieldActionContext, GridSidebar } from "@fiftyone/sidebar";
+import { QuickEditEntry } from "../components/Modal/Sidebar/Annotate";
+import SchemaLensRow from "../components/SchemaLens/SchemaLensRow";
 
 const Container = styled.div`
   display: flex;
@@ -38,7 +40,11 @@ const SamplesPanel = () => {
 
   return (
     <Container>
-      {showSidebar && <GridSidebar />}
+      {showSidebar && (
+        <FieldActionContext.Provider value={QuickEditEntry}>
+          <GridSidebar header={<SchemaLensRow padded={false} />} />
+        </FieldActionContext.Provider>
+      )}
       <GridArea>
         <Grid key={"grid"} />
       </GridArea>

@@ -8,7 +8,7 @@ import {
   useReverbValue,
   useResetReverbState,
 } from "@fiftyone/reverb";
-import { Slider } from "../../Common/RangeSlider";
+import { Slider } from "@fiftyone/sidebar";
 import ResourceCount from "../../ResourceCount";
 import Actions from "../Actions";
 import { gridSpacing, gridZoom } from "../atoms";

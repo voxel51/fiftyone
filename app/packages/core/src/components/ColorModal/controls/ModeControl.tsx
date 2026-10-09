@@ -1,3 +1,4 @@
+import { activeColorEntry } from "@fiftyone/state";
 import { PopoutDiv, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
@@ -5,7 +6,7 @@ import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutl
 import React from "react";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
-import { activeColorEntry } from "../state";
+
 import { getDisplayName } from "../utils";
 
 export const ModeControlContainer = styled.div`

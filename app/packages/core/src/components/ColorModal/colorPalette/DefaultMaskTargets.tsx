@@ -4,7 +4,7 @@ import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import Checkbox from "../../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
 import {

@@ -1,3 +1,4 @@
+import { ACTIVE_FIELD, activeColorEntry } from "@fiftyone/state";
 import {
   ExternalLink,
   InfoIcon,
@@ -13,7 +14,7 @@ import React, { Fragment, useCallback, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
 import { useReverbValue, useResetReverbState } from "@fiftyone/reverb";
-import { resizeHandle } from "./../Sidebar/InteractiveSidebar/style.module.css";
+import { sidebarResizeHandle as resizeHandle } from "@fiftyone/sidebar";
 import ColorFooter from "./ColorFooter";
 import FieldSetting from "./FieldSetting";
 import GlobalSetting from "./GlobalSetting";
@@ -28,8 +29,6 @@ import {
   ModalWrapper,
 } from "./ShareStyledDiv";
 import SidebarList from "./SidebarList";
-import { activeColorEntry } from "./state";
-import { ACTIVE_FIELD } from "./utils";
 
 const CUSTOM_COLOR_DOCUMENTATION_LINK =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";

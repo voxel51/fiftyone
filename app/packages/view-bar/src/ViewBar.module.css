@@ -16,7 +16,7 @@
   align-items: center;
   min-width: 0;
   box-sizing: border-box;
-  background: var(--fo-palette-background-level1);
+  background: var(--color-content-bg-background);
   border: 1px solid var(--fo-palette-primary-plainBorder);
   border-radius: 4px;
 }
@@ -55,7 +55,7 @@
 .stagesRow {
   min-width: 0;
   box-sizing: border-box;
-  background: var(--fo-palette-background-level1);
+  background: var(--color-content-bg-background);
   border: 1px solid var(--fo-palette-primary-plainBorder);
   border-radius: 0 0 4px 4px;
 }

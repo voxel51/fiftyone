@@ -2,7 +2,7 @@ import { getEventBus } from "@fiftyone/events";
 import { useSpring } from "@react-spring/web";
 import type { MutableRefObject, RefObject } from "react";
 import React, { useEffect, useLayoutEffect, useState } from "react";
-import { PopoutDiv } from "../utils";
+import { PopoutDiv } from "@fiftyone/sidebar";
 
 /** e2e specs wait on an action popout mounting and unmounting */
 type PopoutE2EEvents = {

@@ -22,6 +22,7 @@ import {
 } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import {
+  atom,
   type GetReverbValue,
   selector,
   selectorFamily,
@@ -404,3 +405,15 @@ export function removeRgbProperty(input) {
 
   return clonedInput;
 }
+
+/** A field or panel of the color settings open for editing. */
+export enum ACTIVE_FIELD {
+  JSON = "JSON editor",
+  GLOBAL = "Global settings",
+  LABEL_TAGS = "label_tags",
+}
+
+export const activeColorEntry = atom<{ path: string } | ACTIVE_FIELD | null>({
+  key: "activeColorEntry",
+  default: null,
+});

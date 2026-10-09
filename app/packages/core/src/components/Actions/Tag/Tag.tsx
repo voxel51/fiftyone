@@ -23,7 +23,7 @@ import {
   useSetReverbState,
 } from "@fiftyone/reverb";
 import styled from "styled-components";
-import { Button } from "../../utils";
+import { Button } from "@fiftyone/sidebar";
 import Checker, { CheckState } from "../Checker";
 import Popout from "../Popout";
 import { SwitchDiv, SwitcherDiv } from "../utils";

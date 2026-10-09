@@ -1,3 +1,4 @@
+import { ACTIVE_FIELD } from "@fiftyone/state";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import {
   ColorSchemeInput,
@@ -6,12 +7,6 @@ import {
 } from "@fiftyone/relay";
 import colorString from "color-string";
 import { isEmpty, xor } from "lodash";
-
-export enum ACTIVE_FIELD {
-  JSON = "JSON editor",
-  GLOBAL = "Global settings",
-  LABEL_TAGS = "label_tags",
-}
 
 // disregard the order
 export const isSameArray = (a: readonly unknown[], b: readonly unknown[]) => {

@@ -5,7 +5,7 @@ import { EntryKind, isGeneratedView } from "@fiftyone/state";
 import { useEffect } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
-import Sidebar from "../../../Sidebar";
+import { Sidebar } from "@fiftyone/sidebar";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
 import GroupEntry, { UNSCANNED_GROUP_NAME } from "./GroupEntry";
 import LabelEntry from "./LabelEntry";

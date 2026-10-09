@@ -21,6 +21,7 @@
         "@fiftyone/playback": "workspace:*",
         "@fiftyone/plugins": "*",
         "@fiftyone/reverb": "workspace:*",
+        "@fiftyone/sidebar": "*",
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",

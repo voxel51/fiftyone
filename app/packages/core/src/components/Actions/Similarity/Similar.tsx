@@ -1,7 +1,7 @@
 import { PopoutSectionTitle } from "@fiftyone/components";
 import React, { type MutableRefObject } from "react";
 import Input from "../../Common/Input";
-import { Button } from "../../utils";
+import { Button } from "@fiftyone/sidebar";
 import Popout from "../Popout";
 import GroupButton, { type ButtonDetail } from "./GroupButton";
 import Helper from "./Helper";

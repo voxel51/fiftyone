@@ -9,12 +9,13 @@ import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import {
+  ContentDiv,
+  ContentHeader,
   formatDateTime,
   getDateTimeRangeFormattersWithPrecision,
   isFloat,
   prettify,
-} from "../utils/generic";
-import { ContentDiv, ContentHeader } from "./utils";
+} from "@fiftyone/sidebar";
 
 const Container = styled.div`
   overflow-y: hidden;

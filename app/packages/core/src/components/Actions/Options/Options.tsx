@@ -19,8 +19,8 @@ import {
   MANAGING_GRID_MEMORY,
   OPTIMIZING_QUERY_PERFORMANCE,
   QUERY_PERFORMANCE_RESULTS,
-} from "../../../utils/links";
-import Checkbox from "../../Common/Checkbox";
+} from "@fiftyone/utilities";
+import { Checkbox } from "@fiftyone/sidebar";
 import RadioGroup from "../../Common/RadioGroup";
 import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/atoms";
 import { ActionOption } from "../Common";

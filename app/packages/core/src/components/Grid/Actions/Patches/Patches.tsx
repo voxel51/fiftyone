@@ -19,7 +19,7 @@ import {
   CLIPS_VIEWS,
   EVALUATION_PATCHES,
   OBJECT_PATCHES,
-} from "../../../../utils/links";
+} from "@fiftyone/utilities";
 import { SwitchDiv, SwitcherDiv } from "../../../Actions/utils";
 import { ActionOption } from "./../../../Actions/Common";
 import Popout from "./../../../Actions/Popout";

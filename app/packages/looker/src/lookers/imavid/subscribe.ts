@@ -1,9 +1,6 @@
 import { getColoringKey } from "@fiftyone/core/src/components/Grid/useUpdates";
-import { syncAndGetNewLabels } from "@fiftyone/core/src/components/Sidebar/syncAndGetNewLabels";
-import {
-  gridActivePathsLUT,
-  modalActivePathsLUT,
-} from "@fiftyone/core/src/components/Sidebar/useDetectNewActiveLabelFields";
+import { syncAndGetNewLabels } from "@fiftyone/state";
+import { gridActivePathsLUT, modalActivePathsLUT } from "@fiftyone/state";
 import { ImaVidLooker } from "../..";
 
 export const getSubscription = ({

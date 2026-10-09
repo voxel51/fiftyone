@@ -1,10 +1,11 @@
+import {
+  getValueString,
+  NameAndCountContainer,
+  useHighlightHover,
+} from "@fiftyone/sidebar";
 import { animated } from "@react-spring/web";
 import { useEffect, useRef } from "react";
 import styled from "styled-components";
-
-import { useHighlightHover } from "../Actions/utils";
-import { getValueString } from "../Filters/utils";
-import { NameAndCountContainer } from "../utils";
 
 export const ResultsContainer = styled(animated.div)`
   background-color: ${({ theme }) => theme.background.level2};

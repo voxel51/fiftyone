@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, { useCallback } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import { Entries } from "../../Sidebar";
+import { Entries } from "@fiftyone/sidebar";
 
 export const useModalSidebarRenderEntry = () => {
   const labelPaths = useReverbValue(fos.labelPaths({ expanded: false }));

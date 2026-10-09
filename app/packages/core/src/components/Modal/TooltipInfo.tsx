@@ -28,8 +28,7 @@ import {
   useSetReverbState,
 } from "@fiftyone/reverb";
 import styled from "styled-components";
-import { joinStringArray } from "../Filters/utils";
-import { ContentDiv, ContentHeader } from "../utils";
+import { ContentDiv, ContentHeader, joinStringArray } from "@fiftyone/sidebar";
 import { QuickEditEntry } from "./Sidebar/Annotate";
 import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 

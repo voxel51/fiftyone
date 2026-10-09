@@ -111,6 +111,8 @@ function Grid() {
 
       maxRows: MAX_ROWS,
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
+      // no actions row above the grid while it is hidden
+      offset: spacing,
       scrollbar: true,
       spacing,
 

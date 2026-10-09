@@ -1769,6 +1769,7 @@ __metadata:
     "@fiftyone/playback": "workspace:*"
     "@fiftyone/plugins": "npm:*"
     "@fiftyone/reverb": "workspace:*"
+    "@fiftyone/sidebar": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
@@ -2320,6 +2321,33 @@ __metadata:
     vitest: "catalog:"
   peerDependencies:
     react: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/sidebar@npm:*, @fiftyone/sidebar@workspace:packages/sidebar":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/sidebar@workspace:packages/sidebar"
+  dependencies:
+    "@fiftyone/command-bus": "workspace:*"
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/events": "npm:*"
+    "@fiftyone/looker": "npm:*"
+    "@fiftyone/relay": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@mui/icons-material": "catalog:"
+    "@mui/material": "catalog:"
+    "@react-spring/web": "catalog:"
+    "@testing-library/react": "catalog:"
+    color: "npm:^4.2.3"
+    numeral: "catalog:"
+    react: "catalog:"
+    react-dom: "catalog:"
+    styled-components: "catalog:"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
   languageName: unknown
   linkType: soft
 

@@ -1,3 +1,4 @@
+import { ACTIVE_FIELD, activeColorEntry } from "@fiftyone/state";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import ExpandLess from "@mui/icons-material/ExpandLess";
@@ -10,9 +11,9 @@ import { Resizable } from "re-resizable";
 import React, { useState } from "react";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import styles from "../../../../../packages/components/src/scrollable.module.css";
-import { resizeHandle } from "./../Sidebar/InteractiveSidebar/style.module.css";
-import { activeColorEntry } from "./state";
-import { ACTIVE_FIELD, getDisplayName } from "./utils";
+import { sidebarResizeHandle as resizeHandle } from "@fiftyone/sidebar";
+
+import { getDisplayName } from "./utils";
 
 const WIDTH = 230;
 

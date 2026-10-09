@@ -7,7 +7,7 @@ import {
   useReverbState,
   useReverbValue,
 } from "@fiftyone/reverb";
-import Checkbox from "../Common/Checkbox";
+import { Checkbox } from "@fiftyone/sidebar";
 import { SectionWrapper } from "./ShareStyledDiv";
 import TemporalTagByValue from "./colorPalette/TemporalTagByValue";
 import { getRandomColorFromPool } from "./utils";

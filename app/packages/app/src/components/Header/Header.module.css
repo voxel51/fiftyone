@@ -4,7 +4,7 @@
    as a whole — no voodo surface token matches it in the dark theme, and a
    header on a different grey than the panels around it reads as a seam. */
 .header {
-  background-color: var(--fo-palette-background-header);
+  background-color: var(--color-content-bg-background);
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;

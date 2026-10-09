@@ -1,0 +1,187 @@
+import { VisibilityOffIcon } from "@voxel51/voodo";
+import { PillButton } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import React, { Suspense, useState } from "react";
+import {
+  DefaultValue,
+  selectorFamily,
+  useReverbState,
+  useReverbValue,
+} from "@fiftyone/reverb";
+import { NameAndCountContainer } from "../../../utils";
+import { PathEntryCounts } from "../EntryCounts";
+import Icon from "./Icon";
+import { FieldAction } from "../../FieldAction";
+
+/** The e2e signal a modal sidebar field's counts load under, with its path */
+const MODAL_FIELD_COUNT_SIGNAL = "modal-sidebar-field";
+
+const PATH_OVERRIDES = {
+  tags: "sample tags",
+  _label_tags: "label tags",
+  _temporal_tags: "temporal tags",
+};
+
+/**
+ * The title shown for a sidebar path entry.
+ *
+ * A path nested under a group of its own name drops that prefix — the group
+ * header directly above it already renders it, so repeating it costs width
+ * and buries the part that distinguishes one entry from the next.
+ */
+export const sidebarEntryTitle = (path: string, group?: string): string => {
+  if (Object.hasOwn(PATH_OVERRIDES, path)) {
+    return PATH_OVERRIDES[path];
+  }
+
+  return group && path.startsWith(`${group}.`)
+    ? path.slice(group.length + 1)
+    : path;
+};
+
+const hiddenPathLabels = selectorFamily<string[], string>({
+  key: "hiddenPathLabels",
+  get:
+    (path) =>
+    ({ get }) => {
+      const data = get(fos.pathHiddenLabelsMap);
+      const sampleId = get(fos.modalSampleId);
+
+      if (data[sampleId]) {
+        return data[sampleId][path] || [];
+      }
+
+      return [];
+    },
+  set:
+    (path) =>
+    ({ set, get }, value) => {
+      const data = get(fos.pathHiddenLabelsMap);
+      const sampleId = get(fos.modalSampleId);
+
+      set(fos.pathHiddenLabelsMap, {
+        ...data,
+        [sampleId]: {
+          ...data[sampleId],
+          [path]: value instanceof DefaultValue ? [] : value,
+        },
+      });
+    },
+});
+
+const Hidden = ({ path }: { path: string }) => {
+  const [hidden, set] = useReverbState(hiddenPathLabels(path));
+  const num = hidden.length;
+  const text = num.toLocaleString();
+
+  return num ? (
+    <PillButton
+      title={text}
+      text={text}
+      icon={<VisibilityOffIcon size={24} />}
+      onClick={() => set([])}
+      open={false}
+      highlight={false}
+      style={{
+        height: "1.5rem",
+        lineHeight: "1rem",
+        padding: "0.25rem 0.5rem",
+        margin: "0 0.5rem",
+      }}
+    />
+  ) : null;
+};
+
+const Title = ({
+  hovering,
+  modal,
+  hoverTarget,
+  path,
+  hoverHandlers,
+  title,
+}: {
+  hovering: boolean;
+  modal: boolean;
+  hoverTarget: React.RefObject<HTMLSpanElement>;
+  path: string;
+  hoverHandlers: React.HTMLAttributes<HTMLSpanElement>;
+  title: string;
+}) => {
+  return (
+    <span key="path" data-cy={`sidebar-field-${path}`}>
+      <span ref={hoverTarget} {...hoverHandlers}>
+        {modal ? (
+          <span onMouseUp={(e) => e.stopPropagation()}>
+            <FieldAction enabled={hovering} path={path}>
+              {title}
+            </FieldAction>
+          </span>
+        ) : (
+          title
+        )}
+      </span>
+    </span>
+  );
+};
+
+type TitleTemplateProps = {
+  hoverHandlers: React.HTMLAttributes<HTMLSpanElement>;
+  hoverTarget: React.RefObject<HTMLSpanElement>;
+  container: React.RefObject<HTMLDivElement>;
+};
+
+const useTitleTemplate = ({
+  group,
+  modal,
+  path,
+}: {
+  group?: string;
+  modal: boolean;
+  path: string;
+}): ((props: TitleTemplateProps) => JSX.Element) => {
+  return function useTitleTemplate({
+    hoverHandlers,
+    hoverTarget,
+    container,
+  }: TitleTemplateProps) {
+    const enabled = !useReverbValue(fos.isDisabledCheckboxPath(path));
+    const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
+    const expandedPath = useReverbValue(fos.expandPath(path));
+    const [hovering, setHovering] = useState(false);
+
+    return (
+      <NameAndCountContainer
+        ref={container}
+        data-cy={`sidebar-field-container-${path}`}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      >
+        <Title
+          hovering={hovering}
+          hoverHandlers={hoverHandlers}
+          hoverTarget={hoverTarget}
+          modal={modal}
+          path={path}
+          title={sidebarEntryTitle(path, group)}
+        />
+        {modal && (
+          <Suspense>
+            <Hidden path={path} />
+          </Suspense>
+        )}
+        {enabled && isFilterMode && (
+          <PathEntryCounts
+            key="count"
+            modal={modal}
+            path={expandedPath}
+            signal={modal ? MODAL_FIELD_COUNT_SIGNAL : undefined}
+            label={path}
+          />
+        )}
+        {enabled && <Icon modal={modal} path={path} />}
+      </NameAndCountContainer>
+    );
+  };
+};
+
+export default useTitleTemplate;

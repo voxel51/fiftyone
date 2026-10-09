@@ -6,8 +6,8 @@ import { Link } from "@mui/material";
 import colorString from "color-string";
 import React, { useLayoutEffect, useMemo, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import { COLOR_SCHEME } from "../../utils/links";
-import { Button } from "../utils";
+import { COLOR_SCHEME } from "@fiftyone/utilities";
+import { Button } from "@fiftyone/sidebar";
 import { SectionWrapper } from "./ShareStyledDiv";
 import {
   validateColorscales,

@@ -1,3 +1,4 @@
+import { useDetectNewActiveLabelFields } from "@fiftyone/state";
 import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { getSubscription } from "@fiftyone/looker/src/lookers/imavid/subscribe";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
@@ -9,7 +10,6 @@ import {
   handlePotentiallyStillPendingOverlays,
   markTheseOverlaysAsPending,
 } from "../Grid/useUpdates";
-import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 
 export const useImageModalSelectiveRendering = (
   modalId: string,

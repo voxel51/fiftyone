@@ -52,7 +52,7 @@ import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { ItemRight } from "./Components";
 import { useSchemaManagerModal } from "./SchemaManager/hooks";
-import { useSchemaLensAvailable } from "../../../Sidebar/Entries/SchemaLensSelector";
+import { useSchemaLensAvailable } from "../../../SchemaLens/SchemaLensSelector";
 import useCanManageSchema from "./useCanManageSchema";
 import {
   useAnnotationContext,

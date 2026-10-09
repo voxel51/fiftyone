@@ -1,6 +1,13 @@
+import {
+  QueryPerformanceDetail,
+  QueryPerformanceEvents,
+} from "@fiftyone/sidebar";
 import { useTrackEvent } from "@fiftyone/analytics";
 import { Toast, useTheme } from "@fiftyone/components";
-import { OPTIMIZING_QUERY_PERFORMANCE, SUMMARY_FIELDS } from "../utils/links";
+import {
+  OPTIMIZING_QUERY_PERFORMANCE,
+  SUMMARY_FIELDS,
+} from "@fiftyone/utilities";
 import { useEventBus } from "@fiftyone/events";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
@@ -10,18 +17,6 @@ import { createPortal } from "react-dom";
 import { atom, useReverbState } from "@fiftyone/reverb";
 
 const SHOWN_FOR = 10000;
-
-export const QP_WAIT = 5151;
-
-export type QueryPerformanceDetail = {
-  path: string;
-  isFrameField: boolean;
-};
-
-/** A query on `path` ran long enough that an index or summary field helps */
-export type QueryPerformanceEvents = {
-  "query-performance:slow": QueryPerformanceDetail;
-};
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
