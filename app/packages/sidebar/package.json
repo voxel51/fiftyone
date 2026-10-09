@@ -12,21 +12,20 @@
     "main": "src/index.ts",
     "dependencies": {
         "@fiftyone/command-bus": "workspace:*",
-        "@fiftyone/components": "*",
         "@fiftyone/events": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/reverb": "workspace:*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
-        "@mui/icons-material": "catalog:",
-        "@mui/material": "catalog:",
         "@react-spring/web": "catalog:",
         "@voxel51/voodo": "catalog:",
         "color": "^4.2.3",
         "numeral": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "react-markdown": "catalog:",
+        "remark-gfm": "^3.0.1",
         "styled-components": "catalog:"
     },
     "devDependencies": {

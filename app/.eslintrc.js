@@ -90,6 +90,24 @@ const muiPatterns = [
   },
 ];
 
+// @fiftyone/sidebar is built from @voxel51/voodo alone: no MUI entry point and
+// none of the legacy @fiftyone/components wrappers.
+const voodoOnlyPaths = [
+  {
+    name: "@fiftyone/components",
+    message:
+      "@fiftyone/sidebar is VOODO only. Use @voxel51/voodo, or add the missing piece to it.",
+  },
+];
+
+const voodoOnlyPatterns = [
+  {
+    group: ["@mui/*", "**/components/src/**"],
+    message:
+      "@fiftyone/sidebar is VOODO only. Use @voxel51/voodo, or add the missing piece to it.",
+  },
+];
+
 const E2E_STANDARDS = "See e2e-pw/CODING_STANDARDS.md (App events).";
 const DOM_EVENT_MESSAGE = `App code doesn't build or dispatch DOM events; send on the @fiftyone/events bus (an e2e: event for a test signal), or a LocalEventTarget for an object whose listeners attach to it alone. ${E2E_STANDARDS}`;
 const DOM_EVENT_NAME = "/^([A-Z]\\w*)?Event$/";
@@ -324,6 +342,19 @@ module.exports = {
       files: storeMuiAllowlist,
       rules: {
         "no-restricted-imports": "off",
+      },
+    },
+    {
+      // VOODO only, on top of both freezes.
+      files: ["packages/sidebar/**"],
+      rules: {
+        "no-restricted-imports": [
+          "warn",
+          {
+            paths: [...reverbPaths, ...voodoOnlyPaths],
+            patterns: [...muiPatterns, ...voodoOnlyPatterns],
+          },
+        ],
       },
     },
     {
