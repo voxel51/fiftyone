@@ -29,7 +29,7 @@ from custom_directives import (
     CustomUseCaseCardDirective,
 )
 from fiftyone.internal.docs import is_hidden_from_docs
-from llms_txt import get_meta_description
+from llms_txt import get_meta_description  # pylint: disable=import-error
 from redirects import (
     generate_api_redirects,
     generate_redirects,
@@ -231,6 +231,8 @@ remove_from_toctrees = [
 ]
 
 html_favicon = "_static/favicon/favicon.ico"
+
+html_title = "FiftyOne Docs"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

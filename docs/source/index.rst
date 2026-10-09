@@ -30,6 +30,15 @@ FiftyOne
     "softwareHelp": { "@type": "CreativeWork", "url": "https://docs.voxel51.com" }
   }
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "FiftyOne Docs",
+    "alternateName": "FiftyOne",
+    "url": "https://docs.voxel51.com/"
+  }
+  </script>
 
 .. raw:: html
 
