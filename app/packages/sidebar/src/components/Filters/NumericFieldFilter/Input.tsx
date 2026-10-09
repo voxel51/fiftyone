@@ -13,6 +13,7 @@ import { Input as VoodoInput, Size } from "@voxel51/voodo";
 import { useEffect, useMemo, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import { underline } from "../styles";
+import DateCalendar from "./DateCalendar";
 
 export type InputType =
   | typeof DATE_TIME_FIELD
@@ -76,13 +77,13 @@ export function Input<T extends InputType>({
     setState(text);
   }, [text]);
 
-  const submit = () => {
-    if (state === text) return;
-    if (state.trim() === "") {
+  const submit = (entered = state) => {
+    if (entered === text) return;
+    if (entered.trim() === "") {
       value === null ? setState(text) : onSubmit(null);
       return;
     }
-    const parsed = from[ftype](state);
+    const parsed = from[ftype](entered);
     if (Number.isNaN(parsed)) {
       setState(text);
       return;
@@ -90,7 +91,7 @@ export function Input<T extends InputType>({
     onSubmit(parsed);
   };
 
-  return (
+  const input = (
     <VoodoInput
       size={Size.Sm}
       borderless
@@ -99,8 +100,26 @@ export function Input<T extends InputType>({
       value={state}
       onChange={(e) => setState(e.target.value)}
       onKeyDown={(e) => e.key === "Enter" && submit()}
-      onBlur={submit}
+      onBlur={() => submit()}
       {...underline(color)}
     />
+  );
+
+  if (ftype !== DATE_FIELD && ftype !== DATE_TIME_FIELD) {
+    return input;
+  }
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>{input}</div>
+      <DateCalendar
+        text={state}
+        time={ftype === DATE_TIME_FIELD}
+        onPick={(picked) => {
+          setState(picked);
+          submit(picked);
+        }}
+      />
+    </div>
   );
 }

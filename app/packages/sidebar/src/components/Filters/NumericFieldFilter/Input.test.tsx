@@ -1,6 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { ReverbRoot } from "@fiftyone/reverb";
-import { DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
+import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@fiftyone/state", async () => {
@@ -65,5 +71,24 @@ describe("Input", () => {
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.blur(input);
     expect(onSubmit).toHaveBeenCalledWith(null);
+  });
+  it("commits a day picked from the calendar", async () => {
+    const { input, onSubmit } = renderInput(
+      DATE_FIELD,
+      Date.UTC(2024, 0, 1),
+      null,
+    );
+    fireEvent.click(screen.getByLabelText("Calendar"));
+    const day = await waitFor(() => {
+      const found = document.querySelector(
+        ".react-datepicker__day--002:not(.react-datepicker__day--outside-month)",
+      );
+      expect(found).toBeTruthy();
+      return found as HTMLElement;
+    });
+    fireEvent.click(day);
+
+    expect(input.value).toBe("2024-01-02");
+    expect(onSubmit).toHaveBeenCalledWith(Date.UTC(2024, 0, 2));
   });
 });
