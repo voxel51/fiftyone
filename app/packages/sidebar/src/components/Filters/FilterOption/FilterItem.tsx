@@ -2,10 +2,11 @@ import {
   FilterAltIcon,
   FilterAltOffIcon,
   HideImageIcon,
-  IconAction,
   type IconProps,
   ImageIcon,
-  Size,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
   VisibilityIcon,
   VisibilityOffIcon,
@@ -30,10 +31,18 @@ const StyledPanelItem = styled.div<{ color?: string }>`
   }
 `;
 
-const Text = styled.div`
-  font-size: 1rem;
-  margin: auto auto auto 5px;
-`;
+const ROW = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  minHeight: 28,
+  padding: "0 0.375rem",
+} as const;
+
+const ItemIcon = ({ icon, color }: { icon: string; color?: string }) => {
+  const Icon = getIcon(icon);
+  return <Icon size={14} color={color} style={{ flexShrink: 0 }} />;
+};
 
 export const getIcon = (icon: string): FC<IconProps> => {
   switch (String(icon).toLowerCase()) {
@@ -89,21 +98,18 @@ const Item = React.forwardRef(
       <StyledPanelItem color={highlightedBGColor}>
         <TooltipWrapper tooltip={tooltip}>
           <div
-            style={{ display: "flex", flexDirection: "row" }}
+            style={ROW}
             ref={ref}
             onClick={onClick}
             data-cy={`filter-option-${id}`}
           >
-            {icon ? (
-              <IconAction
-                icon={getIcon(icon)}
-                size={Size.Lg}
-                aria-label={value}
-                style={{ color }}
-              />
-            ) : null}
-
-            <Text>{value}</Text>
+            {icon ? <ItemIcon icon={icon} color={color} /> : null}
+            <Text
+              variant={TextVariant.BodyTertiary}
+              color={TextColor.Secondary}
+            >
+              {value}
+            </Text>
           </div>
         </TooltipWrapper>
       </StyledPanelItem>

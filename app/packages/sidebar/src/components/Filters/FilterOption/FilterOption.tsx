@@ -1,4 +1,4 @@
-import { cssVar, Tooltip } from "@voxel51/voodo";
+import { Text, TextColor, TextVariant, Tooltip } from "@voxel51/voodo";
 import Color from "color";
 import React from "react";
 import type { ReverbState } from "@fiftyone/reverb";
@@ -9,23 +9,16 @@ import Selected from "./Selected";
 import useOnSelect from "./useOnSelect";
 import useOptions from "./useOptions";
 
-const Text = styled.div`
-  font-size: 1rem;
-  margin: auto auto auto 5px;
-`;
-
 const FilterOptionContainer = styled.div`
   position: relative;
 `;
 
 const FilterMode = styled.div`
-  border-radius: 4px;
-  &:hover {
-    background-color: ${cssVar.color.bg["card-elevated"]};
-  }
   width: 100%;
   display: flex;
-  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
   cursor: pointer;
 `;
 
@@ -77,13 +70,13 @@ const FilterOption: React.FC<Props> = ({
             style={{ display: "flex", minWidth: 0 }}
           >
             <Text
+              variant={TextVariant.BodyTertiary}
+              color={TextColor.Secondary}
               onClick={() => setOpen(!open)}
               style={{
                 whiteSpace: "nowrap",
                 textOverflow: "ellipsis",
                 overflow: "hidden",
-                letterSpacing: "0.1px",
-                cursor: "pointer",
               }}
             >
               {selected}

@@ -62,7 +62,7 @@ const FilterableEntry = ({
     <RegularEntry
       backgroundColor={
         fieldIsFiltered
-          ? `color-mix(in srgb, ${color} 25%, transparent)`
+          ? `color-mix(in srgb, ${color} 7%, transparent)`
           : cssVar.color.bg["card-nested"]
       }
       clickable={!disabled}

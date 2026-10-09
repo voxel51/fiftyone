@@ -1,6 +1,5 @@
 import * as fos from "@fiftyone/state";
 import { COLOR_BY } from "@fiftyone/utilities";
-import { cssVar } from "@voxel51/voodo";
 import { type ReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";

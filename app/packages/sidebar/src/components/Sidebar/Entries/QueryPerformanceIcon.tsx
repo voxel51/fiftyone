@@ -14,7 +14,7 @@ import { atom, useReverbState } from "@fiftyone/reverb";
 
 const TITLE = "Query Performance is Enabled";
 
-const showExpandedTooltip = atom({
+const showExpandedTooltip = atom<boolean>({
   key: "showExpandedQueryPerformanceTooltip",
   default: true,
   effects: [

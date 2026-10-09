@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
-import { Button, Size, Variant } from "@voxel51/voodo";
+import { Size, TextAction } from "@voxel51/voodo";
 
 const useReset = (options: { modal: boolean; path: string }) => {
   return useReverbCallback(
@@ -38,14 +38,14 @@ function Reset({
   }
 
   return (
-    <Button
-      variant={Variant.Borderless}
+    <TextAction
       size={Size.Sm}
       data-cy="button-Reset"
       onClick={reset}
+      style={{ alignSelf: "flex-start" }}
     >
       Reset
-    </Button>
+    </TextAction>
   );
 }
 

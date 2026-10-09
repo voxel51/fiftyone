@@ -68,8 +68,10 @@ export default function Search({
   );
   if (loadable.state === "hasError") throw loadable.contents;
   const loading = loadable.state === "loading";
+  // the loadable's contents don't narrow by state
+  const loaded = loadable.contents as { values?: Result[] };
   const results = (
-    loadable.state === "hasValue" ? (loadable.contents.values ?? []) : []
+    loadable.state === "hasValue" ? (loaded.values ?? []) : []
   ).map((result) => (isFilterMode ? result : { ...result, count: null }));
 
   useEffect(() => setActive(null), [loadable.contents]);

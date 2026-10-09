@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { isSidebarFilterMode } from "@fiftyone/state";
 import { useReverbCallback } from "@fiftyone/reverb";
-import { Button, Size, Variant } from "@voxel51/voodo";
+import { Size, TextAction } from "@voxel51/voodo";
 
 export default function (params: {
   color: string;
@@ -19,13 +19,13 @@ export default function (params: {
   );
 
   return (
-    <Button
-      variant={Variant.Borderless}
+    <TextAction
       size={Size.Sm}
       data-cy="button-Reset"
       onClick={handleReset}
+      style={{ alignSelf: "flex-start" }}
     >
       Reset
-    </Button>
+    </TextAction>
   );
 }
