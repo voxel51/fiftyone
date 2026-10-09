@@ -2,7 +2,6 @@ import { ToolbarAction } from "@fiftyone/actions";
 import {
   gridSortBy,
   gridSortFields,
-  gridSortPending,
   queryPerformance,
   similarityParameters,
 } from "@fiftyone/state";
@@ -18,8 +17,6 @@ import {
   MenuIconTextItem,
   MenuSectionTitle,
   MenuSeparator,
-  Size,
-  Spinner,
 } from "@voxel51/voodo";
 
 /** Orders the grid by a field, ascending or descending */
@@ -28,7 +25,6 @@ export default function Sort() {
   const [value, select] = useReverbState(gridSortBy);
   const similarity = useReverbValue(similarityParameters);
   const isQPEnabled = useReverbValue(queryPerformance);
-  const pending = useReverbValue(gridSortPending);
   if (!fields.length || similarity) {
     return null;
   }
@@ -46,21 +42,7 @@ export default function Sort() {
           aria-label={`Sort: ${value?.field ?? "Default"}`}
           data-cy="grid-sort"
           icon={descending ? ArrowDownWideNarrowIcon : ArrowUpNarrowWideIcon}
-          label={
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              {value?.field ?? "Default"}
-              {pending && (
-                <span
-                  role="status"
-                  aria-label="Sorting"
-                  data-cy="grid-sort-pending"
-                  style={{ display: "inline-flex" }}
-                >
-                  <Spinner size={Size.Sm} />
-                </span>
-              )}
-            </span>
-          }
+          label={value?.field ?? "Default"}
           menu
         />
       }

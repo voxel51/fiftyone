@@ -75,27 +75,37 @@ export default function useRelayout<I extends Instance, V>({
       }
 
       const deleted = source.takeRemoved();
-      const removed =
-        reorder && from && to
-          ? new Set([...from.tiles.keys()].filter((id) => !to.tiles.has(id)))
-          : deleted;
       const before =
         animate && from
           ? measure(from.tiles, root.getBoundingClientRect())
           : undefined;
-      const gone = new Map<string, { rect: DOMRect; tile: HTMLElement }>();
-      for (const id of before ? removed : []) {
-        const tile = from?.tiles.get(id);
-        const rect = before?.get(id);
-        tile && rect && gone.set(id, { rect, tile });
-      }
+      const lift = (ids: Iterable<string>) => {
+        const gone = new Map<string, { rect: DOMRect; tile: HTMLElement }>();
+        for (const id of before ? ids : []) {
+          const tile = from?.tiles.get(id);
+          const rect = before?.get(id);
+          tile && rect && gone.set(id, { rect, tile });
+        }
+        return gone;
+      };
 
-      handOff({
-        cache,
-        evict: reorder ? [] : [...removed].filter((id) => !gone.has(id)),
-        next: to,
-        previous: from,
-      });
+      let gone: ReturnType<typeof lift>;
+      if (reorder) {
+        // the next instance's tiles exist once the hand-off flushes them, so
+        // what left is known only after it; nothing is evicted, it may return
+        handOff({ cache, next: to, previous: from });
+        gone = lift(
+          [...(from?.tiles.keys() ?? [])].filter((id) => !to?.tiles.has(id)),
+        );
+      } else {
+        gone = lift(deleted);
+        handOff({
+          cache,
+          evict: [...deleted].filter((id) => !gone.has(id)),
+          next: to,
+          previous: from,
+        });
+      }
 
       if (!before || !to || !root || !overlay.current) return;
       animateSwap({

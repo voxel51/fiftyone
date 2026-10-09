@@ -6,7 +6,7 @@ import { Pending } from "@fiftyone/components";
 import clsx from "clsx";
 import { freeVideos } from "@fiftyone/looker";
 import React, { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
+import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "@fiftyone/core/src/hooks";
@@ -68,7 +68,6 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     itemsReset,
     pageReset,
   } = useRefreshers();
-  const setSortPending = useSetReverbState(fos.gridSortPending);
   const container = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const zoom = useZoomSetting();
@@ -324,7 +323,6 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     if (lastPageReset.current !== pageReset) {
       lastPageReset.current = pageReset;
       if (lastItemsReset.current === itemsReset) {
-        setSortPending(true);
         reorder({ key: 0 });
         return;
       }
@@ -334,25 +332,13 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       return;
     }
     host?.rebuild(pageAnchor(get()));
-  }, [
-    get,
-    host,
-    itemsReset,
-    pageAnchor,
-    pageReset,
-    reorder,
-    setSortPending,
-    settings,
-  ]);
+  }, [get, host, itemsReset, pageAnchor, pageReset, reorder, settings]);
 
   const fetching = useSyncExternalStore(
     source.subscribe,
     () => source.fetching,
   );
   if (status === "ready") loaded.current = true;
-  useEffect(() => {
-    status === "ready" && setSortPending(false);
-  }, [setSortPending, status]);
   const storm = showStorm({ everLoaded: loaded.current });
   const pending = showPending({
     building: status === "building",

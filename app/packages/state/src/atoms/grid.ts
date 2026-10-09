@@ -58,12 +58,6 @@ export const gridSortDescendingStore = atomFamily<boolean, string>({
   ],
 });
 
-/** The grid is laying out a new sort; the sort control shows it. */
-export const gridSortPending = atom<boolean>({
-  key: "gridSortPending",
-  default: false,
-});
-
 export const gridSortBy = selector<null | {
   descending: boolean;
   field: string;
