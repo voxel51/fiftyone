@@ -9,7 +9,6 @@ import { BaseElement, Events } from "../base";
 
 import { lookerThumbnailSelector, showSelector } from "./thumbnail.module.css";
 import {
-  selectionIconCheckmark,
   selectionIconGreenCheckmark,
   selectionIconRedCheckmark,
   selectionIconThumbsup,
@@ -21,8 +20,8 @@ import {
 } from "./util.module.css";
 import { makeCheckboxRow } from "./util";
 
+// "checkmark", the default, is the plain checkbox
 const ICON_CLASS_MAP: Record<string, string> = {
-  checkmark: selectionIconCheckmark,
   "green-checkmark": selectionIconGreenCheckmark,
   "red-checkmark": selectionIconRedCheckmark,
   thumbsup: selectionIconThumbsup,

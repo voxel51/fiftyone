@@ -18,8 +18,24 @@ export const SamplesHeader = styled.div`
   gap: 8px;
 `;
 
-/** The grid's actions row, above the sidebar and the grid in the Samples panel */
+/** Height of the actions row the grid scrolls under */
+export const ACTIONS_ROW_HEIGHT = 42;
+
+/** The grid's actions row, over the top of the Samples panel */
 export const ActionsRow = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  height: ${ACTIONS_ROW_HEIGHT}px;
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-content-bg-background) 0%,
+    color-mix(in srgb, var(--color-content-bg-background) 80%, transparent) 20%,
+    transparent 100%
+  );
   display: flex;
   align-items: center;
   justify-content: space-between;

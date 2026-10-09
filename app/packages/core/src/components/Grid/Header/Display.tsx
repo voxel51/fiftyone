@@ -23,6 +23,7 @@ import {
 import styled from "styled-components";
 import { gridSpacing, gridZoom } from "../atoms";
 import { ZOOM_RANGE } from "../useZoomSetting";
+import styles from "./Display.module.css";
 
 const Panel = styled.div`
   width: 288px;
@@ -223,6 +224,7 @@ const Display = () => (
   <Popover
     portal
     anchor={PopoverAnchor.BottomEnd}
+    panelClassName={styles.panel}
     trigger={
       <ToolbarAction
         aria-label="Display settings"

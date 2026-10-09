@@ -27,7 +27,6 @@ import {
   cssVar,
   Dropdown,
   DropdownAnchor,
-  DropdownTrigger,
   MenuCheckItem,
   MenuIconTextItem,
   MenuSeparator,
@@ -39,6 +38,7 @@ import {
 import { useAtomValue } from "jotai";
 import React, { useEffect, useRef, useState } from "react";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
+import { ToolbarAction } from "@fiftyone/actions";
 import styled from "styled-components";
 import { useSchemaManagerModal } from "../Modal/Sidebar/Annotate/SchemaManager/hooks";
 import { taskLabelSchemaDoc } from "../Modal/Sidebar/Annotate/state";
@@ -66,26 +66,6 @@ const LoadingRow = styled.div`
  * and does not export its option component, so the same tokens are
  * applied here (the variables come from voodo's stylesheet).
  */
-/**
- * voodo 2.1's Button treats a borderless trigger whose label is not a
- * plain string child as icon-only: square aspect, full rounding and icon
- * padding. This trigger wraps its label (ellipsis span, optional
- * spinner), so it rendered as a 137px square and pushed the sidebar
- * apart. Until voodo counts a wrapped label as text, restore the pill
- * shape here; sized to sit with the sidebar rows.
- */
-const LensTrigger = styled(DropdownTrigger)`
-  && {
-    aspect-ratio: auto;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    min-width: 0;
-    /* the sidebar's own text size (its root is 14px) */
-    font-size: 1rem;
-    line-height: 1.5rem;
-  }
-`;
-
 const LensItem = styled(MenuCheckItem)`
   flex-direction: row-reverse;
   justify-content: space-between;
@@ -280,34 +260,42 @@ const SchemaLensSelector = ({
       anchor={DropdownAnchor.BottomStart}
       disabled={busy}
       trigger={
-        <LensTrigger
-          borderless
+        <ToolbarAction
           data-cy="schema-lens-select"
           aria-label="View the dataset through a label schema"
           title={currentLabel}
-          style={{ maxWidth: maxValueWidth + 40, minWidth: 0 }}
-        >
-          {!loaded || busy ? (
-            <span
-              role="status"
-              aria-label={busy ? "Applying schema" : "Loading schemas"}
-              style={{ display: "inline-flex" }}
-            >
-              <Spinner size={Size.Sm} />
+          menu
+          style={{
+            maxWidth: maxValueWidth + 40,
+            minWidth: 0,
+            color: "var(--color-content-text-primary)",
+            fontWeight: 500,
+          }}
+          label={
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {busy || (!loaded && current !== ALL_FIELDS_LENS) ? (
+                <span
+                  role="status"
+                  aria-label={busy ? "Applying schema" : "Loading schemas"}
+                  style={{ display: "inline-flex" }}
+                >
+                  <Spinner size={Size.Sm} />
+                </span>
+              ) : null}
+              <span
+                style={{
+                  display: "block",
+                  maxWidth: maxValueWidth,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {currentLabel}
+              </span>
             </span>
-          ) : null}
-          <span
-            style={{
-              display: "block",
-              maxWidth: maxValueWidth,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {currentLabel}
-          </span>
-        </LensTrigger>
+          }
+        />
       }
     >
       <LensItem
