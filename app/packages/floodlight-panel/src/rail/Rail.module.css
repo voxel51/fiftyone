@@ -33,10 +33,65 @@
     background-color 160ms ease;
 }
 
+/* Loading: a highlight sweeps along the track, in the direction it reads. */
+@keyframes sweep {
+  from {
+    background-position: 0 -100%;
+  }
+  to {
+    background-position: 0 200%;
+  }
+}
+
+@keyframes sweepAcross {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.loading {
+  opacity: 1;
+}
+
+.loading .track {
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--color-brand-primary) 50%,
+    transparent 100%
+  );
+  background-size: 100% 40%;
+  background-repeat: no-repeat;
+  animation: sweep 1.2s ease-in-out infinite;
+}
+
+.horizontal.loading .track {
+  background-image: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--color-brand-primary) 50%,
+    transparent 100%
+  );
+  background-size: 40% 100%;
+  animation-name: sweepAcross;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading .track {
+    animation: none;
+    background-image: none;
+    background-color: var(--color-brand-primary);
+    opacity: 0.6;
+  }
+}
+
 .active .track {
   right: 4px;
   width: 4px;
-  background: var(--color-content-border-strong);
+  background-color: var(--color-content-border-strong);
 }
 
 .marker {

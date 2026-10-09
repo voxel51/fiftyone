@@ -36,6 +36,8 @@ export interface RankRailProps {
   visible?: number;
   /** Fires on release with the rail position in [0, 1]. */
   onJump: (position: number) => void;
+  /** The grid is fetching or rebuilding; the track shows it. */
+  loading?: boolean;
   /** Subscribes the thumb to the scrolling top rank, between rows too. */
   follow?: (listener: (rank: number) => void) => () => void;
   orientation?: Orientation;
@@ -58,6 +60,7 @@ function RankRail({
   anchorRank,
   className,
   follow,
+  loading = false,
   label = rankLabel,
   onJump,
   orientation = "vertical",
@@ -135,6 +138,7 @@ function RankRail({
         horizontal && styles.horizontal,
         styles[mode],
         drag !== null && styles.drag,
+        loading && styles.loading,
         className,
       )}
       role="slider"
@@ -164,7 +168,7 @@ function RankRail({
       onPointerCancel={() => setDrag(null)}
       onPointerLeave={() => setHover(null)}
     >
-      <div ref={track} className={styles.track}>
+      <div ref={track} className={styles.track} aria-busy={loading}>
         {ticks.map((tick, index) => (
           <div
             key={index}

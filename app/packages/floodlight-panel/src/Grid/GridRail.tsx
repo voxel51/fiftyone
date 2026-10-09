@@ -16,9 +16,10 @@ const COUNT = { extended: false, path: "", modal: false, lightning: true };
 interface GridRailProps {
   rail: Rail;
   horizontal?: boolean;
+  loading?: boolean;
 }
 
-const GridRailContent = ({ horizontal, rail }: GridRailProps) => {
+const GridRailContent = ({ horizontal, loading, rail }: GridRailProps) => {
   const total = useReverbValue(fos.count(COUNT));
   if (typeof total !== "number" || total <= 0) return null;
 
@@ -30,6 +31,7 @@ const GridRailContent = ({ horizontal, rail }: GridRailProps) => {
       orientation={horizontal ? "horizontal" : "vertical"}
       onJump={(position) => rail.jump(position, total)}
       follow={rail.follow}
+      loading={loading}
     />
   );
 };

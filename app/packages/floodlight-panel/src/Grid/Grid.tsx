@@ -362,12 +362,17 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         <Storm className={styles.storm} />
       </div>
       <div ref={overlay} className={styles.relayoutOverlay} />
-      {pending && (
+      {pending && !railVisible && (
         <div className={styles.pending}>
           <Pending />
         </div>
       )}
-      <GridRail horizontal={strip} rail={rail} visible={railVisible} />
+      <GridRail
+        horizontal={strip}
+        loading={pending}
+        rail={rail}
+        visible={railVisible}
+      />
       {paged && <GridPagesBar grid={container} pages={paging.pages} />}
     </div>
   );
