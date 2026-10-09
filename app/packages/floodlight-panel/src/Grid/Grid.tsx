@@ -6,7 +6,7 @@ import { Pending } from "@fiftyone/components";
 import clsx from "clsx";
 import { freeVideos } from "@fiftyone/looker";
 import React, { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { useReverbValue } from "@fiftyone/reverb";
+import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "@fiftyone/core/src/hooks";
@@ -62,7 +62,13 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useReverbValue(gridSpacing);
 
-  const { dataReset, gridReset: reset, pageReset } = useRefreshers();
+  const {
+    dataReset,
+    gridReset: reset,
+    itemsReset,
+    pageReset,
+  } = useRefreshers();
+  const setSortPending = useSetReverbState(fos.gridSortPending);
   const container = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const zoom = useZoomSetting();
@@ -308,24 +314,45 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     ],
   );
   // new data (a dataset, view or filter) starts over rather than from the
-  // last location, which belongs to the previous data
+  // last location, which belongs to the previous data; a new sort keeps the
+  // grid up and moves the items it shares into their new order
+  const { reorder } = relayout;
   const lastPageReset = useRef(pageReset);
+  const lastItemsReset = useRef(itemsReset);
   const loaded = useRef(false);
   useEffect(() => {
     if (lastPageReset.current !== pageReset) {
       lastPageReset.current = pageReset;
+      if (lastItemsReset.current === itemsReset) {
+        setSortPending(true);
+        reorder({ key: 0 });
+        return;
+      }
+      lastItemsReset.current = itemsReset;
       loaded.current = false;
       host?.reset();
       return;
     }
     host?.rebuild(pageAnchor(get()));
-  }, [get, host, pageAnchor, pageReset, settings]);
+  }, [
+    get,
+    host,
+    itemsReset,
+    pageAnchor,
+    pageReset,
+    reorder,
+    setSortPending,
+    settings,
+  ]);
 
   const fetching = useSyncExternalStore(
     source.subscribe,
     () => source.fetching,
   );
   if (status === "ready") loaded.current = true;
+  useEffect(() => {
+    status === "ready" && setSortPending(false);
+  }, [setSortPending, status]);
   const storm = showStorm({ everLoaded: loaded.current });
   const pending = showPending({
     building: status === "building",

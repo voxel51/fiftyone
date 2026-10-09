@@ -24,7 +24,12 @@ describe("showPending", () => {
 
   test("stays hidden during the first load, which has the storm", () => {
     expect(
-      showPending({ ...state, building: true, everLoaded: false, fetching: true }),
+      showPending({
+        ...state,
+        building: true,
+        everLoaded: false,
+        fetching: true,
+      }),
     ).toBe(false);
   });
 

@@ -50,6 +50,9 @@ export default function useRelayout<I extends Instance, V>({
   zoom: unknown;
 }) {
   const animateNext = useRef(false);
+  // the next swap shows the same items in a new order: what leaves fades out
+  // and stays cached, since it may come back
+  const reorderNext = useRef(false);
   const host = useRef<Host<number, I>>();
 
   const swap = useCallback(
@@ -65,9 +68,17 @@ export default function useRelayout<I extends Instance, V>({
         // an interim's tiles sit where the grid last was, so a settled build
         // animates from them too
         !interims.has(next);
-      if (!interims.has(next)) animateNext.current = false;
+      const reorder = reorderNext.current && !interims.has(next);
+      if (!interims.has(next)) {
+        animateNext.current = false;
+        reorderNext.current = false;
+      }
 
-      const removed = source.takeRemoved();
+      const deleted = source.takeRemoved();
+      const removed =
+        reorder && from && to
+          ? new Set([...from.tiles.keys()].filter((id) => !to.tiles.has(id)))
+          : deleted;
       const before =
         animate && from
           ? measure(from.tiles, root.getBoundingClientRect())
@@ -81,7 +92,7 @@ export default function useRelayout<I extends Instance, V>({
 
       handOff({
         cache,
-        evict: [...removed].filter((id) => !gone.has(id)),
+        evict: reorder ? [] : [...removed].filter((id) => !gone.has(id)),
         next: to,
         previous: from,
       });
@@ -94,6 +105,7 @@ export default function useRelayout<I extends Instance, V>({
         root,
         tiles: to.tiles,
       }).then(() => {
+        if (reorder) return;
         for (const id of gone.keys()) !cache.isShown(id) && cache.evict(id);
       });
     },
@@ -150,6 +162,13 @@ export default function useRelayout<I extends Instance, V>({
     return () => demo?.answer(undefined);
   }, [demo, excluded, relayout, source]);
 
+  /** Rebuilds the same items in a new order at `start`, animating the swap. */
+  const reorder = useCallback((start?: Anchor<number>) => {
+    animateNext.current = true;
+    reorderNext.current = true;
+    host.current?.rebuild(start);
+  }, []);
+
   /** The next swap animates its items to their new places. */
   const animate = useCallback(() => {
     animateNext.current = true;
@@ -157,6 +176,7 @@ export default function useRelayout<I extends Instance, V>({
 
   return {
     animate,
+    reorder,
     /** Call with the host once it exists. */
     setHost: (next: Host<number, I> | undefined) => {
       host.current = next;

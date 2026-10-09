@@ -45,8 +45,8 @@ export default function useRefreshers() {
     queryPerformanceSetting,
   ]);
 
-  // the values reset the page, i.e. return to the top
-  const pageReset = useMemoOne(() => {
+  // new data: the grid starts over, and the items it holds are stale
+  const itemsReset = useMemoOne(() => {
     datasetName;
     extendedStagesUnsorted;
     filters;
@@ -65,16 +65,23 @@ export default function useRefreshers() {
     scrubCursor,
     shouldRenderImaVidLooker,
     similarityParameters,
-    sort,
     view,
   ]);
 
-  // the grid keeps its items across a data change and relays out instead
+  // the values reset the page, i.e. return to the top; a new sort reorders
+  // the same items
+  const pageReset = useMemoOne(() => {
+    itemsReset;
+    sort;
+    return uuid();
+  }, [itemsReset, sort]);
+
+  // the item cache outlives a new sort, so its items can move to their places
   const gridReset = useMemoOne(() => {
     layoutReset;
-    pageReset;
+    itemsReset;
     return uuid();
-  }, [layoutReset, pageReset]);
+  }, [layoutReset, itemsReset]);
 
   const reset = useMemoOne(() => {
     gridReset;
@@ -101,6 +108,7 @@ export default function useRefreshers() {
   return {
     dataReset: refresher,
     gridReset,
+    itemsReset,
     pageReset,
     reset,
   };
