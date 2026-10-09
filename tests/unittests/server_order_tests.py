@@ -278,12 +278,12 @@ class ModeTests(_Backend, unittest.TestCase):
             ["created_at", "filepath", "id", "last_modified_at", "x"],
         )
 
-    def test_explain_filters_on_trailing_keys_are_not_served(self):
-        explain = {
+    def test_explain_filters_must_be_on_index_keys(self):
+        explain = lambda f: {
             "queryPlanner": {
                 "winningPlan": {
                     "stage": "FETCH",
-                    "filter": {"b": {"$eq": 1}},
+                    "filter": {f: {"$eq": 1}},
                     "inputStage": {
                         "stage": "IXSCAN",
                         "keyPattern": {"a": 1, "b": 1},
@@ -291,8 +291,103 @@ class ModeTests(_Backend, unittest.TestCase):
                 }
             }
         }
-        self.assertEqual(explain_serves(explain, "a"), False)
-        self.assertEqual(explain_serves(explain, "b"), True)
+        self.assertEqual(explain_serves(explain("b"), "a"), True)
+        self.assertEqual(explain_serves(explain("a"), "b"), True)
+        self.assertEqual(explain_serves(explain("c"), "a"), False)
+
+
+class GroupSliceTests(_Backend, unittest.TestCase):
+    """The query performance index of a grouped dataset: the field first,
+    the slice last."""
+
+    SLICE = "right"
+
+    @classmethod
+    def setUpClass(cls):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="left")
+        rnd = random.Random(51)
+        samples = []
+        for i in range(60):
+            group = fo.Group()
+            for name in ("left", "right"):
+                value = rnd.randrange(8)
+                samples.append(
+                    fo.Sample(
+                        filepath="/tmp/slice_%d_%s.jpg" % (i, name),
+                        group=group.element(name),
+                        k=None if value == 0 else value,
+                        c=i % 3,
+                    )
+                )
+
+        dataset.add_samples(samples)
+        dataset.create_index([("k", 1), ("group.name", 1)])
+        cls.dataset = dataset
+        cls.view = dataset.select_group_slices(cls.SLICE)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dataset.delete()
+
+    def _slice_spec(self, sort_by="k", desc=False, stages=None):
+        return OrderSpec(
+            dataset=self.dataset.name,
+            stages=stages or [],
+            group_slice=self.SLICE,
+            sort_by=sort_by,
+            desc=desc,
+        )
+
+    def _slice_open(self, **kwargs):
+        with _large():
+            return self.backend.open(self._slice_spec(**kwargs), _budget())
+
+    def test_modes(self):
+        on_slice = self.dataset.match(F("group.name") == self.SLICE)
+        on_c = self.dataset.match(F("c") == 1)
+        for stages, mode in (
+            (None, Mode.INDEXED),
+            # the slice as a filter on the index's last key
+            (on_slice._serialize(), Mode.INDEXED),
+            (on_c._serialize(), Mode.SCROLL),
+        ):
+            for desc in (False, True):
+                with self.subTest(stages=stages, desc=desc):
+                    handle = self._slice_open(desc=desc, stages=stages)
+                    self.assertEqual(handle.plan.mode, mode)
+
+    def test_bounds_walks_and_seeks_stay_in_the_slice(self):
+        values = _values(self.view, "k")
+        present = [v for v in values.values() if v is not None]
+        for desc in (False, True):
+            with self.subTest(desc=desc):
+                handle = self._slice_open(desc=desc)
+                bounds = handle.bounds
+                self.assertEqual(
+                    (bounds.min, bounds.max), (min(present), max(present))
+                )
+                self.assertEqual(bounds.has_none, None in values.values())
+
+                expected = _expected(self.view, "k", desc)
+                ids, _ = self._walk_forward(handle)
+                self.assertEqual(ids, expected)
+                ids, _ = self._walk_backward(handle)
+                self.assertEqual(ids, expected)
+
+                for value in (None, 3, 4.5):
+                    position = self._seek(handle, value=value, has_value=True)
+                    page = self._page(handle, position, Direction.FORWARD)
+                    offset = _first_past(expected, values, value, desc)
+                    self.assertEqual(
+                        page.ids, expected[offset : offset + PAGE]
+                    )
+
+                position = self._seek(handle, fraction=0.5)
+                page = self._page(handle, position, Direction.FORWARD)
+                middle = (bounds.min + bounds.max) / 2
+                offset = _first_past(expected, values, middle, desc)
+                self.assertEqual(page.ids, expected[offset : offset + PAGE])
 
 
 class WalkTests(_Backend, unittest.TestCase):

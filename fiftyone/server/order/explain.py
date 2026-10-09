@@ -11,8 +11,10 @@ _STREAMING_STAGES = {"$cursor", "$project", "$addFields", "$set", "$unset"}
 
 def explain_serves(explain: dict, field: str) -> bool:
     """Whether the winning plan reads ``field``'s index in order and the
-    index bounds serve every filter: no blocking sort, no collection scan,
-    and no filter on a field the scan does not lead with.
+    index serves every filter: no blocking sort, no collection scan, and no
+    filter on a field outside the scanned index. A filter on a key after the
+    sort field, like the group slice of a ``(field, group.name)`` index, is
+    checked on index entries without breaking the order.
     """
     for stage in explain.get("stages", []):
         if not set(stage) <= _STREAMING_STAGES:
@@ -37,8 +39,8 @@ def explain_serves(explain: dict, field: str) -> bool:
         if s.get("stage") != "IXSCAN":
             continue
 
-        keys = list(s.get("keyPattern", {}))
-        if field in keys and filtered <= set(keys[: keys.index(field) + 1]):
+        keys = set(s.get("keyPattern", {}))
+        if field in keys and filtered <= keys:
             return True
 
     return False
