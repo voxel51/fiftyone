@@ -147,11 +147,21 @@ function Rail({
       onPointerUp={(event) => {
         if (drag === null) return;
         event.currentTarget.releasePointerCapture(event.pointerId);
+        // hover stopped tracking during the drag; restart it where the
+        // pointer let go, or drop it if the pointer left the rail
+        const rect = event.currentTarget.getBoundingClientRect();
+        const over =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom;
+        setHover(over ? at(event) : null);
         setDrag(null);
         onDrag?.(false);
         onJump(at(event));
       }}
       onPointerCancel={() => {
+        setHover(null);
         setDrag(null);
         onDrag?.(false);
       }}

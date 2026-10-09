@@ -33,6 +33,15 @@ const grab = (onJump = vi.fn(), onDrag = vi.fn()) => {
   const track = rail.firstElementChild as HTMLElement;
   track.getBoundingClientRect = () =>
     ({ top: 0, left: 0, height: 100, width: 10 }) as DOMRect;
+  rail.getBoundingClientRect = () =>
+    ({
+      top: 0,
+      left: 0,
+      right: 10,
+      bottom: 100,
+      height: 100,
+      width: 10,
+    }) as DOMRect;
   rail.setPointerCapture = () => undefined;
   rail.releasePointerCapture = () => undefined;
   return { onDrag, onJump, rail };
@@ -84,5 +93,25 @@ describe("Rail", () => {
     expect(onDrag.mock.invocationCallOrder[1]).toBeLessThan(
       onJump.mock.invocationCallOrder[0],
     );
+  });
+
+  it("labels where the pointer let go, not where it hovered before the drag", () => {
+    const { rail } = grab();
+    fireEvent.pointerMove(rail, { clientY: 20, pointerId: 1 });
+    fireEvent.pointerDown(rail, { clientY: 20, pointerId: 1 });
+    fireEvent.pointerMove(rail, { clientY: 70, pointerId: 1 });
+    fireEvent.pointerUp(rail, { clientY: 70, pointerId: 1 });
+
+    expect(screen.queryByText("at 20")).toBeNull();
+    expect(screen.getByText("at 70")).toBeTruthy();
+  });
+
+  it("shows no label once a drag lets go off the rail", () => {
+    const { rail } = grab();
+    fireEvent.pointerMove(rail, { clientY: 20, pointerId: 1 });
+    fireEvent.pointerDown(rail, { clientY: 20, pointerId: 1 });
+    fireEvent.pointerUp(rail, { clientX: 400, clientY: 70, pointerId: 1 });
+
+    expect(screen.queryByText(/^at /)).toBeNull();
   });
 });
