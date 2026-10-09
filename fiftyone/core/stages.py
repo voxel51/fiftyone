@@ -420,7 +420,11 @@ class ViewStage(object):
         Returns:
             a :class:`ViewStage`
         """
-        view_stage_cls = etau.get_class(d["_cls"])
+        # Looked up among the defined view stages rather than imported
+        view_stage_cls = fou.get_subclass(ViewStage, d["_cls"])
+        if view_stage_cls is None:
+            raise ValueError("Unsupported view stage '%s'" % d["_cls"])
+
         kwargs = {
             name: _decode_expressions(value)
             for name, value in dict(d["kwargs"]).items()

@@ -260,7 +260,11 @@ class Aggregation(object):
         Returns:
             an :class:`Aggregation`
         """
-        aggregation_cls = etau.get_class(d["_cls"])
+        # Looked up among the defined aggregations rather than imported
+        aggregation_cls = fou.get_subclass(Aggregation, d["_cls"])
+        if aggregation_cls is None:
+            raise ValueError("Unsupported aggregation '%s'" % d["_cls"])
+
         agg = aggregation_cls(**dict(d["kwargs"]))
         agg._uuid = d.get("_uuid", None)
         return agg
