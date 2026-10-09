@@ -18,7 +18,12 @@ import {
   Size,
   TextColor,
 } from "@voxel51/voodo";
-import type { ComponentType, ReactNode } from "react";
+import {
+  type ComponentType,
+  createContext,
+  type ReactNode,
+  useState,
+} from "react";
 import styled from "styled-components";
 import Header from "../components/Grid/Header";
 import { ACTIONS_ROW_HEIGHT } from "../components/Grid/Header/Containers";
@@ -47,7 +52,22 @@ const Container = styled.div`
 `;
 
 // The grid scrolls up under the actions row; the sidebar sits below it
+/**
+ * Where the grid's loading overlay renders: across the whole panel body,
+ * over the grid and under the sidebar.
+ */
+export const GridBackdropContext = createContext<HTMLElement | null>(null);
+
+const Backdrop = styled.div`
+  position: absolute;
+  inset: ${ACTIONS_ROW_HEIGHT}px 0 0;
+  z-index: 1;
+  pointer-events: none;
+`;
+
 const Sidebar = styled.div`
+  position: relative;
+  z-index: 2;
   display: flex;
   margin-top: ${ACTIONS_ROW_HEIGHT}px;
   min-height: 0;
@@ -80,6 +100,7 @@ const SamplesPanel = ({ grid }: { grid: ReactNode }) => {
   const setShowSidebar = useSetReverbState(fos.sidebarVisible(false));
   const { gridStyle, rendered, sidebar, sidebarStyle } =
     useSidebarSlide(showSidebar);
+  const [backdrop, setBackdrop] = useState<HTMLDivElement | null>(null);
 
   return (
     <Panel>
@@ -107,7 +128,12 @@ const SamplesPanel = ({ grid }: { grid: ReactNode }) => {
             </FieldActionContext.Provider>
           </Sidebar>
         )}
-        <GridArea style={gridStyle}>{grid}</GridArea>
+        <GridArea style={gridStyle}>
+          <GridBackdropContext.Provider value={backdrop}>
+            {grid}
+          </GridBackdropContext.Provider>
+        </GridArea>
+        <Backdrop ref={setBackdrop} />
       </Container>
     </Panel>
   );

@@ -9,9 +9,12 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useContext,
   useState,
   useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
+import { GridBackdropContext } from "@fiftyone/core/src/plugins/samples";
 import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -66,6 +69,7 @@ const MAX_ROWS = 200;
 function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
+  const backdrop = useContext(GridBackdropContext);
   const spacing = useReverbValue(gridSpacing);
 
   const {
@@ -377,6 +381,16 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     spotlight: instance,
   });
 
+  // the storm covers the panel it sits in when the panel offers a backdrop
+  const pixelsOverlay = (
+    <div
+      id={pixels}
+      className={clsx(styles.fallingPixels, !storm && styles.hidden)}
+    >
+      <Storm className={styles.storm} />
+    </div>
+  );
+
   return (
     <div className={styles.gridContainer}>
       <div
@@ -390,12 +404,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         )}
         data-cy="fo-grid"
       />
-      <div
-        id={pixels}
-        className={clsx(styles.fallingPixels, !storm && styles.hidden)}
-      >
-        <Storm className={styles.storm} />
-      </div>
+      {backdrop ? createPortal(pixelsOverlay, backdrop) : pixelsOverlay}
       <div ref={overlay} className={styles.relayoutOverlay} />
       {pending && !railVisible && (
         <div className={styles.pending}>
