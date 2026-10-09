@@ -3,11 +3,9 @@ import type { Rejected } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useSetReverbState } from "@fiftyone/reverb";
-import { MANAGING_GRID_MEMORY } from "@fiftyone/core/src/utils/links";
-import {
-  QP_WAIT,
-  QueryPerformanceToastEvent,
-} from "@fiftyone/core/src/components/QueryPerformanceToast";
+import { getEventBus } from "@fiftyone/events";
+import { QP_WAIT, type QueryPerformanceEvents } from "@fiftyone/sidebar";
+import { MANAGING_GRID_MEMORY } from "@fiftyone/utilities";
 import { recommendedGridZoom } from "./atoms";
 
 type Instance = Spotlight<number, fos.Sample>;
@@ -26,8 +24,9 @@ export default function useInstanceEvents() {
       const info = fos.getQueryPerformancePath();
       const timeout = setTimeout(() => {
         info &&
-          window.dispatchEvent(
-            new QueryPerformanceToastEvent(info.path, info.isFrameField),
+          getEventBus<QueryPerformanceEvents>().dispatch(
+            "query-performance:slow",
+            { path: info.path, isFrameField: info.isFrameField },
           );
       }, QP_WAIT);
 

@@ -101,7 +101,7 @@ export const ScrubberTick: FC<ScrubberTickProps> = ({
             // the underlying view.
             "px-1.5 py-0.5",
             radiusStyles(Radius.Sm),
-            bgColorClass(BackgroundColor.Card1),
+            bgColorClass(BackgroundColor.Card),
             "opacity-90",
             // In Column mode the label sits to the left of the track. Right-
             // aligning anchors the text against the track so varying-length

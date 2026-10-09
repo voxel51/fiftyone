@@ -1,3 +1,4 @@
+import type { ItemCache } from "../types";
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
@@ -22,7 +23,7 @@ export type Updatable = Pick<Spotlight<number, fos.Sample>, "updateItems">;
 export interface Strips {
   aspectRatio?: number;
   /** Held still while a rebuilt strip takes its lookers over. */
-  cache: { freeze(): void; unfreeze(): void };
+  cache: ItemCache;
   environment: IEnvironment;
   /** Whether the item cache holds a looker for this sample id. */
   hasItem: (key: string) => boolean;

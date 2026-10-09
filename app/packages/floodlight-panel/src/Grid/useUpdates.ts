@@ -6,7 +6,7 @@ import type { ID } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useRef } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import { useDetectNewActiveLabelFields } from "@fiftyone/core/src/components/Sidebar/useDetectNewActiveLabelFields";
+import { useDetectNewActiveLabelFields } from "@fiftyone/state";
 import type { ItemCache } from "./types";
 
 export const getOverlays = (entry: fos.Lookers) => {

@@ -4,7 +4,6 @@
 
 import { ThemeProvider } from "@fiftyone/components";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { FeatureFlag } from "@fiftyone/feature-flags";
 import {
   GatedDynamicImports,
   type GatedDynamicImport,
@@ -23,6 +22,7 @@ import { createRoot } from "react-dom/client";
 import { ReverbRoot } from "@fiftyone/reverb";
 import Network from "./Network";
 import "./index.css";
+import "@fiftyone/floodlight-panel";
 import "@voxel51/voodo/theme.css";
 import { historyAdapter } from "./location/historyAdapter";
 import { redirectLegacyModal } from "./location/modal";
@@ -40,13 +40,7 @@ if (
 /**
  * Register future feature-gated modules here.
  */
-const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [
-  {
-    featureFlag: FeatureFlag.FLOODLIGHT,
-    moduleKey: "floodlight",
-    registerModule: () => import("@fiftyone/floodlight-panel"),
-  },
-];
+const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [];
 
 // Dynamically import multimodal to keep its heavy dependencies out of the
 // app's initial bundle.

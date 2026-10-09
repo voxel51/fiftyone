@@ -1,7 +1,7 @@
 import { activeLabelFields } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useReverbCallback } from "@fiftyone/reverb";
-import { gridActivePathsLUT } from "@fiftyone/core/src/components/Sidebar/useDetectNewActiveLabelFields";
+import { gridActivePathsLUT } from "@fiftyone/state";
 
 /**
  * Callbacks for the cache to sync {@link gridActivePathsLUT}

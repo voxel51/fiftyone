@@ -459,7 +459,7 @@ export function Scrubber<T>({
               // while the underlying view stays partially visible.
               "absolute z-30 w-36 backdrop-blur-sm",
               radiusStyles(Radius.Md),
-              bgColorClass(BackgroundColor.Card1),
+              bgColorClass(BackgroundColor.Card),
               "opacity-90 shadow-md",
             )}
             style={

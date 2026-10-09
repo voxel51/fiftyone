@@ -1,3 +1,4 @@
+import { useReverbState } from "@fiftyone/reverb";
 import * as fos from "@fiftyone/state";
 import { Anchor, Icon, IconName, Size, Tooltip } from "@voxel51/voodo";
 import { useRelayoutDemo } from "../relayoutDemo";
@@ -6,7 +7,7 @@ import { PRESS_CLASS, TOOLTIP_CLASS } from "./classes";
 /** Demo: removes the selected samples from view to show the relayout. */
 const RelayoutDemoButton = () => {
   const demo = useRelayoutDemo();
-  const [selected, setSelected] = fos.useLegacySelectedSamples();
+  const [selected, setSelected] = useReverbState(fos.selectedSamples);
   if (!demo) return null;
   const count = selected.size;
 

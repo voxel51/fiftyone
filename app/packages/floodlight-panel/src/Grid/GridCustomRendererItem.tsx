@@ -6,7 +6,10 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
-import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
+import {
+  gridOverlayKey,
+  useGridOverlays,
+} from "@fiftyone/multimodal/extensions/timeline";
 import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
@@ -208,23 +211,6 @@ const GridCustomRendererWrapper = ({
   );
 };
 
-// Keyed by the overlay's own reference (stable per registration), not its
-// position in the registry's array — an earlier overlay unregistering must
-// not shift a later one's key and force it to remount.
-const overlayIds = new WeakMap<
-  React.ComponentType<SampleRendererProps>,
-  number
->();
-let nextOverlayId = 0;
-function overlayKey(overlay: React.ComponentType<SampleRendererProps>): number {
-  let id = overlayIds.get(overlay);
-  if (id === undefined) {
-    id = nextOverlayId++;
-    overlayIds.set(overlay, id);
-  }
-  return id;
-}
-
 /** Edition-registered grid-tile overlays (rendered inside the multimodal
  * guard); nothing renders before anything registers. */
 const McapGridOverlays = ({
@@ -232,11 +218,11 @@ const McapGridOverlays = ({
 }: {
   readonly ctx: SampleRendererRenderContext;
 }) => {
-  const overlays = useMcapGridOverlays();
+  const overlays = useGridOverlays();
   return (
     <>
       {overlays.map((Overlay) => (
-        <Overlay key={overlayKey(Overlay)} ctx={ctx} />
+        <Overlay key={gridOverlayKey(Overlay)} ctx={ctx} />
       ))}
     </>
   );

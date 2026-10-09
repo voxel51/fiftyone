@@ -1,23 +1,17 @@
-import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import {
-  DefaultValue,
-  atom,
-  atomFamily,
-  selector,
-  selectorFamily,
-} from "@fiftyone/reverb";
-import { MANAGING_GRID_MEMORY } from "@fiftyone/core/src/utils/links";
+import { atom, selector, selectorFamily } from "@fiftyone/reverb";
 
-/**
- * Convert a [0, 10] zoom setting to [-15, -1]
- *
- * @param {number} defaultRange [0, 10] range
- * @returns {number} [-15, -1]
- */
-const convertDefault = (defaultRange) => {
-  return -(14 - (defaultRange / 10) * 14 + 1);
-};
+// The panel's display settings are the App's, so the header drives them
+export {
+  defaultGridZoom,
+  gridCrop,
+  gridSpacing,
+  gridZoom,
+  recommendedGridZoom,
+  storedGridZoom,
+} from "@fiftyone/core/src/components/Grid/atoms";
+export const gridAutosizing = fos.gridAutosizing;
+export const maxGridItemsSizeBytes = fos.maxGridItemsSizeBytes;
 
 const sortFieldsMap = selector({
   key: "floodlight.sortFieldsMap",
@@ -58,28 +52,6 @@ const gridIndex = selector({
   },
 });
 
-export const defaultGridZoom = selector<number>({
-  key: "floodlight.defaultGridZoom",
-  get: ({ get }) => get(fos.config)?.gridZoom,
-});
-
-const gridAutosizingStore = atomFamily<boolean, string>({
-  key: "floodlight.gridAutosizingStore",
-  default: true,
-  effects: (datasetId) => [
-    fos.getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const gridAutosizing = selector({
-  key: "floodlight.gridAutosizing",
-  get: ({ get }) => get(gridAutosizingStore(get(fos.datasetId) ?? "")),
-  set: ({ get, set }, value) =>
-    set(gridAutosizingStore(get(fos.datasetId) ?? ""), value),
-});
-
 export const gridPage = atom({
   key: "floodlight.gridPage",
   default: 0,
@@ -94,83 +66,6 @@ export const gridFraction = atom({
   key: "floodlight.gridFraction",
   default: 0,
   effects: [],
-});
-
-export const gridSpacing = atom({
-  key: "floodlight.gridSpacing",
-  default: 3,
-  effects: [
-    fos.getBrowserStorageEffectForKey("gridSpacing", { valueClass: "number" }),
-  ],
-});
-
-const gridZoomStore = atomFamily<number | null, string>({
-  key: "floodlight.gridZoomStore",
-  default: null,
-  effects: (datasetId) => [
-    fos.getBrowserStorageEffectForKey(`gridZoomStore-${datasetId}`, {
-      valueClass: "number",
-    }),
-  ],
-});
-
-export const gridZoom = selector<number>({
-  key: "floodlight.gridZoom",
-  get: ({ get }) => {
-    const recommended = get(recommendedGridZoom);
-    const setting =
-      get(gridZoomStore(get(fos.datasetId) ?? "")) ??
-      convertDefault(get(defaultGridZoom));
-    if (
-      get(gridAutosizing) &&
-      typeof recommended === "number" &&
-      recommended > setting
-    ) {
-      return recommended;
-    }
-
-    return setting;
-  },
-  set: ({ get, reset, set }, value) => {
-    const result =
-      value instanceof DefaultValue
-        ? convertDefault(get(defaultGridZoom))
-        : value;
-
-    const recommended = get(recommendedGridZoom);
-    if (typeof recommended === "number" && result < recommended) {
-      set(fos.snackbarLink, {
-        link: MANAGING_GRID_MEMORY,
-        message: "Grid autosizing disabled",
-      });
-      set(gridAutosizing, false);
-      reset(recommendedGridZoom);
-    }
-
-    set(gridZoomStore(get(fos.datasetId) ?? ""), result);
-  },
-});
-
-export const gridCrop = selector({
-  key: "floodlight.gridCrop",
-  get: ({ get }) => {
-    return get(fos.isPatchesView) && get(fos.cropToContent(false));
-  },
-});
-
-// ensure navigator is defined
-const deviceMemory =
-  // @ts-ignore
-  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
-
-export const maxGridItemsSizeBytes = atom({
-  key: "floodlight.maxGridItemsSizeBytes",
-  default: (deviceMemory / 8) * 1e9,
-  effects: [
-    fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
-      valueClass: "number",
-    }),
-  ],
 });
 
 export const pageParameters = selector({
@@ -302,30 +197,7 @@ export const groupSiblingsPageParameters = selectorFamily<
     },
 });
 
-export const recommendedGridZoom = atom<number | null>({
-  key: "floodlight.recommendedGridZoom",
-  default: null,
-  effects: [
-    subscribe(
-      ({ event }, { reset }, prev) =>
-        event !== "modal" &&
-        prev?.event !== "modal" &&
-        reset(recommendedGridZoom),
-    ),
-  ],
-});
-
 export const showGridPixels = atom({ key: "showGridPixels", default: false });
-
-export const storedGridZoom = atom<number | null>({
-  key: "floodlight.storedGridZoom",
-  default: null,
-  effects: [
-    fos.getBrowserStorageEffectForKey("storedGridZoom", {
-      valueClass: "number",
-    }),
-  ],
-});
 
 export const gridSquareTiles = atom<boolean>({
   key: "floodlight.gridSquareTiles",

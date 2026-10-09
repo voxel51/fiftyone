@@ -19,8 +19,8 @@ import {
   Size,
   TextColor,
 } from "@voxel51/voodo";
+import type { ComponentType, ReactNode } from "react";
 import styled from "styled-components";
-import Grid from "../components/Grid";
 import Header from "../components/Grid/Header";
 import { ACTIONS_ROW_HEIGHT } from "../components/Grid/Header/Containers";
 import { FieldActionContext, GridSidebar } from "@fiftyone/sidebar";
@@ -74,7 +74,7 @@ const GridArea = styled.div`
   height: 100%;
 `;
 
-const SamplesPanel = () => {
+const SamplesPanel = ({ grid }: { grid: ReactNode }) => {
   const showSidebar = useReverbValue(fos.sidebarVisible(false));
   const setShowSidebar = useSetReverbState(fos.sidebarVisible(false));
 
@@ -104,23 +104,23 @@ const SamplesPanel = () => {
             </FieldActionContext.Provider>
           </Sidebar>
         )}
-        <GridArea>
-          <Grid key={"grid"} />
-        </GridArea>
+        <GridArea>{grid}</GridArea>
       </Container>
     </Panel>
   );
 };
 
-registerComponent({
-  name: "Samples",
-  label: "Samples",
-  component: SamplesPanel,
-  type: PluginComponentType.Panel,
-  Icon: GridViewIcon,
-  activator: () => true,
-  panelOptions: { TabIndicator, priority: BUILT_IN_PANEL_PRIORITY_CONST },
-});
+/** Registers the Samples panel around the grid that renders its items */
+export const registerSamplesPanel = (GridComponent: ComponentType) =>
+  registerComponent({
+    name: "Samples",
+    label: "Samples",
+    component: () => <SamplesPanel grid={<GridComponent />} />,
+    type: PluginComponentType.Panel,
+    Icon: GridViewIcon,
+    activator: () => true,
+    panelOptions: { TabIndicator, priority: BUILT_IN_PANEL_PRIORITY_CONST },
+  });
 
 const Indicators = styled.div`
   display: flex;
