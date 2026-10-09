@@ -46,8 +46,22 @@ export function selector<T>(
   ): T | Promise<T> => {
     let awaiting: { state: object; promise: Promise<unknown> } | undefined;
 
+    const resume = (thrown: unknown): Promise<T> => {
+      if (thrown !== AWAIT || !awaiting) {
+        throw thrown;
+      }
+
+      const { state, promise } = awaiting;
+
+      return promise.then((value) => {
+        settled.set(state, value);
+
+        return compute(get, settled);
+      }) as Promise<T>;
+    };
+
     try {
-      return options.get({
+      const result = options.get({
         get: <V>(state: ReverbValue<V>): V => {
           if (settled.has(state)) {
             return settled.get(state) as V;
@@ -63,18 +77,12 @@ export function selector<T>(
           return value as V;
         },
       });
+
+      // An async get can meet a pending dependency after an await, where the
+      // throw rejects its promise instead of reaching the catch below
+      return result instanceof Promise ? result.catch(resume) : result;
     } catch (thrown) {
-      if (thrown !== AWAIT || !awaiting) {
-        throw thrown;
-      }
-
-      const { state, promise } = awaiting;
-
-      return promise.then((value) => {
-        settled.set(state, value);
-
-        return compute(get, settled);
-      }) as Promise<T>;
+      return resume(thrown);
     }
   };
 

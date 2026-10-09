@@ -329,6 +329,33 @@ describe("snapshot", () => {
 });
 
 describe("pending dependencies", () => {
+  it("waits for a dependency an async get reads after an await", async () => {
+    let release: (value: number) => void = () => undefined;
+    const late = atom<Promise<number>>({
+      key: "asyncLate",
+      default: new Promise<number>((done) => {
+        release = done;
+      }),
+    });
+    let fetches = 0;
+    const total = selector<number>({
+      key: "asyncTotal",
+      get: async ({ get }) => {
+        fetches += 1;
+        await Promise.resolve();
+        // Pending when read, so the read throws inside the async body
+        return 1 + (get(late) as unknown as number);
+      },
+    });
+    const store = createStore();
+
+    const result = store.get(total);
+    release(41);
+
+    expect(await result).toBe(42);
+    expect(fetches).toBe(2);
+  });
+
   it("tracks a dependency read after an awaited one", async () => {
     const slow = atom<Promise<number>>({
       key: "trackSlow",
