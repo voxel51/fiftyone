@@ -38,6 +38,7 @@ export {
   type Store,
 } from "./transaction";
 export {
+  peekReverbValue,
   useReverbBridge,
   useReverbRefresher,
   useReverbSnapshot,

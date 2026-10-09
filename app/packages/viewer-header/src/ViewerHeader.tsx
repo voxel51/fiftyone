@@ -27,7 +27,7 @@ const ViewerHeader = ({
   utilities,
 }: ViewerHeaderProps) => {
   const close = useCloseViewer();
-  const { hasNext, hasPrevious, id, slice } = useViewerSample();
+  const { hasNext, hasPrevious, id, position, slice } = useViewerSample();
 
   return (
     <header className={styles.header} data-cy="sample-page-header">
@@ -48,6 +48,7 @@ const ViewerHeader = ({
         <Stepper
           hasNext={hasNext}
           hasPrevious={hasPrevious}
+          position={position}
           stepper={stepper}
         />
       </div>

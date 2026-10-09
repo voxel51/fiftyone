@@ -70,7 +70,11 @@ function Grid() {
         const rank = records.get(id);
         return rank === undefined
           ? undefined
-          : { key: Math.floor(rank / PAGE_SIZE), index: rank % PAGE_SIZE };
+          : {
+              key: Math.floor(rank / PAGE_SIZE),
+              index: rank % PAGE_SIZE,
+              offset: rank,
+            };
       },
     }),
     [page, records],

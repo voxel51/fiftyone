@@ -11,31 +11,45 @@ import * as viewAtoms from "../view";
 import { booleanCountResults } from "./boolean";
 import { gatherPaths } from "./utils";
 
+type CountParams = {
+  extended: boolean;
+  path: string;
+  modal: boolean;
+  lightning?: boolean;
+};
+
+/** The grid's count: its view and filters */
+export const GRID_COUNT: CountParams = {
+  extended: false,
+  path: "",
+  modal: false,
+  lightning: true,
+};
+
+/**
+ * Whether the count is the collection's estimated size rather than a count of
+ * the view: an unfiltered dataset under query performance is not counted
+ */
+export const countIsEstimate = selectorFamily({
+  key: "countIsEstimate",
+  get:
+    (params: CountParams) =>
+    ({ get }): boolean =>
+      !params.modal &&
+      (params.path === "" || params.path === "_") &&
+      !get(viewAtoms.view).length &&
+      get(queryPerformance) &&
+      (!get(filterAtoms.hasFilters(false)) ||
+        (!params.extended && !params.lightning)),
+});
+
 export const count = selectorFamily({
   key: "count",
   get:
-    ({
-      value,
-      ...params
-    }: {
-      extended: boolean;
-      path: string;
-      modal: boolean;
-      lightning?: boolean;
-      value?: string | null;
-    }) =>
+    ({ value, ...params }: CountParams & { value?: string | null }) =>
     ({ get }): number | Promise<number> => {
-      if (
-        !params.modal &&
-        (params.path === "" || params.path === "_") &&
-        !get(viewAtoms.view).length &&
-        get(queryPerformance)
-      ) {
-        if (
-          !get(filterAtoms.hasFilters(false)) ||
-          (!params.extended && !params.lightning)
-        )
-          return get(datasetSampleCount);
+      if (get(countIsEstimate(params))) {
+        return get(datasetSampleCount);
       }
 
       if (params.path === "_") {

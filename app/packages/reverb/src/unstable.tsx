@@ -3,11 +3,13 @@
  */
 
 import { Provider, useStore } from "jotai";
+import { INTERNAL_getBuildingBlocksRev3 as buildingBlocks } from "jotai/vanilla/internals";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
+import { type Loadable, loadable } from "./loadable";
 import { epochOf } from "./selector";
 import { snapshot } from "./snapshot";
-import { observeTransactions } from "./transaction";
+import { observeTransactions, type Store } from "./transaction";
 import type { ReverbValue, SnapshotInterface } from "./types";
 
 /** Forces derived state to recompute, for a source outside the store. */
@@ -21,6 +23,22 @@ export function useReverbRefresher<T>(state: ReverbValue<T>): () => void {
       store.set(epoch, (current) => current + 1);
     }
   }, [store, state]);
+}
+
+/**
+ * State's value only while a subscriber keeps it current, so the read never
+ * starts work (a query, say) that nothing on screen asked for. Undefined when
+ * nothing is subscribed.
+ */
+export function peekReverbValue<T>(
+  store: Store,
+  state: ReverbValue<T>,
+): Loadable<T> | undefined {
+  const [, mounted] = buildingBlocks(store);
+
+  return mounted.has(state)
+    ? loadable(store.get(state) as T | Promise<T>)
+    : undefined;
 }
 
 export const useReverbSnapshot = (): SnapshotInterface => {

@@ -5,18 +5,21 @@ import { useCopySampleLink, useViewerSample } from "./hooks";
 const harness = vi.hoisted(() => ({
   selector: null as Record<string, unknown> | null,
   slice: null as string | null,
+  position: null as { index: number; total: number } | null,
   setConfig: vi.fn(),
 }));
 
 vi.mock("@fiftyone/state", () => ({
   useActivityToast: () => ({ setConfig: harness.setConfig }),
   useModalGroupSlice: () => harness.slice,
+  useModalPosition: () => harness.position,
   useModalSelector: () => harness.selector,
 }));
 
 afterEach(() => {
   harness.selector = null;
   harness.slice = null;
+  harness.position = null;
   vi.clearAllMocks();
 });
 
@@ -32,12 +35,14 @@ describe("useViewerSample", () => {
       slice: null,
       hasNext: true,
       hasPrevious: false,
+      position: null,
     });
   });
 
   it("names a grouped sample by its group, with its slice", () => {
     harness.selector = { id: "s1", groupId: "g1", hasPrevious: true };
     harness.slice = "left";
+    harness.position = { index: 3, total: 40 };
 
     const { result } = renderHook(() => useViewerSample());
 
@@ -46,6 +51,7 @@ describe("useViewerSample", () => {
       slice: "left",
       hasNext: false,
       hasPrevious: true,
+      position: { index: 3, total: 40 },
     });
   });
 });

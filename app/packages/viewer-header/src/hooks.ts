@@ -11,6 +11,7 @@ import { useCallback } from "react";
 export const useViewerSample = () => {
   const selector = fos.useModalSelector();
   const slice = fos.useModalGroupSlice();
+  const position = fos.useModalPosition();
 
   return {
     /** A grouped sample is named by its group, as its URL is */
@@ -18,6 +19,7 @@ export const useViewerSample = () => {
     slice: selector?.groupId ? slice : null,
     hasNext: Boolean(selector?.hasNext),
     hasPrevious: Boolean(selector?.hasPrevious),
+    position,
   };
 };
 

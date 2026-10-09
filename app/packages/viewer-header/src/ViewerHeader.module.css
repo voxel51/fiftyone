@@ -90,6 +90,16 @@
   margin-left: 8px;
 }
 
+.position {
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.slash {
+  padding: 0 2px;
+}
+
 @media (max-width: 1024px) {
   .dataset,
   .datasetSlash {

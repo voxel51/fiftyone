@@ -143,6 +143,20 @@ export const modalNavigation = (() => {
   };
 })();
 
+/** Where the open sample sits in the order it was opened from. */
+export type ModalPositions = {
+  /** The order's exact length */
+  total: number;
+  /** Keyed by group for a grouped sample, which keeps its place across slices */
+  offsetOf: (key: string) => number | undefined;
+};
+
+/** Set only when the order's offsets and exact length were already known */
+export const modalPositions = atom<ModalPositions | null>({
+  key: "modalPositions",
+  default: null,
+});
+
 export const modalSampleId = selector<string>({
   key: "modalSampleId",
   get: ({ get }) => {

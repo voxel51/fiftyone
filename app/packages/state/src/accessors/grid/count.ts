@@ -5,9 +5,7 @@
  */
 
 import { useReverbValue } from "@fiftyone/reverb";
-import { count } from "../../atoms/pathData/counts";
-
-const GRID_COUNT = { extended: false, path: "", modal: false, lightning: true };
+import { count, GRID_COUNT } from "../../atoms/pathData/counts";
 
 /** Samples in the grid's current view and filters; suspends while counting. */
 export const useGridSampleCount = (): number => {

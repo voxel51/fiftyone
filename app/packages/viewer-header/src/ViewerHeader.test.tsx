@@ -17,6 +17,7 @@ const harness = vi.hoisted(() => ({
     slice: null as string | null,
     hasNext: true,
     hasPrevious: true,
+    position: null as { index: number; total: number } | null,
   },
   context: { exploring: true, group: false, multimodal: false },
   hidden: 0,
@@ -98,6 +99,7 @@ beforeEach(() => {
     slice: null,
     hasNext: true,
     hasPrevious: true,
+    position: null,
   };
   harness.context = { exploring: true, group: false, multimodal: false };
   harness.hidden = 0;
@@ -142,6 +144,18 @@ describe("ViewerHeader", () => {
     fireEvent.click(next);
     expect(stepper.next).toHaveBeenCalledTimes(1);
     expect(stepper.previous).not.toHaveBeenCalled();
+  });
+
+  it("shows the sample's position only when it is known", () => {
+    expect(renderHeader()("viewer-header-position")).toBeNull();
+
+    harness.sample = {
+      ...harness.sample,
+      position: { index: 1234, total: 5000 },
+    };
+    expect(renderHeader()("viewer-header-position")?.textContent).toBe(
+      "1,234/5,000",
+    );
   });
 
   it("drops the steppers for a lone sample", () => {

@@ -2,15 +2,22 @@ import type { PaginateSamplesNode } from "@fiftyone/relay";
 import type { ID, SpotlightConfig } from "@fiftyone/spotlight";
 
 import { get } from "lodash";
-import { useReverbCallback } from "@fiftyone/reverb";
+import {
+  peekReverbValue,
+  useReverbCallback,
+  useReverbStore,
+} from "@fiftyone/reverb";
 import * as atoms from "../atoms/atoms";
 import * as groupAtoms from "../atoms/groups";
+import { modalPositions } from "../atoms/modal";
+import { count, countIsEstimate, GRID_COUNT } from "../atoms/pathData/counts";
 import useSetExpandedSample from "./useSetExpandedSample";
 import {
   createSampleNavigator,
   type SamplePage,
   type SamplePosition,
 } from "../navigation/sampleNavigator";
+import { exactTotal, trackPositions } from "../navigation/samplePositions";
 import useSetModalState from "./useSetModalState";
 
 export type Sample = Exclude<PaginateSamplesNode, null>;
@@ -20,12 +27,16 @@ type PagedSample = { id: ID; data: Sample };
 /** The pages a grid shows, and where a sample sits in them. */
 export interface ExpandSamplePages {
   get: (key: number) => Promise<SamplePage<number, PagedSample>>;
-  positionOf: (id: string) => SamplePosition<number> | undefined;
+  /** `offset` is the sample's place in the whole order, when known */
+  positionOf: (
+    id: string,
+  ) => (SamplePosition<number> & { offset?: number }) | undefined;
 }
 
 export default (pages: ExpandSamplePages) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
+  const store = useReverbStore();
 
   return useReverbCallback(
     ({ snapshot, set }) =>
@@ -66,11 +77,28 @@ export default (pages: ExpandSamplePages) => {
         const at = pages.positionOf(item.id.description);
         const navigator = at && createSampleNavigator({ at, get: pages.get });
 
+        // a position shows only from a count the grid already holds; it is
+        // never counted for this
+        const counted = peekReverbValue(store, count(GRID_COUNT));
+        const total =
+          counted &&
+          exactTotal(
+            counted,
+            await snapshot.getPromise(countIsEstimate(GRID_COUNT)),
+          );
+        const keyOf = (selector: { id: string; groupId?: string }) =>
+          selector.groupId ?? selector.id;
+        const tracked =
+          total !== undefined && at?.offset !== undefined
+            ? trackPositions(total, keyOf(selectorOf(item)), at.offset)
+            : undefined;
+
         const step = async (offset: number) => {
           const found = await navigator?.step(offset);
           if (!found) {
             throw new Error("unable to paginate to next sample");
           }
+          tracked?.stepped(keyOf(selectorOf(found)), offset);
           const [hasNext, hasPrevious] = await Promise.all([
             navigator?.peek(1),
             navigator?.peek(-1),
@@ -97,6 +125,7 @@ export default (pages: ExpandSamplePages) => {
         ]);
 
         await setModalState(navigator ? { next, peek, previous } : undefined);
+        set(modalPositions, tracked?.positions ?? null);
 
         await setExpandedSample({
           ...selectorOf(item),
@@ -104,6 +133,6 @@ export default (pages: ExpandSamplePages) => {
           hasPrevious: Boolean(hasPrevious),
         });
       },
-    [pages, setExpandedSample, setModalState],
+    [pages, setExpandedSample, setModalState, store],
   );
 };
