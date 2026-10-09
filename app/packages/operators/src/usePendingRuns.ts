@@ -95,6 +95,7 @@ const STATUS_LABELS: Record<string, string> = {
   queued: "Queued",
   running: "Running",
   processing: "Running",
+  in_progress: "In progress",
   failed: "Failed",
 };
 
@@ -114,6 +115,7 @@ export function usePendingRunScreen(
         | "scheduled"
         | "queued"
         | "running"
+        | "in_progress"
         | "failed",
       runTitle: STATUS_LABELS[run.run_state] ?? run.run_state,
       onBack: () => setOpenId(null),

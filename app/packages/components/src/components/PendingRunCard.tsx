@@ -7,6 +7,7 @@ const STATE_LABELS: Record<string, string> = {
   queued: "Queued",
   running: "Running",
   processing: "Running",
+  in_progress: "In progress",
   failed: "Failed",
 };
 

@@ -24,6 +24,7 @@ import {
 import { PendingRunCard, RunScreen } from "@fiftyone/components";
 import {
   usePendingRunScreen,
+  type PendingRun,
   type PendingRunWithView,
 } from "@fiftyone/operators";
 import { useEffect, useState } from "react";
@@ -157,9 +158,25 @@ export default function RunsList({
     );
   };
 
-  const unregistered = pendingRuns.filter(
-    (pending) => !runs?.some((run) => run.brainKey === pending.brain_key),
-  );
+  const isSettled = (key: string | null) =>
+    Boolean(runs?.some((r) => r.brainKey === key && (r.ready || r.error)));
+  const delegated = pendingRuns.filter((p) => !isSettled(p.brain_key));
+  const inProgress: PendingRun[] = (runs ?? [])
+    .filter(
+      (r) =>
+        !r.ready &&
+        !r.error &&
+        !delegated.some((p) => p.brain_key === r.brainKey),
+    )
+    .map((r) => ({
+      id: `registered:${r.brainKey}`,
+      operator: "",
+      run_state: "in_progress",
+      label: null,
+      brain_key: r.brainKey,
+    }));
+  const unregistered = [...delegated, ...inProgress];
+  const settledRuns = runs?.filter((r) => r.ready || r.error) ?? [];
 
   const { open: openPending, screen: pendingScreen } = usePendingRunScreen(
     unregistered,
@@ -210,7 +227,7 @@ export default function RunsList({
             </Text>
           </div>
         )}
-        {runs.length === 0 && unregistered.length === 0 ? (
+        {settledRuns.length === 0 && unregistered.length === 0 ? (
           showUpsell ? (
             // Builds that can't compute in-app show the enterprise
             // landing instead of a dead-end empty state (FOEPD-4369)
@@ -250,7 +267,7 @@ export default function RunsList({
                 onViewRun={pending.onView}
               />
             ))}
-            {runs.map((run) => (
+            {settledRuns.map((run) => (
               <RunCard
                 key={run.brainKey}
                 icon={IconName.Embeddings}
