@@ -39,16 +39,11 @@ if (!jsonPath) {
   process.exit(1);
 }
 
-// A shard killed by timeout or a lost runner leaves partial or missing blob
-// reports; the merged counts silently understate the suite, so say so.
 const shardResult = process.env.TEST_E2E_RESULT ?? "";
 const expectedShards = Number(process.env.EXPECTED_SHARDS ?? "0");
 const foundBlobs = blobDir
   ? readdirSync(blobDir).filter((f) => f.endsWith(".zip")).length
   : null;
-const incomplete =
-  (shardResult !== "" && shardResult !== "success") ||
-  (expectedShards > 0 && foundBlobs !== null && foundBlobs !== expectedShards);
 
 const report = JSON.parse(readFileSync(jsonPath, "utf8"));
 
@@ -202,6 +197,16 @@ if (!wallClock) {
 // one row per sibling suite in the run (build, lint, unit tests, ...)
 const suiteRows = buildSuiteRows(jobs);
 
+// A shard killed by timeout or a lost runner leaves partial or missing blob
+// reports; the merged counts silently understate the suite, so say so. A red
+// shard with failing specs is already explained by the failed list.
+const shardsDied =
+  shardResult === "cancelled" ||
+  (shardResult === "failure" && failed.length === 0);
+const incomplete =
+  shardsDied ||
+  (expectedShards > 0 && foundBlobs !== null && foundBlobs !== expectedShards);
+
 const headline = failed.length
   ? `## ❌ CI (${FLAVOR}): ${failed.length} failed spec${
       failed.length === 1 ? "" : "s"
@@ -215,7 +220,7 @@ const headline = failed.length
 const lines = [MARKER, headline];
 if (incomplete) {
   const parts = [];
-  if (shardResult !== "" && shardResult !== "success") {
+  if (shardsDied) {
     parts.push(`shard jobs concluded '${shardResult}'`);
   }
   if (foundBlobs !== null && expectedShards > 0) {
