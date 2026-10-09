@@ -1,6 +1,11 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOperatorExecutor } from "./state";
+import { useRecoilValue } from "recoil";
+import {
+  OperatorLoadResult,
+  operatorsInitializedAtom,
+  useOperatorExecutor,
+} from "./state";
 
 const LIST_PENDING_RUNS_URI = "@voxel51/operators/list_pending_runs";
 const POLL_MS = 5000;
@@ -44,7 +49,9 @@ export default function usePendingRuns(
   }: PendingRunsConfig,
   refreshKey?: unknown,
 ) {
-  const { execute } = useOperatorExecutor(LIST_PENDING_RUNS_URI);
+  const operatorsInitialized = useRecoilValue(operatorsInitializedAtom);
+  const { execute, loadResult } = useOperatorExecutor(LIST_PENDING_RUNS_URI);
+  const available = loadResult === OperatorLoadResult.SUCCESS;
   const executeRef = useRef(execute);
   executeRef.current = execute;
   const [runs, setRuns] = useState<PendingRun[]>([]);
@@ -65,9 +72,13 @@ export default function usePendingRuns(
     [operators, stageOperators],
   );
 
+  // Executing before the operator registry loads throws on the next render
+  // and takes the panel down when it is restored at page load
   useEffect(() => {
-    refresh();
-  }, [refresh, refreshKey]);
+    if (!operatorsInitialized) return;
+    if (available) refresh();
+    else setLoaded(true);
+  }, [operatorsInitialized, available, refresh, refreshKey]);
 
   const active = runs.some((run) => run.run_state !== FAILED);
   useEffect(() => {

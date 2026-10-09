@@ -3,7 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const execute = vi.fn();
 vi.mock("@fiftyone/state", () => ({ useCurrentDatasetName: () => "ds" }));
-vi.mock("./state", () => ({ useOperatorExecutor: () => ({ execute }) }));
+const registry = vi.hoisted(() => ({ initialized: true, found: true }));
+vi.mock("recoil", () => ({ useRecoilValue: () => registry.initialized }));
+vi.mock("./state", () => ({
+  OperatorLoadResult: { SUCCESS: "success", NOT_FOUND: "not_found" },
+  operatorsInitializedAtom: {},
+  useOperatorExecutor: () => ({
+    execute,
+    loadResult: registry.found ? "success" : "not_found",
+  }),
+}));
 
 import usePendingRuns, { usePendingRunScreen } from "./usePendingRuns";
 
@@ -25,6 +34,8 @@ describe("usePendingRuns", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     execute.mockReset();
+    registry.initialized = true;
+    registry.found = true;
   });
   afterEach(() => vi.useRealTimers());
 
@@ -37,6 +48,27 @@ describe("usePendingRuns", () => {
     expect(result.current.loaded).toBe(false);
 
     act(() => finish({ result: [] }));
+    expect(result.current.loaded).toBe(true);
+  });
+
+  it("waits for the operator registry before fetching", () => {
+    registry.initialized = false;
+    const { result, rerender } = renderHook(() => usePendingRuns(config));
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.current.loaded).toBe(false);
+
+    registry.initialized = true;
+    respond([]);
+    rerender();
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("is loaded without fetching when the operator is unavailable", () => {
+    registry.found = false;
+    const { result } = renderHook(() => usePendingRuns(config));
+
+    expect(execute).not.toHaveBeenCalled();
     expect(result.current.loaded).toBe(true);
   });
 
