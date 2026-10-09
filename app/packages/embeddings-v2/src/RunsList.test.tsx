@@ -110,9 +110,9 @@ describe("RunsList", () => {
     expect(onOpen).toHaveBeenCalledWith("clip_umap");
   });
 
-  // Clicking a run without results crashed the plot view; pending runs
-  // must render inert until the poll flips them ready
-  it("marks runs without results Pending and inert", () => {
+  // Clicking a run without results crashed the plot view; runs still
+  // computing are pending cards that never open the plot
+  it("shows runs without results as in progress and inert", () => {
     const onOpen = vi.fn();
     render(
       <RunsList
@@ -122,9 +122,9 @@ describe("RunsList", () => {
       />,
     );
 
-    expect(screen.getByText("Pending")).toBeDefined();
-    fireEvent.click(screen.getByText("cooking"));
+    fireEvent.click(screen.getByText("cooking in_progress"));
     expect(onOpen).not.toHaveBeenCalled();
+    expect(screen.getByText("screen cooking")).toBeTruthy();
   });
 
   // FOEPD-4369: upselling builds land on the enterprise CTA, not the
@@ -310,5 +310,19 @@ describe("RunsList", () => {
     );
 
     expect(screen.queryByText("viz_a scheduled")).toBeNull();
+  });
+
+  it("lists a delegated run once when its run is registered but not ready", () => {
+    render(
+      <RunsList
+        runs={[run("viz_a", { ready: false })]}
+        pendingRuns={[pending("viz_a")]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("viz_a scheduled")).toBeTruthy();
+    expect(screen.queryByText("viz_a in_progress")).toBeNull();
   });
 });

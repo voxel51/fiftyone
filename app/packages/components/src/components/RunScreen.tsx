@@ -17,7 +17,12 @@ import {
 } from "@voxel51/voodo";
 import { useState, type ReactNode } from "react";
 
-export type RunScreenStatus = "scheduled" | "queued" | "running" | "failed";
+export type RunScreenStatus =
+  | "scheduled"
+  | "queued"
+  | "running"
+  | "in_progress"
+  | "failed";
 
 export interface RunScreenProps {
   title: string;
@@ -53,6 +58,7 @@ const MESSAGES: Record<RunScreenStatus, string> = {
   scheduled: "Results will appear when the job is finished.",
   queued: "Waiting for a worker to pick up this job.",
   running: "Results will appear when the job is finished.",
+  in_progress: "Results will appear when the job is finished.",
   failed: "This job failed.",
 };
 
