@@ -2,7 +2,7 @@ import {
   Align,
   Heading,
   HeadingLevel,
-  MinimizeIcon,
+  Minimize2Icon,
   Orientation,
   Size,
   Spacing,
@@ -76,7 +76,7 @@ const Header: React.FC<
         <div className={style.restore}>
           <TextAction
             size={Size.Sm}
-            leadingIcon={MinimizeIcon}
+            leadingIcon={Minimize2Icon}
             onClick={onExitFocus}
             data-cy="header-exit-focus"
           >

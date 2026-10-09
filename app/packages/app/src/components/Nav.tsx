@@ -16,7 +16,7 @@ import {
   DarkModeIcon,
   IconAction,
   LightModeIcon,
-  MaximizeIcon,
+  Maximize2Icon,
   Orientation,
   Size,
   Spacing,
@@ -163,7 +163,7 @@ const Nav: React.FC<
             {hasDataset && (
               <Tooltip anchor={Anchor.Bottom} content="Focus mode (F)">
                 <IconAction
-                  icon={MaximizeIcon}
+                  icon={Maximize2Icon}
                   size={Size.Md}
                   aria-label="Focus mode"
                   onClick={focus.toggle}
