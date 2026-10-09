@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
-import { Combobox, type ComboboxOption, Size } from "@voxel51/voodo";
-import { type ReactNode, useEffect, useState } from "react";
+import { Input, Size } from "@voxel51/voodo";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import {
   constSelector,
   useReverbValue,
@@ -10,13 +10,11 @@ import {
 import { underline } from "../styles";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import type { Result } from "./Result";
+import SearchResults, { optionId } from "./SearchResults";
 import { stringSearch, stringSearchResults } from "./state";
 
 const DEBOUNCE_DELAY = 200;
-const NONE_ID = "\u0000none";
 const CLOSED = constSelector<{ values?: Result[] }>({ values: [] });
-
-const toId = (value: string | null) => value ?? NONE_ID;
 
 const QueryPerformanceTimeout = ({
   modal,
@@ -31,7 +29,8 @@ const QueryPerformanceTimeout = ({
 
 /**
  * Adds a value to a string filter: pick a search result, or type a value and
- * press Enter. Results are only queried while the list is open.
+ * press Enter. Results list in place under the input, and are only queried
+ * while it is focused and holds text.
  */
 export default function Search({
   color,
@@ -50,8 +49,11 @@ export default function Search({
   placeholder: string;
   searchable: boolean;
 }) {
+  const listId = useId();
   const [input, setInput] = useState("");
-  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [active, setActive] = useState<number | null>(null);
   const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
 
   const setSearch = useSetReverbState(stringSearch({ modal, path }));
@@ -60,52 +62,86 @@ export default function Search({
     debouncedSetSearch(input);
   }, [input, debouncedSetSearch]);
 
+  const open = searchable && focused && !dismissed && input.trim() !== "";
   const loadable = useReverbValueLoadable(
-    open && searchable ? stringSearchResults({ modal, path }) : CLOSED,
+    open ? stringSearchResults({ modal, path }) : CLOSED,
   );
   if (loadable.state === "hasError") throw loadable.contents;
   const loading = loadable.state === "loading";
-  const results =
-    loadable.state === "hasValue" ? (loadable.contents.values ?? []) : [];
+  const results = (
+    loadable.state === "hasValue" ? (loadable.contents.values ?? []) : []
+  ).map((result) => (isFilterMode ? result : { ...result, count: null }));
 
-  const options: ComboboxOption[] = results.map(({ value, count }) => ({
-    id: toId(value),
-    label: value ?? "None",
-    description: isFilterMode ? count : undefined,
-  }));
+  useEffect(() => setActive(null), [loadable.contents]);
 
-  const onChange = async (option: ComboboxOption | null) => {
-    if (!option) return;
-    const result = results.find(({ value }) => toId(value) === option.id);
-    if (await onSelect(result ? result.value : option.label, result)) {
+  const select = async (value: string | null, result?: Result) => {
+    if (await onSelect(value, result)) {
       setInput("");
+      setActive(null);
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!open || !results.length) return;
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActive((current) =>
+        current === null
+          ? step === 1
+            ? 0
+            : results.length - 1
+          : (current + step + results.length) % results.length,
+      );
+    } else if (e.key === "Enter") {
+      const result = open && active !== null ? results[active] : undefined;
+      if (result) {
+        select(result.value, result);
+      } else if (input.trim()) {
+        const match = results.find(({ value }) => value === input.trim());
+        select(match ? match.value : input.trim(), match);
+      }
+    } else if (e.key === "Escape") {
+      setDismissed(true);
     }
   };
 
   return (
-    <>
-      <Combobox
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <Input
         size={Size.Sm}
         borderless
-        portal
-        allowFreeText
-        commitOnBlur={false}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          open && active !== null ? optionId(listId, active) : undefined
+        }
+        autoComplete="off"
         placeholder={placeholder}
-        options={options}
-        value={null}
-        inputValue={input}
-        onInputChange={setInput}
-        onChange={onChange}
-        onOpenChange={setOpen}
-        loading={loading}
-        header={footer}
-        emptyMessage={searchable ? undefined : null}
-        inputProps={{
-          "data-cy": `selector-sidebar-search-${path}`,
-          ...underline(color),
+        value={input}
+        onChange={(e) => {
+          setInput(e.target.value);
+          setDismissed(false);
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={onKeyDown}
+        data-cy={`selector-sidebar-search-${path}`}
+        {...underline(color)}
       />
+      {open && (
+        <SearchResults
+          active={active}
+          id={listId}
+          loading={loading}
+          onPick={(result) => select(result.value, result)}
+          results={results}
+        />
+      )}
+      {open && footer}
       {loading && <QueryPerformanceTimeout modal={modal} path={path} />}
-    </>
+    </div>
   );
 }
