@@ -171,7 +171,11 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         const rank = records.get(id);
         return rank === undefined
           ? undefined
-          : { key: Math.floor(rank / PAGE_SIZE), index: rank % PAGE_SIZE };
+          : {
+              key: Math.floor(rank / PAGE_SIZE),
+              index: rank % PAGE_SIZE,
+              offset: rank,
+            };
       },
     }),
     [records, source],
