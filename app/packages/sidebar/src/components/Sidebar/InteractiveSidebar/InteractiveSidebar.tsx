@@ -2,7 +2,13 @@ import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useEventHandler } from "@fiftyone/state";
 import { Controller, animated, config } from "@react-spring/web";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Container, SidebarColumn } from "./Components";
 import style from "./style.module.css";
 import type { InteractiveItems, RenderEntry, SidebarEvents } from "./types";
@@ -125,6 +131,14 @@ const InteractiveSidebar = ({
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems),
   );
+
+  // react-spring writes set() to the DOM on the next frame, so place the
+  // entries before the first paint and re-render to carry their positions.
+  const [, setPlaced] = useState(false);
+  useLayoutEffect(() => {
+    placeItems();
+    setPlaced(true);
+  }, [placeItems]);
 
   // Dispose controllers + disconnect the observer on unmount (disconnect also
   // releases rows pruned during render, which the ref callback skips).
