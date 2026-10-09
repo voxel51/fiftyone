@@ -26,6 +26,8 @@ const makeOverlay = (
     removeMaskKeypointById: vi.fn(),
     updatePenMousePosition: vi.fn(),
     markDirty: vi.fn(),
+    getMaskKeypointCount: vi.fn(() => nextId),
+    cancelPenPolygon: vi.fn(),
   } as unknown as DetectionOverlay;
 
   return {
@@ -38,6 +40,7 @@ const makeOverlay = (
       typeof vi.fn
     >,
     markDirty: overlay.markDirty as ReturnType<typeof vi.fn>,
+    cancelPenPolygon: overlay.cancelPenPolygon as ReturnType<typeof vi.fn>,
   };
 };
 
@@ -168,6 +171,30 @@ describe("InteractivePenHandler", () => {
     handler.cleanup();
 
     expect(updatePenMousePosition).toHaveBeenCalledWith(null);
+  });
+
+  it("cleanup discards an uncommitted polygon and its per-point undoables", () => {
+    const { pushed } = spyActiveContext();
+    const { overlay, cancelPenPolygon } = makeOverlay();
+    const handler = new InteractivePenHandler(overlay);
+
+    handler.onPointerDown(makeEvent({ x: 1, y: 1 }));
+    handler.onPointerDown(makeEvent({ x: 2, y: 1 }));
+    expect(pushed).toHaveLength(2);
+
+    handler.cleanup();
+
+    expect(cancelPenPolygon).toHaveBeenCalledTimes(1);
+    expect(pushed).toHaveLength(0);
+  });
+
+  it("cleanup leaves the overlay alone when no polygon is in progress", () => {
+    const { overlay, cancelPenPolygon } = makeOverlay();
+    const handler = new InteractivePenHandler(overlay);
+
+    handler.cleanup();
+
+    expect(cancelPenPolygon).not.toHaveBeenCalled();
   });
 
   it("markDirty delegates to the overlay", () => {

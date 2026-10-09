@@ -71,6 +71,14 @@ export class InteractivePenHandler implements InteractionHandler {
 
   cleanup(): void {
     this.overlay.updatePenMousePosition(null);
+
+    // Leaving the pen tool (tool/mode switch, deselect) without a commit
+    // discards the unfinished polygon, and its per-point undo entries with it
+    // so a redo can't resurrect points on a polygon that no longer exists.
+    if (this.overlay.getMaskKeypointCount() > 0) {
+      this.overlay.cancelPenPolygon();
+    }
+    this.pruneCommands();
   }
 
   /**

@@ -92,24 +92,27 @@ test.describe.serial("segmentation pen-tool round-trip", () => {
 
     await modal.sampleCanvas.rightClick(0.5, 0.5);
 
-    // ── 3. The commit right-click also closes the edit form ─────────────────
-    // One right-click commits the polygon AND returns to the label list with
-    // segmentation mode still armed (the same cadence as brush / box /
-    // polyline), so the next click starts a NEW mask rather than extending
-    // this one. A second right-click then leaves the mode for Select.
-    await modal.sidebar.edit.assert.isClosed();
+    // ── 3. The commit right-click keeps the mask open for more regions ──────
+    // A right-click that commits a pen polygon leaves the mask selected, so the
+    // next polygon adds to (or removes from) the SAME mask. A right-click with
+    // no polygon drawn closes the label; one more leaves the mode for Select.
+    await modal.sidebar.edit.assert.isOpen();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
 
-    // the next polygon is a NEW detection, not more polygons on the last one
+    // the next polygon extends the same detection, not a new one
     await modal.sampleCanvas.click(0.7, 0.7);
     await modal.sampleCanvas.click(0.8, 0.7);
     await modal.sampleCanvas.click(0.8, 0.8);
+    await modal.sampleCanvas.rightClick(0.5, 0.5);
     await modal.sidebar.edit.assert.isOpen();
+
+    // nothing drawn: right-click closes the label, mode stays armed
     await modal.sampleCanvas.rightClick(0.5, 0.5);
     await modal.sidebar.edit.assert.isClosed();
+    await modal.sidebar.annotate.assert.segmentationModeIsActive();
     await expect
       .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-      .toBe(2);
+      .toBe(1);
 
     await modal.sidebar.annotate.waitForSavesSettled();
 
