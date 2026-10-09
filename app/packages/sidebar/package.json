@@ -22,6 +22,7 @@
         "@mui/icons-material": "catalog:",
         "@mui/material": "catalog:",
         "@react-spring/web": "catalog:",
+        "@voxel51/voodo": "catalog:",
         "color": "^4.2.3",
         "numeral": "catalog:",
         "react": "catalog:",

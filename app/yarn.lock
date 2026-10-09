@@ -2340,6 +2340,7 @@ __metadata:
     "@mui/material": "catalog:"
     "@react-spring/web": "catalog:"
     "@testing-library/react": "catalog:"
+    "@voxel51/voodo": "catalog:"
     color: "npm:^4.2.3"
     numeral: "catalog:"
     react: "catalog:"
