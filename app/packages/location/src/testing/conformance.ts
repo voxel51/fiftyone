@@ -98,7 +98,7 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
     name: "back restores the previous href",
     run: (harness) => {
       const original = harness.adapter.get();
-      harness.adapter.push("/datasets/quickstart/samples/abc");
+      harness.adapter.push("/datasets/quickstart/sample/abc");
       harness.back();
       assert(
         harness.adapter.get() === original,
@@ -122,7 +122,7 @@ export const CONFORMANCE_CASES: ConformanceCase[] = [
     name: "the adapter's back returns to the previous entry",
     run: (harness) => {
       const original = harness.adapter.get();
-      harness.adapter.push("/datasets/quickstart/samples/abc");
+      harness.adapter.push("/datasets/quickstart/sample/abc");
       let calls = 0;
       const unsubscribe = harness.adapter.subscribe(() => {
         calls += 1;

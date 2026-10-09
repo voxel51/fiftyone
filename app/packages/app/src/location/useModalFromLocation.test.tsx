@@ -42,14 +42,14 @@ beforeEach(() => {
 
 describe("useModalFromLocation", () => {
   it("leaves a cold load to the session the server replays", () => {
-    mount("/datasets/d/samples/a");
+    mount("/datasets/d/sample/a");
     expect(open).toHaveBeenCalledTimes(0);
     expect(clear).toHaveBeenCalledTimes(0);
   });
 
   it("closes the sample when Back leaves it", () => {
     const harness = mount("/datasets/d");
-    act(() => harness.adapter.push("/datasets/d/samples/a"));
+    act(() => harness.adapter.push("/datasets/d/sample/a"));
     session.modalSelector = { id: "a" };
     act(() => harness.back());
     expect(clear).toHaveBeenCalledTimes(1);
@@ -57,7 +57,7 @@ describe("useModalFromLocation", () => {
 
   it("opens the sample Forward lands on", async () => {
     const harness = mount("/datasets/d");
-    act(() => harness.adapter.push("/datasets/d/groups/g"));
+    act(() => harness.adapter.push("/datasets/d/group/g"));
     await waitFor(() => expect(open).toHaveBeenCalledWith({ groupId: "g" }));
     expect(setModalState).toHaveBeenCalledTimes(1);
   });
@@ -65,7 +65,7 @@ describe("useModalFromLocation", () => {
   it("leaves the session alone when the App made the move", () => {
     const harness = mount("/datasets/d");
     session.modalSelector = { groupId: "g", id: "a" };
-    act(() => harness.adapter.push("/datasets/d/groups/g"));
+    act(() => harness.adapter.push("/datasets/d/group/g"));
     expect(open).toHaveBeenCalledTimes(0);
     expect(clear).toHaveBeenCalledTimes(0);
   });

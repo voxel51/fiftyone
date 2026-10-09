@@ -92,25 +92,25 @@ describe("resolves the open sample", () => {
   it("keeps it for updates within the same dataset", () => {
     expect(
       resolveURL({
-        currentPathname: "/datasets/d/samples/a",
+        currentPathname: "/datasets/d/sample/a",
         currentSearch: "?view=v",
         nextDataset: "d",
         nextView: "w",
       }),
-    ).toBe("/datasets/d/samples/a?view=w");
+    ).toBe("/datasets/d/sample/a?view=w");
     expect(
       resolveURL({
-        currentPathname: "/datasets/d/groups/g",
+        currentPathname: "/datasets/d/group/g",
         currentSearch: "",
         extra: { workspace: "w" },
       }),
-    ).toBe("/datasets/d/groups/g?workspace=w");
+    ).toBe("/datasets/d/group/g?workspace=w");
   });
 
   it("drops it when changing datasets", () => {
     expect(
       resolveURL({
-        currentPathname: "/datasets/d/samples/a",
+        currentPathname: "/datasets/d/sample/a",
         currentSearch: "",
         nextDataset: "other",
       }),
@@ -125,10 +125,10 @@ describe("resolves the open sample", () => {
         nextDataset: "d",
         extra: { groupId: "g", id: "a" },
       }),
-    ).toBe("/datasets/d/groups/g");
+    ).toBe("/datasets/d/group/g");
     expect(
       resolveURL({
-        currentPathname: "/datasets/d/groups/g",
+        currentPathname: "/datasets/d/group/g",
         currentSearch: "",
         nextDataset: "d",
         extra: { groupId: null, id: null },

@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 
-_SAMPLE_PAGES = {"samples", "groups"}
+_SAMPLE_PAGES = {"sample", "group"}
 
 
 class Static(StaticFiles):

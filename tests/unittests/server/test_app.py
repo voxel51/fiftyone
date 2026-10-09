@@ -112,9 +112,9 @@ def _app(tmp_path):
         ("/datasets/quickstart", _INDEX),
         ("/datasets/assets/app.js", "js"),
         ("/datasets/index.html", _INDEX),
-        ("/datasets/quickstart/samples/66a1", _INDEX),
-        ("/datasets/quickstart/groups/g-7", _INDEX),
-        ("/datasets/quickstart/samples/assets/app.js", "js"),
+        ("/datasets/quickstart/sample/66a1", _INDEX),
+        ("/datasets/quickstart/group/g-7", _INDEX),
+        ("/datasets/quickstart/sample/assets/app.js", "js"),
     ],
 )
 def test_dataset_pages(tmp_path, path, body):
@@ -125,7 +125,7 @@ def test_dataset_pages(tmp_path, path, body):
 
 
 @pytest.mark.parametrize(
-    "path", ["/datasets/quickstart/samples", "/datasets/quickstart/manage/x"]
+    "path", ["/datasets/quickstart/sample", "/datasets/quickstart/manage/x"]
 )
 def test_unknown_dataset_paths_are_not_found(tmp_path, path):
     response = _app(tmp_path).get(path, follow_redirects=False)

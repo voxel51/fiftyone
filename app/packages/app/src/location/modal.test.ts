@@ -18,7 +18,7 @@ describe("writeModal", () => {
   it("pushes an open and goes back to the grid on close", () => {
     const { harness, store } = build();
     writeModal(store, { id: "a" });
-    expect(harness.adapter.get()).toBe("/datasets/d/samples/a");
+    expect(harness.adapter.get()).toBe("/datasets/d/sample/a");
     expect(harness.depth()).toBe(2);
 
     writeModal(store, null);
@@ -31,7 +31,7 @@ describe("writeModal", () => {
     const { harness, store } = build();
     writeModal(store, { id: "a" });
     writeModal(store, { id: "b" });
-    expect(harness.adapter.get()).toBe("/datasets/d/samples/b");
+    expect(harness.adapter.get()).toBe("/datasets/d/sample/b");
     expect(harness.depth()).toBe(2);
 
     writeModal(store, undefined);
@@ -44,12 +44,12 @@ describe("writeModal", () => {
   it("names a group's sample by its group", () => {
     const { harness, store } = build("/datasets/d?slice=left");
     writeModal(store, { groupId: "g", id: "a" });
-    expect(harness.adapter.get()).toBe("/datasets/d/groups/g?slice=left");
+    expect(harness.adapter.get()).toBe("/datasets/d/group/g?slice=left");
     expect(readModal(store)).toEqual({ groupId: "g" });
   });
 
   it("replaces a close when the entry before is not the App's grid", () => {
-    const { harness, store } = build("/datasets/d/samples/a");
+    const { harness, store } = build("/datasets/d/sample/a");
     writeModal(store, null);
     expect(harness.adapter.get()).toBe("/datasets/d");
     expect(harness.depth()).toBe(1);
@@ -64,7 +64,7 @@ describe("writeModal", () => {
     expect(harness.depth()).toBe(2);
 
     // Forward lands on the sample, but the entry before it is no longer known
-    harness.adapter.push("/datasets/d/samples/a");
+    harness.adapter.push("/datasets/d/sample/a");
     writeModal(store, { id: "a" });
     writeModal(store, null);
     expect(harness.depth()).toBe(2);
@@ -76,14 +76,14 @@ describe("redirectLegacyModal", () => {
   it("rewrites an old sample link to its path, in place", () => {
     const { harness, store } = build("/datasets/d?id=a&slice=left");
     redirectLegacyModal(store);
-    expect(harness.adapter.get()).toBe("/datasets/d/samples/a?slice=left");
+    expect(harness.adapter.get()).toBe("/datasets/d/sample/a?slice=left");
     expect(harness.depth()).toBe(1);
   });
 
   it("names a group's link by its group", () => {
     const { harness, store } = build("/datasets/d?groupId=g&id=a");
     redirectLegacyModal(store);
-    expect(harness.adapter.get()).toBe("/datasets/d/groups/g");
+    expect(harness.adapter.get()).toBe("/datasets/d/group/g");
   });
 
   it("leaves a link without the old params alone", () => {

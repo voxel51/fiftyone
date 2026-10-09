@@ -18,8 +18,8 @@ export type AppRoute =
 const encode = (value: string) => encodeURIComponent(value);
 
 const DATASETS = "datasets";
-const SAMPLES = "samples";
-const GROUPS = "groups";
+const SAMPLES = "sample";
+const GROUPS = "group";
 
 export type SamplePath = { kind: "sample" | "group"; id: string };
 

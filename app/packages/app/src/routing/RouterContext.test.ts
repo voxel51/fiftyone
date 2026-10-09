@@ -45,7 +45,7 @@ describe("param moves", () => {
   it("keeps the page when a sample opens or closes on its path", () => {
     expect(
       isParamMove(
-        at("/datasets/a/samples/s", marked),
+        at("/datasets/a/sample/s", marked),
         at("/datasets/a", {}),
         Action.Push,
       ),
@@ -53,13 +53,13 @@ describe("param moves", () => {
     expect(
       isParamMove(
         at("/datasets/a", { view: [] }),
-        at("/datasets/a/groups/g", marked),
+        at("/datasets/a/group/g", marked),
         Action.Pop,
       ),
     ).toBe(true);
     expect(
       isParamMove(
-        at("/datasets/b/samples/s", marked),
+        at("/datasets/b/sample/s", marked),
         at("/datasets/a", {}),
         Action.Push,
       ),
