@@ -449,6 +449,17 @@ from the `Sort by` dropdown in the upper right corner of the Samples panel.
     When :ref:`Query Performance <app-optimizing-query-performance>` is
     enabled, only fields that are indexed can be sorted on.
 
+.. note::
+
+    For datasets with more than 100,000 samples, only fields with their own
+    index can be sorted on. Wildcard indexes such as `$**` do not count. For
+    :ref:`grouped datasets <groups>`, sort on a single-value field with a
+    compound index that ends with the group slice name:
+
+    .. code-block:: python
+
+        dataset.create_index([("captured_at", 1), ("group.name", 1)])
+
 .. _app-managing-grid-memory:
 
 Managing grid memory usage
