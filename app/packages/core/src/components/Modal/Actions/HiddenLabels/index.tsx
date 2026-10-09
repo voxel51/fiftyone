@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import { hiddenLabels } from "@fiftyone/state";
-import { VisibilityOff } from "@mui/icons-material";
 import { useReverbState } from "@fiftyone/reverb";
+import { VisibilityOffIcon } from "@voxel51/voodo";
 
 const HiddenLabels = ({ modal }: { modal?: boolean }) => {
   const [hiddenObjects, setHiddenObjects] = useReverbState(hiddenLabels);
@@ -13,7 +13,7 @@ const HiddenLabels = ({ modal }: { modal?: boolean }) => {
 
   return (
     <PillButton
-      icon={<VisibilityOff />}
+      icon={<VisibilityOffIcon size={18} />}
       tooltipPlacement={modal ? "bottom" : "top"}
       open={true}
       onClick={() => setHiddenObjects({})}

@@ -6,11 +6,15 @@ import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai"
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import ArrowUpIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
-import { Orientation, Spacing, Stack } from "@voxel51/voodo";
+import {
+  Orientation,
+  Spacing,
+  Stack,
+  VisibilityIcon,
+  VisibilityOffIcon,
+} from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -276,7 +280,9 @@ export const ContentItem = ({
         {isVisibilityIconVisible && (
           <IconButton onClick={hideThisItem} size="small">
             <Tooltip text="Hide this label" placement="bottom-center">
-              <VisibilityOffIcon fontSize="small" />
+              <span style={{ display: "inline-flex" }}>
+                <VisibilityOffIcon size={18} />
+              </span>
             </Tooltip>
           </IconButton>
         )}
@@ -520,7 +526,9 @@ const HiddenItemRow = ({
         {showUnhideIcon && (
           <IconButton onClick={unHideItem} size="small">
             <Tooltip text="Show this label" placement="bottom-center">
-              <VisibilityIcon fontSize="small" />
+              <span style={{ display: "inline-flex" }}>
+                <VisibilityIcon size={18} />
+              </span>
             </Tooltip>
           </IconButton>
         )}

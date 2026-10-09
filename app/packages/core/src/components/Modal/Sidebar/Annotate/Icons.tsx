@@ -3,11 +3,15 @@ import {
   LockOpenOutlined,
   LockOutlined,
   TimelineOutlined as PolylineOutlined,
-  VisibilityOffOutlined,
-  VisibilityOutlined,
 } from "@mui/icons-material";
 import styled from "styled-components";
-import { Icon, IconName, Size } from "@voxel51/voodo";
+import {
+  Icon,
+  IconName,
+  Size,
+  VisibilityIcon,
+  VisibilityOffIcon,
+} from "@voxel51/voodo";
 
 export const Container = styled.div`
   display: flex;
@@ -105,10 +109,10 @@ export const Locking = ({ on }: { on: boolean }) => {
 export const Shown = ({ on }: { on: boolean }) => {
   const theme = useTheme();
   const color = on ? theme.text.secondary : theme.text.disabled;
-  const Component = on ? VisibilityOutlined : VisibilityOffOutlined;
+  const Component = on ? VisibilityIcon : VisibilityOffIcon;
   return (
     <Container>
-      <Component style={{ color, height: 14, width: 14 }} />
+      <Component size={14} color={color} />
     </Container>
   );
 };
