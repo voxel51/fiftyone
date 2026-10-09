@@ -6,8 +6,8 @@ import { type RefObject, useLayoutEffect, useState } from "react";
 
 /** Size of one pixel of the forming text, in CSS pixels */
 const CELL = 2;
-const TRAVEL_MS = 900;
-const STAGGER_MS = 350;
+const TRAVEL_MS = 500;
+const STAGGER_MS = 200;
 /** How far around the text the pixels start */
 const SCATTER = 80;
 

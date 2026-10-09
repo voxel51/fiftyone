@@ -12,7 +12,7 @@ import {
 } from "./objects";
 
 /** How long the box rests on each object */
-export const DWELL_MS = 1400;
+export const DWELL_MS = 800;
 
 interface Parts {
   label: RefObject<HTMLElement>;
