@@ -132,17 +132,9 @@ export const createStorm = (
     ctx.restore();
   };
 
-  // far behind the rain: a breathing moon glow and two sweeping floodlights
+  // far behind the rain: two sweeping floodlights. No glow over the whole
+  // canvas, which would tint it off the page background it sits on
   const moonlight = (ctx: CanvasRenderingContext2D, t: number) => {
-    const cx = width * (0.62 + 0.08 * Math.sin(t * 0.05 + gust[0]));
-    const cy = -height * 0.15;
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, height * 1.2);
-    const a = 0.06 + 0.02 * Math.sin(t * 0.31 + gust[1]);
-    glow.addColorStop(0, `rgba(${LIGHT}, ${a})`);
-    glow.addColorStop(1, `rgba(${LIGHT}, 0)`);
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, width, height);
-
     for (const b of beams) {
       // lean inward, sweep about +/-30 degrees
       const lean = b.x < width / 2 ? -0.25 : 0.25;
