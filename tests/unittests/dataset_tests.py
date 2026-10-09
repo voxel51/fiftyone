@@ -19,6 +19,7 @@ from functools import partial
 from unittest.mock import MagicMock, patch
 
 import eta.core.utils as etau
+import freezegun
 import numpy as np
 import pytz
 import bson
@@ -28,6 +29,10 @@ from pymongo.results import BulkWriteResult, InsertManyResult
 from decorators import drop_datasets, skip_windows
 from freezegun import freeze_time
 from mongoengine import ValidationError
+
+# freezegun scans `sys.modules` attributes when (un)patching time functions,
+# which force-imports lazy modules like `transformers` and can take minutes
+freezegun.configure(extend_ignore_list=["torch", "transformers"])
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
