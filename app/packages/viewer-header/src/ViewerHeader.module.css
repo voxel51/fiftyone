@@ -1,0 +1,91 @@
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.left {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.modeCluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.separator {
+  width: 1px;
+  height: 16px;
+  background: var(--color-content-border-default);
+}
+
+.active {
+  background: var(--color-content-interactive-secondary-hover);
+  color: var(--color-content-text-primary);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dataset {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dataset:hover {
+  text-decoration: underline;
+}
+
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stepper {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+@media (max-width: 1024px) {
+  .dataset,
+  .datasetSlash {
+    display: none;
+  }
+}

@@ -28,6 +28,7 @@
         "@fiftyone/spotlight": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
+        "@fiftyone/viewer-header": "*",
         "@monaco-editor/react": "^4.5.0",
         "@mui/icons-material": "catalog:",
         "@mui/material": "catalog:",

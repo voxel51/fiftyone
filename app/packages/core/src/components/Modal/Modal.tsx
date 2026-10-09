@@ -51,7 +51,7 @@ import {
   useShowClassicSidebar,
   useTooltipEventHandler,
 } from "./hooks";
-import { modalContext } from "./modal-context";
+import { type ModalStepper, modalContext } from "./modal-context";
 import { useModalLifecycleSignal } from "./modalLifecycle";
 
 // As a page it fills its layer, and its stacking stays inside it
@@ -356,6 +356,7 @@ const Modal = ({
   }, [isFullScreen]);
 
   const activeLookerRef = useRef<fos.Lookers>();
+  const stepperRef = useRef<ModalStepper | null>(null);
 
   const addTooltipEventHandler = useTooltipEventHandler();
   const removeTooltipEventHanlderRef = useRef<ReturnType<
@@ -396,6 +397,7 @@ const Modal = ({
         activeLookerRef,
         page,
         setActiveLookerRef,
+        stepperRef,
       }}
     >
       <ModalWrapper

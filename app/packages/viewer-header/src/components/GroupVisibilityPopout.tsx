@@ -3,12 +3,12 @@ import { PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import type { MutableRefObject, ReactNode } from "react";
 import { useMemo } from "react";
-import { useReverbState, useReverbValue } from "@fiftyone/reverb";
 import { Checkbox } from "@fiftyone/sidebar";
 
-export const TITLE = "Toggle renderer configuration";
+export const GROUP_VISIBILITY_TITLE = "Toggle renderer configuration";
 
-export default ({
+/** Which of a group's renderers show: 3D, 2D, the carousel. */
+const GroupVisibilityPopout = ({
   modal,
   anchorRef,
 }: {
@@ -18,22 +18,14 @@ export default ({
   const threeDSliceExists = fos.useHas3dSlice();
   const isSlotVisible = fos.useIs3dVisibleSetting();
   const actions = fos.useRenderConfig3dActions();
-  const [isCarouselVisible, setIsCarouselVisible] = useReverbState(
-    fos.groupMediaIsCarouselVisibleSetting,
-  );
+  const [isCarouselVisible, setIsCarouselVisible] =
+    fos.useGroupCarouselVisibleSetting();
   const isMainVisible = fos.useIsGroupMain2dViewerVisibleSetting();
-  const isNestedDynamicGroup = useReverbValue(fos.isNestedDynamicGroup);
-  const shouldRenderImaVid = useReverbValue(fos.shouldRenderImaVidLooker(true));
-  const dynamicGroupsViewMode = useReverbValue(fos.dynamicGroupsViewMode(true));
-  const hasGroupSlices = useReverbValue(fos.hasGroupSlices);
+  const {
+    imaVidInNestedGroup: isImavidInNestedGroup,
+    sequential: isSequentialAccessAllowed,
+  } = fos.useModalGroupRenderers();
   const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
-
-  const isSequentialAccessAllowed =
-    isNestedDynamicGroup ||
-    dynamicGroupsViewMode === "carousel" ||
-    hasGroupSlices;
-
-  const isImavidInNestedGroup = isNestedDynamicGroup && shouldRenderImaVid;
 
   const checkboxes = useMemo(() => {
     const toReturn: ReactNode[] = [];
@@ -105,8 +97,10 @@ export default ({
       modal={modal}
       testId="group-media-visibility-popout"
     >
-      <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
+      <PopoutSectionTitle>{GROUP_VISIBILITY_TITLE}</PopoutSectionTitle>
       {checkboxes}
     </Popout>
   );
 };
+
+export default GroupVisibilityPopout;

@@ -1,9 +1,7 @@
 import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import { ModalMode, useIsGroupDataset, useModalMode } from "@fiftyone/state";
-import { IconName, RichButtonGroup } from "@voxel51/voodo";
 import { useModalContext } from "../hooks";
-import type { HTMLAttributes } from "react";
 import styled from "styled-components";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import { useGroupAnnotationModeController } from "./Annotate/useGroupAnnotationModeController";
@@ -33,13 +31,14 @@ const Item = styled.div`
   height: 100%;
 `;
 
-const GroupsController = (): null => {
+/** Keeps group annotation's mode in step while a mode switch is shown. */
+export const GroupsController = (): null => {
   useGroupAnnotationModeController();
   return null;
 };
 
 /** Switches the modal between exploring and annotating. */
-const useModeSwitch = () => {
+export const useModeSwitch = () => {
   const mode = useModalMode();
   const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
   const isGroupDataset = useIsGroupDataset();
@@ -53,47 +52,6 @@ const useModeSwitch = () => {
     groups: showAnnotationTab && isGroupDataset && !disabledReason,
     shown: showAnnotationTab,
   };
-};
-
-// the switch keeps the selectors the old tabs had
-const testId = (id: string): HTMLAttributes<HTMLDivElement> =>
-  ({ "data-cy": id }) as HTMLAttributes<HTMLDivElement>;
-
-/** The sample page header's Inspect/Annotate switch. */
-export const ModalModeSwitch = () => {
-  const { annotate, annotating, explore, groups, shown } = useModeSwitch();
-  if (!shown) return null;
-
-  return (
-    <>
-      {groups && <GroupsController />}
-      <RichButtonGroup
-        exclusive
-        buttons={[
-          {
-            id: ModalMode.EXPLORE,
-            data: {
-              ...testId(ModalMode.EXPLORE),
-              active: !annotating,
-              icon: IconName.Inspect,
-              label: "Inspect",
-              onClick: explore,
-            },
-          },
-          {
-            id: ModalMode.ANNOTATE,
-            data: {
-              ...testId(ModalMode.ANNOTATE),
-              active: annotating,
-              icon: IconName.Pencil,
-              label: "Annotate",
-              onClick: annotate,
-            },
-          },
-        ]}
-      />
-    </>
-  );
 };
 
 const Mode = () => {

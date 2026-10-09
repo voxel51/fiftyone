@@ -76,8 +76,8 @@ const DragActionsRow = () => {
   );
 };
 
-/** The modal's actions, for the floating row or a host's own toolbar. */
-export const ModalActionItems = () => {
+/** The overlay's actions; the sample page's header has its own. */
+const ModalActionItems = () => {
   const { activeLookerRef } = useModalContext();
 
   const isActualGroup = useReverbValue(fos.isGroup);

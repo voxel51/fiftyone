@@ -1,0 +1,30 @@
+{
+    "name": "@fiftyone/viewer-header",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "test": "vitest"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "dependencies": {
+        "@fiftyone/actions": "*",
+        "@fiftyone/components": "*",
+        "@fiftyone/operators": "*",
+        "@fiftyone/reverb": "workspace:*",
+        "@fiftyone/sidebar": "*",
+        "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
+        "@voxel51/voodo": "catalog:",
+        "react": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vitest": "catalog:"
+    }
+}

@@ -6,8 +6,6 @@ import {
   ActivityToast,
   Dataset,
   Modal,
-  ModalActionItems,
-  ModalModeSwitch,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
   SchemaManagerOutlet,
@@ -132,17 +130,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
       <Nav fragment={data} hasDataset={!isEmpty} hidden={onSample}>
         {onSample ? (
           <div className={style.samplePage} data-cy={"sample-page"}>
-            {isModalOpen && (
-              <Modal
-                page
-                header={
-                  <SamplePageHeader
-                    actions={<ModalActionItems />}
-                    mode={<ModalModeSwitch />}
-                  />
-                }
-              />
-            )}
+            {isModalOpen && <Modal page header={<SamplePageHeader />} />}
           </div>
         ) : (
           <div className={style.page} data-cy={"dataset-page"}>

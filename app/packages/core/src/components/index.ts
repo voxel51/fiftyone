@@ -1,7 +1,13 @@
 export * from "./ActivityToast";
 export { Checkbox, Entries, FieldLabelAndInfo } from "@fiftyone/sidebar";
 export { default as Dataset } from "./Dataset";
-export { default as Modal, ModalActionItems, ModalModeSwitch } from "./Modal";
+export {
+  default as Modal,
+  ModalGroupsModeController,
+  type ModalStepper,
+  useModalContext,
+  useModalModeSwitch,
+} from "./Modal";
 export { DatasetGridRendererFailover } from "./DatasetGridRendererFailover";
 export { default as EmptySamples } from "./EmptySamples";
 export {

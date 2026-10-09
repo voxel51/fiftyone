@@ -10,7 +10,7 @@ import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
-import { useShowClassicSidebar } from "./hooks";
+import { useModalContext, useShowClassicSidebar } from "./hooks";
 import {
   KnownCommands,
   KnownContexts,
@@ -146,6 +146,15 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     previousNavigator.navigate();
   }, [previousNavigator, onSave, onExit]);
 
+  const { page, stepperRef } = useModalContext();
+  useEffect(() => {
+    const ref = stepperRef;
+    if (ref) ref.current = { next, previous };
+    return () => {
+      if (ref) ref.current = null;
+    };
+  }, [next, previous, stepperRef]);
+
   useKeyBindings(KnownContexts.Modal, [
     {
       commandId: KnownCommands.ModalPreviousSample,
@@ -163,7 +172,8 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     },
   ]);
 
-  if (!modal) {
+  // the sample page's header has the steppers
+  if (!modal || page) {
     return null;
   }
 

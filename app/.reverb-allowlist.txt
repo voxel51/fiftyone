@@ -142,7 +142,6 @@ packages/core/src/components/Grid/useTimeout.ts
 packages/core/src/components/Grid/useUpdates.ts
 packages/core/src/components/Grid/useZoomSetting.ts
 packages/core/src/components/Histogram.tsx
-packages/core/src/components/Modal/Actions/GroupVisibility/GroupVisibility.tsx
 packages/core/src/components/Modal/Actions/HiddenLabels/index.tsx
 packages/core/src/components/Modal/Actions/ToggleFullscreen/index.tsx
 packages/core/src/components/Modal/Actions/index.tsx

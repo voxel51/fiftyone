@@ -1648,6 +1648,7 @@ __metadata:
     "@fiftyone/utilities": "npm:*"
     "@fiftyone/video-annotation": "workspace:*"
     "@fiftyone/view-bar": "npm:*"
+    "@fiftyone/viewer-header": "npm:*"
     "@types/lodash": "catalog:"
     "@types/mime": "catalog:"
     "@types/react": "catalog:"
@@ -1807,6 +1808,7 @@ __metadata:
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@fiftyone/viewer-header": "npm:*"
     "@monaco-editor/react": "npm:^4.5.0"
     "@mui/icons-material": "catalog:"
     "@mui/material": "catalog:"
@@ -2650,6 +2652,26 @@ __metadata:
   peerDependencies:
     react: "*"
     react-dom: "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/viewer-header@npm:*, @fiftyone/viewer-header@workspace:packages/viewer-header":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/viewer-header@workspace:packages/viewer-header"
+  dependencies:
+    "@fiftyone/actions": "npm:*"
+    "@fiftyone/components": "npm:*"
+    "@fiftyone/operators": "npm:*"
+    "@fiftyone/reverb": "workspace:*"
+    "@fiftyone/sidebar": "npm:*"
+    "@fiftyone/state": "npm:*"
+    "@fiftyone/utilities": "npm:*"
+    "@testing-library/react": "catalog:"
+    "@voxel51/voodo": "catalog:"
+    react: "catalog:"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
   languageName: unknown
   linkType: soft
 

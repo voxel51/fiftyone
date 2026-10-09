@@ -4,7 +4,10 @@ import { ModalMode, useModalMode, useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
 import React from "react";
 import style from "../../Group/Group.module.css";
-import GroupVisibilityAction, { TITLE } from "./GroupVisibility";
+import {
+  GroupVisibilityPopout as GroupVisibilityAction,
+  GROUP_VISIBILITY_TITLE as TITLE,
+} from "@fiftyone/viewer-header";
 
 export default () => {
   const [open, setOpen] = React.useState(false);

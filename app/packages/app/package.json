@@ -29,6 +29,7 @@
         "@fiftyone/utilities": "*",
         "@fiftyone/video-annotation": "workspace:*",
         "@fiftyone/view-bar": "*",
+        "@fiftyone/viewer-header": "*",
         "@types/react": "catalog:",
         "@use-gesture/react": "10.1.1",
         "@voxel51/voodo": "catalog:",
