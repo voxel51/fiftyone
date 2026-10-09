@@ -8,17 +8,7 @@ import * as fos from "@fiftyone/state";
 import { useSetDataset } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
 import { useColorScheme } from "@mui/material";
-import {
-  Align,
-  Button,
-  DarkModeIcon,
-  LightModeIcon,
-  Orientation,
-  Size,
-  Spacing,
-  Stack,
-  Variant,
-} from "@voxel51/voodo";
+import { Align, Orientation, Spacing, Stack } from "@voxel51/voodo";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -26,9 +16,10 @@ import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { graphql } from "relay-runtime";
 import { useProduct } from "../product";
 import Analytics from "./Analytics";
+import DatasetMenu from "./DatasetMenu";
 import DatasetSelector from "./DatasetSelector";
 import Header from "./Header";
-import HeaderLinks from "./HeaderLinks";
+import HelpMenu from "./HelpMenu";
 import styles from "./Nav.module.css";
 import Teams from "./Teams";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
@@ -99,7 +90,7 @@ const Nav: React.FC<
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetReverbState(fos.theme);
   const trackEvent = useTrackEvent();
-  const { enterpriseCta, Status, title } = useProduct();
+  const { enterpriseCta, HeaderActions, Status, title } = useProduct();
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";
     setMode(nextMode);
@@ -129,18 +120,21 @@ const Nav: React.FC<
           spacing={Spacing.Sm}
           className={styles.actions}
         >
-          {enterpriseCta && <Teams />}
-          <Button
-            variant={Variant.Icon}
-            size={Size.Md}
-            borderless
-            leadingIcon={mode === "dark" ? LightModeIcon : DarkModeIcon}
-            title={mode === "dark" ? "Light mode" : "Dark mode"}
-            aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
-            onClick={toggleTheme}
-          />
-          <HeaderLinks />
+          {HeaderActions ? (
+            <HeaderActions />
+          ) : (
+            enterpriseCta && <Teams disablePopover={hidden} />
+          )}
           <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
+          {/* Remounted as the header hides, so no menu stays open over the
+              sample page */}
+          <React.Fragment key={hidden ? "hidden" : "shown"}>
+            {hasDataset && <DatasetMenu />}
+            <HelpMenu
+              theme={mode === "dark" ? "dark" : "light"}
+              onToggleTheme={toggleTheme}
+            />
+          </React.Fragment>
         </Stack>
       </Header>
       {children}

@@ -1,6 +1,4 @@
-/* The right-side actions hold the right edge, level with the title and the
-   selector */
+/* The right-side actions hold the right edge, level with the breadcrumb */
 .actions {
-  height: 40px;
   margin-left: auto;
 }

@@ -17,6 +17,7 @@ import {
   Spacing,
   Stack,
   Text,
+  TextAction,
   TextColor,
   TextVariant,
   Variant,
@@ -83,17 +84,15 @@ export default function Teams({
         focusOnOpen={false}
         panelClassName={styles.panel}
         trigger={
-          <Button
-            variant={Variant.Secondary}
-            size={Size.Sm}
+          <TextAction
+            size={Size.Md}
             className={styles.cta}
             leadingIcon={AutoAwesomeIcon}
-            href={ENTERPRISE_URL}
-            target="_blank"
+            onClick={explore}
             id="fo-cta-enterprise-button"
           >
             Explore Enterprise
-          </Button>
+          </TextAction>
         }
       >
         <Stack orientation={Orientation.Column} spacing={Spacing.Md}>

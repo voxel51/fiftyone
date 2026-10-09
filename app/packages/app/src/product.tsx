@@ -18,6 +18,11 @@ export interface Product {
   readonly enterpriseCta: boolean;
   /** Drawn between the dataset selector and the view bar. */
   readonly Status?: React.ComponentType;
+  /**
+   * The start of the header's actions. Without it the header offers the
+   * Enterprise call to action there, when `enterpriseCta` allows.
+   */
+  readonly HeaderActions?: React.ComponentType;
   /** The panels the product ships, rendered inside the dataset's query context. */
   readonly Panels?: React.ComponentType;
   /** The name to show for the loaded dataset. */
