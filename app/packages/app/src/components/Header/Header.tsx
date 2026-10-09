@@ -32,13 +32,14 @@ const Header: React.FC<
     title?: string;
     /** Makes the logo the way back to all datasets. */
     onHome?: () => void;
-    navChildren?: React.ReactNode;
+    /** The breadcrumb after the logo, each part behind a slash. */
+    crumbs?: React.ReactNode[];
     /** Spans the window under the first row, for a surface that needs it. */
     belowRow?: React.ReactNode;
     /** Out of sight and out of reach, still mounted. */
     hidden?: boolean;
   }>
-> = ({ belowRow, children, hidden, title, navChildren, onHome }) => {
+> = ({ belowRow, children, crumbs = [], hidden, title, onHome }) => {
   const mark = <img className={style.logo} src={logo} alt="" />;
 
   return (
@@ -72,13 +73,20 @@ const Header: React.FC<
           {title && (
             <Heading
               level={HeadingLevel.H1}
-              className={clsx(style.wordmark, navChildren && style.beforeSlash)}
+              className={clsx(
+                style.wordmark,
+                crumbs.length > 0 && style.beforeSlash,
+              )}
             >
               {title}
             </Heading>
           )}
-          {navChildren && <Slash />}
-          {navChildren}
+          {crumbs.map((crumb, index) => (
+            <React.Fragment key={index}>
+              <Slash />
+              {crumb}
+            </React.Fragment>
+          ))}
         </Stack>
         {children}
       </Stack>

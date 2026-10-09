@@ -19,6 +19,7 @@ import Analytics from "./Analytics";
 import DatasetMenu from "./DatasetMenu";
 import DatasetSelector from "./DatasetSelector";
 import Header from "./Header";
+import ScopeCrumb from "./ScopeCrumb";
 import HelpMenu from "./HelpMenu";
 import styles from "./Nav.module.css";
 import Teams from "./Teams";
@@ -104,7 +105,14 @@ const Nav: React.FC<
         title={hasDataset ? undefined : title}
         hidden={hidden}
         onHome={() => setDataset(null)}
-        navChildren={<DatasetSelector useSearch={useSearch} hidden={hidden} />}
+        crumbs={[
+          <DatasetSelector
+            key="dataset"
+            useSearch={useSearch}
+            hidden={hidden}
+          />,
+          ...(hasDataset ? [<ScopeCrumb key="scope" />] : []),
+        ]}
         belowRow={
           hasDataset && (
             <Suspense fallback={null}>
