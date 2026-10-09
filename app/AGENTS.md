@@ -10,34 +10,42 @@ Reach for VOODO first, always.
 
 Much of this codebase predates VOODO and is written in Material UI, so **the
 surrounding code is not a reliable guide**. Matching the local idiom will
-produce MUI, which is what we are migrating away from. New `@mui/*` imports are
-frozen by an ESLint rule against a shrinking allowlist; do not add files to
-that allowlist to work around it, and do not dodge the rule by importing the
-same primitives from sibling packages (`@mui/system`, `@mui/base`, `@mui/lab`).
+produce MUI, which is what we are migrating away from. Older VOODO code here
+also uses retired styles (enum members, size-only text variants); don't copy
+those either.
 
-Before concluding that a component has no VOODO equivalent, check the installed
-package's exports rather than guessing. From this directory:
+VOODO is newer than most models' training data, so look its API up in the
+installed package (2.1.0 or later) instead of recalling it:
 
-    grep -F 'export * from' node_modules/@voxel51/voodo/dist/components/index.d.ts
+    npx @voxel51/voodo list          # every component, one line each
+    npx @voxel51/voodo docs Button   # props, docs, and allowed token values
 
-The barrel lists module paths, not export names — confirm the exact identifier
-in the component folder's own `.d.ts` before importing (e.g., the `Datepicker/`
-folder exports `DatePicker`; `Slider/` exports `SingleValueSlider` and
-`MultiValueSlider`). This is authoritative for the version actually installed,
-which is what matters — VOODO's component set changes between releases.
+Rules the docs don't spell out:
 
-Styling uses VOODO's exported tokens and enums, not raw CSS variables and not
-string literals:
+- Token props take plain strings, not enum members: `size="sm"`,
+  `variant="primary"`.
+- `Text` uses the role variants, picked by pixel size: `body-primary` (15px),
+  `body-secondary` (14px), `body-tertiary` (12px), `heading-*`, `label`. The
+  size-only variants (`"sm"`, `"md"`, …) are deprecated.
+- Colors come from tokens. Never hardcode `var(--...)` strings or hex values.
+- Map Tailwind designs, including the Lovable mocks, by pixel size, not class
+  name: `text-sm` / `text-body-sm` (14px) is `body-secondary`, not `"sm"`
+  (12px). Before porting a Lovable mock, run `/hal lovable` for the full
+  mapping.
 
-    import { Text, TextVariant, TextColor, Icon, IconName, Size } from "@voxel51/voodo";
-
-    <Text variant={TextVariant.Md} color={TextColor.Foreground}>{label}</Text>
-    <Icon name={IconName.CaretDown} size={Size.Sm} color={TextColor.Secondary} />
-
-Do not hardcode `var(--...)` strings for VOODO tokens.
+For patterns and conventions, see the `fiftyone-voodo-design` skill in
+[fiftyone-skills](https://github.com/voxel51/fiftyone-skills).
 
 If you genuinely need a component VOODO does not have, use MUI, and say so in
 the PR description along with which gap you hit. Never substitute MUI silently.
+
+## Material UI freeze (this directory)
+
+New `@mui/*` imports in `app/` are frozen by an ESLint rule against a shrinking
+allowlist; do not add files to that allowlist to work around it, and do not
+dodge the rule by importing the same primitives from sibling packages
+(`@mui/system`, `@mui/base`, `@mui/lab`). `CODING_STANDARDS.md` lists the VOODO
+replacement for each Material UI component.
 
 ## TypeScript
 
