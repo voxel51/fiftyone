@@ -1,5 +1,8 @@
 import { PendingRunCard, RunScreen } from "@fiftyone/components";
-import { usePendingRuns, usePendingRunScreen } from "@fiftyone/operators";
+import {
+  usePendingRunScreen,
+  type PendingRunWithView,
+} from "@fiftyone/operators";
 import { constants } from "@fiftyone/utilities";
 import {
   Align,
@@ -23,30 +26,23 @@ import { useCallback, useMemo, useState } from "react";
 import { AnnotatedBrainKeyConfig } from "../../types";
 import SimilaritySearchCTA from "../SimilaritySearchCTA";
 
-const PENDING_RUNS = {
-  operators: [
-    "@voxel51/brain/compute_similarity",
-    "@voxel51/operators/compute_similarity",
-  ],
-};
-
 type SimilarityIndexProps = {
   brainKeys: AnnotatedBrainKeyConfig[];
+  pendingRuns: PendingRunWithView[];
   onBack: () => void;
 };
 
 export default function SimilarityIndex({
   brainKeys,
+  pendingRuns,
   onBack,
 }: SimilarityIndexProps) {
   const [showCTA, setShowCTA] = useState(false);
-  const { runs: pendingRuns } = usePendingRuns(PENDING_RUNS, brainKeys);
-  const unregistered = pendingRuns.filter(
-    (pending) => !brainKeys.some((bk) => bk.key === pending.brain_key),
-  );
 
-  const { open: openPending, screen: pendingScreen } =
-    usePendingRunScreen(unregistered);
+  const { open: openPending, screen: pendingScreen } = usePendingRunScreen(
+    pendingRuns,
+    "Your similarity index is being built. You can leave this panel; the index will be listed here when it finishes.",
+  );
 
   const onAddIndex = useCallback(() => {
     if (constants.IS_APP_MODE_FIFTYONE) {
@@ -159,17 +155,7 @@ export default function SimilarityIndex({
         </Text>
       </Stack>
 
-      {unregistered.map((pending) => (
-        <PendingRunCard
-          key={pending.id}
-          title={pending.brain_key ?? pending.label ?? pending.operator}
-          runState={pending.run_state}
-          onOpen={() => openPending(pending.id)}
-          onViewRun={pending.onView}
-        />
-      ))}
-
-      {(brainKeys.length === 0 && unregistered.length === 0) || showCTA ? (
+      {(brainKeys.length === 0 && pendingRuns.length === 0) || showCTA ? (
         <SimilaritySearchCTA
           mode="onboarding"
           onBack={showCTA ? () => setShowCTA(false) : undefined}
@@ -189,6 +175,22 @@ export default function SimilarityIndex({
             >
               Similarity Index
             </Button>
+          </Stack>
+          <Stack
+            orientation={Orientation.Column}
+            spacing={Spacing.Sm}
+            style={{ marginBottom: "0.5rem" }}
+          >
+            {pendingRuns.map((pending) => (
+              <PendingRunCard
+                key={pending.id}
+                title={pending.brain_key ?? pending.label ?? pending.operator}
+                icon={null}
+                runState={pending.run_state}
+                onOpen={() => openPending(pending.id)}
+                onViewRun={pending.onView}
+              />
+            ))}
           </Stack>
           <RichList listItems={listItems} />
         </>

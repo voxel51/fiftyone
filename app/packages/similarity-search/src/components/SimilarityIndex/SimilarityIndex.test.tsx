@@ -21,7 +21,6 @@ vi.mock("@fiftyone/components", () => ({
 vi.mock("@fiftyone/operators", async () => {
   const { useState } = await import("react");
   return {
-    usePendingRuns: () => ({ runs: pendingRuns.current }),
     usePendingRunScreen: (runs: { id: string; brain_key: string | null }[]) => {
       const [id, setId] = useState<string | null>(null);
       const run = runs.find((candidate) => candidate.id === id);
@@ -78,7 +77,13 @@ afterEach(cleanup);
 describe("SimilarityIndex pending runs", () => {
   it("shows a pending run instead of the onboarding CTA", () => {
     pendingRuns.current = [pending("sim_new")];
-    render(<SimilarityIndex brainKeys={[]} onBack={vi.fn()} />);
+    render(
+      <SimilarityIndex
+        brainKeys={[]}
+        pendingRuns={pendingRuns.current as never}
+        onBack={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText("sim_new running")).toBeTruthy();
     expect(screen.queryByText("onboarding")).toBeNull();
@@ -86,7 +91,13 @@ describe("SimilarityIndex pending runs", () => {
 
   it("opens a pending run's screen on click and returns on back", () => {
     pendingRuns.current = [pending("sim_new")];
-    render(<SimilarityIndex brainKeys={[]} onBack={vi.fn()} />);
+    render(
+      <SimilarityIndex
+        brainKeys={[]}
+        pendingRuns={pendingRuns.current as never}
+        onBack={vi.fn()}
+      />,
+    );
 
     fireEvent.click(screen.getByText("sim_new running"));
     expect(screen.queryByText("sim_new running")).toBeNull();
@@ -97,20 +108,14 @@ describe("SimilarityIndex pending runs", () => {
 
   it("keeps the onboarding CTA when nothing is pending", () => {
     pendingRuns.current = [];
-    render(<SimilarityIndex brainKeys={[]} onBack={vi.fn()} />);
-
-    expect(screen.getByText("onboarding")).toBeTruthy();
-  });
-
-  it("hides a pending run whose key is already an index", () => {
-    pendingRuns.current = [pending("sim_a")];
     render(
       <SimilarityIndex
-        brainKeys={[{ key: "sim_a", compatible: true } as never]}
+        brainKeys={[]}
+        pendingRuns={pendingRuns.current as never}
         onBack={vi.fn()}
       />,
     );
 
-    expect(screen.queryByText("sim_a running")).toBeNull();
+    expect(screen.getByText("onboarding")).toBeTruthy();
   });
 });
