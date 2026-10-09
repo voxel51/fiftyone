@@ -49,17 +49,13 @@ vi.mock("@fiftyone/state", () => ({
   useOutsideClick: () => undefined,
 }));
 
-vi.mock("@fiftyone/actions", async () => {
-  const { createContext } = await import("react");
-  return {
-    ActionIconSizeContext: createContext<number | undefined>(undefined),
-    ColorScheme: stub("action-color-settings"),
-    Options: stub("action-display-options"),
-    Selected: stub("action-manage-selected"),
-    Similarity: stub("action-sort-by-similarity"),
-    Tag: stub("action-tag-sample-labels"),
-  };
-});
+vi.mock("@fiftyone/actions", () => ({
+  ColorScheme: stub("action-color-settings"),
+  Options: stub("action-display-options"),
+  Selected: stub("action-manage-selected"),
+  Similarity: stub("action-sort-by-similarity"),
+  Tag: stub("action-tag-sample-labels"),
+}));
 
 vi.mock("@fiftyone/operators", () => ({
   OperatorPlacements: ({ place }: { place: string }) => (

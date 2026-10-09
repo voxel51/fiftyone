@@ -1,0 +1,10 @@
+.search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}

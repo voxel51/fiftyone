@@ -66,7 +66,6 @@ const Similarity = ({
           modal={modal}
           isImageSearch={isImageSearch}
           close={() => setOpen(false)}
-          anchorRef={ref}
           onSearchStart={() => setSearching(true)}
           onSearchEnd={() => setSearching(false)}
         />

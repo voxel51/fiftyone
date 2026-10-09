@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { ActionIconSizeContext, ColorScheme, Options } from "@fiftyone/actions";
+import { ColorScheme, Options } from "@fiftyone/actions";
 import { Link2Icon } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import { useCopySampleLink } from "../hooks";
@@ -16,10 +16,8 @@ const ViewTools = ({ utilities }: { utilities?: ReactNode }) => {
 
   return (
     <div className={styles.cluster} data-cy="viewer-header-view-tools">
-      <ActionIconSizeContext.Provider value={14}>
-        <ColorScheme modal />
-        <Options modal />
-      </ActionIconSizeContext.Provider>
+      <ColorScheme modal />
+      <Options modal />
       <Fullscreen />
       {utilities}
       <HeaderAction

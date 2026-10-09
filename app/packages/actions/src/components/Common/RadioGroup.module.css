@@ -1,0 +1,11 @@
+.vertical,
+.horizontal {
+  display: flex;
+  gap: 6px 16px;
+}
+
+.vertical {
+  flex-direction: column;
+  max-height: 165px;
+  overflow-y: auto;
+}

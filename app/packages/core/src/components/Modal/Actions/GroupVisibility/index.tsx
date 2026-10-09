@@ -30,7 +30,7 @@ export default () => {
         title={TITLE}
         highlight={open}
       />
-      {open && <GroupVisibilityAction anchorRef={ref} modal={true} />}
+      {open && <GroupVisibilityAction modal={true} />}
     </ActionDiv>
   );
 };

@@ -1,30 +1,8 @@
-import { ItemAction, useHighlightHover } from "@fiftyone/sidebar";
-import { useTheme } from "@fiftyone/components";
 import { useKeydownHandler } from "@fiftyone/state";
-import { Checkbox } from "@mui/material";
-import { animated } from "@react-spring/web";
+import { Checkbox, Size, Text, TextColor, TextVariant } from "@voxel51/voodo";
 import numeral from "numeral";
-import React, { useRef } from "react";
-import styled from "styled-components";
-
-const CheckboxDiv = animated(styled(ItemAction)`
-  display: flex;
-  justify-content: space-between;
-  flex-direction: row;
-  margin: 0;
-`);
-
-const CheckboxContentDiv = styled.div`
-  display: flex;
-  justify-content: space-between;
-  flex: 1;
-  width: calc(100% - 33px);
-`;
-
-const CheckboxTextDiv = styled.span`
-  display: block;
-  white-space: nowrap;
-`;
+import React from "react";
+import styles from "./Checker.module.css";
 
 interface CheckProps {
   name: string;
@@ -44,82 +22,44 @@ const Check = ({
   active,
   setActive,
   disabled,
-}: CheckProps) => {
-  const theme = useTheme();
-  const { style, onMouseEnter, onMouseLeave } = useHighlightHover(
-    false,
-    active === name,
-  );
-  const ref = useRef<HTMLButtonElement>(null);
-
-  return (
-    <CheckboxDiv
-      onMouseEnter={() => {
-        setActive(name);
-        onMouseEnter();
-      }}
-      onMouseLeave={onMouseLeave}
-      style={style}
-      onClick={(e) =>
-        !disabled &&
-        !(
-          e.target === ref.current || ref.current?.contains(e.target as Node)
-        ) &&
-        onCheck()
-      }
+}: CheckProps) => (
+  <div
+    className={[styles.check, active === name ? styles.active : undefined]
+      .filter(Boolean)
+      .join(" ")}
+    title={name}
+    onMouseEnter={() => setActive(name)}
+    onClick={(event) =>
+      // the checkbox reports its own presses
+      !disabled &&
+      !(event.target as Element).closest("[role=checkbox]") &&
+      onCheck()
+    }
+  >
+    <Checkbox
+      checked={checkmark === CheckState.ADD || checkmark === null}
+      disabled={disabled}
+      indeterminate={checkmark === null}
+      size={Size.Sm}
+      onChange={() => !disabled && onCheck()}
+    />
+    <Text
+      className={styles.name}
+      color={TextColor.Primary}
+      variant={TextVariant.BodySecondary}
     >
-      <Checkbox
-        ref={ref}
-        indeterminate={checkmark === null}
-        disabled={disabled}
-        onChange={() => !disabled && onCheck()}
-        checked={checkmark === CheckState.ADD || checkmark === null}
-        style={{
-          color: theme.primary.plainColor,
-          padding: "0 0.5rem 0 0",
-        }}
-      />
-      <CheckboxContentDiv title={name}>
-        <CheckboxTextDiv
-          style={{
-            flexGrow: 1,
-            maxWidth: "100%",
-            paddingRight: "0.5rem",
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-          }}
-        >
-          {name}
-        </CheckboxTextDiv>
-        <CheckboxTextDiv>
-          {(count ?? 0) > 0 ? numeral(count).format("0,0") : "0"}
-        </CheckboxTextDiv>
-      </CheckboxContentDiv>
-    </CheckboxDiv>
-  );
-};
+      {name}
+    </Text>
+    <Text color={TextColor.Secondary} variant={TextVariant.BodySecondary}>
+      {(count ?? 0) > 0 ? numeral(count).format("0,0") : "0"}
+    </Text>
+  </div>
+);
 
 export enum CheckState {
   ADD,
   REMOVE,
 }
-
-const CheckerDiv = styled.div`
-  margin: 0 -0.5rem 0.25rem -0.5rem;
-  max-height: 346px;
-  overflow-y: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-`;
 
 const createSubmit = ({ name, items, changes, count, setChange, value }) => {
   return () => {
@@ -207,7 +147,7 @@ const Checker = ({
   });
 
   return (
-    <CheckerDiv onMouseLeave={() => setActive(null)}>
+    <div className={styles.checker} onMouseLeave={() => setActive(null)}>
       {sorted.map(([name, value]) => {
         const submit = createSubmit({
           name,
@@ -242,7 +182,7 @@ const Checker = ({
           />
         );
       })}
-    </CheckerDiv>
+    </div>
   );
 };
 

@@ -1,5 +1,4 @@
 import {
-  ActionIconSizeContext,
   BrowseOperations,
   ColorScheme,
   Options,
@@ -128,10 +127,7 @@ export default () => {
     >
       <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
-        {/* match the svg font-size Container gives its MUI icons */}
-        <ActionIconSizeContext.Provider value={18}>
-          <ModalActionItems />
-        </ActionIconSizeContext.Provider>
+        <ModalActionItems />
       </Container>
     </Draggable>
   );

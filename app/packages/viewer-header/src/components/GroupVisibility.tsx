@@ -5,6 +5,7 @@
 import { useOutsideClick } from "@fiftyone/state";
 import { LayoutPanelTopIcon } from "@voxel51/voodo";
 import { useRef, useState } from "react";
+import styles from "../ViewerHeader.module.css";
 import HeaderAction from "./HeaderAction";
 import GroupVisibilityPopout, {
   GROUP_VISIBILITY_TITLE,
@@ -17,14 +18,18 @@ const GroupVisibility = () => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   return (
-    <div ref={ref} data-cy="action-toggle-group-media-visibility">
+    <div
+      className={styles.anchor}
+      ref={ref}
+      data-cy="action-toggle-group-media-visibility"
+    >
       <HeaderAction
         active={open}
         icon={LayoutPanelTopIcon}
         label={GROUP_VISIBILITY_TITLE}
         onClick={() => setOpen((current) => !current)}
       />
-      {open && <GroupVisibilityPopout anchorRef={ref} modal />}
+      {open && <GroupVisibilityPopout modal />}
     </div>
   );
 };

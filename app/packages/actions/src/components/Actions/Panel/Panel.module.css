@@ -1,0 +1,69 @@
+.title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.link {
+  display: flex;
+  color: var(--color-content-icon-default);
+}
+
+.link:hover {
+  color: var(--color-content-icon-emphasis);
+}
+
+.check {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.hidden {
+  display: none;
+}
+
+.tab {
+  text-transform: capitalize;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: -4px;
+}
+
+/* the Figma action menu row: 6/10 padding, rounded, card-nested on hover */
+.item {
+  display: flex;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--color-content-bg-card-nested);
+  outline: none;
+}
+
+.note {
+  display: block;
+}
+
+.number {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

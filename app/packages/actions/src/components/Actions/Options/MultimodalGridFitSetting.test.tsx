@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import MultimodalGridFitSetting from "./MultimodalGridFitSetting";
@@ -20,36 +19,6 @@ vi.mock("@fiftyone/reverb", () => ({
   useReverbValue: () => harness.isMultimodal,
 }));
 
-vi.mock("@fiftyone/components", () => ({
-  PopoutSectionTitle: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  TabOption: ({
-    active,
-    options,
-  }: {
-    active: string;
-    options: Array<{
-      onClick: () => void;
-      text: string;
-      title: string;
-    }>;
-  }) => (
-    <div data-active={active} data-testid="fit-options">
-      {options.map((option) => (
-        <button
-          key={option.text}
-          onClick={option.onClick}
-          title={option.title}
-          type="button"
-        >
-          {option.text}
-        </button>
-      ))}
-    </div>
-  ),
-}));
-
 afterEach(() => {
   harness.fit = "cover";
   harness.isMultimodal = false;
@@ -68,8 +37,12 @@ describe("MultimodalGridFitSetting", () => {
 
     render(<MultimodalGridFitSetting />);
 
-    expect(screen.getByTestId("fit-options").dataset.active).toBe("cover");
-    fireEvent.click(screen.getByRole("button", { name: "contain" }));
+    expect(
+      screen.getByRole("tab", { name: "cover" }).getAttribute("aria-selected"),
+    ).toBe("true");
+    fireEvent.click(
+      document.querySelector("[data-cy=multimodal-grid-fit-contain]")!,
+    );
     expect(harness.setFit).toHaveBeenCalledWith("contain");
   });
 });

@@ -8,8 +8,7 @@ import * as fos from "@fiftyone/state";
 import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import type { ActionOptionProps } from "../Common";
-import { ActionOption } from "../Common";
+import { PanelItem, PanelList } from "../Panel";
 import Popout from "../Popout";
 import {
   useClearSampleSelection,
@@ -24,11 +23,9 @@ import {
 import { hasSetDiff, hasSetInt, toIds } from "./utils";
 
 export default ({
-  anchorRef,
   close,
   lookerRef,
 }: {
-  anchorRef: MutableRefObject<HTMLDivElement | null>;
   close: () => void;
   /**
    * Optional: video Explore renders through Lighter and mounts no `Looker`,
@@ -111,7 +108,13 @@ export default ({
     toIds(visibleFrameLabels),
   );
 
-  const items: ({ key: string } & ActionOptionProps)[] = [];
+  const items: {
+    key: string;
+    text: string;
+    title?: string;
+    hidden?: boolean;
+    onClick: () => void;
+  }[] = [];
   if (selected.size > 0) {
     items.push({
       key: "clear",
@@ -188,10 +191,13 @@ export default ({
   }
 
   return (
-    <Popout modal={true} fixed anchorRef={anchorRef}>
-      {items.map(({ key, ...props }) => (
-        <ActionOption key={key} {...props} />
-      ))}
+    <Popout modal={true}>
+      <PanelList>
+        {items.map(
+          ({ key, hidden, ...props }) =>
+            !hidden && <PanelItem key={key} {...props} />,
+        )}
+      </PanelList>
     </Popout>
   );
 };

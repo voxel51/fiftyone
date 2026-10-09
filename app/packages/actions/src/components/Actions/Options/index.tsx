@@ -27,7 +27,7 @@ export default ({
         title={"Display options"}
         data-cy="action-display-options"
       />
-      {open && <Options modal={modal} anchorRef={ref} />}
+      {open && <Options modal={modal} />}
     </ActionDiv>
   );
 };

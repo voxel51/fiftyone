@@ -1,94 +1,17 @@
-import { ItemAction, useHighlightHover } from "@fiftyone/sidebar";
-import { Radio as MaterialRadio } from "@mui/material";
-import { animated } from "@react-spring/web";
+import { RadioGroup as Radios, type RadioProps } from "@voxel51/voodo";
 import React, { useLayoutEffect } from "react";
-import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
-
-const StyledRadioContainer = styled.div``;
-
-const StyledRadio = animated(styled(ItemAction)`
-  display: flex;
-  justify-content: space-between;
-  flex-direction: row;
-  margin: 0;
-`);
-
-const RadioName = styled.div`
-  text-overflow: ellipses;
-  font-weight: bold;
-  flex-grow: 1;
-`;
-
-interface RadioProps {
-  color: string;
-  setValue: (value: string) => void;
-  value: string;
-  currentValue: string;
-}
-
-const Radio = React.memo(
-  ({ color, currentValue, setValue, value }: RadioProps) => {
-    const props = useHighlightHover(false);
-    return (
-      <StyledRadioContainer>
-        <StyledRadio
-          {...props}
-          onClick={() => setValue(value)}
-          data-cy={`radio-button-${value}`}
-        >
-          <MaterialRadio
-            style={{ color, padding: "0 0.5rem 0 0" }}
-            checked={value === currentValue}
-          />
-          <RadioName>{value}</RadioName>
-        </StyledRadio>
-      </StyledRadioContainer>
-    );
-  },
-);
-type Props = {
-  $horizontal: boolean;
-};
-const RadioGroupContainer = styled.div<Props>`
-  overflow: auto visible;
-  max-height: 165px;
-  margin: 0 -0.5rem;
-  scrollbar-width: none;
-  display: flex;
-  flex-direction: ${(props) => (props.$horizontal ? "row" : "column")};
-
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-`;
+import styles from "./RadioGroup.module.css";
 
 interface RadioGroupProps {
   choices: string[];
   setValue: (value: string) => void;
   value: string;
-  color?: string;
   horizontal?: boolean;
 }
 
+/** One of a list of values; the first is chosen when none is. */
 const RadioGroup = React.memo(
-  ({
-    choices,
-    color = null,
-    value,
-    setValue,
-    horizontal = false,
-  }: RadioGroupProps) => {
-    const theme = useTheme();
-    color = color ?? theme.primary.plainColor;
-
+  ({ choices, value, setValue, horizontal = false }: RadioGroupProps) => {
     useLayoutEffect(() => {
       choices.length >= 1 && !value && setValue(choices[0]);
     }, [value, choices]);
@@ -98,17 +21,19 @@ const RadioGroup = React.memo(
     }
 
     return (
-      <RadioGroupContainer $horizontal={horizontal}>
-        {choices.map((choice) => (
-          <Radio
-            value={choice}
-            setValue={setValue}
-            color={color}
-            currentValue={value}
-            key={choice}
-          />
-        ))}
-      </RadioGroupContainer>
+      <Radios
+        className={horizontal ? styles.horizontal : styles.vertical}
+        options={choices.map((choice) => ({
+          label: choice,
+          value: choice,
+          // the row holds the radio, which e2e reads from it
+          fieldProps: {
+            "data-cy": `radio-button-${choice}`,
+          } as RadioProps["fieldProps"],
+        }))}
+        value={value}
+        onChange={setValue}
+      />
     );
   },
 );

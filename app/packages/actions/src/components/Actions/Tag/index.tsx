@@ -60,12 +60,7 @@ export default ({
         data-cy="action-tag-sample-labels"
       />
       {open && available && (
-        <Tag
-          modal={modal}
-          close={() => setOpen(false)}
-          lookerRef={lookerRef}
-          anchorRef={ref}
-        />
+        <Tag modal={modal} close={() => setOpen(false)} lookerRef={lookerRef} />
       )}
     </ActionDiv>
   );

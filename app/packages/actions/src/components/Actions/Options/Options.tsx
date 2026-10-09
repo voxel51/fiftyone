@@ -1,13 +1,6 @@
-import {
-  PopoutSectionTitle,
-  Selector,
-  TabOption,
-  useTheme,
-} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { groupStatistics } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import type { RefObject } from "react";
 import { default as React, useMemo } from "react";
 import {
   useReverbState,
@@ -20,11 +13,29 @@ import {
   OPTIMIZING_QUERY_PERFORMANCE,
   QUERY_PERFORMANCE_RESULTS,
 } from "@fiftyone/utilities";
-import { Checkbox } from "@fiftyone/sidebar";
 import RadioGroup from "../../Common/RadioGroup";
-import { ActionOption } from "../Common";
+import {
+  PanelCheckbox,
+  PanelNumber,
+  PanelSection,
+  type PanelTab,
+  PanelTabs,
+} from "../Panel";
 import Popout from "../Popout";
 import MultimodalGridFitSetting from "./MultimodalGridFitSetting";
+
+const toggle = (
+  enabled: boolean,
+  set: (enabled: boolean) => void,
+  [off, on]: [string, string],
+) => ({
+  active: enabled ? on : off,
+  options: [off, on].map((value) => ({
+    text: value,
+    title: value,
+    onClick: () => set(value === on),
+  })),
+});
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useReverbState(
@@ -37,29 +48,28 @@ const SortFilterResults = ({ modal }) => {
   }
 
   return (
-    <>
-      <PopoutSectionTitle>Sort sidebar contents by</PopoutSectionTitle>
-      <TabOption
+    <PanelSection title="Sort sidebar contents by">
+      <PanelTabs
         active={count ? "count" : "value"}
         options={[
           {
             text: "count",
             title: "Sort by count",
-            onClick: () => !count && setSortFilterResults({ count: true, asc }),
+            onClick: () => setSortFilterResults({ count: true, asc }),
           },
           {
             text: "value",
             title: "Sort by value",
-            onClick: () => count && setSortFilterResults({ count: false, asc }),
+            onClick: () => setSortFilterResults({ count: false, asc }),
           },
         ]}
       />
-      <Checkbox
-        name={"Reverse"}
+      <PanelCheckbox
+        name="Reverse"
         value={!asc}
         setValue={(value) => setSortFilterResults({ count, asc: !value })}
       />
-    </>
+    </PanelSection>
   );
 };
 
@@ -72,14 +82,9 @@ const Patches = ({ modal }: { modal: boolean }) => {
   }
 
   return (
-    <>
-      <PopoutSectionTitle>Patches</PopoutSectionTitle>
-      <Checkbox
-        name={"Crop to patch"}
-        value={crop}
-        setValue={(value) => setCrop(value)}
-      />
-    </>
+    <PanelSection title="Patches">
+      <PanelCheckbox name="Crop to patch" value={crop} setValue={setCrop} />
+    </PanelSection>
   );
 };
 
@@ -92,14 +97,13 @@ const MediaFields = ({ modal }) => {
   if (!mediaFields || mediaFields?.length <= 1) return null;
 
   return (
-    <>
-      <PopoutSectionTitle>Media field</PopoutSectionTitle>
+    <PanelSection title="Media field">
       <RadioGroup
         choices={mediaFields}
         value={selectedMediaField}
         setValue={(v) => v !== selectedMediaField && setSelectedMediaField(v)}
       />
-    </>
+    </PanelSection>
   );
 };
 
@@ -107,9 +111,8 @@ const GroupStatistics = ({ modal }) => {
   const [statistics, setStatistics] = useReverbState(groupStatistics(modal));
 
   return (
-    <>
-      <PopoutSectionTitle>Statistics</PopoutSectionTitle>
-      <TabOption
+    <PanelSection title="Statistics">
+      <PanelTabs
         active={statistics}
         options={["slice", "group"].map((value) => ({
           text: value,
@@ -117,7 +120,7 @@ const GroupStatistics = ({ modal }) => {
           onClick: () => setStatistics(value as "group" | "slice"),
         }))}
       />
-    </>
+    </PanelSection>
   );
 };
 
@@ -134,7 +137,7 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   );
 
   const tabOptions = useMemo(() => {
-    const options = [
+    const options: PanelTab[] = [
       {
         text: "pagination",
         title: "Random Access",
@@ -178,22 +181,20 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   }
 
   return (
-    <>
-      <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
-      {modal && <TabOption active={mode} options={tabOptions} />}
+    <PanelSection title="Dynamic Groups Navigation">
+      {modal && <PanelTabs active={mode} options={tabOptions} />}
       {isOrderedDynamicGroup && !modal && (
-        <Checkbox
-          name={"Render frames as video"}
+        <PanelCheckbox
+          name="Render frames as video"
           value={mode === "video"}
           setValue={(value) => setMode(value ? "video" : "pagination")}
         />
       )}
-    </>
+    </PanelSection>
   );
 };
 
 const QueryPerformance = () => {
-  const theme = useTheme();
   const [enabled, setEnabled] = useReverbState(fos.queryPerformance);
   const [maxSearch, setMaxSearch] = useReverbState(
     fos.queryPerformanceMaxSearch,
@@ -205,82 +206,35 @@ const QueryPerformance = () => {
 
   return (
     <>
-      <ActionOption
-        id="qp-mode"
-        text="Query Performance mode"
+      <PanelSection
         href={OPTIMIZING_QUERY_PERFORMANCE}
-        title={"More on Query Performance mode"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-      <TabOption
-        active={enabled ? "enabled" : "disabled"}
-        options={["disabled", "enabled"].map((value) => ({
-          text: value,
-          title: value,
-          dataCy: `qp-mode-${value}`,
-          onClick: () => setEnabled(value === "enabled"),
-        }))}
-      />
+        linkTitle="More on Query Performance mode"
+        title="Query Performance mode"
+      >
+        <PanelTabs
+          active={enabled ? "enabled" : "disabled"}
+          options={["disabled", "enabled"].map((value) => ({
+            text: value,
+            title: value,
+            dataCy: `qp-mode-${value}`,
+            onClick: () => setEnabled(value === "enabled"),
+          }))}
+        />
+      </PanelSection>
       {enabled && (
-        <>
-          <ActionOption
-            id="qp-results"
-            text="Unindexed sidebar results"
-            href={QUERY_PERFORMANCE_RESULTS}
-            title={"More on unindexed sidebar results"}
-            style={{
-              background: "unset",
-              color: theme.text.primary,
-              paddingTop: 0,
-              paddingBottom: 0,
-            }}
-            svgStyles={{ height: "1rem", marginTop: 7.5 }}
+        <PanelSection
+          href={QUERY_PERFORMANCE_RESULTS}
+          linkTitle="More on unindexed sidebar results"
+          title="Unindexed sidebar results"
+        >
+          <PanelNumber
+            unit="doc limit"
+            value={maxSearch}
+            onCommit={(value) =>
+              value === null ? resetMaxSearch() : setMaxSearch(value)
+            }
           />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              columnGap: "0.5rem",
-            }}
-          >
-            <Selector
-              placeholder=""
-              onSelect={async (text) => {
-                if (text === "") {
-                  resetMaxSearch();
-                  return "";
-                }
-                const value = Number.parseInt(text);
-
-                if (!Number.isNaN(value)) {
-                  setMaxSearch(value);
-                  return text;
-                }
-
-                return "";
-              }}
-              inputStyle={{
-                fontSize: "1rem",
-                textAlign: "right",
-                float: "right",
-              }}
-              key={"query-performance-results"}
-              value={maxSearch.toString()}
-              containerStyle={{
-                display: "flex",
-                justifyContent: "right",
-                flex: 1,
-              }}
-            />
-            <div>doc limit</div>
-          </div>
-        </>
+        </PanelSection>
       )}
     </>
   );
@@ -288,61 +242,21 @@ const QueryPerformance = () => {
 
 const HideFieldSetting = () => {
   const [hideNone, setHideNone] = useReverbState(fos.hideNoneValuedFields);
-  const theme = useTheme();
 
   return (
-    <>
-      <ActionOption
-        id="hide-none-valued-field-setting"
-        text="Hide None fields"
-        title={"More on hiding none fields"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-      <TabOption
-        active={hideNone ? "enable" : "disable"}
-        options={["disable", "enable"].map((value) => ({
-          text: value,
-          title: value,
-          onClick: () => setHideNone(value === "enable"),
-        }))}
-      />
-    </>
+    <PanelSection title="Hide None fields">
+      <PanelTabs {...toggle(hideNone, setHideNone, ["disable", "enable"])} />
+    </PanelSection>
   );
 };
 
 const ShowModalNav = () => {
-  const [showModalNavigationControls, setShowModalNavigationControls] =
-    useReverbState(fos.showModalNavigationControls);
-  const theme = useTheme();
+  const [shown, setShown] = useReverbState(fos.showModalNavigationControls);
 
   return (
-    <>
-      <ActionOption
-        id="show-modal-navigation-controls"
-        text="Modal navigation controls"
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-      <TabOption
-        active={showModalNavigationControls ? "enable" : "disable"}
-        options={["disable", "enable"].map((value) => ({
-          text: value,
-          title: value,
-          onClick: () => setShowModalNavigationControls(value === "enable"),
-        }))}
-      />
-    </>
+    <PanelSection title="Modal navigation controls">
+      <PanelTabs {...toggle(shown, setShown, ["disable", "enable"])} />
+    </PanelSection>
   );
 };
 
@@ -350,75 +264,34 @@ const Grid = () => {
   const [autosizing, setAutosizing] = useReverbState(fos.gridAutosizing);
   const resetSizeBytes = useResetReverbState(fos.maxGridItemsSizeBytes);
   const [sizeBytes, setSizeBytes] = useReverbState(fos.maxGridItemsSizeBytes);
-  const theme = useTheme();
 
   return (
     <>
       <MultimodalGridFitSetting />
-      <ActionOption
-        id="grid-options"
+      <PanelSection
         href={MANAGING_GRID_MEMORY}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-        text="Grid settings"
-        title={"More on grid settings"}
-      />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          columnGap: "0.5rem",
-        }}
+        linkTitle="More on grid settings"
+        title="Grid settings"
       >
-        <Selector
+        <PanelNumber
           placeholder="size"
-          onSelect={async (text) => {
-            if (text === "") {
-              resetSizeBytes();
-              return "";
-            }
-            const value = Number.parseInt(text);
-
-            if (!Number.isNaN(value)) {
-              setSizeBytes(value * 1e6);
-              return text;
-            }
-
-            return "";
-          }}
-          inputStyle={{
-            fontSize: "1rem",
-            textAlign: "right",
-            float: "right",
-          }}
-          key={"grid-cache-size"}
-          value={(sizeBytes / 1e6).toString()}
-          containerStyle={{ display: "flex", justifyContent: "right", flex: 1 }}
+          unit="MB cache"
+          value={sizeBytes / 1e6}
+          onCommit={(value) =>
+            value === null ? resetSizeBytes() : setSizeBytes(value * 1e6)
+          }
         />
-        <div>MB cache</div>
-      </div>
-      <Checkbox
-        name={"Autosizing"}
-        value={autosizing}
-        setValue={(value) => {
-          setAutosizing(value);
-        }}
-      />
+        <PanelCheckbox
+          name="Autosizing"
+          value={autosizing}
+          setValue={setAutosizing}
+        />
+      </PanelSection>
     </>
   );
 };
 
-type OptionsProps = {
-  modal?: boolean;
-  anchorRef: RefObject<HTMLElement>;
-};
-
-const Options = ({ modal, anchorRef }: OptionsProps) => {
+const Options = ({ modal }: { modal?: boolean }) => {
   const isGroup = useReverbValue(fos.isGroup);
   const isDynamicGroup = useReverbValue(fos.isDynamicGroup);
   const view = useReverbValue(fos.view);
@@ -428,7 +301,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   const annotateWithModal = modal && mode === fos.ANNOTATE;
 
   return (
-    <Popout modal={modal} fixed anchorRef={anchorRef}>
+    <Popout modal={modal}>
       {exploreWithModal && <HideFieldSetting />}
       {modal && <ShowModalNav />}
       {!annotateWithModal && isDynamicGroup && (

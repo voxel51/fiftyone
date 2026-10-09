@@ -105,13 +105,9 @@ export default ({
       />
       {open &&
         (modal && paintsLabels ? (
-          <Modal
-            anchorRef={ref}
-            close={() => setOpen(false)}
-            lookerRef={lookerRef}
-          />
+          <Modal close={() => setOpen(false)} lookerRef={lookerRef} />
         ) : (
-          <Grid close={() => setOpen(false)} anchorRef={ref} />
+          <Grid close={() => setOpen(false)} />
         ))}
     </ActionDiv>
   );

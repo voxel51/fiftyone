@@ -10,7 +10,7 @@ export const EXACT_POSITION_LIMIT = 2_000_000;
 
 /** The order's length, when it is an exact count already in hand. */
 export const exactTotal = (
-  count: Loadable<number> | undefined,
+  count: Loadable<unknown> | undefined,
   estimate: boolean,
 ): number | undefined => {
   const total = count?.valueMaybe();

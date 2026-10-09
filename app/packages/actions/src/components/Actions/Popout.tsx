@@ -1,51 +1,28 @@
 import { getEventBus } from "@fiftyone/events";
-import { useSpring } from "@react-spring/web";
-import type { MutableRefObject, RefObject } from "react";
-import React, { useEffect, useLayoutEffect, useState } from "react";
-import { PopoutDiv } from "@fiftyone/sidebar";
+import type { CSSProperties, ReactNode } from "react";
+import React, { useEffect } from "react";
+import styles from "./Popout.module.css";
 
 /** e2e specs wait on an action popout mounting and unmounting */
 type PopoutE2EEvents = {
   "e2e:actions:popout": { id: string; open: boolean };
 };
 
-const useAlign = (
-  anchorRef: MutableRefObject<HTMLElement>,
-  modal?: boolean,
-) => {
-  const [align, setAlign] = useState("auto");
-  useLayoutEffect(() => {
-    const anchorElem = anchorRef?.current;
-    if (anchorElem) {
-      let offset = anchorElem.getBoundingClientRect()[modal ? "right" : "left"];
-      if (modal) {
-        offset = window.innerWidth - offset;
-      }
-      setAlign(`${offset}px`);
-    }
-  }, [anchorRef, modal]);
-
-  return modal ? { marginRight: align, left: 0, right: 0 } : { left: align };
-};
-
+/**
+ * An action's panel, hung below its trigger: the action's container is its
+ * positioned ancestor. In the viewer it aligns to the trigger's right edge.
+ */
 const Popout = ({
   children,
-  style = {},
   modal,
-  fixed,
-  anchorRef,
+  style,
   testId,
-}: PopoutPropsType) => {
-  const show = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
-    config: {
-      duration: 100,
-    },
-  });
-  const alignStyle = useAlign(anchorRef, modal);
+}: {
+  children: ReactNode;
+  modal?: boolean;
+  style?: CSSProperties;
+  testId?: string;
+}) => {
   const id = testId ?? "popout";
 
   useEffect(() => {
@@ -54,31 +31,15 @@ const Popout = ({
     return () => bus.dispatch("e2e:actions:popout", { id, open: false });
   }, [id]);
 
-  const positionStyle = fixed ? { position: "fixed" } : {};
-
   return (
-    <PopoutDiv
-      style={{
-        zIndex: 100001,
-        ...show,
-        ...style,
-        ...alignStyle,
-        ...positionStyle,
-      }}
+    <div
+      className={[styles.popout, modal ? styles.end : styles.start].join(" ")}
       data-cy={id}
+      style={style}
     >
       {children}
-    </PopoutDiv>
+    </div>
   );
 };
 
 export default React.memo(Popout);
-
-type PopoutPropsType = {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  modal?: boolean;
-  fixed?: boolean;
-  anchorRef?: RefObject<HTMLElement> | null;
-  testId?: string;
-};

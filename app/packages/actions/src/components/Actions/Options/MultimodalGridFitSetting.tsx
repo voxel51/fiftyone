@@ -1,6 +1,6 @@
-import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useReverbState, useReverbValue } from "@fiftyone/reverb";
+import { PanelSection, PanelTabs } from "../Panel";
 
 const FIT_OPTIONS = ["cover", "contain"] as const;
 
@@ -13,9 +13,8 @@ export default function MultimodalGridFitSetting() {
 function FitSetting() {
   const [fit, setFit] = useReverbState(fos.multimodalGridFit);
   return (
-    <>
-      <PopoutSectionTitle>Multimodal media fit</PopoutSectionTitle>
-      <TabOption
+    <PanelSection title="Multimodal media fit">
+      <PanelTabs
         active={fit}
         options={FIT_OPTIONS.map((value) => ({
           dataCy: `multimodal-grid-fit-${value}`,
@@ -27,6 +26,6 @@ function FitSetting() {
               : "Show the full frame with letterboxing",
         }))}
       />
-    </>
+    </PanelSection>
   );
 }

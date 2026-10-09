@@ -1,15 +1,9 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { getEventBus } from "@fiftyone/events";
-import {
-  LoadingDots,
-  PopoutSectionTitle,
-  useTheme,
-} from "@fiftyone/components";
 import type { ImaVidLooker, Lookers } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { groupId, groupStatistics, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
 import type { MutableRefObject } from "react";
 import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
@@ -22,11 +16,17 @@ import {
   useReverbValue,
   useSetReverbState,
 } from "@fiftyone/reverb";
-import styled from "styled-components";
-import { Button } from "@fiftyone/sidebar";
+import {
+  Button,
+  Input,
+  MenuSeparator,
+  Size,
+  Spinner,
+  Variant,
+} from "@voxel51/voodo";
 import Checker, { CheckState } from "../Checker";
+import { PanelTabs } from "../Panel";
 import Popout from "../Popout";
-import { SwitchDiv, SwitcherDiv } from "../utils";
 import {
   numItemsInSelection,
   selectedSamplesCount,
@@ -35,35 +35,11 @@ import {
   tagStats,
 } from "./state";
 
-const TaggingContainerInput = styled.div`
-  font-size: 14px;
-  border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
-  position: relative;
-  margin: 0.5rem 0;
-`;
+const TaggingContainerInput = ({ children }: { children: React.ReactNode }) => (
+  <div data-cy="tagger-container">{children}</div>
+);
 
-const TaggingInput = styled.input`
-  background-color: transparent;
-  border: none;
-  color: ${({ theme }) => theme.text.primary};
-  height: 2rem;
-  font-size: 14px;
-  border: none;
-  align-items: center;
-  font-weight: bold;
-  width: 100%;
-
-  &:focus {
-    border: none;
-    outline: none;
-    font-weight: bold;
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.text.secondary};
-    font-weight: bold;
-  }
-`;
+const Loading = () => <Spinner size={Size.Sm} />;
 
 interface SectionProps {
   countAndPlaceholder: () => [number, string];
@@ -89,7 +65,6 @@ const Section = ({
 }: SectionProps) => {
   const items = useReverbValue(itemsAtom);
   const elementNames = useReverbValue(fos.elementNames);
-  const theme = useTheme();
   const [tagging, setTagging] = useReverbState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -137,7 +112,7 @@ const Section = ({
   };
 
   if (!items) {
-    return <LoadingDots text="" style={{ color: theme.text.secondary }} />;
+    return <Loading />;
   }
 
   const hasChanges = Object.keys(changes).length > 0;
@@ -147,11 +122,11 @@ const Section = ({
 
   return (
     <>
-      <TaggingContainerInput data-cy="tagger-container">
+      <TaggingContainerInput>
         {isLoading ? (
-          <LoadingDots text="" style={{ color: theme.text.secondary }} />
+          <Loading />
         ) : (
-          <TaggingInput
+          <Input
             data-cy={`${labels ? "label" : "sample"}-tag-input`}
             placeholder={
               count === 0
@@ -199,8 +174,8 @@ const Section = ({
                 setChanges({ ...changes, [value]: CheckState.ADD });
               }
             }}
-            focused={!disabled}
             disabled={disabled || count === 0}
+            size={Size.Sm}
             autoFocus
             onBlur={({ target }) => target.focus()}
             type={"text"}
@@ -229,9 +204,9 @@ const Section = ({
       )}
       {!disabled && (hasChanges || hasCreate) ? (
         <>
-          <PopoutSectionTitle />
+          <MenuSeparator />
           {hasCreate && (
-            <Button
+            <TagButton
               text={`Add "${value}" tag to ${
                 count > 1 ? numeral(count).format("0,0") + " " : ""
               }${
@@ -243,29 +218,19 @@ const Section = ({
                       ? elementNames.plural
                       : elementNames.singular
               }`}
+              variant={Variant.Secondary}
               onClick={(e) => {
                 e.stopPropagation();
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
               }}
-              style={{
-                margin: "0.25rem -0.5rem",
-                paddingLeft: "0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-              }}
             />
           )}
           {hasChanges && !value.length && (
-            <Button
+            <TagButton
               text="Apply"
+              variant={Variant.Primary}
               onClick={() => submitWrapper(changes)}
-              style={{
-                margin: "0.25rem -0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
             />
           )}
         </>
@@ -273,6 +238,17 @@ const Section = ({
     </>
   );
 };
+
+const TagButton = ({
+  text,
+  ...props
+}: Pick<React.ComponentProps<typeof Button>, "onClick" | "variant"> & {
+  text: string;
+}) => (
+  <Button {...props} data-cy={`button-${text}`} size={Size.Sm}>
+    {text}
+  </Button>
+);
 
 const labelsPlaceholder = (selection, numLabels, numSamples, elementNames) => {
   if (numSamples === 0) {
@@ -483,66 +459,50 @@ const getUseSamplePlaceHolder = (
   };
 };
 
-const SuspenseLoading = () => {
-  const theme = useTheme();
-  return (
-    <TaggingContainerInput>
-      <LoadingDots text="Loading" style={{ color: theme.text.secondary }} />
-    </TaggingContainerInput>
-  );
-};
+const SuspenseLoading = () => (
+  <TaggingContainerInput>
+    <Loading />
+  </TaggingContainerInput>
+);
 
 type TaggerProps = {
   modal: boolean;
   close: () => void;
   lookerRef?: MutableRefObject<Lookers | undefined>;
-  anchorRef: MutableRefObject<HTMLDivElement | null>;
 };
 
-const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
+const Tagger = ({ modal, close, lookerRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const elementNames = useReverbValue(fos.elementNames);
-  const theme = useTheme();
-  const sampleProps = useSpring({
-    borderBottomColor: labels
-      ? theme.background.level2
-      : theme.primary.plainColor,
-    cursor: labels ? "pointer" : "default",
-  });
-
-  const labelProps = useSpring({
-    borderBottomColor: labels
-      ? theme.primary.plainColor
-      : theme.background.level2,
-    cursor: labels ? "default" : "pointer",
-  });
 
   const submit = useTagCallback(modal, labels, lookerRef);
   const labelPlaceholder = useLabelPlaceHolder(modal, elementNames);
   const samplePlaceholder = getUseSamplePlaceHolder(modal, elementNames);
   return (
-    <Popout
-      style={{ width: "12rem" }}
-      modal={modal}
-      fixed
-      anchorRef={anchorRef}
-    >
-      <SwitcherDiv>
-        <SwitchDiv
-          data-cy="tagger-switch-sample"
-          style={sampleProps}
-          onClick={() => labels && setLabels(false)}
-        >
-          {modal ? elementNames.singular : elementNames.plural}
-        </SwitchDiv>
-        <SwitchDiv
-          data-cy="tagger-switch-label"
-          style={labelProps}
-          onClick={() => !labels && setLabels(true)}
-        >
-          Labels
-        </SwitchDiv>
-      </SwitcherDiv>
+    <Popout style={{ width: 288 }} modal={modal}>
+      <PanelTabs
+        active={
+          labels
+            ? "Labels"
+            : modal
+              ? elementNames.singular
+              : elementNames.plural
+        }
+        options={[
+          {
+            dataCy: "tagger-switch-sample",
+            text: modal ? elementNames.singular : elementNames.plural,
+            title: "samples",
+            onClick: () => setLabels(false),
+          },
+          {
+            dataCy: "tagger-switch-label",
+            text: "Labels",
+            title: "labels",
+            onClick: () => setLabels(true),
+          },
+        ]}
+      />
       {labels && (
         <Suspense fallback={<SuspenseLoading />} key={"labels"}>
           <Section

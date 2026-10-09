@@ -48,6 +48,11 @@
   gap: 6px;
 }
 
+/* a panel hangs from its action */
+.anchor {
+  position: relative;
+}
+
 .separator {
   width: 1px;
   height: 16px;

@@ -1,33 +1,59 @@
-import { PopoutSectionTitle } from "@fiftyone/components";
-import React, { type MutableRefObject } from "react";
-import Input from "../../Common/Input";
-import { Button } from "@fiftyone/sidebar";
+import { executeOperator } from "@fiftyone/operators";
+import {
+  Button,
+  IconAction,
+  Input,
+  SearchStrokeIcon,
+  Settings2Icon,
+  Size,
+  Tooltip,
+  Variant,
+} from "@voxel51/voodo";
+import { PanelItem, PanelList, PanelNote } from "../Panel";
 import Popout from "../Popout";
-import GroupButton, { type ButtonDetail } from "./GroupButton";
-import Helper from "./Helper";
+import { PANEL_NAME } from "./constants";
+import styles from "./Similar.module.css";
 import useSimilarityPopover from "./useSimilarityPopover";
-
-const LONG_BUTTON_STYLE: React.CSSProperties = {
-  margin: "0.5rem 0",
-  height: "2rem",
-  flex: 1,
-  textAlign: "center",
-};
 
 interface SimilarityPopoverProps {
   modal: boolean;
   isImageSearch: boolean;
   close: () => void;
-  anchorRef?: MutableRefObject<HTMLElement>;
   onSearchStart?: () => void;
   onSearchEnd?: () => void;
 }
+
+const openIndexes = () =>
+  executeOperator("open_panel", {
+    name: PANEL_NAME,
+    isActive: true,
+    layout: "horizontal",
+    data: { view: { page: "similarity_index" } },
+  });
+
+const PanelAction = ({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: typeof SearchStrokeIcon;
+  label: string;
+  onClick: () => void;
+}) => (
+  <Tooltip anchor="top" content={label} portal>
+    <IconAction
+      aria-label={label}
+      icon={icon}
+      size={Size.Sm}
+      onClick={onClick}
+    />
+  </Tooltip>
+);
 
 const SimilarityPopover = ({
   modal,
   isImageSearch,
   close,
-  anchorRef,
   onSearchStart,
   onSearchEnd,
 }: SimilarityPopoverProps) => {
@@ -50,65 +76,66 @@ const SimilarityPopover = ({
     onSearchEnd,
   });
 
-  const groupButtons: ButtonDetail[] = [
-    {
-      icon: "SettingsIcon",
-      ariaLabel: "Open similarity panel",
-      tooltipText: "Open similarity panel",
-      onClick: handleOpenPanel,
-    },
-  ];
-
-  if (!isImageSearch) {
-    groupButtons.unshift({
-      icon: "SearchIcon",
-      ariaLabel: "Search",
-      tooltipText: "Search by text similarity",
-      onClick: handleSearch,
-    });
-  }
+  const warning = showMixedFieldWarning
+    ? "Selected labels must be from the same field to search by similarity"
+    : showNoIndexWarning
+      ? noIndexWarningText
+      : null;
 
   return (
-    <Popout modal={modal} style={{ minWidth: 280 }} fixed anchorRef={anchorRef}>
-      {showMixedFieldWarning && (
-        <PopoutSectionTitle style={{ fontSize: 12 }}>
-          Selected labels must be from the same field to search by similarity
-        </PopoutSectionTitle>
-      )}
-      {showNoIndexWarning && (
-        <PopoutSectionTitle style={{ fontSize: 12 }}>
-          {noIndexWarningText}
-        </PopoutSectionTitle>
-      )}
-      {!showMixedFieldWarning && !showNoIndexWarning && hasSimilarityKeys && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexDirection: "row",
-          }}
-        >
-          {!isImageSearch && (
-            <Input
-              placeholder={"Type anything!"}
-              value={textQuery}
-              setter={setTextQuery}
-              onEnter={handleSearch}
-            />
-          )}
-          {isImageSearch && (
+    <Popout modal={modal} style={{ minWidth: 280 }}>
+      {warning && <PanelNote>{warning}</PanelNote>}
+      {!warning && hasSimilarityKeys && (
+        <div className={styles.search}>
+          {isImageSearch ? (
             <Button
-              text={searchButtonText}
+              className={styles.grow}
+              size={Size.Sm}
               title={`Search by similarity to the selected ${type}`}
+              variant={Variant.Primary}
               onClick={handleSearch}
-              style={LONG_BUTTON_STYLE}
-            />
+            >
+              {searchButtonText}
+            </Button>
+          ) : (
+            <>
+              <Input
+                className={styles.grow}
+                placeholder="Type anything!"
+                size={Size.Sm}
+                value={textQuery}
+                onChange={(event) => setTextQuery(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && handleSearch()}
+              />
+              <PanelAction
+                icon={SearchStrokeIcon}
+                label="Search by text similarity"
+                onClick={handleSearch}
+              />
+            </>
           )}
-          <GroupButton buttons={groupButtons} />
+          <PanelAction
+            icon={Settings2Icon}
+            label="Open similarity panel"
+            onClick={handleOpenPanel}
+          />
         </div>
       )}
-      {!showMixedFieldWarning && !showNoIndexWarning && !hasSimilarityKeys && (
-        <Helper hasSimilarityKeys={false} isImageSearch={isImageSearch} />
+      {!warning && !hasSimilarityKeys && (
+        <>
+          <PanelNote>
+            {isImageSearch
+              ? "No available brain keys"
+              : "No brain keys support text prompts"}
+          </PanelNote>
+          <PanelList>
+            <PanelItem
+              text="Manage similarity indexes"
+              title="Open similarity panel to manage indexes"
+              onClick={openIndexes}
+            />
+          </PanelList>
+        </>
       )}
     </Popout>
   );

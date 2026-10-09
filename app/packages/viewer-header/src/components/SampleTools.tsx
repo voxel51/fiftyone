@@ -2,12 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  ActionIconSizeContext,
-  Selected,
-  Similarity,
-  Tag,
-} from "@fiftyone/actions";
+import { Selected, Similarity, Tag } from "@fiftyone/actions";
 import {
   OperatorPlacements,
   types,
@@ -20,9 +15,6 @@ import styles from "../ViewerHeader.module.css";
 import GroupVisibility from "./GroupVisibility";
 import HeaderAction from "./HeaderAction";
 import HiddenLabels from "./HiddenLabels";
-
-// the shared actions draw their icons at the header's icon size
-const ICON_SIZE = 14;
 
 const BrowseOperations = () => {
   const browser = useOperatorBrowser();
@@ -44,14 +36,12 @@ const SampleTools = ({ lookerRef }: Pick<ViewerHeaderProps, "lookerRef">) => {
 
   return (
     <div className={styles.cluster} data-cy="viewer-header-sample-tools">
-      <ActionIconSizeContext.Provider value={ICON_SIZE}>
-        <HiddenLabels />
-        {group && exploring && <GroupVisibility />}
-        {exploring && <Selected modal lookerRef={lookerRef} />}
-        {exploring && <Tag modal lookerRef={lookerRef} />}
-        {exploring && !multimodal && <Similarity modal />}
-        <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
-      </ActionIconSizeContext.Provider>
+      <HiddenLabels />
+      {group && exploring && <GroupVisibility />}
+      {exploring && <Selected modal lookerRef={lookerRef} />}
+      {exploring && <Tag modal lookerRef={lookerRef} />}
+      {exploring && !multimodal && <Similarity modal />}
+      <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <BrowseOperations />
     </div>
   );

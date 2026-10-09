@@ -4,9 +4,8 @@
 
 export { default as BrowseOperations } from "./components/Actions/BrowseOperations";
 export { default as ColorScheme } from "./components/Actions/ColorScheme";
-export { ActionOption } from "./components/Actions/Common";
-export { ActionIconSizeContext } from "./components/Actions/iconSize";
 export { default as Options } from "./components/Actions/Options";
+export { PanelCheckbox, PanelSection } from "./components/Actions/Panel";
 export { default as Popout } from "./components/Actions/Popout";
 export { default as Selected } from "./components/Actions/Selected";
 export {
