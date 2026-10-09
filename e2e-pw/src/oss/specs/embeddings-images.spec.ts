@@ -419,8 +419,8 @@ test.describe("on a wide screen", () => {
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
 
     // Closing the panel clears selections, never the view; the grid takes
-    // the whole width back and redraws its tiles
-    await grid.afterTilesUpdated(() =>
+    // the whole width back and redraws its tiles, in place or remounted
+    await grid.afterTilesDrawn(CLUSTER_A, () =>
       embeddings.gridPanel.closeTab("Embeddings"),
     );
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
