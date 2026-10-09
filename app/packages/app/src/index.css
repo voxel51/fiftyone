@@ -25,12 +25,21 @@ body,
   box-sizing: border-box;
 }
 
-body,
-input,
-button {
+body {
   font-family: var(--fo-fontFamily-body);
   font-size: 14px;
   color: var(--fo-palette-text-primary);
+}
+
+/* In the design system's base layer, so its components' own text colors win
+   over this default for bare controls */
+@layer base {
+  input,
+  button {
+    font-family: var(--fo-fontFamily-body);
+    font-size: 14px;
+    color: var(--fo-palette-text-primary);
+  }
 }
 
 body {
