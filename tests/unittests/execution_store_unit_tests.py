@@ -531,6 +531,9 @@ class TestCloneExecutionStores(unittest.TestCase):
             ]
 
         mock_coll.find.side_effect = _find
+        mock_coll.distinct.side_effect = lambda field, query: list(
+            {d[field] for d in seed if d["dataset_id"] == query["dataset_id"]}
+        )
         mock_coll.insert_many.side_effect = lambda docs: inserted.extend(docs)
 
         src = Mock()
@@ -552,13 +555,19 @@ class TestCloneExecutionStores(unittest.TestCase):
         ) as mock_conn, patch(
             "fiftyone.operators.store.clone._cloneable_store_names",
             return_value=store_names,
-        ):
+        ) as mock_names:
             mock_conn.return_value = {
                 MongoExecutionStoreRepo.COLLECTION_NAME: mock_coll
             }
             esc.clone_execution_stores(src, dst, now=None, id_map=id_map)
 
+        self.names_resolved = mock_names.called
         return inserted, mock_coll
+
+    def test_dataset_without_records_skips_allowlist(self):
+        inserted, _ = self._clone([], ObjectId(), ObjectId())
+        self.assertEqual(inserted, [])
+        self.assertFalse(self.names_resolved)
 
     def test_clones_only_allowlisted_stores(self):
         src_id = ObjectId()

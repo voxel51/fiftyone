@@ -139,13 +139,19 @@ def clone_execution_stores(src_dataset, dst_dataset, now, id_map=None):
     if src_id is None or dst_id is None:
         return
 
-    store_names = _cloneable_store_names()
+    coll = foo.get_db_conn()[MongoExecutionStoreRepo.COLLECTION_NAME]
+
+    # Resolving the allowlist imports the panels that own those stores, which
+    # takes seconds, so it is only done for a dataset that has store records
+    present = set(coll.distinct("store_name", {"dataset_id": src_id}))
+    if not present:
+        return
+
+    store_names = [n for n in _cloneable_store_names() if n in present]
     if not store_names:
         return
 
     id_map = id_map or {}
-
-    coll = foo.get_db_conn()[MongoExecutionStoreRepo.COLLECTION_NAME]
 
     docs = []
     for doc in coll.find(
