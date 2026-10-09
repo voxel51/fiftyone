@@ -297,6 +297,16 @@ export function writeExtendedSelectionMirror(overrideStage: unknown): void {
 }
 
 /**
+ * Sets what `read` hands back for the override stage alone, for a publisher
+ * that writes the stage beside another panel's selection rather than
+ * replacing it. The atom's effect updates the mirror only once the write
+ * commits, and a page reload landing first would restore the old stage.
+ */
+export function writeOverrideStageMirror(overrideStage: unknown): void {
+  currentOverrideStage = overrideStage;
+}
+
+/**
  * Whether a dataset fragment update comes from a different dataset than the
  * one before it. `datasetId` is the dataset's own id. `id` is minted per
  * fetch whenever a view argument is sent, so it changes on every hard reload
@@ -346,6 +356,22 @@ export const extendedSelection = graphQLSyncFragmentAtom<
   },
 );
 
+/**
+ * What the override stage atom reads from a dataset fragment update: the
+ * mirror, or nothing after a dataset switch. A reload of the same dataset
+ * keeps the stage.
+ */
+export function readOverrideStage(
+  data: { datasetId: string },
+  previous: { datasetId: string } | null,
+): unknown {
+  if (isDatasetChange(data, previous)) {
+    currentOverrideStage = null;
+  }
+
+  return currentOverrideStage;
+}
+
 export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
   datasetFragment$key,
   any
@@ -354,13 +380,7 @@ export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
     fragments: [datasetFragment],
     keys: ["dataset"],
     default: null,
-    read: (data, previous) => {
-      if (isDatasetChange(data, previous)) {
-        currentOverrideStage = null;
-      }
-
-      return currentOverrideStage;
-    },
+    read: readOverrideStage,
   },
   {
     key: "extendedSelectionOverrideStage",

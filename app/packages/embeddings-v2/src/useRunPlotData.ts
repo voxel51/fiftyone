@@ -230,6 +230,10 @@ export function useRunPlotData(
               ? current
               : (next.stage as never),
           );
+          // In step with the atom: its effect updates the mirror only once
+          // this commits, and a page reload landing first (a panel layout
+          // write reloads the page) would restore the old stage
+          fos.writeOverrideStageMirror(next.stage);
         }
         if (next.count !== undefined) {
           cb.set(selectionCountState, next.count as never);
