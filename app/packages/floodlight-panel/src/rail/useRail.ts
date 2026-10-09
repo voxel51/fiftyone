@@ -37,7 +37,7 @@ export interface Rail {
    * Hears the top rank as the view scrolls, fractional between rows, for a
    * thumb that tracks the scroll rather than stepping a row at a time.
    */
-  follow: (listener: (rank: number) => void) => () => void;
+  follow?: (listener: (rank: number) => void) => () => void;
 }
 
 /**
