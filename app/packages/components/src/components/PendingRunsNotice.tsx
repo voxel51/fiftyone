@@ -25,8 +25,16 @@ export default function PendingRunsNotice({
 }: PendingRunsNoticeProps) {
   return (
     <Card outlined data-testid="pending-runs-notice">
-      <Stack align={Align.Center} justify={Justify.Between}>
-        <Stack align={Align.Center} spacing={Spacing.Sm}>
+      <Stack
+        align={Align.Center}
+        justify={Justify.Between}
+        spacing={Spacing.Md}
+      >
+        <Stack
+          align={Align.Center}
+          spacing={Spacing.Sm}
+          style={{ minWidth: 0 }}
+        >
           <Loader
             type="spinner"
             size={Size.Sm}
@@ -36,9 +44,15 @@ export default function PendingRunsNotice({
           <Text variant={TextVariant.Md}>{label}</Text>
         </Stack>
         {onView && (
-          <Button size={Size.Sm} variant={Variant.Borderless} onClick={onView}>
-            {viewLabel}
-          </Button>
+          <span style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Borderless}
+              onClick={onView}
+            >
+              {viewLabel}
+            </Button>
+          </span>
         )}
       </Stack>
     </Card>
