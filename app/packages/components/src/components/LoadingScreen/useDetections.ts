@@ -4,6 +4,7 @@
 
 import { type RefObject, useEffect, useLayoutEffect, useState } from "react";
 import {
+  baseline,
   type Box,
   DETECTIONS,
   type Detection,
@@ -22,7 +23,7 @@ interface Parts {
   dots: RefObject<HTMLElement>;
 }
 
-const pad = (box: Box): Box => ({
+export const pad = (box: Box): Box => ({
   left: box.left - PAD,
   top: box.top - PAD,
   width: box.width + PAD * 2,
@@ -40,8 +41,8 @@ const union = (boxes: Box[]): Box => {
 let ruler: CanvasRenderingContext2D | null | undefined;
 
 /**
- * The ink of part of the word: its span from the text layout, and its
- * glyphs' real top and bottom measured on a canvas, set on the baseline
+ * The ink of part of the word: where it starts from the text layout, and its
+ * glyphs' real edges measured on a canvas, set on the baseline
  */
 const ink = (
   word: HTMLElement,
@@ -57,16 +58,11 @@ const ink = (
   if (!ruler) return span;
   ruler.font = getComputedStyle(word).font;
   const glyphs = ruler.measureText((node.textContent ?? "").slice(start, end));
-  const font = ruler.measureText("M");
-  // a single line centers the font's box in the line box
-  const ascent = font.fontBoundingBoxAscent ?? glyphs.actualBoundingBoxAscent;
-  const descent =
-    font.fontBoundingBoxDescent ?? glyphs.actualBoundingBoxDescent;
-  const baseline = span.top + (span.height - ascent - descent) / 2 + ascent;
+  const line = span.top + baseline(ruler, span.height);
   return {
-    left: span.left,
-    width: span.width,
-    top: baseline - glyphs.actualBoundingBoxAscent,
+    left: span.left - glyphs.actualBoundingBoxLeft,
+    width: glyphs.actualBoundingBoxLeft + glyphs.actualBoundingBoxRight,
+    top: line - glyphs.actualBoundingBoxAscent,
     height: glyphs.actualBoundingBoxAscent + glyphs.actualBoundingBoxDescent,
   };
 };

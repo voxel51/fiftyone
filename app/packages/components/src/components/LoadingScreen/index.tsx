@@ -7,7 +7,7 @@ import { type CSSProperties, useRef } from "react";
 
 import styles from "./LoadingScreen.module.css";
 import { type Box, DETECTIONS } from "./objects";
-import useDetections, { DWELL_MS } from "./useDetections";
+import useDetections, { DWELL_MS, pad } from "./useDetections";
 import usePixelAssembly from "./usePixelAssembly";
 
 const reducedMotion = () =>
@@ -15,8 +15,8 @@ const reducedMotion = () =>
   Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
 /**
- * A region that is still filling: a pixel storm whose pixels gather into
- * what it is waiting on, then a detection box moving over the words. Every
+ * A region that is still filling: the pixels of what it is waiting on gather
+ * into its name, then detection boxes blink on over its parts. Every
  * wait that blanks a region renders this, so a second one appearing reads as
  * the same screen rather than a new one.
  */
@@ -28,21 +28,27 @@ export default function LoadingScreen({ text }: { text: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef<HTMLDivElement>(null);
 
+  const offset = useRef<{ x: number; y: number }>();
   // while the word forms, the box locks onto its pixels as they gather
   const track = (bounds: Box) => {
     const el = box.current;
-    const into = label.current?.getBoundingClientRect();
-    const from = word.current?.getBoundingClientRect();
-    if (!el || !into || !from) return;
-    el.style.transform = `translate(${from.left - into.left + bounds.left}px, ${
-      from.top - into.top + bounds.top
+    if (!el) return;
+    if (!offset.current) {
+      const into = label.current?.getBoundingClientRect();
+      const from = word.current?.getBoundingClientRect();
+      if (!into || !from) return;
+      offset.current = { x: from.left - into.left, y: from.top - into.top };
+    }
+    const at = pad(bounds);
+    el.style.transform = `translate(${offset.current.x + at.left}px, ${
+      offset.current.y + at.top
     }px)`;
-    el.style.width = `${bounds.width}px`;
-    el.style.height = `${bounds.height}px`;
+    el.style.width = `${at.width}px`;
+    el.style.height = `${at.height}px`;
     el.style.opacity = "1";
   };
   const { assembled } = usePixelAssembly(canvas, word, still, track);
-  const detection = useDetections({ label, word, dots }, !assembled);
+  const detection = useDetections({ label, word, dots }, still || !assembled);
   const [target, at] = assembled && detection ? detection : [DETECTIONS[0]];
 
   return (
@@ -51,7 +57,7 @@ export default function LoadingScreen({ text }: { text: string }) {
         <canvas
           ref={canvas}
           aria-hidden
-          className={styles.storm}
+          className={styles.pixels}
           style={{ opacity: assembled ? 0 : 1 }}
         />
       )}
@@ -66,7 +72,11 @@ export default function LoadingScreen({ text }: { text: string }) {
           role="status"
           aria-label={text}
         >
-          <span ref={word} style={{ opacity: assembled ? 1 : 0 }}>
+          <span
+            ref={word}
+            // on at once, over the canvas's identical text as it fades
+            style={{ opacity: assembled ? 1 : 0 }}
+          >
             {text.toLowerCase()}
           </span>
           <span

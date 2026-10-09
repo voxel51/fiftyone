@@ -12,13 +12,14 @@ export interface Detection {
 
 const chart = (name: string) => `var(--color-content-viz-chart-${name})`;
 
-// alternating sides and sizes, so each hop reads as a move
+// alternating sides and sizes, so each hop reads as a move; the first frames
+// the whole word, as the box tracking its pixels did while it formed
 export const DETECTIONS: Detection[] = [
-  { color: chart("blue"), target: "all" },
+  { color: "var(--color-brand-primary)", target: { text: "pixelating" } },
   { color: chart("teal"), target: { text: "pixel" } },
   { color: chart("magenta"), target: "dots" },
   { color: chart("purple"), target: { text: "elating" } },
-  { color: "var(--color-brand-primary)", target: { text: "pixelating" } },
+  { color: chart("blue"), target: "all" },
   { color: chart("yellow"), target: { text: "ating" } },
 ];
 
@@ -50,3 +51,14 @@ export const relative = (rect: DOMRect, origin: DOMRect): Box => ({
   width: rect.width,
   height: rect.height,
 });
+
+/**
+ * Where a single line of text in `ctx`'s font sits within a box `height`
+ * tall: the line box centers the font's ascent and descent
+ */
+export const baseline = (ctx: CanvasRenderingContext2D, height: number) => {
+  const font = ctx.measureText("M");
+  const ascent = font.fontBoundingBoxAscent ?? font.actualBoundingBoxAscent;
+  const descent = font.fontBoundingBoxDescent ?? font.actualBoundingBoxDescent;
+  return (height - ascent - descent) / 2 + ascent;
+};

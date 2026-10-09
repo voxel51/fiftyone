@@ -5,12 +5,10 @@
   overflow: hidden;
 }
 
-.storm {
+.pixels {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transition: opacity 250ms ease;
+  pointer-events: none;
+  transition: opacity 150ms ease;
 }
 
 .fill {
@@ -32,14 +30,10 @@
   user-select: none;
 }
 
-.label > span:first-child {
-  transition: opacity 250ms ease;
-}
-
 .dots {
   display: inline-flex;
   gap: 0.15em;
-  transition: opacity 250ms ease;
+  transition: opacity 150ms ease;
 }
 
 .dot {
@@ -58,8 +52,7 @@
   animation-delay: 0.6s;
 }
 
-/* One detection box: it moves between the parts of the label, its tag
-   naming each with a score, over a faint pixel grid */
+/* One detection: it blinks on over a part of the label */
 .box {
   --detection: var(--color-content-viz-chart-blue);
   position: absolute;
