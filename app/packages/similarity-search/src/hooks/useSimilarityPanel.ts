@@ -13,6 +13,7 @@ import { useRuns } from "./useRuns";
 import { useFilteredRuns } from "./useFilteredRuns";
 import { useMultiSelect } from "./useMultiSelect";
 import { useCloneConfig } from "./useCloneConfig";
+import { UNREADY_POLL_MS } from "../constants";
 import useTriggers, { TriggerOptions } from "./useTriggers";
 
 // ─── Derived State ──────────────────────────────────────────────────
@@ -34,6 +35,10 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
   } = useRuns();
   const [submitting, setSubmitting] = useState(false);
 
+  const unreadyBrainKeys = useMemo(
+    () => panelData.unready_brain_keys ?? [],
+    [panelData.unready_brain_keys],
+  );
   const allBrainKeys = useMemo(
     () => panelData.brain_keys ?? [],
     [panelData.brain_keys],
@@ -118,6 +123,7 @@ const useDerivedPanelState = (props: SimilaritySearchViewProps) => {
     allRuns,
     filteredRuns,
     brainKeys,
+    unreadyBrainKeys,
     isPatchesView,
     appliedRunId,
     sampleMedia,
@@ -339,15 +345,26 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
       payload: { sample_ids: string[] },
       options?: TriggerOptions,
     ) => void;
+    getBrainKeys: (payload?: undefined, options?: TriggerOptions) => void;
   }>({
     applyRun: view.apply_run,
     deleteRun: view.delete_run,
     bulkDeleteRuns: view.bulk_delete_runs,
     renameRun: view.rename_run,
     getSampleMedia: view.get_sample_media,
+    getBrainKeys: view.get_brain_keys,
   });
 
   const state = useDerivedPanelState(props);
+
+  const hasUnready = state.unreadyBrainKeys.length > 0;
+  useEffect(() => {
+    if (!hasUnready) return undefined;
+    const id = window.setInterval(() => {
+      if (!document.hidden) triggers.getBrainKeys();
+    }, UNREADY_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [hasUnready, triggers]);
 
   const actions = useSimilarityPanelActions({
     runs: state.runs,
@@ -453,6 +470,7 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
     runs: state.runs,
     filteredRuns: state.filteredRuns,
     brainKeys: state.brainKeys,
+    unreadyBrainKeys: state.unreadyBrainKeys,
     isPatchesView: state.isPatchesView,
     appliedRunId: state.appliedRunId,
     sampleMedia: state.sampleMedia,

@@ -1,4 +1,4 @@
-import { usePendingRuns } from "@fiftyone/operators";
+import { usePendingRuns, type PendingRun } from "@fiftyone/operators";
 
 const PENDING_RUNS = {
   operators: [
@@ -7,12 +7,23 @@ const PENDING_RUNS = {
   ],
 };
 
-export default function usePendingSimilarityRuns(brainKeys: { key: string }[]) {
+export default function usePendingSimilarityRuns(
+  brainKeys: { key: string }[],
+  unreadyKeys: string[] = [],
+) {
   const { runs, loaded } = usePendingRuns(PENDING_RUNS, brainKeys);
-  return {
-    runs: runs.filter(
-      (pending) => !brainKeys.some((bk) => bk.key === pending.brain_key),
-    ),
-    loaded,
-  };
+  const delegated = runs.filter(
+    (pending) => !brainKeys.some((bk) => bk.key === pending.brain_key),
+  );
+  const inProgress: PendingRun[] = unreadyKeys
+    .filter((key) => !delegated.some((pending) => pending.brain_key === key))
+    .map((key) => ({
+      id: `registered:${key}`,
+      operator: "",
+      run_state: "in_progress",
+      label: null,
+      brain_key: key,
+    }));
+
+  return { runs: [...delegated, ...inProgress], loaded };
 }
