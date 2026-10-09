@@ -61,6 +61,11 @@ export default class KeypointOverlay<
 
     const skeleton = getSkeleton(this.field, state);
     const points = this.getFilteredPoints(state, skeleton);
+    // Without points there are no nodes and no edge endpoints to draw
+    if (!points.length) {
+      return;
+    }
+
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
         const path = skeleton.edges[i].map((index) => points[index]);
