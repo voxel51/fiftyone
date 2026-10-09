@@ -16,6 +16,7 @@ export interface UseHostOptions<K, I extends Instance> {
   onAnchor?: (anchor: Anchor<K>) => void;
   onDispose?: (instance: I) => void;
   onSwap?: (next: I, previous: I | undefined) => void;
+  onResize?: () => void;
 }
 
 /**
@@ -47,6 +48,7 @@ export default function useHost<K, I extends Instance>(
       onDispose: (instance) => latest.current.onDispose?.(instance),
       onStatus: (status, instance) => setState({ instance, status }),
       onSwap: (next, previous) => latest.current.onSwap?.(next, previous),
+      onResize: () => latest.current.onResize?.(),
     });
     setHost(created);
 

@@ -149,7 +149,13 @@ export default function useRelayout<I extends Instance, V>({
     return () => demo?.answer(undefined);
   }, [demo, excluded, relayout, source]);
 
+  /** The next swap animates its items to their new places. */
+  const animate = useCallback(() => {
+    animateNext.current = true;
+  }, []);
+
   return {
+    animate,
     /** Call with the host once it exists. */
     setHost: (next: Host<number, I> | undefined) => {
       host.current = next;

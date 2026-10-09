@@ -203,6 +203,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       return next;
     },
     onSwap: (next, previous) => swapRef.current(next, previous),
+    // a panel resize (the sidebar showing or hiding) moves the tiles, like
+    // a relayout
+    onResize: () => animateRef.current(),
     onAnchor: (anchor) =>
       set({
         at: { description: anchor.at?.description ?? "" },
@@ -237,6 +240,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   relayout.setHost(host);
   const swapRef = useRef(relayout.swap);
   swapRef.current = relayout.swap;
+  const animateRef = useRef(relayout.animate);
+  animateRef.current = relayout.animate;
   const rail = useRail({
     extent: () => {
       const scroller = container.current?.querySelector(`[${SLOT}="active"]`)

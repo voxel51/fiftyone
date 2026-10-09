@@ -45,8 +45,14 @@ const setup = (axis: "width" | "height" = "width") => {
       return instance;
     },
   );
-  const host = createHost<number, FakeInstance>({ axis, build, element });
-  return { build, built, element, host };
+  const onResize = vi.fn();
+  const host = createHost<number, FakeInstance>({
+    axis,
+    build,
+    element,
+    onResize,
+  });
+  return { build, built, element, host, onResize };
 };
 
 const slots = (element: HTMLElement) =>
@@ -113,6 +119,18 @@ describe("createHost", () => {
     vi.advanceTimersByTime(SETTLE);
     expect(build).toHaveBeenCalledTimes(2);
     expect(host.instance).toBe(built[1]);
+  });
+
+  test("only a single resize reports itself before its rebuild", () => {
+    const { built, host, onResize } = setup();
+    host.rebuild();
+    built[0].load();
+
+    resize({ width: 800, height: 600 });
+    resize({ width: 820, height: 600 });
+    built[1].load();
+    resize({ width: 840, height: 600 });
+    expect(onResize).toHaveBeenCalledTimes(1);
   });
 
   test("a run of resizes rebuilds interim instances at the last anchor", () => {
