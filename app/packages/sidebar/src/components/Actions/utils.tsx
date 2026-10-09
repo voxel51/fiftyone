@@ -18,9 +18,7 @@ export const useHighlightHover = (
 
   return {
     style: {
-      backgroundColor: on
-        ? cssVar.color.bg["card-elevated"]
-        : cssVar.color.bg.background,
+      backgroundColor: on ? cssVar.color.bg["card-elevated"] : "transparent",
       color: color
         ? color
         : on

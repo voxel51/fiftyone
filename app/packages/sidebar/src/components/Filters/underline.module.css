@@ -1,0 +1,23 @@
+/* A filter input's only line: an underline in the field's color (--field-color).
+   An inset shadow, so the 2px focus line takes no layout. */
+input.underline {
+  padding-left: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: inset 0 -1px 0
+    color-mix(in srgb, var(--field-color) 40%, transparent);
+  transition: box-shadow 150ms;
+}
+
+input.underline:hover {
+  box-shadow: inset 0 -1px 0
+    color-mix(in srgb, var(--field-color) 70%, transparent);
+}
+
+input.underline:focus {
+  box-shadow: inset 0 -2px 0 var(--field-color);
+}
+
+input.underline::placeholder {
+  color: var(--color-content-text-tertiary);
+}

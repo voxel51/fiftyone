@@ -7,6 +7,7 @@ import {
   useReverbValueLoadable,
   useSetReverbState,
 } from "@fiftyone/reverb";
+import { underline } from "../styles";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import type { Result } from "./Result";
 import { stringSearch, stringSearchResults } from "./state";
@@ -33,6 +34,7 @@ const QueryPerformanceTimeout = ({
  * press Enter. Results are only queried while the list is open.
  */
 export default function Search({
+  color,
   footer,
   modal,
   onSelect,
@@ -40,6 +42,7 @@ export default function Search({
   placeholder,
   searchable,
 }: {
+  color: string;
   footer?: ReactNode;
   modal: boolean;
   onSelect: (value: string | null, result?: Result) => Promise<boolean>;
@@ -83,6 +86,7 @@ export default function Search({
     <>
       <Combobox
         size={Size.Sm}
+        borderless
         portal
         allowFreeText
         commitOnBlur={false}
@@ -96,7 +100,10 @@ export default function Search({
         loading={loading}
         header={footer}
         emptyMessage={searchable ? undefined : null}
-        inputProps={{ "data-cy": `selector-sidebar-search-${path}` }}
+        inputProps={{
+          "data-cy": `selector-sidebar-search-${path}`,
+          ...underline(color),
+        }}
       />
       {loading && <QueryPerformanceTimeout modal={modal} path={path} />}
     </>

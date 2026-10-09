@@ -6,15 +6,11 @@ import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import { useAssertedReverbValue, useReverbValue } from "@fiftyone/reverb";
+import { FilterContainer } from "../styles";
 import Box from "./Box";
 import RangeSlider from "./RangeSlider";
 import * as state from "./state";
 import useShow from "./use-show";
-
-const Container = styled.div`
-  margin: 3px;
-  font-weight: bold;
-`;
 
 const Header = styled.div`
   display: flex;
@@ -53,7 +49,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   }
 
   return (
-    <Container
+    <FilterContainer
       data-cy={`numeric-filter-${path}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -76,7 +72,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
       <Suspense fallback={<Loading modal={modal} path={path} />}>
         <RangeSlider color={color} modal={modal} path={path} />
       </Suspense>
-    </Container>
+    </FilterContainer>
   );
 };
 

@@ -9,19 +9,10 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import styled from "styled-components";
-import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { getFormatter, getPrecision, getStep } from "./utils";
 
 const SliderContainer = styled.div`
-  font-weight: bold;
-  padding: 0.25rem 0.5rem 0.75rem;
-`;
-
-const Title = styled.div`
-  width: 100%;
-  text-align: center;
-  padding: 0.25rem;
-  color: ${cssVar.color.text.primary};
+  color: ${cssVar.color.text.secondary};
 `;
 
 type SliderValue = number | undefined | null;
@@ -40,8 +31,9 @@ type RangeSliderProps = {
 };
 
 /**
- * A two-knob slider over a field's bounds. A release commits only the knobs
- * that moved; a knob released on its bound commits `null`, an open end.
+ * A two-knob slider over a field's bounds, labeled at its ends. A release
+ * commits only the knobs that moved; a knob released on its bound commits
+ * `null`, an open end.
  */
 export const RangeSlider = ({
   valueAtom,
@@ -63,7 +55,8 @@ export const RangeSlider = ({
   }
 
   const zone = fieldType === DATE_FIELD ? "UTC" : timeZone || "UTC";
-  const { formatter, hasTitle } = getFormatter(fieldType, zone, bounds);
+  // a range within one day labels times; a longer one carries its dates
+  const { formatter } = getFormatter(fieldType, zone, bounds);
   // Restrict numeric precision to better represent the slider controls.
   const precision = getPrecision(fieldType, bounds);
   const toValue = (v: number, bound: number) =>
@@ -79,32 +72,21 @@ export const RangeSlider = ({
   };
 
   return (
-    <>
-      {hasTitle && (
-        <Title>
-          {getDateTimeRangeFormattersWithPrecision(
-            timeZone || "UTC",
-            min,
-            max,
-          ).common?.format(min)}
-        </Title>
-      )}
-      <SliderContainer>
-        <MultiValueSlider
-          data-cy="slider"
-          bare
-          knobLabel
-          formatLabel={formatter}
-          min={min}
-          max={max}
-          step={getStep(bounds, fieldType)}
-          value={sliderValue}
-          onChangeCommitted={onCommit}
-          // the field's color in place of the brand fill
-          style={{ "--color-brand-primary": color } as React.CSSProperties}
-        />
-      </SliderContainer>
-    </>
+    <SliderContainer>
+      <MultiValueSlider
+        data-cy="slider"
+        bare
+        labeled
+        formatLabel={formatter}
+        min={min}
+        max={max}
+        step={getStep(bounds, fieldType)}
+        value={sliderValue}
+        onChangeCommitted={onCommit}
+        // the field's color in place of the brand fill
+        style={{ "--color-brand-primary": color } as React.CSSProperties}
+      />
+    </SliderContainer>
   );
 };
 

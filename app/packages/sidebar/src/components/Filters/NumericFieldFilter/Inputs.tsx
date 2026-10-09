@@ -9,9 +9,10 @@ import type { InputType } from "./Input";
 import { Input } from "./Input";
 
 const Container = styled.div`
-  display: flex;
-  justify-content: space-between;
-  column-gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  column-gap: 12px;
 `;
 
 export default function Inputs({
@@ -31,11 +32,13 @@ export default function Inputs({
       withBounds: false,
     }),
   );
+  const [lower, upper] = useReverbValue(fos.boundsAtom({ modal, path }));
   const setSnackBarErrors = useSetReverbState(fos.snackbarErrors);
 
   return (
     <Container>
       <Input
+        bound={lower ?? null}
         color={color}
         ftype={ftype as InputType}
         key="min"
@@ -50,6 +53,7 @@ export default function Inputs({
         value={min ?? null}
       />
       <Input
+        bound={upper ?? null}
         color={color}
         ftype={ftype as InputType}
         key="max"

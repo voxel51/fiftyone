@@ -60,10 +60,11 @@ describe("RangeSlider", () => {
     expect(committed).toEqual([null, null]);
   });
 
-  it("labels each knob with the field's formatted value", () => {
+  it("labels its ends with the field's bounds, not its knobs", () => {
     renderSlider([2, null]);
 
-    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.getByText("0")).toBeTruthy();
     expect(screen.getByText("10")).toBeTruthy();
+    expect(screen.queryByText("2")).toBeNull();
   });
 });

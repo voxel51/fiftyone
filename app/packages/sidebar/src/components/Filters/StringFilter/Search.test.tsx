@@ -45,16 +45,17 @@ const renderSearch = (accept = true) => {
   render(
     <ReverbRoot>
       <Search
+        color="#ff0000"
         modal={false}
         onSelect={onSelect}
         path="label"
-        placeholder="+ filter by label"
+        placeholder="Filter by label"
         searchable
       />
     </ReverbRoot>,
   );
   const input =
-    screen.getByPlaceholderText<HTMLInputElement>("+ filter by label");
+    screen.getByPlaceholderText<HTMLInputElement>("Filter by label");
   return { input, onSelect };
 };
 

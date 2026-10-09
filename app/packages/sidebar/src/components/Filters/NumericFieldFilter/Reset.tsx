@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
-import { Button } from "../../utils";
+import { Button, Size, Variant } from "@voxel51/voodo";
 
 const useReset = (options: { modal: boolean; path: string }) => {
   return useReverbCallback(
@@ -20,7 +20,6 @@ const useReset = (options: { modal: boolean; path: string }) => {
 };
 
 function Reset({
-  color,
   modal,
   path,
 }: {
@@ -40,16 +39,13 @@ function Reset({
 
   return (
     <Button
-      text={"Reset"}
-      color={color}
+      variant={Variant.Borderless}
+      size={Size.Sm}
+      data-cy="button-Reset"
       onClick={reset}
-      style={{
-        margin: "0.25rem -0.5rem",
-        height: "2rem",
-        borderRadius: 0,
-        textAlign: "center",
-      }}
-    />
+    >
+      Reset
+    </Button>
   );
 }
 

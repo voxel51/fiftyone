@@ -7,14 +7,12 @@ import {
   FLOAT_FIELD,
   formatDatePicker,
   formatDateTimePicker,
-  INPUT_TYPE_DATE,
-  INPUT_TYPE_DATE_TIME,
   INT_FIELD,
-  styles,
 } from "@fiftyone/utilities";
-import type { CSSProperties } from "react";
+import { Input as VoodoInput, Size } from "@voxel51/voodo";
 import { useEffect, useMemo, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
+import { underline } from "../styles";
 
 export type InputType =
   | typeof DATE_TIME_FIELD
@@ -23,71 +21,86 @@ export type InputType =
   | typeof INT_FIELD;
 
 export interface InputProps<T extends InputType> {
+  /** The field's bound on this side, shown while the range is open there */
+  bound: number | null;
   color: string;
   ftype: T;
   placeholder?: string;
   onSubmit: (value: number | null) => void;
-  style?: CSSProperties;
   value: number | null;
 }
 
-const TYPE_MAP = {
-  [DATE_FIELD]: INPUT_TYPE_DATE,
-  [DATE_TIME_FIELD]: INPUT_TYPE_DATE_TIME,
-  [FLOAT_FIELD]: "string",
-  [INT_FIELD]: "string",
+/** `YYYY-MM-DD HH:MM:SS`; a date alone is its midnight, fractions are dropped */
+const fromDateTimeText = (timeZone: string, text: string) => {
+  const [date, time = "00:00"] = text.trim().split(/[ T]/);
+  return dateFromDateTimeString(timeZone, `${date}T${time.split(".")[0]}`);
 };
 
-const FROM_INPUT = (timeZone: string) => ({
-  [DATE_FIELD]: dateFromDateString,
-  [DATE_TIME_FIELD]: (v) => dateFromDateTimeString(timeZone, v),
-  [INT_FIELD]: (v) => Number.parseInt(v, 10),
-  [FLOAT_FIELD]: (v) => Number.parseFloat(v),
+const FROM_TEXT = (timeZone: string) => ({
+  [DATE_FIELD]: (v: string) => dateFromDateString(v.trim()),
+  [DATE_TIME_FIELD]: (v: string) => fromDateTimeText(timeZone, v),
+  [INT_FIELD]: (v: string) => Number.parseInt(v, 10),
+  [FLOAT_FIELD]: (v: string) => Number.parseFloat(v),
 });
 
-const TO_INPUT = (timeZone: string) => ({
+const TO_TEXT = (timeZone: string) => ({
   [DATE_FIELD]: formatDatePicker,
-  [DATE_TIME_FIELD]: (v) => formatDateTimePicker(timeZone, v),
-  [INT_FIELD]: (v) => String(v),
-  [FLOAT_FIELD]: (v) => String(v),
+  [DATE_TIME_FIELD]: (v: number) =>
+    formatDateTimePicker(timeZone, v).replace("T", " "),
+  [INT_FIELD]: (v: number) => String(v),
+  [FLOAT_FIELD]: (v: number) => String(v),
 });
 
+/**
+ * One end of a numeric range, as text. Shows the field's bound while that end
+ * is open; leaving the bound untouched keeps the end open.
+ */
 export function Input<T extends InputType>({
+  bound,
   color,
   onSubmit,
   placeholder,
   value,
   ftype,
 }: InputProps<T>) {
-  const [state, setState] = useState<string>("");
   const timeZone = useReverbValue(fos.timeZone);
-  const { from, to } = useMemo(() => {
-    return { from: FROM_INPUT(timeZone), to: TO_INPUT(timeZone) };
-  }, [timeZone]);
+  const { from, to } = useMemo(
+    () => ({ from: FROM_TEXT(timeZone), to: TO_TEXT(timeZone) }),
+    [timeZone],
+  );
+  const shown = value ?? bound;
+  const text = shown === null ? "" : to[ftype](shown);
+  const [state, setState] = useState(text);
 
   useEffect(() => {
-    setState(value === null ? "" : to[ftype](value));
-  }, [ftype, to, value]);
+    setState(text);
+  }, [text]);
+
+  const submit = () => {
+    if (state === text) return;
+    if (state.trim() === "") {
+      value === null ? setState(text) : onSubmit(null);
+      return;
+    }
+    const parsed = from[ftype](state);
+    if (Number.isNaN(parsed)) {
+      setState(text);
+      return;
+    }
+    onSubmit(parsed);
+  };
 
   return (
-    <styles.DateTimeInputContainer
-      style={{ borderBottom: `1px solid ${color}`, width: "50%" }}
-    >
-      <styles.DateTimeInput
-        type={TYPE_MAP[ftype]}
-        placeholder={placeholder}
-        value={state ?? ""}
-        onChange={(e) => {
-          setState(e.target.value);
-        }}
-        onKeyDown={(e) => {
-          e.key === "Enter" &&
-            onSubmit(state === "" ? null : from[ftype](state));
-        }}
-        onBlur={() => {
-          onSubmit(state === "" ? null : from[ftype](state));
-        }}
-      />
-    </styles.DateTimeInputContainer>
+    <VoodoInput
+      size={Size.Sm}
+      borderless
+      aria-label={placeholder}
+      placeholder={placeholder}
+      value={state}
+      onChange={(e) => setState(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && submit()}
+      onBlur={submit}
+      {...underline(color)}
+    />
   );
 }

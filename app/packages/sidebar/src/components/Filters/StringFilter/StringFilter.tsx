@@ -8,26 +8,12 @@ import { isInKeypointsField } from "../state";
 import useIncompleteResults from "../use-incomplete-results";
 import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
+import { FilterBody, FilterContainer } from "../styles";
 import Checkboxes from "./Checkboxes";
 import Search from "./Search";
 import useOnSelect from "./useOnSelect";
 import type { ResultsAtom } from "./useSelected";
 import useSelected from "./useSelected";
-
-const StringFilterContainer = styled.div`
-  background: ${cssVar.color.bg.background};
-  border: 1px solid ${cssVar.color.border.default};
-  border-radius: 2px;
-  color: ${cssVar.color.text.secondary};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  position: relative;
-`;
-
-const NamedStringFilterContainer = styled.div`
-  margin: 3px;
-  font-weight: bold;
-`;
 
 const NamedStringFilterHeader = styled.div`
   display: flex;
@@ -96,7 +82,7 @@ const StringFilter = ({
   }
 
   return (
-    <NamedStringFilterContainer
+    <FilterContainer
       data-cy={`categorical-filter-${path}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -116,15 +102,16 @@ const StringFilter = ({
           )}
         />
       )}
-      <StringFilterContainer onMouseDown={(event) => event.stopPropagation()}>
+      <FilterBody onMouseDown={(event) => event.stopPropagation()}>
         {showSearch && !skeleton && (
           <Search
+            color={color}
             footer={footer}
             modal={modal}
             onSelect={onSelect}
             path={path}
-            placeholder={`+ ${
-              isFilterMode ? "filter" : "set visibility"
+            placeholder={`${
+              isFilterMode ? "Filter" : "Set visibility"
             } by ${name}`}
             searchable={searchable}
           />
@@ -140,8 +127,8 @@ const StringFilter = ({
           selectedAtom={selectedAtom}
           skeleton={skeleton}
         />
-      </StringFilterContainer>
-    </NamedStringFilterContainer>
+      </FilterBody>
+    </FilterContainer>
   );
 };
 

@@ -16,17 +16,12 @@ const Text = styled.div`
 
 const FilterOptionContainer = styled.div`
   position: relative;
-  margin: 0 -0.5rem 0 -0.5rem;
 `;
 
 const FilterMode = styled.div`
-  background-color: ${cssVar.color.bg.popover};
+  border-radius: 4px;
   &:hover {
-    background-color: color-mix(
-      in srgb,
-      ${cssVar.color.bg.popover} 50%,
-      transparent
-    );
+    background-color: ${cssVar.color.bg["card-elevated"]};
   }
   width: 100%;
   display: flex;

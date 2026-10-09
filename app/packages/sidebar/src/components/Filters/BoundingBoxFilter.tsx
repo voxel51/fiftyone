@@ -1,12 +1,8 @@
 import * as fos from "@fiftyone/state";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
+import { FilterContainer } from "./styles";
 import { AttributeEye } from "./use-label-attribute-icon";
-
-const Container = styled.div`
-  margin: 3px;
-  font-weight: bold;
-`;
 
 const Header = styled.div`
   display: flex;
@@ -35,7 +31,7 @@ const BoundingBoxFilter = ({ color, labelPath, path }: Props) => {
   }
 
   return (
-    <Container
+    <FilterContainer
       data-cy={`bounding-box-filter-${path}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -56,7 +52,7 @@ const BoundingBoxFilter = ({ color, labelPath, path }: Props) => {
           </Header>
         )}
       />
-    </Container>
+    </FilterContainer>
   );
 };
 

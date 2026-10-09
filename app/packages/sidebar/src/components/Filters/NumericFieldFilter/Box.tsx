@@ -3,12 +3,7 @@ import React from "react";
 import styled from "styled-components";
 
 const BoxDiv = styled.div`
-  background: ${cssVar.color.bg.background};
-  border: 1px solid ${cssVar.color.border.default};
-  border-radius: 2px;
   color: ${cssVar.color.text.secondary};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
 `;
 
 export default function Box({

@@ -28,10 +28,6 @@ interface CheckboxProps<T> {
   formatter?: (value: T | undefined) => string | null | undefined;
 }
 
-const StyledCheckboxContainer = styled.div`
-  margin: 0 -0.5rem 0 -0.5rem;
-`;
-
 const StyledCheckbox = styled(ItemAction)`
   display: flex;
   justify-content: space-between;
@@ -40,6 +36,8 @@ const StyledCheckbox = styled(ItemAction)`
   flex-wrap: nowrap;
   gap: 0.5rem;
   margin: 0;
+  padding: 0.25rem 0.375rem;
+  border-radius: 4px;
 `;
 
 function Checkbox<T>({
@@ -65,7 +63,7 @@ function Checkbox<T>({
   );
 
   return (
-    <StyledCheckboxContainer title={text}>
+    <div title={text}>
       <StyledCheckbox
         {...props}
         data-cy={`checkbox-${text}`}
@@ -113,7 +111,7 @@ function Checkbox<T>({
           )}
         </NameAndCountContainer>
       </StyledCheckbox>
-    </StyledCheckboxContainer>
+    </div>
   );
 }
 

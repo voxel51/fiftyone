@@ -1,24 +1,14 @@
 import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
-import { cssVar } from "@voxel51/voodo";
 import { useReverbValue } from "@fiftyone/reverb";
-import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
+import { FilterBody } from "../styles";
 import Box from "./Box";
 import FilterOption from "./FilterOption";
 import Inputs from "./Inputs";
 import Nonfinites from "./Nonfinites";
 import Reset from "./Reset";
 import * as state from "./state";
-
-const Container = styled.div`
-  background: ${cssVar.color.bg.background};
-  border: 1px solid ${cssVar.color.border.default};
-  border-radius: 2px;
-  color: ${cssVar.color.text.secondary} !important;
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
-`;
 
 const useNoResults = (path: string) => {
   const indexed = useReverbValue(fos.pathHasIndexes({ path }));
@@ -68,7 +58,7 @@ const RangeSlider = ({
   }
 
   return (
-    <Container
+    <FilterBody
       onMouseDown={(e) => e.stopPropagation()}
       style={{ cursor: "default" }}
       data-cy={`numeric-slider-container-${key}`}
@@ -92,7 +82,7 @@ const RangeSlider = ({
       {defaultRange && <Nonfinites modal={modal} path={path} />}
       <FilterOption color={color} modal={modal} path={path} />
       <Reset color={color} modal={modal} path={path} />
-    </Container>
+    </FilterBody>
   );
 };
 

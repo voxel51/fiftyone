@@ -224,33 +224,35 @@ const Checkboxes = ({
 
   return (
     <>
-      {values.sort(nullSort(sorting)).map(({ count, loading, value }) => {
-        return (
-          <Checkbox
-            key={value}
-            color={resultColor ? resultColor(value) : color}
-            value={selectedSet.has(value)}
-            forceColor={value === null}
-            name={value === null ? "None" : value}
-            loading={loading}
-            count={getCount(count, value)}
-            setValue={(checked: boolean) => {
-              if (checked) {
-                selectedSet.add(value);
-              } else {
-                selectedSet.delete(value);
-              }
-              setSelected([...selectedSet].sort());
-            }}
-            subcountAtom={fos.count({
-              modal,
-              path,
-              extended: true,
-              value: value as string,
-            })}
-          />
-        );
-      })}
+      <div>
+        {values.sort(nullSort(sorting)).map(({ count, loading, value }) => {
+          return (
+            <Checkbox
+              key={value}
+              color={resultColor ? resultColor(value) : color}
+              value={selectedSet.has(value)}
+              forceColor={value === null}
+              name={value === null ? "None" : value}
+              loading={loading}
+              count={getCount(count, value)}
+              setValue={(checked: boolean) => {
+                if (checked) {
+                  selectedSet.add(value);
+                } else {
+                  selectedSet.delete(value);
+                }
+                setSelected([...selectedSet].sort());
+              }}
+              subcountAtom={fos.count({
+                modal,
+                path,
+                extended: true,
+                value: value as string,
+              })}
+            />
+          );
+        })}
+      </div>
       {!!selectedSet.size && (
         <>
           <FilterOption
