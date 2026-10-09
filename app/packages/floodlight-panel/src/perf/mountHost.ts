@@ -1,7 +1,11 @@
 import type { Response } from "@fiftyone/floodlight";
 import { type Anchor, type BuildContext, createHost } from "../host/createHost";
 import { createOwnership, type Scoped } from "../host/ownership";
-import { createPageSource, type PageSource } from "../host/pageSource";
+import {
+  createPageSource,
+  type Lease,
+  type PageSource,
+} from "../host/pageSource";
 import { createGridRenderer } from "../Grid/gridRenderer";
 import { handOff } from "../Grid/handoff";
 import { createCacheRenderer } from "./cacheRenderer";
@@ -32,13 +36,19 @@ interface Remount {
  */
 export const mountHost = ({
   axis = "width",
+  capacity,
   config = {},
+  limit,
   pages = createFakePages({ pages: 10, perPage: 20 }),
   remount,
   scoped = true,
 }: {
   axis?: "width" | "height";
+  /** Pages the source keeps beyond the live instances'. */
+  capacity?: number;
   config?: Partial<EngineOptions>;
+  /** Pages an instance reads before a quiet rebuild replaces it. */
+  limit?: number;
   pages?: ReturnType<typeof createFakePages>;
   remount?: Remount;
   scoped?: boolean;
@@ -48,6 +58,7 @@ export const mountHost = ({
   const source =
     remount?.source ??
     createPageSource(fetches.fn, {
+      capacity,
       ids: (page) => page.items.map((item) => item.id.description),
     });
   const looker = remount?.looker ?? createCacheRenderer<number, Data>();
@@ -60,6 +71,7 @@ export const mountHost = ({
   const shimmers = new Map<string, number>();
   const sizes = new Map<string, [number, number]>();
   const scopes = new Map<Engine, Scoped<number, Data>>();
+  const leases = new Map<Engine, Lease<number, Page>>();
   // right after each swap: the next instance's tiles the cache calls unshown
   const unshownAtSwap = new Map<string, string[]>();
   // at each load, before the host swaps: what the instance had done, the
@@ -76,8 +88,11 @@ export const mountHost = ({
 
   const build = (
     anchor: Anchor<number> | undefined,
-    { interim }: BuildContext,
+    { interim, quiet }: BuildContext,
   ) => {
+    const lease = source.lease(
+      quiet && host.instance ? leases.get(host.instance) : undefined,
+    );
     const label = `i${labels.size}`;
     interim && interims.add(label);
     const counted = renderer.for(label);
@@ -94,8 +109,8 @@ export const mountHost = ({
     const { spotlight } = createEngine({
       key: anchor?.key ?? 0,
       at: anchor?.at,
-      get: (key) => source.get(key),
-      peek: host.instance ? undefined : (key) => source.peek(key),
+      get: (key) => lease.get(key),
+      peek: host.instance && !quiet ? undefined : (key) => lease.peek(key),
       ...(scoped ? grid : counted),
       ...config,
     });
@@ -111,8 +126,11 @@ export const mountHost = ({
       });
     });
     labels.set(spotlight, label);
+    leases.set(spotlight, lease);
     anchors.push(anchor);
-    log.push(`build ${label}${interim ? " interim" : ""}`);
+    log.push(
+      `build ${label}${interim ? " interim" : ""}${quiet ? " quiet" : ""}`,
+    );
     return spotlight;
   };
 
@@ -120,7 +138,15 @@ export const mountHost = ({
     axis,
     build,
     element: container,
-    onDispose: (instance) => log.push(`dispose ${labels.get(instance)}`),
+    onDispose: (instance) => {
+      leases.get(instance)?.release();
+      leases.delete(instance);
+      log.push(`dispose ${labels.get(instance)}`);
+    },
+    outgrown:
+      limit === undefined
+        ? undefined
+        : (instance) => (leases.get(instance)?.size ?? 0) > limit,
     onSwap: (next, previous) => {
       previous && renderer.release(labels.get(previous) ?? "");
       handOff({
@@ -144,6 +170,7 @@ export const mountHost = ({
     fetches,
     host,
     interims,
+    leases,
     looker,
     shimmers,
     log,

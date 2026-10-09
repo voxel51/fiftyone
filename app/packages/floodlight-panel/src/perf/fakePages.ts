@@ -3,12 +3,14 @@ import type { ItemData, Response } from "@fiftyone/floodlight";
 export type FakeItem = ItemData<number, { page: number; index: number }>;
 
 /** Wraps `fn` so calls are counted per key. */
-export const countCalls = <K, R>(fn: (key: K) => Promise<R>) => {
+export const countCalls = <K, R>(
+  fn: (key: K, signal?: AbortSignal) => Promise<R>,
+) => {
   const calls = new Map<K, number>();
   return {
-    fn: (key: K) => {
+    fn: (key: K, signal?: AbortSignal) => {
       calls.set(key, (calls.get(key) ?? 0) + 1);
-      return fn(key);
+      return fn(key, signal);
     },
     calls,
     get total() {
