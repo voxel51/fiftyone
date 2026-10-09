@@ -6,7 +6,7 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import { SavedQueriesMenu } from "@fiftyone/core";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { useSetDataset } from "@fiftyone/state";
+import { useRefresh } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
 import { useColorScheme } from "@mui/material";
 import {
@@ -31,7 +31,6 @@ import { useReverbValue, useSetReverbState } from "@fiftyone/reverb";
 import { graphql } from "relay-runtime";
 import { useProduct } from "../product";
 import Analytics from "./Analytics";
-import DatasetMenu from "./DatasetMenu";
 import DatasetSelector from "./DatasetSelector";
 import Header from "./Header";
 import ScopeCrumb from "./ScopeCrumb";
@@ -99,7 +98,7 @@ const Nav: React.FC<
   );
 
   const useSearch = getUseSearch(data);
-  const setDataset = useSetDataset();
+  const refresh = useRefresh();
   // Two theme owners, both of which must hear a toggle: MUI's color scheme
   // paints the `--fo-palette-*` variables everything is styled with, and the
   // store atom is what the rest of the app reads. Setting only the atom
@@ -125,7 +124,7 @@ const Nav: React.FC<
         title={hasDataset ? undefined : title}
         hidden={hidden}
         onExitFocus={focused ? focus.exit : undefined}
-        onHome={() => setDataset(null)}
+        onRefresh={refresh}
         crumbs={[
           <DatasetSelector
             key="dataset"
@@ -161,7 +160,6 @@ const Nav: React.FC<
           {/* Remounted as the row hides, so no menu stays open over the
               sample page or in focus mode */}
           <React.Fragment key={hidden || focused ? "hidden" : "shown"}>
-            {hasDataset && <DatasetMenu />}
             {hasDataset && (
               <Tooltip anchor={Anchor.Bottom} content="Focus mode (F)">
                 <IconAction

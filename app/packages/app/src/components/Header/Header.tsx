@@ -10,7 +10,7 @@ import {
   TextAction,
 } from "@voxel51/voodo";
 import clsx from "clsx";
-import React from "react";
+import React, { useState } from "react";
 
 import logo from "../../images/logo.png";
 
@@ -33,8 +33,8 @@ const Header: React.FC<
   React.PropsWithChildren<{
     /** The wordmark beside the logo, for pages without a breadcrumb. */
     title?: string;
-    /** Makes the logo the way back to all datasets. */
-    onHome?: () => void;
+    /** Makes the logo a refresh button, spinning a turn on each click. */
+    onRefresh?: () => void;
     /** The breadcrumb after the logo, each part behind a slash. */
     crumbs?: React.ReactNode[];
     /** Spans the window under the first row, for a surface that needs it. */
@@ -51,9 +51,18 @@ const Header: React.FC<
   hidden,
   onExitFocus,
   title,
-  onHome,
+  onRefresh,
 }) => {
-  const mark = <img className={style.logo} src={logo} alt="" />;
+  // The class toggles between two rotations a full turn apart, and the
+  // transition carries the logo there
+  const [turned, setTurned] = useState(false);
+  const mark = (
+    <img
+      className={clsx(style.logo, turned && style.turned)}
+      src={logo}
+      alt=""
+    />
+  );
 
   return (
     <div
@@ -87,14 +96,17 @@ const Header: React.FC<
           spacing={Spacing.None}
           className={style.left}
         >
-          {onHome ? (
+          {onRefresh ? (
             <button
               type="button"
               className={style.home}
-              onClick={onHome}
-              title="All datasets"
-              aria-label="All datasets"
-              data-cy="header-home"
+              onClick={() => {
+                setTurned(!turned);
+                onRefresh();
+              }}
+              title="Refresh"
+              aria-label="Refresh"
+              data-cy="refresh-fo"
             >
               {mark}
             </button>
