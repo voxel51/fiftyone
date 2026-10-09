@@ -27,6 +27,7 @@ export default function ScopeCrumb() {
         variant={TextVariant.HeadingSm}
         color={TextColor.Primary}
         className={styles.name}
+        data-cy="header-scope-name"
       >
         {name || "All samples"}
       </Text>

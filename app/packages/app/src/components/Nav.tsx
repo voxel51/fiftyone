@@ -3,6 +3,7 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
+import { SavedQueriesMenu } from "@fiftyone/core";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useSetDataset } from "@fiftyone/state";
@@ -116,7 +117,7 @@ const Nav: React.FC<
         belowRow={
           hasDataset && (
             <Suspense fallback={null}>
-              <ViewBar />
+              <ViewBar savedQueries={<SavedQueriesMenu hidden={hidden} />} />
             </Suspense>
           )
         }

@@ -136,7 +136,9 @@ const STILL_IN_BAR = [
 const ViewBarInner: React.FC<{
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
-}> = ({ capabilities = OPEN_CAPABILITIES }) => {
+  /** The host's saved queries control, beside the stages toggle. */
+  savedQueries?: React.ReactNode;
+}> = ({ capabilities = OPEN_CAPABILITIES, savedQueries }) => {
   const servedDefs = fos.useStageDefinitions();
   const stageDefs = useMemo(
     () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
@@ -896,6 +898,7 @@ const ViewBarInner: React.FC<{
           <ClearViewButton onClear={clearView} />
         </Stack>
       )}
+      {savedQueries}
       {/* The stages toggle: opens the second row where the view is built.
             With stages applied it shows their count instead of its label, so
             an applied view stays discoverable while the row is folded away. */}
@@ -1038,6 +1041,7 @@ const ViewBarInner: React.FC<{
  */
 const ViewBar: React.FC<{
   capabilities?: ViewBarCapabilities;
+  savedQueries?: React.ReactNode;
 }> = (props) => {
   const datasetName = fos.useCurrentDatasetName();
   return <ViewBarInner key={datasetName ?? ""} {...props} />;

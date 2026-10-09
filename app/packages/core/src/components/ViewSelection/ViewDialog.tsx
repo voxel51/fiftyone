@@ -122,7 +122,7 @@ export default function ViewDialog(props: Props) {
     slugValue.length > 0 &&
     savedViewSlugs.has(slugValue);
   const nameError = nameExists ? "Name" + " already exists" : "";
-  const title = isCreating ? "Create view" : "Edit view";
+  const title = isCreating ? "Save query" : "Edit saved query";
 
   useEffect(() => {
     if (viewContent.name) {
@@ -269,7 +269,7 @@ export default function ViewDialog(props: Props) {
             <NameInput
               data-cy={`${id}-input-name`}
               autoFocus
-              placeholder="Your view name"
+              placeholder="Name this query"
               value={nameValue}
               onChange={(e) => setNameValue(e.target.value)}
               error={nameError}

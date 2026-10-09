@@ -27,16 +27,14 @@ export type SaveViewParams = {
 /** A new view's color before one is picked */
 export const DEFAULT_COLOR: Color = "Gray";
 
-/** The entry the view list shows while no saved view is loaded */
-export const UNSAVED_VIEW = { label: "Unsaved view", slug: "unsaved-view" };
+/** What the header's scope crumb shows while no saved view is loaded */
+export const UNSAVED_VIEW = { label: "All samples", slug: "unsaved-view" };
 
-const VIEW_LIST = "saved-views";
 const COLOR_LIST = "saved-views-input-color-selection";
 const OPTION_PREFIX = "saved-views-";
 const OPTION_SUFFIX = "-selection-option";
 
 const SELECTION_EVENT = "e2e:components:selection";
-const OPTION_EVENT = "e2e:components:selection-option";
 const DIALOG_EVENT = "e2e:saved-views:dialog";
 const LISTED_EVENT = "e2e:saved-views:listed";
 const PAGE_CHANGE_EVENT = "e2e:app:page-change";
@@ -61,8 +59,9 @@ export class SavedViewsPom {
     this.dialogLocator = page.getByTestId("saved-views-modal-body-container");
   }
 
-  get selector() {
-    return this.locator.getByTestId("saved-views-selection");
+  /** The view bar's bookmark, which opens the saved queries menu */
+  get bookmark() {
+    return this.page.getByTestId("view-bar-saved-queries");
   }
 
   get clearViewBtn() {
@@ -110,49 +109,30 @@ export class SavedViewsPom {
     );
   }
 
-  /** Open the saved view list */
+  /** Open the saved queries menu; it renders in the click's commit */
   async openSelect() {
-    await this.afterList(VIEW_LIST, true, () => this.selector.click());
+    await this.bookmark.click();
+    await this.viewList.waitFor();
   }
 
-  /** Close the saved view list; an edit opened from it leaves it open */
+  /** Close the saved queries menu if it is open */
   async closeSelect() {
-    // pressed on the list: a dialog that deleted or renamed the option it
-    // was opened from can return focus to the page instead of the list
-    await this.afterList(VIEW_LIST, false, () => this.viewList.press("Escape"));
+    if (await this.viewList.count()) {
+      await this.viewList.press("Escape");
+      await this.viewList.waitFor({ state: "detached" });
+    }
   }
 
-  /** Open the create dialog from the open view list, which closes the list */
+  /** Open the create dialog from the open menu, which closes the menu */
   async openCreateModal() {
-    await this.eventUtils.afterAll(
-      [
-        {
-          events: DIALOG_EVENT,
-          predicate: (e) => (e.detail as DialogDetail).open,
-        },
-        {
-          events: SELECTION_EVENT,
-          predicate: (e) => {
-            const detail = e.detail as { id: string; open: boolean };
-            return detail.id === VIEW_LIST && !detail.open;
-          },
-        },
-      ],
+    await this.afterDialog(
       () => this.saveNewViewBtn.click(),
+      (detail) => detail.open,
     );
   }
 
   /** Open a listed view's edit dialog, resolving once it shows the view */
   async clickOptionEdit(slug: string) {
-    // the edit button renders once the option's hover state commits
-    await this.eventUtils.after(
-      OPTION_EVENT,
-      () => this.savedViewOption(slug).hover(),
-      (e) => {
-        const detail = e.detail as { slug: string; hovered: boolean };
-        return detail.slug === slug && detail.hovered;
-      },
-    );
     // the dialog fills its inputs from the view in an effect after it mounts
     await this.afterDialog(
       () => this.optionEdit(slug).click(),
@@ -207,8 +187,9 @@ export class SavedViewsPom {
     );
   }
 
-  /** Clear the loaded view; the view list must be closed */
+  /** Clear the loaded view from the menu, which closes it */
   async clearView() {
+    await this.openSelect();
     await this.eventUtils.after(PAGE_CHANGE_EVENT, () =>
       this.clearViewBtn.click(),
     );
@@ -250,9 +231,9 @@ export class SavedViewsPom {
       .filter((slug) => slug !== UNSAVED_VIEW.slug);
   }
 
-  /** The label the view selector shows */
+  /** What the header's scope crumb names */
   async selectedLabel() {
-    return this.selector.getByRole("combobox").textContent();
+    return this.page.getByTestId("header-scope-name").textContent();
   }
 
   /** The `view` URL parameter, or null without one */

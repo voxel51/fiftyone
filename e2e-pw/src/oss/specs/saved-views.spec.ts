@@ -54,7 +54,7 @@ test.describe.serial("saved views", () => {
   });
 
   test("saved view basic operations", async ({ savedViews }) => {
-    expect(await savedViews.selector.isVisible()).toBe(true);
+    expect(await savedViews.bookmark.isVisible()).toBe(true);
     await savedViews.openSelect();
     await savedViews.openCreateModal();
 
@@ -126,8 +126,8 @@ test.describe.serial("saved views", () => {
     await savedViews.clickOptionEdit(testView.slug);
     await savedViews.clickDeleteBtn();
 
-    // the list stays open after the edit dialog deletes; it hides the
-    // selector's combobox until it closes
+    // opening the edit dialog closed the menu
+    await savedViews.openSelect();
     await savedViews.assert.verifyListedSlugs([]);
     await savedViews.closeSelect();
     await savedViews.assert.verifyUnsavedView();

@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useReverbValue, useReverbValueLoadable } from "@fiftyone/reverb";
-import { count, viewName } from "@fiftyone/state";
+import { useReverbValueLoadable } from "@fiftyone/reverb";
+import { count, useLoadedViewName } from "@fiftyone/state";
 import { useRef } from "react";
 
 /**
@@ -15,7 +15,7 @@ export default function useScope(): {
   name: string | null;
   total: number | null;
 } {
-  const name = useReverbValue(viewName) ?? null;
+  const name = useLoadedViewName();
   const loadable = useReverbValueLoadable(
     count({ path: "", extended: true, modal: false }),
   );
