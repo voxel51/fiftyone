@@ -2,32 +2,56 @@ import { FilterAndSelectionIndicator } from "@fiftyone/components";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
-import AppsIcon from "@mui/icons-material/Apps";
-import { useReverbValue, useResetReverbState } from "@fiftyone/reverb";
+import {
+  useReverbValue,
+  useReverbValueLoadable,
+  useResetReverbState,
+} from "@fiftyone/reverb";
+import {
+  BackgroundColor,
+  GridViewIcon,
+  Pill,
+  Size,
+  TextColor,
+} from "@voxel51/voodo";
 import styled from "styled-components";
 import Grid from "../components/Grid";
-import Header from "../components/Grid/Header";
+import GridSidebar from "../components/Sidebar/GridSidebar";
 
 const Container = styled.div`
-  position: relative;
-  padding: 0;
+  display: flex;
   height: 100%;
-  overflow-y: hidden;
+  overflow: hidden;
 `;
+
+const GridArea = styled.div`
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+`;
+
+// The grid's actions row (Grid/Header) is hidden while the sample view's
+// layout settles; it returns as the panel's toolbar
+const SamplesPanel = () => {
+  const showSidebar = useReverbValue(fos.sidebarVisible(false));
+
+  return (
+    <Container>
+      {showSidebar && <GridSidebar />}
+      <GridArea>
+        <Grid key={"grid"} />
+      </GridArea>
+    </Container>
+  );
+};
 
 registerComponent({
   name: "Samples",
   label: "Samples",
-  component: () => {
-    return (
-      <Container>
-        <Grid key={"grid"} />
-        <Header key={"header"} />
-      </Container>
-    );
-  },
+  component: SamplesPanel,
   type: PluginComponentType.Panel,
-  Icon: AppsIcon,
+  Icon: GridViewIcon,
   activator: () => true,
   panelOptions: { TabIndicator, priority: BUILT_IN_PANEL_PRIORITY_CONST },
 });
@@ -43,14 +67,36 @@ function TabIndicator() {
   const selectedSamplesCount = selectedSamples.size;
 
   return (
-    <FilterAndSelectionIndicator
-      filterCount={similarityParameters ? "" : undefined}
-      filterTitle="Reset sort by similarity"
-      onClickFilter={resetSimilarityParameters}
-      selectionCount={
-        selectedSamplesCount > 0 ? selectedSamplesCount.toString() : undefined
-      }
-      onClickSelection={resetSelectedSamples}
-    />
+    <>
+      <SampleCount />
+      <FilterAndSelectionIndicator
+        filterCount={similarityParameters ? "" : undefined}
+        filterTitle="Reset sort by similarity"
+        onClickFilter={resetSimilarityParameters}
+        selectionCount={
+          selectedSamplesCount > 0 ? selectedSamplesCount.toString() : undefined
+        }
+        onClickSelection={resetSelectedSamples}
+      />
+    </>
+  );
+}
+
+/** What the grid shows, once it is counted. */
+function SampleCount() {
+  const count = useReverbValueLoadable(
+    fos.count({ path: "", extended: true, modal: false }),
+  );
+  if (count.state !== "hasValue") return null;
+
+  return (
+    <Pill
+      size={Size.Xs}
+      backgroundColor={BackgroundColor.CardElevated}
+      color={TextColor.Secondary}
+      data-cy="samples-tab-count"
+    >
+      {(count.contents as number).toLocaleString()}
+    </Pill>
   );
 }
