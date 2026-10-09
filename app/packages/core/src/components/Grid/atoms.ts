@@ -1,4 +1,3 @@
-import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { DefaultValue, atom, atomFamily, selector } from "@fiftyone/reverb";
 import { MANAGING_GRID_MEMORY } from "@fiftyone/utilities";
@@ -188,18 +187,37 @@ export const pageParameters = selector({
   },
 });
 
-export const recommendedGridZoom = atom<number | null>({
-  key: "recommendedGridZoom",
+// keyed by what sets a tile's bytes: the dataset's media in the grid's media
+// field and group slice. Views and filters choose among the same media, so a
+// recommendation outlives them and later visits start at it
+const recommendedGridZoomStore = atomFamily<number | null, string>({
+  key: "recommendedGridZoomStore",
   default: null,
-  effects: [
-    subscribe(
-      ({ event }, { reset }, prev) =>
-        event !== "modal" &&
-        event !== "spaces" &&
-        prev?.event !== "modal" &&
-        reset(recommendedGridZoom),
-    ),
+  effects: (key) => [
+    fos.getBrowserStorageEffectForKey(`recommendedGridZoom-${key}`, {
+      valueClass: "number",
+    }),
   ],
+});
+
+const recommendedGridZoomKey = selector<string>({
+  key: "recommendedGridZoomKey",
+  get: ({ get }) =>
+    [
+      get(fos.datasetId) ?? "",
+      get(fos.groupSlice) ?? "",
+      get(fos.selectedMediaField(false)),
+    ].join(":"),
+});
+
+/** The zoom auto-sizing last needed for the dataset's media. */
+export const recommendedGridZoom = selector<number | null>({
+  key: "recommendedGridZoom",
+  get: ({ get }) => get(recommendedGridZoomStore(get(recommendedGridZoomKey))),
+  set: ({ get, reset, set }, value) => {
+    const store = recommendedGridZoomStore(get(recommendedGridZoomKey));
+    value instanceof DefaultValue ? reset(store) : set(store, value);
+  },
 });
 
 export const showGridPixels = atom({ key: "showGridPixels", default: false });

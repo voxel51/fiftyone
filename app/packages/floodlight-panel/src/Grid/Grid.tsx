@@ -40,6 +40,7 @@ import { usePagesEnabled } from "./Pages/settings";
 import useGridPages from "./Pages/useGridPages";
 import { withRowAspects } from "./laneHeights";
 import { showPending, showStorm } from "./loadingOverlay";
+import useAutosize from "./useAutosize";
 import useEscape from "./useEscape";
 import useInstanceEvents from "./useInstanceEvents";
 import useItemCache from "./useItemCache";
@@ -197,7 +198,14 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const setSample = fos.useExpandSample(pages);
   const setSampleRef = useRef(setSample);
   setSampleRef.current = setSample;
-  const wire = useInstanceEvents();
+  const autosize = useAutosize({
+    budget: maxBytes,
+    cache,
+    container,
+    store,
+    zoom,
+  });
+  const wire = useInstanceEvents(autosize.recommend);
   const ownership = useMemo(() => createOwnership(), [cache]);
   const interims = useRef(new WeakSet<object>());
   const cleanups = useRef(new WeakMap<object, () => void>());
@@ -230,8 +238,14 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         ownership,
         reattach: kind === "standard",
         shimmer: SHIMMER.showItem,
+        size: autosize.size,
         sizes: lastSizes.current,
       });
+      const autosized = autosizing && !interim;
+      // swimlanes and strips place one item per row
+      const tiled = !useSwimlanes && !strip;
+      // the row aspect ratio the first page's estimate starts this build at
+      let start: number | undefined;
       const loaded = { items: 0 };
       const shown = hostRef.current?.instance;
       const lease = sourceRef.current.lease(
@@ -239,6 +253,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       );
       const toPage = (result: Response<number, fos.Sample>) => {
         loaded.items += result.items.length;
+        if (autosized && tiled && start === undefined) {
+          start = autosize.start(result.items);
+        }
         return withRowAspects(result, aspects);
       };
       const next = new Spotlight<number, fos.Sample>({
@@ -248,7 +265,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         ...scoped,
 
         maxRows: MAX_ROWS,
-        maxItemsSizeBytes: autosizing && !interim ? maxBytes : undefined,
+        maxItemsSizeBytes: autosized ? maxBytes : undefined,
         scrollbar: !railVisible,
         // Strip: one full-height item per column, scrolling left to right.
         horizontal: strip,
@@ -267,8 +284,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
                 const result = lease.peek(key);
                 return result && toPage(result);
               },
-        // swimlanes and strips place one item per row
-        rowAspectRatioThreshold: useSwimlanes || strip ? () => 0 : zoom,
+        rowAspectRatioThreshold: tiled
+          ? (width) => Math.min(zoom(width), start ?? Infinity)
+          : () => 0,
       });
       scopes.current.set(next, scoped);
       leases.current.set(next, lease);

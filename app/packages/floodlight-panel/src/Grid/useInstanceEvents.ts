@@ -2,11 +2,8 @@ import type Spotlight from "@fiftyone/floodlight";
 import type { Rejected } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
-import { useSetReverbState } from "@fiftyone/reverb";
 import { getEventBus } from "@fiftyone/events";
 import { QP_WAIT, type QueryPerformanceEvents } from "@fiftyone/sidebar";
-import { MANAGING_GRID_MEMORY } from "@fiftyone/utilities";
-import { recommendedGridZoom } from "./atoms";
 
 type Instance = Spotlight<number, fos.Sample>;
 
@@ -15,10 +12,7 @@ type Instance = Spotlight<number, fos.Sample>;
  * as it is built (a load served from memory can land before any effect
  * runs), and returns the matching cleanup.
  */
-export default function useInstanceEvents() {
-  const handleAutosize = useSetReverbState(fos.snackbarLink);
-  const setRecommendedZoom = useSetReverbState(recommendedGridZoom);
-
+export default function useInstanceEvents(recommend: (zoom: number) => void) {
   return useCallback(
     (instance: Instance) => {
       const info = fos.getQueryPerformancePath();
@@ -33,16 +27,11 @@ export default function useInstanceEvents() {
       instance.addEventListener("load", () => clearTimeout(timeout));
       instance.addEventListener("rejected", (event: Rejected) => {
         clearTimeout(timeout);
-        setRecommendedZoom(-event.recommendedRowAspectRatioThreshold);
-        instance.loaded &&
-          handleAutosize({
-            link: MANAGING_GRID_MEMORY,
-            message: "That's a lot of data! We've zoomed in a bit",
-          });
+        recommend(-event.recommendedRowAspectRatioThreshold);
       });
 
       return () => clearTimeout(timeout);
     },
-    [handleAutosize, setRecommendedZoom],
+    [recommend],
   );
 }
