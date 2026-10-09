@@ -19,6 +19,7 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import { EditableLabel } from "@fiftyone/components";
+import type { PendingRun } from "@fiftyone/operators";
 import { FileUploadOutlined } from "../../mui";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -36,6 +37,7 @@ import {
   POINTER_STYLE,
 } from "../../constants";
 import { formatQuery, formatTime } from "../../utils";
+import PendingIndexNotice from "./PendingIndexNotice";
 import StatusBadge from "./StatusBadge";
 import RunActions from "./RunActions";
 import ExpandedThumbnails from "./ExpandedThumbnails";
@@ -117,6 +119,7 @@ type RunListProps = {
   runs: SimilarityRun[];
   filteredRuns: SimilarityRun[];
   brainKeys: BrainKeyConfig[];
+  pendingRuns: PendingRun[];
   appliedRunId?: string;
   sampleMedia: Record<string, string>;
   onApply: (runId: string) => void;
@@ -140,6 +143,7 @@ export default function RunList({
   runs,
   filteredRuns,
   brainKeys,
+  pendingRuns,
   appliedRunId,
   sampleMedia,
   onApply,
@@ -371,6 +375,8 @@ export default function RunList({
           </Tooltip>
         </Stack>
       </Stack>
+
+      <PendingIndexNotice runs={pendingRuns} onView={onSettings} />
 
       {/* Filter bar */}
       {brainKeys.length > 0 && (
