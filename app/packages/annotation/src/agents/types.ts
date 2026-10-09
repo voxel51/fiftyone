@@ -223,6 +223,7 @@ export type PropagatedPolyline = PolylineLabel & {
  * `[x, y]` per skeleton node; interpolation preserves `[NaN, NaN]` holes.
  */
 export type PropagatedKeypoint = KeypointLabel & {
+  _cls: "Keypoint";
   points: [number, number][];
   keyframe: boolean;
 };
