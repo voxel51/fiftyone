@@ -21,6 +21,10 @@
   border-color: var(--color-content-border-input-focus);
 }
 
+.compact:not(:hover, :focus-within) {
+  border-color: transparent;
+}
+
 .gutter {
   display: flex;
   align-items: center;

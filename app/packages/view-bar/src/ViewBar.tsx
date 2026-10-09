@@ -138,7 +138,9 @@ const ViewBarInner: React.FC<{
   capabilities?: ViewBarCapabilities;
   /** The host's saved queries control, beside the stages toggle. */
   savedQueries?: React.ReactNode;
-}> = ({ capabilities = OPEN_CAPABILITIES, savedQueries }) => {
+  /** Less chrome: no frame until the pointer or the keyboard is in it. */
+  compact?: boolean;
+}> = ({ capabilities = OPEN_CAPABILITIES, compact, savedQueries }) => {
   const servedDefs = fos.useStageDefinitions();
   const stageDefs = useMemo(
     () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
@@ -1026,7 +1028,11 @@ const ViewBarInner: React.FC<{
   );
 
   return (
-    <div className={styles.bar} data-cy="view-bar" onKeyDown={onBarKeyDown}>
+    <div
+      className={clsx(styles.bar, compact && styles.compact)}
+      data-cy="view-bar"
+      onKeyDown={onBarKeyDown}
+    >
       {gutter}
       {stagesRow}
     </div>
@@ -1042,6 +1048,7 @@ const ViewBarInner: React.FC<{
 const ViewBar: React.FC<{
   capabilities?: ViewBarCapabilities;
   savedQueries?: React.ReactNode;
+  compact?: boolean;
 }> = (props) => {
   const datasetName = fos.useCurrentDatasetName();
   return <ViewBarInner key={datasetName ?? ""} {...props} />;

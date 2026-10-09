@@ -9,7 +9,17 @@ import * as fos from "@fiftyone/state";
 import { useSetDataset } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
 import { useColorScheme } from "@mui/material";
-import { Align, Orientation, Spacing, Stack } from "@voxel51/voodo";
+import {
+  Align,
+  Anchor,
+  IconAction,
+  MaximizeIcon,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Tooltip,
+} from "@voxel51/voodo";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -24,6 +34,7 @@ import ScopeCrumb from "./ScopeCrumb";
 import HelpMenu from "./HelpMenu";
 import styles from "./Nav.module.css";
 import Teams from "./Teams";
+import useFocusMode from "./useFocusMode";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
 
@@ -93,6 +104,10 @@ const Nav: React.FC<
   const setTheme = useSetReverbState(fos.theme);
   const trackEvent = useTrackEvent();
   const { enterpriseCta, HeaderActions, Status, title } = useProduct();
+  // Page state that outlives a trip to the sample page, whose own "F" it
+  // leaves alone
+  const focus = useFocusMode(hasDataset && !hidden);
+  const focused = hasDataset && focus.focused;
   const toggleTheme = useCallback(() => {
     const nextMode = mode === "dark" ? "light" : "dark";
     setMode(nextMode);
@@ -105,6 +120,7 @@ const Nav: React.FC<
       <Header
         title={hasDataset ? undefined : title}
         hidden={hidden}
+        onExitFocus={focused ? focus.exit : undefined}
         onHome={() => setDataset(null)}
         crumbs={[
           <DatasetSelector
@@ -117,7 +133,10 @@ const Nav: React.FC<
         belowRow={
           hasDataset && (
             <Suspense fallback={null}>
-              <ViewBar savedQueries={<SavedQueriesMenu hidden={hidden} />} />
+              <ViewBar
+                compact={focused}
+                savedQueries={<SavedQueriesMenu hidden={hidden} />}
+              />
             </Suspense>
           )
         }
@@ -135,10 +154,21 @@ const Nav: React.FC<
             enterpriseCta && <Teams disablePopover={hidden} />
           )}
           <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
-          {/* Remounted as the header hides, so no menu stays open over the
-              sample page */}
-          <React.Fragment key={hidden ? "hidden" : "shown"}>
+          {/* Remounted as the row hides, so no menu stays open over the
+              sample page or in focus mode */}
+          <React.Fragment key={hidden || focused ? "hidden" : "shown"}>
             {hasDataset && <DatasetMenu />}
+            {hasDataset && (
+              <Tooltip anchor={Anchor.Bottom} content="Focus mode (F)">
+                <IconAction
+                  icon={MaximizeIcon}
+                  size={Size.Md}
+                  aria-label="Focus mode"
+                  onClick={focus.toggle}
+                  data-cy="header-focus"
+                />
+              </Tooltip>
+            )}
             <HelpMenu
               theme={mode === "dark" ? "dark" : "light"}
               onToggleTheme={toggleTheme}

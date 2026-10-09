@@ -2,9 +2,12 @@ import {
   Align,
   Heading,
   HeadingLevel,
+  MinimizeIcon,
   Orientation,
+  Size,
   Spacing,
   Stack,
+  TextAction,
 } from "@voxel51/voodo";
 import clsx from "clsx";
 import React from "react";
@@ -38,12 +41,40 @@ const Header: React.FC<
     belowRow?: React.ReactNode;
     /** Out of sight and out of reach, still mounted. */
     hidden?: boolean;
+    /** Focus mode: the first row folds away, with a way back at the top. */
+    onExitFocus?: () => void;
   }>
-> = ({ belowRow, children, crumbs = [], hidden, title, onHome }) => {
+> = ({
+  belowRow,
+  children,
+  crumbs = [],
+  hidden,
+  onExitFocus,
+  title,
+  onHome,
+}) => {
   const mark = <img className={style.logo} src={logo} alt="" />;
 
   return (
-    <div className={clsx(style.header, hidden && style.hidden)}>
+    <div
+      className={clsx(
+        style.header,
+        hidden && style.hidden,
+        onExitFocus && style.focused,
+      )}
+    >
+      {onExitFocus && (
+        <div className={style.restore}>
+          <TextAction
+            size={Size.Sm}
+            leadingIcon={MinimizeIcon}
+            onClick={onExitFocus}
+            data-cy="header-exit-focus"
+          >
+            Exit focus mode
+          </TextAction>
+        </div>
+      )}
       <Stack
         orientation={Orientation.Row}
         align={Align.Center}

@@ -4,6 +4,7 @@
    as a whole — no voodo surface token matches it in the dark theme, and a
    header on a different grey than the panels around it reads as a seam. */
 .header {
+  position: relative;
   background-color: var(--color-content-bg-background);
   flex-shrink: 0;
   width: 100%;
@@ -74,4 +75,44 @@ button.home:hover {
 
 .beforeSlash {
   margin-right: var(--spacing-xs);
+}
+
+/* Focus mode: the first row folds away and the view bar tightens */
+.focused .row {
+  display: none;
+}
+
+.focused .belowRow {
+  padding: 4px 12px;
+}
+
+/* A hover zone at the top's center drops the way back into view */
+.restore {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  width: 192px;
+  height: 24px;
+  transform: translateX(-50%);
+}
+
+.restore > * {
+  border: 1px solid var(--color-content-border-subtle);
+  border-top: 0;
+  border-radius: 0 0 9999px 9999px;
+  background: var(--color-content-bg-card-elevated);
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.restore:hover > *,
+.restore > *:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
