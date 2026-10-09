@@ -27,7 +27,7 @@ export function registerSceneModelUrlResolver(
   };
 }
 
-/** One resolver per load: share requests without caching expiring signed URLs. */
+/** Deduplicates URL resolution within a single model load. */
 export function createSceneModelUrlResolver(modelUrl: string) {
   const resolver = state.resolver;
   const pending = new Map<string, Promise<string>>();

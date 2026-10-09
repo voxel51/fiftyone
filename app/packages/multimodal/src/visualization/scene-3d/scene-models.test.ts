@@ -19,7 +19,7 @@ describe("scene model URL resolution", () => {
     async (scheme) => {
       const provider = vi.fn(
         async (path: string) =>
-          `https://signed.example/${encodeURIComponent(path)}`,
+          `https://assets.example/${encodeURIComponent(path)}`,
       );
       unregister = registerSceneModelUrlResolver(provider);
       const model = `${scheme}://bucket/models/robot.gltf`;
@@ -36,11 +36,11 @@ describe("scene model URL resolution", () => {
   );
 
   it("preserves browser URLs and resolves storage-backed dependencies of inline models", async () => {
-    const provider = vi.fn(async () => "https://signed.example/texture.png");
+    const provider = vi.fn(async () => "https://assets.example/texture.png");
     unregister = registerSceneModelUrlResolver(provider);
     const resolve = createSceneModelUrlResolver("blob:model");
     for (const uri of [
-      "https://example.com/a?signature=x",
+      "https://example.com/a?version=1",
       "data:image/png;base64,AA==",
       "blob:texture",
       "relative.bin",
@@ -49,7 +49,7 @@ describe("scene model URL resolution", () => {
     }
     expect(provider).not.toHaveBeenCalled();
     expect(await resolve("az://bucket/texture.png")).toBe(
-      "https://signed.example/texture.png",
+      "https://assets.example/texture.png",
     );
   });
 
@@ -58,7 +58,7 @@ describe("scene model URL resolution", () => {
       createSceneModelUrlResolver("gs://bucket/a.glb")("gs://bucket/a.glb"),
     ).rejects.toThrow("require a URL resolver");
     unregister = registerSceneModelUrlResolver(
-      async () => "gs://still-private/a.glb",
+      async () => "gs://unresolved/a.glb",
     );
     await expect(
       createSceneModelUrlResolver("gs://bucket/a.glb")("gs://bucket/a.glb"),
@@ -70,8 +70,8 @@ describe("scene model URL resolution", () => {
     async (extension) => {
       const provider = vi.fn(async (path: string) =>
         !path.endsWith(".bin")
-          ? "https://signed.example/model?token=model"
-          : "https://signed.example/buffer?token=buffer",
+          ? "https://assets.example/model?part=model"
+          : "https://assets.example/buffer?part=buffer",
       );
       unregister = registerSceneModelUrlResolver(provider);
       const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
@@ -95,11 +95,11 @@ describe("scene model URL resolution", () => {
         scene: 0,
       };
       const fetch = vi.fn(async (request: Request) => {
-        if (request.url === "https://signed.example/model?token=model")
+        if (request.url === "https://assets.example/model?part=model")
           return new Response(
             extension === "glb" ? glbJson(gltf) : JSON.stringify(gltf),
           );
-        if (request.url === "https://signed.example/buffer?token=buffer")
+        if (request.url === "https://assets.example/buffer?part=buffer")
           return new Response(positions.buffer);
         throw new Error(`Unexpected request: ${request.url}`);
       });
@@ -123,8 +123,8 @@ describe("scene model URL resolution", () => {
   it("resolves again after a failed load so a retry can recover", async () => {
     const provider = vi
       .fn()
-      .mockRejectedValueOnce(new Error("Expired credentials"))
-      .mockResolvedValue("https://signed.example/retry.glb");
+      .mockRejectedValueOnce(new Error("Resource temporarily unavailable"))
+      .mockResolvedValue("https://assets.example/retry.glb");
     unregister = registerSceneModelUrlResolver(provider);
     vi.stubGlobal(
       "fetch",
@@ -140,7 +140,7 @@ describe("scene model URL resolution", () => {
       url: "s3://bucket/retry.glb",
     };
     await expect(loadSceneModelAsset(asset)).rejects.toThrow(
-      "Expired credentials",
+      "Resource temporarily unavailable",
     );
     await expect(loadSceneModelAsset(asset)).resolves.toMatchObject({
       type: "Group",

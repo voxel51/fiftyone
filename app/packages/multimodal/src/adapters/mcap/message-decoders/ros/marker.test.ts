@@ -7,7 +7,7 @@ describe("ROS mesh resource URLs", () => {
     "gs://bucket/robot.glb",
     "s3://bucket/robot.gltf",
     "az://bucket/robot.glb",
-    "https://example.com/robot.glb?signature=x",
+    "https://example.com/robot.glb?version=1",
     "data:model/gltf-binary;base64,AAAA",
   ])("retains supported model %s for the renderer", (meshResource) => {
     const output = decodeRosMarkerRecord(
