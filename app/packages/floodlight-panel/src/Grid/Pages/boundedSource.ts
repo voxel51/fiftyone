@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { PageSource } from "../../host/pageSource";
+import type { Lease, PageReader, PageSource } from "../../host/pageSource";
 import { inRange, type KeyRange } from "./model";
 
 interface Linked {
@@ -29,20 +29,44 @@ export const createBoundedSource = <P extends Linked>(
     previous: key > bounds[0] ? page.previous : null,
   });
 
-  return {
+  const reader = (inner: PageReader<number, P>): PageReader<number, P> => ({
     get: async (key) => {
       const bounds = range();
       if (!inRange(key, bounds)) return empty();
-      return clip(key, await source.get(key), bounds);
+      return clip(key, await inner.get(key), bounds);
     },
     peek: (key) => {
       const bounds = range();
       if (!inRange(key, bounds)) return empty();
-      const page = source.peek(key);
+      const page = inner.peek(key);
       return page && clip(key, page, bounds);
+    },
+  });
+
+  const inners = new WeakMap<Lease<number, P>, Lease<number, P>>();
+
+  return {
+    ...reader(source),
+    lease: (from) => {
+      const inner = source.lease(from && inners.get(from));
+      const lease: Lease<number, P> = {
+        ...reader(inner),
+        release: () => inner.release(),
+        get size() {
+          return inner.size;
+        },
+      };
+      inners.set(lease, inner);
+      return lease;
     },
     get fetching() {
       return source.fetching;
+    },
+    get size() {
+      return source.size;
+    },
+    get active() {
+      return source.active;
     },
     invalidate: (keys) => source.invalidate(keys),
     takeRemoved: () => source.takeRemoved(),

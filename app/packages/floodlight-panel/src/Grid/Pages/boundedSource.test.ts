@@ -115,4 +115,25 @@ describe("createBoundedSource", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     expect((await source.get(0)).next).toBe(1);
   });
+
+  it("leases clip like the source and pin through to it", async () => {
+    const source = createPageSource(fetchPage, { capacity: 1 });
+    const bounded = createBoundedSource(source, () => keyRange(0, 40, 20));
+    const lease = bounded.lease();
+
+    expect(await lease.get(1)).toEqual({
+      items: ["item-1"],
+      next: null,
+      previous: 0,
+    });
+    await lease.get(0);
+    expect(lease.peek(5)).toEqual({ items: [], next: null, previous: null });
+    await source.get(7);
+    await source.get(8);
+    expect(source.size).toBe(3);
+    expect(lease.size).toBe(2);
+
+    lease.release();
+    expect(source.size).toBe(1);
+  });
 });

@@ -171,3 +171,211 @@ describe("invalidate", () => {
     expect(source.takeRemoved().size).toBe(0);
   });
 });
+
+/** A fetch whose calls resolve only when told, recording each signal. */
+const gated = () => {
+  const calls: { key: number; signal: AbortSignal; resolve: () => void }[] = [];
+  const fetch = vi.fn(
+    (key: number, signal: AbortSignal) =>
+      new Promise<{ key: number; ids: string[] }>((resolve) =>
+        calls.push({
+          key,
+          signal,
+          resolve: () => resolve({ key, ids: [`${key}`] }),
+        }),
+      ),
+  );
+  /** Resolves every call not aborted, until none is left. */
+  const drain = async () => {
+    for (let call = calls.find((c) => !c.signal.aborted); call; ) {
+      calls.splice(calls.indexOf(call), 1);
+      call.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      call = calls.find((c) => !c.signal.aborted);
+    }
+  };
+  return { calls, drain, fetch };
+};
+
+describe("memory bound", () => {
+  test("holds at most `capacity` pages no lease holds, refetching evicted ones", async () => {
+    const fetch = vi.fn(async (key: number) => ({ key }));
+    const onEvict = vi.fn();
+    const source = createPageSource(fetch, { capacity: 8, onEvict });
+
+    for (let key = 0; key < 500; key++) {
+      await source.get(key);
+      expect(source.size).toBeLessThanOrEqual(8);
+    }
+
+    expect(onEvict).toHaveBeenCalledTimes(492);
+    expect(onEvict).toHaveBeenCalledWith(0, { key: 0 });
+    expect(source.peek(0)).toBeUndefined();
+    expect(source.peek(499)).toEqual({ key: 499 });
+    await expect(source.get(0)).resolves.toEqual({ key: 0 });
+    expect(fetch).toHaveBeenCalledTimes(501);
+  });
+
+  test("evicts the least recently read page first", async () => {
+    const source = createPageSource(async (key: number) => key, {
+      capacity: 2,
+    });
+    await source.get(0);
+    await source.get(1);
+    source.peek(0);
+    await source.get(2);
+
+    expect(source.peek(0)).toBe(0);
+    expect(source.peek(1)).toBeUndefined();
+  });
+
+  test("a lease pins what it read until it is released", async () => {
+    const source = createPageSource(async (key: number) => key, {
+      capacity: 2,
+    });
+    const lease = source.lease();
+    for (let key = 0; key < 10; key++) await lease.get(key);
+
+    expect(source.size).toBe(10);
+    expect(lease.size).toBe(10);
+    expect(lease.peek(0)).toBe(0);
+
+    lease.release();
+    expect(source.size).toBe(2);
+  });
+
+  test("a peek through a lease pins the page", async () => {
+    const source = createPageSource(async (key: number) => key, {
+      capacity: 1,
+    });
+    await source.get(0);
+    const lease = source.lease();
+    expect(lease.peek(0)).toBe(0);
+    for (let key = 1; key < 5; key++) await source.get(key);
+
+    expect(source.peek(0)).toBe(0);
+  });
+});
+
+describe("work in flight", () => {
+  test("runs at most `concurrency` fetches, queueing the rest", async () => {
+    const { calls, drain, fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 4 });
+
+    const pages = Array.from({ length: 30 }, (_, key) => source.get(key));
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(source.active).toBe(4);
+
+    let most = 0;
+    while (calls.length) {
+      most = Math.max(most, source.active);
+      await drain();
+    }
+    await Promise.all(pages);
+
+    expect(most).toBe(4);
+    expect(fetch).toHaveBeenCalledTimes(30);
+    expect(source.fetching).toBe(false);
+  });
+
+  test("a released lease drops its queued fetches and aborts its running ones", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 2 });
+    const lease = source.lease();
+    const settled = vi.fn();
+    for (let key = 0; key < 6; key++) lease.get(key).then(settled, settled);
+
+    lease.release();
+    calls.forEach((call) => call.resolve());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetch.mock.calls.map(([key]) => key)).toEqual([0, 1]);
+    expect(calls.every((call) => call.signal.aborted)).toBe(true);
+    expect(settled).not.toHaveBeenCalled();
+    expect(source.size).toBe(0);
+    expect(source.peek(0)).toBeUndefined();
+    expect(source.active).toBe(0);
+    expect(source.fetching).toBe(false);
+  });
+
+  test("a fetch another reader waits on survives a release", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch);
+    const leaving = source.lease();
+    const staying = source.lease();
+    leaving.get(0);
+    const page = staying.get(0);
+    const unleased = source.lease();
+    unleased.release();
+
+    leaving.release();
+    expect(calls[0].signal.aborted).toBe(false);
+    calls[0].resolve();
+
+    await expect(page).resolves.toEqual({ key: 0, ids: ["0"] });
+    expect(source.peek(0)).toEqual({ key: 0, ids: ["0"] });
+  });
+
+  test("a lease continuing another keeps the fetches it had in flight", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch);
+    const replaced = source.lease();
+    replaced.get(0);
+    const replacing = source.lease(replaced);
+
+    replaced.release();
+    expect(calls[0].signal.aborted).toBe(false);
+    calls[0].resolve();
+    await Promise.resolve();
+
+    expect(replacing.peek(0)).toEqual({ key: 0, ids: ["0"] });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("an unleased read is never cancelled", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch);
+    const lease = source.lease();
+    lease.get(0);
+    const page = source.get(0);
+
+    lease.release();
+    calls[0].resolve();
+
+    await expect(page).resolves.toEqual({ key: 0, ids: ["0"] });
+  });
+
+  test("a burst of jumps keeps only the latest jump's pages", async () => {
+    const { calls, drain, fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 4 });
+    let most = 0;
+    let lease: ReturnType<typeof source.lease> | undefined;
+    // each jump reads six pages around its target, superseding the last
+    for (const target of [100, 300, 50, 700, 20, 900, 400]) {
+      lease?.release();
+      lease = source.lease();
+      for (let key = target - 2; key <= target + 3; key++) lease.get(key);
+      most = Math.max(most, source.active);
+    }
+    await drain();
+
+    expect(most).toBeLessThanOrEqual(4);
+    const sent = fetch.mock.calls.map(([key]) => key);
+    const kept = [398, 399, 400, 401, 402, 403];
+    // superseded pages were either never sent or aborted
+    for (const call of fetch.mock.calls) {
+      const [key, signal] = call;
+      if (!kept.includes(key)) expect(signal.aborted).toBe(true);
+    }
+    // each superseded jump sent only the four that could run
+    expect(sent).toHaveLength(6 * 4 + 6);
+    // what is left unanswered was aborted
+    expect(calls.every((call) => call.signal.aborted)).toBe(true);
+    for (const key of sent) {
+      expect(source.peek(key) !== undefined).toBe(kept.includes(key));
+    }
+    expect(source.size).toBe(6);
+  });
+});
