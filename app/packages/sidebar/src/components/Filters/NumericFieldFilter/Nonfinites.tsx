@@ -88,7 +88,7 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
   }
 
   return (
-    <>
+    <div>
       {nonfinites.map(({ key, ...props }) => (
         <Checkbox
           key={key}
@@ -101,7 +101,7 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
           {...props}
         />
       ))}
-    </>
+    </div>
   );
 }
 

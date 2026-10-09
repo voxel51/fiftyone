@@ -36,7 +36,9 @@ const StyledCheckbox = styled(ItemAction)`
   flex-wrap: nowrap;
   gap: 0.5rem;
   margin: 0;
-  padding: 0.25rem 0.375rem;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 0 0.375rem;
   border-radius: 4px;
 `;
 
