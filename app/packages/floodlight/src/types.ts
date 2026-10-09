@@ -79,12 +79,16 @@ export interface Response<K, V> {
  * Internal page-fetch contract used between {@link Spotlight} and {@link Section}.
  * Wraps {@link Get} to attach the focus function and handle cursor direction.
  */
-export type Request<K, V> = (key: K) => Promise<{
+export type Request<K, V> = (
+  key: K,
+) => RequestData<K, V> | Promise<RequestData<K, V>>;
+
+export interface RequestData<K, V> {
   items: ItemData<K, V>[];
   focus: Focus;
   next?: K;
   previous?: K;
-}>;
+}
 
 /**
  * Renders an item into `element` at the given `dimensions` and returns its byte size.
@@ -133,6 +137,11 @@ export interface SpotlightConfig<K, V> {
   detachItem: (id: ID) => void;
   /** Fetches a page of items for the given cursor. */
   get: Get<K, V>;
+  /**
+   * Returns the page for a cursor when it is already in memory. With it,
+   * `attach` measures and fills in the same call, as far as pages are in memory.
+   */
+  peek?: (key: K) => Response<K, V> | undefined;
   /** Returns the current byte size of a rendered item; required when `maxItemsSizeBytes` is set. */
   getItemSizeBytes?: (id: ID) => number;
   /** Called when an item leaves the render buffer. */

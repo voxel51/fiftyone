@@ -5,6 +5,8 @@
 export interface PageSource<K, P> {
   /** Resolves the page for `key`, fetching it at most once. */
   get(key: K): Promise<P>;
+  /** The page for `key` if it has resolved, for a synchronous layout. */
+  peek(key: K): P | undefined;
   /** Whether any fetch is in flight. */
   readonly fetching: boolean;
   /** Calls `listener` whenever `fetching` changes. */
@@ -23,6 +25,7 @@ export const createPageSource = <K, P>(
   { ids }: { ids?: (page: P) => Iterable<string> } = {},
 ): PageSource<K, P> => {
   const pages = new Map<K, Promise<P>>();
+  const resolved = new Map<K, P>();
   // the pages an invalidation dropped, compared with their refetches
   const stale = new Map<K, Promise<P>>();
   const before = new Set<string>();
@@ -59,10 +62,14 @@ export const createPageSource = <K, P>(
         stale.delete(key);
         compare(previous, page);
       }
-      // a failed page is refetched next time instead of replaying the error
-      page.catch(() => pages.get(key) === page && pages.delete(key));
+      page.then(
+        (value) => pages.get(key) === page && resolved.set(key, value),
+        // a failed page is refetched next time instead of replaying the error
+        () => pages.get(key) === page && pages.delete(key),
+      );
       return page;
     },
+    peek: (key) => resolved.get(key),
     get fetching() {
       return inFlight > 0;
     },
@@ -76,6 +83,7 @@ export const createPageSource = <K, P>(
       for (const [key, page] of [...pages]) {
         if (keys && !keys(key)) continue;
         pages.delete(key);
+        resolved.delete(key);
         // an earlier invalidation's page is the one the grid showed
         !stale.has(key) && stale.set(key, page);
       }

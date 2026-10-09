@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import {
   type Anchor,
   type BuildContext,
@@ -36,7 +36,8 @@ export default function useHost<K, I extends Instance>(
     status: "building",
   });
 
-  useEffect(() => {
+  // before paint, so a first build from pages in memory paints with the mount
+  useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return undefined;
 

@@ -120,4 +120,80 @@ describe("Spotlight", () => {
     spotlight.destroy();
     host.remove();
   });
+
+  describe("peek", () => {
+    const pageOf = (page: number) => ({
+      items: Array.from({ length: 5 }, (_, i) => ({
+        id: { description: `${page}-${i}` },
+        aspectRatio: 1,
+        data: {},
+        key: page,
+      })),
+      next: page < 9 ? page + 1 : null,
+      previous: page > 0 ? page - 1 : null,
+    });
+
+    const mount = (peek: (page: number) => ReturnType<typeof pageOf>) => {
+      const get = vi.fn(async (page: number) => pageOf(page));
+      const shown = vi.fn(async () => 0);
+      const spotlight = new Spotlight<number, object>({
+        key: 2,
+        get,
+        peek,
+        detachItem: () => {},
+        hideItem: () => {},
+        showItem: shown,
+        rowAspectRatioThreshold: () => 5,
+      });
+      const loaded = vi.fn();
+      spotlight.addEventListener("load", loaded);
+      const host = document.createElement("div");
+      document.body.append(host);
+      spotlight.attach(host);
+      return { get, host, loaded, shown, spotlight };
+    };
+
+    test("lays out pages in memory within attach", () => {
+      const { get, host, loaded, shown, spotlight } = mount(pageOf);
+
+      // no frame or microtask has run
+      expect(get).not.toHaveBeenCalled();
+      expect(shown).toHaveBeenCalled();
+      expect(loaded).toHaveBeenCalledOnce();
+
+      spotlight.destroy();
+      host.remove();
+    });
+
+    test("fetches a page not in memory asynchronously", async () => {
+      const { get, host, loaded, shown, spotlight } = mount(() => undefined);
+
+      expect(get).toHaveBeenCalledWith(2);
+      expect(shown).not.toHaveBeenCalled();
+      expect(loaded).not.toHaveBeenCalled();
+
+      await settle();
+      expect(shown).toHaveBeenCalled();
+      expect(loaded).toHaveBeenCalledOnce();
+
+      spotlight.destroy();
+      host.remove();
+    });
+
+    test("continues asynchronously from the first page not in memory", async () => {
+      const { get, host, loaded, shown, spotlight } = mount((page) =>
+        page === 2 ? pageOf(page) : undefined,
+      );
+
+      expect(get).toHaveBeenCalledWith(3);
+      expect(loaded).not.toHaveBeenCalled();
+
+      await settle();
+      expect(shown).toHaveBeenCalled();
+      expect(loaded).toHaveBeenCalledOnce();
+
+      spotlight.destroy();
+      host.remove();
+    });
+  });
 });

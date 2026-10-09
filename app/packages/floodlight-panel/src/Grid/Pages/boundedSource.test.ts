@@ -33,6 +33,19 @@ const walk = async (
 };
 
 describe("createBoundedSource", () => {
+  it("peeks fetched pages clipped to the UI page, and nothing outside it", async () => {
+    const { bounded } = setup(keyRange(1, 40, 20));
+
+    expect(bounded.peek(2)).toBeUndefined();
+    await bounded.get(2);
+    expect(bounded.peek(2)).toEqual({
+      items: ["item-2"],
+      next: 3,
+      previous: null,
+    });
+    expect(bounded.peek(5)).toEqual({ items: [], next: null, previous: null });
+  });
+
   it("never fetches outside the UI page", async () => {
     const { bounded, fetch } = setup(keyRange(2, 100, 20));
 

@@ -12,6 +12,28 @@ const deferred = <T>() => {
 };
 
 describe("createPageSource", () => {
+  test("peeks a page only once it has resolved, until it is invalidated", async () => {
+    const page = deferred<string>();
+    const source = createPageSource(() => page.promise);
+
+    const pending = source.get(0);
+    expect(source.peek(0)).toBeUndefined();
+
+    page.resolve("page");
+    await pending;
+    expect(source.peek(0)).toBe("page");
+
+    source.invalidate();
+    expect(source.peek(0)).toBeUndefined();
+  });
+
+  test("never peeks a failed page", async () => {
+    const source = createPageSource(() => Promise.reject(new Error("down")));
+
+    await source.get(0).catch(() => undefined);
+    expect(source.peek(0)).toBeUndefined();
+  });
+
   test("serves a fetched page from memory", async () => {
     const fetch = vi.fn(async (key: number) => ({ key }));
     const source = createPageSource(fetch);

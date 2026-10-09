@@ -29,6 +29,7 @@ import type {
   ItemData,
   Measure,
   Request,
+  RequestData,
   SpotlightConfig,
   Updater,
 } from "./types";
@@ -398,14 +399,14 @@ export default class Section<K, V> {
    * @param request - Fetches a page using the current leading-edge cursor.
    * @param renderer - Receives a runner that tiles and appends rows; deferred to rAF by the caller.
    * @param sibling - Passed through to `#tile` so newly created rows get a valid iterator.
-   * @returns `true` if a fetch was initiated, `false` if the section is already exhausted.
+   * @returns `true`, synchronously when `request` answers synchronously.
    * @throws {@link SLOW_DOWN} if called while a previous fetch is still in-flight.
    */
-  async next(
+  next(
     request: Request<K, V>,
     renderer: Renderer<K, V>,
     sibling: Sibling<K, V>,
-  ) {
+  ): boolean | Promise<boolean> {
     const end = this.#end;
     if (!end) {
       // already requested, give up
@@ -413,12 +414,26 @@ export default class Section<K, V> {
     }
 
     if (end?.key === null && !end.remainder?.length) {
-      return Boolean(end?.key === null);
+      return true;
     }
 
     this.#end = undefined;
-    const data = await request(end.key);
+    const data = request(end.key);
+    if (data instanceof Promise) {
+      return data.then((page) =>
+        this.#append(end, page, request, renderer, sibling),
+      );
+    }
+    return this.#append(end, data, request, renderer, sibling);
+  }
 
+  #append(
+    end: Edge<K, V>,
+    data: RequestData<K, V>,
+    request: Request<K, V>,
+    renderer: Renderer<K, V>,
+    sibling: Sibling<K, V>,
+  ) {
     renderer(() => {
       const { rows, remainder } = this.#tile(
         [...end.remainder, ...data.items].filter(

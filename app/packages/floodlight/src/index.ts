@@ -142,7 +142,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   /**
-   * Mounts the spotlight into a container. Defers the initial fill to the next rAF so the element has a measurable rect. Throws if already attached.
+   * Mounts the spotlight into a container. Defers the initial fill to the next rAF so the element has a measurable rect, unless `peek` is set: then it measures and fills now. Throws if already attached.
    * @param elementOrElementId - The container element or its DOM id.
    */
   attach(elementOrElementId: HTMLElement | string): void {
@@ -166,23 +166,18 @@ export default class Spotlight<K, V> extends EventTarget {
     });
     observer.observe(this.#element);
     this.#aborter.signal.addEventListener("abort", () => observer.disconnect());
+    // wait for the primary dimension (height in vertical, width in horizontal)
+    const measure = () => {
+      this.#rect = this.#element.getBoundingClientRect();
+      return Boolean(this.#axis.primaryExtent(this.#rect));
+    };
     // Run in the next animation frame for a correct measurement;
-
     const fill = () =>
-      requestAnimationFrame(() => {
-        this.#rect = this.#element.getBoundingClientRect();
+      requestAnimationFrame(() => (measure() ? this.#fill() : fill()));
 
-        // wait for the primary dimension (height in vertical, width in horizontal)
-        if (this.#axis.primaryExtent(this.#rect)) {
-          this.#fill();
-          return;
-        }
-
-        // try again
-        fill();
-      });
-
-    fill();
+    // pages in memory lay out in this call, so the first paint has the tiles
+    if (this.#config.peek && measure()) this.#fill();
+    else fill();
   }
 
   /** Aborts all listeners, destroys both sections, and removes the element from the DOM. */
@@ -352,9 +347,8 @@ export default class Spotlight<K, V> extends EventTarget {
    * @returns A Request for use with {@link Section.next}.
    */
   #createRequest(reverse: boolean): Request<K, V> {
-    return async (key) => {
-      const { items, next, previous } = await this.#get(key);
-      return reverse
+    const shape = ({ items, next, previous }: Response<K, V>) =>
+      reverse
         ? {
             focus: this.#focus,
             items: [...items].reverse(),
@@ -362,6 +356,10 @@ export default class Spotlight<K, V> extends EventTarget {
             previous: next,
           }
         : { focus: this.#focus, items, next, previous };
+
+    return (key) => {
+      const page = this.#get(key);
+      return page instanceof Promise ? page.then(shape) : shape(page);
     };
   }
 
@@ -655,7 +653,21 @@ export default class Spotlight<K, V> extends EventTarget {
     );
   }
 
-  async #fill() {
+  /** Runs the fill steps, synchronously until a page is not in memory. */
+  #fill() {
+    const steps = this.#fillSteps();
+    const run = () => {
+      for (let step = steps.next(); !step.done; step = steps.next()) {
+        if (step.value instanceof Promise) {
+          step.value.then(run);
+          return;
+        }
+      }
+    };
+    run();
+  }
+
+  *#fillSteps(): Generator<boolean | Promise<boolean>> {
     this.#forward = new Section({
       at: this.#config.at?.description,
       config: this.#config,
@@ -665,7 +677,7 @@ export default class Spotlight<K, V> extends EventTarget {
     });
     this.#forward.attach(this.#element);
 
-    await this.#next(false);
+    yield this.#load(false, false);
     // `fill: false` short-circuits both auto-fill loops. We still
     // load page 0 above so the consumer renders something immediately;
     // subsequent pages arrive only via user-driven scroll.
@@ -674,10 +686,10 @@ export default class Spotlight<K, V> extends EventTarget {
         !this.#forward.finished &&
         this.#forward.primaryExtent < this.#height
       ) {
-        await this.#next(false);
+        yield this.#load(false, false);
       }
 
-      await this.#previous(false);
+      yield this.#load(true, false);
       // Fill backward too. If a seek lands near the end of the dataset
       // (e.g., cursor-mode pagination), the forward section may exhaust
       // before the viewport is covered. Keep pulling backward pages until
@@ -689,7 +701,7 @@ export default class Spotlight<K, V> extends EventTarget {
         this.#forward.primaryExtent + this.#backward.primaryExtent <
           this.#height
       ) {
-        await this.#previous(false);
+        yield this.#load(true, false);
       }
     }
     this.#render({
@@ -705,12 +717,19 @@ export default class Spotlight<K, V> extends EventTarget {
     }
   }
 
-  async #get(key: K): Promise<Response<K, V>> {
+  #get(key: K): Response<K, V> | Promise<Response<K, V>> {
     if (key === null) {
       return { items: [], next: null, previous: null };
     }
+    const page = this.#config.peek?.(key);
+    return page
+      ? this.#receive(key, page)
+      : this.#config.get(key).then((fetched) => this.#receive(key, fetched));
+  }
+
+  #receive(key: K, page: Response<K, V>): Response<K, V> {
     // copied: pages may be cached and shared with other instances
-    const result = { ...(await this.#config.get(key)) };
+    const result = { ...page };
     for (const { id } of result.items) {
       this.#keys.set(id, key);
     }
@@ -745,28 +764,26 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   /**
-   * Loads the next page into the forward section.
+   * Loads the next page into the backward (`reverse`) or forward section,
+   * synchronously when the page is in memory.
    * @param render - When `false`, skips rAF-gated DOM updates; used during the initial fill.
    */
-  async #next(render = true) {
-    const ref = { section: this.#forward };
-    return await ref.section.next(
-      this.#createRequest(false),
-      this.#createRenderer(false, render),
+  #load(reverse: boolean, render: boolean) {
+    const ref = { section: reverse ? this.#backward : this.#forward };
+    return ref.section.next(
+      this.#createRequest(reverse),
+      this.#createRenderer(reverse, render),
       this.#createSibling(ref),
     );
   }
 
-  /**
-   * Loads the previous page into the backward section.
-   * @param render - When `false`, skips rAF-gated DOM updates; used during the initial fill.
-   */
-  async #previous(render = true) {
-    const ref = { section: this.#backward };
-    return await ref.section.next(
-      this.#createRequest(true),
-      this.#createRenderer(true, render),
-      this.#createSibling(ref),
-    );
+  /** Loads the next page into the forward section. */
+  async #next() {
+    return await this.#load(false, true);
+  }
+
+  /** Loads the previous page into the backward section. */
+  async #previous() {
+    return await this.#load(true, true);
   }
 }

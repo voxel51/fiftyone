@@ -3,7 +3,7 @@ import * as foq from "@fiftyone/relay";
 import type { ID, Response } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import type { Schema } from "@fiftyone/utilities";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import type { VariablesOf } from "react-relay";
 import { fetchQuery, useRelayEnvironment } from "react-relay";
@@ -85,7 +85,12 @@ const useSpotlightPager = ({
   const pager = useReverbValue(pageSelector);
   const zoom = useReverbValue(zoomSelector);
   const handleError = useErrorHandler();
-  const store: SampleStore = useMemo(() => new WeakMap(), []);
+  // held with the panel's pages, whose items it resolves
+  const store: SampleStore = usePanelMemo(
+    "store",
+    clearRecords,
+    () => new WeakMap(),
+  );
   const handleTimeout = useTimeout();
 
   const keys = useRef(new Set<string>());

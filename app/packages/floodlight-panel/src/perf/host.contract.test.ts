@@ -220,3 +220,42 @@ describe("host contracts: first load", () => {
     expect(mounted.unshownAtSwap.get("i0")).toEqual([]);
   });
 });
+
+describe("host contracts: remount", () => {
+  test("pages in memory lay out and reattach their lookers in the first build's call", async () => {
+    const first = await setup();
+    const label = first.current ?? "";
+    const shown = first.looker.tiles(label).sort();
+    const anchor = first.host.anchor;
+    first.host.destroy();
+    first.container.remove();
+
+    const second = mountHost({ remount: first });
+    second.host.rebuild(anchor);
+
+    // no frame or microtask has run
+    expect(second.current).toBe("i0");
+    expect(second.looker.tiles("i0").sort()).toEqual(shown);
+    expect(second.looker.counts("i0")).toEqual({
+      creates: 0,
+      reattaches: shown.length,
+      resizes: 0,
+      skipped: 0,
+    });
+    expect(second.looker.blank("i0")).toEqual([]);
+    expect(second.fetches.total).toBe(0);
+  });
+
+  test("pages not in memory are fetched asynchronously", async () => {
+    const mounted = mountHost();
+    mounted.host.rebuild();
+
+    expect(mounted.current).toBeUndefined();
+    expect(mounted.looker.tiles("i0")).toEqual([]);
+
+    env.resize(SIZE);
+    await env.idle();
+    expect(mounted.current).toBe("i0");
+    expect(mounted.looker.tiles("i0").length).toBe(30);
+  });
+});

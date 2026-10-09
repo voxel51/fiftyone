@@ -1,6 +1,7 @@
+import type { Response } from "@fiftyone/floodlight";
 import { type Anchor, type BuildContext, createHost } from "../host/createHost";
 import { createOwnership, type Scoped } from "../host/ownership";
-import { createPageSource } from "../host/pageSource";
+import { createPageSource, type PageSource } from "../host/pageSource";
 import { createGridRenderer } from "../Grid/gridRenderer";
 import { handOff } from "../Grid/handoff";
 import { createCacheRenderer } from "./cacheRenderer";
@@ -14,30 +15,42 @@ import {
 } from "./mount";
 
 type Data = FakeItem["data"];
+type Page = Response<number, Data>;
+
+interface Remount {
+  fetches: ReturnType<typeof countCalls<number, Page>>;
+  looker: ReturnType<typeof createCacheRenderer<number, Data>>;
+  source: PageSource<number, Page>;
+}
 
 /**
  * A real host over real engine instances, wired with the same modules as
  * `Grid.tsx`: `createGridRenderer` per build and `handOff` at each swap, over
  * one page source and one ownership map, counted on the way. `log` records
- * builds, loads and disposals.
+ * builds, loads and disposals. `remount` passes an earlier mount's pages and
+ * lookers, as the panel's memory does when the grid mounts again.
  */
 export const mountHost = ({
   axis = "width",
   config = {},
   pages = createFakePages({ pages: 10, perPage: 20 }),
+  remount,
   scoped = true,
 }: {
   axis?: "width" | "height";
   config?: Partial<EngineOptions>;
   pages?: ReturnType<typeof createFakePages>;
+  remount?: Remount;
   scoped?: boolean;
 } = {}) => {
   const container = createContainer();
-  const fetches = countCalls(pages.fetch);
-  const source = createPageSource(fetches.fn, {
-    ids: (page) => page.items.map((item) => item.id.description),
-  });
-  const looker = createCacheRenderer<number, Data>();
+  const fetches = remount?.fetches ?? countCalls(pages.fetch);
+  const source =
+    remount?.source ??
+    createPageSource(fetches.fn, {
+      ids: (page) => page.items.map((item) => item.id.description),
+    });
+  const looker = remount?.looker ?? createCacheRenderer<number, Data>();
   const renderer = createCountingRenderer<number, Data>(looker);
   const ownership = createOwnership();
   const labels = new Map<Engine, string>();
@@ -82,6 +95,7 @@ export const mountHost = ({
       key: anchor?.key ?? 0,
       at: anchor?.at,
       get: (key) => source.get(key),
+      peek: host.instance ? undefined : (key) => source.peek(key),
       ...(scoped ? grid : counted),
       ...config,
     });

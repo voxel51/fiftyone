@@ -1,12 +1,13 @@
 import styles from "./Grid.module.css";
 
-import Spotlight from "@fiftyone/floodlight";
+import Spotlight, { type Response } from "@fiftyone/floodlight";
 import * as fos from "@fiftyone/state";
 import { Pending } from "@fiftyone/components";
 import clsx from "clsx";
 import { freeVideos } from "@fiftyone/looker";
 import React, {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useContext,
@@ -28,7 +29,6 @@ import {
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./atoms";
-import { createPageSource } from "../host/pageSource";
 import { createOwnership } from "../host/ownership";
 import { SLOT } from "../host/createHost";
 import useHost from "../host/useHost";
@@ -49,6 +49,7 @@ import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
 import useRail from "../rail/useRail";
+import usePageSource from "./usePageSource";
 import usePanelMemo from "./panelMemory";
 import Storm from "./Storm";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
@@ -109,13 +110,15 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const swimlaneAspect = useSwimlanes
     ? Math.max(1, -(zoomValue ?? -3))
     : undefined;
+  const aspectRatioOverride = swimlaneAspect ?? (squareTiles ? 1 : undefined);
+  const crop = useReverbValue(gridCrop);
 
   const { page, store } = useSpotlightPager({
     clearRecords: reset,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,
-    aspectRatioOverride: swimlaneAspect ?? (squareTiles ? 1 : undefined),
+    aspectRatioOverride,
   });
 
   const standardRenderer = useRenderer({ cache, id, records, store });
@@ -145,16 +148,14 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const refs = React.useRef({ get, page, renderers });
   refs.current = { get, page, renderers };
 
-  // pages outlive instances, so a rebuild at a new size reads from memory
+  // pages outlive instances and mounts, so a rebuild at a new size or a
+  // return from a sample's page reads from memory; the key is what the pages
+  // were fetched with
   const excluded = useRef(new Set<string>());
-  const source = useMemo(
-    () =>
-      createPageSource(
-        (key: number) =>
-          page(key).then((result) => excluding(result, excluded.current)),
-        { ids: (result) => result.items.map((item) => item.id.description) },
-      ),
-    [page],
+  const source = usePageSource(
+    JSON.stringify([reset, pageReset, crop, aspectRatioOverride ?? null]),
+    (key) => page(key).then((result) => excluding(result, excluded.current)),
+    (result) => result.items.map((item) => item.id.description),
   );
 
   // a click opens the sample; its page steps through the pages held above
@@ -207,6 +208,10 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         sizes: lastSizes.current,
       });
       const loaded = { items: 0 };
+      const toPage = (result: Response<number, fos.Sample>) => {
+        loaded.items += result.items.length;
+        return withRowAspects(result, aspects);
+      };
       const next = new Spotlight<number, fos.Sample>({
         key: anchor?.key ?? 0,
         at: anchor?.at,
@@ -222,11 +227,15 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         // swimlane rows abut so the view reads as one continuous stack
         spacing: useSwimlanes ? 0 : spacing,
         onItemClick: (item) => setSampleRef.current(item),
-        get: (key) =>
-          sourceRef.current.get(key).then((p) => {
-            loaded.items += p.items.length;
-            return withRowAspects(p, aspects);
-          }),
+        get: (key) => sourceRef.current.get(key).then(toPage),
+        // nothing on screen (a mount): pages in memory lay out before paint;
+        // a rebuild behind a visible instance keeps its asynchronous swap
+        peek: hostRef.current?.instance
+          ? undefined
+          : (key) => {
+              const result = sourceRef.current.peek(key);
+              return result && toPage(result);
+            },
         // swimlanes and strips place one item per row
         rowAspectRatioThreshold: useSwimlanes || strip ? () => 0 : zoom,
       });
@@ -350,7 +359,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   // whether this panel's grid has shown this data, across mounts: returning
   // from a sample's page shows the grid, not the storm
   const loaded = usePanelMemo("loaded", pageReset, () => ({ current: false }));
-  useEffect(() => {
+  // a layout effect, so a mount's first build paints with the mount
+  useLayoutEffect(() => {
     if (lastPageReset.current !== pageReset) {
       lastPageReset.current = pageReset;
       if (lastItemsReset.current === itemsReset) {
