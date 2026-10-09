@@ -2,6 +2,14 @@ name: Test e2e
 
 on:
   workflow_call:
+    secrets:
+      # Read-only Docker Hub account for the `mongo` service pulls, so they
+      # count against our account instead of the runner's shared IP. Forked PRs
+      # get no secrets, and the runner falls back to an anonymous pull.
+      RO_DOCKERHUB_USERNAME:
+        required: false
+      RO_DOCKERHUB_PAT:
+        required: false
 jobs:
   prepare-e2e:
     timeout-minutes: 45
@@ -220,6 +228,9 @@ jobs:
       # health checks and retries.
       mongo:
         image: mongo:${{ matrix.mongodb-version }}
+        credentials:
+          username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.RO_DOCKERHUB_PAT }}
         ports:
           - 27017:27017
         options: >-
@@ -339,6 +350,9 @@ jobs:
     services:
       mongo:
         image: mongo:latest
+        credentials:
+          username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.RO_DOCKERHUB_PAT }}
         ports:
           - 27017:27017
         options: >-
