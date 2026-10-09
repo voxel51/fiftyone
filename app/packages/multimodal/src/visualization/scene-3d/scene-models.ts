@@ -87,9 +87,9 @@ async function loadSceneModel(url: string): Promise<THREE.Object3D> {
   const resolvedUrl = await resolveUrl(url);
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   loader.register((parser) => ({
-    name: "FIFTYONE_cloud_model_resources",
+    name: "FIFTYONE_model_resources",
     // Resolve before Three.js starts loading dependencies. Relative resources
-    // belong to the original cloud directory, not the signed HTTP URL.
+    // belong to the original model directory, not the resolved HTTP URL.
     beforeRoot: async () => {
       const json: {
         buffers?: { uri?: string }[];

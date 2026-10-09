@@ -1,2 +1,2 @@
 export * from "./visualization-registry";
-export { registerSceneModelCloudResolver } from "./scene-3d/scene-model-urls";
+export { registerSceneModelUrlResolver } from "./scene-3d/scene-model-urls";

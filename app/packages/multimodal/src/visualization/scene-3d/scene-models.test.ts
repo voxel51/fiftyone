@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createSceneModelUrlResolver,
-  registerSceneModelCloudResolver,
+  registerSceneModelUrlResolver,
 } from "./scene-model-urls";
 import { loadSceneModelAsset } from "./scene-models";
 
@@ -13,21 +13,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("cloud scene models", () => {
+describe("scene model URL resolution", () => {
   it.each(["gs", "s3", "az"])(
-    "signs %s models and their relative resources",
+    "resolves %s models and their relative resources",
     async (scheme) => {
-      const sign = vi.fn(
+      const provider = vi.fn(
         async (path: string) =>
           `https://signed.example/${encodeURIComponent(path)}`,
       );
-      unregister = registerSceneModelCloudResolver(sign);
+      unregister = registerSceneModelUrlResolver(provider);
       const model = `${scheme}://bucket/models/robot.gltf`;
       const resolve = createSceneModelUrlResolver(model);
       await resolve(model);
       await Promise.all([resolve("../mesh.bin"), resolve("../mesh.bin")]);
       await resolve("textures/base.png");
-      expect(sign.mock.calls.map(([path]) => path)).toEqual([
+      expect(provider.mock.calls.map(([path]) => path)).toEqual([
         model,
         `${scheme}://bucket/mesh.bin`,
         `${scheme}://bucket/models/textures/base.png`,
@@ -35,9 +35,9 @@ describe("cloud scene models", () => {
     },
   );
 
-  it("preserves browser URLs and resolves explicit cloud dependencies of inline models", async () => {
-    const sign = vi.fn(async () => "https://signed.example/texture.png");
-    unregister = registerSceneModelCloudResolver(sign);
+  it("preserves browser URLs and resolves storage-backed dependencies of inline models", async () => {
+    const provider = vi.fn(async () => "https://signed.example/texture.png");
+    unregister = registerSceneModelUrlResolver(provider);
     const resolve = createSceneModelUrlResolver("blob:model");
     for (const uri of [
       "https://example.com/a?signature=x",
@@ -47,33 +47,33 @@ describe("cloud scene models", () => {
     ]) {
       expect(await resolve(uri)).toBe(uri);
     }
-    expect(sign).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
     expect(await resolve("az://bucket/texture.png")).toBe(
       "https://signed.example/texture.png",
     );
   });
 
-  it("reports unavailable signing and invalid signing responses", async () => {
+  it("reports missing resolvers and unsupported response URLs", async () => {
     await expect(
       createSceneModelUrlResolver("gs://bucket/a.glb")("gs://bucket/a.glb"),
-    ).rejects.toThrow("require a cloud-storage URL resolver");
-    unregister = registerSceneModelCloudResolver(
+    ).rejects.toThrow("require a URL resolver");
+    unregister = registerSceneModelUrlResolver(
       async () => "gs://still-private/a.glb",
     );
     await expect(
       createSceneModelUrlResolver("gs://bucket/a.glb")("gs://bucket/a.glb"),
-    ).rejects.toThrow("valid signed model URL");
+    ).rejects.toThrow("must return an HTTP(S) URL");
   });
 
   it.each(["gltf", "glb"])(
-    "loads a real %s mesh using separately signed model and buffer URLs",
+    "loads a real %s mesh using resolved model and buffer URLs",
     async (extension) => {
-      const sign = vi.fn(async (path: string) =>
+      const provider = vi.fn(async (path: string) =>
         !path.endsWith(".bin")
           ? "https://signed.example/model?token=model"
           : "https://signed.example/buffer?token=buffer",
       );
-      unregister = registerSceneModelCloudResolver(sign);
+      unregister = registerSceneModelUrlResolver(provider);
       const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]);
       const gltf = {
         asset: { version: "2.0" },
@@ -105,14 +105,14 @@ describe("cloud scene models", () => {
       });
       vi.stubGlobal("fetch", fetch);
       const asset = {
-        cacheKey: `test:cloud-triangle:${extension}`,
+        cacheKey: `test:resolved-triangle:${extension}`,
         url: `gs://bucket/models/triangle.${extension}`,
       };
       const first = loadSceneModelAsset(asset);
       expect(loadSceneModelAsset(asset)).toBe(first);
       const scene = await first;
       expect(scene.children[0].type).toBe("Mesh");
-      expect(sign.mock.calls.map(([path]) => path)).toEqual([
+      expect(provider.mock.calls.map(([path]) => path)).toEqual([
         asset.url,
         "gs://bucket/geometry.bin",
       ]);
@@ -120,12 +120,12 @@ describe("cloud scene models", () => {
     },
   );
 
-  it("signs again after a failed load so a retry can recover", async () => {
-    const sign = vi
+  it("resolves again after a failed load so a retry can recover", async () => {
+    const provider = vi
       .fn()
       .mockRejectedValueOnce(new Error("Expired credentials"))
       .mockResolvedValue("https://signed.example/retry.glb");
-    unregister = registerSceneModelCloudResolver(sign);
+    unregister = registerSceneModelUrlResolver(provider);
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -136,7 +136,7 @@ describe("cloud scene models", () => {
       ),
     );
     const asset = {
-      cacheKey: "test:retry-cloud-model",
+      cacheKey: "test:retry-model",
       url: "s3://bucket/retry.glb",
     };
     await expect(loadSceneModelAsset(asset)).rejects.toThrow(
@@ -145,7 +145,7 @@ describe("cloud scene models", () => {
     await expect(loadSceneModelAsset(asset)).resolves.toMatchObject({
       type: "Group",
     });
-    expect(sign).toHaveBeenCalledTimes(2);
+    expect(provider).toHaveBeenCalledTimes(2);
   });
 });
 

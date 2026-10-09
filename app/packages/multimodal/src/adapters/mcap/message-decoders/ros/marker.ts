@@ -496,11 +496,7 @@ function markerModel(
 
   return {
     color,
-    mediaType: url.startsWith("data:")
-      ? mediaTypeFromDataUri(url)
-      : /\.gltf(?:[?#]|$)/i.test(url)
-        ? "model/gltf+json"
-        : "model/gltf-binary",
+    mediaType: meshResourceMediaType(url),
     overrideColor: !booleanField(marker, "mesh_use_embedded_materials"),
     pose,
     scale,
@@ -551,7 +547,7 @@ function markerMetadata(
     metadata.meshResource = meshResource;
     if (!isSupportedMeshResource(meshResource)) {
       metadata.unsupportedReason =
-        "Only inline data: or HTTP(S)/cloud glTF and GLB mesh resources are supported";
+        "Only inline data: or remote glTF and GLB mesh resources are supported";
     }
   }
 
@@ -677,7 +673,12 @@ function transformPointByPose(
   return [transformed.x, transformed.y, transformed.z];
 }
 
-function mediaTypeFromDataUri(uri: string): string {
+function meshResourceMediaType(uri: string): string {
+  if (!uri.startsWith("data:")) {
+    return /\.gltf(?:[?#]|$)/i.test(uri)
+      ? "model/gltf+json"
+      : "model/gltf-binary";
+  }
   const match = /^data:([^;,]+)/.exec(uri);
   return match?.[1] || "model/gltf-binary";
 }
