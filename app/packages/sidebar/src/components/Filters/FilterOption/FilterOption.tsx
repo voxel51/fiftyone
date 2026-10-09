@@ -1,5 +1,4 @@
-import { Tooltip } from "@fiftyone/components";
-import { IconButton } from "@mui/material";
+import { cssVar, Tooltip } from "@voxel51/voodo";
 import Color from "color";
 import React from "react";
 import type { ReverbState } from "@fiftyone/reverb";
@@ -21,10 +20,13 @@ const FilterOptionContainer = styled.div`
 `;
 
 const FilterMode = styled.div`
-  background-color: ${({ theme }) => theme.background.level3};
+  background-color: ${cssVar.color.bg.popover};
   &:hover {
-    background-color: ${({ theme }) =>
-      Color(theme.background.level3).alpha(0.5).string()};
+    background-color: color-mix(
+      in srgb,
+      ${cssVar.color.bg.popover} 50%,
+      transparent
+    );
   }
   width: 100%;
   display: flex;
@@ -68,16 +70,16 @@ const FilterOption: React.FC<Props> = ({
           data-cy="filter-mode-div"
           onClick={() => !open && setOpen(true)}
         >
-          <IconButton sx={{ color, size: "small" }}>
-            <Selected
-              filterKey={filterKey}
-              options={options}
-              visibilityKey={visibilityKey}
-            />
-          </IconButton>
+          <Selected
+            color={color}
+            filterKey={filterKey}
+            options={options}
+            visibilityKey={visibilityKey}
+          />
           <Tooltip
-            text={selected ?? ""}
-            placement={modal ? "left-start" : "right-start"}
+            content={selected ?? ""}
+            anchor={modal ? "left" : "right"}
+            style={{ display: "flex", minWidth: 0 }}
           >
             <Text
               onClick={() => setOpen(!open)}

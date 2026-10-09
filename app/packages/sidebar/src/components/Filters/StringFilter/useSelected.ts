@@ -7,7 +7,6 @@ import {
 import { isBooleanField } from "../state";
 import { CHECKBOX_LIMIT } from "../utils";
 import type { Result } from "./Result";
-import useUseSearch from "./useUseSearch";
 
 export type ResultsAtom = ReverbValue<{
   results: Result[];
@@ -21,7 +20,6 @@ export default function (
 ) {
   const resultsLoadable = useReverbValueLoadable(resultsAtom);
   const boolean = useReverbValue(isBooleanField(path));
-  const useSearch = useUseSearch({ modal, path });
   const queryPerformance = useReverbValue(fos.queryPerformance);
   const id = useReverbValue(fos.isObjectIdField(path));
   if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
@@ -36,10 +34,12 @@ export default function (
 
   return {
     results,
-    useSearch:
-      path === "_label_tags" && queryPerformance && !isFrameField && !modal
-        ? undefined
-        : useSearch,
+    searchable: !(
+      path === "_label_tags" &&
+      queryPerformance &&
+      !isFrameField &&
+      !modal
+    ),
     showSearch: Boolean(shown) && !boolean,
   };
 }

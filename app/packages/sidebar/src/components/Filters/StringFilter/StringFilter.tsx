@@ -1,7 +1,6 @@
-import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { COLOR_BY } from "@fiftyone/utilities";
-import React from "react";
+import { cssVar } from "@voxel51/voodo";
 import { type ReverbState, useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
@@ -9,18 +8,17 @@ import { isInKeypointsField } from "../state";
 import useIncompleteResults from "../use-incomplete-results";
 import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
-import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
-import ResultComponent from "./Result";
+import Search from "./Search";
 import useOnSelect from "./useOnSelect";
 import type { ResultsAtom } from "./useSelected";
 import useSelected from "./useSelected";
 
 const StringFilterContainer = styled.div`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
+  background: ${cssVar.color.bg.background};
+  border: 1px solid ${cssVar.color.border.default};
   border-radius: 2px;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
   position: relative;
@@ -81,7 +79,7 @@ const StringFilter = ({
   const valueColor = coloringBy === COLOR_BY.VALUE ? schemeColor : undefined;
   const isFilterMode = useReverbValue(fos.isSidebarFilterMode);
   const field = useReverbValue(fos.field(path));
-  const { results, showSearch, useSearch } = useSelected(
+  const { results, showSearch, searchable } = useSelected(
     modal,
     path,
     resultsAtom,
@@ -89,8 +87,6 @@ const StringFilter = ({
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useReverbValue(isInKeypointsField(path)) && name === "points";
-  const theme = useTheme();
-
   const footer = useIncompleteResults(path);
   const icon = useQueryPerformanceIcon(modal, named, path, color);
   const attributeIcon = useLabelAttributeIcon(modal, named, path, color);
@@ -122,24 +118,15 @@ const StringFilter = ({
       )}
       <StringFilterContainer onMouseDown={(event) => event.stopPropagation()}>
         {showSearch && !skeleton && (
-          <Selector
-            useSearch={useSearch}
+          <Search
+            footer={footer}
+            modal={modal}
+            onSelect={onSelect}
+            path={path}
             placeholder={`+ ${
               isFilterMode ? "filter" : "set visibility"
             } by ${name}`}
-            cy={`sidebar-search-${path}`}
-            component={ResultComponent}
-            onSelect={onSelect}
-            inputStyle={{
-              color: theme.text.secondary,
-              fontSize: "1rem",
-              width: "100%",
-            }}
-            footer={footer}
-            containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-            toKey={(value) => String(value.value)}
-            id={path}
-            DuringSuspense={withQueryPerformanceTimeout(modal, path)}
+            searchable={searchable}
           />
         )}
         <Checkboxes
@@ -156,13 +143,6 @@ const StringFilter = ({
       </StringFilterContainer>
     </NamedStringFilterContainer>
   );
-};
-
-const withQueryPerformanceTimeout = (modal: boolean, path: string) => {
-  return ({ children }: React.PropsWithChildren) => {
-    useQueryPerformanceTimeout(modal, path);
-    return <>{children}</>;
-  };
 };
 
 export default StringFilter;

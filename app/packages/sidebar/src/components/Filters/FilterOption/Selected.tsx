@@ -1,13 +1,16 @@
 import { isSidebarFilterMode } from "@fiftyone/state";
+import { IconAction, Size } from "@voxel51/voodo";
 import { useReverbValue } from "@fiftyone/reverb";
 import { getIcon } from "./FilterItem";
 import { Option, OptionKey } from "./useOptions";
 
 const Selected = ({
+  color,
   filterKey,
   options,
   visibilityKey,
 }: {
+  color: string;
   filterKey: OptionKey;
   options: Option[];
   visibilityKey: OptionKey;
@@ -15,12 +18,19 @@ const Selected = ({
   // render the icon for selected filter method
 
   const isFilterMode = useReverbValue(isSidebarFilterMode);
-  const icon = options.find(
+  const option = options.find(
     (o) => o.key === (isFilterMode ? filterKey : visibilityKey),
-  )?.icon;
-  if (!icon) return <>{isFilterMode ? filterKey : visibilityKey}</>;
+  );
+  if (!option?.icon) return <>{isFilterMode ? filterKey : visibilityKey}</>;
 
-  return getIcon(icon);
+  return (
+    <IconAction
+      icon={getIcon(option.icon)}
+      size={Size.Lg}
+      aria-label={option.value}
+      style={{ color }}
+    />
+  );
 };
 
 export default Selected;

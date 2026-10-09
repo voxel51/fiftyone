@@ -1,4 +1,4 @@
-import { LoadingDots } from "@fiftyone/components";
+import { LoadingDots } from "@voxel51/voodo";
 import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";

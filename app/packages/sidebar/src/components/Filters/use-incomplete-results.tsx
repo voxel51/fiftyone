@@ -1,5 +1,4 @@
 import { LaunchIcon } from "@voxel51/voodo";
-import { ExternalLink, useTheme } from "@fiftyone/components";
 import {
   datasetSampleCount,
   pathHasIndexes,
@@ -8,14 +7,14 @@ import {
 } from "@fiftyone/state";
 import { useReverbValue } from "@fiftyone/reverb";
 import { QUERY_PERFORMANCE_RESULTS } from "@fiftyone/utilities";
+import { ExternalLink } from "../../utils/generic";
 
 const IncompleteResults = () => {
-  const theme = useTheme();
   return (
     <div style={{ textAlign: "right" }}>
       Incomplete search.{" "}
       <ExternalLink
-        style={{ color: theme.text.primary, textDecoration: "underline" }}
+        style={{ textDecoration: "underline" }}
         href={QUERY_PERFORMANCE_RESULTS}
       >
         create an index

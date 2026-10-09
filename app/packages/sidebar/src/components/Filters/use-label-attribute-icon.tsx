@@ -1,5 +1,4 @@
-import { VisibilityIcon, VisibilityOffIcon } from "@voxel51/voodo";
-import { useTheme } from "@fiftyone/components";
+import { TextColor, VisibilityIcon, VisibilityOffIcon } from "@voxel51/voodo";
 import * as fos from "@fiftyone/state";
 
 const STYLE = {
@@ -21,7 +20,6 @@ export const AttributeEye = ({
   isShown: boolean;
   onToggle: () => void;
 }) => {
-  const theme = useTheme();
   const title = `${isShown ? "Hide" : "Show"} ${attribute} in overlays`;
   const Eye = isShown ? VisibilityIcon : VisibilityOffIcon;
 
@@ -46,10 +44,8 @@ export const AttributeEye = ({
     >
       <Eye
         size={16}
-        style={{
-          ...STYLE,
-          color: isShown ? color : theme.text.secondary,
-        }}
+        color={isShown ? color : TextColor.Secondary}
+        style={STYLE}
       />
     </button>
   );

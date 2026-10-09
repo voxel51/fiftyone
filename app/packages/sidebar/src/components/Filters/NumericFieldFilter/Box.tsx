@@ -1,12 +1,12 @@
-import { LoadingDots } from "@fiftyone/components";
+import { cssVar, LoadingDots } from "@voxel51/voodo";
 import React from "react";
 import styled from "styled-components";
 
 const BoxDiv = styled.div`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
+  background: ${cssVar.color.bg.background};
+  border: 1px solid ${cssVar.color.border.default};
   border-radius: 2px;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
 `;

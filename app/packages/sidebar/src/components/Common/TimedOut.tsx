@@ -10,7 +10,7 @@ const TimedOut = ({ queryTime }: { queryTime: number }) => {
       }}
     >
       <Tooltip
-        wrapperClassName="flex"
+        style={{ display: "flex" }}
         content={`Count query timed out at ${queryTime} second${
           queryTime > 1 ? "s" : ""
         }`}

@@ -2,13 +2,15 @@ import {
   FilterAltIcon,
   FilterAltOffIcon,
   HideImageIcon,
+  IconAction,
+  type IconProps,
   ImageIcon,
+  Size,
+  Tooltip,
   VisibilityIcon,
   VisibilityOffIcon,
 } from "@voxel51/voodo";
-import { Tooltip } from "@fiftyone/components";
-import IconButton from "@mui/material/IconButton";
-import type { ForwardedRef } from "react";
+import type { FC, ForwardedRef } from "react";
 import React from "react";
 import styled from "styled-components";
 
@@ -23,10 +25,8 @@ type ItemProp = {
 
 const StyledPanelItem = styled.div<{ color?: string }>`
   cursor: pointer;
-  background-color: ${({ theme }) => theme.background.secondary};
   &:hover {
-    background-color: ${({ color, theme }) =>
-      color ?? theme.background.secondary};
+    background-color: ${({ color }) => color ?? "transparent"};
   }
 `;
 
@@ -35,20 +35,20 @@ const Text = styled.div`
   margin: auto auto auto 5px;
 `;
 
-export const getIcon = (icon: string) => {
+export const getIcon = (icon: string): FC<IconProps> => {
   switch (String(icon).toLowerCase()) {
     case "filteralticon":
-      return <FilterAltIcon size={20} />;
+      return FilterAltIcon;
     case "filteraltofficon":
-      return <FilterAltOffIcon size={20} />;
+      return FilterAltOffIcon;
     case "imageicon":
-      return <ImageIcon size={20} />;
+      return ImageIcon;
     case "hideimageicon":
-      return <HideImageIcon size={20} />;
+      return HideImageIcon;
     case "visibilityicon":
-      return <VisibilityIcon size={20} />;
+      return VisibilityIcon;
     case "visibilityofficon":
-      return <VisibilityOffIcon size={20} />;
+      return VisibilityOffIcon;
 
     default:
       throw new Error(`no icon for ${icon}`);
@@ -61,7 +61,7 @@ function TooltipWrapper({
 }: React.PropsWithChildren<{ tooltip?: string }>) {
   if (tooltip) {
     return (
-      <Tooltip text={tooltip} placement="right-start">
+      <Tooltip content={tooltip} anchor="right">
         {children}
       </Tooltip>
     );
@@ -95,7 +95,12 @@ const Item = React.forwardRef(
             data-cy={`filter-option-${id}`}
           >
             {icon ? (
-              <IconButton sx={{ color: color }}>{getIcon(icon!)}</IconButton>
+              <IconAction
+                icon={getIcon(icon)}
+                size={Size.Lg}
+                aria-label={value}
+                style={{ color }}
+              />
             ) : null}
 
             <Text>{value}</Text>

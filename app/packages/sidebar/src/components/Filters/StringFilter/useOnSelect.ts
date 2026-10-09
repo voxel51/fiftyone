@@ -1,4 +1,3 @@
-import { SelectorValidationError } from "@fiftyone/components";
 import { isObjectIdField, snackbarErrors } from "@fiftyone/state";
 import { isObjectIdString } from "@fiftyone/utilities";
 import { type ReverbState, useReverbCallback } from "@fiftyone/reverb";
@@ -17,7 +16,7 @@ export default function (
           set(snackbarErrors, [
             `${value} is not a 24 character hexadecimal string`,
           ]);
-          throw new SelectorValidationError();
+          return false;
         }
 
         const selected = new Set(await snapshot.getPromise(selectedAtom));
@@ -27,7 +26,7 @@ export default function (
         selected.add(value);
         set(selectedAtom, [...selected].sort());
 
-        return "";
+        return true;
       },
     [modal, path, selectedAtom],
   );

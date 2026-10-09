@@ -13,7 +13,15 @@ const Link = styled.a`
 
 export const ExternalLink = ({ href, ...props }) => {
   const onClick = useExternalLink(href);
-  return <Link {...props} href={href} target="_blank" onClick={onClick} />;
+  return (
+    <Link
+      {...props}
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={onClick}
+    />
+  );
 };
 
 export const prettify = (
