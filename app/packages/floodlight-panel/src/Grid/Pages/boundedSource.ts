@@ -69,6 +69,10 @@ export const createBoundedSource = <P extends Linked>(
       return source.active;
     },
     invalidate: (keys) => source.invalidate(keys),
+    warm: (key) => {
+      if (inRange(key, range())) source.warm(key);
+    },
+    dispose: () => source.dispose(),
     takeRemoved: () => source.takeRemoved(),
     subscribe: (listener) => source.subscribe(listener),
   };

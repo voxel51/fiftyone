@@ -6,6 +6,7 @@ import { Pending } from "@fiftyone/components";
 import clsx from "clsx";
 import { freeVideos } from "@fiftyone/looker";
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -59,6 +60,7 @@ import usePanelMemo from "./panelMemory";
 import Storm from "./Storm";
 import useSwimlaneRenderer from "./useSwimlaneRenderer";
 import useUpdates from "./useUpdates";
+import { warmKeys } from "./warming";
 import useZoomSetting, { useSettledZoom } from "./useZoomSetting";
 
 const MAX_INSTANCES = 200;
@@ -172,6 +174,17 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const refs = React.useRef({ get, page, renderers });
   refs.current = { get, page, renderers };
 
+  // a landed page warms its neighbor, except while the rail is dragged
+  const dragging = useRef(false);
+  const mode = useRef(order.mode);
+  mode.current = order.mode;
+  const warm = (key: number, start: number, result: Page) => {
+    if (dragging.current) return;
+    for (const next of warmKeys(key, start, result, mode.current)) {
+      sourceRef.current.warm(next);
+    }
+  };
+
   // pages outlive instances and mounts, so a rebuild at a new size or a
   // return from a sample's page reads from memory; the key is what the pages
   // were fetched with
@@ -270,6 +283,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       const lease = sourceRef.current.lease(
         quiet && shown ? leases.current.get(shown) : undefined,
       );
+      const first = anchor?.key ?? 0;
       const toPage = (result: Response<number, fos.Sample>) => {
         loaded.items += result.items.length;
         if (autosized && tiled && start === undefined) {
@@ -278,7 +292,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         return withRowAspects(result, aspects);
       };
       const next = new Spotlight<number, fos.Sample>({
-        key: anchor?.key ?? 0,
+        key: first,
         at: anchor?.at,
 
         ...scoped,
@@ -293,7 +307,11 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         // swimlane rows abut so the view reads as one continuous stack
         spacing: useSwimlanes ? 0 : spacing,
         onItemClick: (item) => setSampleRef.current(item),
-        get: (key) => lease.get(key).then(toPage),
+        get: (key) =>
+          lease.get(key).then((result) => {
+            warm(key, first, result);
+            return toPage(result);
+          }),
         // nothing on screen (a mount) or a quiet rebuild: pages in memory lay
         // out before paint; a rebuild behind a visible instance keeps its
         // asynchronous swap
@@ -402,6 +420,13 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     sequences: records,
   });
   const railVisible = rail.mode.kind === "offset" || rail.mode.kind === "value";
+  const onRailDrag = useCallback(
+    (next: boolean) => {
+      dragging.current = next;
+      next && source.dispose();
+    },
+    [source],
+  );
 
   // a setting that changes layout means a new instance, at the saved location
   const settings = useMemo(
@@ -522,7 +547,12 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
           <Pending />
         </div>
       )}
-      <GridRail horizontal={strip} loading={pending} rail={rail} />
+      <GridRail
+        horizontal={strip}
+        loading={pending}
+        onDrag={onRailDrag}
+        rail={rail}
+      />
       {paged && (
         <GridPagesBar
           grid={container}

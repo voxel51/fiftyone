@@ -1,5 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
-import { createPageSource } from "./pageSource";
+import {
+  CACHED_ITEMS,
+  createPageSource,
+  MAX_WARMED,
+  PAGE_CAPACITY,
+  PAGE_SIZE,
+} from "./pageSource";
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -377,5 +383,144 @@ describe("work in flight", () => {
       expect(source.peek(key) !== undefined).toBe(kept.includes(key));
     }
     expect(source.size).toBe(6);
+  });
+});
+
+describe("bounds", () => {
+  test("the default capacity is counted in samples", () => {
+    expect(PAGE_CAPACITY * PAGE_SIZE).toBe(CACHED_ITEMS);
+    expect(Number.isInteger(PAGE_CAPACITY)).toBe(true);
+  });
+});
+
+describe("warming", () => {
+  const flush = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+
+  test("runs one warm at a time, and only while two slots are free", () => {
+    const { fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 4 });
+    const lease = source.lease();
+    lease.get(0);
+    lease.get(1);
+
+    source.warm(2);
+    source.warm(3);
+    expect(fetch.mock.calls.map(([key]) => key)).toEqual([0, 1, 2]);
+
+    lease.get(4);
+    source.warm(5);
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
+  test("a warm is never queued, and never shows as fetching", () => {
+    const { fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 2 });
+
+    source.warm(0);
+    expect(source.active).toBe(1);
+    expect(source.fetching).toBe(false);
+
+    source.warm(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test("a leased read that finds no free slot aborts the warm for it", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 3 });
+    const lease = source.lease();
+    lease.get(0);
+    source.warm(1);
+    lease.get(2);
+
+    expect(source.active).toBe(3);
+    const page = lease.get(3);
+    expect(calls[1].signal.aborted).toBe(true);
+    expect(fetch.mock.calls.map(([key]) => key)).toEqual([0, 1, 2, 3]);
+
+    calls[3].resolve();
+    await expect(page).resolves.toEqual({ key: 3, ids: ["3"] });
+    expect(source.peek(1)).toBeUndefined();
+  });
+
+  test("a read promotes a warm in flight, which no read aborts after", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch, { concurrency: 3 });
+    const lease = source.lease();
+    lease.get(0);
+    source.warm(1);
+
+    const page = lease.get(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(source.fetching).toBe(true);
+    lease.get(2);
+    lease.get(3);
+    expect(calls[1].signal.aborted).toBe(false);
+
+    calls[1].resolve();
+    await expect(page).resolves.toEqual({ key: 1, ids: ["1"] });
+  });
+
+  test("a resolved warm is read from memory", async () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch);
+    source.warm(1);
+    calls[0].resolve();
+    await flush();
+
+    const lease = source.lease();
+    expect(lease.peek(1)).toEqual({ key: 1, ids: ["1"] });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test(`keeps at most ${MAX_WARMED} warms unread, dropping the oldest`, async () => {
+    const { calls, fetch } = gated();
+    const onEvict = vi.fn();
+    const source = createPageSource(fetch, { onEvict });
+    for (const key of [1, 2, 3]) {
+      source.warm(key);
+      calls[calls.length - 1].resolve();
+      await flush();
+    }
+
+    expect(onEvict.mock.calls.map(([key]) => key)).toEqual([1]);
+    expect(source.peek(1)).toBeUndefined();
+    expect(source.size).toBe(MAX_WARMED);
+  });
+
+  test("an unread warm is the first page evicted", async () => {
+    const { calls, fetch } = gated();
+    const onEvict = vi.fn();
+    const source = createPageSource(fetch, { capacity: 2, onEvict });
+    await Promise.all(
+      [0, 1].map((key) => {
+        const page = source.get(key);
+        calls[key].resolve();
+        return page;
+      }),
+    );
+    source.warm(2);
+    calls[2].resolve();
+    await flush();
+
+    expect(onEvict.mock.calls.map(([key]) => key)).toEqual([2]);
+    expect(source.peek(0)).toBeDefined();
+    expect(source.peek(1)).toBeDefined();
+  });
+
+  test("dispose and invalidate abort warms in flight", () => {
+    const { calls, fetch } = gated();
+    const source = createPageSource(fetch);
+    source.warm(0);
+    source.dispose();
+    expect(calls[0].signal.aborted).toBe(true);
+    expect(source.active).toBe(0);
+
+    source.warm(1);
+    source.invalidate();
+    expect(calls[1].signal.aborted).toBe(true);
+    expect(source.active).toBe(0);
   });
 });

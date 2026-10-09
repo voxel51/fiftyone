@@ -27,15 +27,15 @@ const props = {
   ],
 };
 
-const grab = (onJump = vi.fn()) => {
-  render(<Rail {...props} onJump={onJump} />);
+const grab = (onJump = vi.fn(), onDrag = vi.fn()) => {
+  render(<Rail {...props} onDrag={onDrag} onJump={onJump} />);
   const rail = screen.getByRole("slider");
   const track = rail.firstElementChild as HTMLElement;
   track.getBoundingClientRect = () =>
     ({ top: 0, left: 0, height: 100, width: 10 }) as DOMRect;
   rail.setPointerCapture = () => undefined;
   rail.releasePointerCapture = () => undefined;
-  return { onJump, rail };
+  return { onDrag, onJump, rail };
 };
 
 describe("Rail", () => {
@@ -72,5 +72,17 @@ describe("Rail", () => {
     fireEvent.pointerDown(rail, { clientY: 30, pointerId: 1 });
     expect(rail.getAttribute("aria-valuetext")).toBe("at 30");
     expect(screen.getByText("at 30")).toBeTruthy();
+  });
+
+  it("tells when a drag starts and ends, before it jumps", () => {
+    const { onDrag, onJump, rail } = grab();
+    fireEvent.pointerDown(rail, { clientY: 30, pointerId: 1 });
+    expect(onDrag.mock.calls).toEqual([[true]]);
+
+    fireEvent.pointerUp(rail, { clientY: 40, pointerId: 1 });
+    expect(onDrag.mock.calls).toEqual([[true], [false]]);
+    expect(onDrag.mock.invocationCallOrder[1]).toBeLessThan(
+      onJump.mock.invocationCallOrder[0],
+    );
   });
 });

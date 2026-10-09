@@ -3,6 +3,11 @@
  * pages it needs from memory instead of refetching them. Memory and work in
  * flight are bounded: at most `capacity` pages no instance holds are kept
  * (least recently used first out), and at most `concurrency` fetches run.
+ *
+ * A warm fetches a page before anything reads it, at low priority: it runs
+ * only while two slots are free, a read that finds no free slot aborts it,
+ * and it is the first page evicted until something reads it. At most
+ * {@link MAX_WARMING} warms run and {@link MAX_WARMED} wait unread.
  */
 
 export interface PageReader<K, P> {
@@ -45,6 +50,13 @@ export interface PageSource<K, P> extends PageReader<K, P> {
   readonly size: number;
   /** Fetches running now. */
   readonly active: number;
+  /**
+   * Fetches `key` ahead of a read, when a slot is spare and the warm bounds
+   * allow; otherwise does nothing. A read promotes it to a normal page.
+   */
+  warm(key: K): void;
+  /** Aborts every warm in flight; reads are served as before. */
+  dispose(): void;
 }
 
 export interface PageSourceOptions<K, P> {
@@ -80,6 +92,12 @@ export const PAGE_CAPACITY = CACHED_ITEMS / PAGE_SIZE;
  */
 export const MAX_FETCHES = 4;
 
+/** Warms in flight at once. */
+export const MAX_WARMING = 1;
+
+/** Resolved warms kept unread; an older one is dropped for a newer. */
+export const MAX_WARMED = 2;
+
 type State = "queued" | "fetching" | "done" | "dropped";
 
 interface Entry<K, P> {
@@ -93,6 +111,8 @@ interface Entry<K, P> {
   holders: Set<object>;
   /** An unleased read waits on it, so it is never cancelled. */
   kept: boolean;
+  /** Fetched ahead and not read yet: first to abort and to evict. */
+  warm: boolean;
   controller: AbortController;
   used: number;
 }
@@ -139,7 +159,8 @@ export const createPageSource = <K, P>(
   const trim = () => {
     const loose = [...entries.values()]
       .filter((entry) => entry.state === "done" && !entry.holders.size)
-      .sort((a, b) => a.used - b.used);
+      // unread warms first, then least recently used
+      .sort((a, b) => Number(b.warm) - Number(a.warm) || a.used - b.used);
     for (const entry of loose.slice(0, Math.max(0, loose.length - capacity))) {
       entries.delete(entry.key);
       onEvict?.(entry.key, entry.value as P);
@@ -150,7 +171,7 @@ export const createPageSource = <K, P>(
     if (entry.state === "fetching") active--;
     else queue.splice(queue.indexOf(entry), 1);
     entry.state = state;
-    setPending(pending - 1);
+    entry.warm || setPending(pending - 1);
     refill && pump();
   };
 
@@ -170,6 +191,7 @@ export const createPageSource = <K, P>(
         entry.used = ++clock;
         settle(entry, "done");
         entry.resolve(value);
+        entry.warm && dropWarmed();
         trim();
       },
       (error) => {
@@ -194,13 +216,31 @@ export const createPageSource = <K, P>(
     entries.get(entry.key) === entry && entries.delete(entry.key);
   };
 
-  const obtain = (key: K) => {
-    const cached = entries.get(key);
-    if (cached) {
-      cached.used = ++clock;
-      return cached;
-    }
+  /** A read makes a warm a normal page, which the pending state counts. */
+  const promote = (entry: Entry<K, P>) => {
+    if (!entry.warm) return;
+    entry.warm = false;
+    entry.state === "fetching" && setPending(pending + 1);
+  };
 
+  const warms = (state: State) =>
+    [...entries.values()].filter(
+      (entry) => entry.warm && entry.state === state,
+    );
+
+  /** Aborts warms in flight. Refills nothing, like {@link cancel}. */
+  const cool = () => warms("fetching").forEach(cancel);
+
+  /** Keeps the newest {@link MAX_WARMED} resolved warms nothing has read. */
+  const dropWarmed = () => {
+    const warmed = warms("done").sort((a, b) => a.used - b.used);
+    for (const entry of warmed.slice(0, -MAX_WARMED)) {
+      entries.delete(entry.key);
+      onEvict?.(entry.key, entry.value as P);
+    }
+  };
+
+  const create = (key: K, warm: boolean) => {
     let resolve!: (value: P) => void;
     let reject!: (error: unknown) => void;
     const promise = new Promise<P>((a, b) => {
@@ -218,6 +258,7 @@ export const createPageSource = <K, P>(
       resolve,
       state: "queued",
       used: ++clock,
+      warm,
     };
     entries.set(key, entry);
     const previous = stale.get(key);
@@ -225,6 +266,20 @@ export const createPageSource = <K, P>(
       stale.delete(key);
       compare(previous, promise);
     }
+    return entry;
+  };
+
+  /** A leased read that would wait for a slot takes a warm's instead. */
+  const obtain = (key: K, leased = false) => {
+    const cached = entries.get(key);
+    if (cached) {
+      cached.used = ++clock;
+      promote(cached);
+      return cached;
+    }
+
+    if (leased && active >= concurrency) cool();
+    const entry = create(key, false);
     setPending(pending + 1);
     queue.push(entry);
     pump();
@@ -254,7 +309,7 @@ export const createPageSource = <K, P>(
       const lease: Lease<K, P> = {
         get(key) {
           if (released) return never();
-          const entry = obtain(key);
+          const entry = obtain(key, true);
           entry.holders.add(lease);
           held.add(entry);
           if (entry.state === "done") return Promise.resolve(entry.value as P);
@@ -268,6 +323,7 @@ export const createPageSource = <K, P>(
         peek(key) {
           const entry = released ? undefined : peek(key);
           if (!entry) return undefined;
+          promote(entry);
           entry.holders.add(lease);
           held.add(entry);
           return entry.value;
@@ -312,9 +368,24 @@ export const createPageSource = <K, P>(
         listeners.delete(listener);
       };
     },
+    warm(key) {
+      if (entries.has(key) || active >= concurrency - 1) return;
+      if (warms("fetching").length >= MAX_WARMING) return;
+      start(create(key, true));
+    },
+    dispose() {
+      cool();
+      pump();
+    },
     invalidate(keys) {
       for (const [key, entry] of [...entries]) {
         if (keys && !keys(key)) continue;
+        if (entry.warm) {
+          // never shown, so nothing compares against it
+          cancel(entry);
+          entries.delete(key);
+          continue;
+        }
         entries.delete(key);
         // an earlier invalidation's page is the one the grid showed
         !stale.has(key) && stale.set(key, entry.promise);
@@ -323,6 +394,7 @@ export const createPageSource = <K, P>(
         if (stale.size <= 4 * capacity) break;
         stale.delete(key);
       }
+      pump();
     },
     takeRemoved() {
       const removed = new Set<string>();

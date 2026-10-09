@@ -28,6 +28,8 @@ export interface RailProps {
   label: (position: number) => string;
   /** Fires once, on release, with the rail position in [0, 1]. */
   onJump: (position: number) => void;
+  /** Hears a drag start (true) and end (false). */
+  onDrag?: (dragging: boolean) => void;
   /** The grid is fetching or rebuilding; the track shows it. */
   loading?: boolean;
   /** Subscribes the thumb to the scroll, between rows too. */
@@ -49,6 +51,7 @@ function Rail({
   follow,
   label,
   loading = false,
+  onDrag,
   onJump,
   orientation = "vertical",
   position: resting = 0,
@@ -135,6 +138,7 @@ function Rail({
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
         setDrag(at(event));
+        onDrag?.(true);
       }}
       onPointerMove={(event) => {
         const next = at(event);
@@ -144,9 +148,13 @@ function Rail({
         if (drag === null) return;
         event.currentTarget.releasePointerCapture(event.pointerId);
         setDrag(null);
+        onDrag?.(false);
         onJump(at(event));
       }}
-      onPointerCancel={() => setDrag(null)}
+      onPointerCancel={() => {
+        setDrag(null);
+        onDrag?.(false);
+      }}
       onPointerLeave={() => setHover(null)}
     >
       <div ref={track} className={styles.track} aria-busy={loading}>

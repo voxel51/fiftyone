@@ -49,4 +49,21 @@ describe("usePageSource", () => {
     );
     expect(remount.result.current.peek(0)).toBeUndefined();
   });
+
+  it("aborts the old pages' warms when its key changes", () => {
+    const signals: AbortSignal[] = [];
+    const fetch = (_: number, signal: AbortSignal) => {
+      signals.push(signal);
+      return new Promise<string[]>(() => undefined);
+    };
+    const mounted = renderHook(
+      ({ key }) => usePageSource(key, 0, fetch, ids, onEvict),
+      { initialProps: { key: "k3" } },
+    );
+    mounted.result.current.warm(1);
+    expect(signals).toHaveLength(1);
+
+    mounted.rerender({ key: "k4" });
+    expect(signals[0].aborted).toBe(true);
+  });
 });

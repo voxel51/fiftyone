@@ -16,9 +16,10 @@ interface GridRailProps {
   rail: GridRailState;
   horizontal?: boolean;
   loading?: boolean;
+  onDrag?: (dragging: boolean) => void;
 }
 
-const GridRail = ({ horizontal, loading, rail }: GridRailProps) => {
+const GridRail = ({ horizontal, loading, onDrag, rail }: GridRailProps) => {
   const field = fos.useGridOrderInput().sortBy;
   const { mode } = rail;
 
@@ -34,6 +35,7 @@ const GridRail = ({ horizontal, loading, rail }: GridRailProps) => {
       follow={rail.follow}
       label={(position) => mode.label(position, rail.visible)}
       loading={loading}
+      onDrag={onDrag}
       onJump={rail.jump}
       orientation={horizontal ? "horizontal" : "vertical"}
       position={rail.position}
