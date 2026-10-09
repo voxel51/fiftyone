@@ -97,13 +97,6 @@ type BooleanLightningResult implements LightningResult {
   true: Boolean!
 }
 
-type Boundary {
-  rank: Int!
-  position: Position!
-  value: JSON
-  label: String!
-}
-
 type BrainRun implements Run {
   key: String!
   version: String
@@ -263,6 +256,11 @@ type Dataset {
   estimatedSampleCount: Int!
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
+
+  """
+  The sample fields an index can sort, which are the sorts a collection above the SMALL order size offers
+  """
+  indexedSortFields: [String!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
   workspace(slug: String): Workspace
 }
@@ -562,11 +560,30 @@ union OpenOrderResult = Order | OrderUnavailable
 
 type Order {
   token: OrderToken!
-  total: Int!
-  randomAccess: Boolean!
-  strategy: OrderStrategy!
+  mode: OrderMode!
   version: String!
-  boundaries(count: Int! = 100): [Boundary!]!
+
+  """SMALL only"""
+  total: Int
+
+  """INDEXED only"""
+  bounds: OrderBounds
+
+  """
+  Evenly spaced ticks: offsets in SMALL mode, round numbers or calendar steps in INDEXED mode, none in SCROLL mode
+  """
+  ticks(count: Int! = 6): [OrderTick!]!
+}
+
+type OrderBounds {
+  min: JSON
+  max: JSON
+  hasNone: Boolean!
+
+  """
+  None when values do not map onto a rail (strings and booleans): such orders seek by value only
+  """
+  scale: OrderScale
 }
 
 input OrderInput {
@@ -578,20 +595,46 @@ input OrderInput {
   dynamicGroup: BSON = null
   sortBy: String = null
   desc: Boolean = false
-  unit: RankUnit = SAMPLE
+  unit: OrderUnit = SAMPLE
   partition: [PartitionKey!] = null
+}
+
+"""
+SMALL: at most 100,000 samples in the collection, addressed by offset. INDEXED: an index serves the sort and the filter, so the order seeks by value. SCROLL: pages in order only.
+"""
+enum OrderMode {
+  SMALL
+  INDEXED
+  SCROLL
+}
+
+enum OrderScale {
+  NUMBER
+  DATE
+  ID
+}
+
+"""
+Where a page starts: an offset (SMALL), a fraction of the rail (SMALL, or INDEXED with a scale), or the first sample at or past a sort value in view order (SMALL, INDEXED).
+"""
+input OrderSeek {
+  offset: Int = null
+  fraction: Float = null
+  value: JSON
 }
 
 type OrderStatus {
   stale: Boolean!
   version: String!
-  total: Int!
+
+  """SMALL only"""
+  total: Int
 }
 
-enum OrderStrategy {
-  LIVE
-  SNAPSHOT
-  LIST
+type OrderTick {
+  value: JSON
+  fraction: Float!
+  label: String!
 }
 
 """One ordering of one view. Opaque."""
@@ -599,7 +642,12 @@ scalar OrderToken
 
 type OrderUnavailable {
   reason: Unavailable!
-  total: Int
+}
+
+enum OrderUnit {
+  SAMPLE
+  GROUP
+  DYNAMIC_GROUP
 }
 
 union PaginateSamplesResponse = SampleItemStrConnection | QueryTimeout
@@ -616,9 +664,6 @@ type PointCloudSample implements Sample {
   aspectRatio: Float!
 }
 
-"""A place in an ordering. Opaque."""
-scalar Position
-
 type Query {
   aggregate(datasetName: String!, view: BSONArray, aggregations: [Aggregate!]!, viewName: String = null, form: ExtendedViewForm = null): [AggregationResponses!]!
   datasets(search: String, first: Int = 100, after: String = null): DatasetStrConnection!
@@ -631,10 +676,14 @@ type Query {
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
   dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
-  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, before: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true, sortBy: String = null, desc: Boolean = false, hint: String = null, maxQueryTime: Int = null, dynamicGroup: BSON = null, cursorPagination: Boolean = false, order: OrderToken = null): PaginateSamplesResponse!
+  samples(dataset: String!, view: BSONArray!, first: Int = 20, after: String = null, before: String = null, filter: SampleFilter = null, filters: BSON = null, extendedStages: BSON = null, paginationData: Boolean = true, sortBy: String = null, desc: Boolean = false, hint: String = null, maxQueryTime: Int = null, dynamicGroup: BSON = null, cursorPagination: Boolean = false, order: OrderToken = null, seek: OrderSeek = null): PaginateSamplesResponse!
   openOrder(input: OrderInput!): OpenOrderResult!
-  seekOrder(token: OrderToken!, rank: Int = null, fraction: Float = null): SeekResult!
   orderStatus(token: OrderToken!): OrderStatus!
+
+  """
+  A sample's offset in its view's order and the view's total. The only count of a large view: run it only on request
+  """
+  samplePosition(input: OrderInput!, sampleId: String = null, groupId: String = null): SamplePosition!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!, filters: JSON = null): SampleItem
   stageDefinitions: [StageDefinition!]!
   uid: String!
@@ -648,12 +697,6 @@ type Query {
 
 type QueryTimeout {
   queryTime: Int!
-}
-
-enum RankUnit {
-  SAMPLE
-  GROUP
-  DYNAMIC_GROUP
 }
 
 type RootAggregation implements Aggregation {
@@ -704,15 +747,28 @@ union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample |
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
   edges: [SampleItemStrEdge!]!
+
+  """The total of a SMALL order"""
   total: Int
+
+  """The data's current version, when paging an order"""
+  orderVersion: String
 }
 
 type SampleItemStrEdge {
   cursor: String!
   node: SampleItem!
 
-  """The sample's rank in the order, when paging one"""
-  rank: Int
+  """How many samples sort before this one, when paging a SMALL order"""
+  offset: Int
+
+  """The sample's sort value (its id when unsorted), when paging an order"""
+  value: JSON
+
+  """
+  The sample's place on the order's rail, 0 at the order's start and 1 at its end, when the order has a rail
+  """
+  fraction: Float
 }
 
 type SampleItemStrPageInfo {
@@ -720,6 +776,20 @@ type SampleItemStrPageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
+}
+
+type SamplePosition {
+  """
+  How many samples sort before the sample, or null when the view does not hold it or cannot be ordered
+  """
+  offset: SamplePositionPart
+  total: SamplePositionPart!
+}
+
+union SamplePositionPart = SamplePositionValue | QueryTimeout
+
+type SamplePositionValue {
+  value: Int!
 }
 
 type SavedView {
@@ -746,11 +816,6 @@ input SavedViewInfo {
 type SchemaResult {
   fieldSchema: [SampleField!]!
   frameFieldSchema: [SampleField!]!
-}
-
-type SeekResult {
-  position: Position!
-  rank: Int!
 }
 
 input SelectedLabel {
