@@ -14,6 +14,35 @@ afterEach(() => {
 });
 
 describe("scene model URL resolution", () => {
+  it("rejects duplicate registration and lets only the current owner unregister", async () => {
+    const provider = vi.fn(async () => "https://assets.example/model.glb");
+    unregister = registerSceneModelUrlResolver(provider);
+    const disposeFirst = unregister;
+    expect(() => registerSceneModelUrlResolver(provider)).toThrow(
+      "already registered",
+    );
+    expect(() =>
+      registerSceneModelUrlResolver(
+        async () => "https://assets.example/other.glb",
+      ),
+    ).toThrow("already registered");
+
+    const model = "gs://bucket/model.glb";
+    await expect(createSceneModelUrlResolver(model)(model)).resolves.toBe(
+      "https://assets.example/model.glb",
+    );
+    disposeFirst();
+    await expect(createSceneModelUrlResolver(model)(model)).rejects.toThrow(
+      "require a URL resolver",
+    );
+
+    unregister = registerSceneModelUrlResolver(provider);
+    disposeFirst();
+    await expect(createSceneModelUrlResolver(model)(model)).resolves.toBe(
+      "https://assets.example/model.glb",
+    );
+  });
+
   it.each(["gs", "s3", "az"])(
     "resolves %s models and their relative resources",
     async (scheme) => {

@@ -10,11 +10,10 @@ const state = (registry[REGISTRY_KEY] ??= { resolver: null }) as {
   resolver: SceneModelUrlResolver | null;
 };
 
-/** Registers a resolver for storage-backed model URLs. */
+/** Registers a resolver for storage-backed model URLs, rejecting duplicates. */
 export function registerSceneModelUrlResolver(
   resolver: SceneModelUrlResolver,
 ): () => void {
-  if (state.resolver === resolver) return () => undefined;
   if (state.resolver) {
     throw new Error("A scene model URL resolver is already registered");
   }
