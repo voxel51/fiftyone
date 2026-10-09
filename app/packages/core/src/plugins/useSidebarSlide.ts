@@ -1,58 +1,60 @@
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
-export const SLIDE_MS = 200;
+/** Matches the grid's tile animation, so tiles move with the sidebar. */
+export const SLIDE_MS = 250;
+const EASING = "cubic-bezier(0.2, 0, 0, 1)";
 const GAP = 8;
-const EASE = `${SLIDE_MS}ms cubic-bezier(0.2, 0, 0, 1)`;
 
-type Phase = "open" | "closing" | "closed" | "enter" | "entering";
+type Phase = "open" | "opening" | "closing" | "closed";
 
 const reduced = () =>
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * Slides the sidebar out and in. While it moves, the grid keeps its width
- * and slides with it, so the grid relays out once, when the slide ends.
+ * Slides the sidebar in and out over the grid. The grid takes its new width
+ * as the slide starts, so its tiles move to their places with the sidebar.
  */
 export default function useSidebarSlide(show: boolean) {
   const [phase, setPhase] = useState<Phase>(show ? "open" : "closed");
+  const [width, setWidth] = useState(0);
   const sidebar = useRef<HTMLDivElement>(null);
-  const width = useRef(0);
 
-  useEffect(() => {
-    if (reduced()) {
-      setPhase(show ? "open" : "closed");
-      return undefined;
-    }
-    if (!show) {
-      width.current = sidebar.current?.offsetWidth ?? width.current;
-      setPhase((current) => (current === "closed" ? current : "closing"));
-      const done = setTimeout(() => setPhase("closed"), SLIDE_MS);
-      return () => clearTimeout(done);
-    }
-
-    setPhase((current) => (current === "open" ? current : "enter"));
-    let done: ReturnType<typeof setTimeout>;
-    // one frame at the start position, so the slide has somewhere to come from
-    const frame = requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        width.current = sidebar.current?.offsetWidth ?? width.current;
-        setPhase((current) => (current === "enter" ? "entering" : current));
-        done = setTimeout(
-          () =>
-            setPhase((current) => (current === "entering" ? "open" : current)),
-          SLIDE_MS,
-        );
-      }),
-    );
-    return () => {
-      cancelAnimationFrame(frame);
-      clearTimeout(done);
-    };
+  useLayoutEffect(() => {
+    setPhase((current) => {
+      if (show) return current === "open" ? current : "opening";
+      return current === "closed" ? current : "closing";
+    });
   }, [show]);
 
-  const shift = width.current + GAP;
-  const away = `translateX(calc(-100% - ${GAP}px))`;
+  useLayoutEffect(() => {
+    const el = sidebar.current;
+    if (!el || (phase !== "opening" && phase !== "closing")) return undefined;
+    // the grid makes room for the sidebar before it moves
+    if (phase === "opening" && el.offsetWidth !== width) {
+      setWidth(el.offsetWidth);
+      return undefined;
+    }
+
+    const done = () => setPhase(phase === "opening" ? "open" : "closed");
+    if (reduced() || typeof el.animate !== "function") {
+      done();
+      return undefined;
+    }
+    const away = {
+      transform: `translateX(calc(-100% - ${GAP}px))`,
+      opacity: 0,
+    };
+    const here = { transform: "translateX(0)", opacity: 1 };
+    const animation = el.animate(
+      phase === "opening" ? [away, here] : [here, away],
+      { duration: SLIDE_MS, easing: EASING, fill: "both" },
+    );
+    animation.finished.then(done, () => undefined);
+    return () => animation.cancel();
+  }, [phase, width]);
+
+  const moving = phase === "opening" || phase === "closing";
   const overlay: CSSProperties = {
     position: "absolute",
     top: 0,
@@ -61,31 +63,10 @@ export default function useSidebarSlide(show: boolean) {
     zIndex: 2,
   };
 
-  const styles: Record<Phase, { grid?: CSSProperties; side?: CSSProperties }> =
-    {
-      open: {},
-      closed: {},
-      closing: {
-        side: { transform: away, opacity: 0, transition: `all ${EASE}` },
-        grid: {
-          transform: `translateX(-${shift}px)`,
-          transition: `transform ${EASE}`,
-        },
-      },
-      enter: { side: { ...overlay, transform: away, opacity: 0 } },
-      entering: {
-        side: { ...overlay, transition: `all ${EASE}` },
-        grid: {
-          transform: `translateX(${shift}px)`,
-          transition: `transform ${EASE}`,
-        },
-      },
-    };
-
   return {
     rendered: phase !== "closed",
     sidebar,
-    sidebarStyle: styles[phase].side,
-    gridStyle: styles[phase].grid,
+    sidebarStyle: moving ? overlay : undefined,
+    gridStyle: phase === "opening" ? { marginLeft: width + GAP } : undefined,
   };
 }

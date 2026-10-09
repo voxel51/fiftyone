@@ -5,7 +5,13 @@ import * as fos from "@fiftyone/state";
 import { Pending } from "@fiftyone/components";
 import clsx from "clsx";
 import { freeVideos } from "@fiftyone/looker";
-import React, { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -339,7 +345,23 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     () => source.fetching,
   );
   if (status === "ready") loaded.current = true;
-  const storm = showStorm({ everLoaded: loaded.current });
+
+  // a view change shows the storm as it starts, not when its data lands; it
+  // holds a frame after, so the reset that follows takes over without a gap
+  const entryPending = useReverbValue(fos.pendingEntry);
+  const operatorViewPending = useReverbValue(fos.viewChangePending);
+  const viewPending = entryPending || operatorViewPending;
+  const [holding, setHolding] = useState(false);
+  useEffect(() => {
+    if (viewPending) {
+      setHolding(true);
+      return undefined;
+    }
+    const frame = requestAnimationFrame(() => setHolding(false));
+    return () => cancelAnimationFrame(frame);
+  }, [viewPending]);
+  const storm =
+    showStorm({ everLoaded: loaded.current }) || viewPending || holding;
   const pending = showPending({
     building: status === "building",
     everLoaded: loaded.current,

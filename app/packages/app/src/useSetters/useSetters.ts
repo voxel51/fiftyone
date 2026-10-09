@@ -8,11 +8,11 @@ import {
   snackbarErrors,
   stateSubscription,
   useSessionSetter,
+  pendingEntry,
 } from "@fiftyone/state";
 import { type MutableRefObject, useMemo } from "react";
 import type { Environment } from "react-relay";
 import { useReverbCallback, useReverbValue } from "@fiftyone/reverb";
-import { pendingEntry } from "../Renderer";
 import type { Queries } from "../makeRoutes";
 import type { RoutingContext } from "../routing";
 import { REGISTERED_SETTERS } from "./registerSetter";

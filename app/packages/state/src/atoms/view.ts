@@ -300,3 +300,12 @@ export const viewChangePending = atom<boolean>({
   key: "viewChangePending",
   default: false,
 });
+
+/**
+ * A navigation the App started (a view, its name, field visibility) whose
+ * page has not loaded yet; the router clears it when the next entry loads.
+ */
+export const pendingEntry = atom<boolean>({
+  key: "pendingEntry",
+  default: false,
+});

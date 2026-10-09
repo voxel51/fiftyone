@@ -9,11 +9,11 @@ import {
   resetExtendedSelectionTransaction,
   stateSubscription,
   viewStateForm_INTERNAL,
+  pendingEntry,
 } from "@fiftyone/state";
 import { rollbackViewBar } from "@fiftyone/view-bar";
 import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
-import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
 import type { RegisteredSetter } from "./registerSetter";
 

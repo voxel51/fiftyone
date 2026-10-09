@@ -11,6 +11,7 @@ import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
   activeSchemaWireExclusions,
+  pendingEntry,
   theme,
   themeConfig,
   useSetExpandedSample,
@@ -44,11 +45,6 @@ type RendererE2EEvents = {
   "e2e:app:page-change": undefined;
   "e2e:modal:closed": undefined;
 };
-
-export const pendingEntry = atom<boolean>({
-  key: "pendingEntry",
-  default: false,
-});
 
 export const entry = atom<Entry<Queries> | null>({
   key: "Entry",

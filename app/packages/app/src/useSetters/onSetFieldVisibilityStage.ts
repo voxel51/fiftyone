@@ -7,10 +7,9 @@ import {
   type setFieldVisibilityStageMutation,
   subscribeBefore,
 } from "@fiftyone/relay";
-import { type State, stateSubscription } from "@fiftyone/state";
+import { type State, stateSubscription, pendingEntry } from "@fiftyone/state";
 import { DefaultValue } from "@fiftyone/reverb";
 import { commitMutation } from "relay-runtime";
-import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
 import type { RegisteredSetter } from "./registerSetter";
 

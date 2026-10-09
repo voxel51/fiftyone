@@ -3,9 +3,8 @@
  */
 
 import { subscribeBefore } from "@fiftyone/relay";
-import { useSessionRef, useSessionSetter } from "@fiftyone/state";
+import { useSessionRef, useSessionSetter, pendingEntry } from "@fiftyone/state";
 import { useReverbCallback } from "@fiftyone/reverb";
-import { pendingEntry } from "../Renderer";
 import { useRouterContext } from "../routing";
 import { resolveURL } from "../utils";
 import type { EventHandlerHook } from "./registerEvent";
