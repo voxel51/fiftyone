@@ -75,6 +75,9 @@ export default function usePixelAssembly(
     }
     const { width, height } = text.getBoundingClientRect();
     const ratio = window.devicePixelRatio || 1;
+    // a canvas keeps its buffer's size unless given a CSS one
+    el.style.width = `${width + SCATTER * 2}px`;
+    el.style.height = `${height + SCATTER * 2}px`;
     el.width = Math.ceil((width + SCATTER * 2) * ratio);
     el.height = Math.ceil((height + SCATTER * 2) * ratio);
     ctx.scale(ratio, ratio);

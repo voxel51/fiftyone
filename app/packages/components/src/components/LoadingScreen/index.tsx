@@ -46,7 +46,7 @@ export default function LoadingScreen({ text }: { text: string }) {
               ref={canvas}
               aria-hidden
               className={styles.pixels}
-              style={{ inset: -scatter }}
+              style={{ left: -scatter, top: -scatter }}
             />
           )}
         </span>
