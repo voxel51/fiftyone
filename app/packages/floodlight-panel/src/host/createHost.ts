@@ -60,8 +60,6 @@ type Entry<I> = {
   instance: I;
   slot: HTMLElement;
   quiet: boolean;
-  /** The panel extent it was built at */
-  extent?: number;
   timeout?: ReturnType<typeof setTimeout>;
 };
 
@@ -96,17 +94,6 @@ export const createHost = <K, I extends Instance>(
     entry.slot.remove();
   };
 
-  // while a drag holds the grid, it stays centered in the panel rather than
-  // riding the edge that moves
-  const center = (entry: Entry<I>) => {
-    const shift = ((extent ?? 0) - (entry.extent ?? extent ?? 0)) / 2;
-    entry.slot.style.transform = shift
-      ? axis === "width"
-        ? `translateX(${shift}px)`
-        : `translateY(${shift}px)`
-      : "";
-  };
-
   const track = (event: Event) => {
     const { at, fraction, page } = event as RowChange<K>;
     anchor = { key: page, at: { description: at.description, fraction } };
@@ -133,7 +120,6 @@ export const createHost = <K, I extends Instance>(
       instance: build(start, { interim, quiet }),
       slot,
       quiet,
-      extent,
     };
     pending = entry;
     const reveal = () => {
@@ -144,7 +130,6 @@ export const createHost = <K, I extends Instance>(
       current && dispose(current);
       current = entry;
       slot.style.visibility = "";
-      resizing !== undefined && center(entry);
       slot.setAttribute(SLOT, "active");
       entry.instance.addEventListener("rowchange", track);
       options.onStatus?.("ready", entry.instance);
@@ -197,7 +182,6 @@ export const createHost = <K, I extends Instance>(
     }, SETTLE);
     if (continuing) {
       continued = true;
-      center(current);
       return;
     }
     options.onResize?.();
