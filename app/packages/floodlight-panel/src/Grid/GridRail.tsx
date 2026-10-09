@@ -6,8 +6,8 @@
  */
 
 import * as fos from "@fiftyone/state";
-import { useReverbValue } from "@fiftyone/reverb";
-import React from "react";
+import { useReverbValueLoadable } from "@fiftyone/reverb";
+import React, { useRef } from "react";
 import RankRail from "../rail/RankRail";
 import type { Rail } from "../rail/useRail";
 
@@ -20,8 +20,15 @@ interface GridRailProps {
 }
 
 const GridRailContent = ({ horizontal, loading, rail }: GridRailProps) => {
-  const total = useReverbValue(fos.count(COUNT));
-  if (typeof total !== "number" || total <= 0) return null;
+  // a filter recounts asynchronously; reading the count must not suspend the
+  // panel, so the rail keeps the last total until the new one arrives
+  const count = useReverbValueLoadable(fos.count(COUNT));
+  const last = useRef<number>();
+  if (count.state === "hasValue" && typeof count.contents === "number") {
+    last.current = count.contents;
+  }
+  const total = last.current;
+  if (total === undefined || total <= 0) return null;
 
   return (
     <RankRail
