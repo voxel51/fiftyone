@@ -9,7 +9,6 @@ import {
 } from "@fiftyone/reverb";
 import {
   BackgroundColor,
-  CheckIcon,
   CloseIcon,
   getColorCssVar,
   GridViewIcon,
@@ -151,13 +150,13 @@ function TabIndicator() {
       {selectedSamples.size > 0 ? (
         <Pill
           size={Size.Xs}
-          icon={CheckIcon}
-          color={TextColor.Secondary}
+          backgroundColor={BackgroundColor.CardElevated}
+          color={TextColor.Primary}
           data-cy="selection-count-container"
           title="Clear selection"
           onRemove={resetSelectedSamples}
         >
-          {selectedSamples.size.toLocaleString()}
+          {selectedSamples.size.toLocaleString()} selected
         </Pill>
       ) : null}
     </Indicators>
