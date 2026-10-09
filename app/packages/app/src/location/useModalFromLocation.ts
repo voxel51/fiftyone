@@ -10,7 +10,6 @@ import {
   useSetModalState,
 } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
-import { useAppSampleTransition } from "../samplePage/context";
 import { isSelected } from "./modal";
 import type { AppRoute } from "./routes";
 
@@ -24,7 +23,6 @@ export default function useModalFromLocation() {
   const groupId = route.kind === "group" ? route.groupId : undefined;
   const id = route.kind === "sample" ? route.id : undefined;
   const reset = useResetModal();
-  const transition = useAppSampleTransition();
   const open = useSetExpandedSample();
   const setModalState = useSetModalState();
   const mounted = useRef(false);
@@ -38,10 +36,9 @@ export default function useModalFromLocation() {
     const selected = groupId ? { groupId } : id ? { id } : undefined;
     if (isSelected(selected, getSessionRef().modalSelector)) return;
     if (!selected) {
-      // the page's close animates with the sample still on it
-      transition.afterClose(reset);
+      reset();
       return;
     }
     setModalState().then(() => open(selected));
-  }, [groupId, id, open, reset, setModalState, transition]);
+  }, [groupId, id, open, reset, setModalState]);
 }

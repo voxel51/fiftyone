@@ -95,7 +95,7 @@ export default function SamplePageHeader({
         <Text variant={TextVariant.Md} color={TextColor.Tertiary}>
           /
         </Text>
-        <Text variant={TextVariant.Md} color={TextColor.Fg}>
+        <Text variant={TextVariant.Md} color={TextColor.Foreground}>
           {sample}
         </Text>
         <Action icon={IconName.ChevronLeft} label="Previous sample" />

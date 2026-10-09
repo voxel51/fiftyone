@@ -14,11 +14,10 @@
   flex-shrink: 0;
 }
 
-/* the open sample, over the whole App while it reveals, then in its place */
+/* the open sample's page, in place of the grid's */
 .samplePage {
   position: fixed;
   inset: 0;
-  z-index: 1000;
   display: flex;
   flex-direction: column;
   background: var(--fo-palette-background-level2);

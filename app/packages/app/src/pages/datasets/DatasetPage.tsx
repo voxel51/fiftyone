@@ -15,6 +15,7 @@ import {
 } from "@fiftyone/core";
 import "@fiftyone/embeddings-v2";
 import "@fiftyone/map";
+import { useLocation } from "@fiftyone/location";
 import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -26,7 +27,7 @@ import Nav from "../../components/Nav";
 import { AddSample } from "../../components/Starter";
 import { useProduct } from "../../product";
 import SamplePageHeader from "../../samplePage/SamplePageHeader";
-import useSamplePage from "../../samplePage/useSamplePage";
+import type { AppRoute } from "../../location/routes";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
@@ -119,14 +120,14 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const count = useReverbValue(fos.datasetSampleCount);
   const isEmpty = count === 0;
   const { Panels } = useProduct();
-  const samplePage = useSamplePage();
+  // a sample is its own page, which the location's route decides
+  const { route } = useLocation<AppRoute>();
+  const onSample = route.kind === "sample" || route.kind === "group";
   const isModalOpen = useReverbValue(fos.isModalActive);
-
-  const { phase, ref } = samplePage;
 
   return (
     <datasetQueryContext.Provider value={data}>
-      {phase !== "open" && (
+      {!onSample && (
         <Nav fragment={data} hasDataset={!isEmpty}>
           <div className={style.page} data-cy={"dataset-page"}>
             <DatasetGridRendererFailover />
@@ -141,13 +142,8 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           </div>
         </Nav>
       )}
-      {phase !== "grid" && (
-        <div
-          ref={ref}
-          className={style.samplePage}
-          style={{ opacity: phase === "opening" ? 0 : 1 }}
-          data-cy={"sample-page"}
-        >
+      {onSample && (
+        <div className={style.samplePage} data-cy={"sample-page"}>
           {isModalOpen && (
             <Modal
               page

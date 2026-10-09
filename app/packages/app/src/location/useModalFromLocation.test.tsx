@@ -8,7 +8,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const clear = vi.fn();
-let afterClose = (run: () => void) => run();
 const open = vi.fn();
 const setModalState = vi.fn(() => Promise.resolve());
 const session: { modalSelector?: { id?: string; groupId?: string } } = {};
@@ -17,12 +16,6 @@ vi.mock("@fiftyone/state", () => ({
   useResetModal: () => clear,
   useSetExpandedSample: () => open,
   useSetModalState: () => setModalState,
-}));
-
-vi.mock("../samplePage/context", () => ({
-  useAppSampleTransition: () => ({
-    afterClose: (run: () => void) => afterClose(run),
-  }),
 }));
 
 const { appRoutes } = await import("./routes");
@@ -45,7 +38,6 @@ beforeEach(() => {
   open.mockReset();
   setModalState.mockClear();
   session.modalSelector = undefined;
-  afterClose = (run) => run();
 });
 
 describe("useModalFromLocation", () => {
@@ -76,19 +68,5 @@ describe("useModalFromLocation", () => {
     act(() => harness.adapter.push("/datasets/d/groups/g"));
     expect(open).toHaveBeenCalledTimes(0);
     expect(clear).toHaveBeenCalledTimes(0);
-  });
-
-  it("holds the reset until the page's close has ended", () => {
-    let end: () => void = () => undefined;
-    afterClose = (run) => {
-      end = run;
-    };
-    const harness = mount("/datasets/d");
-    act(() => harness.adapter.push("/datasets/d/samples/a"));
-    session.modalSelector = { id: "a" };
-    act(() => harness.back());
-    expect(clear).toHaveBeenCalledTimes(0);
-    end();
-    expect(clear).toHaveBeenCalledTimes(1);
   });
 });

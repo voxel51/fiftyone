@@ -10,7 +10,6 @@ import styled from "styled-components";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
-import { useSampleTransition } from "../SamplePage";
 import { useShowClassicSidebar } from "./hooks";
 import {
   KnownCommands,
@@ -79,13 +78,6 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const modal = useReverbValue(fos.modalSelector);
 
   const modalRef = useRef(modal);
-  const transition = useSampleTransition();
-  const swipe = useCallback(
-    (direction: 1 | -1, change: () => void) =>
-      transition?.swipe ? transition.swipe(direction, change) : change(),
-    [transition],
-  );
-
   modalRef.current = modal;
 
   // important: make sure all dependencies of the navigators are referentially stable,
@@ -100,7 +92,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.next(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              swipe(1, () => setModal(selector));
+              setModal(selector);
             });
           }
         },
@@ -109,7 +101,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         },
         debounceTime: 150,
       }),
-    [closePanels, setModal, clearUndo, swipe],
+    [closePanels, setModal, clearUndo],
   );
 
   const previousNavigator = useMemo(
@@ -122,7 +114,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
             clearUndo();
             return await navigation.previous(offset).then((selector) => {
               selectiveRenderingEventBus.removeAllListeners();
-              swipe(-1, () => setModal(selector));
+              setModal(selector);
             });
           }
         },
@@ -131,7 +123,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         },
         debounceTime: 150,
       }),
-    [closePanels, setModal, clearUndo, swipe],
+    [closePanels, setModal, clearUndo],
   );
 
   useEffect(() => {

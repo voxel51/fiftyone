@@ -24,8 +24,7 @@ import useRenderer from "./useRenderer";
 import TileDecoratorPortals from "./TileDecoratorPortals";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
-import useSpotlightPager from "./useSpotlightPager";
-import { PAGE_SIZE } from "./constants";
+import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
 import { useGroupMatchTileDecorator } from "./GroupMatchPills";
@@ -83,7 +82,6 @@ function Grid() {
     [page, records],
   );
   const setSample = fos.useExpandSample(pages);
-  const transition = useSampleTransition();
   const autosizing = useReverbValue(gridAutosizing);
 
   // `reset` is the grid's refresh signal. The callables below are routed
