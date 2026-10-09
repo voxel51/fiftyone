@@ -5,6 +5,7 @@
 import {
   Anchor,
   BookmarkIcon,
+  BookmarkStrokeIcon,
   CheckIcon,
   CloseIcon,
   EditIcon,
@@ -34,8 +35,8 @@ import ViewDialog from "./ViewDialog";
 
 /**
  * The view bar's bookmark: the dataset's saved queries — loading one, saving
- * the current query, editing or deleting saved ones. Filled while a saved
- * query is loaded. The save/edit dialog lives outside the menu, so the menu
+ * the current query, editing or deleting saved ones. An outline at rest,
+ * filled while a saved query is loaded. The save/edit dialog lives outside the menu, so the menu
  * closing does not take the dialog with it.
  */
 export default function SavedQueriesMenu({ hidden }: { hidden?: boolean }) {
@@ -72,7 +73,7 @@ export default function SavedQueriesMenu({ hidden }: { hidden?: boolean }) {
             }
           >
             <IconAction
-              icon={BookmarkIcon}
+              icon={queries.loaded ? BookmarkIcon : BookmarkStrokeIcon}
               size={Size.Sm}
               aria-label="Saved queries"
               aria-expanded={open}
