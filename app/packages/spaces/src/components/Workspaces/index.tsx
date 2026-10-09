@@ -58,7 +58,10 @@ export default function Workspaces() {
   if (!canInitialize) return null;
 
   return (
-    <Box sx={{ position: "relative" }}>
+    // Mounts once the operator registry loads, after first paint, as a flex
+    // item above the tab row; at zero height its floated button overlays the
+    // row instead of pushing the row and the panel below it down
+    <Box sx={{ position: "relative", height: 0 }}>
       <Button
         size="small"
         onClick={() => {
