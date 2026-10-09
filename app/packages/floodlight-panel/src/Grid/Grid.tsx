@@ -79,6 +79,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     gridReset: reset,
     itemsReset,
     pageReset,
+    reset: refreshReset,
   } = useRefreshers();
   const container = useRef<HTMLDivElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
@@ -113,8 +114,10 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const aspectRatioOverride = swimlaneAspect ?? (squareTiles ? 1 : undefined);
   const crop = useReverbValue(gridCrop);
 
+  // a refresh (the logo) forgets which pages were requested, so they are
+  // fetched again rather than served from the store
   const { page, store } = useSpotlightPager({
-    clearRecords: reset,
+    clearRecords: refreshReset,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,

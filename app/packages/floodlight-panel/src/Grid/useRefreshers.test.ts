@@ -60,4 +60,16 @@ describe("useRefreshers", () => {
     rerender();
     expect(result.current.itemsReset).not.toBe(before.itemsReset);
   });
+
+  it("a refresh refetches pages but keeps the item cache", () => {
+    values.set("datasetName", "quickstart");
+    values.set("refresher", 0);
+    const { rerender, result } = renderHook(() => useRefreshers());
+    const before = result.current;
+
+    values.set("refresher", 1);
+    rerender();
+    expect(result.current.reset).not.toBe(before.reset);
+    expect(result.current.gridReset).toBe(before.gridReset);
+  });
 });
