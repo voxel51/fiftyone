@@ -5,7 +5,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { useRefresh } from "@fiftyone/state";
+import { useSetDataset } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
 import { useColorScheme } from "@mui/material";
 import {
@@ -91,7 +91,7 @@ const Nav: React.FC<
   );
 
   const useSearch = getUseSearch(data);
-  const refresh = useRefresh();
+  const setDataset = useSetDataset();
   // Two theme owners, both of which must hear a toggle: MUI's color scheme
   // paints the `--fo-palette-*` variables everything is styled with, and the
   // store atom is what the rest of the app reads. Setting only the atom
@@ -110,9 +110,9 @@ const Nav: React.FC<
   return (
     <>
       <Header
-        title={title}
+        title={hasDataset ? undefined : title}
         hidden={hidden}
-        onRefresh={refresh}
+        onHome={() => setDataset(null)}
         navChildren={<DatasetSelector useSearch={useSearch} />}
         belowRow={
           hasDataset && (
