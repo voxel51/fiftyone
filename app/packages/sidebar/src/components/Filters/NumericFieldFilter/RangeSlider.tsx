@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
-import { useRef } from "react";
+import { cssVar } from "@voxel51/voodo";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
@@ -12,10 +12,10 @@ import Reset from "./Reset";
 import * as state from "./state";
 
 const Container = styled.div`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
+  background: ${cssVar.color.bg.background};
+  border: 1px solid ${cssVar.color.border.default};
   border-radius: 2px;
-  color: ${({ theme }) => theme.text.secondary} !important;
+  color: ${cssVar.color.text.secondary} !important;
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
 `;
@@ -39,7 +39,6 @@ const RangeSlider = ({
   path: string;
   inputs?: boolean;
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const ftype = useReverbValue(fos.fieldType({ path }));
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useReverbValue(fos.numericExcludeAtom({ modal, path }));
@@ -70,14 +69,12 @@ const RangeSlider = ({
 
   return (
     <Container
-      ref={containerRef}
       onMouseDown={(e) => e.stopPropagation()}
       style={{ cursor: "default" }}
       data-cy={`numeric-slider-container-${key}`}
     >
       {showSlider && (
         <CommonRangeSlider
-          showBounds={false}
           fieldType={ftype}
           valueAtom={fos.rangeAtom({
             modal,
@@ -89,8 +86,6 @@ const RangeSlider = ({
             modal,
           })}
           color={color}
-          containerRef={containerRef}
-          reserveLabelSpace={true}
         />
       )}
       <Inputs modal={modal} path={path} color={color} />

@@ -14,7 +14,6 @@ export {
 } from "./components/Sidebar/FieldAction";
 export { resizeHandle as sidebarResizeHandle } from "./components/Sidebar/InteractiveSidebar/style.module.css";
 export { default as Checkbox } from "./components/Common/Checkbox";
-export { Slider } from "./components/Common/RangeSlider";
 export { default as TimedOut } from "./components/Common/TimedOut";
 export { default as FieldLabelAndInfo } from "./components/FieldLabelAndInfo";
 export { default as FilterItem } from "./components/Filters/FilterOption/FilterItem";

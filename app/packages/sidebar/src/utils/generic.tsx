@@ -1,4 +1,5 @@
 import { prettify as pretty, useExternalLink } from "@fiftyone/utilities";
+import { cssVar } from "@voxel51/voodo";
 import React from "react";
 import styled from "styled-components";
 
@@ -7,7 +8,7 @@ export const isFloat = (n: number): boolean => {
 };
 
 const Link = styled.a`
-  color: ${({ theme }) => theme.text.primary};
+  color: ${cssVar.color.text.primary};
 `;
 
 export const ExternalLink = ({ href, ...props }) => {

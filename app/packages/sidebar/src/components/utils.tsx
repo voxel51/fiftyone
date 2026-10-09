@@ -1,27 +1,13 @@
-import { useTheme } from "@fiftyone/components";
-import { animated, useSpring, useSprings } from "@react-spring/web";
+import { cssVar } from "@voxel51/voodo";
 import React, { useState } from "react";
 import styled from "styled-components";
-
-export const Box = styled.div`
-  padding: 1em;
-  box-sizing: border-box;
-  background-color: ${({ theme }) => theme.background.body};
-`;
-
-export const VerticalSpacer = styled.div`
-  height: ${({ height }) =>
-    typeof height == "number" ? height + "px" : height};
-  background-color: ${({ opaque, theme }) =>
-    opaque ? theme.background.body : undefined};
-`;
 
 export const ContentDiv = styled.div`
   box-sizing: border-box;
   border-radius: 3px;
-  background-color: ${({ theme }) => theme.background.level3};
-  color: ${({ theme }) => theme.text.secondary};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  background-color: ${cssVar.color.bg.popover};
+  color: ${cssVar.color.text.secondary};
+  border: 1px solid ${cssVar.color.border.subtle};
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   padding: 0.5rem;
@@ -33,7 +19,7 @@ export const ContentDiv = styled.div`
 `;
 
 export const ContentHeader = styled.div<{ $isTooltipLocked?: boolean }>`
-  color: ${({ theme }) => theme.text.primary};
+  color: ${cssVar.color.text.primary};
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -41,115 +27,7 @@ export const ContentHeader = styled.div<{ $isTooltipLocked?: boolean }>`
   cursor: ${({ $isTooltipLocked }) => ($isTooltipLocked ? "grab" : "default")};
 `;
 
-export const PopoutDiv = animated(styled.div`
-  background-color: ${({ theme }) => theme.background.level2};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  border-radius: 2px;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.custom.shadow};
-  box-sizing: border-box;
-  margin-top: 0.6rem;
-  position: absolute;
-  width: auto;
-  z-index: 801;
-  font-size: 14px;
-  padding: 0 0.5rem 0 0.5rem;
-  min-width: 14rem;
-`);
-
-export const PopoutSectionTitle = styled.div`
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
-  border-bottom: 1px solid ${({ theme }) => theme.background.level1};
-  font-size: 1rem;
-  line-height: 2;
-  font-weight: bold;
-`;
-
-const TabOptionDiv = animated(styled.div`
-  display: flex;
-  font-weight: bold;
-  cursor: pointer;
-  justify-content: space-between;
-  margin: 0.5rem -0.5rem;
-  height: 2rem;
-
-  & > div {
-    display: flex;
-    flex-direction: column;
-    align-content: center;
-    cursor: inherit;
-    flex-grow: 1;
-    flex-basis: 0;
-    text-align: center;
-    overflow: hidden;
-  }
-`);
-
-const Tab = animated(styled.div``);
-
-type TabOption = {
-  text: string;
-  onClick: () => void;
-  title: string;
-};
-
-export type TabOptionProps = {
-  active: string;
-  options: TabOption[];
-  color?: string;
-};
-
-export const TabOption = ({ active, options, color }: TabOptionProps) => {
-  const theme = useTheme();
-  const [hovering, setHovering] = useState(options.map(() => false));
-  const styles = useSprings(
-    options.length,
-    options.map((o, i) => ({
-      backgroundColor:
-        o.text === active
-          ? color || theme.primary.plainColor
-          : hovering[i]
-            ? theme.background.body
-            : theme.background.level2,
-      color: hovering ? theme.text.primary : theme.text.secondary,
-    })),
-  );
-
-  const [style, set] = useSpring(() => ({
-    background: theme.background.level1,
-  }));
-
-  return (
-    <TabOptionDiv
-      style={style}
-      onMouseEnter={() => set({ background: theme.background.body })}
-      onMouseLeave={() => set({ background: theme.background.level1 })}
-    >
-      {options.map(({ text, title, onClick }, i) => (
-        <Tab
-          onClick={onClick}
-          title={title}
-          style={{
-            ...styles[i],
-            cursor: text === active ? "default" : "pointer",
-            color: theme.text.primary,
-          }}
-          onMouseEnter={() =>
-            setHovering(hovering.map((_, j) => (j === i ? true : _)))
-          }
-          onMouseLeave={() =>
-            setHovering(hovering.map((_, j) => (j === i ? false : _)))
-          }
-          key={i}
-        >
-          {text}
-        </Tab>
-      ))}
-    </TabOptionDiv>
-  );
-};
-
-const ButtonDiv = animated(styled.div<{ disabled?: boolean }>`
+const ButtonDiv = styled.div<{ disabled?: boolean }>`
   cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
   margin-left: 0;
   margin-right: 0;
@@ -158,9 +36,12 @@ const ButtonDiv = animated(styled.div<{ disabled?: boolean }>`
   display: flex;
   justify-content: space-between;
   margin-top: 3px;
-`);
+  transition:
+    background-color 150ms,
+    color 150ms;
+`;
 
-const OptionTextDiv = animated(styled.div`
+const OptionTextDiv = styled.div`
   padding-right: 0.25rem;
   display: flex;
   justify-content: center;
@@ -173,7 +54,7 @@ const OptionTextDiv = animated(styled.div`
     text-overflow: ellipsis;
     overflow: hidden;
   }
-`);
+`;
 
 export const OptionText = ({ style, children }) => {
   return (
@@ -201,24 +82,20 @@ export const Button: React.FC<
   title = null,
   disabled = false,
 }) => {
-  const theme = useTheme();
   const [hover, setHover] = useState(false);
-  color = color ?? theme.primary.plainColor;
-  const props = useSpring({
+  color = color ?? cssVar.color.brand.primary;
+  const props = {
     backgroundColor: disabled
-      ? theme.background.paper
+      ? cssVar.color.bg.background
       : hover
         ? color
-        : theme.background.body,
+        : cssVar.color.bg["card-nested"],
     color: disabled
-      ? theme.text.secondary
+      ? cssVar.color.text.secondary
       : hover
-        ? theme.text.buttonHighlight
-        : theme.text.secondary,
-    config: {
-      duration: 150,
-    },
-  });
+        ? cssVar.color.text.primary
+        : cssVar.color.text.secondary,
+  };
   return (
     <ButtonDiv
       style={{ ...props, userSelect: "none", ...style }}

@@ -1,7 +1,10 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
-import { Checkbox as MaterialCheckbox } from "@mui/material";
-import { animated } from "@react-spring/web";
-import { useMemo } from "react";
+import {
+  Checkbox as VoodoCheckbox,
+  cssVar,
+  LoadingDots,
+  Size,
+} from "@voxel51/voodo";
+import React, { useMemo } from "react";
 import { ReverbValueReadOnly, constSelector } from "@fiftyone/reverb";
 import styled from "styled-components";
 import { prettify } from "../../utils/generic";
@@ -29,13 +32,15 @@ const StyledCheckboxContainer = styled.div`
   margin: 0 -0.5rem 0 -0.5rem;
 `;
 
-const StyledCheckbox = animated(styled(ItemAction)`
+const StyledCheckbox = styled(ItemAction)`
   display: flex;
   justify-content: space-between;
+  align-items: center;
   flex-direction: row;
   flex-wrap: nowrap;
+  gap: 0.5rem;
   margin: 0;
-`);
+`;
 
 function Checkbox<T>({
   color,
@@ -50,8 +55,7 @@ function Checkbox<T>({
   muted,
   formatter,
 }: CheckboxProps<T>) {
-  const theme = useTheme();
-  color = color ?? theme.primary.plainColor;
+  color = color ?? cssVar.color.brand.primary;
   const props = useHighlightHover(disabled);
   const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 
@@ -74,15 +78,20 @@ function Checkbox<T>({
         }}
       >
         {!disabled && (
-          <MaterialCheckbox
+          <VoodoCheckbox
             checked={value}
             title={text}
-            style={{
-              padding: "0 0.5rem 0 0",
-              color: muted ? "inherit" : color,
-              opacity: muted ? 0.7 : 1,
-            }}
+            size={Size.Sm}
             disabled={muted}
+            style={
+              {
+                "--color-content-interactive-primary-default": color,
+                "--color-content-border-active": color,
+              } as React.CSSProperties
+            }
+            // the row's click toggles; the box toggles itself, by click or key
+            onClick={(e) => e.stopPropagation()}
+            onChange={(checked) => setValue?.(checked)}
           />
         )}
 

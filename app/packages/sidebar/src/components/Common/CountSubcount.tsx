@@ -1,4 +1,4 @@
-import { LoadingDots } from "@fiftyone/components";
+import { LoadingDots } from "@voxel51/voodo";
 import { getEventBus } from "@fiftyone/events";
 import { AggregationQueryTimeout } from "@fiftyone/state";
 import { Suspense, useEffect } from "react";

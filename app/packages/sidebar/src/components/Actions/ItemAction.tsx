@@ -1,7 +1,7 @@
-import { animated } from "@react-spring/web";
+import { cssVar } from "@voxel51/voodo";
 import styled from "styled-components";
 
-export const ItemAction = animated(styled.div`
+export const ItemAction = styled.div`
   cursor: pointer;
   margin: 0 -0.5rem;
   padding: 0.25rem 0.5rem;
@@ -12,5 +12,5 @@ export const ItemAction = animated(styled.div`
   flex-direction: column;
   text-decoration: none;
   white-space: no-wrap;
-  color: ${({ theme }) => theme.text.secondary};
-`);
+  color: ${cssVar.color.text.secondary};
+`;

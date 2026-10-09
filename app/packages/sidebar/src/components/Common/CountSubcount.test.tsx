@@ -8,7 +8,7 @@ const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
 vi.mock("@fiftyone/events", () => ({
   getEventBus: () => ({ dispatch }),
 }));
-vi.mock("@fiftyone/components", () => ({ LoadingDots: () => null }));
+vi.mock("@voxel51/voodo", () => ({ LoadingDots: () => null }));
 vi.mock("@fiftyone/state", () => ({
   AggregationQueryTimeout: class AggregationQueryTimeout {},
 }));

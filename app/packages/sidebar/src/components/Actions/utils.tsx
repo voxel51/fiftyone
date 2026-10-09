@@ -1,5 +1,4 @@
-import { useTheme } from "@fiftyone/components";
-import { useSpring } from "@react-spring/web";
+import { cssVar } from "@voxel51/voodo";
 import { useState } from "react";
 
 export const useHighlightHover = (
@@ -8,15 +7,10 @@ export const useHighlightHover = (
   color: null | string = null,
 ) => {
   const [hovering, setHovering] = useState(false);
-  const theme = useTheme();
   const on =
     typeof override === "boolean"
       ? override && !disabled
       : hovering && !disabled;
-  const style = useSpring({
-    backgroundColor: on ? theme.background.level1 : theme.background.level2,
-    color: color ? color : on ? theme.text.primary : theme.text.secondary,
-  });
 
   const onMouseEnter = () => setHovering(true);
 
@@ -24,8 +18,16 @@ export const useHighlightHover = (
 
   return {
     style: {
-      ...style,
+      backgroundColor: on
+        ? cssVar.color.bg["card-elevated"]
+        : cssVar.color.bg.background,
+      color: color
+        ? color
+        : on
+          ? cssVar.color.text.primary
+          : cssVar.color.text.secondary,
       cursor: disabled ? "default" : "pointer",
+      transition: "background-color 150ms, color 150ms",
     },
     onMouseEnter,
     onMouseLeave,

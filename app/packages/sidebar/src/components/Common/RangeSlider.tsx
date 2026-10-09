@@ -1,15 +1,7 @@
-import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-import { Slider as SliderUnstyled } from "@mui/material";
-import React, {
-  ChangeEvent,
-  useEffect,
-  useLayoutEffect,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { DATE_FIELD } from "@fiftyone/utilities";
+import { cssVar, MultiValueSlider } from "@voxel51/voodo";
+import React, { useMemo } from "react";
 import {
   type ReverbState,
   type ReverbValueReadOnly,
@@ -22,385 +14,97 @@ import { getFormatter, getPrecision, getStep } from "./utils";
 
 const SliderContainer = styled.div`
   font-weight: bold;
-  display: flex;
-  padding: 1.5rem 0 0.5rem;
-  line-height: 1.9rem;
+  padding: 0.25rem 0.5rem 0.75rem;
 `;
 
-interface SliderStyledProps {
-  // if true, min value thumb label will appear below the slider,
-  // and max value thumb label will appear above the slider
-  $alternateThumbLabelDirection?: boolean;
-}
-
-const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
-  && {
-    color: ${({ theme }) => theme.palette.primary.plainColor};
-    margin: 0 1.5rem 0 1.3rem;
-    height: 8px;
-  }
-
-  align-content: center;
-  display: flex;
-  .rail {
-    height: 8px;
-    border-radius: 8px;
-  }
-
-  .track {
-    height: 8px;
-    border-radius: 8px;
-    background: ${({ theme }) => theme.palette.primary.plainColor};
-  }
-
-  .thumb {
-    height: 16px;
-    width: 16px;
-    border-radius: 8px;
-    background: ${({ theme }) => theme.palette.primary.plainColor};
-    box-shadow: none;
-    color: transparent;
-  }
-
-  .thumb input {
-    visibility: hidden;
-  }
-
-  .thumb:hover,
-  .thumb:focus,
-  .thumb.active {
-    box-shadow: none;
-    z-index: 1;
-  }
-
-  .valueLabel::before {
-    display: none;
-  }
-  .valueLabel {
-    width: auto;
-    font-weight: bold;
-    font-family: "Palanquin", sans-serif;
-    font-size: 14px;
-    margin-top: -100%;
-    padding: 0 0.25rem;
-    color: transparent;
-    top: 100%;
-    color: ${({ theme }) => theme.palette.text.primary};
-    background: ${({ theme }) => theme.palette.background.level2};
-    border: 1px solid ${({ theme }) => theme.palette.primary.plainBorder};
-  }
-
-  .valueLabel > span > span {
-    text-align: center;
-  }
-
-  ${({ $alternateThumbLabelDirection }) =>
-    $alternateThumbLabelDirection &&
-    `
-    .valueLabel {
-      font-size: 12px;
-      opacity: 0.4;
-      transition: opacity 0.2s ease;
-    }
-
-    .thumb[data-index="0"] .valueLabel {
-      top: 56px;
-    }
-
-    .thumb:hover .valueLabel,
-    .thumb:focus .valueLabel,
-    .thumb.active .valueLabel {
-      opacity: 1;
-    }
-  `}
-` as typeof SliderUnstyled;
+const Title = styled.div`
+  width: 100%;
+  text-align: center;
+  padding: 0.25rem;
+  color: ${cssVar.color.text.primary};
+`;
 
 type SliderValue = number | undefined | null;
 
 export type Range = [SliderValue, SliderValue];
 
-type BaseSliderProps<T extends Range | number> = {
-  boundsAtom: ReverbValueReadOnly<Range>;
-  color: string;
-  value: T;
-  onChange: (e: ChangeEvent<{}>, v: T) => void;
-  onCommit?: (e: ChangeEvent<{}>, v: T) => void;
-  onMinCommit?: (v: number) => void;
-  onMaxCommit?: (v: number) => void;
-  persistValue?: boolean;
-  showBounds?: boolean;
-  fieldType?: string;
-  showValue?: boolean;
-  int?: boolean;
-  style?: React.CSSProperties;
-  alternateThumbLabelDirection?: boolean;
-  containerRef?: React.RefObject<HTMLDivElement>;
-  reserveLabelSpace?: boolean;
-};
-
 function isBoundsValid(bounds: Range): bounds is [number, number] {
   return typeof bounds[0] === "number" && typeof bounds[1] === "number";
 }
-
-const BaseSlider = <T extends Range | number>({
-  boundsAtom,
-  color,
-  fieldType,
-  onChange,
-  onCommit,
-  onMinCommit,
-  onMaxCommit,
-  persistValue = true,
-  showBounds = true,
-  value,
-  style,
-  showValue = true,
-  alternateThumbLabelDirection = false,
-  containerRef,
-  reserveLabelSpace = false,
-}: BaseSliderProps<T>) => {
-  const theme = useTheme();
-  const bounds = useReverbValue(boundsAtom);
-
-  const dirtyMin = useRef(false);
-  const dirtyMax = useRef(false);
-  const sliderRef = useRef<HTMLSpanElement>(null);
-
-  const timeZone =
-    fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
-      ? useReverbValue(fos.timeZone)
-      : null;
-  const [clicking, setClicking] = useState(false);
-
-  const adjustLabelsPosition = useCallback(() => {
-    const currentSlider = sliderRef.current;
-    const currentContainer = containerRef?.current;
-    const labelPadding = 1;
-    if (!currentSlider || !currentContainer) return;
-
-    const containerRect = currentContainer.getBoundingClientRect();
-    const valueLabels = currentSlider.querySelectorAll(".valueLabel");
-
-    valueLabels.forEach((label) => {
-      const labelElement = label as HTMLElement;
-      labelElement.style.translate = "0 0";
-      const labelRect = labelElement.getBoundingClientRect();
-      let shiftX = 0;
-
-      if (labelRect.left < containerRect.left + labelPadding) {
-        shiftX = containerRect.left + labelPadding - labelRect.left;
-      } else if (labelRect.right > containerRect.right - labelPadding) {
-        shiftX = containerRect.right - labelPadding - labelRect.right;
-      }
-
-      labelElement.style.translate = `${shiftX}px 0`;
-    });
-  }, []);
-
-  // Adjust on mount after paint
-  useEffect(() => {
-    if (!sliderRef.current || !containerRef?.current) return;
-
-    adjustLabelsPosition();
-  }, []);
-
-  // Adjust on value changes
-  useLayoutEffect(() => {
-    if (!sliderRef.current || !containerRef?.current) return;
-
-    const frameId = requestAnimationFrame(adjustLabelsPosition);
-    return () => cancelAnimationFrame(frameId);
-  }, [value, adjustLabelsPosition]);
-
-  if (!isBoundsValid(bounds)) {
-    return null;
-  }
-
-  const step = getStep(bounds, fieldType);
-  const { formatter, hasTitle } = getFormatter(
-    fieldType || "",
-    fieldType === DATE_FIELD ? "UTC" : timeZone || "UTC",
-    bounds,
-  );
-
-  const handledRange = Array.isArray(value)
-    ? [value[0] ?? bounds[0], value[1] ?? bounds[1]]
-    : value;
-
-  return (
-    <>
-      {hasTitle ? (
-        <>
-          {
-            <div
-              style={{
-                width: "100%",
-                textAlign: "center",
-                padding: "0.25rem",
-                color: theme.text.primary,
-              }}
-            >
-              {getDateTimeRangeFormattersWithPrecision(
-                timeZone || "UTC",
-                bounds[0],
-                bounds[1],
-              ).common?.format(bounds[0])}
-            </div>
-          }
-        </>
-      ) : reserveLabelSpace && showValue ? (
-        <div
-          style={{
-            width: "100%",
-            minHeight: "1.25rem",
-          }}
-        />
-      ) : null}
-      <SliderContainer style={style}>
-        {showBounds && formatter(bounds[0])}
-        <SliderStyled
-          ref={sliderRef}
-          data-cy="slider"
-          onMouseDown={() => setClicking(true)}
-          onMouseUp={() => setClicking(false)}
-          value={handledRange}
-          onChange={(e, v) => {
-            if (
-              v instanceof Array
-                ? v.some((i, j) => i !== value[j])
-                : v !== value
-            ) {
-              if (v instanceof Array) {
-                dirtyMin.current = dirtyMin.current || v[0] !== value[0];
-                dirtyMax.current = dirtyMax.current || v[1] !== value[1];
-              }
-              onChange(e, v as T);
-            }
-          }}
-          onChangeCommitted={(e, v) => {
-            if (v instanceof Array) {
-              if (dirtyMin.current) {
-                onMinCommit?.(v[0]);
-                dirtyMin.current = false;
-              }
-
-              if (dirtyMax.current) {
-                onMaxCommit?.(v[1]);
-                dirtyMax.current = false;
-              }
-            } else {
-              onCommit?.(e, v as T);
-            }
-
-            setClicking(false);
-          }}
-          classes={{
-            thumb: "thumb",
-            track: "track",
-            rail: "rail",
-            active: "active",
-            valueLabel: "valueLabel",
-          }}
-          valueLabelFormat={formatter}
-          aria-labelledby="slider"
-          valueLabelDisplay={
-            (clicking || persistValue) && showValue ? "on" : "off"
-          }
-          max={bounds[1]}
-          min={bounds[0]}
-          step={step}
-          theme={{
-            palette: {
-              ...theme,
-              color,
-              primary: { ...theme.primary, plainColor: color },
-            },
-          }}
-          $alternateThumbLabelDirection={alternateThumbLabelDirection}
-        />
-        {showBounds && formatter(bounds[1])}
-      </SliderContainer>
-    </>
-  );
-};
-
-type SliderProps = {
-  valueAtom: ReverbState<SliderValue>;
-  boundsAtom: ReverbValueReadOnly<Range>;
-  color: string;
-  persistValue?: boolean;
-  fieldType?: string;
-  showValue?: boolean;
-  showBounds?: boolean;
-  onChange?: boolean;
-  int?: boolean;
-  style?: React.CSSProperties;
-  key?: string;
-};
-
-export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
-  const [value, setValue] = useReverbState(valueAtom);
-  const [localValue, setLocalValue] = useState<SliderValue>(null);
-  useLayoutEffect(() => {
-    JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue(value);
-  }, [value]);
-
-  return (
-    <BaseSlider
-      {...rest}
-      onChange={(_, v) => (onChange ? setValue(v) : setLocalValue(v))}
-      onCommit={(_, v) => {
-        setValue(v);
-      }}
-      value={localValue}
-    />
-  );
-};
 
 type RangeSliderProps = {
   valueAtom: ReverbState<Range>;
   boundsAtom: ReverbValueReadOnly<Range>;
   color: string;
-  showBounds?: boolean;
   fieldType: string;
-} & Partial<BaseSliderProps<Range>>;
+};
 
+/**
+ * A two-knob slider over a field's bounds. A release commits only the knobs
+ * that moved; a knob released on its bound commits `null`, an open end.
+ */
 export const RangeSlider = ({
   valueAtom,
   boundsAtom,
+  color,
   fieldType,
-  ...rest
 }: RangeSliderProps) => {
   const [value, setValue] = useReverbState(valueAtom);
-  const [localValue, setLocalValue] = useState<Range>([null, null]);
-  useLayoutEffect(() => {
-    JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue(value);
-  }, [value]);
-
   const bounds = useReverbValue(boundsAtom);
+  const timeZone = useReverbValue(fos.timeZone);
+  const [min, max] = isBoundsValid(bounds) ? bounds : [0, 0];
+  const sliderValue = useMemo(
+    () => [value[0] ?? min, value[1] ?? max],
+    [value, min, max],
+  );
+
+  if (!isBoundsValid(bounds)) {
+    return null;
+  }
+
+  const zone = fieldType === DATE_FIELD ? "UTC" : timeZone || "UTC";
+  const { formatter, hasTitle } = getFormatter(fieldType, zone, bounds);
   // Restrict numeric precision to better represent the slider controls.
-  const precision = getPrecision(fieldType, bounds as [number, number]);
+  const precision = getPrecision(fieldType, bounds);
+  const toValue = (v: number, bound: number) =>
+    v === bound ? null : parseFloat(v.toFixed(precision));
+
+  const onCommit = ([low, high]: number[]) => {
+    if (low !== sliderValue[0]) {
+      setValue((prev) => [toValue(low, min), prev[1]]);
+    }
+    if (high !== sliderValue[1]) {
+      setValue((prev) => [prev[0], toValue(high, max)]);
+    }
+  };
 
   return (
-    <BaseSlider
-      {...rest}
-      boundsAtom={boundsAtom}
-      fieldType={fieldType}
-      onChange={(_, v: Range) => setLocalValue(v)}
-      onMinCommit={(v) => {
-        const newMin =
-          v === bounds[0] ? null : parseFloat(v.toFixed(precision));
-        setValue((prev) => [newMin, prev[1]]);
-      }}
-      onMaxCommit={(v) => {
-        const newMax =
-          v === bounds[1] ? null : parseFloat(v.toFixed(precision));
-        setValue((prev) => [prev[0], newMax]);
-      }}
-      value={localValue}
-    />
+    <>
+      {hasTitle && (
+        <Title>
+          {getDateTimeRangeFormattersWithPrecision(
+            timeZone || "UTC",
+            min,
+            max,
+          ).common?.format(min)}
+        </Title>
+      )}
+      <SliderContainer>
+        <MultiValueSlider
+          data-cy="slider"
+          bare
+          knobLabel
+          formatLabel={formatter}
+          min={min}
+          max={max}
+          step={getStep(bounds, fieldType)}
+          value={sliderValue}
+          onChangeCommitted={onCommit}
+          // the field's color in place of the brand fill
+          style={{ "--color-brand-primary": color } as React.CSSProperties}
+        />
+      </SliderContainer>
+    </>
   );
 };
 

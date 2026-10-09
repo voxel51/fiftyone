@@ -1,9 +1,6 @@
-import { QuestionMarkIcon } from "@voxel51/voodo";
-import { Tooltip } from "@fiftyone/components";
-import { useTheme } from "styled-components";
+import { QuestionMarkIcon, TextColor, Tooltip } from "@voxel51/voodo";
 
 const TimedOut = ({ queryTime }: { queryTime: number }) => {
-  const theme = useTheme();
   return (
     <div
       style={{
@@ -13,14 +10,14 @@ const TimedOut = ({ queryTime }: { queryTime: number }) => {
       }}
     >
       <Tooltip
-        placement="top-center"
-        text={`Count query timed out at ${queryTime} second${
+        wrapperClassName="flex"
+        content={`Count query timed out at ${queryTime} second${
           queryTime > 1 ? "s" : ""
         }`}
       >
         <QuestionMarkIcon
           size={14}
-          color={theme.text.secondary}
+          color={TextColor.Secondary}
           style={{ marginRight: 2 }}
         />
       </Tooltip>
