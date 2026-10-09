@@ -490,18 +490,30 @@ function markerModel(
   scale: ScenePoint3d,
 ): SceneModelPrimitive | null {
   const url = stringField(marker, "mesh_resource", "");
-  if (!url.startsWith("data:")) {
+  if (!isSupportedMeshResource(url)) {
     return null;
   }
 
   return {
     color,
-    mediaType: mediaTypeFromDataUri(url),
+    mediaType: url.startsWith("data:")
+      ? mediaTypeFromDataUri(url)
+      : /\.gltf(?:[?#]|$)/i.test(url)
+        ? "model/gltf+json"
+        : "model/gltf-binary",
     overrideColor: !booleanField(marker, "mesh_use_embedded_materials"),
     pose,
     scale,
     url,
   };
+}
+
+function isSupportedMeshResource(url: string): boolean {
+  return (
+    url.startsWith("data:") ||
+    (/^(?:https?|gs|s3|az):\/\//i.test(url) &&
+      /\.(?:gltf|glb)(?:[?#]|$)/i.test(url))
+  );
 }
 
 function markerAttributes(
@@ -537,9 +549,9 @@ function markerMetadata(
   const meshResource = stringField(marker, "mesh_resource");
   if (meshResource) {
     metadata.meshResource = meshResource;
-    if (!meshResource.startsWith("data:")) {
+    if (!isSupportedMeshResource(meshResource)) {
       metadata.unsupportedReason =
-        "Only inline data: mesh resources are supported";
+        "Only inline data: or HTTP(S)/cloud glTF and GLB mesh resources are supported";
     }
   }
 
