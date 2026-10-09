@@ -1,9 +1,10 @@
 import { PillButton } from "@fiftyone/components";
 import { sidebarVisible } from "@fiftyone/state";
-import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
+import { KeyboardArrowLeftIcon, KeyboardArrowRightIcon } from "@voxel51/voodo";
 import React from "react";
 import { useReverbState } from "@fiftyone/reverb";
 import type { ActionProps } from "../types";
+import { useActionIconSize } from "../iconSize";
 import { getStringAndNumberProps } from "../utils";
 
 const ToggleSidebar = React.forwardRef<
@@ -13,6 +14,7 @@ const ToggleSidebar = React.forwardRef<
   }
 >(({ modal, adaptiveMenuItemProps }, ref) => {
   const [visible, setVisible] = useReverbState(sidebarVisible(modal));
+  const iconSize = useActionIconSize(24);
 
   return (
     <PillButton
@@ -25,14 +27,14 @@ const ToggleSidebar = React.forwardRef<
       icon={
         visible ? (
           modal ? (
-            <KeyboardArrowRight />
+            <KeyboardArrowRightIcon size={iconSize} />
           ) : (
-            <KeyboardArrowLeft />
+            <KeyboardArrowLeftIcon size={iconSize} />
           )
         ) : modal ? (
-          <KeyboardArrowLeft />
+          <KeyboardArrowLeftIcon size={iconSize} />
         ) : (
-          <KeyboardArrowRight />
+          <KeyboardArrowRightIcon size={iconSize} />
         )
       }
       highlight={!visible}

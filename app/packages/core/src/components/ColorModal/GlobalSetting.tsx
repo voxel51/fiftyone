@@ -3,7 +3,7 @@ import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
 import { useReverbState } from "@fiftyone/reverb";
 import { Checkbox } from "@fiftyone/sidebar";
-import RadioGroup from "../Common/RadioGroup";
+import { RadioGroup } from "@fiftyone/actions";
 import {
   ControlGroupWrapper,
   LabelTitle,

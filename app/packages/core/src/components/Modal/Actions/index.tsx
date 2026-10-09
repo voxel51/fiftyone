@@ -1,3 +1,13 @@
+import {
+  ActionIconSizeContext,
+  BrowseOperations,
+  ColorScheme,
+  Options,
+  Selected,
+  Similarity,
+  Tag,
+  ToggleSidebar,
+} from "@fiftyone/actions";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
@@ -5,13 +15,6 @@ import { useMemo } from "react";
 import Draggable from "react-draggable";
 import { useReverbValue } from "@fiftyone/reverb";
 import styled from "styled-components";
-import BrowseOperations from "../../Actions/BrowseOperations";
-import ColorScheme from "../../Actions/ColorScheme";
-import Options from "../../Actions/Options";
-import Selected from "../../Actions/Selected";
-import Similarity from "../../Actions/Similarity";
-import Tag from "../../Actions/Tag";
-import ToggleSidebar from "../../Actions/ToggleSidebar";
 import { useModalContext } from "../hooks";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import GroupVisibility from "./GroupVisibility";
@@ -125,7 +128,10 @@ export default () => {
     >
       <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
-        <ModalActionItems />
+        {/* match the svg font-size Container gives its MUI icons */}
+        <ActionIconSizeContext.Provider value={18}>
+          <ModalActionItems />
+        </ActionIconSizeContext.Provider>
       </Container>
     </Draggable>
   );

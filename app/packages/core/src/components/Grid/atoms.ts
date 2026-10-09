@@ -57,23 +57,6 @@ export const defaultGridZoom = selector<number>({
   get: ({ get }) => get(fos.config)?.gridZoom,
 });
 
-const gridAutosizingStore = atomFamily<boolean, string>({
-  key: "gridAutosizingStore",
-  default: true,
-  effects: (datasetId) => [
-    fos.getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const gridAutosizing = selector({
-  key: "gridAutosizing",
-  get: ({ get }) => get(gridAutosizingStore(get(fos.datasetId) ?? "")),
-  set: ({ get, set }, value) =>
-    set(gridAutosizingStore(get(fos.datasetId) ?? ""), value),
-});
-
 export const gridPage = atom({
   key: "gridPage",
   default: 0,
@@ -116,7 +99,7 @@ export const gridZoom = selector<number>({
       get(gridZoomStore(get(fos.datasetId) ?? "")) ??
       convertDefault(get(defaultGridZoom));
     if (
-      get(gridAutosizing) &&
+      get(fos.gridAutosizing) &&
       typeof recommended === "number" &&
       recommended > setting
     ) {
@@ -137,7 +120,7 @@ export const gridZoom = selector<number>({
         link: MANAGING_GRID_MEMORY,
         message: "Grid autosizing disabled",
       });
-      set(gridAutosizing, false);
+      set(fos.gridAutosizing, false);
       reset(recommendedGridZoom);
     }
 
@@ -150,21 +133,6 @@ export const gridCrop = selector({
   get: ({ get }) => {
     return get(fos.isPatchesView) && get(fos.cropToContent(false));
   },
-});
-
-// ensure navigator is defined
-const deviceMemory =
-  // @ts-ignore
-  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
-
-export const maxGridItemsSizeBytes = atom({
-  key: "maxGridItemsSizeBytes",
-  default: (deviceMemory / 8) * 1e9,
-  effects: [
-    fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
-      valueClass: "number",
-    }),
-  ],
 });
 
 export const pageParameters = selector({

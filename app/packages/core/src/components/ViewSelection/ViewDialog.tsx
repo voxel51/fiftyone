@@ -19,7 +19,7 @@ import {
   useResetReverbState,
 } from "@fiftyone/reverb";
 import { viewDialogOpen } from ".";
-import { shouldToggleBookMarkIconOnSelector } from "../Grid/Actions/SaveFilters";
+import { shouldToggleBookMarkIconOnSelector } from "@fiftyone/actions";
 import {
   Box,
   DescriptionInput,

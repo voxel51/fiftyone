@@ -1,10 +1,11 @@
 import { PillButton } from "@fiftyone/components";
 import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
-import { Search, Wallpaper } from "@mui/icons-material";
+import { SearchIcon, WallpaperIcon } from "@voxel51/voodo";
 import { useCallback, useRef, useState } from "react";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
+import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import { PANEL_NAME } from "./constants";
 import SimilarityPopover from "./Similar";
@@ -27,6 +28,7 @@ const Similarity = ({
   });
 
   const keys = useAvailableSimilarityKeys(modal, showImageSimilarityIcon);
+  const iconSize = useActionIconSize(24);
 
   const togglePopover = useCallback(() => {
     if (searching || keys === null) return;
@@ -47,9 +49,9 @@ const Similarity = ({
   const icon = searching ? (
     <Loading />
   ) : showImageSimilarityIcon ? (
-    <Wallpaper />
+    <WallpaperIcon size={iconSize} />
   ) : (
-    <Search />
+    <SearchIcon size={iconSize} />
   );
 
   return (

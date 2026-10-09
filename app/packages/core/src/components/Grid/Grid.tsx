@@ -7,13 +7,7 @@ import { useReverbValue } from "@fiftyone/reverb";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
-import {
-  gridAutosizing,
-  gridCrop,
-  gridSpacing,
-  maxGridItemsSizeBytes,
-  pageParameters,
-} from "./atoms";
+import { gridCrop, gridSpacing, pageParameters } from "./atoms";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -46,7 +40,7 @@ function Grid() {
   const records = useRecords(pageReset);
 
   // divide by two, half for the hidden cache and half for max shown
-  const maxBytes = useReverbValue(maxGridItemsSizeBytes) / 2;
+  const maxBytes = useReverbValue(fos.maxGridItemsSizeBytes) / 2;
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
@@ -82,7 +76,7 @@ function Grid() {
     [page, records],
   );
   const setSample = fos.useExpandSample(pages);
-  const autosizing = useReverbValue(gridAutosizing);
+  const autosizing = useReverbValue(fos.gridAutosizing);
 
   // `reset` is the grid's refresh signal. The callables below are routed
   // through a ref so their identities are not rebuild triggers — a transient

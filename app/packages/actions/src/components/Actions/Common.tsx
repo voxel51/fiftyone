@@ -1,8 +1,9 @@
 import { ItemAction, useHighlightHover } from "@fiftyone/sidebar";
 import { ExternalLink, useTheme } from "@fiftyone/components";
-import { Launch } from "@mui/icons-material";
+import { LaunchIcon } from "@voxel51/voodo";
 import type { MouseEventHandler } from "react";
 import React from "react";
+import { useActionIconSize } from "./iconSize";
 
 export type ActionOptionProps = {
   id?: string;
@@ -29,6 +30,7 @@ export const ActionOption = React.memo(
   }: ActionOptionProps) => {
     const { style: animationStyles, ...rest } = useHighlightHover(disabled);
     const theme = useTheme();
+    const iconSize = useActionIconSize(24);
     const convertedText = text.replace(/[\s.,/]/g, "-").toLowerCase();
     if (hidden) {
       return null;
@@ -45,7 +47,7 @@ export const ActionOption = React.memo(
           {href ? (
             <ExternalLink style={{ color: theme.text.primary }} href={href}>
               {text}
-              <Launch style={svgStyles} />
+              <LaunchIcon size={iconSize} style={svgStyles} />
             </ExternalLink>
           ) : (
             `${text}`

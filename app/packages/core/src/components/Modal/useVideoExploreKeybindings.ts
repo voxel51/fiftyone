@@ -1,7 +1,7 @@
+import { useClearSelectedLabels } from "@fiftyone/actions";
 import { KnownContexts, useKeyBindings } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { useClearSelectedLabels } from "../Actions/Selected/hooks";
 
 /**
  * Zoom and clear-selection keybindings for the video Explore surface.

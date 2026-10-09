@@ -2,12 +2,13 @@ import { PillButton } from "@fiftyone/components";
 import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { Check } from "@mui/icons-material";
+import { CheckIcon } from "@voxel51/voodo";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 import Loading from "../Loading";
 import type { ActionProps } from "../types";
+import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Grid from "./Grid";
 import Modal from "./Modal";
@@ -36,6 +37,7 @@ export default ({
   const labels = useReverbValue(fos.selectedLabelIds);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
+  const iconSize = useActionIconSize(24);
 
   // Which menu this offers depends on whether the surface paints labels at
   // all, not merely on being in the modal.
@@ -95,7 +97,7 @@ export default ({
       ref={ref}
     >
       <PillButton
-        icon={loading ? <Loading /> : <Check />}
+        icon={loading ? <Loading /> : <CheckIcon size={iconSize} />}
         open={open}
         onClick={() => {
           if (loading) {

@@ -1,0 +1,40 @@
+{
+    "name": "@fiftyone/actions",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "test": "vitest"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "dependencies": {
+        "@fiftyone/analytics": "*",
+        "@fiftyone/components": "*",
+        "@fiftyone/events": "*",
+        "@fiftyone/lighter": "workspace:*",
+        "@fiftyone/looker": "*",
+        "@fiftyone/operators": "*",
+        "@fiftyone/playback": "workspace:*",
+        "@fiftyone/relay": "*",
+        "@fiftyone/reverb": "workspace:*",
+        "@fiftyone/sidebar": "*",
+        "@fiftyone/state": "*",
+        "@fiftyone/utilities": "*",
+        "@mui/material": "catalog:",
+        "@react-spring/web": "catalog:",
+        "@voxel51/voodo": "catalog:",
+        "jotai": "catalog:",
+        "numeral": "catalog:",
+        "react": "catalog:",
+        "styled-components": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vitest": "catalog:"
+    }
+}

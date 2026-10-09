@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { Bookmark } from "@mui/icons-material";
+import { BookmarkIcon } from "@voxel51/voodo";
 import { selector, useReverbCallback, useReverbValue } from "@fiftyone/reverb";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
@@ -104,7 +104,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
       <PillButton
         open={false}
         highlight={true}
-        icon={loading ? <Loading /> : <Bookmark />}
+        icon={loading ? <Loading /> : <BookmarkIcon size={24} />}
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}
         title={"Convert current filters and/or sorting to view stages"}

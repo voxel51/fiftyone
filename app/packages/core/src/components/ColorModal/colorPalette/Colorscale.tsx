@@ -11,8 +11,7 @@ import {
 } from "@fiftyone/reverb";
 import { NAME_COLORSCALE } from "@fiftyone/utilities";
 import { Checkbox } from "@fiftyone/sidebar";
-import Input from "../../Common/Input";
-import RadioGroup from "../../Common/RadioGroup";
+import { Input, RadioGroup } from "@fiftyone/actions";
 import {
   ControlGroupWrapper,
   FieldCHILD_STYLE,

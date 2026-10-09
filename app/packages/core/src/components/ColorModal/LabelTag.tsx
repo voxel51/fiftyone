@@ -13,7 +13,7 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import { Checkbox } from "@fiftyone/sidebar";
-import Input from "../Common/Input";
+import { Input } from "@fiftyone/actions";
 import {
   FieldColorSquare,
   PickerWrapper,

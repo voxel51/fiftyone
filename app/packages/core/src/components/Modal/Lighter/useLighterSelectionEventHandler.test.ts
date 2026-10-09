@@ -56,6 +56,14 @@ vi.mock("@fiftyone/lighter", () => ({
   UNDEFINED_LIGHTER_SCENE_ID: "undefined-scene",
 }));
 
+vi.mock("@fiftyone/actions", async () => ({
+  overlayToSelectedLabel: (
+    await vi.importActual<
+      typeof import("@fiftyone/actions/src/components/Actions/Selected/hooks")
+    >("@fiftyone/actions/src/components/Actions/Selected/hooks")
+  ).overlayToSelectedLabel,
+}));
+
 const { useLighterSelectionEventHandler, useSelectedLabelsSceneSync } =
   await import("./useLighterSelectionEventHandler");
 

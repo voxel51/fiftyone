@@ -1,5 +1,6 @@
 import { useTheme } from "@fiftyone/components";
-import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
+import { ClearOutlinedIcon } from "@voxel51/voodo";
+import { useActionIconSize } from "../iconSize";
 
 type Props = {
   onClose: () => void;
@@ -9,6 +10,7 @@ type Props = {
 
 const MaxKWarning = (props: Props) => {
   const theme = useTheme();
+  const iconSize = useActionIconSize(13);
 
   return (
     <div
@@ -25,10 +27,9 @@ const MaxKWarning = (props: Props) => {
           ? `Max K of selected model: ${props.maxK}`
           : "K cannot be empty"}
       </div>
-      <ClearOutlinedIcon
-        onClick={props.onClose}
-        sx={{ fontSize: "small", color: theme.danger[400] }}
-      />
+      <span onClick={props.onClose} style={{ display: "flex" }}>
+        <ClearOutlinedIcon size={iconSize} color={theme.danger[400]} />
+      </span>
     </div>
   );
 };

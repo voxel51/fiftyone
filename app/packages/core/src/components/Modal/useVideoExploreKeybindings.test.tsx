@@ -36,7 +36,7 @@ vi.mock("@fiftyone/state", () => ({
   useSelectedLabelIds: () => selectedLabelIds,
 }));
 
-vi.mock("../Actions/Selected/hooks", () => ({
+vi.mock("@fiftyone/actions", () => ({
   useClearSelectedLabels: () => clearSelectedLabels,
 }));
 

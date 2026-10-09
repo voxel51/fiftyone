@@ -1,4 +1,4 @@
-import { DefaultValue, atomFamily, selector } from "@fiftyone/reverb";
+import { DefaultValue, atom, atomFamily, selector } from "@fiftyone/reverb";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { filters } from "./filters";
 import { queryPerformance, validIndexes } from "./queryPerformance";
@@ -118,4 +118,36 @@ export const gridSortFields = selector({
         .filter((path) => path && get(isNumericField(path)))
     );
   },
+});
+
+const gridAutosizingStore = atomFamily<boolean, string>({
+  key: "gridAutosizingStore",
+  default: true,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const gridAutosizing = selector({
+  key: "gridAutosizing",
+  get: ({ get }) => get(gridAutosizingStore(get(datasetId) ?? "")),
+  set: ({ get, set }, value) =>
+    set(gridAutosizingStore(get(datasetId) ?? ""), value),
+});
+
+// ensure navigator is defined
+const deviceMemory =
+  // @ts-ignore
+  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
+
+export const maxGridItemsSizeBytes = atom({
+  key: "maxGridItemsSizeBytes",
+  default: (deviceMemory / 8) * 1e9,
+  effects: [
+    getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
+      valueClass: "number",
+    }),
+  ],
 });

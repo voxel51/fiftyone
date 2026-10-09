@@ -22,7 +22,6 @@ import {
 } from "@fiftyone/utilities";
 import { Checkbox } from "@fiftyone/sidebar";
 import RadioGroup from "../../Common/RadioGroup";
-import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/atoms";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
 import MultimodalGridFitSetting from "./MultimodalGridFitSetting";
@@ -348,9 +347,9 @@ const ShowModalNav = () => {
 };
 
 const Grid = () => {
-  const [autosizing, setAutosizing] = useReverbState(gridAutosizing);
-  const resetSizeBytes = useResetReverbState(maxGridItemsSizeBytes);
-  const [sizeBytes, setSizeBytes] = useReverbState(maxGridItemsSizeBytes);
+  const [autosizing, setAutosizing] = useReverbState(fos.gridAutosizing);
+  const resetSizeBytes = useResetReverbState(fos.maxGridItemsSizeBytes);
+  const [sizeBytes, setSizeBytes] = useReverbState(fos.maxGridItemsSizeBytes);
   const theme = useTheme();
 
   return (

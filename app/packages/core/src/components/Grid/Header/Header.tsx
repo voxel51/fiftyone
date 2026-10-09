@@ -8,9 +8,9 @@ import {
   useReverbValue,
   useResetReverbState,
 } from "@fiftyone/reverb";
+import { GridActions } from "@fiftyone/actions";
 import { Slider } from "@fiftyone/sidebar";
 import ResourceCount from "../../ResourceCount";
-import Actions from "../Actions";
 import { gridSpacing, gridZoom } from "../atoms";
 import { ZOOM_RANGE } from "../useZoomSetting";
 import {
@@ -90,7 +90,7 @@ const Header = () => {
 
   return (
     <SamplesHeader data-cy={"fo-grid-actions"}>
-      <Actions key={"actions"} />
+      <GridActions key={"actions"} />
       <RightContainer key={"options"}>
         <Suspense
           fallback={

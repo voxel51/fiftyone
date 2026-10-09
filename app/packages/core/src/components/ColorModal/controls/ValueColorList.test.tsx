@@ -37,8 +37,8 @@ vi.mock("../ShareStyledDiv", () => ({
   DeleteButton: () => null,
   RowContainer: "div",
 }));
-vi.mock("../../Common/Input", () => ({
-  default: ({
+vi.mock("@fiftyone/actions", () => ({
+  Input: ({
     id,
     value,
     setter,
