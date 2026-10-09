@@ -121,88 +121,41 @@ describe("createHost", () => {
     expect(host.instance).toBe(built[1]);
   });
 
-  test("every rebuild a resize causes reports it", () => {
-    const { built, host, onResize } = setup();
+  test("a drag holds the grid and rebuilds once when it settles", () => {
+    const { build, built, host, onResize } = setup();
     host.rebuild();
     built[0].load();
 
     resize({ width: 800, height: 600 });
     resize({ width: 820, height: 600 });
     built[1].load();
-    resize({ width: 840, height: 600 });
-    expect(onResize).toHaveBeenCalledTimes(2);
-
-    vi.advanceTimersByTime(SETTLE);
-    expect(onResize).toHaveBeenCalledTimes(3);
-  });
-
-  test("a run of resizes rebuilds interim instances at the last anchor", () => {
-    const { build, built, host } = setup();
-    host.rebuild();
-    built[0].load();
-    built[0].dispatchEvent(new RowChange({ description: "sample" }, 3, 0.25));
-
-    resize({ width: 800, height: 600 });
-    resize({ width: 820, height: 600 });
-    built[1].load();
-    resize({ width: 840, height: 600 });
-    expect(build).toHaveBeenCalledTimes(3);
-    expect(build).toHaveBeenLastCalledWith(
-      { key: 3, at: { description: "sample", fraction: 0.25 } },
-      { interim: true },
-    );
-  });
-
-  test("keeps one interim build in flight and catches up after it swaps", () => {
-    const { build, built, host } = setup();
-    host.rebuild();
-    built[0].load();
-    resize({ width: 800, height: 600 });
-
-    resize({ width: 820, height: 600 });
     resize({ width: 840, height: 600 });
     resize({ width: 860, height: 600 });
     expect(build).toHaveBeenCalledTimes(2);
-
-    built[1].load();
-    expect(build).toHaveBeenCalledTimes(3);
-    expect(build).toHaveBeenLastCalledWith(undefined, { interim: true });
-    built[2].load();
-    expect(build).toHaveBeenCalledTimes(3);
-  });
-
-  test("builds the content instance once a run of resizes settles", () => {
-    const { build, built, host } = setup();
-    host.rebuild();
-    built[0].load();
-    resize({ width: 800, height: 600 });
-    resize({ width: 820, height: 600 });
-    built[1].load();
-    resize({ width: 840, height: 600 });
-    built[2].load();
+    expect(onResize).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(SETTLE - 1);
-    expect(build).toHaveBeenCalledTimes(3);
+    expect(build).toHaveBeenCalledTimes(2);
     vi.advanceTimersByTime(1);
-    expect(build).toHaveBeenCalledTimes(4);
+    expect(build).toHaveBeenCalledTimes(3);
     expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    expect(onResize).toHaveBeenCalledTimes(2);
 
-    built[3].load();
-    expect(host.instance).toBe(built[3]);
+    built[2].load();
+    expect(host.instance).toBe(built[2]);
   });
 
-  test("the settled content build replaces a pending interim one", () => {
+  test("the settled build replaces a first build still loading", () => {
     const { build, built, host } = setup();
     host.rebuild();
     built[0].load();
     resize({ width: 800, height: 600 });
     resize({ width: 820, height: 600 });
-    built[1].load();
     resize({ width: 840, height: 600 });
 
     vi.advanceTimersByTime(SETTLE);
-    expect(built[2].destroy).toHaveBeenCalled();
-    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    expect(built[1].destroy).toHaveBeenCalled();
+    expect(build).toHaveBeenCalledTimes(3);
   });
 
   test("a resize before the first load waits for it, then rebuilds content once", () => {

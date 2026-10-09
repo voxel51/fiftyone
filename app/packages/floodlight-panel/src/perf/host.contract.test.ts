@@ -57,39 +57,23 @@ const kinds = (violations: { kind: string }[], kind: string) =>
 const NONE = { creates: 0, reattaches: 0, resizes: 0, skipped: 0 };
 
 describe("host contracts: cross-axis resize", () => {
-  test("a burst builds the content, one interim catch-up, then the content", async () => {
+  test("a burst builds once as it starts and once when it settles", async () => {
     const mounted = await setup();
     await burst();
-    expect(mounted.log).toEqual([
-      "build i1",
-      "load i1",
-      "dispose i0",
-      "build i2 interim",
-      "load i2",
-      "dispose i1",
-    ]);
+    expect(mounted.log).toEqual(["build i1", "load i1", "dispose i0"]);
 
     await settle();
-    expect(mounted.log.slice(6)).toEqual(["build i3", "load i3", "dispose i2"]);
-    expect(mounted.builds).toBe(4);
-    expect(mounted.current).toBe("i3");
+    expect(mounted.log.slice(3)).toEqual(["build i2", "load i2", "dispose i1"]);
+    expect(mounted.builds).toBe(3);
+    expect(mounted.current).toBe("i2");
     expect(mounted.container.children).toHaveLength(1);
     expect(mounted.fetches.total).toBe(0);
   });
 
-  test("interim instances move held lookers at their last size", async () => {
-    const { looker, renderer } = await setup();
+  test("a burst's retired instance detaches nothing", async () => {
+    const { renderer } = await setup();
     await burst();
 
-    // the 60 lookers the first content build laid out move without
-    // resizing; nothing is created
-    expect(looker.counts("i2")).toEqual({
-      creates: 0,
-      reattaches: 60,
-      resizes: 0,
-      skipped: 0,
-    });
-    // the retired content instance's teardown detaches nothing
     expect(renderer.instance("i0").detaches).toBe(0);
     expect(renderer.violations).toEqual([]);
   });
@@ -110,8 +94,8 @@ describe("host contracts: cross-axis resize", () => {
     expect(looker.tiles("i1").filter((id) => !held.includes(id))).toHaveLength(
       10,
     );
-    expect(looker.tiles("i3")).toHaveLength(60);
-    expect(looker.blank("i3")).toEqual([]);
+    expect(looker.tiles("i2")).toHaveLength(60);
+    expect(looker.blank("i2")).toEqual([]);
     expect(renderer.violations).toEqual([]);
     expect(mounted.fetches.total).toBe(0);
   });

@@ -57,7 +57,6 @@ export const createHost = <K, I extends Instance>(
   let current: Entry<I> | undefined;
   let pending: Entry<I> | undefined;
   let extent: number | undefined;
-  let stale = false;
   // resized before anything loaded: nothing to move, so rebuild once after it loads
   let resizedEarly = false;
   let resizing: ReturnType<typeof setTimeout> | undefined;
@@ -105,10 +104,6 @@ export const createHost = <K, I extends Instance>(
         if (resizedEarly) {
           resizedEarly = false;
           rebuild();
-        } else if (stale && resizing) {
-          stale = false;
-          options.onResize?.();
-          rebuild(anchor, true);
         }
       },
       { once: true },
@@ -129,29 +124,23 @@ export const createHost = <K, I extends Instance>(
       return;
     }
 
-    // a single change (a sidebar toggling) rebuilds once with content, the
-    // old instance shown until it loads; only a run of changes (a drag)
-    // goes through interim instances and settles after
+    // a single change (a sidebar toggling) rebuilds at once; a run of
+    // changes (a drag) holds the grid still and rebuilds once it settles
     const continuing = resizing !== undefined;
     clearTimeout(resizing);
     resizing = setTimeout(() => {
       resizing = undefined;
       if (!continued) return;
-      continued = stale = false;
+      continued = false;
       options.onResize?.();
       rebuild();
     }, SETTLE);
-    if (!continuing) {
-      options.onResize?.();
-      rebuild(anchor);
+    if (continuing) {
+      continued = true;
       return;
     }
-    continued = true;
-    if (pending) stale = true;
-    else {
-      options.onResize?.();
-      rebuild(anchor, true);
-    }
+    options.onResize?.();
+    rebuild(anchor);
   });
   observer.observe(element);
 
