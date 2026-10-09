@@ -36,13 +36,14 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background-color: var(--fo-palette-background-level2);
+  background-color: var(--color-content-bg-background);
 }
 
 .storm {
   display: block;
   width: 100%;
   height: 100%;
+  opacity: 0.45;
 }
 
 .fallingPixels.hidden {
