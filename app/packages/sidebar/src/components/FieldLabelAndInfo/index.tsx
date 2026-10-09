@@ -1,5 +1,4 @@
-import { PaletteIcon } from "@voxel51/voodo";
-import { InfoIcon, Markdown, useTheme } from "@fiftyone/components";
+import { cssVar, PaletteIcon } from "@voxel51/voodo";
 import * as fos from "@fiftyone/state";
 import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
@@ -11,12 +10,14 @@ import React, {
   useState,
 } from "react";
 import ReactDOM from "react-dom";
+import ReactMarkdown from "react-markdown";
 import {
   atom,
   useReverbState,
   useReverbValue,
   useSetReverbState,
 } from "@fiftyone/reverb";
+import remarkGfm from "remark-gfm";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
 
@@ -102,8 +103,6 @@ function toLabel(path, nested) {
   return !nested ? path : path.split(".").pop();
 }
 
-const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;
-
 type FieldLabelAndInfo = {
   nested?: boolean;
   path?: string;
@@ -125,7 +124,7 @@ const FieldLabelAndInfo = ({
 
   return (
     <>
-      {template({ ...fieldInfo, FieldInfoIcon })}
+      {template(fieldInfo)}
       {fieldInfo.open && <FieldInfoExpanded {...fieldInfo} path={path} />}
     </>
   );
@@ -134,12 +133,7 @@ const FieldLabelAndInfo = ({
 export default FieldLabelAndInfo;
 
 const FieldInfoExpandedContainer = styled.div`
-  background: ${({ theme }) => {
-    if (theme.mode === "light") {
-      return theme.background.header;
-    }
-    return theme.background.body;
-  }};
+  background: ${cssVar.color.bg["card-nested"]};
   border-left: 5px solid ${({ color }) => color};
   border-radius: 2px;
   padding: 0.5rem;
@@ -158,7 +152,30 @@ const FieldInfoDesc = styled.div<{ $collapsed: boolean }>`
   max-height: calc(2.1rem * 6);
   overflow-x: hidden;
   overflow-y: ${({ $collapsed }) => ($collapsed ? "hidden" : "auto")};
-  color: ${({ theme }) => theme.text.primary};
+  color: ${cssVar.color.text.primary};
+  p {
+    margin: 0;
+  }
+  p + p {
+    margin-top: 0.5rem;
+  }
+  ul,
+  ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+  }
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
+  code {
+    background: ${cssVar.color.bg["card-elevated"]};
+    color: ${cssVar.color.brand.primary};
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-size: 85%;
+    font-family: ${cssVar.fontFamily.mono};
+  }
   ::-webkit-scrollbar {
     width: 0.5rem; // manage scrollbar width here
   }
@@ -185,14 +202,14 @@ const FieldInfoHoverTarget = styled.div`
 const ContentValue = styled.div`
   font-size: 0.8rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.text.primary};
+  color: ${cssVar.color.text.primary};
 `;
 
 const ContentName = styled.div`
   // min-width: 50px;
   font-size: 0.8rem;
   font-weight: bold;
-  color: ${({ theme }) => theme.text.secondary};
+  color: ${cssVar.color.text.secondary};
 `;
 
 // a styled.table that uses the theme
@@ -207,14 +224,14 @@ const FieldInfoTableContainer = styled.table`
     padding: 0.1rem 0.5rem;
   }
   tr {
-    background: ${({ theme }) => theme.background.level1};
+    background: ${cssVar.color.bg["card-elevated"]};
   }
   tr {
-    border-top: solid 2px ${({ theme }) => theme.background.header};
+    border-top: solid 2px ${cssVar.color.bg.card};
   }
   a,
   a:visited {
-    color: ${({ theme }) => theme.text.primary};
+    color: ${cssVar.color.text.primary};
   }
   tr td.nostretch {
     width: 1%;
@@ -229,7 +246,7 @@ const ShowMoreLink = styled.a`
   cursor: pointer;
   display: inline-block;
   text-align: right;
-  color: ${({ theme }) => theme.text.primary};
+  color: ${cssVar.color.text.primary};
   text-decoration: underline;
   margin-left: 0.25rem;
 `;
@@ -349,7 +366,16 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
 function ExpFieldInfoDesc({ collapsed, description }) {
   return (
     <FieldInfoDesc $collapsed={collapsed}>
-      <Markdown>{description}</Markdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }) => (
+            <ExternalLink href={href}>{children}</ExternalLink>
+          ),
+        }}
+      >
+        {description}
+      </ReactMarkdown>
     </FieldInfoDesc>
   );
 }
@@ -611,10 +637,9 @@ function convertTypeToDocLink(type) {
 }
 
 function LinkToType({ type, subfield }) {
-  const theme = useTheme();
   const { href, label } = convertTypeToDocLink(type);
   return (
-    <ExternalLink style={{ color: theme.text.primary }} href={href}>
+    <ExternalLink href={href}>
       {label} {subfield ? `(${subfield})` : null}
     </ExternalLink>
   );
@@ -624,7 +649,6 @@ function LinkToType({ type, subfield }) {
 // if the given value is a string that is a valid url
 // otherwise it returns the value
 function LinkOrValue({ value }) {
-  const theme = useTheme();
   if (typeof value !== "string" || !value.startsWith("http"))
     return <Value>{value}</Value>;
 
@@ -633,11 +657,7 @@ function LinkOrValue({ value }) {
     value = value.substr(0, 50) + "...";
   }
 
-  return (
-    <ExternalLink style={{ color: theme.text.primary }} href={href}>
-      {value}
-    </ExternalLink>
-  );
+  return <ExternalLink href={href}>{value}</ExternalLink>;
 }
 
 function Value({ children }) {
