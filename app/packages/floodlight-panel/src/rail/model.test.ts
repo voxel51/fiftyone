@@ -198,3 +198,15 @@ describe("rail state", () => {
     expect(nearestTick([], 0.5)).toBe(-1);
   });
 });
+
+describe("thumbPosition with items on screen", () => {
+  it("reaches the end when the last screen is in view", () => {
+    expect(thumbPosition(90, 100, 10)).toBe(1);
+    expect(thumbPosition(45, 100, 10)).toBe(0.5);
+  });
+
+  it("lands a jump where the thumb would sit", () => {
+    expect(positionToRank(1, 100, 10)).toBe(90);
+    expect(thumbPosition(positionToRank(0.5, 100, 10), 100, 10)).toBe(0.5);
+  });
+});

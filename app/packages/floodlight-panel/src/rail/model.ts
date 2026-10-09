@@ -31,21 +31,38 @@ export const clampRank = (rank: number, total: number): number =>
 export const rankToPosition = (rank: number, total: number): number =>
   total <= 1 ? 0 : clampRank(rank, total) / (total - 1);
 
-export const positionToRank = (position: number, total: number): number =>
-  total <= 1 ? 0 : clampRank(position * (total - 1), total);
+/**
+ * The last rank that can head the view: with `visible` items on screen, the
+ * end of the order is reached before its last item reaches the top.
+ */
+const lastTop = (total: number, visible?: number) =>
+  Math.max(0, total - Math.max(1, Math.round(visible ?? 1)));
+
+export const positionToRank = (
+  position: number,
+  total: number,
+  visible?: number,
+): number =>
+  total <= 1 ? 0 : clampRank(position * lastTop(total, visible), total);
 
 /** The thumb sits at the rank of the item at the top of the view. */
 export const thumbPosition = (
   anchorRank: number | undefined,
   total: number,
-): number => (anchorRank === undefined ? 0 : rankToPosition(anchorRank, total));
+  visible?: number,
+): number => {
+  const last = lastTop(total, visible);
+  if (anchorRank === undefined || last <= 0) return 0;
+  return Math.min(1, Math.max(0, anchorRank / last));
+};
 
 export const jumpTarget = (
   position: number,
   total: number,
   pageSize: number,
+  visible?: number,
 ): JumpTarget => {
-  const rank = positionToRank(position, total);
+  const rank = positionToRank(position, total, visible);
   return { rank, key: Math.floor(rank / pageSize) };
 };
 

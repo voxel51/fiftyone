@@ -91,7 +91,7 @@ function RankRail({
       : event.clientY - rect.top;
     return Math.min(Math.max(offset / size, 0), 1);
   };
-  const position = drag ?? thumbPosition(anchorRank, total);
+  const position = drag ?? thumbPosition(anchorRank, total, visible);
   const span = thumbSpan(visible, total, MIN_SPAN);
   const pointer = drag ?? hover;
   const mode = railMode({
@@ -126,8 +126,8 @@ function RankRail({
       aria-orientation={orientation}
       aria-valuemin={1}
       aria-valuemax={total}
-      aria-valuenow={positionToRank(position, total) + 1}
-      aria-valuetext={label(positionToRank(position, total), total)}
+      aria-valuenow={positionToRank(position, total, visible) + 1}
+      aria-valuetext={label(positionToRank(position, total, visible), total)}
       onKeyDown={onKeyDown}
       onPointerDown={(event) => {
         event.stopPropagation();
@@ -168,7 +168,7 @@ function RankRail({
         />
         {pointer !== null && (
           <div className={styles.pill} style={{ [start]: percent(pointer) }}>
-            {label(positionToRank(pointer, total), total)}
+            {label(positionToRank(pointer, total, visible), total)}
           </div>
         )}
       </div>

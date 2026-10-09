@@ -72,11 +72,11 @@ export default function useRail({
 
   const jump = useCallback(
     (position: number, total: number) => {
-      const target = jumpTarget(position, total, pageSize);
+      const target = jumpTarget(position, total, pageSize, visible);
       setAnchorRank(target.rank);
       host?.rebuild(jumpAnchor(target, ranks));
     },
-    [host, pageSize, ranks],
+    [host, pageSize, ranks, visible],
   );
 
   return { anchorRank, jump, visible };
