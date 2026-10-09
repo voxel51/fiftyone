@@ -62,8 +62,9 @@ export default function useRelayout<I extends Instance, V>({
         root &&
         from &&
         to &&
-        !interims.has(next) &&
-        !interims.has(previous);
+        // an interim's tiles sit where the grid last was, so a settled build
+        // animates from them too
+        !interims.has(next);
       if (!interims.has(next)) animateNext.current = false;
 
       const removed = source.takeRemoved();

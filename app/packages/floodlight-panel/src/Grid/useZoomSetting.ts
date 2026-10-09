@@ -5,16 +5,17 @@ import { SETTLE } from "../host/createHost";
 import { useSettled } from "../host/useSettled";
 import { gridZoom } from "./atoms";
 
-/** Container width per unit of the widest row aspect ratio allowed. */
-const WIDTH_PER_ASPECT = 80;
+/** Rows never get shorter than this, whatever the zoom. */
+const MIN_ROW_HEIGHT = 160;
 const MAX_ASPECT = 15;
 
 /**
- * The widest row aspect ratio a container fits: narrower containers allow
- * fewer items per row, so tiles stay a usable size as the grid thins.
+ * The widest row aspect ratio a container fits: a row's height is its width
+ * over its aspect ratio, so narrower containers allow fewer items per row and
+ * rows stay at least {@link MIN_ROW_HEIGHT} tall.
  */
 export const maxRowAspect = (width: number) =>
-  Math.min(MAX_ASPECT, Math.max(1, Math.floor(width / WIDTH_PER_ASPECT)));
+  Math.min(MAX_ASPECT, Math.max(1, width / MIN_ROW_HEIGHT));
 
 /**
  * Aspect ratio range is 1 to 15

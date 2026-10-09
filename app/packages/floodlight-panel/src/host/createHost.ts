@@ -33,7 +33,7 @@ export interface HostOptions<K, I extends Instance> {
   onStatus?: (status: HostStatus, instance: I) => void;
   /** Runs at a swap, before the previous instance is disposed. */
   onSwap?: (next: I, previous: I | undefined) => void;
-  /** Runs before a single resize's rebuild, whose swap may animate. */
+  /** Runs before a resize's content rebuild, whose swap may animate. */
   onResize?: () => void;
 }
 
@@ -137,6 +137,7 @@ export const createHost = <K, I extends Instance>(
       resizing = undefined;
       if (!continued) return;
       continued = stale = false;
+      options.onResize?.();
       rebuild();
     }, SETTLE);
     if (!continuing) {
