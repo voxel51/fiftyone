@@ -1,4 +1,4 @@
-/* The dataset crumb: a pill that fills on hover and while its list is open */
+/* The dataset crumb: a pill that fills on hover, focus and while its list is open */
 .trigger {
   display: inline-flex;
   align-items: center;
@@ -13,14 +13,10 @@
 }
 
 .trigger:hover,
-.open {
-  background: var(--color-content-interactive-secondary-hover);
-}
-
 .trigger:focus-visible,
 .open {
-  outline: 2px solid var(--color-content-focus-ring);
-  outline-offset: 0;
+  background: var(--color-content-interactive-secondary-hover);
+  outline: none;
 }
 
 .trigger .name {
