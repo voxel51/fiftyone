@@ -2,6 +2,7 @@ import { test as base, expect } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { indexToId } from "src/shared/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("image-classification");
 const videoDatasetName = getUniqueDatasetNameWithPrefix("video-dataset");
@@ -11,9 +12,8 @@ const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
   "group-video-dataset",
 );
 
-const id = "000000000000000000000000";
-const videoId = "000000000000000000000001";
-const groupVideoId = "000000000000000000000003";
+// each dataset's first sample, and the first patch of the patches view
+const id = indexToId(0);
 
 const test = base.extend<{
   modal: ModalPom;
@@ -31,89 +31,63 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(
-  async ({ fiftyoneLoader, datasetFactory, mediaFactory, foWebServer }) => {
-    await foWebServer.startWebServer();
-    await datasetFactory.createDataset({
-      datasetName,
-      schema: {
-        classification: "Classification",
-      },
-      withSampleData: (_, { createId }) => ({
-        classification: { _id: createId(), label: "value" },
-      }),
-    });
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await datasetFactory.createDataset({
+    datasetName,
+    schema: {
+      classification: "Classification",
+    },
+    withSampleData: (_, { createId }) => ({
+      classification: { _id: createId(), label: "value" },
+    }),
+  });
 
-    await datasetFactory.createDataset({
-      datasetName: detectionDatasetName,
-      schema: {
-        predictions: "Detections",
-      },
-      withSampleData: (_, { createId }) => {
-        return {
-          predictions: {
-            detections: [
-              {
-                _id: createId(id),
-                label: "cat",
-                bounding_box: [0.1, 0.1, 0.2, 0.2],
-              },
-              {
-                _id: createId(),
-                label: "dog",
-                bounding_box: [0.3, 0.3, 0.2, 0.2],
-              },
-            ],
-          },
-        };
-      },
-      savedViews: { patches: "dataset.to_patches('predictions')" },
-    });
+  await datasetFactory.createDataset({
+    datasetName: detectionDatasetName,
+    schema: {
+      predictions: "Detections",
+    },
+    withSampleData: (_, { createId }) => {
+      return {
+        predictions: {
+          detections: [
+            {
+              _id: createId(id),
+              label: "cat",
+              bounding_box: [0.1, 0.1, 0.2, 0.2],
+            },
+            {
+              _id: createId(),
+              label: "dog",
+              bounding_box: [0.3, 0.3, 0.2, 0.2],
+            },
+          ],
+        },
+      };
+    },
+    savedViews: { patches: "dataset.to_patches('predictions')" },
+  });
 
-    await mediaFactory.createVideo({
-      outputPath: "/tmp/blank-video.webm",
-      duration: 1,
-      width: 50,
-      height: 50,
-      frameRate: 5,
-      color: "#000000",
-    });
-
-    await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${videoDatasetName}")
-  dataset.media_type = "video"
-  sample = fo.Sample(
-      _id=ObjectId("${videoId}"),
-      filepath="/tmp/blank-video.webm"
-  )
-  # Use internal API to preserve the explicit ObjectId needed
-  # for the beforeEach URL navigation (?id=...) to open the modal
-  dataset._sample_collection.insert_many(
-      [dataset._make_dict(sample, include_id=True)]
-  )
-  dataset.save()
-  # populate frame count / dimensions so the video looker can load and the
-  # modal stays open
-  dataset.compute_metadata()`);
-
-    await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
-  import fiftyone as fo
-
-  dataset = fo.Dataset("${groupVideoDatasetName}")
-  dataset.add_group_field("group", default="video1")
-  group = fo.Group()
-  sample = fo.Sample(
-      _id=ObjectId("${groupVideoId}"),
-      filepath="/tmp/blank-video.webm",
-      group=group.element("video1")
-  )
-  dataset.add_samples([sample])`);
-  },
-);
+  const blankVideo = {
+    duration: 1,
+    width: 50,
+    height: 50,
+    frameRate: 5,
+    color: "#000000",
+  };
+  await datasetFactory.createDataset({
+    mediaType: "video",
+    datasetName: videoDatasetName,
+    videoOptions: blankVideo,
+  });
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName: groupVideoDatasetName,
+    numGroups: 1,
+    slices: [{ name: "video1", mediaType: "video", videoOptions: blankVideo }],
+  });
+});
 
 const DEFAULT_LABEL_SCHEMA = {
   attributes: [
@@ -135,9 +109,7 @@ test.describe.serial("schema manager", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
-    // Init
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
     await schemaManager.open();
     await schemaManager.assert.isOpen();
 
@@ -149,12 +121,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation
-    const invalid = await jsonEditor.armInvalidJSON();
-    await jsonEditor.setJSON({
-      component: "wrong",
-      type: "classification",
+    await jsonEditor.afterInvalidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "wrong",
+        type: "classification",
+      });
     });
-    await invalid.received;
     await jsonEditor.assert.hasErrors([
       "invalid component 'wrong' for field 'classification'",
     ]);
@@ -164,12 +136,12 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Successful validation
-    const valid = await jsonEditor.armValidJSON();
-    await jsonEditor.setJSON({
-      component: "text",
-      type: "classification",
+    await jsonEditor.afterValidJSON(async () => {
+      await jsonEditor.setJSON({
+        component: "text",
+        type: "classification",
+      });
     });
-    await valid.received;
 
     // Scan
     await jsonEditor.scan();
@@ -188,7 +160,9 @@ test.describe.serial("schema manager", () => {
       { name: "classification", type: "Classification" },
     ]);
 
-    // Hide
+    // Hide: the dataset default shows every field, so hiding happens in
+    // a custom schema
+    await schemaManager.createSchema("hide-classification");
     await row.clickCheckbox();
     await row.assert.isChecked(true);
     await schemaManager.moveFields();
@@ -212,15 +186,18 @@ test.describe.serial("schema manager", () => {
     // the modal rather than the looker canvas, which never reports loaded for a
     // blank seeded video.
     await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
-      searchParams: new URLSearchParams({ id: videoId }),
-      readySelector: '[data-cy="modal"]',
+      searchParams: new URLSearchParams({ id }),
+      readyEvent: "e2e:modal:opened",
     });
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
     await schemaManager.assert.isEnabled();
   });
 
   test("patches view required field prompt activates schema and enters edit mode", async ({
+    eventUtils,
     fiftyoneLoader,
     page,
     modal,
@@ -228,28 +205,41 @@ test.describe.serial("schema manager", () => {
     // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
       searchParams: new URLSearchParams({ view: "patches", id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.sidebar.switchMode("annotate");
-
-    // The required field prompt should appear since "predictions" has no active schema
-    await expect(page.getByText("Field not in label schema")).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByTestId("activate-field-schema")).toBeVisible();
+    // The required field prompt should appear since "predictions" has no
+    // active schema; it mounts once the label schemas load
+    await eventUtils.after("e2e:annotate:required-field-prompt", () =>
+      modal.sidebar.switchMode("annotate"),
+    );
+    const activateButton = page.getByTestId("activate-field-schema");
+    expect(await page.getByText("Field not in label schema").isVisible()).toBe(
+      true,
+    );
 
     // Click the activate button to initialize and activate the predictions schema
-    const activateButton = page.getByTestId("activate-field-schema");
-    await expect(activateButton).toBeEnabled();
-    await activateButton.click();
-
-    // After activation, the edit panel should appear with "Edit Detection"
-    await expect(page.getByText("Edit Detection")).toBeVisible({
-      timeout: 10_000,
-    });
+    expect(await activateButton.isEnabled()).toBe(true);
+    // activation generates and activates the schema through operators; the
+    // edit panel then mounts with "Edit Detection" once the activated
+    // schemas are refetched
+    await eventUtils.after(
+      "e2e:annotate:edit-header",
+      () =>
+        eventUtils.after(
+          "e2e:operators:executed",
+          () => activateButton.click(),
+          (e) =>
+            (e.detail as { operator: string }).operator ===
+            "@voxel51/operators/activate_label_schemas",
+        ),
+      (e) => (e.detail as { type: string | null }).type === "Detection",
+    );
+    expect(await page.getByText("Edit Detection").isVisible()).toBe(true);
 
     // In patches view, the Schema button should not be visible
-    await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();
+    expect(await page.getByRole("button", { name: "Schema" }).isVisible()).toBe(
+      false,
+    );
   });
 
   test("annotation enabled for a grouped dataset with a video slice", async ({
@@ -264,10 +254,11 @@ test.describe.serial("schema manager", () => {
     // supported group slice types). Every real group slice media type
     // (image/video/3d/point-cloud) is now annotatable.
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
-      searchParams: new URLSearchParams({ id: groupVideoId }),
+      searchParams: new URLSearchParams({ id }),
     });
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     await schemaManager.assert.isEnabled();
   });

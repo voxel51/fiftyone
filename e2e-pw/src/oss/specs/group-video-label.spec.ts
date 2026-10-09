@@ -1,11 +1,11 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("video-label-regression");
-const testVideoPath1 = `/tmp/test-video1-${datasetName}.webm`;
-const testVideoPath2 = `/tmp/test-video2-${datasetName}.webm`;
+// the v2 slice's video, set once the dataset exists
+let v2Filepath: string;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -20,52 +20,45 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await Promise.all(
-    [testVideoPath1, testVideoPath2].map(async (outputPath) => {
-      mediaFactory.createVideo({
-        outputPath,
-        duration: 3,
-        width: 100,
-        height: 100,
-        frameRate: 5,
-        color: "#000000",
-      });
-    }),
-  );
-
-  await fiftyoneLoader.executePythonCode(
-    `
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-    dataset.add_group_field("group", default="v1")
-
-    group = fo.Group()
-    sample1 = fo.Sample(filepath="${testVideoPath1}", group=group.element("v1"))
-    sample2 = fo.Sample(filepath="${testVideoPath2}", group=group.element("v2"))
-    dataset.add_samples([sample1, sample2])
-
-    dataset.ensure_frames()
-
-    for _, frame in sample1.frames.items():
-      d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2], label="s1d1")
-      frame["d1"] = d1
-    sample1.save()
-
-    for _, frame in sample2.frames.items():
-      d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
-      frame["d2"] = d2
-    sample2.save() 
-    `,
-  );
+  const video = {
+    duration: 3,
+    width: 100,
+    height: 100,
+    frameRate: 5,
+    color: "#000000",
+  };
+  const samples = await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 1,
+    slices: [
+      { name: "v1", mediaType: "video", videoOptions: video },
+      { name: "v2", mediaType: "video", videoOptions: video },
+    ],
+    schema: { "frames.d1": "Detection", "frames.d2": "Detection" },
+    withFrameData: ({ sampleIndex }, { label }) =>
+      sampleIndex === 0
+        ? {
+            d1: label.detection({
+              bounding_box: [0.1, 0.1, 0.2, 0.2],
+              label: "s1d1",
+            }),
+          }
+        : {
+            d2: label.detection({
+              bounding_box: [0.2, 0.2, 0.25, 0.25],
+              label: "s1d2",
+            }),
+          },
+  });
+  v2Filepath = samples[1].filepath;
 });
 
 test.describe.serial("groups video labels", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, { tiles: 1 });
   });
 
   test("correct thumbnails for both slices", async ({ grid }) => {
@@ -73,25 +66,13 @@ test.describe.serial("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
-
-    // const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-    //   return new Promise<void>((resolve) => {
-    //     document.addEventListener("canvas-loaded", (e: CustomEvent) => {
-    //       if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
-    //         resolve();
-    //       }
-    //     });
-    //   });
-    // }, testVideoPath2);
+    await grid.assert.hasTileScreenshots("slice-v1", 1);
 
     // compare screenshot for another slice (v2)
-    const gridRefresPromise = await grid.armGridRefresh();
-    await grid.sliceSelector.selectSlice("v2");
-    await gridRefresPromise.received;
-    // await v2SampleLoadedPromise;
-
-    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
+    await grid.afterTilesDrawn(1, () =>
+      grid.run(() => grid.sliceSelector.selectSlice("v2")),
+    );
+    await grid.assert.hasTileScreenshots("slice-v2", 1);
   });
 
   test("video plays with correct label for each slice", async ({
@@ -103,51 +84,33 @@ test.describe.serial("groups video labels", () => {
     // one selected: re-picking the slice already on screen refreshes nothing,
     // and the armed refresh would never arrive.
     if ((await grid.sliceSelector.activeSlice()) !== "v1") {
-      const gridRefresPromise = await grid.armGridRefresh();
-      await grid.sliceSelector.selectSlice("v1");
-      await gridRefresPromise.received;
+      await grid.run(async () => {
+        await grid.sliceSelector.selectSlice("v1");
+      });
     }
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
 
-      await modal.looker.hover();
+      await modal.sampleCanvas.move(0.5, 0.5);
+      // an exact reading: a stale one from the previous slice resets on load
+      await modal.video.playUntilDuration("0:00.20");
 
-      // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-      // check screenshot before video is played
-      // await expect(modal.looker).toHaveScreenshot(`${slice}-before-play.png`, {
-      //   animations: "allow",
-      // });
-
-      await modal.video.playUntilAdvanced();
-      await modal.looker.hover();
-
-      // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-      // check screenshot after video is played
-      // await expect(modal.looker).toHaveScreenshot(`${slice}-after-play.png`, {
-      //   // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
-      //   // the real test is that the correct label is shown
-      //   mask: [modal.video.time],
-      //   animations: "allow",
-      // });
+      await modal.groupSampleCanvas.assert.hasScreenshot(`${slice}-played.png`);
     };
 
     await checkVideo("v1");
 
-    const sampleLoadEventPromiseForv2 = await eventUtils.arm(
-      "canvas-loaded",
+    // change slice and repeat
+    await eventUtils.after(
+      "e2e:looker:canvas-loaded",
+      () => modal.group.selectNthItemFromCarousel(1),
       (e) =>
         (e.detail as { sampleFilepath?: string })?.sampleFilepath ===
-        testVideoPath2,
+        v2Filepath,
     );
-
-    // change slice and repeat
-    await modal.group.selectNthItemFromCarousel(1);
-
-    await sampleLoadEventPromiseForv2.received;
 
     await checkVideo("v2");
   });

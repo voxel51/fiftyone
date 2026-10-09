@@ -11,14 +11,6 @@ export class UrlPom {
     this.assert = new UrlAsserter(this);
   }
 
-  get groupSlice() {
-    return this.searchParams.get("slice");
-  }
-
-  get groupId() {
-    return this.searchParams.get("groupId");
-  }
-
   get id() {
     return this.searchParams.get("id");
   }
@@ -31,39 +23,19 @@ export class UrlPom {
     return new URL(this.page.url());
   }
 
-  get view() {
-    return this.searchParams.get("view");
-  }
-
   pageChange<T>(wrap: () => Promise<T>): Promise<T> {
-    return this.eventUtils.after("page-change", wrap);
+    return this.eventUtils.after("e2e:app:page-change", wrap);
   }
 
   async back() {
     await this.pageChange(() => this.page.goBack());
-  }
-
-  async forward() {
-    await this.pageChange(() => this.page.goForward());
   }
 }
 
 class UrlAsserter {
   constructor(private readonly urlPom: UrlPom) {}
 
-  verifyGroupSlice(slice: string | null) {
-    expect(this.urlPom.groupSlice).toEqual(slice);
-  }
-
-  verifyGroupId(groupId: string | null) {
-    expect(this.urlPom.id).toEqual(groupId);
-  }
-
   verifySampleId(id: string) {
     expect(this.urlPom.id).toEqual(id);
-  }
-
-  verifyView(viewName: string) {
-    expect(this.urlPom.id).toEqual(viewName);
   }
 }

@@ -1,4 +1,18 @@
 .. customcarditem::
+    :header: 2026 Humanoid IKEA Assembly Challenge
+    :description: Six humanoid furniture-assembly episodes in native MCAP format, with stereo head and wrist cameras, infrared, 35-motor telemetry, odometry, and annotated subtasks.
+    :link: datasets/humanoid_ikea_assembly_challenge.html
+    :image: ../_images/2026-humanoid-ikea-assembly-challenge.png
+    :tags: multimodal,mcap,robotics,humanoid
+
+.. customcarditem::
+    :header: ABC-130k
+    :description: 40 bimanual robot teleoperation episodes from the ABC-130k corpus in native MCAP format, with synchronized multi-camera video and robot telemetry on the timeline.
+    :link: datasets/abc_130k.html
+    :image: ../_images/abc-130k.png
+    :tags: multimodal,mcap,robotics,video
+
+.. customcarditem::
     :header: ActivityNet 100
     :description: Large-scale video dataset for human activity understanding with 100 activity classes. Supports video classification and temporal activity detection tasks.
     :link: datasets/activitynet_100.html
@@ -11,6 +25,13 @@
     :link: datasets/activitynet_200.html
     :image: ../_images/activitynet-200-validation.png
     :tags: video,classification,action-recognition,temporal-detection
+
+.. customcarditem::
+    :header: APAC Egocentric Stereo
+    :description: 12 first-person work sequences in native MCAP format, with rectified stereo video, a depth render, hand and head tracking, and 248 densely captioned action segments.
+    :link: datasets/apac_egocentric_stereo.html
+    :image: ../_images/apac-egocentric-stereo.png
+    :tags: multimodal,mcap,egocentric,stereo
 
 .. customcarditem::
     :header: BDD100K
@@ -55,11 +76,25 @@
     :tags: image,classification
 
 .. customcarditem::
+    :header: CitrusFarm Sample
+    :description: A robot driving the rows of a citrus farm in native MCAP format, with monochrome, thermal, red-green-near-infrared and stereo cameras, stereo depth, LiDAR and GPS-RTK on one clock.
+    :link: datasets/citrusfarm_sample.html
+    :image: ../_images/citrusfarm-sample.png
+    :tags: multimodal,mcap,agriculture,thermal,multispectral,lidar
+
+.. customcarditem::
     :header: Cityscapes
     :description: Urban scene understanding dataset with stereo video sequences from 50 cities. Features 5,000 high-quality pixel-level annotations and 20,000 weakly annotated frames.
     :link: datasets/cityscapes.html
     :image: ../_images/cityscapes-validation.png
     :tags: image,multilabel,automotive,manual
+
+.. customcarditem::
+    :header: CMHT Autonomous Driving
+    :description: Autonomous driving episodes with camera, infrared, lidar, radar, and GPS streams in native MCAP format, with expert object detection annotations across diverse conditions.
+    :link: datasets/cmht_autonomous_driving.html
+    :image: ../_images/cmht-autonomous-driving.png
+    :tags: multimodal,mcap,automotive,lidar
 
 .. customcarditem::
     :header: COCO-2014
@@ -76,6 +111,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: ColoRadar Sample
+    :description: Seven handheld sequences in native MCAP format pairing a cascaded imaging radar and a single-chip radar with a 64-beam LiDAR and an inertial unit, from hallways and a lab to an underground mine.
+    :link: datasets/coloradar_sample.html
+    :image: ../_images/coloradar-sample.png
+    :tags: multimodal,mcap,radar,lidar,robotics
+
+.. customcarditem::
     :header: Egocentric EMG-Force
     :description: Eight first-person household task recordings in native MCAP format, pairing RGB-D video with eight-channel wrist EMG, hand skeletons, per-finger contact force and 122 English-labelled subtasks.
     :link: datasets/egocentric_emg_force.html
@@ -90,11 +132,25 @@
     :tags: multimodal,mcap,robotics,lidar,depth,gnss
 
 .. customcarditem::
+    :header: DSEC Sample
+    :description: Six driving sequences in native MCAP format pairing a stereo pair of event cameras, carrying every event, with a stereo pair of color cameras, LiDAR-derived disparity ground truth and, where available, optical flow ground truth.
+    :link: datasets/dsec_sample.html
+    :image: ../_images/dsec-sample.png
+    :tags: multimodal,mcap,event-camera,stereo,driving
+
+.. customcarditem::
     :header: DreamTac
     :description: 703 contact-rich Franka manipulation trajectories in native MCAP format, pairing third-person and wrist cameras with two vision-based tactile fingertips on one clock.
     :link: datasets/dreamtac.html
     :image: ../_images/dreamtac.png
     :tags: multimodal,mcap,tactile,manipulation,robotics
+
+.. customcarditem::
+    :header: Edged-USLAM Event Camera
+    :description: 13 quadrotor flights in native MCAP format with a DAVIS346 event camera, carrying every event beside a render of it, the grayscale frames, an inertial unit and the Vicon pose on one clock.
+    :link: datasets/edged_uslam_event_camera.html
+    :image: ../_images/edged-uslam-event-camera.png
+    :tags: multimodal,mcap,event-camera,uav,robotics
 
 .. customcarditem::
     :header: Fashion MNIST
@@ -109,6 +165,34 @@
     :link: datasets/fiw.html
     :image: ../_images/fiw.png
     :tags: image,classification
+
+.. customcarditem::
+    :header: GR00T-X-Embodiment-Sim
+    :description: 42 robot manipulation episodes across seven embodiments from NVIDIA's GR00T-X-Embodiment-Sim corpus in native MCAP format, with cameras, per-part telemetry, and task instructions.
+    :link: datasets/gr00t_x_embodiment_sim.html
+    :image: ../_images/gr00t-x-embodiment-sim.png
+    :tags: multimodal,mcap,robotics,simulation
+
+.. customcarditem::
+    :header: GrandTour Sample
+    :description: Three missions of an ANYmal D quadruped from the GrandTour legged robotics dataset in native MCAP format, pairing HDR and depth cameras and a Hesai LiDAR with inertial, joint, odometry and GNSS/INS streams on one clock.
+    :link: datasets/grandtour_sample.html
+    :image: ../_images/grandtour-sample.png
+    :tags: multimodal,mcap,robotics,legged,lidar
+
+.. customcarditem::
+    :header: HapTile
+    :description: 1,699 teleoperated contact-rich manipulation episodes in native MCAP format, pairing front and wrist RGB-D cameras with two vision-based tactile fingertips and the operator's haptic feedback on one clock.
+    :link: datasets/haptile.html
+    :image: ../_images/haptile.png
+    :tags: multimodal,mcap,tactile,haptics,manipulation
+
+.. customcarditem::
+    :header: Hilti SLAM Challenge 2022
+    :description: 16 handheld runs through a construction site and the Sheldonian Theatre in native MCAP format, with five cameras, LiDAR, IMU, and surveyed reference positions.
+    :link: datasets/hilti_slam_challenge_2022.html
+    :image: ../_images/hilti-slam-challenge-2022.png
+    :tags: multimodal,mcap,slam,lidar
 
 .. customcarditem::
     :header: HMDB51
@@ -181,11 +265,32 @@
     :tags: image,classification,facial-recognition
 
 .. customcarditem::
+    :header: M3ED Sample
+    :description: A car, a quadrotor and a legged robot in native MCAP format, pairing a stereo pair of event cameras, carrying every event, with grayscale and color cameras, LiDAR and ground-truth poses and depth.
+    :link: datasets/m3ed_sample.html
+    :image: ../_images/m3ed-sample.png
+    :tags: multimodal,mcap,event-camera,stereo,lidar
+
+.. customcarditem::
+    :header: MirrorSentinel Elevator
+    :description: 8 elevator traversals in native MCAP format, with camera, Ouster LiDAR, IMU, sensor transforms, and hand-measured cabin geometry for studying mirror interference.
+    :link: datasets/mirror_elevator.html
+    :image: ../_images/mirror-elevator.png
+    :tags: multimodal,mcap,slam,lidar
+
+.. customcarditem::
     :header: MNIST
     :description: The iconic MNIST database of handwritten digits (0-9). Contains 70,000 28x28 grayscale images - the "hello world" dataset for machine learning and neural networks.
     :link: datasets/mnist.html
     :image: ../_images/mnist-test.png
     :tags: image,classification
+
+.. customcarditem::
+    :header: NTNU Underwater Multi-Camera
+    :description: 8 piloted underwater robot runs in native MCAP format, from the Trondheim Fjord and a lab pool, pairing five cameras with a 200 Hz inertial unit, depth, a rangefinder and a reference trajectory on one clock.
+    :link: datasets/ntnu_underwater_multicam.html
+    :image: ../_images/ntnu-underwater-multicam.png
+    :tags: multimodal,mcap,underwater,robotics,slam
 
 .. customcarditem::
     :header: Open Images V6
@@ -258,6 +363,13 @@
     :tags: multimodal,mcap,robotics,depth
 
 .. customcarditem::
+    :header: RoboMIND
+    :description: 32 real-robot manipulation episodes across four embodiments from the RoboMIND benchmark in native MCAP format, with RGB and depth cameras, joint telemetry, and language instructions.
+    :link: datasets/robomind.html
+    :image: ../_images/robomind.png
+    :tags: multimodal,mcap,robotics,manipulation
+
+.. customcarditem::
     :header: RTK-SLAM Absolute Accuracy
     :description: Four handheld walking sequences in native MCAP format pairing LiDAR, camera, IMU and GNSS with 87 total-station checkpoints and three published SLAM trajectories measured against them.
     :link: datasets/rtk_slam_absolute_accuracy.html
@@ -272,6 +384,13 @@
     :tags: image,detection,segmentation
 
 .. customcarditem::
+    :header: SEW Multimodal AMR
+    :description: 55 autonomous mobile robot sessions in native MCAP format, with RGB, thermal, time-of-flight, 4D radar, laser scanners, and ultrasonic across seasons, weather, and lighting.
+    :link: datasets/sew_multimodal_amr.html
+    :image: ../_images/sew-multimodal-amr.png
+    :tags: multimodal,mcap,robotics,thermal
+
+.. customcarditem::
     :header: TaF Tactile-Force
     :description: 3,594 contact-rich probing episodes in native MCAP format, pairing a tactile image with a 12x12 pressure map and a six-axis force/torque wrench on one clock.
     :link: datasets/taf_tactile_force.html
@@ -279,11 +398,32 @@
     :tags: multimodal,mcap,tactile,force-torque
 
 .. customcarditem::
+    :header: TartanGround
+    :description: Six ground-robot trajectories across distinct simulation environments in native MCAP format, with camera, segmentation, lidar point clouds, ego pose, and IMU streams.
+    :link: datasets/tartanground.html
+    :image: ../_images/tartanground.png
+    :tags: multimodal,mcap,robotics,lidar
+
+.. customcarditem::
     :header: TII-RATM Drone Racing
     :description: Six indoor drone racing flights in native MCAP format, pairing onboard fisheye video and a 500 Hz IMU with visual-inertial odometry and motion capture ground truth on one clock.
     :link: datasets/tii_ratm_drone_racing.html
     :image: ../_images/tii-ratm-drone-racing.png
     :tags: multimodal,mcap,drone,slam,ground-truth
+
+.. customcarditem::
+    :header: TreeScope Multimodal
+    :description: 10 UAV lidar episodes from the TreeScope forestry robotics dataset in native MCAP format, with point cloud and odometry streams from agricultural environments.
+    :link: datasets/treescope_multimodal.html
+    :image: ../_images/treescope-multimodal.png
+    :tags: multimodal,mcap,robotics,lidar
+
+.. customcarditem::
+    :header: TUM RGB-D
+    :description: The TUM RGB-D SLAM benchmark in native MCAP format, pairing a Kinect's color and depth at 30 Hz with motion-capture ground truth on one clock, plus the Kinect's accelerometer on the freiburg1 and freiburg2 sequences.
+    :link: datasets/tum_rgbd.html
+    :image: ../_images/tum-rgbd.png
+    :tags: multimodal,mcap,rgbd,slam,robotics
 
 .. customcarditem::
     :header: UCF101

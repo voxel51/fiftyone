@@ -20,6 +20,10 @@ import {
   Spacing,
   Stack,
   ToggleSwitch,
+  Anchor,
+  Pill,
+  Text,
+  Tooltip,
 } from "@voxel51/voodo";
 
 import {
@@ -44,7 +48,10 @@ import { ListContainer } from "../styled";
 import {
   defaultClassesComponent,
   getLabelTypeOptions,
+  supportsDynamicAttributes,
   validateFieldName,
+  isFrameLevelLabelType,
+  type NewFieldScope,
 } from "../utils";
 
 import {
@@ -55,9 +62,17 @@ import {
   getDefaultAttributesForType,
   getDefaultComponent,
   toFieldType,
+  FRAME_PREFIX_TOOLTIP,
 } from "../constants";
 
 import type { AttributeConfig, SchemaConfigType } from "../utils";
+import { useAtomValue, useSetAtom } from "jotai";
+import {
+  loadedSchemaDoc,
+  selectedSchemaDocId,
+  useSchemaDocs,
+  type SchemaDocContentEntry,
+} from "../useSchemaDocs";
 
 type FieldCategory = "label" | "primitive";
 
@@ -87,6 +102,10 @@ const NewFieldSchema = () => {
     classesComponentChoice ?? defaultClassesComponent(classes);
 
   const { createAndActivateField, listSchemas } = useSchemaManager();
+  const schemaDocs = useSchemaDocs();
+  // The schema this field is being created in (null = dataset default).
+  const selectedDocId = useAtomValue(selectedSchemaDocId);
+  const setLoadedDoc = useSetAtom(loadedSchemaDoc);
   const setLabelSchemasData = useSetLabelSchemasData();
   const { setFields: setActiveFields } = useActiveFieldsList();
   const exitNewFieldMode = useExitNewFieldMode();
@@ -106,23 +125,34 @@ const NewFieldSchema = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [is3dMedia]);
 
-  // A "frames." prefix targets the frame schema (video only), which changes
-  // both the valid name pattern and the available label types.
-  const isFrameField = useMemo(
-    () => fieldName.trim().startsWith("frames."),
-    [fieldName],
+  const labelTypeOptions = useMemo(
+    () => getLabelTypeOptions(currentMediaType),
+    [currentMediaType],
   );
 
-  // Get label type options based on media type and field scope
-  const labelTypeOptions = useMemo(
-    () => getLabelTypeOptions(currentMediaType, isFrameField),
-    [currentMediaType, isFrameField],
-  );
+  // On video, a LABEL field's scope follows its type: spatial labels are
+  // frame fields and the form adds the "frames." prefix (shown as a pill
+  // in the name input); classification / temporal detections are
+  // sample-level. Primitives keep the typed name (a hand-typed "frames."
+  // prefix is still how a frame-level primitive is made).
+  const isVideo = currentMediaType === "video";
+  const scope: NewFieldScope | undefined =
+    isVideo && category === "label"
+      ? isFrameLevelLabelType(labelType)
+        ? "frame"
+        : "sample"
+      : undefined;
+  const frameScoped = scope === "frame";
+  const typedName = fieldName.trim();
+  const effectiveName =
+    frameScoped && !typedName.startsWith("frames.")
+      ? `frames.${typedName}`
+      : typedName;
 
   // Validate field name
   const fieldNameError = useMemo(
-    () => validateFieldName(fieldName, schemasData, currentMediaType),
-    [fieldName, schemasData, currentMediaType],
+    () => validateFieldName(fieldName, schemasData, currentMediaType, scope),
+    [fieldName, schemasData, currentMediaType, scope],
   );
 
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
@@ -232,7 +262,7 @@ const NewFieldSchema = () => {
     if (!canCreate) return;
 
     setIsCreating(true);
-    const trimmedName = fieldName.trim();
+    const trimmedName = effectiveName;
 
     // Build label schema config for label fields
     let label_schema_config: LabelSchemaConfig | undefined;
@@ -262,6 +292,44 @@ const NewFieldSchema = () => {
             ? primitiveConfig
             : undefined,
       });
+
+      // Visibility across schemas: the creation itself made the field
+      // active and annotatable in the dataset default; the schema it
+      // was created in gets it as annotate-tier content; every other
+      // custom schema gets it hidden.
+      try {
+        const contentEntry =
+          category === "label"
+            ? ({
+                type: labelType,
+                classes,
+                attributes,
+              } as SchemaDocContentEntry)
+            : ({
+                ...(primitiveConfig ?? {}),
+                type: primitiveType,
+              } as unknown as SchemaDocContentEntry);
+        await schemaDocs.propagateField(
+          trimmedName,
+          contentEntry,
+          selectedDocId ?? null,
+        );
+      } catch (err) {
+        console.error("Failed to propagate the new field to schemas:", err);
+        notify({
+          msg: "Field created, but adding it to some schemas failed",
+          variant: "error",
+        });
+      }
+
+      if (selectedDocId) {
+        try {
+          setLoadedDoc(await schemaDocs.getDoc(selectedDocId));
+        } catch (err) {
+          // The schema is saved; the editor shows it again once reloaded
+          console.error("Failed to reload the schema:", err);
+        }
+      }
 
       const { active_label_schemas, label_schemas } = await listSchemas({});
 
@@ -294,8 +362,11 @@ const NewFieldSchema = () => {
     classes,
     classesComponent,
     createAndActivateField,
+    schemaDocs,
+    selectedDocId,
+    setLoadedDoc,
     exitNewFieldMode,
-    fieldName,
+    effectiveName,
     labelType,
     listSchemas,
     newAttributes,
@@ -331,17 +402,42 @@ const NewFieldSchema = () => {
           <FormField
             label="Field name"
             control={
-              <Input
-                value={fieldName}
-                onChange={(e) => setFieldName(e.target.value)}
-                placeholder={
-                  currentMediaType === "video"
-                    ? "Enter field name (e.g. frames.detections)"
-                    : "Enter field name"
-                }
-                error={!!fieldNameError}
-                autoFocus
-              />
+              <div style={{ position: "relative", width: "100%" }}>
+                {frameScoped ? (
+                  <Tooltip
+                    anchor={Anchor.Bottom}
+                    portal
+                    content={<Text>{FRAME_PREFIX_TOOLTIP}</Text>}
+                    style={{
+                      position: "absolute",
+                      left: 8,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      zIndex: 1,
+                    }}
+                  >
+                    <Pill size={Size.Sm} data-cy="frames-prefix-pill">
+                      frames.
+                    </Pill>
+                  </Tooltip>
+                ) : null}
+                <Input
+                  value={fieldName}
+                  onChange={(e) => setFieldName(e.target.value)}
+                  placeholder={
+                    isVideo && category === "primitive"
+                      ? "Enter field name (e.g. frames.confidence)"
+                      : "Enter field name"
+                  }
+                  error={!!fieldNameError}
+                  autoFocus
+                  data-cy="new-field-name"
+                  style={{
+                    width: "100%",
+                    paddingLeft: frameScoped ? 76 : undefined,
+                  }}
+                />
+              </div>
             }
             error={fieldNameError || undefined}
           />
@@ -418,6 +514,11 @@ const NewFieldSchema = () => {
               <AttributesSection
                 attributes={attributes}
                 allowPointScope={labelType === "keypoints"}
+                canAddAttributes={supportsDynamicAttributes(
+                  currentMediaType,
+                  effectiveName || "new",
+                  labelType,
+                )}
                 onAddAttribute={handleAddAttribute}
                 onEditAttribute={handleEditAttribute}
                 onDeleteAttribute={handleDeleteAttribute}

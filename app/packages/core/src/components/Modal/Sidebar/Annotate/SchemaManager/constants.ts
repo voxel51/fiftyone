@@ -34,6 +34,12 @@ const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
 
 export const SYSTEM_READ_ONLY_FIELD_NAME = "system";
 
+// Copy for the (disabled) hide affordance. Only custom schemas can hide
+// fields; the dataset default always shows everything.
+export const DEFAULT_CANNOT_HIDE =
+  "Fields can't be hidden in the default schema — create a custom schema to hide fields";
+export const REQUIRED_CANNOT_HIDE = "Required field — cannot be hidden";
+
 export type SystemReadOnlyField =
   (typeof SYSTEM_READ_ONLY_FIELDS_ARRAY)[number];
 
@@ -64,14 +70,33 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
-// Label type options for sample-level fields on video datasets. Spatial labels
-// (detections/polylines) are frame-level only on video, so a sample-level field
-// is limited to the clip-level label types. Frame fields (a "frames." prefix)
-// use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
+// Label type options on video datasets: every label type at once. Where
+// a field lives is decided by its type, not by the name — spatial labels
+// (detections / polylines / keypoints) are frame fields and the form
+// adds the "frames." prefix itself; classification and temporal
+// detections are sample-level. Frame-level classification is not
+// supported, so there is no such option.
 export const LABEL_TYPE_OPTIONS_VIDEO = [
+  { id: "detections", data: { label: "Detections" } },
+  { id: "polylines", data: { label: "Polylines" } },
+  { id: "keypoints", data: { label: "Keypoints" } },
   { id: "classification", data: { label: "Classification" } },
   { id: "temporaldetections", data: { label: "Temporal Detections" } },
 ];
+
+/** Label types stored as frame fields on video ("frames." prefix). */
+export const FRAME_LEVEL_LABEL_TYPES = new Set([
+  "detections",
+  "polylines",
+  "keypoints",
+]);
+
+export const FRAME_PREFIX_TOOLTIP =
+  "Detection, Polyline, and Keypoint labels are stored as frame fields";
+export const FRAME_PREFIX_AUTO_ERROR =
+  "Invalid field name, the frames. prefix is automatically added for this label type";
+export const FRAME_PREFIX_SAMPLE_ERROR =
+  "Invalid field name, the frames. prefix is not allowed for this label type which must be stored at the sample level";
 
 // =============================================================================
 // New Field Category Constants

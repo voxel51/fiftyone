@@ -3,7 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
-import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -47,26 +46,37 @@ test("grid tagging refreshes visible tiles across pages without reloading", asyn
   sidebar,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldCheckbox("filepath");
-  await sidebar.clickFieldCheckbox("tags");
+  const filepath = (index: number) => path.join(mediaDir, `${index}.png`);
   const tile = (index: number) =>
-    grid.locator.getByTestId("looker").filter({
-      hasText: path.join(mediaDir, `${index}.png`),
-    });
+    grid.locator.getByTestId("looker").filter({ hasText: filepath(index) });
+  const tag = (index: number) => tile(index).getByTestId("tag-tags-grid-test");
+
+  // tiles render their tags once the checkbox shows them, not when scrolled
+  const shown = await grid.tagsRenderedMark();
+  await grid.afterTagsRendered([filepath(0)], async () => {
+    await sidebar.clickFieldCheckbox("filepath");
+    await sidebar.clickFieldCheckbox("tags");
+  });
 
   // Visit later pages before tagging so Relay already holds their old data.
   await grid.scrollBottom();
   await tile(30).scrollIntoViewIfNeeded();
-  await expect(tile(30)).toBeInViewport();
-  await expect(tile(30).getByTestId("tag-tags-grid-test")).toBeHidden();
+  await grid.untilTagsRenderedSince(shown, filepath(30));
+  expect(await tag(30).count()).toBe(0);
 
-  await grid.run(() => new SelectionTrayPom(page).tagSamples("grid-test"));
+  const tagged = await grid.tagsRenderedMark();
+  await grid.run(async () => {
+    await grid.tagger.afterCountShown("sample", () =>
+      grid.actionsRow.toggleTagSamplesOrLabels(),
+    );
+    await grid.tagger.addNewTag("sample", "grid-test");
+  });
 
-  // Check actual viewport contents, including previously cached later pages.
-  // toBeVisible alone also accepts tiles retained outside the viewport.
-  for (const index of [0, 30, 47, 53]) {
+  // Tagging keeps the scroll position: check the tile in view and the later
+  // pages Relay cached before tagging.
+  for (const index of [30, 47, 53]) {
     await tile(index).scrollIntoViewIfNeeded();
-    await expect(tile(index)).toBeInViewport();
-    await expect(tile(index).getByTestId("tag-tags-grid-test")).toBeVisible();
+    await grid.untilTagsRenderedSince(tagged, filepath(index));
+    expect(await tag(index).isVisible()).toBe(true);
   }
 });

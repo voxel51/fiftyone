@@ -533,7 +533,6 @@ type Mutation {
   deleteSavedView(subscription: String!, session: String, viewName: String!, datasetName: String): String
   updateSavedView(viewName: String!, subscription: String, session: String, updatedInfo: SavedViewInfo!, datasetName: String = null): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
-  searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
 type NamedKeypointSkeleton {

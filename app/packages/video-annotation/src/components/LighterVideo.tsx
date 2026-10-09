@@ -51,8 +51,6 @@ export interface LighterVideoProps {
    * read-only overlay path.
    */
   mode?: LighterVideoMode;
-  /** Disable when the host owns the opening seek (for example, saved ranges). */
-  autoSeekOnLoad?: boolean;
   /**
    * Demuxer verdict on whether the source has an audio track, when the
    * caller has one. `false` hides the volume control without waiting on the
@@ -78,7 +76,6 @@ export interface LighterVideoProps {
 export const LighterVideo: React.FC<LighterVideoProps> = ({
   videoSrc,
   mode = "annotate",
-  autoSeekOnLoad = true,
   hasAudio,
   onLoadStart,
   onLoadedData,
@@ -180,7 +177,7 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
   const Sync = mode === "annotate" ? AnnotateSync : ExploreSync;
 
   return (
-    <div className={styles.body}>
+    <div className={styles.body} data-lighter-surface>
       <video
         ref={videoRef}
         className={styles.video}
@@ -210,7 +207,7 @@ export const LighterVideo: React.FC<LighterVideoProps> = ({
           // (after a seek that crossed an unbuffered range, etc.) does
           // NOT reset the playhead. We only kick the engine on the
           // FIRST `loadeddata` per `videoSrc`.
-          if (!autoSeekOnLoad || kickedSrcRef.current === videoSrc) return;
+          if (kickedSrcRef.current === videoSrc) return;
           kickedSrcRef.current = videoSrc;
           seek(0);
         }}

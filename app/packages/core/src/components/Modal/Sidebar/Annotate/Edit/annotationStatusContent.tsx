@@ -153,7 +153,7 @@ export const keypointGuidedStatus = (
   nodeCount: number,
 ): StatusContent => ({
   status: (
-    <StatusText color={TextColor.Fg}>
+    <StatusText color={TextColor.Foreground}>
       {`Place: ${nodeName} · ${placedCount}/${nodeCount} placed`}
     </StatusText>
   ),

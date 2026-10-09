@@ -42,7 +42,9 @@ const primitiveFilter = selectorFamily<
   get:
     ({ modal, path }) =>
     ({ get }) => {
-      const { ftype, subfield } = get(schemaAtoms.field(path));
+      // Null-safe: stale filter paths (e.g. a field excluded by a task
+      // schema policy) fall through to the match-all filter.
+      const { ftype, subfield } = get(schemaAtoms.field(path)) ?? {};
 
       if (ftype === BOOLEAN_FIELD) {
         return get(boolean({ modal, path }));
@@ -117,7 +119,7 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
               ftype: VALID_PRIMITIVE_TYPES,
             }),
           );
-          const docType = get(schemaAtoms.field(expandedPath)).embeddedDocType;
+          const docType = get(schemaAtoms.field(expandedPath))?.embeddedDocType;
 
           const fs = labelFields.map(({ name, dbField }) => {
             const filter = get(

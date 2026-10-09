@@ -14,7 +14,7 @@ import {
   ORTHONORMAL_AXIS_OPTIONS,
   getOrthonormalAxis,
   getUpVectorFromAxis,
-  saveCameraState,
+  saveCameraStateIfMoved,
 } from "../utils";
 import {
   getCameraControlsTarget,
@@ -55,6 +55,7 @@ export const SceneControls = ({
   );
 
   const lastCameraUpdateRef = useRef(0);
+  const lastSavedPoseRef = useRef<string | null>(null);
 
   // Save frequently enough to survive quick mode switches after interactions.
   const CAMERA_UPDATE_INTERVAL = 50;
@@ -75,10 +76,11 @@ export const SceneControls = ({
       cameraControls &&
       now - lastCameraUpdateRef.current > CAMERA_UPDATE_INTERVAL
     ) {
-      saveCameraState(
+      lastSavedPoseRef.current = saveCameraStateIfMoved(
         datasetName,
         state.camera.position.toArray(),
         getCameraControlsTarget(cameraControls).toArray(),
+        lastSavedPoseRef.current,
       );
       lastCameraUpdateRef.current = now;
     }

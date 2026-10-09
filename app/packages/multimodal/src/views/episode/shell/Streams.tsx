@@ -38,7 +38,6 @@ export interface StreamsProps {
   availableTileTypes: readonly TileType[];
   /** Capture time to open the recording at, ahead of the first-data tick. */
   initialSeekTimeNs?: bigint | null;
-  initialSeekPending?: boolean;
   /** Shared format-neutral episode session owned by the modal renderer. */
   session: EpisodeSession | null;
   /** Called after every blocking stream covers the current playhead. */
@@ -61,7 +60,6 @@ export function Streams({
   availableTileTypes,
   budgetAccount,
   initialSeekTimeNs,
-  initialSeekPending,
   onPlayheadDataReady,
   session,
   source,
@@ -202,7 +200,6 @@ export function Streams({
     endBoundedStreams,
     firstUsefulSettlementStreams,
     initialSeekTimeNs,
-    initialSeekPending,
     onPlayheadDataReady,
     settlementPriorityStreams,
     session,

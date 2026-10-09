@@ -548,7 +548,7 @@ export const KeypointDetails = () => {
                     color={
                       MUTED_STATUSES.has(status)
                         ? TextColor.Secondary
-                        : TextColor.Fg
+                        : TextColor.Foreground
                     }
                   >
                     {STATUS_MARK[status]}
@@ -558,7 +558,7 @@ export const KeypointDetails = () => {
                   color={
                     MUTED_STATUSES.has(status)
                       ? TextColor.Secondary
-                      : TextColor.Fg
+                      : TextColor.Foreground
                   }
                 >
                   {name}

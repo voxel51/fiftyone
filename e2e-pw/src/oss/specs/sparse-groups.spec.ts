@@ -21,34 +21,23 @@ const extensionDatasetNamePairs = ["mp4", "png"].map(
     ] as const,
 );
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  let pythonCode = `
-      import fiftyone as fo
-  `;
-
-  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-    pythonCode += `
-      # ${extension} dataset
-      dataset = fo.Dataset("${datasetName}")
-      dataset.add_group_field("group", default="first")
-      dataset.persistent = True
-  
-      first_group = fo.Group()
-      first = fo.Sample(filepath="first.${extension}", group=first_group.element("first"))
-      first_shared = fo.Sample(filepath="shared.${extension}", group=first_group.element("shared"))
-  
-      second_group = fo.Group()
-      second = fo.Sample(
-          filepath="second.${extension}", group=second_group.element("second")
-      )
-      second_shared = fo.Sample(filepath="shared.${extension}", group=second_group.element("shared"))
-  
-      dataset.add_samples([first, first_shared, second, second_shared])
-
-      `;
-  });
-  await fiftyoneLoader.executePythonCode(pythonCode);
+  for (const [extension, datasetName] of extensionDatasetNamePairs) {
+    const mediaType = extension === "mp4" ? "video" : "image";
+    // "first" and "second" each have one group, and "shared" both
+    await datasetFactory.createDataset({
+      mediaType: "group",
+      datasetName,
+      numGroups: 2,
+      videoOptions: { container: "mp4" },
+      slices: [
+        { name: "first", mediaType, groupIndices: [0] },
+        { name: "shared", mediaType },
+        { name: "second", mediaType, groupIndices: [1] },
+      ],
+    });
+  }
 });
 
 test.afterEach(async ({ modal, page }) => {

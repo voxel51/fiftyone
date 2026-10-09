@@ -1,4 +1,5 @@
 import { IconButton, InfoIcon, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { isInMultiPanelViewAtom } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
@@ -23,6 +24,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import { AnnotationTips } from "./AnnotationTips";
+import { CAMERA_POSITION_EVENT, type Looker3dE2EEvents } from "./constants";
 import { StatusBarContainer } from "./containers";
 import {
   activeNodeAtom,
@@ -192,7 +194,16 @@ const CameraInfo = ({
     };
   }, [cameraRef]);
 
-  if (!cameraPosition || !cameraRef.current) {
+  const text = cameraPosition
+    ? `${cameraPosition.x.toFixed(2)}, ${cameraPosition.y.toFixed(2)}, ${cameraPosition.z.toFixed(2)}`
+    : null;
+  useEffect(() => {
+    if (text !== null) {
+      getEventBus<Looker3dE2EEvents>().dispatch(CAMERA_POSITION_EVENT);
+    }
+  }, [text]);
+
+  if (!text || !cameraRef.current) {
     return null;
   }
 
@@ -204,8 +215,7 @@ const CameraInfo = ({
       <CameraIcon fontSize="small" />
       <div style={{ marginLeft: "0.5em", marginTop: "-5px" }}>
         <Text variant="caption" data-cy="looker3d-statusbar-camera-position">
-          {cameraPosition.x.toFixed(2)}, {cameraPosition.y.toFixed(2)},{" "}
-          {cameraPosition.z.toFixed(2)}
+          {text}
         </Text>
       </div>
     </div>

@@ -1,5 +1,6 @@
+import { getEventBus } from "@fiftyone/events";
 import { Anchor, Text, TextColor, TextVariant, Tooltip } from "@voxel51/voodo";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   usePlayback,
   useTimelineModeControl,
@@ -8,6 +9,11 @@ import { useTimelineDisplay } from "../../lib/playback/timeline-display";
 import { usePlayhead } from "../../lib/playback/use-playback-state";
 import { formatDisplayValue } from "../TimelineControls/timeline-controls-utils";
 import styles from "../TimelineControls/TimelineControls.module.css";
+
+/** e2e specs wait on the readout showing a playhead time */
+type PlayheadTimeE2EEvents = {
+  "e2e:playback:playhead-time": { label: string };
+};
 
 /** What clicking the readout switches to, given what it's showing now. */
 function toggleHint(showing: string, switchingTo: string): string {
@@ -52,6 +58,13 @@ const PlayheadTime: React.FC = () => {
       ? `#${String(current).padStart(String(total).length, "\u00a0")}`
       : formatDisplayValue(current, mode);
   const label = `${currentText} / ${formatDisplayValue(total, mode)}`;
+
+  useEffect(() => {
+    getEventBus<PlayheadTimeE2EEvents>().dispatch(
+      "e2e:playback:playhead-time",
+      { label },
+    );
+  }, [label]);
 
   const readout = (
     <Text

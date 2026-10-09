@@ -22,7 +22,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const useSyncLighterAnnotation = vi.fn();
 const useTemporalOverlaySync = vi.fn();
 const useSyncMediaTransform = vi.fn();
-const useExposeSceneOverlayFieldsForTest = vi.fn();
 
 vi.mock("../sync/useSyncLighterAnnotation", () => ({
   useSyncLighterAnnotation: (...a: unknown[]) => useSyncLighterAnnotation(...a),
@@ -32,10 +31,6 @@ vi.mock("../sync/useTemporalOverlaySync", () => ({
 }));
 vi.mock("../sync/useSyncMediaTransform", () => ({
   useSyncMediaTransform: (...a: unknown[]) => useSyncMediaTransform(...a),
-}));
-vi.mock("../sync/useExposeSceneOverlayFieldsForTest", () => ({
-  useExposeSceneOverlayFieldsForTest: (...a: unknown[]) =>
-    useExposeSceneOverlayFieldsForTest(...a),
 }));
 vi.mock("../state/exploreFrameLabelFields", () => ({
   useExploreTemporalDetectionFieldPaths: () => ["frames.temporal"],

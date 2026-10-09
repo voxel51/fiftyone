@@ -6,7 +6,7 @@
  * persistence is gated on a class being chosen, so these tests assign the
  * non-default "cloudy".
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -21,30 +21,31 @@ const id = "000000000000000000000000";
 
 const FIELD = "weather";
 
-/** Assert the persisted classification from a brand-new browser context. */
+/**
+ * Assert the persisted classification from a brand-new browser context and
+ * return that context's modal (the test's original page is closed).
+ */
 const expectPersistedClassification = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   label: string | null,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    await freshModal.waitForSampleLoadDomAttribute();
-    await freshModal.assert.isOpen();
-    await freshModal.sidebar.switchMode("annotate");
-    const rows = freshModal.sidebar.annotate.labelRowsFor(FIELD);
-    await expect(rows).toHaveCount(label === null ? 0 : 1);
-    if (label !== null) {
-      await expect(rows).toHaveAttribute("data-cy-label", label);
-    }
-  } finally {
-    await context.close();
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  await freshModal.assert.isOpen();
+  await freshModal.sidebar.annotate.afterLabelList(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
+  const rows = freshModal.sidebar.annotate.labelRowsFor(FIELD);
+  expect(await rows.count()).toBe(label === null ? 0 : 1);
+  if (label !== null) {
+    expect(await rows.getAttribute("data-cy-label")).toBe(label);
   }
+  return freshModal;
 };
 
 const test = base.extend<{ modal: ModalPom }>({
@@ -79,72 +80,65 @@ test.describe.serial("2D annotation classification", () => {
     });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-  });
-
-  // flaky: passed only on retry in CI
-  test.skip("creating a classification assigns a class and persists", async ({
-    browser,
-    fiftyoneLoader,
-    modal,
-  }) => {
-    await modal.sidebar.annotate.createClassification();
-
-    // the new classification opens its edit form; choosing a (non-default)
-    // class commits. "cloudy" is the 2nd class — distinct from the pre-filled
-    // default — so this is a real value change, not a no-op.
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await modal.sidebar.edit.assert.verifyFieldValue("label", "cloudy");
-    await saved;
-
-    // true round-trip: the field holds the chosen class
-    await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("a classification can be deleted", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await modal.sidebar.annotate.createClassification();
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await saved;
-    await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
+    const freshModal = await expectPersistedClassification(
+      openFreshPage,
+      fiftyoneLoader,
+      "cloudy",
+    );
 
-    // the new classification is selected (form open) — delete it.
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
-    await expectPersistedClassification(browser, fiftyoneLoader, null);
+    await freshModal.sidebar.annotate.selectActiveLabel("cloudy", 0);
+    await freshModal.sidebar.annotate.afterSave(() =>
+      freshModal.sidebar.edit.deleteLabel(),
+    );
+    await expectPersistedClassification(openFreshPage, fiftyoneLoader, null);
   });
 
   // KNOWN ENGINE GAP: undoing the delete of a standalone Classification does
   // not restore it (the store re-emits `remove /<field>` instead of re-adding
   // the label). Re-enable once the engine restores a deleted single label.
   test.fixme("a classification deletion is undoable", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     await modal.sidebar.annotate.createClassification();
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.selectFieldChoice("label", "cloudy");
-    await saved;
-    await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "cloudy"),
+    );
+    const freshModal = await expectPersistedClassification(
+      openFreshPage,
+      fiftyoneLoader,
+      "cloudy",
+    );
 
-    const deleted = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await deleted;
+    await freshModal.sidebar.annotate.selectActiveLabel("cloudy", 0);
+    await freshModal.sidebar.annotate.afterSave(() =>
+      freshModal.sidebar.edit.deleteLabel(),
+    );
 
-    await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await restored;
-    await expectPersistedClassification(browser, fiftyoneLoader, "cloudy");
+    await freshModal.sidebar.edit.assert.undoIsEnabled();
+    await freshModal.sidebar.annotate.afterSave(() =>
+      freshModal.sidebar.edit.undo(),
+    );
+    await expectPersistedClassification(
+      openFreshPage,
+      fiftyoneLoader,
+      "cloudy",
+    );
   });
 });

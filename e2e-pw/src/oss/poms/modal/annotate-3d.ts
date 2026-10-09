@@ -1,6 +1,9 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
+const POSITION_SHOWN = "e2e:annotate:position3d-shown";
+type PositionShown = { labelId: string; x: string; y: string; z: string };
+
 /**
  * The 3D annotation surface: the `looker3d` viewer in annotate mode plus its
  * floating annotation toolbar, composing with the shared modal POMs. Toolbar
@@ -13,29 +16,21 @@ export class ModalAnnotate3dPom {
   readonly modal: ModalPom;
   readonly assert: ModalAnnotate3dAsserter;
   readonly container: Locator;
-  readonly canvas: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new ModalAnnotate3dAsserter(this);
     this.container = page.getByTestId("looker3d");
-    this.canvas = this.container.locator("canvas").first();
   }
 
   /**
-   * Wait until the 3D scene is interactable: the looker3d container is mounted
-   * and all scene assets have finished loading. Call this before any toolbar /
-   * canvas interaction.
+   * Run `action` (the switch to annotate, or an annotation slice pick) and
+   * resolve once the 3D scene it (re)mounts is interactable: all assets
+   * loaded and the camera settled. Toolbar and canvas interaction goes after.
    */
-  async waitForSurface() {
-    await expect(this.container).toBeVisible();
-    // arm first, then read the state once: a reveal that already happened
-    // shows in the attribute, one still to come fires the armed event
-    const ready = await this.modal.eventUtils.arm("looker3d-scene-ready");
-    if ((await this.container.getAttribute("data-scene-ready")) !== "true") {
-      await ready.received;
-    }
+  async afterSurface<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.afterSceneReady(action);
   }
 
   /**
@@ -111,12 +106,51 @@ export class ModalAnnotate3dPom {
       .getByTestId(`position3d-${axis}`);
   }
 
+  /** Select a listed cuboid; resolves once the position inputs show it */
+  async selectCuboid(labelText: string): Promise<void> {
+    await this.modal.eventUtils.after(
+      POSITION_SHOWN,
+      () => this.selectLabel(labelText),
+      (e) => (e.detail as PositionShown).x !== "",
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the position inputs show values that
+   * differ from the last ones they showed
+   */
+  async afterPositionChanged<T>(action: () => Promise<T>): Promise<T> {
+    const key = (p: PositionShown) => `${p.labelId} ${p.x} ${p.y} ${p.z}`;
+    const before = (
+      (await this.modal.eventUtils.recorded(POSITION_SHOWN)) as PositionShown[]
+    ).at(-1);
+    return this.modal.eventUtils.after(POSITION_SHOWN, action, (e) => {
+      const position = e.detail as PositionShown;
+      return position.x !== "" && (!before || key(position) !== key(before));
+    });
+  }
+
   /** Set a Position3d geometry value (commits an undoable engine write). */
   async setGeometry(axis: GeometryAxis, value: string) {
     await this.geometryField(axis).fill(value);
   }
 
-  /** Vertex count of the selected 3D polyline, read off the looker3d container. */
+  /**
+   * Run `action` (a label selection) and resolve once the selected polyline
+   * the 3D viewer commits has `count` vertices
+   */
+  async afterSelectedVertices<T>(count: number, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:selected-vertices",
+      action,
+      (e) => (e.detail as { count: number }).count === count,
+    );
+  }
+
+  /**
+   * Vertex count of the selected 3D polyline, read off the looker3d
+   * container; select through {@link afterSelectedVertices} first
+   */
   async selectedVertexCount(): Promise<number> {
     return Number(
       await this.container.getAttribute("data-cy-selected-vertex-count"),
@@ -155,76 +189,30 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * The engine instanceId of a listed label (strips the `annotate-label-`
-   * prefix from its `data-cy`).
+   * Run `action` (a cuboid selection) and resolve once the annotation toolbar
+   * shows the transform group it arms
    */
-  async labelRowId(labelText: string): Promise<string> {
-    const cy = await this.labelRow(labelText).first().getAttribute("data-cy");
-    return (cy ?? "").replace(/^annotate-label-/, "");
+  async afterTransformShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:annotation-toolbar",
+      action,
+      (e) => {
+        const detail = e.detail as { visible: boolean; transformMode: string };
+        return detail.visible && detail.transformMode !== "";
+      },
+    );
   }
 
   /**
-   * Draw a cuboid with the three-click gesture (center → orientation → width)
-   * at container-fractional coordinates, each click an explicit move→down→up so
-   * the empty-canvas handler raycasts a plane point per click. Clicks raycast
-   * onto the annotation plane (world XY at z=0), so pair with
-   * `looker3dControls.setTopView()` and assert creation rather than geometry.
+   * Run `action` (a click on the 3D canvas while drawing a polyline) and
+   * resolve once the draft has `count` vertices
    */
-  async drawCuboid(points: Array<[number, number]>) {
-    if (points.length !== 3) {
-      throw new Error("a cuboid draw is exactly three clicks");
-    }
-
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("3D canvas has no bounding box");
-    }
-
-    for (const [fx, fy] of points) {
-      const x = box.x + box.width * fx;
-      const y = box.y + box.height * fy;
-      await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-    }
-  }
-
-  /**
-   * Draw a polyline by clicking each container-fractional vertex and committing
-   * with Enter; the last point must stay clear of the first or the loop closes
-   * instead. Like {@link drawCuboid}, clicks raycast onto the z=0 annotation
-   * plane, so pair with a top view and assert creation rather than exact
-   * vertices.
-   */
-  async drawPolyline(points: Array<[number, number]>) {
-    if (points.length < 2) {
-      throw new Error("a polyline draw needs at least two clicks");
-    }
-
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("3D canvas has no bounding box");
-    }
-
-    const toScreen = ([fx, fy]: [number, number]): [number, number] => [
-      box.x + box.width * fx,
-      box.y + box.height * fy,
-    ];
-
-    // each click must register as a vertex before the next lands
-    for (const [index, point] of points.entries()) {
-      const [x, y] = toScreen(point);
-      await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-      await expect(this.container).toHaveAttribute(
-        "data-cy-draft-vertex-count",
-        String(index + 1),
-      );
-    }
-
-    // Enter commits the segment; a double-click would ride on wall-clock timing
-    await this.page.keyboard.press("Enter");
+  async afterDraftVertices<T>(count: number, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:draft-vertices",
+      action,
+      (e) => (e.detail as { count: number }).count === count,
+    );
   }
 }
 
@@ -237,33 +225,36 @@ class ModalAnnotate3dAsserter {
    * annotate mode (the cuboid/polyline/transform groups mount on demand).
    */
   async toolbarVisible(visible = true) {
-    const plane = this.pom.toolbarButton("toggle-annotation-plane");
-    return visible
-      ? await expect(plane).toBeVisible()
-      : await expect(plane).toBeHidden();
+    expect(
+      await this.pom.toolbarButton("toggle-annotation-plane").isVisible(),
+    ).toBe(visible);
   }
 
   /** Assert cuboid-draw mode is active (Create Cuboid button highlighted). */
   async createCuboidActive(active = true) {
-    await expect(this.pom.toolbarButton("create-cuboid")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("create-cuboid")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert polyline annotation mode is active (the sidebar 3D Polylines button). */
   async polylineModeActive(active = true) {
-    await expect(
-      this.pom.page.locator('[data-cy="polyline-mode-3d"]'),
-    ).toHaveAttribute("data-cy-active", String(active));
+    expect(
+      await this.pom.page
+        .locator('[data-cy="polyline-mode-3d"]')
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert the New Segment polyline action is active (segmentation armed). */
   async newSegmentActive(active = true) {
-    await expect(this.pom.toolbarButton("new-segment")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("new-segment")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /**
@@ -271,23 +262,24 @@ class ModalAnnotate3dAsserter {
    * gizmo mode is active.
    */
   async transformModeActive(mode: "translate" | "rotate" | "scale") {
-    await expect(this.pom.toolbarButton(mode)).toHaveAttribute(
-      "data-cy-active",
-      "true",
-    );
+    expect(
+      await this.pom.toolbarButton(mode).getAttribute("data-cy-active"),
+    ).toBe("true");
   }
 
   /** Assert a label (by class text) is / isn't listed in the sidebar. */
   async labelListed(labelText: string, listed = true) {
     const row = this.pom.labelRow(labelText);
-    return listed
-      ? await expect(row).toBeVisible()
-      : await expect(row).toHaveCount(0);
+    if (listed) {
+      expect(await row.isVisible()).toBe(true);
+    } else {
+      expect(await row.count()).toBe(0);
+    }
   }
 
   /** Assert the number of label rows currently listed. */
   async labelCount(expected: number) {
-    await expect(this.pom.labelRows).toHaveCount(expected);
+    expect(await this.pom.labelRows.count()).toBe(expected);
   }
 }
 

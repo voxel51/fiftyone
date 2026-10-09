@@ -1,4 +1,6 @@
+import { getEventBus } from "@fiftyone/events";
 import { useEffect } from "react";
+import type { GridEvents } from "./useEvents";
 
 export default (id: string, setResizing: (value: boolean) => void) => {
   useEffect(() => {
@@ -26,20 +28,19 @@ export default (id: string, setResizing: (value: boolean) => void) => {
     // set on grid-mount only. Width changes before a load (e.g. panes
     // applying their sizes) are absorbed by the load's own measurement and
     // must not tear down a grid that is already correctly sized
-    const sync = (event: Event) => {
+    const offMount = getEventBus<GridEvents>().on("grid-mount", (mounted) => {
       // only this grid's own mount may re-baseline it
-      if ((event as CustomEvent).detail?.id !== id) {
+      if (mounted.id !== id) {
         return;
       }
       const current = el()?.getBoundingClientRect().width;
       if (current !== undefined) {
         width = current;
       }
-    };
-    document.addEventListener("grid-mount", sync);
+    });
 
     return () => {
-      document.removeEventListener("grid-mount", sync);
+      offMount();
       timeout && clearTimeout(timeout);
       observer.disconnect();
     };

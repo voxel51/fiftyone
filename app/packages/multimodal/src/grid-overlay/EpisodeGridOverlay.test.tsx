@@ -1,5 +1,11 @@
 import type { SampleRendererProps } from "@fiftyone/plugins";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -14,6 +20,12 @@ import type {
   EpisodeIntervalSourceProps,
 } from "../extensions/episode-intervals";
 
+const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
+vi.mock("@fiftyone/events", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fiftyone/events")>()),
+  getEventBus: () => ({ dispatch }),
+}));
+
 // The built-in temporal-tag source is exercised on its own; keep it inert here
 // so these assertions are about the lane, not about tags.
 vi.mock("./temporal-tag-interval-source", () => ({
@@ -21,18 +33,6 @@ vi.mock("./temporal-tag-interval-source", () => ({
     id: "test:temporal-tags",
     label: "Temporal tags",
     order: 200,
-    Component: ({ children }: EpisodeIntervalSourceProps) => (
-      <>{children({ intervals: [] })}</>
-    ),
-  },
-}));
-
-// Saved ranges have their own source tests; this suite supplies lane intervals.
-vi.mock("../extensions/episode-intervals/saved-segments", () => ({
-  savedSegmentIntervalSource: {
-    id: "test:saved-segments",
-    label: "Saved segments",
-    order: 100,
     Component: ({ children }: EpisodeIntervalSourceProps) => (
       <>{children({ intervals: [] })}</>
     ),
@@ -141,6 +141,7 @@ afterEach(() => {
   resetEpisodeTimeRangesForTests();
   resetEpisodePlayheadsForTests();
   vi.restoreAllMocks();
+  dispatch.mockClear();
 });
 
 describe("EpisodeGridOverlay", () => {
@@ -193,6 +194,42 @@ describe("EpisodeGridOverlay", () => {
     const mark = screen.getAllByTestId("episode-grid-overlay-mark")[0];
     expect(mark.style.left).toBe("10%");
     expect(mark.style.width).toBe("10%");
+  });
+
+  it("reports the episode's span as the lane's axis", () => {
+    useSourceWith([interval("a", 10, 20)]);
+
+    render(
+      <Tile>
+        <EpisodeGridOverlay ctx={CTX} />
+      </Tile>,
+    );
+
+    expect(dispatch.mock.calls.at(-1)).toEqual([
+      "e2e:multimodal:grid-lane-shown",
+      { sampleId: "ep", marks: 1, sources: "test:events", domainNs: 100 * NS },
+    ]);
+  });
+
+  it("reports the widest interval as the axis until the span is known", () => {
+    resetEpisodeTimeRangesForTests();
+    useSourceWith([interval("a", 10, 20)]);
+
+    render(
+      <Tile>
+        <EpisodeGridOverlay ctx={CTX} />
+      </Tile>,
+    );
+    expect(dispatch.mock.calls.at(-1)).toEqual([
+      "e2e:multimodal:grid-lane-shown",
+      { sampleId: "ep", marks: 1, sources: "test:events", domainNs: 20 * NS },
+    ]);
+
+    act(() => publishEpisodeTimeRange("ep", RANGE));
+    expect(dispatch.mock.calls.at(-1)).toEqual([
+      "e2e:multimodal:grid-lane-shown",
+      { sampleId: "ep", marks: 1, sources: "test:events", domainNs: 100 * NS },
+    ]);
   });
 
   it("omits a fourth concurrent interval rather than stacking it", () => {

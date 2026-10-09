@@ -43,7 +43,14 @@ const HOST_STYLES: Partial<CSSStyleDeclaration> = {
   zIndex: "10",
 };
 
-type MountedOverlay = { readonly root: Root; readonly host: HTMLElement };
+const LANES_HEIGHT_VAR = "--tile-lanes-height";
+
+type MountedOverlay = {
+  readonly root: Root;
+  readonly host: HTMLElement;
+  readonly element: HTMLElement;
+  readonly resize: ResizeObserver;
+};
 
 /** Grid samples arrive from Relay with a scalar payload typed as `object`. */
 type TileSample = { readonly sample?: object };
@@ -165,6 +172,8 @@ export function useTileIntervalOverlay() {
     }
 
     mounted.current.delete(key);
+    entry.resize.disconnect();
+    entry.element.style.removeProperty(LANES_HEIGHT_VAR);
     // Deferred: `unmount` is reached from spotlight's render path, and React
     // refuses to tear a root down while another is rendering.
     queueMicrotask(() => {
@@ -215,6 +224,14 @@ export function useTileIntervalOverlay() {
       Object.assign(host.style, HOST_STYLES);
       element.appendChild(host);
 
+      const resize = new ResizeObserver(() => {
+        element.style.setProperty(
+          LANES_HEIGHT_VAR,
+          `${host.getBoundingClientRect().height}px`,
+        );
+      });
+      resize.observe(host);
+
       const root = createRoot(host);
       const duration = data?.metadata?.duration;
       const durationNs =
@@ -233,7 +250,7 @@ export function useTileIntervalOverlay() {
         </RecoilBridge>,
       );
 
-      mounted.current.set(key, { root, host });
+      mounted.current.set(key, { root, host, element, resize });
     },
     [RecoilBridge, datasetId, unmount],
   );
@@ -244,7 +261,9 @@ export function useTileIntervalOverlay() {
       const entries = [...current.values()];
       current.clear();
       queueMicrotask(() => {
-        for (const { root, host } of entries) {
+        for (const { root, host, element, resize } of entries) {
+          resize.disconnect();
+          element.style.removeProperty(LANES_HEIGHT_VAR);
           root.unmount();
           host.remove();
         }

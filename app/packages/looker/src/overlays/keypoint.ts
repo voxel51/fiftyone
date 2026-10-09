@@ -22,7 +22,7 @@ import {
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
 interface KeypointLabel extends RegularLabel {
-  points: [NONFINITE, NONFINITE][];
+  points?: [NONFINITE, NONFINITE][];
 }
 
 export default class KeypointOverlay<
@@ -221,7 +221,7 @@ export default class KeypointOverlay<
     state: Readonly<State>,
     skeleton?: KeypointSkeleton,
   ): (Coordinates | null)[] {
-    return this.label.points.map((p, i) => {
+    return (this.label.points ?? []).map((p, i) => {
       return p.every((c) => typeof c === "number") &&
         state.options.pointFilter(
           this.field,
@@ -263,7 +263,7 @@ export default class KeypointOverlay<
 export const getKeypointPoints = (labels: KeypointLabel[]): Coordinates[] => {
   let points = [];
   labels.forEach((label) => {
-    points = [...points, ...label.points];
+    points = [...points, ...(label.points ?? [])];
   });
   return points;
 };

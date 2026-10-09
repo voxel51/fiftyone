@@ -4,6 +4,7 @@ import type {
   AnnotationAgentDownloadProgress,
   AnnotationAgentLifecycleStatus,
 } from "./agents";
+import type { LabelRef } from "./engine/identity/ref";
 import type { ProviderError } from "./providers";
 
 export const AnnotationChannelId = "default";
@@ -93,6 +94,13 @@ export type AnnotationEventGroup = {
    * Notification event emitted when a label edit occurs.
    */
   "annotation:labelEdit": { label: Partial<AnnotationLabel["data"]> };
+
+  /**
+   * The sidebar form committed a label's geometry under `undoKey`. Frame-locked
+   * surfaces treat it as they treat a canvas edit: keyframe promotion and a
+   * re-lerp of the adjacent segments, folded into the same undo unit.
+   */
+  "annotation:formGeometryCommitted": { ref: LabelRef; undoKey: string };
 
   /**
    * Notification event emitted when a label edit is undone.

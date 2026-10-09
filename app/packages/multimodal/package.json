@@ -32,8 +32,7 @@
         "./visualization": "./src/visualization/index.ts",
         "./visualization/composition": "./src/visualization/composition/index.ts",
         "./visualization/media-2d": "./src/visualization/media-2d/ImagePanel.tsx",
-        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts",
-        "./extensions/grid-selection": "./src/extensions/grid-selection/index.ts"
+        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts"
     },
     "typesVersions": {
         "*": {
@@ -117,9 +116,6 @@
             ],
             "visualization/scene-3d": [
                 "src/visualization/scene-3d/index.ts"
-            ],
-            "extensions/grid-selection": [
-                "src/extensions/grid-selection/index.ts"
             ]
         }
     },
@@ -136,6 +132,7 @@
         "@bufbuild/protobuf": "^2.11.0",
         "@date-fns/tz": "^1.5.0",
         "@fiftyone/components": "*",
+        "@fiftyone/events": "*",
         "@fiftyone/playback": "workspace:*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",

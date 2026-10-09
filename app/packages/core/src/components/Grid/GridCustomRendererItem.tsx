@@ -1,3 +1,4 @@
+import { getEventBus, LocalEventTarget } from "@fiftyone/events";
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
   type SampleRendererGridClickBehavior,
@@ -12,6 +13,11 @@ import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
 import { TileLanes } from "./TileLanes";
+
+/** e2e specs wait on a custom-rendered tile committing */
+type GridCustomRendererE2EEvents = {
+  "e2e:grid:custom-renderer-mounted": undefined;
+};
 
 type GridCustomRendererItemConfig = {
   pluginName: string;
@@ -173,6 +179,12 @@ const GridCustomRendererWrapper = ({
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
+
+  React.useEffect(() => {
+    getEventBus<GridCustomRendererE2EEvents>().dispatch(
+      "e2e:grid:custom-renderer-mounted",
+    );
+  }, []);
   const passThroughGridActivation = clickBehavior === "passthrough";
 
   return (
@@ -197,7 +209,6 @@ const GridCustomRendererWrapper = ({
       {children}
       {showSelectionControl && (
         <Checkbox
-          data-fo-selection-checkbox=""
           style={SELECT_SAMPLE_BUTTON_STYLES}
           title={selected ? "Selected" : "Select sample"}
           checked={selected}
@@ -243,7 +254,7 @@ const GridCustomRenderer = ({
 export class GridCustomRendererItem {
   public loaded = false;
 
-  private readonly eventTarget = new EventTarget();
+  private readonly eventTarget = new LocalEventTarget();
   private readonly hostElement = document.createElement("div");
   private mountedElement: HTMLElement | null = null;
   private pluginRoot: Root | null = null;
@@ -253,6 +264,7 @@ export class GridCustomRendererItem {
   private inSelectionMode = false;
   private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
+  private open?: () => void;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     // Assigned rather than spread into a new context so the identity stays
@@ -275,13 +287,13 @@ export class GridCustomRendererItem {
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | EventListenerOptions,
+    _options?: boolean | EventListenerOptions,
   ) {
-    this.eventTarget.removeEventListener(eventType, handler, options);
+    this.eventTarget.removeEventListener(eventType, handler);
   }
 
   private dispatchEvent(eventType: string, detail?: unknown) {
-    this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
+    this.eventTarget.dispatch(eventType, detail);
   }
 
   private handleRetainedBytesChange = (retainedBytes: number) => {
@@ -381,20 +393,25 @@ export class GridCustomRendererItem {
   };
 
   /**
+   * Sets how the grid opens this item's tile, as a click on it does. The
+   * grid hands it over each time the tile is shown.
+   */
+  setOpen(open: (() => void) | undefined) {
+    this.open = open;
+  }
+
+  /**
    * Opens this sample's modal, handed to the renderer as `ctx.openModal`.
    *
-   * Reuses the grid's own activation path — a click on the mounted element —
-   * rather than reaching for the modal directly, so a renderer-owned button
-   * lands the user in exactly the same place a click on an ordinary tile does.
+   * Runs the grid's own activation path, so a renderer-owned button lands the
+   * user in exactly the same place a click on an ordinary tile does.
    */
   private openModal = () => {
     if (!this.mountedElement || this.destroyed) {
       return;
     }
 
-    this.mountedElement.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true }),
-    );
+    this.open?.();
   };
 
   private switchToFallback(error: Error) {

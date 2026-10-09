@@ -324,6 +324,8 @@ export type LighterEventGroup = {
   "lighter:viewport-init-complete": Record<string, never>;
   /** Emitted after PixiJS initialization completes and the render loop starts */
   "lighter:renderer-ready": Record<string, never>;
+  /** The canvas cursor was written. Emitted under browser automation only. */
+  "e2e:lighter:cursor": { cursor: string };
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS

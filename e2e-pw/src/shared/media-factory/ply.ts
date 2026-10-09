@@ -25,6 +25,12 @@ export interface PlySpec {
    * @default [64, 192, 255]
    */
   color?: [number, number, number];
+  /**
+   * Writes the vertex colors; without them the mesh takes its material's
+   * color.
+   * @default true
+   */
+  vertexColors?: boolean;
 }
 
 export type PlyOptions = MediaOptions & PlySpec;
@@ -33,6 +39,7 @@ export const DEFAULT_PLY_SPEC: Required<PlySpec> = {
   shape: "cube",
   numPoints: 125,
   color: [64, 192, 255],
+  vertexColors: true,
 };
 
 export const createPly = (options: PlyOptions): void => {
@@ -50,6 +57,7 @@ export const createPly = (options: PlyOptions): void => {
   shape = options["shape"]
   num_points = int(options["numPoints"])
   color = options["color"]
+  vertex_colors = options["vertexColors"]
 
   if shape == "cube":
     vertices = [
@@ -93,9 +101,11 @@ export const createPly = (options: PlyOptions): void => {
     "property float x",
     "property float y",
     "property float z",
-    "property uchar red",
-    "property uchar green",
-    "property uchar blue",
+    *(
+      ["property uchar red", "property uchar green", "property uchar blue"]
+      if vertex_colors
+      else []
+    ),
     f"element face {len(faces)}",
     "property list uchar int vertex_indices",
     "end_header",
@@ -106,9 +116,8 @@ export const createPly = (options: PlyOptions): void => {
     f.write("\\n")
 
     for x, y, z in vertices:
-      f.write(
-        f"{x:.6f} {y:.6f} {z:.6f} {color[0]} {color[1]} {color[2]}\\n"
-      )
+      rgb = f" {color[0]} {color[1]} {color[2]}" if vertex_colors else ""
+      f.write(f"{x:.6f} {y:.6f} {z:.6f}{rgb}\\n")
 
     for face in faces:
       indices = " ".join(str(idx) for idx in face)

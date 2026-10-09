@@ -1,10 +1,11 @@
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useEventHandler } from "@fiftyone/state";
 import { Controller, animated, config } from "@react-spring/web";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Container, SidebarColumn } from "./Components";
 import style from "./style.module.css";
-import type { InteractiveItems, RenderEntry } from "./types";
+import type { InteractiveItems, RenderEntry, SidebarEvents } from "./types";
 import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
@@ -80,11 +81,9 @@ const InteractiveSidebar = ({
           onRest: () => {
             // fires event for e2e testing to avoid using onWait
             if (container?.current) {
-              container?.current.dispatchEvent(
-                new CustomEvent("animation-onRest", {
-                  bubbles: true,
-                }),
-              );
+              getEventBus<SidebarEvents>().dispatch("animation-onRest", {
+                container: container.current,
+              });
             }
           },
           overflow: "visible",

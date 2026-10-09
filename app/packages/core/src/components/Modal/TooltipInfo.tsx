@@ -1,4 +1,5 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
@@ -169,6 +170,14 @@ const getHiddenLabelsKey = (datasetName: string, labelName: string) => {
 
 const LABEL_CHANGE_EVENT_NAME = "fo-hide-label-change";
 
+/** A tooltip row hid or showed a label, which other rows read back */
+type TooltipEvents = { [LABEL_CHANGE_EVENT_NAME]: undefined };
+
+/** e2e specs wait on the tooltip a hover shows, hides or a key locks */
+type TooltipE2EEvents = {
+  "e2e:modal:tooltip": { field: string; locked: boolean; visible: boolean };
+};
+
 const getHiddenLabels = (datasetName: string, labelName: string) => {
   const hiddenLabels = localStorage.getItem(
     getHiddenLabelsKey(datasetName, labelName),
@@ -179,10 +188,8 @@ const getHiddenLabels = (datasetName: string, labelName: string) => {
   return new Set<string>(sortedHiddenLabels);
 };
 
-const dispatchHideLabelChangeEvent = () => {
-  const event = new CustomEvent(LABEL_CHANGE_EVENT_NAME);
-  window.dispatchEvent(event);
-};
+const dispatchHideLabelChangeEvent = () =>
+  getEventBus<TooltipEvents>().dispatch(LABEL_CHANGE_EVENT_NAME);
 
 export const ContentItem = ({
   field,
@@ -223,11 +230,10 @@ export const ContentItem = ({
     const hiddenLabels = getHiddenLabels(datasetName, field);
     setIsThisItemVisible(!hiddenLabels.has(name));
 
-    window.addEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
-
-    return () => {
-      window.removeEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
-    };
+    return getEventBus<TooltipEvents>().on(
+      LABEL_CHANGE_EVENT_NAME,
+      refreshHiddenLabels,
+    );
   }, [datasetName, name, refreshHiddenLabels, field]);
 
   if (!isThisItemVisible || (typeof value === "object" && !value?.length)) {
@@ -356,6 +362,14 @@ export const TooltipInfo = React.memo(() => {
     };
   }, []);
 
+  useEffect(() => {
+    getEventBus<TooltipE2EEvents>().dispatch("e2e:modal:tooltip", {
+      field: detail?.field ?? "",
+      locked: isTooltipLocked,
+      visible: Boolean(detail),
+    });
+  }, [detail, isTooltipLocked]);
+
   const tooltipDiv = useMemo(() => {
     if (!detail) {
       return null;
@@ -413,13 +427,14 @@ const HiddenItems = ({ field }: { field: string }) => {
     setCurrentHiddenLabels(getHiddenLabels(datasetName, field));
   }, [datasetName, field]);
 
-  useEffect(() => {
-    window.addEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
-
-    return () => {
-      window.removeEventListener(LABEL_CHANGE_EVENT_NAME, refreshHiddenLabels);
-    };
-  }, [datasetName, refreshHiddenLabels]);
+  useEffect(
+    () =>
+      getEventBus<TooltipEvents>().on(
+        LABEL_CHANGE_EVENT_NAME,
+        refreshHiddenLabels,
+      ),
+    [datasetName, refreshHiddenLabels],
+  );
 
   if (!shouldShowHidden) {
     return (
@@ -485,7 +500,7 @@ const HiddenItemRow = ({
       [...hiddenLabels].join(","),
     );
     refreshHiddenLabels();
-    window.dispatchEvent(new CustomEvent(LABEL_CHANGE_EVENT_NAME));
+    dispatchHideLabelChangeEvent();
   }, [datasetName, name, refreshHiddenLabels, field]);
 
   return (

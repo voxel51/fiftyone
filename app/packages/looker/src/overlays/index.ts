@@ -60,7 +60,7 @@ export const POINTS_FROM_FO = {
   Keypoint: (label) => getKeypointPoints(label ? [label] : []),
   Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
   Polyline: (label) => getPolylinePoints(label ? [label] : []),
-  Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
+  Polylines: (label) => getPolylinePoints(label?.polylines ?? []),
   Segmentation: (label) => getSegmentationPoints(label ? [label] : []),
 };
 
@@ -122,7 +122,7 @@ export const accumulateOverlays = <State extends BaseState>(
     if (TAGS.has(docType)) {
       classifications.push([
         path,
-        docType in LABEL_LISTS ? (label[LABEL_LISTS[docType]] ?? []) : [label],
+        docType in LABEL_LISTS ? label[LABEL_LISTS[docType]] : [label],
       ]);
       continue;
     }

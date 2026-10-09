@@ -13,6 +13,7 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { labels, useLabelsContext } from "../useLabels";
+import { isMaskDetection } from "./maskDetection";
 
 const mergeTargetIdAtom = atom(null as string | null);
 
@@ -60,16 +61,10 @@ export const useMergeTool = (): MergeTool => {
 
   const sidebarLabels = useAtomValue(labels);
   const disabled = useMemo(() => {
-    const maskCount = sidebarLabels.reduce((count, label) => {
-      const data = label.data as {
-        mask?: unknown;
-        mask_path?: unknown;
-      };
-      const hasMask =
-        label.type === "Detection" && !!(data?.mask || data?.mask_path);
-
-      return hasMask ? count + 1 : count;
-    }, 0);
+    const maskCount = sidebarLabels.reduce(
+      (count, label) => (isMaskDetection(label) ? count + 1 : count),
+      0,
+    );
 
     return maskCount < 2;
   }, [sidebarLabels]);

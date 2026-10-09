@@ -4,7 +4,8 @@ import type { RefObject } from "react";
 import type { PerspectiveCamera } from "three";
 import { Vector3 } from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SET_ZOOM_TO_SELECTED_EVENT } from "../constants";
+import { getEventBus } from "@fiftyone/events";
+import { type Looker3dEvents, SET_ZOOM_TO_SELECTED_EVENT } from "../constants";
 import { useCameraViews } from "./use-camera-views";
 
 // The hook pulls in a wide surface of app state; stub it all out so the test
@@ -77,14 +78,18 @@ const dispatchKeyZ = (
 
 describe("useCameraViews keydown guard", () => {
   let zoomListener: ReturnType<typeof vi.fn>;
+  let offZoom: () => void;
 
   beforeEach(() => {
     zoomListener = vi.fn();
-    window.addEventListener(SET_ZOOM_TO_SELECTED_EVENT, zoomListener);
+    offZoom = getEventBus<Looker3dEvents>().on(
+      SET_ZOOM_TO_SELECTED_EVENT,
+      zoomListener,
+    );
   });
 
   afterEach(() => {
-    window.removeEventListener(SET_ZOOM_TO_SELECTED_EVENT, zoomListener);
+    offZoom();
     vi.clearAllMocks();
   });
 

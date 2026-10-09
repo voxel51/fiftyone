@@ -5,6 +5,7 @@
 import type { ImageSpec } from "../media-factory/image";
 import type { McapSpec } from "../media-factory/mcap";
 import type { PcdSpec } from "../media-factory/pcd";
+import type { PlySpec } from "../media-factory/ply";
 import type { SceneSpec } from "../media-factory/scene";
 import type { VideoSpec } from "../media-factory/video";
 import type { LabelBuilders } from "./labels";
@@ -26,7 +27,10 @@ export interface SampleScaffold {
 
 /** A sample scaffold inside a group dataset. */
 export interface GroupSampleScaffold extends SampleScaffold {
-  /** The zero-based index of the sample's group. */
+  /**
+   * The zero-based index of the sample's group. The group's id is
+   * `groupIndexToId(groupIndex)`.
+   */
   groupIndex: number;
 
   /** The group slice the sample belongs to. */
@@ -115,23 +119,33 @@ export type Label =
 
 type ScalarFieldType =
   | "BooleanField"
+  | "DateField"
+  | "DateTimeField"
   | "DictField"
   | "FloatField"
   | "IntField"
   | "StringField";
 
+/**
+ * An embedded document type: a {@link Label}, or a
+ * `DynamicEmbeddedDocument` whose attributes are declared as nested paths
+ * (`"summary.one": "StringField"`).
+ */
+export type EmbeddedDocType = Label | "DynamicEmbeddedDocument";
+
 type ListOf<T extends string> = `ListField<${T}>`;
 
 /**
- * Scalar, list and FiftyOne {@link Label} field types. A typed list nests up
- * to three deep, e.g. `"ListField<ListField<ListField<FloatField>>>"` for a
- * polyline's `points3d`.
+ * Scalar, list and embedded document field types. A typed list nests up to
+ * three deep, e.g. `"ListField<ListField<ListField<FloatField>>>"` for a
+ * polyline's `points3d`; `"ListField<DynamicEmbeddedDocument>"` is a list of
+ * embedded documents.
  */
 export type FieldType =
-  | Label
+  | EmbeddedDocType
   | ScalarFieldType
   | "ListField"
-  | ListOf<ScalarFieldType>
+  | ListOf<ScalarFieldType | "DynamicEmbeddedDocument">
   | ListOf<ListOf<ScalarFieldType>>
   | ListOf<ListOf<ListOf<ScalarFieldType>>>;
 
@@ -161,7 +175,7 @@ export interface KeypointSkeleton {
   /** The node names, in point order. */
   labels: string[];
 
-  /** `[from, to]` node index pairs. */
+  /** Chains of node indexes: each list connects its consecutive nodes. */
   edges: number[][];
 }
 
@@ -190,6 +204,47 @@ export type Schema = { [path: string]: FieldType };
  * A media spec for every sample, or a function of the sample index.
  */
 export type PerSample<T> = T | ((index: number) => T);
+
+/**
+ * `dataset.app_config` settings, applied once the samples exist.
+ *
+ * @example
+ * appConfig: {
+ *   media_fields: ["filepath", "thumbnail_path"],
+ *   grid_media_field: "thumbnail_path",
+ *   sidebar_groups: [{ name: "summaries", paths: ["summary"], expanded: true }],
+ * }
+ */
+export interface AppConfig {
+  /** Keyword arguments of `fo.ColorScheme`. */
+  color_scheme?: JSONObject;
+  default_visibility_labels?: { include?: string[]; exclude?: string[] };
+  grid_media_field?: string;
+  media_fields?: string[];
+  modal_media_field?: string;
+  /** Keyword arguments of each `fo.SidebarGroupDocument`. */
+  sidebar_groups?: { name: string; paths: string[]; expanded?: boolean }[];
+}
+
+/**
+ * A 3D sample's media: a generated `.fo3d` scene, or a bare PCD or PLY asset
+ * loaded directly as the sample's `"3d"` media.
+ */
+export type ThreeDSpec =
+  | SceneSpec
+  | { pcd: Partial<PcdSpec> }
+  | { ply: PlySpec };
+
+/**
+ * Orthographic projection images of each 3D sample, computed with
+ * `fiftyone.utils.utils3d.compute_orthographic_projection_images`.
+ */
+export interface OrthographicProjections {
+  /** `(width, height)`; `-1` keeps the aspect ratio. */
+  size: [number, number];
+  /** @default false */
+  skipFailures?: boolean;
+}
 
 /**
  * Options shared by every dataset creator.
@@ -283,6 +338,26 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
   staticTransforms?: StaticTransform[];
 
   /**
+   * `dataset.app_config` settings; see {@link AppConfig}.
+   */
+  appConfig?: AppConfig;
+
+  /**
+   * Extra image media fields, each a generated PNG per sample whose path is
+   * stored in the named `StringField`. Pair with `appConfig.media_fields`.
+   *
+   * @example
+   * mediaFields: { thumbnail_path: { fillColor: "#ff00ff", width: 128, height: 96 } }
+   */
+  mediaFields?: { [field: string]: PerSample<ImageSpec> };
+
+  /**
+   * Database indexes created with `dataset.create_index(spec)`, e.g. `"$**"`
+   * for a wildcard index.
+   */
+  indexes?: string[];
+
+  /**
    * Populates a sample: receives its scaffold and returns the sample's field
    * values as a `JSONObject`.
    *
@@ -330,10 +405,17 @@ export interface ImageDatasetOptions extends BaseDatasetOptions {
 export interface GroupSliceConfig {
   name: string;
   mediaType: "image" | "3d" | "point-cloud" | "video";
-  imageOptions?: ImageSpec;
-  pcdOptions?: PcdSpec;
-  sceneOptions?: SceneSpec;
-  videoOptions?: VideoSpec;
+  /**
+   * The indices of the groups that have a sample in this slice, for sparse
+   * groups.
+   * @default every group
+   */
+  groupIndices?: number[];
+  /** Media options for this slice, for every group or by group index. */
+  imageOptions?: PerSample<ImageSpec>;
+  pcdOptions?: PerSample<Partial<PcdSpec>>;
+  sceneOptions?: PerSample<ThreeDSpec>;
+  videoOptions?: PerSample<VideoSpec>;
 }
 
 /**
@@ -355,7 +437,7 @@ export interface GroupDatasetOptions extends BaseDatasetOptions<GroupSampleScaff
   pcdOptions?: PerSample<PcdSpec>;
 
   /** Options for the scene of each 3d-slice sample. */
-  sceneOptions?: PerSample<SceneSpec>;
+  sceneOptions?: PerSample<ThreeDSpec>;
 
   /** Options for the clip of each video-slice sample. */
   videoOptions?: PerSample<VideoSpec>;
@@ -418,6 +500,14 @@ export interface MultimodalDatasetOptions extends BaseDatasetOptions {
    * @default { kind: "tiny-episode-a" }
    */
   mcapOptions?: PerSample<McapSpec>;
+
+  /**
+   * The file name of each sample's recording, without the `.mcap` extension.
+   * Samples given the same name share one recording, written from the first
+   * one's `mcapOptions`.
+   * @default the sample index
+   */
+  fileNames?: PerSample<string>;
 }
 
 /**
@@ -429,14 +519,36 @@ export interface Dataset3dOptions extends BaseDatasetOptions {
   /** @default 1 */
   numSamples?: number;
 
-  /** Options for the scene of each sample. */
-  sceneOptions?: PerSample<SceneSpec>;
+  /** Options for the scene (or bare asset) of each sample. */
+  sceneOptions?: PerSample<ThreeDSpec>;
+
+  orthographicProjections?: OrthographicProjections;
+}
+
+/**
+ * Configuration options for creating a point cloud dataset, whose samples
+ * are bare `.pcd` files.
+ */
+export interface PointCloudDatasetOptions extends BaseDatasetOptions {
+  mediaType: "point-cloud";
+
+  /** @default 1 */
+  numSamples?: number;
+
+  /**
+   * Options for the point cloud of each sample.
+   * @default { shape: "cube", numPoints: 216 }
+   */
+  pcdOptions?: PerSample<Partial<PcdSpec>>;
+
+  orthographicProjections?: OrthographicProjections;
 }
 
 interface DatasetOptionsByMediaType {
   image: ImageDatasetOptions;
   video: VideoDatasetOptions;
   "3d": Dataset3dOptions;
+  "point-cloud": PointCloudDatasetOptions;
   group: GroupDatasetOptions;
   multimodal: MultimodalDatasetOptions;
 }
@@ -456,6 +568,14 @@ export interface SampleSpec {
   filepath: string;
   data: JSONObject;
   group?: { id: string; name: string };
+  /** The sample's media type when its file extension would infer another. */
+  mediaType?: "3d";
+}
+
+/** A sample `createDataset` inserted. */
+export interface CreatedSample {
+  id: string;
+  filepath: string;
 }
 
 export interface FrameSpec {

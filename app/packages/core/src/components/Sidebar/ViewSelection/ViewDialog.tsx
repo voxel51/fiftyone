@@ -1,4 +1,5 @@
 import { DatasetViewOption, Selection, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
@@ -44,6 +45,15 @@ const {
   DEFAULT_COLOR,
   DEFAULT_COLOR_OPTION,
 } = fos.constants;
+
+/** e2e specs wait on the dialog opening with its inputs filled, and closing */
+type ViewDialogE2EEvents = {
+  "e2e:saved-views:dialog": {
+    open: boolean;
+    name: string;
+    description: string;
+  };
+};
 
 export const viewDialogContent = atom({
   key: "viewDialogContent",
@@ -130,6 +140,14 @@ export default function ViewDialog(props: Props) {
       });
     }
   }, [viewContent]);
+
+  useEffect(() => {
+    getEventBus<ViewDialogE2EEvents>().dispatch("e2e:saved-views:dialog", {
+      open: isOpen,
+      name: nameValue,
+      description: descriptionValue,
+    });
+  }, [isOpen, nameValue, descriptionValue]);
 
   const view = useRecoilValue(fos.view);
   const extendedStagesExists = useRecoilValue(extendedStages);

@@ -88,14 +88,11 @@ export class ExternalCanonicalMedia
     this.updateBoundsFromContainer(parent.clientWidth, parent.clientHeight);
 
     this.resizeObserver?.disconnect();
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
-
-      const { width, height } = entry.contentRect;
-      this.updateBoundsFromContainer(width, height);
+    // Re-read the rounded client size rather than the fractional
+    // `contentRect`: `updateBounds` (run on each renderer resize) reads it
+    // too, so whichever runs last yields the same bounds
+    this.resizeObserver = new ResizeObserver(() => {
+      this.updateBoundsFromContainer(parent.clientWidth, parent.clientHeight);
     });
     this.resizeObserver.observe(parent);
 

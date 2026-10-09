@@ -1,14 +1,13 @@
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import type { Page } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 let datasetName: string;
 
-const test = base.extend<{ viewBar: ViewBarPom; grid: GridPom }>({
-  viewBar: async ({ page }, use) => use(new ViewBarPom(page)),
-  grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
+const test = base.extend<{ viewBar: ViewBarPom }>({
+  viewBar: async ({ page, eventUtils }, use) =>
+    use(new ViewBarPom(page, eventUtils)),
 });
 
 test.beforeAll(async ({ foWebServer }) => {
@@ -56,26 +55,15 @@ const completeFieldAndExpectOperators = async (
   const filter = editor.param("filter");
   await filter.click();
   // Monaco mounts lazily on activation — type only once it owns the keyboard
-  const monacoBox = filter.locator(".monaco-editor");
-  await monacoBox.waitFor({ state: "visible" });
-  await monacoBox.click();
+  await filter.locator(".monaco-editor").click();
   await page.keyboard.type('F("l');
 
-  const suggestions = page.locator('[id^="view-bar-suggestion-"]');
-  await expect(suggestions.first()).toBeVisible();
-  const fieldRow = suggestions.filter({ hasText: "label" }).first();
-
-  if (accept === "mouse") {
-    await fieldRow.click();
-  } else {
-    await page.keyboard.press("Enter");
-  }
+  await editor.assert.offersSuggestion("label");
+  await editor.acceptSuggestion("label", accept);
 
   // the completed receiver should immediately offer operators
-  await expect(filter).toContainText('F("label")', { timeout: 3000 });
-  await expect(suggestions.filter({ hasText: "==" }).first()).toBeVisible({
-    timeout: 3000,
-  });
+  await editor.assert.offersSuggestion("==");
+  await editor.assert.paramText("filter", 'F("label")');
 };
 
 test("operator suggestions follow a mouse-completed field", async ({

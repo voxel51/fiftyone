@@ -1,50 +1,36 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import * as fos from "@fiftyone/state";
+import { describe, expect, it } from "vitest";
 import { snapshot_UNSTABLE } from "../../../../__mocks__/recoil";
 import * as ss from "./schemaSettings.atoms";
-import { FIELDS } from "../hooks/useSchemaSettings.utils.test";
 
-const NON_EXISTENT_PATH = "non-existent-path";
+const TEST_DS = { name: "test-dataset", mediaType: "image" };
 
-describe("schema search", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+const initialize = ({ set }) => {
+  set(fos.dataset, TEST_DS as fos.State.Dataset);
+};
+
+describe("excludedPathsState", () => {
+  it("defaults to an empty set without a field visibility stage", () => {
+    const snapshot = snapshot_UNSTABLE(initialize);
+
+    const contents = snapshot.getLoadable(ss.excludedPathsState({})).contents;
+
+    expect(contents[TEST_DS.name]).toEqual(new Set());
   });
 
-  it("search for 'id' should have 'id' in the results", async () => {
-    const schemaFields = {
-      [FIELDS.ID_FIELD.path]: FIELDS.ID_FIELD,
-      [FIELDS.FILEPATH_FIELD.path]: FIELDS.FILEPATH_FIELD,
-    };
+  it("reset returns to the derived default", () => {
+    const set = snapshot_UNSTABLE(initialize).map(({ set }) =>
+      set(ss.excludedPathsState({}), {
+        [TEST_DS.name]: new Set(["metadata"]),
+      }),
+    );
+    expect(
+      set.getLoadable(ss.excludedPathsState({})).contents[TEST_DS.name],
+    ).toEqual(new Set(["metadata"]));
 
-    const testSnapshot = snapshot_UNSTABLE(({ set }) => {
-      set(ss.viewSchemaState, {});
-      set(ss.fieldSchemaState, schemaFields);
-      set(ss.schemaSearchResultList, [FIELDS.ID_FIELD.path]);
-    });
-
-    const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList,
-    ).contents;
-
-    expect(contents).toEqual([FIELDS.ID_FIELD.path]);
-  });
-
-  it("should return an emoty array when searching for non-existent field path", () => {
-    const schemaFields = {
-      [FIELDS.ID_FIELD.path]: FIELDS.ID_FIELD,
-      [FIELDS.FILEPATH_FIELD.path]: FIELDS.FILEPATH_FIELD,
-    };
-
-    const testSnapshot = snapshot_UNSTABLE(({ set }) => {
-      set(ss.viewSchemaState, {});
-      set(ss.fieldSchemaState, schemaFields);
-      set(ss.schemaSearchResultList, [NON_EXISTENT_PATH]);
-    });
-
-    const contents = testSnapshot.getLoadable(
-      ss.schemaSearchResultList,
-    ).contents;
-
-    expect(contents).toEqual([]);
+    const reset = set.map(({ reset }) => reset(ss.excludedPathsState({})));
+    expect(
+      reset.getLoadable(ss.excludedPathsState({})).contents[TEST_DS.name],
+    ).toEqual(new Set());
   });
 });

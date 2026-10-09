@@ -1,17 +1,18 @@
 import { test as base, expect } from "src/oss/fixtures";
+import { GridTaggerPom } from "src/oss/poms/action-row/tagger/grid-tagger";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { createDetectionsDataset } from "./detections-data";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-detections");
 
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
   sidebar: SidebarPom;
-  tray: SelectionTrayPom;
+  tagger: GridTaggerPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -22,8 +23,8 @@ const test = base.extend<{
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  tray: async ({ page }, use) => {
-    await use(new SelectionTrayPom(page));
+  tagger: async ({ page, eventUtils }, use) => {
+    await use(new GridTaggerPom(page, eventUtils));
   },
 });
 
@@ -31,12 +32,9 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-    max_samples: 5,
-  });
+  await createDetectionsDataset(datasetFactory, datasetName);
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -44,66 +42,71 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test.describe.serial("tag", () => {
-  test("tag picker offers sample and label targets on the default view", async ({
-    page,
-    tray,
+  test("sample tag and label tag loads correct aggregation number on default view", async ({
+    grid,
+    tagger,
   }) => {
-    await tray.openTagPicker();
-    await expect(page.getByText("Tag all 5 samples in view")).toBeVisible();
-    await page.getByRole("radio", { name: "Labels" }).click();
-    await expect(page.getByRole("radio", { name: "Labels" })).toBeChecked();
-    await tray.closeTagPicker();
+    await tagger.afterCountShown("sample", () =>
+      grid.actionsRow.toggleTagSamplesOrLabels(),
+    );
+    expect(await tagger.getTagInputTextPlaceholder("sample")).toBe(
+      "+ tag 5 samples",
+    );
+
+    await tagger.setActiveTaggerMode("label");
+    expect(await tagger.getTagInputTextPlaceholder("label")).toBe(
+      "+ tag 37 labels",
+    );
+
+    await grid.actionsRow.toggleTagSamplesOrLabels();
   });
 
   test("In grid, I can add a new sample tag to all samples", async ({
     grid,
     page,
     sidebar,
-    tray,
+    tagger,
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
-    // mount eventListener
-    const gridRefreshedEventPromise = await grid.armGridRefresh();
-
-    await tray.tagSamples("test1");
-
-    await gridRefreshedEventPromise.received;
+    // tagging remounts the grid; the tiles' tags render as they redraw
+    await grid.afterTilesDrawn(5, () =>
+      grid.run(async () => {
+        await tagger.afterCountShown("sample", () =>
+          grid.actionsRow.toggleTagSamplesOrLabels(),
+        );
+        await tagger.addNewTag("sample", "test1");
+      }),
+    );
 
     const bubble = page.getByTestId("tag-tags-test1");
-    await expect(bubble).toHaveCount(5);
+    expect(await bubble.count()).toBe(5);
   });
 
   test("In grid, I can add a new label tag to all samples", async ({
-    aggregationWatcher,
     grid,
     page,
     sidebar,
-    tray,
+    tagger,
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
-    // mount eventListener
-    const gridRefreshedEventPromise = await grid.armGridRefresh();
-
-    await tray.tagLabels("labelTest");
-
-    await gridRefreshedEventPromise.received;
-    // verify the bubble in the image
-    // the first sample has 17 label tag count, the second sample has 22 tag count
-    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-17");
-    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-22");
-    await expect(bubble1).toBeVisible();
-    await expect(bubble2).toBeVisible();
-
-    // `_label_tags` is a client-derived pseudo path; the server has no such
-    // field on the view and throws `DatasetView has no field '_label_tags'`
-    // if it ever appears in an aggregations form. Full-view label-tag counts
-    // come from per-label-field `.tags` aggregations (via cumulativeCounts).
-    expect(
-      aggregationWatcher.allPaths(),
-      "aggregationsQuery must never request '_label_tags'",
-    ).not.toContain("_label_tags");
+    // tagging remounts the grid; the tiles' tags render as they redraw
+    await grid.afterTilesDrawn(5, () =>
+      grid.run(async () => {
+        await tagger.afterCountShown("sample", () =>
+          grid.actionsRow.toggleTagSamplesOrLabels(),
+        );
+        await tagger.setActiveTaggerMode("label");
+        await tagger.addNewTag("label", "labelTest");
+      }),
+    );
+    // every ground_truth and predictions label is tagged: 3 + 3 on the first
+    // sample, 2 + 5 on the second
+    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-6");
+    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-7");
+    expect(await bubble1.isVisible()).toBe(true);
+    expect(await bubble2.isVisible()).toBe(true);
   });
 
   test("In modal, I can add a label tag to a filtered sample", async ({
@@ -111,30 +114,31 @@ test.describe.serial("tag", () => {
     grid,
     modal,
   }) => {
-    await grid.openFirstSample();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
 
-    await modal.sidebar.toggleLabelCheckbox("ground_truth");
-    await modal.hideControls();
+    await modal.afterLabelsRedrawn(() =>
+      modal.sidebar.toggleLabelCheckbox("ground_truth"),
+    );
+    await modal.sampleCanvas.assert.hasScreenshot("predictions.png");
 
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.looker).toHaveScreenshot("labels.png");
-
-    const entryExpandPromise = await eventUtils.arm("animation-onRest");
-    await modal.sidebar.clickFieldDropdown("predictions");
-    await entryExpandPromise.received;
+    await eventUtils.after("animation-onRest", async () => {
+      await modal.sidebar.clickFieldDropdown("predictions");
+    });
     await modal.sidebar.applyFilter("bird");
-    await expect(
-      modal.sidebar.locator.getByTestId("clear-filters-labels"),
-    ).toBeVisible();
+    expect(
+      await modal.sidebar.locator
+        .getByTestId("clear-filters-labels")
+        .isVisible(),
+    ).toBe(true);
 
-    await modal.looker.hover();
+    await modal.sampleCanvas.move(0.5, 0.5);
 
     await modal.tagger.toggleOpen();
     await modal.tagger.addLabelTag("correct");
 
-    await modal.sidebar.clearGroupFilters("labels");
-    await modal.hideControls();
-    // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
-    // await expect(modal.looker).toHaveScreenshot("labels.png");
+    await modal.afterLabelsRedrawn(() =>
+      modal.sidebar.clearGroupFilters("labels"),
+    );
+    await modal.sampleCanvas.assert.hasScreenshot("predictions.png");
   });
 });

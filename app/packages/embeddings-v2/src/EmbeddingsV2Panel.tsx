@@ -22,12 +22,13 @@ import { useExtensionGeneration } from "./extensions";
 import PlotView from "./PlotView";
 import { fetchRunsStatus, type RunStatus } from "./protocol";
 import RunsList from "./RunsList";
+import { useClearSelectionOnClose } from "./useClearSelectionOnClose";
 import { useVisualizationRuns } from "./useVisualizationRuns";
 
 const DELETE_RUN_OPERATOR = "@voxel51/operators/delete_brain_run";
 
-/** Poll cadence while the list is showing a pending run */
-const PENDING_POLL_MS = 5_000;
+/** Poll cadence while the runs list is showing */
+const RUNS_POLL_MS = 5_000;
 
 /** `key:ready:error` per run, order-independent: the basis for deciding
  * whether the dataset the page loaded still matches the server's runs */
@@ -45,6 +46,9 @@ export default function EmbeddingsV2Panel() {
   // registration (the edition entrypoint is dynamically imported) must
   // remount it rather than swap hooks under it
   const extensionGeneration = useExtensionGeneration();
+  // Closing the tab clears the plot's selection: the grid would otherwise
+  // stay narrowed by a lasso with nothing left in the UI to clear it
+  useClearSelectionOnClose();
   // Shared, not local: workspaces and the session persist only shared
   // panel state (see the header for the key names)
   const [openKeyState, setOpenKey] = usePanelStatePartial<string | null>(
@@ -79,6 +83,7 @@ export default function EmbeddingsV2Panel() {
   // The runs are coupled to the dataset the page already loads and
   // should not maintain an independent list.
   const { runs } = useVisualizationRuns();
+  const knownSignature = runs === null ? null : statusSignature(runs);
   const refresh = fos.useRefresh();
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -88,15 +93,33 @@ export default function EmbeddingsV2Panel() {
   const openRun =
     runs?.find((r) => r.brainKey === openKey && r.ready && !r.error) ?? null;
 
-  // The list always checks the server once when it appears: a run
-  // computed from the SDK after the page loaded its dataset is absent
-  // from `runs` entirely, so waiting for a pending run to flip would
-  // never surface it. Repeat polling is what's conditional — it only
-  // earns its cost while a run can still finish — and neither the check
-  // nor the interval has any reason to run against the plot (nothing
-  // there can change) or a backgrounded tab.
-  const knownSignature = runs === null ? null : statusSignature(runs);
-  const hasPending = (runs ?? []).some((run) => !run.ready && !run.error);
+  // The runs the page loaded can be stale whenever the server's runs
+  // change: a new run (from the create action, the SDK, or another user)
+  // is absent from `runs` until it registers, and a set-backed run
+  // registers only once its results are written, so it never shows as
+  // pending first. The panel checks once when it opens, on either view,
+  // and the list then polls for as long as it is showing.
+  const latestSignature = useRef(knownSignature);
+  useEffect(() => {
+    latestSignature.current = knownSignature;
+  }, [knownSignature]);
+
+  // Keyed by dataset, so a dataset switch checks again. The response is
+  // compared with the runs loaded when it lands, not when it was sent: a
+  // reload in between already brought the page up to date
+  const openCheckedDataset = useRef<string | null>(null);
+  useEffect(() => {
+    if (!datasetId || knownSignature === null) return;
+    if (openCheckedDataset.current === datasetId) return;
+    openCheckedDataset.current = datasetId;
+
+    fetchRunsStatus(datasetId)
+      .then((statuses) => {
+        if (openCheckedDataset.current !== datasetId) return;
+        if (statusSignature(statuses) !== latestSignature.current) refresh();
+      })
+      .catch(() => undefined);
+  }, [datasetId, knownSignature, refresh]);
 
   useEffect(() => {
     if (openRun || !datasetId || knownSignature === null) return undefined;
@@ -109,11 +132,8 @@ export default function EmbeddingsV2Panel() {
     let active = true;
     let inFlight = false;
 
-    // The hidden-tab gate belongs to the repeat ticks; the one check the
-    // list owes itself still runs, so a panel opened in a background tab
-    // isn't stuck showing a stale list once it is looked at
-    const check = (force = false) => {
-      if ((!force && document.hidden) || inFlight) return;
+    const check = () => {
+      if (document.hidden || inFlight) return;
       inFlight = true;
       fetchRunsStatus(datasetId)
         .then((statuses) => {
@@ -126,14 +146,7 @@ export default function EmbeddingsV2Panel() {
         });
     };
 
-    check(true);
-    if (!hasPending) {
-      return () => {
-        active = false;
-      };
-    }
-
-    const id = window.setInterval(check, PENDING_POLL_MS);
+    const id = window.setInterval(check, RUNS_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(id);
@@ -142,7 +155,7 @@ export default function EmbeddingsV2Panel() {
     // reference most renders, and depending on it directly would restart
     // the interval far more often than the plot-opened transition needs
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(openRun), knownSignature, hasPending, datasetId, refresh]);
+  }, [Boolean(openRun), knownSignature, datasetId, refresh]);
 
   const handleOpen = (brainKey: string) => {
     // every run opens uncolored: a carried-over choice can be invalid

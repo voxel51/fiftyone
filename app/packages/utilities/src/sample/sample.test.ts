@@ -1257,6 +1257,27 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
     return patch;
   };
 
+  it("stops re-emitting a delete once the server's copy has the field null", () => {
+    // the autosave refresh loads the server's copy BEFORE reconciling, which
+    // skips the fold; the server clears a removed field to null
+    const s = new Sample({
+      schema,
+      data: {
+        classification: { _id: "c1", _cls: "Classification", label: "x" },
+      },
+    });
+
+    s.deleteLabel("classification");
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    expect(patch).toEqual([{ op: "remove", path: "/classification" }]);
+
+    s.setData({ classification: null });
+    s.reconcilePersisted(patch);
+
+    expect(s.getJsonPatch()).toEqual([]);
+  });
+
   it("stops re-emitting a persisted single-label delete", () => {
     const s = new Sample({
       schema,
@@ -1528,5 +1549,40 @@ describe("reconcilePersisted source fold (delete re-save loop)", () => {
     expect(s.getJsonPatch()).toEqual([
       { op: "remove", path: "/classification" },
     ]);
+  });
+});
+
+describe("a label added without _cls (field move)", () => {
+  const schema: Schema = {
+    ground_truth: field("fiftyone.core.labels.Detections"),
+    predictions: field("fiftyone.core.labels.Detections"),
+  };
+
+  it("has nothing left to save once the server's copy is loaded back", () => {
+    const moved = { _id: "d1", label: "cat", bounding_box: [0, 0, 1, 1] };
+    const s = new Sample({
+      schema,
+      data: {
+        ground_truth: { _cls: "Detections", detections: [moved] },
+        predictions: { _cls: "Detections", detections: [] },
+      },
+    });
+
+    s.deleteLabel("ground_truth", "d1");
+    s.updateLabel("predictions", moved as LabelData);
+    s.captureBaseline();
+    const patch = s.getJsonPatch();
+    s.reconcilePersisted(patch);
+
+    // The server fills in the fields the client omitted.
+    s.setData({
+      ground_truth: { _cls: "Detections", detections: [] },
+      predictions: {
+        _cls: "Detections",
+        detections: [{ ...moved, _cls: "Detection", attributes: {}, tags: [] }],
+      },
+    });
+
+    expect(s.getJsonPatch()).toEqual([]);
   });
 });

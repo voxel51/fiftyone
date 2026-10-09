@@ -33,6 +33,7 @@ import {
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
+import { FrameRenderedSignal } from "../../../visualization/webgpu/FrameRenderedSignal";
 import { BitmapImageFrameView } from "../../../visualization/media-2d/BitmapImageView";
 import GpuImageAnnotationLayer from "../../../visualization/media-2d/GpuImageAnnotationLayer";
 import { GpuImageAnnotationPicker } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
@@ -103,6 +104,7 @@ import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
 import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -948,6 +950,27 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sourceKey,
     ],
   );
+  const sceneChildren = useMemo(
+    () => (
+      <>
+        <FrameRenderedSignal
+          detail={{
+            imageContentTimeNs: committedImageContentTimeNs?.toString() ?? null,
+            pointSize: pointCloudProjection.pointSize,
+            projectedStreamCount: renderedProjectionLayers.length,
+          }}
+          event="e2e:multimodal:image-frame-rendered"
+        />
+        {panelSceneChildren}
+      </>
+    ),
+    [
+      committedImageContentTimeNs,
+      panelSceneChildren,
+      pointCloudProjection.pointSize,
+      renderedProjectionLayers.length,
+    ],
+  );
 
   return (
     <>
@@ -962,6 +985,17 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ref={mediaSurfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
+          {requestedImageContentTimeNs !== null &&
+          committedImageContentTimeNs === requestedImageContentTimeNs ? (
+            <ShownSignal
+              event="e2e:multimodal:image-shown"
+              detail={{
+                stream,
+                title: images.find((s) => s.id === stream)?.label ?? "",
+                contentTimeNs: requestedImageContentTimeNs.toString(),
+              }}
+            />
+          ) : null}
           {frame && playbackFrame ? (
             frame.kind === "encoded-video" ? (
               isSharedEncodedVideoVisualization(frame) ? (
@@ -974,7 +1008,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                   onImageLoaded={handleImageLoaded}
                   onResetView={imagePanZoom.resetView}
                   priority={isPlaying ? "playing" : "visible"}
-                  sceneChildren={panelSceneChildren}
+                  sceneChildren={sceneChildren}
                   stream={stream}
                   targetTimeNs={playbackFrame.contentTimeNs}
                   textureMesh={
@@ -996,7 +1030,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 notices={imageNotices}
                 onImageLoaded={handleImageLoaded}
                 onResetView={imagePanZoom.resetView}
-                sceneChildren={panelSceneChildren}
+                sceneChildren={sceneChildren}
                 textureMesh={
                   rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
                 }
@@ -1067,7 +1101,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           {unsupportedVideoCodecMessage(refusedCodec)}
         </div>
       ) : (
-        <TileEmptyState streams={stream ? [stream] : []} />
+        <TileEmptyState
+          streams={stream ? [stream] : []}
+          title={images.find((s) => s.id === stream)?.label ?? ""}
+        />
       )}
     </>
   );
