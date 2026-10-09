@@ -27,6 +27,9 @@ describe("createScheduledSourceReadBudgetAccount", () => {
       createJob,
       remaining: () => budget(),
       reserve: () => undefined,
+      standing: () => ({ exhausted: false, lifted: false }),
+      lift: () => undefined,
+      subscribe: () => () => undefined,
     } satisfies SourceReadBudgetAccount;
     const account = createScheduledSourceReadBudgetAccount(source);
     const a = account.createJob();
@@ -64,6 +67,9 @@ describe("createScheduledSourceReadBudgetAccount", () => {
       createJob: () => ({ read: reads[jobIndex++] }),
       remaining: () => budget(),
       reserve: () => undefined,
+      standing: () => ({ exhausted: false, lifted: false }),
+      lift: () => undefined,
+      subscribe: () => () => undefined,
     } satisfies SourceReadBudgetAccount;
     const account = createScheduledSourceReadBudgetAccount(source);
     const first = account.createJob();

@@ -511,7 +511,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     ],
     [selectedLabelStreams, selectedSceneAnnotationStreams],
   );
-  usePublishAnnotationStreams(publishedAnnotationStreams);
+  usePublishAnnotationStreams(publishedAnnotationStreams, [
+    ...annotationSources,
+    ...sceneAnnotationSources,
+  ]);
   const activeStreams = useMemo(
     () => (stream ? [stream, ...publishedAnnotationStreams] : []),
     [publishedAnnotationStreams, stream],

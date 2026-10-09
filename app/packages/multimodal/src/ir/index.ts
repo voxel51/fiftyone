@@ -20,3 +20,5 @@ export * from "./time";
 export * from "./transform-topology";
 /** Public frame visualization discriminants. */
 export * from "./visualization-kinds";
+export * from "./message";
+export * from "./temporal-visualizations";

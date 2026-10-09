@@ -35,6 +35,36 @@ describe("SceneUpdateHistoryBridge", () => {
     expect(session.read).toHaveBeenCalledTimes(1);
   });
 
+  it("does not reconstruct history for complete snapshot streams", async () => {
+    vi.useFakeTimers();
+    const base = createSession();
+    const session: EpisodeSession = {
+      ...base,
+      manifest: {
+        ...base.manifest,
+        streams: [
+          {
+            id: "/markers",
+            sourceName: "/markers",
+            kind: "scene-update",
+            payload: { encoding: "json" },
+            timeRange: base.manifest.timeRange,
+            sceneUpdates: "snapshot",
+          },
+        ],
+      },
+    };
+    render(
+      <Harness
+        session={session}
+        source={createSource("markers")}
+        streams={["/markers"]}
+      />,
+    );
+    await advanceTimers(5_000);
+    expect(session.read).not.toHaveBeenCalled();
+  });
+
   it("delays full-history reads, uses the bulk lane, and publishes deltas", async () => {
     vi.useFakeTimers();
     const source = createSource("markers");

@@ -12,7 +12,6 @@ import {
   type StreamKind,
   type StreamId,
 } from "../../../ir/index";
-
 export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
   STREAM_CATEGORY.OBSERVATIONS,
   STREAM_CATEGORY.ACTIONS,
@@ -22,6 +21,7 @@ export const STREAM_CATEGORY_ORDER: readonly StreamCategory[] = [
   STREAM_CATEGORY.TRANSFORMS_POSES,
   STREAM_CATEGORY.DIAGNOSTICS,
   STREAM_CATEGORY.TELEMETRY,
+  STREAM_CATEGORY.DERIVED,
   STREAM_CATEGORY.CUSTOM,
 ];
 
@@ -34,6 +34,7 @@ export const STREAM_CATEGORY_LABEL: Record<StreamCategory, string> = {
   [STREAM_CATEGORY.TRANSFORMS_POSES]: "Transforms & Poses",
   [STREAM_CATEGORY.DIAGNOSTICS]: "Diagnostics",
   [STREAM_CATEGORY.TELEMETRY]: "Telemetry",
+  [STREAM_CATEGORY.DERIVED]: "Scripts",
   [STREAM_CATEGORY.CUSTOM]: "Custom / Unknown",
 };
 
@@ -44,6 +45,7 @@ export const STREAM_CAPABILITY = {
   PLOT: "plot",
   RAW: "raw",
   THREE_D: "three-d",
+  TRACKS: "tracks",
 } as const;
 
 export type StreamCapability =
@@ -56,6 +58,7 @@ export const STREAM_CAPABILITY_LABEL: Record<StreamCapability, string> = {
   [STREAM_CAPABILITY.PLOT]: "Plot",
   [STREAM_CAPABILITY.RAW]: "Raw",
   [STREAM_CAPABILITY.THREE_D]: "3D",
+  [STREAM_CAPABILITY.TRACKS]: "Tracks",
 };
 
 export type StreamSupportStatus =
@@ -78,6 +81,8 @@ export interface StreamInventoryRow {
   readonly capabilities: readonly StreamCapability[];
   readonly category: StreamCategory;
   readonly countLabel: string | null;
+  readonly numericFieldPath: string | undefined;
+  readonly timelineTrackId: string | undefined;
   readonly encoding: string;
   readonly rateHz: number | null;
   readonly rateLabel: string | null;
@@ -154,11 +159,14 @@ export function buildStreamInventoryRows({
       const schemaName = schemaNameFor(stream);
       const telemetry = isTelemetrySchema(schemaName);
       const rateHz = messageRateHz(stream.approxRateHz);
+      const { numericFieldPath, timelineTrackId } = stream;
 
       return {
         canInspect,
         capabilities: capabilitiesForStream({
           canInspect,
+          numericFieldPath,
+          timelineTrackId,
           frameTransform,
           sourceType,
           telemetry,
@@ -171,6 +179,8 @@ export function buildStreamInventoryRows({
           telemetry,
         }),
         countLabel: countLabelFor(stream),
+        numericFieldPath,
+        timelineTrackId,
         encoding: encodingFor(stream),
         rateHz,
         rateLabel: messageRateLabel(rateHz),
@@ -182,6 +192,8 @@ export function buildStreamInventoryRows({
         streamId: stream.id,
         supportStatus: supportStatusFor({
           decodeStatus,
+          numericFieldPath,
+          timelineTrackId,
           frameTransform,
           sourceType,
         }),
@@ -315,11 +327,15 @@ function categoryForStream({
 
 function capabilitiesForStream({
   canInspect,
+  numericFieldPath,
+  timelineTrackId,
   frameTransform,
   sourceType,
   telemetry,
 }: {
   readonly canInspect: boolean;
+  readonly numericFieldPath?: string;
+  readonly timelineTrackId?: string;
   readonly frameTransform: boolean;
   readonly sourceType: SceneSourceType | null;
   readonly telemetry: boolean;
@@ -353,8 +369,12 @@ function capabilitiesForStream({
     capabilities.push(STREAM_CAPABILITY.LOGS);
   }
 
-  if (telemetry) {
+  if (telemetry || numericFieldPath !== undefined) {
     capabilities.push(STREAM_CAPABILITY.PLOT);
+  }
+
+  if (timelineTrackId !== undefined) {
+    capabilities.push(STREAM_CAPABILITY.TRACKS);
   }
 
   if (canInspect) {
@@ -366,10 +386,14 @@ function capabilitiesForStream({
 
 function supportStatusFor({
   decodeStatus,
+  numericFieldPath,
+  timelineTrackId,
   frameTransform,
   sourceType,
 }: {
   readonly decodeStatus: GenericDecodeStatus;
+  readonly numericFieldPath?: string;
+  readonly timelineTrackId?: string;
   readonly frameTransform: boolean;
   readonly sourceType: SceneSourceType | null;
 }): StreamSupportStatus {
@@ -377,6 +401,10 @@ function supportStatusFor({
   // still a renderable *kind* of stream, and saying so promises a picture
   if (decodeStatus === "unsupported-encoding") {
     return "encoding-unsupported";
+  }
+  // Explicit presentation targets are renderable without a scene source.
+  if (numericFieldPath !== undefined || timelineTrackId !== undefined) {
+    return "renderable";
   }
   if (sourceType !== null || frameTransform) {
     return "renderable";

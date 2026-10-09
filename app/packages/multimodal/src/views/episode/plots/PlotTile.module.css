@@ -12,3 +12,8 @@
   height: 10px;
   width: 10px;
 }
+
+/* Unlike the status badge, this one holds a control, so it must take clicks. */
+.readLimit {
+  pointer-events: auto;
+}

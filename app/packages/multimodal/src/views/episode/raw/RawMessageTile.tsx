@@ -16,7 +16,7 @@ import React, {
 } from "react";
 import type { RawRecordCursor, RawRecordResult } from "../../../ir";
 import { useDataStream } from "../playback/data-stream-context";
-import { useAddFieldToPlot } from "../plots/use-add-field-to-plot";
+import { useAddFieldToPlot } from "../commands/use-add-field-to-plot";
 import { useRawMessageContext } from "./raw-message-context";
 import {
   useRawTileStream,

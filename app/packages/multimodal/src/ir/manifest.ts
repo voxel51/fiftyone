@@ -20,6 +20,7 @@ export const STREAM_KIND = Object.freeze({
   POINT_CLOUD: "point-cloud",
   POSE: "pose",
   SCALAR: "scalar",
+  EVENTS: "events",
   SCENE_UPDATE: "scene-update",
   TRANSFORM: "transform",
   UNKNOWN: "unknown",
@@ -34,6 +35,7 @@ export const STREAM_CATEGORY = Object.freeze({
   ACTIONS: "actions",
   ANNOTATIONS_PLANNING: "annotations-planning",
   CUSTOM: "custom",
+  DERIVED: "derived",
   DIAGNOSTICS: "diagnostics",
   INSTRUCTIONS: "instructions",
   OBSERVATIONS: "observations",
@@ -91,6 +93,8 @@ export const STREAM_METADATA = Object.freeze({
   DECODE_STATUS: "stream.decode_status",
   ENCODING: "stream.encoding",
   INSPECTABLE: "stream.inspectable",
+  /** Set to "false" when a source cannot produce annotation label tracks. */
+  LABEL_TRACKS: "stream.label_tracks",
   SCHEMA_NAME: "stream.schema_name",
 } as const);
 
@@ -108,6 +112,12 @@ export interface TransformTopology {
 
 /** One discoverable renderer-neutral stream in an episode. */
 export interface StreamDescriptor {
+  /** Direct plot action for a stream with a single meaningful numeric field. */
+  readonly numericFieldPath?: string;
+  /** Timeline row to pin when opening this stream's events. */
+  readonly timelineTrackId?: string;
+  /** Complete snapshots need no historical delta reconstruction. */
+  readonly sceneUpdates?: "snapshot" | "delta";
   readonly approxRateHz?: number;
   readonly coordinateFrameId?: string;
   readonly count?: number;

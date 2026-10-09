@@ -91,6 +91,15 @@ is automatically inferred as `"multimodal"`:
 
     print(dataset.media_type)  # multimodal
 
+Custom MCAP messages can also become signals, event tracks, and scene geometry
+through :ref:`MCAP scripts <multimodal-mcap-derived-streams>`, an Enterprise
+feature that saves JavaScript or TypeScript transformations with your dataset.
+
+.. toctree::
+   :maxdepth: 1
+
+   multimodal/mcap_derived_streams
+
 .. _multimodal-lerobot-datasets:
 
 LeRobot datasets

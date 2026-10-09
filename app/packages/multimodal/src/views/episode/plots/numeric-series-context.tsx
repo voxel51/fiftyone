@@ -1054,14 +1054,22 @@ export function NumericSeriesBridge({
               queueImmediateFill();
             } else {
               pendingSlice = undefined;
-              if (result.continuation) {
+              if (
+                result.continuation ||
+                result.stopReason === "budget-exhausted"
+              ) {
                 const pausedAt = nowMs();
-                pendingSlice = {
-                  ...sliceJob,
-                  continuation: result.continuation,
-                  notBeforeMs: pausedAt + DEMAND_FAILURE_BACKOFF_MS,
-                  pageCount: 0,
-                };
+                // A bounded source can pause without a continuation token.
+                // Keep its uncomputed range unread and yield before checking
+                // for new work; immediate retries would starve the UI.
+                if (result.continuation) {
+                  pendingSlice = {
+                    ...sliceJob,
+                    continuation: result.continuation,
+                    notBeforeMs: pausedAt + DEMAND_FAILURE_BACKOFF_MS,
+                    pageCount: 0,
+                  };
+                }
                 for (const selection of sliceJob.selections) {
                   for (const field of selection.fields) {
                     failures.record(

@@ -11,6 +11,8 @@ export const VISUALIZATION_KIND = Object.freeze({
   POSE: "pose",
   RAW_AUDIO: "raw-audio",
   RAW_IMAGE: "raw-image",
+  NUMERIC_SIGNAL: "numeric-signal",
+  TRACK_EVENTS: "track-events",
   SCENE_UPDATE: "scene-update",
 } as const);
 

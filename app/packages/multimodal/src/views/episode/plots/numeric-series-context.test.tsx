@@ -719,6 +719,65 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
   });
 
+  it("yields paused sources without tokens and keeps uncomputed ranges unread", async () => {
+    const prefix = { endNs: 48_749_999_999n, startNs: 30_000_000_000n };
+    let resumed = false;
+    const readNumericSeriesSlice = vi.fn(async (request) =>
+      sliceResult(request, {
+        coverage: resumed ? [request.window] : [prefix],
+        stopReason: resumed ? "source-exhausted" : "budget-exhausted",
+        usage: emptyReadUsage({ chunksOpened: 0, messagesDecoded: 0 }),
+      }),
+    );
+    const client = createClient({ readNumericSeriesSlice });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={createSource()}
+        store={store}
+      />,
+    );
+
+    await act(async () => {
+      context.current?.subscribeSeries("/imu", "accel.x");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(1);
+    const state = () =>
+      context.current?.seriesByKey.get(numericSeriesKey("/imu", "accel.x"));
+    expect(state()?.coverage).toEqual([prefix]);
+
+    await act(async () => {
+      await advanceTimers(5_000);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+    expect(sliceRequestOf(client, 1).window.startNs).toBe(prefix.endNs + 1n);
+    expect(state()?.coverage).toEqual([prefix]);
+    expect(state()?.error).toBeUndefined();
+
+    await act(async () => {
+      await advanceTimers(4_999);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(2);
+    resumed = true;
+    await act(async () => {
+      await advanceTimers(1);
+      await flushMicrotasks();
+    });
+    expect(readNumericSeriesSlice).toHaveBeenCalledTimes(3);
+    expect(state()?.coverage).toEqual([
+      { endNs: 89_999_999_999n, startNs: prefix.startNs },
+    ]);
+  });
+
   it("yields a bounded acquisition epoch and resumes its continuation", async () => {
     const continuation = {} as ReadContinuation;
     let page = 0n;

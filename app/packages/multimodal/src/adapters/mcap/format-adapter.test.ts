@@ -743,129 +743,167 @@ describe("MCAP format adapter", () => {
     ).toBeUndefined();
   });
 
-  it("shares one cumulative bounded-read allowance across jobs", async () => {
-    const client = createClient();
-    const continuation = { cursor: 1 };
-    vi.mocked(client.readBoundedMessages).mockResolvedValue({
-      continuation,
-      coverageByTopic: new Map([["/camera", [{ endNs: 1n, startNs: 1n }]]]),
-      messages: [
-        {
-          activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
-          channelId: 1,
-          decoded: {
-            decoderId: "fixture",
-            decoderVersion: "1",
-            output: { resourceHints: { transferables: [] } },
-            payload: { encoding: "fixture" },
-          },
-          logTimeNs: 1n,
-          publishTimeNs: 2n,
-          sequence: 7,
-          timelineTimeNs: 1n,
-          topic: "/camera",
+  it.each(["message", "raw-message"] as const)(
+    "shares one bounded-read allowance for %s jobs",
+    async (representation) => {
+      const client = createClient();
+      const continuation = { cursor: 1 };
+      vi.mocked(client.readBoundedMessages).mockResolvedValue({
+        continuation,
+        coverageByTopic: new Map([["/camera", [{ endNs: 1n, startNs: 1n }]]]),
+        ...(representation === "raw-message"
+          ? {
+              rawMessages: {
+                channels: [{ channelId: 1, messageEncoding: "json" }],
+                records: [
+                  {
+                    channelId: 1,
+                    topic: "/camera",
+                    timestampNs: 1n,
+                    logTimeNs: 1n,
+                    publishTimeNs: 2n,
+                    sequence: 7,
+                    data: new Uint8Array([123, 125]),
+                  },
+                ],
+              },
+            }
+          : {}),
+        messages:
+          representation === "raw-message"
+            ? []
+            : [
+                {
+                  activeTimeline: MCAP_ACTIVE_TIMELINE.LOG,
+                  channelId: 1,
+                  decoded: {
+                    decoderId: "fixture",
+                    decoderVersion: "1",
+                    output: { resourceHints: { transferables: [] } },
+                    payload: { encoding: "fixture" },
+                  },
+                  logTimeNs: 1n,
+                  publishTimeNs: 2n,
+                  sequence: 7,
+                  timelineTimeNs: 1n,
+                  topic: "/camera",
+                },
+              ],
+        resumeAtNs: 2n,
+        stopReason: "horizon-reached",
+        usage: {
+          chunksOpened: 1,
+          decompressedBytes: 300,
+          decompressionCacheHits: 0,
+          elapsedMs: 10,
+          logicalSourceBytes: 100,
+          logicalUncompressedBytes: 300,
+          messagesDecoded: 1,
+          transferredBytes: 100,
         },
-      ],
-      resumeAtNs: 2n,
-      stopReason: "horizon-reached",
-      usage: {
-        chunksOpened: 1,
-        decompressedBytes: 300,
-        decompressionCacheHits: 0,
-        elapsedMs: 10,
-        logicalSourceBytes: 100,
-        logicalUncompressedBytes: 300,
-        messagesDecoded: 1,
-        transferredBytes: 100,
-      },
-    });
-    const session = await createMcapFormatAdapter({
-      boundedChunksPerGrant: 2,
-      boundedChunksPerSource: 4,
-      createClient: () => client,
-    }).open(source, io);
-    const allowance = {
-      maxMessages: 10,
-      maxSourceBytes: 1_000,
-      maxUncompressedBytes: 3_000,
-      maxWallTimeMs: 1_000,
-    };
-    const account = session.boundedRead?.openAccount(allowance);
-    const grant = {
-      maxMessages: 5,
-      maxSourceBytes: 500,
-      maxUncompressedBytes: 1_500,
-      maxWallTimeMs: 500,
-    };
+      });
+      const session = await createMcapFormatAdapter({
+        boundedChunksPerGrant: 2,
+        boundedChunksPerSource: 4,
+        createClient: () => client,
+      }).open(source, io);
+      const allowance = {
+        maxMessages: 10,
+        maxSourceBytes: 1_000,
+        maxUncompressedBytes: 3_000,
+        maxWallTimeMs: 1_000,
+      };
+      const account = session.boundedRead?.openAccount(allowance);
+      const grant = {
+        maxMessages: 5,
+        maxSourceBytes: 500,
+        maxUncompressedBytes: 1_500,
+        maxWallTimeMs: 500,
+      };
 
-    const result = await account?.createJob().read({
-      admissionEndNs: 1n,
-      budget: grant,
-      streams: ["camera"],
-      window: { endNs: 2n, startNs: 1n },
-    });
-
-    expect(result?.batches).toHaveLength(1);
-    expect(result?.continuation).toBe(continuation);
-    expect(result?.resumeAtNs).toBe(2n);
-    expect(result?.coverageByStream.get("camera")).toEqual([
-      { endNs: 1n, startNs: 1n },
-    ]);
-    expect(client.readBoundedMessages).toHaveBeenCalledWith(
-      expect.objectContaining({
+      const result = await account?.createJob().read({
+        representation,
         admissionEndNs: 1n,
-        endTimeNs: 2n,
-        startTimeNs: 1n,
-      }),
-      expect.objectContaining({ priority: "bulk" }),
-    );
-    expect(account?.remaining()).toEqual({
-      maxMessages: 9,
-      maxSourceBytes: 900,
-      maxUncompressedBytes: 2_700,
-      maxWallTimeMs: 990,
-    });
-    const cacheWarmReservation = account?.reserve({
-      maxMessages: 0,
-      maxSourceBytes: 200,
-      maxUncompressedBytes: 0,
-      maxWallTimeMs: 100,
-    });
-    cacheWarmReservation?.commit(
-      {
-        chunksOpened: 0,
-        decompressedBytes: 0,
-        decompressionCacheHits: 0,
-        elapsedMs: 5,
-        logicalSourceBytes: 100,
-        logicalUncompressedBytes: 0,
-        messagesDecoded: 0,
-        transferredBytes: 0,
-      },
-      { exact: true },
-    );
-    expect(account?.remaining()).toEqual({
-      maxMessages: 9,
-      maxSourceBytes: 800,
-      maxUncompressedBytes: 2_700,
-      maxWallTimeMs: 985,
-    });
-    expect(
-      account?.reserve({
+        budget: grant,
+        streams: ["camera"],
+        window: { endNs: 2n, startNs: 1n },
+      });
+
+      expect(result?.batches).toHaveLength(
+        representation === "raw-message" ? 0 : 1,
+      );
+      if (representation === "raw-message") {
+        expect(result?.rawMessages?.records).toEqual([
+          expect.objectContaining({
+            streamId: "camera",
+            topic: "/camera",
+            timestampNs: 1n,
+            data: new Uint8Array([123, 125]),
+          }),
+        ]);
+      }
+      expect(result?.continuation).toBe(continuation);
+      expect(result?.resumeAtNs).toBe(2n);
+      expect(result?.coverageByStream.get("camera")).toEqual([
+        { endNs: 1n, startNs: 1n },
+      ]);
+      expect(client.readBoundedMessages).toHaveBeenCalledWith(
+        expect.objectContaining({
+          representation,
+          admissionEndNs: 1n,
+          endTimeNs: 2n,
+          startTimeNs: 1n,
+        }),
+        expect.objectContaining({ priority: "bulk" }),
+      );
+      expect(account?.remaining()).toEqual({
+        maxMessages: 9,
+        maxSourceBytes: 900,
+        maxUncompressedBytes: 2_700,
+        maxWallTimeMs: 990,
+      });
+      const cacheWarmReservation = account?.reserve({
         maxMessages: 0,
-        maxSourceBytes: 801,
+        maxSourceBytes: 200,
         maxUncompressedBytes: 0,
-        maxWallTimeMs: 0,
-      }),
-    ).toBeUndefined();
-    expect(() =>
-      session.boundedRead?.openAccount({
-        ...allowance,
-        maxSourceBytes: 2_000,
-      }),
-    ).toThrow("already open");
-    session.dispose();
-  });
+        maxWallTimeMs: 100,
+      });
+      cacheWarmReservation?.commit(
+        {
+          chunksOpened: 0,
+          decompressedBytes: 0,
+          decompressionCacheHits: 0,
+          elapsedMs: 5,
+          logicalSourceBytes: 100,
+          logicalUncompressedBytes: 0,
+          messagesDecoded: 0,
+          transferredBytes: 0,
+        },
+        { exact: true },
+      );
+      expect(account?.remaining()).toEqual({
+        maxMessages: 9,
+        maxSourceBytes: 800,
+        maxUncompressedBytes: 2_700,
+        maxWallTimeMs: 985,
+      });
+      expect(
+        account?.reserve({
+          maxMessages: 0,
+          maxSourceBytes: 801,
+          maxUncompressedBytes: 0,
+          maxWallTimeMs: 0,
+        }),
+      ).toBeUndefined();
+      expect(() =>
+        session.boundedRead?.openAccount({
+          ...allowance,
+          maxSourceBytes: 2_000,
+        }),
+      ).toThrow("already open");
+      session.dispose();
+    },
+  );
 
   it("retains a cancelled grant after receiving partial usage", async () => {
     const client = createClient();

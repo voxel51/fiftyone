@@ -7,11 +7,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   plotTileResetZoomRevisionAtom,
   plotTileSeriesAtom,
-} from "./plot-tile-state";
+} from "../plots/plot-tile-state";
 import { TILE_TYPE } from "../tiles/tile-types";
 import { useAddFieldToPlot } from "./use-add-field-to-plot";
 
-vi.mock("./PlotTile", () => ({ default: () => null }));
+vi.mock("../plots/PlotTile", () => ({ default: () => null }));
 
 const Probe: React.FC = () => {
   const addFieldToPlot = useAddFieldToPlot();

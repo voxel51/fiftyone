@@ -285,6 +285,23 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   );
 };
 
+/**
+ * Pinning controls when a TrackProvider surrounds this component, otherwise
+ * `null`. For surfaces (settings panels, actions) that are also rendered in
+ * hosts without a track timeline.
+ */
+export function useOptionalTrackPinning(): Pick<
+  TrackContextValue,
+  "pinnedIds" | "togglePin" | "setPinned"
+> | null {
+  const ctx = useContext(TrackContext);
+  return useMemo(() => {
+    if (!ctx) return null;
+    const { pinnedIds, togglePin, setPinned } = ctx;
+    return { pinnedIds, togglePin, setPinned };
+  }, [ctx]);
+}
+
 /** Pull the surrounding TrackProvider's context. Throws when missing. */
 export function useTrackContext(): TrackContextValue {
   const ctx = useContext(TrackContext);

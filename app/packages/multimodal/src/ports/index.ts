@@ -8,3 +8,5 @@ export * from "./numeric-series";
 export * from "./session";
 /** Exact single-row state/action inspection contract. */
 export * from "./state-action";
+export * from "./event-streams";
+export { emptyPlaybackWindow } from "./playback-policy";

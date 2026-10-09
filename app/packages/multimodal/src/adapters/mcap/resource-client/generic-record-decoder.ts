@@ -38,10 +38,15 @@ export type McapGenericRecordDecoderResolution =
  * use `genericRecordDecoderResolutionForChannel`.
  */
 export function genericRecordDecoderForChannel(
-  reader: McapIndexedReaderLike,
+  reader: Pick<McapIndexedReaderLike, "schemasById">,
   channel: McapGenericDecodableChannel,
+  options?: { readonly defaults?: boolean },
 ): ((bytes: Uint8Array) => Record<string, unknown>) | null {
-  const resolution = genericRecordDecoderResolutionForChannel(reader, channel);
+  const resolution = genericRecordDecoderResolutionForChannel(
+    reader,
+    channel,
+    options,
+  );
   return resolution.status === "ok" ? resolution.decodeRecord : null;
 }
 
@@ -50,8 +55,9 @@ export function genericRecordDecoderForChannel(
  * whether the blocker is the message encoding itself or an unusable schema.
  */
 export function genericRecordDecoderResolutionForChannel(
-  reader: McapIndexedReaderLike,
+  reader: Pick<McapIndexedReaderLike, "schemasById">,
   channel: McapGenericDecodableChannel,
+  options?: { readonly defaults?: boolean },
 ): McapGenericRecordDecoderResolution {
   if (channel.messageEncoding === "json") {
     return { decodeRecord: decodeJsonRecord, status: "ok" };
@@ -83,7 +89,20 @@ export function genericRecordDecoderResolutionForChannel(
     }
 
     return {
-      decodeRecord: (bytes) => asRecord(messageType.decode(bytes)),
+      decodeRecord: (bytes) => {
+        const message = messageType.decode(bytes);
+        // Protobuf scalar defaults live on the message prototype. Materialize
+        // them before structured transfer so zero/false/empty fields survive.
+        return asRecord(
+          options?.defaults
+            ? messageType.toObject(message, {
+                defaults: true,
+                arrays: true,
+                objects: true,
+              })
+            : message,
+        );
+      },
       status: "ok",
     };
   }

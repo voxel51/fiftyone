@@ -1,4 +1,6 @@
+import type { EventStreamsCapability } from "./event-streams";
 import type {
+  EncodedMessageBatch,
   ByteRange,
   ByteSourceDescriptor,
   DecodedFrame,
@@ -113,6 +115,8 @@ export type ReadContinuation = object & {
 
 /** One explicit slice requested from a source-scoped budget account. */
 export interface BudgetedReadRequest {
+  /** Full message values or owned encoded records, independent of visualization support. */
+  readonly representation?: "message" | "raw-message";
   /**
    * Optional inclusive admission horizon within the stable request window.
    * Atomic source groups wholly after this time remain behind the returned
@@ -139,6 +143,8 @@ export interface BudgetedReadRequest {
 /** Partial or complete data returned by one bounded source read grant. */
 export interface BudgetedReadResult {
   readonly batches: readonly FrameBatch[];
+  /** Owned encoded payloads when raw-message representation is requested. */
+  readonly rawMessages?: EncodedMessageBatch;
   readonly continuation?: ReadContinuation;
   readonly coverageByStream: ReadonlyMap<StreamId, readonly TimeWindow[]>;
   /** Earliest atomic-group start still behind the continuation. */
@@ -163,6 +169,14 @@ export interface SourceReadBudgetReservation {
   commit(usage: ReadWorkUsage, options?: { readonly exact?: boolean }): void;
 }
 
+/** Where a recording's cumulative allowance stands for this session. */
+export interface SourceReadBudgetStanding {
+  /** A grant was refused since the account opened or the limit was last lifted. */
+  readonly exhausted: boolean;
+  /** The viewer removed the limit; grants are no longer refused. */
+  readonly lifted: boolean;
+}
+
 /** Source-scoped cumulative allowance shared by every job created from it. */
 export interface SourceReadBudgetAccount {
   createJob(): BudgetedReadJob;
@@ -175,10 +189,22 @@ export interface SourceReadBudgetAccount {
    * demonstrably unused work; conservative settlement retains the charge.
    */
   reserve(budget: ReadWorkBudget): SourceReadBudgetReservation | undefined;
+
+  /** Current standing; changes are announced through `subscribe`. */
+  standing(): SourceReadBudgetStanding;
+  /**
+   * Removes the cumulative limit for the rest of this session. This is the
+   * viewer's explicit choice, never a consumer's: jobs that were refused read
+   * again on their next request.
+   */
+  lift(): void;
+  subscribe(listener: () => void): () => void;
 }
 
 /** Optional format-neutral bounded-read surface on an episode session. */
 export interface BoundedReadCapability {
+  /** Whether requests may select full schema-shaped message values. */
+  readonly supportsMessages?: boolean;
   /**
    * Opens the source account once. Omitting the allowance selects the
    * adapter's fixed source policy. Reopening with a different allowance is
@@ -433,6 +459,8 @@ export interface RawRecordCapability {
     readonly signal?: AbortSignal;
   }): Promise<readonly RawRecordStream[]>;
   readRawRecord(request: {
+    /** Includes the recording's declared schema and protobuf scalar defaults. */
+    readonly includeSchema?: boolean;
     readonly includeFullJson?: boolean;
     /**
      * Scheduling attribution. Paused inspection may use an isolated
@@ -453,6 +481,7 @@ export interface RawRecordCapability {
   }): Promise<RawRecordResult>;
   /** Reads one exact indexed record without consulting the playback clock. */
   readRawRecordAtCursor?(request: {
+    readonly includeSchema?: boolean;
     readonly cursor: RawRecordCursor;
     readonly includeFullJson?: boolean;
     /** Whole-message JSON export remains on the bounded bulk lane. */
@@ -494,6 +523,7 @@ export interface EpisodeTerminology {
 
 /** Open, format-neutral episode data plane consumed by the shared runtime. */
 export interface EpisodeSession {
+  readonly eventStreams?: EventStreamsCapability;
   readonly boundedRead?: BoundedReadCapability;
   readonly manifest: EpisodeManifest;
   readonly numericSeries?: NumericSeriesCapability;

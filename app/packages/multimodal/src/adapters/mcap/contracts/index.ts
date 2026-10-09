@@ -8,7 +8,13 @@ import type {
   ReadWorkBudget,
   ReadWorkUsage,
 } from "../../../ports";
-import type { EpisodeRecordingFacts, TimeWindow } from "../../../ir";
+import type {
+  EncodedMessage,
+  EncodedMessageBatch,
+  EpisodeRecordingFacts,
+  RawRecordSchema,
+  TimeWindow,
+} from "../../../ir";
 import type { DecodeResult } from "../../../query/decoding/index";
 import type {
   PlaybackSyncMode,
@@ -137,6 +143,7 @@ export interface McapReadDecodedMessagesRequest {
 
 /** Internal resource request backing the format-neutral bounded-read port. */
 export interface McapReadBoundedMessagesRequest {
+  readonly representation?: "message" | "raw-message";
   readonly absoluteBudget: ReadWorkBudget;
   readonly absoluteMaxChunks: number;
   readonly activeTimeline?: McapActiveTimeline;
@@ -154,6 +161,7 @@ export interface McapReadBoundedMessagesRequest {
 
 /** Decoded partial result returned across the MCAP resource boundary. */
 export interface McapReadBoundedMessagesResult {
+  readonly rawMessages?: EncodedMessageBatch<EncodedMessage>;
   readonly continuation?: ReadContinuation;
   readonly coverageByTopic: ReadonlyMap<string, readonly TimeWindow[]>;
   readonly messages: readonly McapDecodedMessage[];
@@ -569,6 +577,7 @@ export interface McapRawTruncatedNode {
  * time.
  */
 export interface McapReadRawMessageRecordRequest {
+  readonly includeSchema?: boolean;
   /**
    * Timeline used to interpret `timeNs`; defaults to MCAP log time.
    */
@@ -618,6 +627,7 @@ export type McapMessageCursor = string;
 
 /** Request for one exact indexed message. */
 export interface McapReadRawMessageAtCursorRequest {
+  readonly includeSchema?: boolean;
   /** Exact MCAP channel selected by a channel-preserving inventory row. */
   readonly channelId?: number;
   readonly cursor: McapMessageCursor;
@@ -693,6 +703,7 @@ export type McapRawMessageRecordStatus =
  * One topic's message record (or its degrade) at a playback time.
  */
 export interface McapRawMessageRecordResult {
+  readonly schema?: RawRecordSchema;
   /** Exact physical identity, present only for indexed selections. */
   readonly cursor?: McapMessageCursor;
   readonly status: McapRawMessageRecordStatus;

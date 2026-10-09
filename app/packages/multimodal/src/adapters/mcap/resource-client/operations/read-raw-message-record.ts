@@ -15,6 +15,7 @@ import {
   mcapChannelForTopic,
 } from "../generic-record-decoder";
 import { pruneRawRecord, rawRecordToJsonText } from "../raw-record-prune";
+import { rawMessageSchema } from "../raw-message-schema";
 import { errorMessage } from "../../../../utils/errors";
 import {
   createAbortError,
@@ -138,6 +139,7 @@ export async function readMcapRawMessageRecord({
   const base = {
     messageEncoding: topicChannel.messageEncoding,
     schemaName: topicSchema?.name ?? null,
+    ...(request.includeSchema ? { schema: rawMessageSchema(topicSchema) } : {}),
     topic: topicChannel.topic,
   };
 
@@ -192,6 +194,7 @@ export async function readMcapRawMessageRecord({
       ? mcapMessageCursorForEntry(request.source, entry)
       : undefined,
     includeFullJson: request.includeFullJson,
+    includeSchema: request.includeSchema,
     message,
     prune: request.prune,
     reader,
@@ -232,6 +235,7 @@ export async function readMcapRawMessageAtCursor({
     },
     cursor: request.cursor,
     includeFullJson: request.includeFullJson,
+    includeSchema: request.includeSchema,
     message,
     prune: request.prune,
     reader,
@@ -246,6 +250,7 @@ function rawRecordResultForMessage({
   base,
   cursor,
   includeFullJson,
+  includeSchema,
   message,
   prune,
   reader,
@@ -260,6 +265,7 @@ function rawRecordResultForMessage({
   };
   readonly cursor?: string;
   readonly includeFullJson?: boolean;
+  readonly includeSchema?: boolean;
   readonly message: McapRawMessage;
   readonly prune?: McapReadRawMessageRecordRequest["prune"];
   readonly reader: McapIndexedReaderLike;
@@ -284,6 +290,7 @@ function rawRecordResultForMessage({
     messageEncoding: channel.messageEncoding,
     publishTimeNs: message.publishTime,
     schemaName: schema?.name ?? null,
+    ...(includeSchema ? { schema: rawMessageSchema(schema) } : {}),
     sequence: message.sequence,
     validFromNs,
     validUntilNs,
@@ -295,6 +302,7 @@ function rawRecordResultForMessage({
   const decoderResolution = genericRecordDecoderResolutionForChannel(
     reader,
     channel,
+    { defaults: includeSchema },
   );
   if (decoderResolution.status === "unavailable") {
     return {

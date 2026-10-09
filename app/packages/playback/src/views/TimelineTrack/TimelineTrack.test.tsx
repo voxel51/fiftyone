@@ -8,7 +8,10 @@ import {
   usePlaybackStore,
 } from "../../lib/playback/PlaybackProvider";
 import { playheadAtom } from "../../lib/playback/atoms";
-import TimelineTrack, { TimelineTrackProps } from "./TimelineTrack";
+import TimelineTrack, {
+  TimelineTrackProps,
+  unknownCoverageSpans,
+} from "./TimelineTrack";
 import styles from "./TimelineTrack.module.css";
 
 /**
@@ -79,6 +82,16 @@ describe("TimelineTrack", () => {
   });
 
   afterEach(() => cleanup());
+
+  it("exposes the coverage-gap explanation and lets gap clicks seek", () => {
+    renderTrack({
+      track: { coverageRanges: [], coverageGapLabel: "Read limit reached" },
+    });
+    const gap = screen.getByRole("img", { name: "Read limit reached" });
+    expect(gap.getAttribute("title")).toBe("Read limit reached");
+    fireEvent.click(gap, { clientX: 600, button: 0, detail: 1 });
+    expect(screen.getByTestId("playhead").textContent).toBe("6.000");
+  });
 
   describe("structure", () => {
     it("renders the root, lane, and bar by default", () => {
@@ -387,6 +400,44 @@ describe("TimelineTrack", () => {
       const root = container.querySelector(`.${styles.root}`) as HTMLElement;
       fireEvent.click(root, { clientX: 500, button: 0, detail: 1 });
       expect(onTrackClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("hands onEventClick the click position so a consumer can anchor a readout to it", () => {
+      const onEventClick = vi.fn();
+      const { container } = renderTrack({
+        track: { start: 0, end: 10, events: [{ startSec: 3 }], onEventClick },
+      });
+      const event = container.querySelector(`.${styles.event}`) as HTMLElement;
+      fireEvent.click(event, { clientX: 250, clientY: 40, detail: 1 });
+      expect(onEventClick).toHaveBeenCalledWith(
+        expect.objectContaining({ startSec: 3 }),
+        { x: 250, y: 40 },
+      );
+    });
+  });
+
+  describe("label actions", () => {
+    it("renders beside the pin and keeps their clicks off the row", () => {
+      const onTrackClick = vi.fn();
+      const onAction = vi.fn();
+      renderTrack({
+        track: {
+          labelWidth: 200,
+          labelActions: <button onClick={onAction}>continue</button>,
+          onPinClick: vi.fn(),
+          onTrackClick,
+        },
+      });
+      const action = screen.getByRole("button", { name: "continue" });
+      expect(action.closest("[data-track-label-actions]")).not.toBeNull();
+      expect(
+        action.compareDocumentPosition(
+          screen.getByRole("button", { name: "Pin track" }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      fireEvent.click(action, { button: 0, detail: 1 });
+      expect(onAction).toHaveBeenCalledTimes(1);
+      expect(onTrackClick).not.toHaveBeenCalled();
     });
 
     it("right-click on an event marker still fires onContextMenu on the row", () => {
@@ -997,5 +1048,62 @@ describe("TimelineTrack", () => {
       expect(onEventEdit).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId("playhead").textContent).toBe("0.000");
     });
+  });
+});
+
+describe("coverage hatching", () => {
+  it("hatches only the visible spans no coverage range accounts for", () => {
+    const { container } = renderTrack({
+      track: {
+        start: undefined,
+        end: undefined,
+        events: [3],
+        coverageRanges: [{ startSec: 2, endSec: 4 }],
+      },
+      duration: 10,
+    });
+    const unknown = container.querySelectorAll("[data-track-unknown]");
+    expect(unknown.length).toBe(2);
+    expect(inlineStyle(unknown[0])).toContain("left: 0%");
+    expect(inlineStyle(unknown[0])).toContain("width: 20%");
+    expect(inlineStyle(unknown[1])).toContain("left: 40%");
+    expect(inlineStyle(unknown[1])).toContain("width: 60%");
+    // Events inside the known span still render on top of the hatching.
+    expect(container.querySelectorAll(`.${styles.event}`).length).toBe(1);
+  });
+
+  it("renders nothing extra when coverage is complete or omitted", () => {
+    const covered = renderTrack({
+      track: { coverageRanges: [{ startSec: 0, endSec: 10 }] },
+      duration: 10,
+    });
+    expect(
+      covered.container.querySelectorAll("[data-track-unknown]").length,
+    ).toBe(0);
+    const plain = renderTrack({ duration: 10 });
+    expect(
+      plain.container.querySelectorAll("[data-track-unknown]").length,
+    ).toBe(0);
+  });
+
+  it("clips and merges coverage so the span count stays bounded", () => {
+    expect(
+      unknownCoverageSpans(
+        [
+          { startSec: 6, endSec: 7 },
+          { startSec: -5, endSec: 1 },
+          { startSec: 0.5, endSec: 2 },
+        ],
+        0,
+        10,
+      ),
+    ).toEqual([
+      { startSec: 2, endSec: 6 },
+      { startSec: 7, endSec: 10 },
+    ]);
+    expect(unknownCoverageSpans([], 3, 3)).toEqual([]);
+    expect(unknownCoverageSpans([], 0, 4)).toEqual([
+      { startSec: 0, endSec: 4 },
+    ]);
   });
 });

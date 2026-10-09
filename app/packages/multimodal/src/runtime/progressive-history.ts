@@ -242,6 +242,7 @@ export class ProgressiveHistoryHub {
 }
 
 class InternalProgressiveHistoryJob<T> implements ProgressiveHistoryJob<T> {
+  private readonly account: SourceReadBudgetAccount | null;
   private readonly boundedJob: BudgetedReadJob | undefined;
   private continuation: ReadContinuation | undefined;
   private readonly coverageByStream = new Map<string, TimeWindow[]>();
@@ -253,6 +254,7 @@ class InternalProgressiveHistoryJob<T> implements ProgressiveHistoryJob<T> {
   private zeroProgressResults = 0;
   private snapshotValue: ProgressiveHistorySnapshot<T>;
   private readonly unavailableByStream = new Map<string, TimeWindow[]>();
+  private unsubscribeAccount: (() => void) | undefined;
   lastUsed = 0;
   queued = false;
 
@@ -267,6 +269,7 @@ class InternalProgressiveHistoryJob<T> implements ProgressiveHistoryJob<T> {
     readonly enqueue: (job: InternalProgressiveHistoryJob<unknown>) => void;
     readonly session: EpisodeSession;
   }) {
+    this.account = account;
     this.config = config;
     this.enqueueSelf = () =>
       enqueue(this as InternalProgressiveHistoryJob<unknown>);
@@ -293,11 +296,19 @@ class InternalProgressiveHistoryJob<T> implements ProgressiveHistoryJob<T> {
   acquire(demand: ProgressiveHistoryDemand): () => void {
     const token = Symbol(this.config.family);
     this.demands.set(token, demand);
+    if (!this.unsubscribeAccount && this.account) {
+      this.unsubscribeAccount = this.account.subscribe(() =>
+        this.resumeAfterBudgetLift(),
+      );
+    }
+    this.resumeAfterBudgetLift();
     this.enqueueSelf();
     return () => {
       this.demands.delete(token);
-      if (this.demands.size === 0 && !this.boundedJob) {
-        this.genericController?.abort();
+      if (this.demands.size === 0) {
+        this.unsubscribeAccount?.();
+        this.unsubscribeAccount = undefined;
+        if (!this.boundedJob) this.genericController?.abort();
       }
     };
   }
@@ -359,9 +370,27 @@ class InternalProgressiveHistoryJob<T> implements ProgressiveHistoryJob<T> {
   }
 
   dispose(): void {
+    this.unsubscribeAccount?.();
+    this.unsubscribeAccount = undefined;
     this.genericController?.abort();
     this.demands.clear();
     this.listeners.clear();
+  }
+
+  private resumeAfterBudgetLift(): void {
+    if (
+      this.snapshotValue.terminalCause !== "account-exhausted" ||
+      !this.account?.standing().lifted
+    ) {
+      return;
+    }
+    this.zeroProgressResults = 0;
+    this.publish({
+      status: "idle",
+      terminalCause: undefined,
+      truncated: this.hasUnavailableCoverage(),
+    });
+    this.enqueueSelf();
   }
 
   private async stepBounded(job: BudgetedReadJob): Promise<void> {
@@ -415,6 +444,8 @@ class InternalProgressiveHistoryJob<T> implements ProgressiveHistoryJob<T> {
         terminalCause: "account-exhausted",
         truncated: true,
       });
+      // The limit can be lifted while an exhausted read is still in flight.
+      this.resumeAfterBudgetLift();
       return;
     }
     if (result.stopReason === "source-exhausted") {

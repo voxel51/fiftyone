@@ -90,3 +90,29 @@ describe("source read budget ledger", () => {
     ).toThrow("exceeded its reserved hard budget");
   });
 });
+
+describe("lifted source read budget ledger", () => {
+  it("stops refusing once lifted and no longer keeps score, but still checks usage", () => {
+    const ledger = createSourceReadBudgetLedger(allowance, {
+      maxPhysicalUnits: 1,
+    });
+    expect(ledger.reserve(allowance, 2)).toBeUndefined();
+    expect(ledger.lifted()).toBe(false);
+
+    ledger.lift();
+    expect(ledger.lifted()).toBe(true);
+    const reservation = ledger.reserve(allowance, 2);
+    expect(reservation).toBeDefined();
+    reservation?.commit(usage(), 2, { exact: true });
+    expect(ledger.remaining().maxPhysicalUnits).toBe(Number.MAX_SAFE_INTEGER);
+
+    const second = ledger.reserve(allowance, 1);
+    expect(() =>
+      second?.commit(
+        usage({ logicalSourceBytes: allowance.maxSourceBytes + 1 }),
+        1,
+        { exact: true },
+      ),
+    ).toThrow("exceeded its reserved hard budget");
+  });
+});
