@@ -97,21 +97,14 @@ export const createHost = <K, I extends Instance>(
   };
 
   // while a drag holds the grid, it stays centered in the panel rather than
-  // riding the edge that moves, and shrinks to fit rather than clipping
+  // riding the edge that moves
   const center = (entry: Entry<I>) => {
-    const built = entry.extent ?? extent ?? 0;
-    const now = extent ?? built;
-    if (!built || now === built) {
-      entry.slot.style.transform = "";
-      return;
-    }
-    const scale = Math.min(1, now / built);
-    const shift = (now - built) / 2;
-    entry.slot.style.transformOrigin =
-      axis === "width" ? `${built / 2}px 0` : `0 ${built / 2}px`;
-    entry.slot.style.transform = `${
-      axis === "width" ? "translateX" : "translateY"
-    }(${shift}px) scale(${scale})`;
+    const shift = ((extent ?? 0) - (entry.extent ?? extent ?? 0)) / 2;
+    entry.slot.style.transform = shift
+      ? axis === "width"
+        ? `translateX(${shift}px)`
+        : `translateY(${shift}px)`
+      : "";
   };
 
   const track = (event: Event) => {
