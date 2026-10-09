@@ -15,8 +15,12 @@ export const PanelContainer = styled.div`
   overflow: hidden;
 `;
 
+// a fixed height, so indicators that arrive after load (a count) cannot
+// push the panel down
 export const PanelTabs = styled.div<{ $isModal?: boolean }>`
   display: flex;
+  flex: none;
+  height: 32px;
   background: var(--color-content-bg-background);
   padding-bottom: 0px;
 `;
