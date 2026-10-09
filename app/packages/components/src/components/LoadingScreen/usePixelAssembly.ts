@@ -2,68 +2,73 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { type RefObject, useLayoutEffect, useState } from "react";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
+import type { Box } from "./objects";
 
-/** Size of one pixel of the forming text, in CSS pixels */
+/** Size of one of the word's pixels, in CSS pixels */
 const CELL = 2;
-const TRAVEL_MS = 500;
-const STAGGER_MS = 200;
-/** How far around the text the pixels start */
-const SCATTER = 80;
+/** One storm pixel per this many square CSS pixels of screen */
+const DENSITY = 500;
+const STORM_MS = 700;
+const FORM_MS = 1400;
+const STAGGER_MS = 600;
+const DONE_MS = STORM_MS + FORM_MS + STAGGER_MS;
 
 interface Pixel {
   x: number;
   y: number;
-  fromX: number;
-  fromY: number;
+  speed: number;
+  size: number;
+  color: string;
   delay: number;
+  /** The word's pixels gather to these; the rest of the storm fades */
+  target?: { x: number; y: number };
+  from?: { x: number; y: number };
 }
 
-const easeOut = (t: number) => 1 - (1 - t) ** 3;
+const easeInOut = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 
-/** The text's pixels: cells of the rendered glyphs that are mostly ink */
+const token = (el: Element, name: string, fallback: string) =>
+  getComputedStyle(el).getPropertyValue(name).trim() || fallback;
+
+/** The word's pixels: points of its rendered glyphs that are mostly ink */
 const sample = (word: HTMLElement, width: number, height: number) => {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) return [];
-  const style = getComputedStyle(word);
-  ctx.font = style.font;
+  ctx.font = getComputedStyle(word).font;
   // a single line sits centered in its box, as the real text does
   ctx.textBaseline = "middle";
   ctx.fillText(word.textContent ?? "", 0, height / 2);
   const { data } = ctx.getImageData(0, 0, width, height);
-  const pixels: Pixel[] = [];
+  const points: { x: number; y: number }[] = [];
   for (let y = 0; y < height; y += CELL) {
     for (let x = 0; x < width; x += CELL) {
-      const alpha = data[(y * width + x) * 4 + 3];
-      if (alpha < 128) continue;
-      const angle = Math.random() * Math.PI * 2;
-      const distance = SCATTER * (0.4 + Math.random() * 0.6);
-      pixels.push({
-        x,
-        y,
-        fromX: x + Math.cos(angle) * distance,
-        fromY: y + Math.sin(angle) * distance,
-        delay: Math.random() * STAGGER_MS,
-      });
+      if (data[(y * width + x) * 4 + 3] >= 128) points.push({ x, y });
     }
   }
-  return pixels;
+  return points;
 };
 
 /**
- * Forms the word from scattered pixels on `canvas`, over the word's own box,
- * then reports it assembled so the real text can show. Without a canvas
- * (tests) or with reduced motion, the text shows at once.
+ * Starts the screen as a falling pixel storm, gathers the word's pixels out
+ * of it while the rest fades, then reports the word assembled so the real
+ * text can show. `track` hears the gathering pixels' bounds each frame,
+ * relative to the word. Without a canvas (tests) or with reduced motion,
+ * the text shows at once.
  */
 export default function usePixelAssembly(
   canvas: RefObject<HTMLCanvasElement>,
   word: RefObject<HTMLElement>,
   still: boolean,
+  track?: (box: Box) => void,
 ) {
   const [assembled, setAssembled] = useState(still);
+  const tracker = useRef(track);
+  tracker.current = track;
 
   useLayoutEffect(() => {
     const el = canvas.current;
@@ -73,38 +78,95 @@ export default function usePixelAssembly(
       setAssembled(true);
       return undefined;
     }
-    const { width, height } = text.getBoundingClientRect();
+    const screen = el.getBoundingClientRect();
+    const box = text.getBoundingClientRect();
     const ratio = window.devicePixelRatio || 1;
-    // a canvas keeps its buffer's size unless given a CSS one
-    el.style.width = `${width + SCATTER * 2}px`;
-    el.style.height = `${height + SCATTER * 2}px`;
-    el.width = Math.ceil((width + SCATTER * 2) * ratio);
-    el.height = Math.ceil((height + SCATTER * 2) * ratio);
+    el.width = Math.ceil(screen.width * ratio);
+    el.height = Math.ceil(screen.height * ratio);
     ctx.scale(ratio, ratio);
-    const pixels = sample(text, Math.ceil(width), Math.ceil(height));
-    if (!pixels.length) {
+
+    const at = { x: box.left - screen.left, y: box.top - screen.top };
+    // the grid's pixel storm palette: near drops in the brand colors, far
+    // drops in muted greys
+    const near = [
+      token(el, "--color-brand-primary", "#ff6d04"),
+      token(el, "--color-content-palette-purple", "#8b5cf6"),
+      token(el, "--color-content-palette-teal", "#0d9488"),
+    ];
+    const far = [
+      token(el, "--color-content-text-tertiary", "#6b6968"),
+      token(el, "--color-content-text-muted", "#8f8d8b"),
+    ];
+    const pick = (colors: string[]) =>
+      colors[Math.floor(Math.random() * colors.length)];
+    const pixel = (target?: { x: number; y: number }): Pixel => ({
+      x: Math.random() * screen.width,
+      y: Math.random() * screen.height,
+      speed: 60 + Math.random() * 160,
+      size: target ? CELL : 2 + Math.round(Math.random()),
+      color: target || Math.random() < 0.5 ? pick(near) : pick(far),
+      delay: Math.random() * STAGGER_MS,
+      target,
+    });
+    const points = sample(text, Math.ceil(box.width), Math.ceil(box.height));
+    if (!points.length) {
       setAssembled(true);
       return undefined;
     }
-    ctx.fillStyle = getComputedStyle(text).color;
+    const pixels = [
+      ...points.map((p) => pixel({ x: at.x + p.x, y: at.y + p.y })),
+      ...Array.from(
+        { length: Math.round((screen.width * screen.height) / DENSITY) },
+        () => pixel(),
+      ),
+    ];
 
     const start = performance.now();
+    let last = start;
     let frame = requestAnimationFrame(function draw(now) {
-      const elapsed = now - start;
-      ctx.clearRect(0, 0, width + SCATTER * 2, height + SCATTER * 2);
+      const t = now - start;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      // the storm thins out over the whole gathering, not ahead of it
+      const fade = Math.min(
+        1,
+        Math.max(0, (t - STORM_MS) / (FORM_MS + STAGGER_MS)),
+      );
+      ctx.clearRect(0, 0, screen.width, screen.height);
+      let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
       for (const p of pixels) {
-        const t = easeOut(
-          Math.min(1, Math.max(0, (elapsed - p.delay) / TRAVEL_MS)),
-        );
-        ctx.globalAlpha = 0.25 + 0.75 * t;
-        ctx.fillRect(
-          SCATTER + p.fromX + (p.x - p.fromX) * t,
-          SCATTER + p.fromY + (p.y - p.fromY) * t,
-          CELL,
-          CELL,
-        );
+        const gathering = p.target && t >= STORM_MS;
+        if (gathering && p.target) {
+          p.from ??= { x: p.x, y: p.y };
+          const e = easeInOut(
+            Math.min(1, Math.max(0, (t - STORM_MS - p.delay) / FORM_MS)),
+          );
+          p.x = p.from.x + (p.target.x - p.from.x) * e;
+          p.y = p.from.y + (p.target.y - p.from.y) * e;
+          // the box frames only the pixels that have landed
+          if (e >= 1) {
+            minX = Math.min(minX, p.target.x - at.x);
+            minY = Math.min(minY, p.target.y - at.y);
+            maxX = Math.max(maxX, p.target.x - at.x + CELL);
+            maxY = Math.max(maxY, p.target.y - at.y + CELL);
+          }
+        }
+        if (!gathering) {
+          p.y = (p.y + p.speed * dt) % screen.height;
+        }
+        ctx.globalAlpha = p.target ? 1 : 1 - fade;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
       }
-      if (elapsed < TRAVEL_MS + STAGGER_MS) {
+      if (minX < Infinity) {
+        tracker.current?.({
+          left: minX,
+          top: minY,
+          width: maxX - minX,
+          height: maxY - minY,
+        });
+      }
+      if (t < DONE_MS) {
         frame = requestAnimationFrame(draw);
       } else {
         setAssembled(true);
@@ -115,5 +177,5 @@ export default function usePixelAssembly(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [still]);
 
-  return { assembled, scatter: SCATTER };
+  return { assembled };
 }

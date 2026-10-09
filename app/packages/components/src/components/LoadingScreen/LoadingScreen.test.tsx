@@ -13,6 +13,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const color = () =>
+  (
+    document.querySelector('[data-cy="loading-detection"]') as HTMLElement
+  ).style.getPropertyValue("--detection");
+
 describe("LoadingScreen", () => {
   it("names what it is waiting on", () => {
     render(<LoadingScreen text="Pixelating" />);
@@ -22,17 +27,15 @@ describe("LoadingScreen", () => {
     expect(screen.getByText("pixelating")).toBeTruthy();
   });
 
-  it("moves its detection box between the label's parts", () => {
+  it("blinks a new box on the next object", () => {
     render(<LoadingScreen text="Pixelating" />);
-    const first = document.querySelector(
-      '[data-cy="loading-detection"]',
-    )?.textContent;
-    expect(first).toBe("loading 0.951");
+    const box = () =>
+      document.querySelector('[data-cy="loading-detection"]') as HTMLElement;
+    const first = box();
+    const firstColor = color();
 
     act(() => vi.advanceTimersByTime(DWELL_MS));
-    const next = document.querySelector(
-      '[data-cy="loading-detection"]',
-    )?.textContent;
-    expect(next).not.toBe(first);
+    expect(box()).not.toBe(first);
+    expect(color()).not.toBe(firstColor);
   });
 });

@@ -4,44 +4,22 @@
 
 /** What the loading box "detects", in the order it visits them. */
 export interface Detection {
-  label: string;
-  /** Always a variation of 51 */
-  score: string;
   /** VOODO chart color the box and its tag take */
   color: string;
   /** Characters of the text it covers, or a part of the label row */
-  target: { text: string } | "all" | "dots" | "cursor";
+  target: { text: string } | "all" | "dots";
 }
 
 const chart = (name: string) => `var(--color-content-viz-chart-${name})`;
 
+// alternating sides and sizes, so each hop reads as a move
 export const DETECTIONS: Detection[] = [
-  { label: "loading", score: "0.951", color: chart("blue"), target: "all" },
-  {
-    label: "pixel",
-    score: "0.851",
-    color: chart("teal"),
-    target: { text: "pixel" },
-  },
-  {
-    label: "suffix",
-    score: "0.751",
-    color: chart("yellow"),
-    target: { text: "ating" },
-  },
-  {
-    label: "ellipsis",
-    score: "0.515",
-    color: chart("magenta"),
-    target: "dots",
-  },
-  { label: "cursor", score: "0.51", color: chart("red"), target: "cursor" },
-  {
-    label: "mood",
-    score: "0.551",
-    color: chart("purple"),
-    target: { text: "elating" },
-  },
+  { color: chart("blue"), target: "all" },
+  { color: chart("teal"), target: { text: "pixel" } },
+  { color: chart("magenta"), target: "dots" },
+  { color: chart("purple"), target: { text: "elating" } },
+  { color: "var(--color-brand-primary)", target: { text: "pixelating" } },
+  { color: chart("yellow"), target: { text: "ating" } },
 ];
 
 export interface Box {
