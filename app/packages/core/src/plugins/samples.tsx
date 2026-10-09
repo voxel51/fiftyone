@@ -184,7 +184,7 @@ function TabIndicator() {
         <Pill
           size={Size.Xs}
           backgroundColor={BackgroundColor.CardElevated}
-          color={TextColor.Primary}
+          color={TextColor.Secondary}
           data-cy="selection-count-container"
           title="Clear selection"
           onRemove={resetSelectedSamples}
