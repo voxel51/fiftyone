@@ -36,7 +36,7 @@ export default function StripTrack({
   recordBase?: number;
   style?: CSSProperties;
   variables: PageVariables;
-  /** A rank rail over the strip's `total` samples, in place of its scrollbar. */
+  /** An offset rail over the strip's `total` samples, in place of its scrollbar. */
   rail?: { total: number; span: number; className?: string };
 }) {
   const strips = useContext(StripsContext);

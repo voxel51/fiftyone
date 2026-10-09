@@ -205,7 +205,7 @@ describe("skip paging under deletion: host and engine", () => {
     async () => {
       const server = createServer(200);
       server.delete(...Array.from({ length: 25 }, (_, i) => `s${i}`));
-      // saved before the deletion: s40 heads page 2; it is now rank 15, page
+      // saved before the deletion: s40 heads page 2; it is now offset 15, page
       // 0, and neither page 2 nor page 1 holds it
       const mounted = await start(server, {
         key: 2,

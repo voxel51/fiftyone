@@ -87,7 +87,7 @@ export default function LaneRows({
   heights: LaneHeights;
   onResize: (key: string, height?: number) => void;
   path: string;
-  /** Lanes get rank rails in place of their scrollbars. */
+  /** Lanes get offset rails in place of their scrollbars. */
   railed?: boolean;
   values: ValueCount[];
 }) {
