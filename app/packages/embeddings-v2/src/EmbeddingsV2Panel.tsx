@@ -90,7 +90,10 @@ export default function EmbeddingsV2Panel() {
   // should not maintain an independent list.
   const { runs } = useVisualizationRuns();
   const knownSignature = runs === null ? null : statusSignature(runs);
-  const { runs: pendingRuns } = usePendingRuns(PENDING_RUNS, runs);
+  const { runs: pendingRuns, loaded: pendingLoaded } = usePendingRuns(
+    PENDING_RUNS,
+    runs,
+  );
   const refresh = fos.useRefresh();
   const deleteExecutor = useOperatorExecutor(DELETE_RUN_OPERATOR);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -198,7 +201,7 @@ export default function EmbeddingsV2Panel() {
   }
   return (
     <RunsList
-      runs={runs}
+      runs={pendingLoaded ? runs : null}
       pendingRuns={pendingRuns}
       actionError={actionError}
       onOpen={handleOpen}

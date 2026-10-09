@@ -161,8 +161,10 @@ export default function RunsList({
     (pending) => !runs?.some((run) => run.brainKey === pending.brain_key),
   );
 
-  const { open: openPending, screen: pendingScreen } =
-    usePendingRunScreen(unregistered);
+  const { open: openPending, screen: pendingScreen } = usePendingRunScreen(
+    unregistered,
+    "Your embeddings are being computed. You can leave this panel; the run will be listed here when it finishes.",
+  );
 
   if (pendingScreen) return <RunScreen {...pendingScreen} />;
 
