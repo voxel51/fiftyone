@@ -68,17 +68,6 @@
   border-radius: 2px;
   pointer-events: none;
   background-color: color-mix(in srgb, var(--detection) 6%, transparent);
-  background-image:
-    linear-gradient(
-      color-mix(in srgb, var(--color-content-text-primary) 6%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-content-text-primary) 6%, transparent) 1px,
-      transparent 1px
-    );
-  background-size: 6px 6px;
   left: 0;
   top: 0;
 }
