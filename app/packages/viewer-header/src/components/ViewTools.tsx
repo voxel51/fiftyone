@@ -3,11 +3,7 @@
  */
 
 import { ActionIconSizeContext, ColorScheme, Options } from "@fiftyone/actions";
-import {
-  AddLinkIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
-} from "@voxel51/voodo";
+import { Link2Icon, MaximizeIcon, MinimizeIcon } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import { useCopySampleLink, useViewerFullscreen } from "../hooks";
 import styles from "../ViewerHeader.module.css";
@@ -21,7 +17,7 @@ const Fullscreen = () => {
     <HeaderAction
       active={fullscreen}
       data-cy="action-toggle-fullscreen"
-      icon={fullscreen ? FullscreenExitIcon : FullscreenIcon}
+      icon={fullscreen ? MinimizeIcon : MaximizeIcon}
       label={label}
       tooltip={`${label} (f)`}
       onClick={toggle}
@@ -43,7 +39,7 @@ const ViewTools = ({ utilities }: { utilities?: ReactNode }) => {
       {utilities}
       <HeaderAction
         data-cy="action-copy-sample-link"
-        icon={AddLinkIcon}
+        icon={Link2Icon}
         label="Copy link to sample"
         onClick={copyLink}
       />

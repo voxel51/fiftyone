@@ -1,11 +1,9 @@
 import ActionButton from "../ActionButton";
 import { executeOperator } from "@fiftyone/operators";
 import { useOutsideClick, useSimilarityType } from "@fiftyone/state";
-import { SearchIcon, WallpaperIcon } from "@voxel51/voodo";
+import { ScanSearchIcon, SearchStrokeIcon } from "@voxel51/voodo";
 import { useCallback, useRef, useState } from "react";
-import Loading from "../Loading";
 import type { ActionProps } from "../types";
-import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import { PANEL_NAME } from "./constants";
 import SimilarityPopover from "./Similar";
@@ -28,7 +26,6 @@ const Similarity = ({
   });
 
   const keys = useAvailableSimilarityKeys(modal, showImageSimilarityIcon);
-  const iconSize = useActionIconSize(24);
 
   const togglePopover = useCallback(() => {
     if (searching || keys === null) return;
@@ -46,14 +43,6 @@ const Similarity = ({
     setIsImageSearch(showImageSimilarityIcon);
   }, [showImageSimilarityIcon, searching, keys]);
 
-  const icon = searching ? (
-    <Loading />
-  ) : showImageSimilarityIcon ? (
-    <WallpaperIcon size={iconSize} />
-  ) : (
-    <SearchIcon size={iconSize} />
-  );
-
   return (
     <ActionDiv
       {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}
@@ -61,15 +50,14 @@ const Similarity = ({
     >
       <ActionButton
         key={"button"}
-        icon={icon}
-        open={open}
+        icon={showImageSimilarityIcon ? ScanSearchIcon : SearchStrokeIcon}
+        loading={searching}
         tooltipPlacement={modal ? "bottom" : "top"}
         onClick={togglePopover}
         highlight={open}
         title={`Sort by ${
           showImageSimilarityIcon ? "image" : "text"
         } similarity`}
-        style={{ cursor: searching ? "default" : "pointer" }}
         data-cy="action-sort-by-similarity"
       />
       {open && (

@@ -2,13 +2,11 @@ import ActionButton from "../ActionButton";
 import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { CheckIcon } from "@voxel51/voodo";
+import { ListChecksIcon } from "@voxel51/voodo";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
-import Loading from "../Loading";
 import type { ActionProps } from "../types";
-import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Grid from "./Grid";
 import Modal from "./Modal";
@@ -37,7 +35,6 @@ export default ({
   const labels = useReverbValue(fos.selectedLabelIds);
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
-  const iconSize = useActionIconSize(24);
 
   // Which menu this offers depends on whether the surface paints labels at
   // all, not merely on being in the modal.
@@ -97,21 +94,13 @@ export default ({
       ref={ref}
     >
       <ActionButton
-        icon={loading ? <Loading /> : <CheckIcon size={iconSize} />}
-        open={open}
-        onClick={() => {
-          if (loading) {
-            return;
-          }
-          setOpen(!open);
-        }}
+        icon={ListChecksIcon}
+        loading={loading}
+        onClick={() => setOpen(!open)}
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
         title={title}
         tooltipPlacement={modal ? "bottom" : "top"}
-        style={{
-          cursor: loading ? "default" : "pointer",
-        }}
         data-cy="action-manage-selected"
       />
       {open &&

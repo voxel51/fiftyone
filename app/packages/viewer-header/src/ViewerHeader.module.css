@@ -43,6 +43,13 @@
   background: var(--color-content-border-default);
 }
 
+/* the App's global button rule is unlayered, so it would beat VOODO's layered
+   icon colors and type sizes */
+.action {
+  color: revert-layer;
+  font-size: revert-layer;
+}
+
 .active {
   background: var(--color-content-interactive-secondary-hover);
   color: var(--color-content-text-primary);
@@ -87,5 +94,31 @@
   .dataset,
   .datasetSlash {
     display: none;
+  }
+}
+
+/* the mock's toggle: 28px tall with 10px sides, 14px icons beside the label */
+.modeSwitch [role="tab"] {
+  padding: 3px 10px;
+}
+
+.mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .modeLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

@@ -3,7 +3,7 @@
  */
 
 import { useOutsideClick } from "@fiftyone/state";
-import { ViewComfyIcon } from "@voxel51/voodo";
+import { LayoutPanelTopIcon } from "@voxel51/voodo";
 import { useRef, useState } from "react";
 import HeaderAction from "./HeaderAction";
 import GroupVisibilityPopout, {
@@ -20,7 +20,7 @@ const GroupVisibility = () => {
     <div ref={ref} data-cy="action-toggle-group-media-visibility">
       <HeaderAction
         active={open}
-        icon={ViewComfyIcon}
+        icon={LayoutPanelTopIcon}
         label={GROUP_VISIBILITY_TITLE}
         onClick={() => setOpen((current) => !current)}
       />

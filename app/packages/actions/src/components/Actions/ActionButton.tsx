@@ -1,96 +1,71 @@
-import { Tooltip } from "@fiftyone/components";
-import { KeyboardArrowDownIcon, KeyboardArrowUpIcon } from "@voxel51/voodo";
-import type { TooltipProps } from "@mui/material";
+import {
+  IconAction,
+  type IconInput,
+  Size,
+  Spinner,
+  TextAction,
+  Tooltip,
+} from "@voxel51/voodo";
 import React from "react";
-import styled from "styled-components";
+import styles from "./ActionButton.module.css";
 
 type ActionButtonProps = {
-  arrow?: boolean;
   highlight?: boolean;
-  icon?: JSX.Element;
-  id?: string;
-  onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
-  open?: boolean;
-  style?: React.CSSProperties;
+  icon: IconInput;
+  /** Shows a spinner in place of the icon, and ignores clicks */
+  loading?: boolean;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** A count beside the icon */
   text?: string;
   title: string;
-  tooltipPlacement?: TooltipProps["placement"];
+  tooltipPlacement?: "top" | "bottom";
+  disabled?: boolean;
+  "data-cy"?: string;
 };
 
-const Button = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 8px;
-  box-sizing: border-box;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--color-content-text-secondary);
-  background: transparent;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
+const Loading = () => <Spinner size={Size.Sm} />;
 
-  &:hover,
-  &[data-active="true"] {
-    color: var(--color-content-text-primary);
-    background: var(--color-content-bg-card-nested);
-  }
-`;
+/** A toolbar action: an icon, and an optional count, quiet until hovered or on. */
+const ActionButton = ({
+  disabled,
+  highlight,
+  icon,
+  loading,
+  onClick,
+  text,
+  title,
+  tooltipPlacement = "top",
+  ...props
+}: ActionButtonProps) => {
+  const shared = {
+    ...props,
+    "aria-pressed": highlight,
+    className: [styles.action, highlight ? styles.highlight : undefined]
+      .filter(Boolean)
+      .join(" "),
+    disabled,
+    // the overlay's action row is draggable; a press here must not drag it
+    onMouseDown: (event: React.MouseEvent) => event.stopPropagation(),
+    onClick: loading ? undefined : onClick,
+  };
+  const shown = loading ? Loading : icon;
 
-/** A toolbar action: icon, optional label and caret, quiet until hovered or on. */
-const ActionButton = React.forwardRef<HTMLDivElement, ActionButtonProps>(
-  (
-    {
-      arrow = false,
-      highlight,
-      icon,
-      id,
-      onClick,
-      open,
-      style,
-      text,
-      title,
-      tooltipPlacement,
-      ...otherProps
-    },
-    ref,
-  ) => {
-    const button = (
-      <Button
-        {...otherProps}
-        data-active={Boolean(highlight)}
-        id={id}
-        ref={ref}
-        style={style}
-        onClick={onClick}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {icon}
-        {text && <span>{text}</span>}
-        {arrow &&
-          (open ? (
-            <KeyboardArrowUpIcon size={14} />
-          ) : (
-            <KeyboardArrowDownIcon size={14} />
-          ))}
-      </Button>
-    );
-
-    return title ? (
-      <Tooltip placement={tooltipPlacement ?? "top-center"} text={title}>
-        {button}
-      </Tooltip>
-    ) : (
-      button
-    );
-  },
-);
-
-ActionButton.displayName = "ActionButton";
+  return (
+    <Tooltip anchor={tooltipPlacement} content={title} portal>
+      {text ? (
+        <TextAction {...shared} leadingIcon={shown} size={Size.Sm}>
+          {text}
+        </TextAction>
+      ) : (
+        <IconAction
+          {...shared}
+          aria-label={title}
+          icon={shown}
+          size={Size.Sm}
+        />
+      )}
+    </Tooltip>
+  );
+};
 
 export default React.memo(ActionButton);

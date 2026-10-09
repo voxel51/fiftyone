@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { ArrowLeftIcon } from "@voxel51/voodo";
+import { ArrowLeftStrokeIcon } from "@voxel51/voodo";
 import Breadcrumb from "./components/Breadcrumb";
 import HeaderAction from "./components/HeaderAction";
 import ModeSwitch from "./components/ModeSwitch";
@@ -34,7 +34,7 @@ const ViewerHeader = ({
       <div className={styles.left}>
         <HeaderAction
           data-cy="viewer-header-back"
-          icon={ArrowLeftIcon}
+          icon={ArrowLeftStrokeIcon}
           label="Back to dataset"
           tooltip="Back to dataset (esc)"
           onClick={close}

@@ -2,10 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import {
-  KeyboardDoubleArrowLeftIcon,
-  KeyboardDoubleArrowRightIcon,
-} from "@voxel51/voodo";
+import { PanelRightCloseIcon, PanelRightOpenIcon } from "@voxel51/voodo";
 import { useViewerSidebar } from "../hooks";
 import HeaderAction from "./HeaderAction";
 
@@ -19,9 +16,7 @@ const SidebarToggle = () => {
   return (
     <HeaderAction
       data-cy="action-toggle-sidebar"
-      icon={
-        visible ? KeyboardDoubleArrowRightIcon : KeyboardDoubleArrowLeftIcon
-      }
+      icon={visible ? PanelRightCloseIcon : PanelRightOpenIcon}
       label={label}
       tooltip={`${label} (s)`}
       onClick={toggle}

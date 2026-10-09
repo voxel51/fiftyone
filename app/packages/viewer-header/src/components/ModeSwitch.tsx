@@ -3,37 +3,61 @@
  */
 
 import { ModalMode } from "@fiftyone/state";
-import { InspectIcon, PencilIcon, RichButtonGroup } from "@voxel51/voodo";
-import type { HTMLAttributes } from "react";
+import { PenLineIcon, ScanEyeIcon, Size, ToggleSwitch } from "@voxel51/voodo";
 import type { ViewerModeSwitch } from "../types";
+import styles from "../ViewerHeader.module.css";
 
-// the switch keeps the selectors the sidebar's old tabs had
-const testId = (id: string): HTMLAttributes<HTMLDivElement> =>
-  ({ "data-cy": id }) as HTMLAttributes<HTMLDivElement>;
+const ICON_SIZE = 14;
+
+// the labels keep the selectors the sidebar's old tabs had
+const ModeLabel = ({
+  icon: Icon,
+  id,
+  label,
+}: {
+  icon: typeof ScanEyeIcon;
+  id: string;
+  label: string;
+}) => (
+  <span className={styles.mode} data-cy={id}>
+    <Icon size={ICON_SIZE} />
+    <span className={styles.modeLabel}>{label}</span>
+  </span>
+);
 
 /** Inspect or Annotate the sample. */
 const ModeSwitch = ({ annotate, annotating, explore }: ViewerModeSwitch) => (
-  <RichButtonGroup
-    exclusive
-    buttons={[
+  <ToggleSwitch
+    className={styles.modeSwitch}
+    index={annotating ? 1 : 0}
+    onChange={(index) => (index ? annotate() : explore())}
+    size={Size.Sm}
+    tabPanelClassName={styles.hidden}
+    tabs={[
       {
         id: ModalMode.EXPLORE,
         data: {
-          ...testId(ModalMode.EXPLORE),
-          active: !annotating,
-          icon: InspectIcon,
-          label: "Inspect",
-          onClick: explore,
+          content: null,
+          label: (
+            <ModeLabel
+              icon={ScanEyeIcon}
+              id={ModalMode.EXPLORE}
+              label="Inspect"
+            />
+          ),
         },
       },
       {
         id: ModalMode.ANNOTATE,
         data: {
-          ...testId(ModalMode.ANNOTATE),
-          active: annotating,
-          icon: PencilIcon,
-          label: "Annotate",
-          onClick: annotate,
+          content: null,
+          label: (
+            <ModeLabel
+              icon={PenLineIcon}
+              id={ModalMode.ANNOTATE}
+              label="Annotate"
+            />
+          ),
         },
       },
     ]}

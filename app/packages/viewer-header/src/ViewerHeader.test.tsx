@@ -157,6 +157,13 @@ describe("ViewerHeader", () => {
     fireEvent.click(get("annotate")!);
     expect(mode.annotate).toHaveBeenCalled();
 
+    const selected = (cy: string, annotating: boolean) =>
+      renderHeader({ mode: { ...mode, annotating } })(cy)
+        ?.closest("[role=tab]")
+        ?.getAttribute("aria-selected");
+    expect(selected("explore", false)).toBe("true");
+    expect(selected("annotate", true)).toBe("true");
+
     const without = renderHeader({ mode: undefined });
     expect(without("annotate")).toBeNull();
     expect(without("explore")).toBeNull();

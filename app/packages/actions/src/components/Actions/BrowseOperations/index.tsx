@@ -1,8 +1,7 @@
 import ActionButton from "../ActionButton";
 import { useOperatorBrowser } from "@fiftyone/operators";
-import { ListIcon } from "@voxel51/voodo";
+import { PackageIcon } from "@voxel51/voodo";
 import type { ActionProps } from "../types";
-import { useActionIconSize } from "../iconSize";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 
 export default ({
@@ -10,13 +9,11 @@ export default ({
   modal,
 }: ActionProps & { modal?: boolean }) => {
   const browser = useOperatorBrowser();
-  const iconSize = useActionIconSize(24);
   return (
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <ActionButton
-        open={false}
         highlight={browser.isVisible}
-        icon={<ListIcon size={iconSize} />}
+        icon={PackageIcon}
         onClick={() => {
           browser.toggle();
           adaptiveMenuItemProps?.closeOverflow?.();

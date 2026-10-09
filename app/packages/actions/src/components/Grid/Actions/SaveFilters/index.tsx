@@ -3,7 +3,6 @@ import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { BookmarkIcon } from "@voxel51/voodo";
 import { selector, useReverbCallback, useReverbValue } from "@fiftyone/reverb";
-import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
 import { ActionDiv, getStringAndNumberProps } from "../../../Actions/utils";
 
@@ -102,10 +101,9 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
   return shouldToggleBookMarkIconOn ? (
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <ActionButton
-        open={false}
         highlight={true}
-        icon={loading ? <Loading /> : <BookmarkIcon size={24} />}
-        style={{ cursor: loading ? "default" : "pointer" }}
+        icon={BookmarkIcon}
+        loading={loading}
         onClick={saveFilters}
         title={"Convert current filters and/or sorting to view stages"}
         data-cy="action-convert-filters-to-view-stages"

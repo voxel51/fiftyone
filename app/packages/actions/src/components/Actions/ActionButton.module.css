@@ -1,0 +1,11 @@
+/* the App's global button rule is unlayered, so it would beat VOODO's layered
+   icon colors */
+.action {
+  color: revert-layer;
+  font-size: revert-layer;
+}
+
+.highlight {
+  background: var(--color-content-interactive-secondary-hover);
+  color: var(--color-content-icon-emphasis);
+}

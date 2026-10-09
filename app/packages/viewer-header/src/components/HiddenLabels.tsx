@@ -2,8 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Size, TextAction, Tooltip, VisibilityOffIcon } from "@voxel51/voodo";
+import { EyeOffIcon, Size, TextAction, Tooltip } from "@voxel51/voodo";
 import { useViewerHiddenLabels } from "../hooks";
+import styles from "../ViewerHeader.module.css";
 
 /** How many labels are hidden; clicking shows them again. */
 const HiddenLabels = () => {
@@ -14,8 +15,9 @@ const HiddenLabels = () => {
     <Tooltip anchor="bottom" content="Clear hidden labels" portal>
       <TextAction
         aria-label="Clear hidden labels"
+        className={styles.action}
         data-cy="action-clear-hidden-labels"
-        leadingIcon={VisibilityOffIcon}
+        leadingIcon={EyeOffIcon}
         size={Size.Sm}
         onClick={clear}
       >

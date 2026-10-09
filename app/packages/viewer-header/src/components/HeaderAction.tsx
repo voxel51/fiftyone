@@ -29,7 +29,7 @@ const HeaderAction = ({
       {...props}
       aria-label={label}
       aria-pressed={active}
-      className={[active ? styles.active : undefined, className]
+      className={[styles.action, active ? styles.active : undefined, className]
         .filter(Boolean)
         .join(" ")}
       icon={icon}

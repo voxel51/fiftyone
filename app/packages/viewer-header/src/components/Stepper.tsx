@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { ChevronLeftIcon, ChevronRightIcon } from "@voxel51/voodo";
+import { ChevronLeftStrokeIcon, ChevronRightStrokeIcon } from "@voxel51/voodo";
 import styles from "../ViewerHeader.module.css";
 import type { ViewerStepper } from "../types";
 import HeaderAction from "./HeaderAction";
@@ -24,7 +24,7 @@ const Stepper = ({
       <HeaderAction
         data-cy="nav-left-button"
         disabled={!hasPrevious}
-        icon={ChevronLeftIcon}
+        icon={ChevronLeftStrokeIcon}
         label="Previous sample"
         tooltip="Previous sample (←)"
         onClick={stepper.previous}
@@ -32,7 +32,7 @@ const Stepper = ({
       <HeaderAction
         data-cy="nav-right-button"
         disabled={!hasNext}
-        icon={ChevronRightIcon}
+        icon={ChevronRightStrokeIcon}
         label="Next sample"
         tooltip="Next sample (→)"
         onClick={stepper.next}
