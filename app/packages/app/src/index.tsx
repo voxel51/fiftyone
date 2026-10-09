@@ -4,6 +4,7 @@
 
 import { ThemeProvider } from "@fiftyone/components";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { FeatureFlag } from "@fiftyone/feature-flags";
 import {
   GatedDynamicImports,
   type GatedDynamicImport,
@@ -39,7 +40,13 @@ if (
 /**
  * Register future feature-gated modules here.
  */
-const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [];
+const GATED_DYNAMIC_IMPORTS: GatedDynamicImport[] = [
+  {
+    featureFlag: FeatureFlag.FLOODLIGHT,
+    moduleKey: "floodlight",
+    registerModule: () => import("@fiftyone/floodlight-panel"),
+  },
+];
 
 // Dynamically import multimodal to keep its heavy dependencies out of the
 // app's initial bundle.

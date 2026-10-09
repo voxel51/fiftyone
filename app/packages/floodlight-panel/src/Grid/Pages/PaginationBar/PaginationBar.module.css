@@ -1,0 +1,36 @@
+.bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: 0.375rem 0.625rem;
+  background-color: var(--color-content-bg-popover);
+  border-radius: var(--radius-md);
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.inputGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.size {
+  width: 5rem;
+}
+
+.input {
+  width: 3.5rem;
+}
+
+.input input {
+  text-align: center;
+}
+
+.nowrap {
+  white-space: nowrap;
+}

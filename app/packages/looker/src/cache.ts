@@ -141,6 +141,27 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     hide,
 
     /**
+     * Destroy one instance, wherever it is held
+     *
+     * @param {string} key - the instance key
+     */
+    evict: (key: string) => {
+      if (hidden.has(key)) {
+        // the LRU's dispose destroys it
+        hidden.delete(key);
+        return;
+      }
+      const instance = shown.get(key) ?? frozen.get(key) ?? pending.get(key);
+      shown.delete(key);
+      frozen.delete(key);
+      pending.delete(key);
+      if (instance) {
+        instance.destroy();
+        onDispose?.(key);
+      }
+    },
+
+    /**
      * Freeze shown instances. A frozen instance is neither shown or hidden
      */
     freeze: () => {

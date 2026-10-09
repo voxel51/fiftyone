@@ -9,6 +9,7 @@ App Space configuration.
 from mongoengine.errors import ValidationError
 import uuid
 
+from fiftyone.internal.features.registry import is_feature_enabled
 from fiftyone.core.fields import (
     BooleanField,
     ColorField,
@@ -146,7 +147,10 @@ def default_workspace_factory():
     Returns:
         a default :class:`Space` instance
     """
-    samples_panel = Panel(type="Samples", pinned=True)
+    grid = (
+        "Floodlight" if is_feature_enabled("VFF_FLOODLIGHT") else "Samples"
+    )
+    samples_panel = Panel(type=grid, pinned=True)
     return Space(
         children=[samples_panel], active_child=samples_panel.component_id
     )

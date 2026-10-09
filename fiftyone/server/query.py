@@ -43,7 +43,20 @@ from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.paginator import Connection, get_paginator_resolver
+from fiftyone.server.order.schema import (
+    OpenOrderResult,
+    OrderInput,
+    OrderSeek,
+    OrderStatus,
+    OrderToken,
+    SeekResult,
+    open_order,
+    order_status,
+    seek_order,
+    seek_target,
+)
 from fiftyone.server.samples import (
+    SampleConnection,
     SampleFilter,
     SampleItem,
     paginate_samples,
@@ -535,6 +548,7 @@ class Query(fosa.AggregateQuery):
         view: BSONArray,
         first: t.Optional[int] = 20,
         after: t.Optional[str] = None,
+        before: t.Optional[str] = None,
         filter: t.Optional[SampleFilter] = None,
         filters: t.Optional[BSON] = None,
         extended_stages: t.Optional[BSON] = None,
@@ -544,9 +558,12 @@ class Query(fosa.AggregateQuery):
         hint: t.Optional[str] = None,
         max_query_time: t.Optional[int] = None,
         dynamic_group: t.Optional[BSON] = None,
+        cursor_pagination: t.Optional[bool] = False,
+        order: t.Optional[OrderToken] = None,
+        seek: t.Optional[OrderSeek] = None,
         info: Info = None,
     ) -> t.Annotated[
-        t.Union[Connection[SampleItem, str], QueryTimeout],
+        t.Union[SampleConnection, QueryTimeout],
         gql.union("PaginateSamplesResponse"),
     ]:
         await fosh.on_graphql_request(info, dataset)
@@ -557,6 +574,7 @@ class Query(fosa.AggregateQuery):
                 filters,
                 first,
                 after,
+                before=before,
                 sample_filter=filter,
                 extended_stages=extended_stages,
                 pagination_data=pagination_data,
@@ -565,9 +583,29 @@ class Query(fosa.AggregateQuery):
                 hint=hint,
                 max_query_time=max_query_time,
                 dynamic_group=dynamic_group,
+                cursor_pagination=cursor_pagination,
+                order=order,
+                seek=seek_target(seek) if seek else None,
             )
         except ExecutionTimeout:
             return QueryTimeout(query_time=max_query_time)
+
+    @gql.field
+    async def open_order(self, input: OrderInput) -> OpenOrderResult:
+        return await open_order(input)
+
+    @gql.field
+    async def seek_order(
+        self,
+        token: OrderToken,
+        rank: t.Optional[int] = None,
+        fraction: t.Optional[float] = None,
+    ) -> SeekResult:
+        return await seek_order(token, rank, fraction)
+
+    @gql.field
+    async def order_status(self, token: OrderToken) -> OrderStatus:
+        return await order_status(token)
 
     @gql.field
     async def sample(

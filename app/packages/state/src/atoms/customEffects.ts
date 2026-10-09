@@ -59,7 +59,8 @@ export const getBrowserStorageEffectForKey = <T>(
       return JSON.parse(value);
     }
     if (valueClass === "number") {
-      return Number(value);
+      const number = Number(value);
+      return Number.isFinite(number) ? number : undefined;
     }
     if (valueClass === "boolean") {
       return value === "true";
@@ -84,13 +85,27 @@ export const getBrowserStorageEffectForKey = <T>(
       }
 
       const value = storage.getItem(key);
-      if (value != null) setSelf(parse(value));
+      const parsed = value == null ? undefined : parse(value);
+      // Unreadable values (e.g. "NaN" under a number key) would loop through
+      // consumers that write them back; drop them for the default
+      if (value != null && parsed === undefined) {
+        storage.removeItem(key);
+      } else if (parsed !== undefined) {
+        setSelf(parsed as T);
+      }
 
       onSet((newValue, _oldValue, isReset) => {
         if (props.map) {
           newValue = props.map(newValue) as T;
         }
-        if (isReset || newValue === undefined) {
+        // Don't persist non-finite numbers — they round-trip back as
+        // NaN on the next load and drive the consumer into a state
+        // where it can't recover. Treat them the same as a reset.
+        const isUnpersistableNumber =
+          props.valueClass === "number" &&
+          typeof newValue === "number" &&
+          !Number.isFinite(newValue);
+        if (isReset || newValue === undefined || isUnpersistableNumber) {
           storage.removeItem(key);
         } else {
           storage.setItem(

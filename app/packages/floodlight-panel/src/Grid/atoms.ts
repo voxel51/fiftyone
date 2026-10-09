@@ -1,0 +1,338 @@
+import { subscribe } from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "@fiftyone/reverb";
+import { MANAGING_GRID_MEMORY } from "@fiftyone/core/src/utils/links";
+
+/**
+ * Convert a [0, 10] zoom setting to [-15, -1]
+ *
+ * @param {number} defaultRange [0, 10] range
+ * @returns {number} [-15, -1]
+ */
+const convertDefault = (defaultRange) => {
+  return -(14 - (defaultRange / 10) * 14 + 1);
+};
+
+const sortFieldsMap = selector({
+  key: "floodlight.sortFieldsMap",
+  get: ({ get }) => {
+    const f = Object.keys(get(fos.filters) ?? {});
+    const valid = get(fos.validIndexes(f));
+
+    const map = {};
+    for (const { name, key: dbField } of [
+      ...valid.available,
+      ...valid.trailing,
+    ]) {
+      const field = get(fos.fieldPath(dbField));
+      if (!map[field]) {
+        map[field] = [];
+      }
+
+      map[field].push(name);
+    }
+
+    return map;
+  },
+});
+
+const gridIndex = selector({
+  key: "floodlight.gridIndex",
+  get: ({ get }) => {
+    if (!get(fos.queryPerformance)) {
+      return undefined;
+    }
+
+    const field = get(fos.gridSortBy)?.field;
+    if (!field) return get(fos.activeIndex);
+
+    const map = get(sortFieldsMap);
+    if (!map[field]) return get(fos.activeIndex);
+    return map[field][0];
+  },
+});
+
+export const defaultGridZoom = selector<number>({
+  key: "floodlight.defaultGridZoom",
+  get: ({ get }) => get(fos.config)?.gridZoom,
+});
+
+const gridAutosizingStore = atomFamily<boolean, string>({
+  key: "floodlight.gridAutosizingStore",
+  default: true,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const gridAutosizing = selector({
+  key: "floodlight.gridAutosizing",
+  get: ({ get }) => get(gridAutosizingStore(get(fos.datasetId) ?? "")),
+  set: ({ get, set }, value) =>
+    set(gridAutosizingStore(get(fos.datasetId) ?? ""), value),
+});
+
+export const gridPage = atom({
+  key: "floodlight.gridPage",
+  default: 0,
+});
+
+export const gridAt = atom<string | null>({
+  key: "floodlight.gridAt",
+  default: null,
+});
+
+export const gridFraction = atom({
+  key: "floodlight.gridFraction",
+  default: 0,
+  effects: [],
+});
+
+export const gridSpacing = atom({
+  key: "floodlight.gridSpacing",
+  default: 3,
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridSpacing", { valueClass: "number" }),
+  ],
+});
+
+const gridZoomStore = atomFamily<number | null, string>({
+  key: "floodlight.gridZoomStore",
+  default: null,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridZoomStore-${datasetId}`, {
+      valueClass: "number",
+    }),
+  ],
+});
+
+export const gridZoom = selector<number>({
+  key: "floodlight.gridZoom",
+  get: ({ get }) => {
+    const recommended = get(recommendedGridZoom);
+    const setting =
+      get(gridZoomStore(get(fos.datasetId) ?? "")) ??
+      convertDefault(get(defaultGridZoom));
+    if (
+      get(gridAutosizing) &&
+      typeof recommended === "number" &&
+      recommended > setting
+    ) {
+      return recommended;
+    }
+
+    return setting;
+  },
+  set: ({ get, reset, set }, value) => {
+    const result =
+      value instanceof DefaultValue
+        ? convertDefault(get(defaultGridZoom))
+        : value;
+
+    const recommended = get(recommendedGridZoom);
+    if (typeof recommended === "number" && result < recommended) {
+      set(fos.snackbarLink, {
+        link: MANAGING_GRID_MEMORY,
+        message: "Grid autosizing disabled",
+      });
+      set(gridAutosizing, false);
+      reset(recommendedGridZoom);
+    }
+
+    set(gridZoomStore(get(fos.datasetId) ?? ""), result);
+  },
+});
+
+export const gridCrop = selector({
+  key: "floodlight.gridCrop",
+  get: ({ get }) => {
+    return get(fos.isPatchesView) && get(fos.cropToContent(false));
+  },
+});
+
+// ensure navigator is defined
+const deviceMemory =
+  // @ts-ignore
+  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
+
+export const maxGridItemsSizeBytes = atom({
+  key: "floodlight.maxGridItemsSizeBytes",
+  default: (deviceMemory / 8) * 1e9,
+  effects: [
+    fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
+      valueClass: "number",
+    }),
+  ],
+});
+
+export const pageParameters = selector({
+  key: "floodlight.paginateGridVariables",
+  get: ({ get }) => {
+    const dataset = get(fos.datasetName);
+
+    if (!dataset) {
+      throw new Error("dataset is not defined");
+    }
+
+    const slice = get(fos.groupSlice);
+    const queryPerformance = get(fos.queryPerformance);
+
+    const extendedStages = queryPerformance
+      ? get(fos.extendedStagesNoSort)
+      : get(fos.extendedStages);
+
+    const sort = get(fos.gridSortBy);
+
+    const extra =
+      queryPerformance &&
+      !extendedStages["fiftyone.core.stages.SortBySimilarity"]
+        ? {
+            sortBy: sort?.field,
+            desc: sort?.descending,
+            hint: get(gridIndex),
+          }
+        : {};
+
+    // Grid scrubber: when the user has committed a scrub value, page 0's
+    // `after` is the sort-field value itself (encoded as a string) and we
+    // flip `cursorPagination` on so the server seeks via
+    // `match({sort_by: {$gt|$lt: value}})` instead of skipping `page * pageSize`.
+    //
+    // Only page 0 carries the value — subsequent pages within the scrubbed
+    // viewport still use the index-based `after`, which is correct here
+    // because the server's cursor-mode seek shifts the entire collection
+    // origin to the matched row.
+    const scrubCursor = sort
+      ? get(fos.gridScrubCursor(get(fos.datasetId) ?? ""))
+      : null;
+
+    const params = {
+      dataset,
+      view: get(fos.view),
+      filters: get(fos.filters),
+      filter: {
+        group: slice
+          ? {
+              slice,
+              slices: [slice],
+            }
+          : null,
+      },
+      extendedStages,
+      maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
+      ...extra,
+      ...(scrubCursor !== null ? { cursorPagination: true } : {}),
+    };
+
+    return (page: number, pageSize: number) => {
+      // Page 0 + active scrub cursor → seek to the sort-field value.
+      // Subsequent pages stream forward from the seek using the existing
+      // index encoding.
+      const after =
+        page === 0 && scrubCursor !== null
+          ? scrubCursor
+          : page
+            ? String(page * pageSize - 1)
+            : null;
+      return {
+        ...params,
+        after,
+        first: pageSize,
+      };
+    };
+  },
+});
+
+/**
+ * Per-group "siblings" pager used by the swimlane row next to each
+ * grid sample. Returns the other slices of the same group; the cover
+ * (default-slice sample from the main grid query) renders separately.
+ *
+ * The lane is keyed by `groupId` so each row in the swimlane view has
+ * its own pager. The view itself is left untouched — same `view`,
+ * `filters`, `extendedStages` as the main grid — but `filter.group`
+ * is set to match this one group's id across all dataset slices, so
+ * the server returns the group's per-slice samples.
+ */
+export const groupSiblingsPageParameters = selectorFamily<
+  (page: number, pageSize: number) => Record<string, unknown>,
+  string
+>({
+  key: "floodlight.groupSiblingsPageParameters",
+  get:
+    (groupId) =>
+    ({ get }) => {
+      const dataset = get(fos.datasetName);
+      if (!dataset) throw new Error("dataset is not defined");
+
+      const queryPerformance = get(fos.queryPerformance);
+      const extendedStages = queryPerformance
+        ? get(fos.extendedStagesNoSort)
+        : get(fos.extendedStages);
+
+      const params = {
+        dataset,
+        view: get(fos.view),
+        filters: get(fos.filters),
+        filter: {
+          // Selecting by group id flattens the collection to a
+          // single group's per-slice samples (no slice constraint).
+          // The row's renderer is responsible for hiding the
+          // default-slice entry so it doesn't visually duplicate
+          // the cover.
+          group: { id: groupId, slices: null, slice: null },
+        },
+        extendedStages,
+        maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
+      };
+
+      return (page: number, pageSize: number) => ({
+        ...params,
+        after: page ? String(page * pageSize - 1) : null,
+        first: pageSize,
+      });
+    },
+});
+
+export const recommendedGridZoom = atom<number | null>({
+  key: "floodlight.recommendedGridZoom",
+  default: null,
+  effects: [
+    subscribe(
+      ({ event }, { reset }, prev) =>
+        event !== "modal" &&
+        prev?.event !== "modal" &&
+        reset(recommendedGridZoom),
+    ),
+  ],
+});
+
+export const showGridPixels = atom({ key: "showGridPixels", default: false });
+
+export const storedGridZoom = atom<number | null>({
+  key: "floodlight.storedGridZoom",
+  default: null,
+  effects: [
+    fos.getBrowserStorageEffectForKey("storedGridZoom", {
+      valueClass: "number",
+    }),
+  ],
+});
+
+export const gridSquareTiles = atom<boolean>({
+  key: "floodlight.gridSquareTiles",
+  default: false,
+  effects: [
+    fos.getBrowserStorageEffectForKey("floodlight.gridSquareTiles", {
+      valueClass: "boolean",
+    }),
+  ],
+});

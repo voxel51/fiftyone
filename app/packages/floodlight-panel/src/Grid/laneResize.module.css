@@ -1,0 +1,49 @@
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
+/* A thin hit area along a lane's bottom edge. */
+.handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  z-index: 2;
+  cursor: row-resize;
+  outline: none;
+  touch-action: none;
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  height: 2px;
+  background: var(--fo-palette-primary-plainColor);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.handle:hover::after,
+.handle:focus-visible::after {
+  opacity: 1;
+}
+
+/* Lane rows sit in a column with a gap, so their handle straddles it. */
+.handle.gap {
+  bottom: -8px;
+}
+
+.guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--fo-palette-primary-plainColor);
+}

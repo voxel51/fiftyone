@@ -13,13 +13,22 @@ import {
   toPercentage,
 } from "../utils/sizes";
 import AddPanelButton from "./AddPanelButton";
-import Panel from "./Panel";
+import PanelSlots, { PanelSlot } from "./PanelSlots";
 import PanelTab from "./PanelTab";
 import SplitPanelButton from "./SplitPanelButton";
 import { PanelContainer, PanelTabs, SpaceContainer } from "./StyledElements";
 import Workspaces from "./Workspaces";
 
-export default function Space({ node, id, archetype }: SpaceProps) {
+export default function Space(props: SpaceProps) {
+  const { archetype, id, node } = props;
+  return (
+    <PanelSlots isModalPanel={archetype === "modal"} root={node} spaceId={id}>
+      <SpaceNodeView {...props} />
+    </PanelSlots>
+  );
+}
+
+function SpaceNodeView({ node, id, archetype }: SpaceProps) {
   const { spaces, updateSpaces } = useSpaces(id);
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
@@ -78,7 +87,7 @@ export default function Space({ node, id, archetype }: SpaceProps) {
             const preferredSize = toPercentage(node.sizes?.[i]);
             return (
               <Allotment.Pane key={space.id} preferredSize={preferredSize}>
-                <Space node={space} id={id} archetype={archetype} />
+                <SpaceNodeView node={space} id={id} archetype={archetype} />
               </Allotment.Pane>
             );
           })}
@@ -150,18 +159,14 @@ export default function Space({ node, id, archetype }: SpaceProps) {
           </ReactSortable>
         </PanelTabs>
         {node.hasActiveChild() && activeChild && (
-          <Panel
-            node={activeChild as SpaceNode}
-            spaceId={id}
-            isModalPanel={isModalArchetype}
-          />
+          <PanelSlot id={activeChild.id} />
         )}
       </PanelContainer>
     );
   }
 
   if (node.isPanel()) {
-    return <Panel node={node} spaceId={id} isModalPanel={isModalArchetype} />;
+    return <PanelSlot id={node.id} />;
   }
 
   if (node.isEmpty()) {

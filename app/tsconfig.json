@@ -24,6 +24,8 @@
         { "path": "packages/relay" },
         { "path": "packages/similarity-search" },
         { "path": "packages/spaces" },
+        { "path": "packages/floodlight" },
+        { "path": "packages/floodlight-panel" },
         { "path": "packages/spotlight" },
         { "path": "packages/state" },
         { "path": "packages/tiling" },

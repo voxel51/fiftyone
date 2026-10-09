@@ -1,0 +1,27 @@
+/* The grid ends where the bar begins, so no tile sits under it. */
+.paged.paged {
+  height: calc(100% - 3rem);
+}
+
+.footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 5;
+  container-type: inline-size;
+  border-top: 1px solid var(--color-content-border-default);
+  background-color: var(--color-content-bg-background);
+}
+
+/* narrow panels drop the range label */
+@container (max-width: 40rem) {
+  .footer nav > :last-child {
+    display: none;
+  }
+}
