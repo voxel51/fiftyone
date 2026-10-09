@@ -7,6 +7,8 @@
  * still known.
  */
 
+import { BoundedMap } from "../host/bounded";
+
 export interface PageCursors {
   /** Last sample's sort value per page. */
   ends: Map<number, string>;
@@ -14,9 +16,15 @@ export interface PageCursors {
   starts: Map<number, string>;
 }
 
+/**
+ * Pages whose boundaries are kept: an evicted page forgets its own, and this
+ * caps those an invalidation dropped that were never fetched again.
+ */
+export const MAX_CURSOR_PAGES = 1024;
+
 export const createPageCursors = (): PageCursors => ({
-  ends: new Map(),
-  starts: new Map(),
+  ends: new BoundedMap(MAX_CURSOR_PAGES),
+  starts: new BoundedMap(MAX_CURSOR_PAGES),
 });
 
 export const forgetCursors = (cursors: PageCursors, page: number) => {

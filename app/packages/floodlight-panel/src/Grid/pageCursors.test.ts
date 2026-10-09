@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createPageCursors,
+  MAX_CURSOR_PAGES,
   cursorLinks,
   forgetCursors,
   seekFor,
@@ -69,5 +70,20 @@ describe("cursorLinks", () => {
         seek: undefined,
       }),
     ).toEqual({ next: null, previous: -1 });
+  });
+});
+
+describe("createPageCursors", () => {
+  it("keeps at most MAX_CURSOR_PAGES pages' boundaries", () => {
+    const known = createPageCursors();
+    for (let page = 0; page < MAX_CURSOR_PAGES * 4; page++) {
+      known.ends.set(page, `e${page}`);
+      known.starts.set(page, `s${page}`);
+    }
+    expect(known.ends.size).toBe(MAX_CURSOR_PAGES);
+    expect(known.starts.size).toBe(MAX_CURSOR_PAGES);
+    expect(seekFor(known, MAX_CURSOR_PAGES * 4 - 1)).toEqual({
+      after: `e${MAX_CURSOR_PAGES * 4 - 2}`,
+    });
   });
 });

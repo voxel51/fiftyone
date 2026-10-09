@@ -13,9 +13,11 @@ import {
   useReverbValue,
 } from "@fiftyone/reverb";
 import type { Subscription } from "relay-runtime";
+import { BoundedMap } from "../host/bounded";
 import {
   cursorLinks,
   createPageCursors,
+  MAX_CURSOR_PAGES,
   forgetCursors,
   seekFor,
 } from "./pageCursors";
@@ -104,7 +106,11 @@ const useSpotlightPager = ({
   const handleTimeout = useTimeout();
 
   /** Track already requested pages, across mounts in this panel */
-  const pages = usePanelMemo("pages", clearRequests, () => new Set<number>());
+  const pages = usePanelMemo(
+    "pages",
+    clearRequests,
+    () => new BoundedMap<number, true>(MAX_CURSOR_PAGES),
+  );
   // cleared alongside `pages` (same lifecycle)
   const cursors = usePanelMemo("pageCursors", clearRequests, createPageCursors);
 
@@ -186,7 +192,7 @@ const useSpotlightPager = ({
             subscription?.unsubscribe();
             reject(signal.reason);
           });
-          pages.add(pageNumber);
+          pages.set(pageNumber, true);
           subscription = fetchQuery<foq.paginateSamplesQuery>(
             environment,
             foq.paginateSamples,
