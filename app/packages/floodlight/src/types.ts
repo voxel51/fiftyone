@@ -24,7 +24,8 @@ export interface Edge<K, V> {
  * Gets or sets the currently focused item.
  * Called with an `id` to update focus; called with no argument to read it.
  */
-export type Focus = (id?: ID) => ID | undefined;
+/** Reads or sets the focused item; setting it scrolls it to the top unless `reveal` is false. */
+export type Focus = (id?: ID, reveal?: boolean) => ID | undefined;
 
 /** Fetches a page of items for the given pagination cursor. */
 export type Get<K, V> = (key: K) => Promise<Response<K, V>>;

@@ -75,7 +75,8 @@ export default class Row<K, V> {
           }
 
           event.preventDefault();
-          focus(item.id);
+          // the clicked item is on screen; focusing it must not scroll
+          focus(item.id, false);
           config.onItemClick({
             event,
             item,

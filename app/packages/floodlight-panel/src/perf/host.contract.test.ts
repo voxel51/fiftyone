@@ -246,6 +246,46 @@ describe("host contracts: remount", () => {
     expect(second.fetches.total).toBe(0);
   });
 
+  test("a remount restores the place it saved, not a row off", async () => {
+    // the grid's own offset, below the actions row it scrolls under
+    const first = await setup({ config: { offset: 48 } });
+    const slotOf = (mounted: typeof first) =>
+      mounted.container.querySelector(
+        '[data-floodlight-slot="active"]',
+      ) as HTMLElement;
+    // partway into a row, then report where that is
+    await scrollTo(env, scroller(slotOf(first)), 1037);
+    const anchor = first.host.anchor;
+    first.host.destroy();
+    first.container.remove();
+
+    const second = mountHost({ remount: first, config: { offset: 48 } });
+    second.host.rebuild(anchor);
+    const restored = scroller(slotOf(second));
+    // report the restored place without moving
+    await scrollTo(env, restored, restored.scrollTop);
+
+    expect(second.host.anchor).toEqual(anchor);
+  });
+
+  test("clicking a tile does not scroll the grid", async () => {
+    const mounted = await setup({ config: { onItemClick: () => undefined } });
+    const view = scroller(
+      mounted.container.querySelector(
+        '[data-floodlight-slot="active"]',
+      ) as HTMLElement,
+    );
+    await scrollTo(env, view, 1037);
+    const before = { anchor: mounted.host.anchor, top: view.scrollTop };
+
+    const tiles = view.querySelectorAll('[class*="spotlightRow"] > div');
+    (tiles[tiles.length - 1] as HTMLElement).click();
+    await env.idle();
+
+    expect(view.scrollTop).toBe(before.top);
+    expect(mounted.host.anchor).toEqual(before.anchor);
+  });
+
   test("pages not in memory are fetched asynchronously", async () => {
     const mounted = mountHost();
     mounted.host.rebuild();

@@ -369,7 +369,7 @@ export default class Spotlight<K, V> extends EventTarget {
    * @returns A Focus function; call with an ID to set focus, or with no argument to read it.
    */
   get #focus() {
-    return (id?: ID) => {
+    return (id?: ID, reveal = true) => {
       // Reads (no argument) are side-effect free. The accessor can be
       // invoked before any focus has been set — guarding here avoids a
       // crash on `#focused.description` and prevents a spurious re-render
@@ -379,10 +379,11 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       this.#focused = id;
-      this.#render({
-        at: { description: id.description },
-        ...this.#measure(),
-      });
+      reveal &&
+        this.#render({
+          at: { description: id.description },
+          ...this.#measure(),
+        });
       return id;
     };
   }
