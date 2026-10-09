@@ -144,6 +144,15 @@ export const createHost = <K, I extends Instance>(
       return current?.instance;
     },
     rebuild: (start?: Anchor<K>) => rebuild(start ?? anchor),
+    /** Starts over from the top, dropping what is shown */
+    reset: () => {
+      if (destroyed) return;
+      pending && dispose(pending);
+      current && dispose(current);
+      pending = current = undefined;
+      anchor = undefined;
+      rebuild();
+    },
     destroy: () => {
       destroyed = true;
       clearTimeout(resizing);

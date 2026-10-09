@@ -291,15 +291,24 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       zoom,
     ],
   );
+  // new data (a dataset, view or filter) starts over rather than from the
+  // last location, which belongs to the previous data
+  const lastPageReset = useRef(pageReset);
+  const loaded = useRef(false);
   useEffect(() => {
+    if (lastPageReset.current !== pageReset) {
+      lastPageReset.current = pageReset;
+      loaded.current = false;
+      host?.reset();
+      return;
+    }
     host?.rebuild(pageAnchor(get()));
-  }, [get, host, pageAnchor, settings]);
+  }, [get, host, pageAnchor, pageReset, settings]);
 
   const fetching = useSyncExternalStore(
     source.subscribe,
     () => source.fetching,
   );
-  const loaded = useRef(false);
   if (status === "ready") loaded.current = true;
   const storm = showStorm({ everLoaded: loaded.current });
   const pending = showPending({

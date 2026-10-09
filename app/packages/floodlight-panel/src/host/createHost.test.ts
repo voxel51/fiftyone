@@ -53,6 +53,20 @@ const slots = (element: HTMLElement) =>
   Array.from(element.children) as HTMLElement[];
 
 describe("createHost", () => {
+  test("reset drops what is shown and builds from the top", () => {
+    const { build, built, element, host } = setup();
+    host.rebuild({ key: 3, at: { description: "a", fraction: 0.5 } });
+    built[0].load();
+
+    host.reset();
+
+    expect(built[0].destroy).toHaveBeenCalled();
+    expect(build).toHaveBeenLastCalledWith(undefined, { interim: false });
+    const [slot] = slots(element);
+    expect(slots(element)).toHaveLength(1);
+    expect(slot.getAttribute(SLOT)).toBe("active");
+  });
+
   test("shows the first instance immediately", () => {
     const { built, element, host } = setup();
     host.rebuild();
