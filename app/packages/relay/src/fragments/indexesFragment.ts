@@ -4,6 +4,7 @@ import r from "../resolve";
 
 export default r(graphql`
   fragment indexesFragment on Dataset {
+    indexedSortFields
     frameIndexes {
       name
       unique

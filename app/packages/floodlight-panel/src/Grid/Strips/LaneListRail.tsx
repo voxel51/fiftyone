@@ -6,17 +6,24 @@ import styles from "./Strips.module.css";
 
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { groupDigits, labelTicks } from "../../rail/model";
-import RankRail from "../../rail/RankRail";
+import {
+  groupDigits,
+  labelTicks,
+  positionToOffset,
+  thumbPosition,
+  thumbSpan,
+} from "../../rail/model";
+import Rail from "../../rail/Rail";
 import useListRail from "../../rail/useListRail";
+import { MIN_SPAN } from "../railModes";
 import type { ValueCount } from "../categorical";
 
 const TICKS = 5;
 const LANE = '[data-cy="lane"]';
 
 /**
- * A rail over the lane list, one rank per lane. It sits beside the scroller
- * rather than in it, so it stays put while the lanes scroll.
+ * A rail over the lane list, one offset per lane. It sits beside the
+ * scroller rather than in it, so it stays put while the lanes scroll.
  */
 export default function LaneListRail({
   root,
@@ -26,14 +33,15 @@ export default function LaneListRail({
   values: readonly ValueCount[];
 }) {
   const rail = useListRail({ root, selector: LANE });
+  const total = values.length;
   const ticks = useMemo(
     () =>
       labelTicks(
-        values.map(({ label }, rank) => ({ label, rank })),
-        values.length,
+        values.map(({ label }, offset) => ({ label, offset })),
+        total,
         TICKS,
       ),
-    [values],
+    [total, values],
   );
 
   useEffect(() => {
@@ -42,19 +50,19 @@ export default function LaneListRail({
   }, [root]);
 
   const dock = root?.parentElement;
-  if (!dock) return null;
+  if (!dock || total <= 0) return null;
 
   return createPortal(
-    <RankRail
+    <Rail
       aria-label="Lane list rail"
-      anchorRank={rail.anchorRank}
-      label={(rank) =>
-        `${values[rank]?.label} · ${groupDigits(values[rank]?.count ?? 0)}`
-      }
-      onJump={(position) => rail.jump(position, values.length)}
+      label={(position) => {
+        const lane = values[positionToOffset(position, total, rail.visible)];
+        return `${lane?.label} · ${groupDigits(lane?.count ?? 0)}`;
+      }}
+      onJump={(position) => rail.jump(position, total)}
+      position={thumbPosition(rail.first, total, rail.visible)}
+      span={thumbSpan(rail.visible, total, MIN_SPAN)}
       ticks={ticks}
-      total={values.length}
-      visible={rail.visible}
     />,
     dock,
   );

@@ -6,17 +6,27 @@ import gridStyles from "../Grid.module.css";
 import styles from "./Strips.module.css";
 
 import clsx from "clsx";
-import { useContext, useMemo } from "react";
-import { offsetRanks } from "../../rail/jump";
-import RankRail from "../../rail/RankRail";
+import { useCallback, useContext, useMemo } from "react";
+import { laneOffsets, offsetAnchor } from "../../rail/jump";
+import {
+  offsetLabel,
+  offsetTicks,
+  positionToOffset,
+  thumbPosition,
+  thumbSpan,
+} from "../../rail/model";
+import Rail from "../../rail/Rail";
 import useRail from "../../rail/useRail";
+import { MIN_SPAN } from "../railModes";
 import { PAGE_SIZE } from "../useSpotlightPager";
 import { StripsContext } from "./context";
 import useStrip from "./useStrip";
 import type { StripSource } from "./useStripSource";
 
+const TICKS = 5;
+
 /**
- * A strip whose scrollbar is a rank rail over its own samples; a jump
+ * A strip whose scrollbar is an offset rail over its own samples; a jump
  * rebuilds this strip's host at the target page.
  */
 export default function RailedStripHost({
@@ -34,28 +44,56 @@ export default function RailedStripHost({
 }) {
   const strips = useContext(StripsContext)!;
   const { host, instance, ref } = useStrip(source, false);
-  const ranks = useMemo(
-    () => offsetRanks(strips.records, recordBase, span),
+  const offsets = useMemo(
+    () => laneOffsets(strips.records, recordBase, span),
     [recordBase, span, strips.records],
   );
-  const rail = useRail({
-    host,
-    instance,
-    pageSize: PAGE_SIZE,
-    ranks,
-  });
+  const fractionOf = useCallback(
+    (id: string) => {
+      const offset = offsets.get(id);
+      return offset === undefined || total <= 0 ? undefined : offset / total;
+    },
+    [offsets, total],
+  );
+  const rail = useRail({ fractionOf, host, instance, perItem: 1 / total });
+  const ticks = useMemo(() => offsetTicks(total, TICKS), [total]);
+  const toPosition = (fraction: number) =>
+    thumbPosition(Math.round(fraction * total), total, rail.visible);
+  const follow = useCallback(
+    (listener: (position: number) => void) =>
+      rail.follow((fraction) =>
+        listener(
+          thumbPosition(Math.round(fraction * total), total, rail.visible),
+        ),
+      ),
+    [rail, total],
+  );
 
   return (
     <>
       <div ref={ref} className={clsx(styles.host, gridStyles.railOn)} />
       <div className={className}>
-        <RankRail
+        <Rail
           aria-label="Lane rail"
-          anchorRank={rail.anchorRank}
-          onJump={(position) => rail.jump(position, total)}
+          follow={follow}
+          label={(position) =>
+            offsetLabel(positionToOffset(position, total, rail.visible), total)
+          }
+          onJump={(position) =>
+            host?.rebuild(
+              offsetAnchor(
+                positionToOffset(position, total, rail.visible),
+                PAGE_SIZE,
+                offsets,
+              ),
+            )
+          }
           orientation="horizontal"
-          total={total}
-          visible={rail.visible}
+          position={
+            rail.fraction === undefined ? undefined : toPosition(rail.fraction)
+          }
+          span={thumbSpan(rail.visible, total, MIN_SPAN)}
+          ticks={ticks}
         />
       </div>
     </>

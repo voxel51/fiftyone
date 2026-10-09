@@ -8,44 +8,31 @@ import React, {
   type PointerEvent,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import { keyTarget, type Orientation } from "./keys";
-import {
-  nearestTick,
-  positionToRank,
-  type RailTick,
-  railMode,
-  rankLabel,
-  rankTicks,
-  thumbPosition,
-  thumbSpan,
-} from "./model";
+import { nearestTick, type RailTick, railMode } from "./model";
 import styles from "./Rail.module.css";
 import useThumbMotion from "./useThumbMotion";
 
-const TICKS = 5;
-const MIN_SPAN = 0.03;
 const AWAKE_MS = 1200;
 
-export interface RankRailProps {
-  total: number;
-  anchorRank?: number;
-  /** Estimated items on screen, for the thumb's length. */
-  visible?: number;
-  /** Fires on release with the rail position in [0, 1]. */
+export interface RailProps {
+  /** The thumb's place, in [0, 1]; the start until known. */
+  position?: number;
+  /** The thumb's share of the track. */
+  span: number;
+  ticks: readonly RailTick[];
+  /** What a rail position reads as, for the pointer's pill. */
+  label: (position: number) => string;
+  /** Fires once, on release, with the rail position in [0, 1]. */
   onJump: (position: number) => void;
   /** The grid is fetching or rebuilding; the track shows it. */
   loading?: boolean;
-  /** Subscribes the thumb to the scrolling top rank, between rows too. */
-  follow?: (listener: (rank: number) => void) => () => void;
+  /** Subscribes the thumb to the scroll, between rows too. */
+  follow?: (listener: (position: number) => void) => () => void;
   orientation?: Orientation;
-  /** Markers; evenly spaced ranks by default. */
-  ticks?: readonly RailTick[];
-  /** The floating label for a rank; "#rank of N" by default. */
-  label?: (rank: number, total: number) => string;
   /** Placement, for rails that are not on the grid's edge. */
   className?: string;
   "aria-label"?: string;
@@ -54,36 +41,32 @@ export interface RankRailProps {
 const percent = (fraction: number) => `${fraction * 100}%`;
 
 /**
- * A thin rail over ranks. What it rails over is left alone while dragging;
- * the jump happens on release.
+ * A thin rail. What it rails over is left alone while dragging: nothing is
+ * fetched until the release, which jumps once.
  */
-function RankRail({
-  anchorRank,
+function Rail({
   className,
   follow,
+  label,
   loading = false,
-  label = rankLabel,
   onJump,
   orientation = "vertical",
-  ticks: given,
-  total,
-  visible,
+  position: resting = 0,
+  span,
+  ticks,
   "aria-label": ariaLabel = "Grid rail",
-}: RankRailProps) {
+}: RailProps) {
   const track = useRef<HTMLDivElement>(null);
   const thumb = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [scrolling, setScrolling] = useState(false);
-  const even = useMemo(() => rankTicks(total, TICKS), [total]);
-  const ticks = given ?? even;
 
   useEffect(() => {
-    if (anchorRank === undefined) return undefined;
     setScrolling(true);
     const timeout = setTimeout(() => setScrolling(false), AWAKE_MS);
     return () => clearTimeout(timeout);
-  }, [anchorRank]);
+  }, [resting]);
 
   const horizontal = orientation === "horizontal";
   const start = horizontal ? "left" : "top";
@@ -97,8 +80,7 @@ function RankRail({
       : event.clientY - rect.top;
     return Math.min(Math.max(offset / size, 0), 1);
   };
-  const position = drag ?? thumbPosition(anchorRank, total, visible);
-  const span = thumbSpan(visible, total, MIN_SPAN);
+  const position = drag ?? resting;
   const pointer = drag ?? hover;
 
   // the thumb moves outside React: a drag places it, everything else eases it
@@ -106,16 +88,15 @@ function RankRail({
   const dragging = drag !== null;
   useLayoutEffect(() => {
     if (drag !== null) aim(drag, true);
-    else aim(thumbPosition(anchorRank, total, visible));
-  }, [aim, anchorRank, drag, total, visible]);
+    else aim(resting);
+  }, [aim, drag, resting]);
   useEffect(() => {
     if (!follow || dragging) return undefined;
-    return follow((rank) => aim(thumbPosition(rank, total, visible)));
-  }, [aim, dragging, follow, total, visible]);
+    return follow((next) => aim(next));
+  }, [aim, dragging, follow]);
 
-  if (total <= 0) return null;
   const mode = railMode({
-    dragging: drag !== null,
+    dragging,
     hovered: hover !== null,
     scrolling,
   });
@@ -137,7 +118,7 @@ function RankRail({
         styles.rail,
         horizontal && styles.horizontal,
         styles[mode],
-        drag !== null && styles.drag,
+        dragging && styles.drag,
         loading && styles.loading,
         className,
       )}
@@ -145,10 +126,10 @@ function RankRail({
       tabIndex={0}
       aria-label={ariaLabel}
       aria-orientation={orientation}
-      aria-valuemin={1}
-      aria-valuemax={total}
-      aria-valuenow={positionToRank(position, total, visible) + 1}
-      aria-valuetext={label(positionToRank(position, total, visible), total)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(position * 100)}
+      aria-valuetext={label(position)}
       onKeyDown={onKeyDown}
       onPointerDown={(event) => {
         event.stopPropagation();
@@ -187,7 +168,7 @@ function RankRail({
         />
         {pointer !== null && (
           <div className={styles.pill} style={{ [start]: percent(pointer) }}>
-            {label(positionToRank(pointer, total, visible), total)}
+            {label(pointer)}
           </div>
         )}
       </div>
@@ -195,4 +176,4 @@ function RankRail({
   );
 }
 
-export default React.memo(RankRail);
+export default React.memo(Rail);

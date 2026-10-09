@@ -67,11 +67,7 @@ const useVariables = () => {
     (matches: [string, FieldValue][]) => {
       const stages = matches.map(([path, value]) => match(path, value));
       return (index: number, pageSize: number) => {
-        // strips page by index; a committed scrub cursor belongs to the grid
-        const { cursorPagination: _, ...vars } = page(index, pageSize) as {
-          cursorPagination?: boolean;
-          view: unknown[];
-        };
+        const vars = page(index, pageSize) as { view: unknown[] };
         return {
           ...vars,
           view: [...vars.view, ...stages],

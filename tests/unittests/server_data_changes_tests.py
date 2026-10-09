@@ -115,31 +115,6 @@ class SkipPagingDeletionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(_duplicates(two + three), [])
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="the value cursor (cursor_pagination) seeks $gt the last "
-        "value, so the rest of a tie block at a page boundary is skipped",
-    )
-    async def test_value_cursor_serves_every_sample(self):
-        ids, after = [], None
-        while True:
-            page = await foss.paginate_samples(
-                self.dataset.name,
-                [],
-                None,
-                PAGE,
-                after=after,
-                sort_by="t",
-                cursor_pagination=True,
-            )
-            ids += _ids(page)
-            if not page.page_info.has_next_page:
-                break
-
-            after = page.page_info.end_cursor
-
-        self.assertEqual(len(ids), N)
-
 
 class OrderDeletionTests(unittest.TestCase):
     """Orders page by ``(value, _id)`` positions."""

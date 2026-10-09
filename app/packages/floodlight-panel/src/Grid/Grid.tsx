@@ -45,13 +45,15 @@ import useEscape from "./useEscape";
 import useInstanceEvents from "./useInstanceEvents";
 import useItemCache from "./useItemCache";
 import useLabelVisibility from "./useLabelVisibility";
-import useRecords from "./useRecords";
+import useRecords, { useFractions } from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRelayout, { type Excluded, excluding } from "./useRelayout";
 import useRenderer from "./useRenderer";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager, { PAGE_SIZE } from "./useSpotlightPager";
-import useRail from "../rail/useRail";
+import useGridOrder from "../order/useGridOrder";
+import useGridRail from "./useGridRail";
+import useOrigin from "./useOrigin";
 import usePageSource from "./usePageSource";
 import usePanelMemo from "./panelMemory";
 import Storm from "./Storm";
@@ -97,7 +99,11 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
 
   useSyncLabelsRenderingStatus();
 
-  const records = useRecords(pageReset);
+  const order = useGridOrder(dataReset);
+  const [origin, seek] = useOrigin(pageReset);
+  // sequences and rail places are relative to the origin
+  const records = useRecords(`${pageReset}|${origin.id}`);
+  const fractions = useFractions(`${pageReset}|${origin.id}`);
 
   // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useReverbValue(maxGridItemsSizeBytes) / 2;
@@ -129,6 +135,9 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const { forget, page, store } = useSpotlightPager({
     clearRecords: reset,
     clearRequests: refreshReset,
+    fractions,
+    order: order.get,
+    origin,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,
@@ -148,8 +157,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   const { get, set } = useScrollLocation(pageReset);
 
   const autosizing = useReverbValue(gridAutosizing);
-  const paged = usePagesEnabled(layout);
-  const railVisible = !paged;
+  // pages need offsets, which only a SMALL order has
+  const paged = usePagesEnabled(layout) && order.mode === "SMALL";
 
   // `reset` is the grid's refresh signal. The callables below are routed
   // through a ref so their identities are not rebuild triggers — a transient
@@ -167,13 +176,22 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   // were fetched with
   const excluded = useRef<Excluded>(new BoundedMap(MAX_EXCLUDED));
   const source = usePageSource(
-    JSON.stringify([reset, pageReset, crop, aspectRatioOverride ?? null]),
+    JSON.stringify([
+      reset,
+      pageReset,
+      crop,
+      aspectRatioOverride ?? null,
+      origin.id,
+    ]),
     dataReset,
     (key, signal) =>
       page(key, signal).then((result) => excluding(result, excluded.current)),
     (result) => result.items.map((item) => item.id.description),
     (key, result) => {
-      for (const { id } of result.items) records.delete(id.description);
+      for (const { id } of result.items) {
+        records.delete(id.description);
+        fractions.delete(id.description);
+      }
       forget(key);
     },
   );
@@ -183,14 +201,14 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
     () => ({
       get: (key: number) => source.get(key),
       positionOf: (id: string) => {
-        const rank = records.get(id);
-        return rank === undefined
-          ? undefined
-          : {
-              key: Math.floor(rank / PAGE_SIZE),
-              index: rank % PAGE_SIZE,
-              offset: rank,
-            };
+        const sequence = records.get(id);
+        if (sequence === undefined) return undefined;
+        const key = Math.floor(sequence / PAGE_SIZE);
+        const index =
+          source
+            .peek(key)
+            ?.items.findIndex((item) => item.id.description === id) ?? -1;
+        return index < 0 ? undefined : { key, index };
       },
     }),
     [records, source],
@@ -266,7 +284,8 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
 
         maxRows: MAX_ROWS,
         maxItemsSizeBytes: autosized ? maxBytes : undefined,
-        scrollbar: !railVisible,
+        // the rail, when shown, hides it
+        scrollbar: true,
         // Strip: one full-height item per column, scrolling left to right.
         horizontal: strip,
         ...(strip ? { offset: 0 } : {}),
@@ -341,7 +360,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
   animateRef.current = relayout.animate;
   const animatingRef = useRef(relayout.animating);
   animatingRef.current = relayout.animating;
-  const rail = useRail({
+  const rail = useGridRail({
     // scroll events do not bubble; the container hears them while capturing
     onScroll: (listener) => {
       const element = container.current;
@@ -371,11 +390,17 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
             viewport: scroller.clientHeight,
           };
     },
+    fractions,
     host,
     instance,
+    order: order.order,
+    origin,
     pageSize: PAGE_SIZE,
-    ranks: records,
+    paged,
+    seek,
+    sequences: records,
   });
+  const railVisible = rail.mode.kind === "offset" || rail.mode.kind === "value";
 
   // a setting that changes layout means a new instance, at the saved location
   const settings = useMemo(
@@ -385,7 +410,6 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       maxBytes,
       paged,
       reset,
-      railVisible,
       spacing,
       squareTiles,
       strip,
@@ -398,7 +422,6 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       swimlaneRenderer.heights,
       paged,
       reset,
-      railVisible,
       spacing,
       squareTiles,
       strip,
@@ -498,13 +521,14 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
           <Pending />
         </div>
       )}
-      <GridRail
-        horizontal={strip}
-        loading={pending}
-        rail={rail}
-        visible={railVisible}
-      />
-      {paged && <GridPagesBar grid={container} pages={paging.pages} />}
+      <GridRail horizontal={strip} loading={pending} rail={rail} />
+      {paged && (
+        <GridPagesBar
+          grid={container}
+          pages={paging.pages}
+          total={order.order?.kind === "order" ? (order.order.total ?? 0) : 0}
+        />
+      )}
     </div>
   );
 }

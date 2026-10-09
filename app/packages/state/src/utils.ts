@@ -7,6 +7,7 @@ import {
   StrictField,
   clone,
   getFetchFunction,
+  getFetchFunctionExtended,
 } from "@fiftyone/utilities";
 import React, { MutableRefObject, useCallback, useRef } from "react";
 import {
@@ -15,6 +16,7 @@ import {
   GraphQLResponse,
   GraphQLResponseWithData,
   Network,
+  Observable,
   RecordSource,
   Store,
 } from "relay-runtime";
@@ -179,19 +181,11 @@ type GQLResponse = Omit<GraphQLResponseWithData, "errors"> & {
   errors?: GQLError[];
 };
 
-const fetchRelay: FetchFunction = async (
-  params,
-  variables,
-): Promise<GraphQLResponse> => {
-  const data = await getFetchFunction()<unknown, GQLResponse>(
-    "POST",
-    "/graphql",
-    {
-      query: params.text,
-      variables,
-    },
-  );
-
+const checked = (
+  params: Parameters<FetchFunction>[0],
+  variables: object,
+  data: GQLResponse,
+): GraphQLResponse => {
   // mutation errors are handled by the calling component or hook
   if (params.operationKind !== "mutation" && "errors" in data && data.errors) {
     throw new GraphQLError({
@@ -201,6 +195,42 @@ const fetchRelay: FetchFunction = async (
   }
 
   return data;
+};
+
+/**
+ * Queries are aborted when their last subscriber leaves, so the server stops
+ * work nobody waits for. Aggregations keep the fetch function's sharing of
+ * identical requests in flight.
+ */
+const fetchRelay: FetchFunction = (params, variables) => {
+  const body = { query: params.text, variables };
+  if (
+    params.operationKind === "mutation" ||
+    params.name === "aggregationsQuery"
+  ) {
+    return getFetchFunction()<unknown, GQLResponse>(
+      "POST",
+      "/graphql",
+      body,
+    ).then((data) => checked(params, variables, data));
+  }
+
+  return Observable.create<GraphQLResponse>((sink) => {
+    const controller = new AbortController();
+    getFetchFunctionExtended()<unknown, GQLResponse>({
+      method: "POST",
+      path: "/graphql",
+      body,
+      signal: controller.signal,
+    })
+      .then(({ response }) => {
+        sink.next(checked(params, variables, response));
+        sink.complete();
+      })
+      .catch((error) => controller.signal.aborted || sink.error(error));
+
+    return () => controller.abort();
+  });
 };
 
 export const getEnvironment = () =>

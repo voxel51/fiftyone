@@ -1,28 +1,32 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The Grid's pagination bar in Pages mode: page controls over the view's
- * sample count, and PageUp/PageDown while the grid is focused.
+ * The Grid's pagination bar in Pages mode: page controls over a SMALL
+ * order's total, and PageUp/PageDown while the grid is focused.
  */
 
-import * as fos from "@fiftyone/state";
+import { useModalActive } from "@fiftyone/state";
 import { SelectAnchor } from "@voxel51/voodo";
-import React, { type RefObject, Suspense, useRef } from "react";
+import React, { type RefObject, useRef } from "react";
 import { PAGE_SIZES, pageCount, pageForKey } from "./model";
 import { PaginationBar } from "./PaginationBar";
 import styles from "./Pages.module.css";
 import type { GridPages } from "./useGridPages";
 import usePageKeys from "./usePageKeys";
 
-type Props = { grid: RefObject<HTMLElement>; pages: GridPages };
+type Props = {
+  grid: RefObject<HTMLElement>;
+  pages: GridPages;
+  total: number;
+};
 
 const Controls = ({
   bar,
   grid,
   pages,
+  total,
 }: Props & { bar: RefObject<HTMLElement> }) => {
-  const total = fos.useGridSampleCount();
-  const modal = fos.useModalActive();
+  const modal = useModalActive();
 
   usePageKeys({
     disabled: modal,
@@ -55,15 +59,12 @@ const Controls = ({
   );
 };
 
-// counting suspends; the boundary keeps that from hiding the grid
-const GridPagesBar = ({ grid, pages }: Props) => {
+const GridPagesBar = ({ grid, pages, total }: Props) => {
   const bar = useRef<HTMLDivElement>(null);
 
   return (
     <div ref={bar} className={styles.footer} data-cy="fo-grid-pages">
-      <Suspense fallback={null}>
-        <Controls bar={bar} grid={grid} pages={pages} />
-      </Suspense>
+      <Controls bar={bar} grid={grid} pages={pages} total={total} />
     </div>
   );
 };

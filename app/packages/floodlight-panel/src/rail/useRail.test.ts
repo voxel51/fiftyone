@@ -7,16 +7,17 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import useRail from "./useRail";
 
-const setup = (ranks: Record<string, number>) => {
+const setup = (fractions: Record<string, number>, perItem?: number) => {
   const instance = new EventTarget();
   const view = { scrolled: 40 };
   let scrolled: (() => void) | undefined;
-  const order = new Map(Object.entries(ranks));
+  const known = new Map(Object.entries(fractions));
+  const fractionOf = (id: string) => known.get(id);
   const { result } = renderHook(() =>
     useRail({
       instance,
-      pageSize: 100,
-      ranks: order,
+      fractionOf,
+      perItem,
       extent: () => ({ items: 50, loaded: 5000, viewport: 500, ...view }),
       onScroll: (listener) => {
         scrolled = listener;
@@ -37,35 +38,42 @@ const setup = (ranks: Record<string, number>) => {
 };
 
 describe("useRail", () => {
-  it("follows the reported row", () => {
-    const { result, row } = setup({ a: 7 });
+  it("puts the thumb at the reported row's fraction", () => {
+    const { result, row } = setup({ a: 0.25 });
     row("a");
-    expect(result.current.anchorRank).toBe(7);
+    expect(result.current.fraction).toBe(0.25);
+    expect(result.current.visible).toBe(5);
   });
 
-  it("reads the start of the view as rank 0", () => {
-    const { result, row, scroll } = setup({ a: 4 });
-    row("a");
-    expect(result.current.anchorRank).toBe(4);
-
-    scroll(0);
-    expect(result.current.anchorRank).toBe(0);
-  });
-
-  it("follows the scroll between rows", () => {
-    const { result, row, scroll } = setup({ a: 20 });
+  it("interpolates a counted order by its items between rows", () => {
+    const { result, row, scroll } = setup({ a: 0.2 }, 1 / 100);
     const seen: number[] = [];
-    result.current.follow((rank) => seen.push(rank));
+    result.current.follow((fraction) => seen.push(fraction));
     row("a");
-    // 50 items over 5000px: scrolling 150px past the row is 1.5 items
+    // 50 items over 5000px: 150px past the row is 1.5 items of 100
     scroll(190);
-    expect(seen.at(-1)).toBe(21.5);
+    expect(seen.at(-1)).toBeCloseTo(0.215);
   });
 
-  it("does not take a later page's scroll start for the top", () => {
-    const { result, row, scroll } = setup({ a: 250 });
+  it("interpolates a value order at the pace of its last rows", () => {
+    const { result, row, scroll } = setup({ a: 0.2, b: 0.3 });
+    const seen: number[] = [];
+    result.current.follow((fraction) => seen.push(fraction));
     row("a");
-    scroll(0);
-    expect(result.current.anchorRank).toBe(250);
+    scroll(140);
+    // no pace yet: the thumb waits for the next row
+    expect(seen).toEqual([]);
+    row("b");
+    scroll(190);
+    expect(seen.at(-1)).toBeCloseTo(0.35);
+  });
+
+  it("never interpolates past the end", () => {
+    const { result, row, scroll } = setup({ a: 0.99 }, 1 / 10);
+    const seen: number[] = [];
+    result.current.follow((fraction) => seen.push(fraction));
+    row("a");
+    scroll(10_000);
+    expect(seen.at(-1)).toBe(1);
   });
 });

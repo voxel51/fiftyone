@@ -1,24 +1,33 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Cursor pagination's page boundaries. Spotlight only knows page numbers;
- * the server seeks from a neighbor's boundary sort value, so page N is
- * fetched after page N-1's end or before page N+1's start, whichever is
- * still known.
+ * How a page key is fetched from a server order. Floodlight only knows page
+ * numbers; key 0 is the seek page (the start of the order without a seek),
+ * key n > 0 follows the end cursor of key n - 1, and key n < 0 precedes the
+ * start cursor of key n + 1. A SMALL order may also address any key by its
+ * offset, so jumps there never need a new origin.
  */
 
 import { BoundedMap } from "../host/bounded";
 
+export type OrderMode = "SMALL" | "INDEXED" | "SCROLL";
+
+export interface OrderSeek {
+  offset?: number;
+  fraction?: number;
+  value?: unknown;
+}
+
 export interface PageCursors {
-  /** Last sample's sort value per page. */
-  ends: Map<number, string>;
-  /** First sample's sort value per page. */
+  /** First sample's cursor per page. */
   starts: Map<number, string>;
+  /** Last sample's cursor per page. */
+  ends: Map<number, string>;
 }
 
 /**
- * Pages whose boundaries are kept: an evicted page forgets its own, and this
- * caps those an invalidation dropped that were never fetched again.
+ * Pages whose boundaries are kept. They outlive their pages, so an evicted
+ * or invalidated page is fetched again from a neighbor's boundary.
  */
 export const MAX_CURSOR_PAGES = 1024;
 
@@ -27,53 +36,94 @@ export const createPageCursors = (): PageCursors => ({
   starts: new BoundedMap(MAX_CURSOR_PAGES),
 });
 
-export const forgetCursors = (cursors: PageCursors, page: number) => {
-  cursors.ends.delete(page);
-  cursors.starts.delete(page);
-};
-
-export type Seek = { after: string } | { before: string } | undefined;
+export type PageRequest =
+  | { after: string | null }
+  | { before: string }
+  | { seek: OrderSeek };
 
 /**
- * How cursor-mode page `page` seeks: forward pages prefer the previous
- * page's end and negative pages the next page's start, each falling back to
- * the other neighbor when its page was dropped. Page 0 is the committed
- * cursor itself.
+ * The request for page `key`, or undefined when nothing addresses it (a
+ * page before the start, or one whose neighbors were never fetched).
  */
-export const seekFor = (cursors: PageCursors, page: number): Seek => {
-  if (page === 0) return undefined;
-  const end = cursors.ends.get(page - 1);
-  const start = cursors.starts.get(page + 1);
-  const after = end === undefined ? undefined : { after: end };
-  const before = start === undefined ? undefined : { before: start };
-  return page > 0 ? (after ?? before) : (before ?? after);
-};
-
-/**
- * The page's links. A backward seek came from page + 1, so that page exists;
- * the server reports only the earlier side. A forward seek past page - 1
- * knows that page exists.
- */
-export const cursorLinks = ({
-  hasNext,
-  hasPrevious,
-  originHasPrevious,
-  page,
+export const pageRequest = ({
+  cursors,
+  key,
+  mode,
+  pageSize,
   seek,
 }: {
-  hasNext: boolean;
-  hasPrevious: boolean;
-  originHasPrevious: boolean;
-  page: number;
-  seek: Seek;
-}) => {
-  if (seek && "before" in seek) {
-    return { next: page + 1, previous: hasPrevious ? page - 1 : null };
+  cursors: PageCursors;
+  key: number;
+  mode: OrderMode;
+  pageSize: number;
+  /** The origin's seek; only an INDEXED or SMALL order has one. */
+  seek?: OrderSeek;
+}): PageRequest | undefined => {
+  if (key === 0) {
+    return seek && mode !== "SCROLL" ? { seek } : { after: null };
   }
-  const previous =
-    page === 0 ? originHasPrevious : page > 0 || seek !== undefined;
+
+  const end = cursors.ends.get(key - 1);
+  const start = cursors.starts.get(key + 1);
+  const after = end === undefined ? undefined : { after: end };
+  const before = start === undefined ? undefined : { before: start };
+  if (key < 0) {
+    return mode === "INDEXED" && seek ? (before ?? after) : undefined;
+  }
+
+  const known = after ?? before;
+  if (known || mode !== "SMALL" || seek) return known;
+  return { seek: { offset: key * pageSize } };
+};
+
+/** The keys either side of a fetched page. */
+export const pageLinks = (
+  key: number,
+  request: PageRequest,
+  { hasNext, hasPrevious }: { hasNext: boolean; hasPrevious: boolean },
+) => {
+  if ("before" in request) {
+    return { next: key + 1, previous: hasPrevious ? key - 1 : null };
+  }
+
+  const previous = "seek" in request ? hasPrevious : request.after !== null;
   return {
-    next: hasNext ? page + 1 : null,
-    previous: previous ? page - 1 : null,
+    next: hasNext ? key + 1 : null,
+    previous: previous ? key - 1 : null,
   };
 };
+
+/**
+ * The sequence number of each item on a page: consecutive across pages,
+ * so a range of items between two samples is known. A backward page ends
+ * where the page after it starts.
+ */
+export const pageSequence = (
+  key: number,
+  request: PageRequest,
+  pageSize: number,
+  length: number,
+) => {
+  const first =
+    "before" in request ? (key + 1) * pageSize - length : key * pageSize;
+  return (index: number) => first + index;
+};
+
+export const rememberCursors = (
+  cursors: PageCursors,
+  key: number,
+  {
+    endCursor,
+    startCursor,
+  }: { endCursor?: string | null; startCursor?: string | null },
+) => {
+  startCursor && cursors.starts.set(key, startCursor);
+  endCursor && cursors.ends.set(key, endCursor);
+};
+
+/** Request variables for `samples` from a page request. */
+export const requestVariables = (request: PageRequest) => ({
+  after: "after" in request ? request.after : null,
+  before: "before" in request ? request.before : null,
+  seek: "seek" in request ? request.seek : null,
+});

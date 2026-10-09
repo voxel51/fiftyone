@@ -248,3 +248,11 @@
     transition: none;
   }
 }
+
+.valueJump {
+  position: absolute;
+  right: 20px;
+  bottom: 16px;
+  width: 240px;
+  z-index: 5;
+}

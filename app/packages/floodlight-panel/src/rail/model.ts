@@ -1,9 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * The rail maps rank, a sample's index in the view's order, to a position
- * in [0, 1] along the track. Equal rail distance means an equal number of
- * samples; nothing here knows about pixels or how pages are fetched.
+ * A rail position is the thumb's travel along the track, in [0, 1]. An
+ * offset rail (a SMALL order, a lane) maps the offset of the item at the
+ * top of the view onto it; a value rail maps the top item's fraction, its
+ * sort value between the order's bounds. Nothing here knows about pixels or
+ * how pages are fetched.
  */
 
 export interface RailTick {
@@ -12,58 +14,43 @@ export interface RailTick {
   label: string;
 }
 
-/** A labelled rank from an order, e.g. a server boundary. */
-export interface RankedValue {
-  rank: number;
+/** A labelled offset of a list, e.g. one lane of many. */
+export interface LabelledOffset {
+  offset: number;
   label: string;
-  value?: unknown;
 }
 
-/** Where a jump lands: the rank, and the page that holds it. */
-export interface JumpTarget {
-  rank: number;
-  key: number;
-}
+export const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
 
-export const clampRank = (rank: number, total: number): number =>
-  total <= 0 ? 0 : Math.min(Math.max(Math.round(rank), 0), total - 1);
+export const clampOffset = (offset: number, total: number): number =>
+  total <= 0 ? 0 : Math.min(Math.max(Math.round(offset), 0), total - 1);
 
-export const rankToPosition = (rank: number, total: number): number =>
-  total <= 1 ? 0 : clampRank(rank, total) / (total - 1);
+export const offsetToPosition = (offset: number, total: number): number =>
+  total <= 1 ? 0 : clampOffset(offset, total) / (total - 1);
 
 /**
- * The last rank that can head the view: with `visible` items on screen, the
- * end of the order is reached before its last item reaches the top.
+ * The last offset that can head the view: with `visible` items on screen,
+ * the end of the order is reached before its last item reaches the top.
  */
 const lastTop = (total: number, visible?: number) =>
   Math.max(0, total - Math.max(1, Math.round(visible ?? 1)));
 
-export const positionToRank = (
+export const positionToOffset = (
   position: number,
   total: number,
   visible?: number,
 ): number =>
-  total <= 1 ? 0 : clampRank(position * lastTop(total, visible), total);
+  total <= 1 ? 0 : clampOffset(position * lastTop(total, visible), total);
 
-/** The thumb sits at the rank of the item at the top of the view. */
+/** The thumb sits at the offset of the item at the top of the view. */
 export const thumbPosition = (
-  anchorRank: number | undefined,
+  offset: number | undefined,
   total: number,
   visible?: number,
 ): number => {
   const last = lastTop(total, visible);
-  if (anchorRank === undefined || last <= 0) return 0;
-  return Math.min(1, Math.max(0, anchorRank / last));
-};
-
-export const jumpTarget = (
-  position: number,
-  total: number,
-  pageSize: number,
-  visible?: number,
-): JumpTarget => {
-  const rank = positionToRank(position, total, visible);
-  return { rank, key: Math.floor(rank / pageSize) };
+  if (offset === undefined || last <= 0) return 0;
+  return clamp01(offset / last);
 };
 
 export const groupDigits = (n: number): string =>
@@ -83,36 +70,36 @@ export const compactCount = (n: number): string => {
   return String(n);
 };
 
-/** 1-based for people: rank 0 reads "#1 of N". */
-export const rankLabel = (rank: number, total: number): string =>
-  `#${groupDigits(clampRank(rank, total) + 1)} of ${groupDigits(total)}`;
+/** 1-based for people: offset 0 reads "1 of N". */
+export const offsetLabel = (offset: number, total: number): string =>
+  `${groupDigits(clampOffset(offset, total) + 1)} of ${groupDigits(total)}`;
 
-/** Evenly spaced rank ticks, labelled by 1-based rank. */
-export const rankTicks = (total: number, count: number): RailTick[] => {
+/** Evenly spaced offset ticks, labelled 1-based. */
+export const offsetTicks = (total: number, count: number): RailTick[] => {
   if (total <= 0 || count <= 0) return [];
   if (total === 1 || count === 1) return [{ position: 0, label: "1" }];
 
   const ticks: RailTick[] = [];
   for (let i = 0; i < count; i++) {
-    const rank = Math.round((i * (total - 1)) / (count - 1));
+    const offset = Math.round((i * (total - 1)) / (count - 1));
     ticks.push({
-      position: rankToPosition(rank, total),
-      label: compactCount(rank + 1),
+      position: offsetToPosition(offset, total),
+      label: compactCount(offset + 1),
     });
   }
   return ticks;
 };
 
 /**
- * Ticks from an order's labelled ranks, at most `max` of them. A run of
- * equal labels (a tied block) shows once, at its first rank.
+ * Ticks from labelled offsets, at most `max` of them. A run of equal labels
+ * shows once, at its first offset.
  */
 export const labelTicks = (
-  values: readonly RankedValue[],
+  values: readonly LabelledOffset[],
   total: number,
   max: number,
 ): RailTick[] => {
-  const distinct: RankedValue[] = [];
+  const distinct: LabelledOffset[] = [];
   for (const value of values) {
     if (distinct[distinct.length - 1]?.label !== value.label) {
       distinct.push(value);
@@ -127,30 +114,10 @@ export const labelTicks = (
           (_, i) => distinct[Math.floor((i * distinct.length) / max)],
         );
 
-  return picked.map(({ label, rank }) => ({
+  return picked.map(({ label, offset }) => ({
     label,
-    position: rankToPosition(rank, total),
+    position: offsetToPosition(offset, total),
   }));
-};
-
-/** The label of the last value at or before `rank`, for a drag tooltip. */
-export const labelAt = (
-  values: readonly RankedValue[],
-  rank: number,
-): string | undefined => {
-  let lo = 0;
-  let hi = values.length - 1;
-  let found: RankedValue | undefined;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (values[mid].rank <= rank) {
-      found = values[mid];
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  return found?.label;
 };
 
 /** The pixel extents of an instance: its viewport and its loaded rows. */
@@ -184,7 +151,7 @@ export const thumbSpan = (
 
 /** The thumb's top edge, keeping the whole thumb on the track. */
 export const thumbTop = (position: number, span: number): number =>
-  Math.min(Math.max(position, 0), 1) * (1 - span);
+  clamp01(position) * (1 - span);
 
 /** Index of the marker nearest a rail position, or -1 with none. */
 export const nearestTick = (ticks: readonly RailTick[], position: number) => {

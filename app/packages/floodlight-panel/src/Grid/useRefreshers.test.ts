@@ -22,7 +22,6 @@ vi.mock("@fiftyone/state", () => {
     fieldVisibilityStage: key("visibility"),
     filterView: (view: unknown) => JSON.stringify(view),
     filters: key("filters"),
-    gridScrubCursor: () => "scrub",
     gridSortBy: key("sort"),
     groupSlice: key("slice"),
     queryPerformanceSetting: key("qp"),

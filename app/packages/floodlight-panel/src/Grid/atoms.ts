@@ -96,19 +96,6 @@ export const pageParameters = selector({
           }
         : {};
 
-    // Grid scrubber: when the user has committed a scrub value, page 0's
-    // `after` is the sort-field value itself (encoded as a string) and we
-    // flip `cursorPagination` on so the server seeks via
-    // `match({sort_by: {$gt|$lt: value}})` instead of skipping `page * pageSize`.
-    //
-    // Only page 0 carries the value — subsequent pages within the scrubbed
-    // viewport still use the index-based `after`, which is correct here
-    // because the server's cursor-mode seek shifts the entire collection
-    // origin to the matched row.
-    const scrubCursor = sort
-      ? get(fos.gridScrubCursor(get(fos.datasetId) ?? ""))
-      : null;
-
     const params = {
       dataset,
       view: get(fos.view),
@@ -124,25 +111,13 @@ export const pageParameters = selector({
       extendedStages,
       maxQueryTime: queryPerformance ? get(fos.config).maxQueryTime : null,
       ...extra,
-      ...(scrubCursor !== null ? { cursorPagination: true } : {}),
     };
 
-    return (page: number, pageSize: number) => {
-      // Page 0 + active scrub cursor → seek to the sort-field value.
-      // Subsequent pages stream forward from the seek using the existing
-      // index encoding.
-      const after =
-        page === 0 && scrubCursor !== null
-          ? scrubCursor
-          : page
-            ? String(page * pageSize - 1)
-            : null;
-      return {
-        ...params,
-        after,
-        first: pageSize,
-      };
-    };
+    return (page: number, pageSize: number) => ({
+      ...params,
+      after: page ? String(page * pageSize - 1) : null,
+      first: pageSize,
+    });
   },
 });
 

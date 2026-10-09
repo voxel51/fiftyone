@@ -5,21 +5,19 @@
 import type { RowChange } from "@fiftyone/floodlight";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Anchor } from "../host/createHost";
-import { jumpAnchor, type Ranks } from "./jump";
-import { type Extent, extentVisible, jumpTarget } from "./model";
-
-/** What the rail needs from the instance host. */
-export interface RailHost {
-  readonly anchor?: Anchor<number>;
-  rebuild(anchor?: Anchor<number>): void;
-}
+import { clamp01, type Extent, extentVisible } from "./model";
 
 export interface UseRailOptions {
-  host?: RailHost;
+  host?: { readonly anchor?: Anchor<number> };
   /** The instance on screen; its `rowchange` moves the thumb. */
   instance?: EventTarget;
-  ranks: Ranks;
-  pageSize: number;
+  /** A loaded item's place in its order, in [0, 1]. */
+  fractionOf: (id: string) => number | undefined;
+  /**
+   * The fraction one item spans, when the order is counted (1 / total);
+   * otherwise the scroll between rows follows the last rows' pace.
+   */
+  perItem?: number;
   /** The instance's extents, for a thumb sized like a scrollbar's. */
   extent?: () => Extent | undefined;
   /** Subscribes to the view scrolling; returns the unsubscribe. */
@@ -27,81 +25,71 @@ export interface UseRailOptions {
 }
 
 export interface Rail {
-  /** Rank of the item at the top of the view, once known. */
-  anchorRank?: number;
+  /** Fraction of the item at the top of the view, once known. */
+  fraction?: number;
   /** How many items fill the viewport at the loaded rows' density. */
   visible?: number;
-  /** Rebuilds the grid at a rail position. */
-  jump: (position: number, total: number) => void;
-  /**
-   * Hears the top rank as the view scrolls, fractional between rows, for a
-   * thumb that tracks the scroll rather than stepping a row at a time.
-   */
-  follow?: (listener: (rank: number) => void) => () => void;
+  /** Hears the top's fraction as the view scrolls, between rows too. */
+  follow: (listener: (fraction: number) => void) => () => void;
 }
 
+type Mark = { fraction: number; scrolled: number };
+
 /**
- * Follows the host's instance for the thumb and jumps by rebuilding through
- * the host. Page keys are `floor(rank / pageSize)`, so a jump lands on the
- * target's page.
+ * Follows the host's instance for the thumb: each reported row sets the
+ * top's fraction from its item, and scrolling between rows interpolates
+ * toward the next one.
  */
 export default function useRail({
   extent,
+  fractionOf,
   host,
   instance,
   onScroll,
-  pageSize,
-  ranks,
+  perItem,
 }: UseRailOptions): Rail {
-  const [anchorRank, setAnchorRank] = useState<number>();
+  const [fraction, setFraction] = useState<number>();
   const [visible, setVisible] = useState<number>();
   const measure = useRef(extent);
   measure.current = extent;
   const scroll = useRef(onScroll);
   scroll.current = onScroll;
-  const followers = useRef(new Set<(rank: number) => void>());
+  const followers = useRef(new Set<(fraction: number) => void>());
 
   // a new order starts at the top
-  useEffect(() => setAnchorRank(undefined), [ranks]);
+  useEffect(() => setFraction(undefined), [fractionOf]);
 
   useEffect(() => {
     const at = host?.anchor?.at?.description;
-    const rank = at === undefined ? undefined : ranks.get(at);
-    rank !== undefined && setAnchorRank(rank);
+    const anchored = at === undefined ? undefined : fractionOf(at);
+    anchored !== undefined && setFraction(anchored);
     if (!instance) return undefined;
 
-    // the reported row can sit a row down from the top, and reaching the top
-    // need not change rows, so a view scrolled to the start reads as rank 0
-    const atStart = (rank: number | undefined) =>
-      measure.current?.()?.scrolled === 0 &&
-      rank !== undefined &&
-      rank < pageSize;
-
-    // the last reported row, and how far the view was scrolled then
-    let base: { rank: number; scrolled: number } | undefined;
+    let base: Mark | undefined;
+    let pace: number | undefined;
 
     const onRow = (event: Event) => {
-      const rank = ranks.get((event as RowChange<number>).at.description);
-      if (rank === undefined) return;
-      const next = measure.current?.();
-      const top = atStart(rank) ? 0 : rank;
-      base = { rank: top, scrolled: next?.scrolled ?? 0 };
-      setAnchorRank(top);
-      setVisible(next && extentVisible(next));
+      const next = fractionOf((event as RowChange<number>).at.description);
+      if (next === undefined) return;
+      const view = measure.current?.();
+      const scrolled = view?.scrolled ?? 0;
+      if (base && scrolled !== base.scrolled) {
+        pace = (next - base.fraction) / (scrolled - base.scrolled);
+      }
+      base = { fraction: next, scrolled };
+      setFraction(next);
+      setVisible(view && extentVisible(view));
     };
     const onScroll = () => {
-      const next = measure.current?.();
-      if (!base || next?.scrolled === undefined || !next.loaded) return;
-      if (atStart(base.rank)) {
-        base = { rank: 0, scrolled: 0 };
-        setAnchorRank(0);
-      }
-      const perPixel = next.items / next.loaded;
-      const rank = Math.max(
-        0,
-        base.rank + (next.scrolled - base.scrolled) * perPixel,
+      const view = measure.current?.();
+      if (!base || view?.scrolled === undefined || !view.loaded) return;
+      const rate =
+        perItem === undefined ? pace : (perItem * view.items) / view.loaded;
+      if (rate === undefined) return;
+      const next = clamp01(
+        base.fraction + (view.scrolled - base.scrolled) * rate,
       );
-      for (const follower of followers.current) follower(rank);
+      for (const follower of followers.current) follower(next);
     };
     instance.addEventListener("rowchange", onRow);
     const unsubscribe = scroll.current?.(onScroll);
@@ -109,21 +97,12 @@ export default function useRail({
       instance.removeEventListener("rowchange", onRow);
       unsubscribe?.();
     };
-  }, [host, instance, pageSize, ranks]);
+  }, [fractionOf, host, instance, perItem]);
 
-  const jump = useCallback(
-    (position: number, total: number) => {
-      const target = jumpTarget(position, total, pageSize, visible);
-      setAnchorRank(target.rank);
-      host?.rebuild(jumpAnchor(target, ranks));
-    },
-    [host, pageSize, ranks, visible],
-  );
-
-  const follow = useCallback((listener: (rank: number) => void) => {
+  const follow = useCallback((listener: (fraction: number) => void) => {
     followers.current.add(listener);
     return () => void followers.current.delete(listener);
   }, []);
 
-  return { anchorRank, follow, jump, visible };
+  return { follow, fraction, visible };
 }

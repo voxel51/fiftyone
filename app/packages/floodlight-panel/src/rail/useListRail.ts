@@ -4,8 +4,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { listWindow } from "./list";
-import { positionToRank } from "./model";
-import type { Rail } from "./useRail";
+import { positionToOffset } from "./model";
 
 export interface UseListRailOptions {
   /** The scroller the list scrolls in. */
@@ -15,13 +14,10 @@ export interface UseListRailOptions {
 }
 
 /**
- * A rail over a DOM list: rank is an item's index. A jump scrolls the item
+ * A rail over a DOM list: an item's offset is its index. A jump scrolls the item
  * to the top of the scroller.
  */
-export default function useListRail({
-  root,
-  selector,
-}: UseListRailOptions): Rail {
+export default function useListRail({ root, selector }: UseListRailOptions) {
   const [state, setState] = useState<{ first?: number; visible?: number }>({});
 
   useEffect(() => {
@@ -56,12 +52,12 @@ export default function useListRail({
 
   const jump = useCallback(
     (position: number, total: number) => {
-      const index = positionToRank(position, total);
+      const index = positionToOffset(position, total);
       const item = root?.querySelectorAll<HTMLElement>(selector)[index];
       item && root?.scrollTo({ top: item.offsetTop });
     },
     [root, selector],
   );
 
-  return { anchorRank: state.first, jump, visible: state.visible };
+  return { first: state.first, jump, visible: state.visible };
 }

@@ -6,7 +6,13 @@ export * from "./__generated__/datasetQuery.graphql";
 export * from "./__generated__/histogramValuesQuery.graphql";
 export * from "./__generated__/lightningQuery.graphql";
 export * from "./__generated__/mainSampleQuery.graphql";
+export * from "./__generated__/openOrderQuery.graphql";
 export * from "./__generated__/paginateSamplesQuery.graphql";
+export type {
+  samplePositionQuery,
+  samplePositionQuery$data,
+  samplePositionQuery$variables,
+} from "./__generated__/samplePositionQuery.graphql";
 export * from "./__generated__/viewBarSchemaQuery.graphql";
 export { default as aggregate } from "./aggregate";
 export { default as aggregation } from "./aggregations";
@@ -15,6 +21,8 @@ export { default as dataset } from "./dataset";
 export { default as histogramValues } from "./histogramValues";
 export { default as lightning } from "./lightning";
 export { default as mainSample } from "./mainSample";
+export { default as openOrder } from "./openOrder";
+export { default as samplePosition } from "./samplePosition";
 export { default as viewBarSchema } from "./viewBarSchema";
 export {
   default as paginateSamples,

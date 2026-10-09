@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<39713965fa461d36cfb4e87942cc977d>>
+ * @generated SignedSource<<d50a7eaa1730a40656903ca31e074103>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type indexesFragment$data = {
       readonly inclusion: boolean;
     } | null;
   }> | null;
+  readonly indexedSortFields: ReadonlyArray<string> | null;
   readonly sampleIndexes: ReadonlyArray<{
     readonly key: ReadonlyArray<{
       readonly field: string;
@@ -119,6 +120,13 @@ return {
     {
       "alias": null,
       "args": null,
+      "kind": "ScalarField",
+      "name": "indexedSortFields",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
       "concreteType": "Index",
       "kind": "LinkedField",
       "name": "frameIndexes",
@@ -142,6 +150,6 @@ return {
 };
 })();
 
-(node as any).hash = "f1359b235ae62c969aa612e1c62bc1bf";
+(node as any).hash = "1ced66ac4a4f05a26fa98af9bf7ee160";
 
 export default node;

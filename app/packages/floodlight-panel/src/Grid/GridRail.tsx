@@ -1,52 +1,46 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Panel adapter for the rank rail: reads the view's sample count from app
- * state and hands it to the rail.
+ * The rail for the grid's order: offsets or values on a rail, a value box
+ * for a string or boolean sort, and nothing for an order that only scrolls.
  */
 
 import * as fos from "@fiftyone/state";
-import { useReverbValueLoadable } from "@fiftyone/reverb";
-import React, { useRef } from "react";
-import RankRail from "../rail/RankRail";
-import type { Rail } from "../rail/useRail";
-
-const COUNT = { extended: false, path: "", modal: false, lightning: true };
+import React from "react";
+import Rail from "../rail/Rail";
+import ValueJump from "../rail/ValueJump";
+import { isRailed } from "./railModes";
+import type { GridRailState } from "./useGridRail";
 
 interface GridRailProps {
-  rail: Rail;
+  rail: GridRailState;
   horizontal?: boolean;
   loading?: boolean;
 }
 
-const GridRailContent = ({ horizontal, loading, rail }: GridRailProps) => {
-  // a filter recounts asynchronously; reading the count must not suspend the
-  // panel, so the rail keeps the last total until the new one arrives
-  const count = useReverbValueLoadable(fos.count(COUNT));
-  const last = useRef<number>();
-  if (count.state === "hasValue" && typeof count.contents === "number") {
-    last.current = count.contents;
+const GridRail = ({ horizontal, loading, rail }: GridRailProps) => {
+  const field = fos.useGridOrderInput().sortBy;
+  const { mode } = rail;
+
+  if (mode.kind === "values" && field) {
+    return (
+      <ValueJump bounds={mode.bounds} field={field} onSeek={rail.seekValue} />
+    );
   }
-  const total = last.current;
-  if (total === undefined || total <= 0) return null;
+  if (!isRailed(mode)) return null;
 
   return (
-    <RankRail
-      total={total}
-      anchorRank={rail.anchorRank}
-      visible={rail.visible}
-      orientation={horizontal ? "horizontal" : "vertical"}
-      onJump={(position) => rail.jump(position, total)}
+    <Rail
       follow={rail.follow}
+      label={(position) => mode.label(position, rail.visible)}
       loading={loading}
+      onJump={rail.jump}
+      orientation={horizontal ? "horizontal" : "vertical"}
+      position={rail.position}
+      span={mode.span(rail.visible)}
+      ticks={mode.ticks}
     />
   );
 };
-
-const GridRail = ({
-  visible,
-  ...props
-}: GridRailProps & { visible: boolean }) =>
-  visible ? <GridRailContent {...props} /> : null;
 
 export default React.memo(GridRail);

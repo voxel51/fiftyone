@@ -1,80 +1,61 @@
 import { describe, expect, it } from "vitest";
 import {
-  clampRank,
+  clampOffset,
   compactCount,
   groupDigits,
-  jumpTarget,
-  labelAt,
   labelTicks,
   nearestTick,
-  positionToRank,
+  positionToOffset,
   railMode,
-  rankLabel,
-  rankTicks,
-  rankToPosition,
+  offsetLabel,
+  offsetTicks,
+  offsetToPosition,
   extentVisible,
   thumbPosition,
   thumbSpan,
   thumbTop,
 } from "./model";
 
-describe("rank and position", () => {
-  it("maps the first and last ranks to the ends of the track", () => {
-    expect(rankToPosition(0, 101)).toBe(0);
-    expect(rankToPosition(100, 101)).toBe(1);
-    expect(rankToPosition(25, 101)).toBe(0.25);
+describe("offset and position", () => {
+  it("maps the first and last offsets to the ends of the track", () => {
+    expect(offsetToPosition(0, 101)).toBe(0);
+    expect(offsetToPosition(100, 101)).toBe(1);
+    expect(offsetToPosition(25, 101)).toBe(0.25);
   });
 
-  it("round-trips every rank", () => {
+  it("round-trips every offset", () => {
     const total = 37;
-    for (let rank = 0; rank < total; rank++) {
-      expect(positionToRank(rankToPosition(rank, total), total)).toBe(rank);
+    for (let offset = 0; offset < total; offset++) {
+      expect(positionToOffset(offsetToPosition(offset, total), total)).toBe(
+        offset,
+      );
     }
   });
 
-  it("clamps out-of-range ranks and positions", () => {
-    expect(clampRank(-4, 10)).toBe(0);
-    expect(clampRank(12, 10)).toBe(9);
-    expect(clampRank(3.6, 10)).toBe(4);
-    expect(positionToRank(-0.5, 10)).toBe(0);
-    expect(positionToRank(1.5, 10)).toBe(9);
-    expect(rankToPosition(50, 10)).toBe(1);
+  it("clamps out-of-range offsets and positions", () => {
+    expect(clampOffset(-4, 10)).toBe(0);
+    expect(clampOffset(12, 10)).toBe(9);
+    expect(clampOffset(3.6, 10)).toBe(4);
+    expect(positionToOffset(-0.5, 10)).toBe(0);
+    expect(positionToOffset(1.5, 10)).toBe(9);
+    expect(offsetToPosition(50, 10)).toBe(1);
   });
 
   it("puts everything at the start of an empty or single-item order", () => {
-    expect(rankToPosition(0, 0)).toBe(0);
-    expect(positionToRank(0.7, 0)).toBe(0);
-    expect(rankToPosition(0, 1)).toBe(0);
-    expect(positionToRank(0.7, 1)).toBe(0);
+    expect(offsetToPosition(0, 0)).toBe(0);
+    expect(positionToOffset(0.7, 0)).toBe(0);
+    expect(offsetToPosition(0, 1)).toBe(0);
+    expect(positionToOffset(0.7, 1)).toBe(0);
   });
 });
 
 describe("thumbPosition", () => {
-  it("reads the anchor's rank", () => {
+  it("reads the anchor's offset", () => {
     expect(thumbPosition(50, 201)).toBe(0.25);
   });
 
   it("rests at the start without an anchor", () => {
     expect(thumbPosition(undefined, 201)).toBe(0);
-  });
-});
-
-describe("jumpTarget", () => {
-  it("targets the page holding the rank", () => {
-    expect(jumpTarget(0.5, 1001, 20)).toEqual({ rank: 500, key: 25 });
-    expect(jumpTarget(0.5, 1000, 20)).toEqual({ rank: 500, key: 25 });
-    expect(jumpTarget(0, 1000, 20)).toEqual({ rank: 0, key: 0 });
-    expect(jumpTarget(1, 1000, 20)).toEqual({ rank: 999, key: 49 });
-  });
-
-  it("lands on a page boundary exactly", () => {
-    expect(jumpTarget(19 / 99, 100, 20)).toEqual({ rank: 19, key: 0 });
-    expect(jumpTarget(20 / 99, 100, 20)).toEqual({ rank: 20, key: 1 });
-  });
-
-  it("clamps a drag past either end", () => {
-    expect(jumpTarget(-0.2, 1000, 20)).toEqual({ rank: 0, key: 0 });
-    expect(jumpTarget(1.3, 1000, 20)).toEqual({ rank: 999, key: 49 });
   });
 });
 
@@ -89,31 +70,31 @@ describe("labels", () => {
     expect(compactCount(2_000_000_000)).toBe("2B");
   });
 
-  it("reads ranks 1-based", () => {
-    expect(rankLabel(0, 12000)).toBe("#1 of 12,000");
-    expect(rankLabel(11999, 12000)).toBe("#12,000 of 12,000");
-    expect(rankLabel(20000, 12000)).toBe("#12,000 of 12,000");
+  it("reads offsets 1-based", () => {
+    expect(offsetLabel(0, 12000)).toBe("1 of 12,000");
+    expect(offsetLabel(11999, 12000)).toBe("12,000 of 12,000");
+    expect(offsetLabel(20000, 12000)).toBe("12,000 of 12,000");
   });
 
-  it("spaces rank ticks evenly", () => {
-    expect(rankTicks(1001, 5)).toEqual([
+  it("spaces offset ticks evenly", () => {
+    expect(offsetTicks(1001, 5)).toEqual([
       { position: 0, label: "1" },
       { position: 0.25, label: "251" },
       { position: 0.5, label: "501" },
       { position: 0.75, label: "751" },
       { position: 1, label: "1k" },
     ]);
-    expect(rankTicks(1, 5)).toEqual([{ position: 0, label: "1" }]);
-    expect(rankTicks(0, 5)).toEqual([]);
+    expect(offsetTicks(1, 5)).toEqual([{ position: 0, label: "1" }]);
+    expect(offsetTicks(0, 5)).toEqual([]);
   });
 
   it("shows a tied block once", () => {
     const values = [
-      { rank: 0, label: "1" },
-      { rank: 20, label: "1M" },
-      { rank: 40, label: "1M" },
-      { rank: 60, label: "1M" },
-      { rank: 80, label: "2M" },
+      { offset: 0, label: "1" },
+      { offset: 20, label: "1M" },
+      { offset: 40, label: "1M" },
+      { offset: 60, label: "1M" },
+      { offset: 80, label: "2M" },
     ];
     expect(labelTicks(values, 101, 10)).toEqual([
       { position: 0, label: "1" },
@@ -124,7 +105,7 @@ describe("labels", () => {
 
   it("subsamples label ticks to the maximum", () => {
     const values = Array.from({ length: 10 }, (_, i) => ({
-      rank: i * 10,
+      offset: i * 10,
       label: String(i),
     }));
     expect(labelTicks(values, 91, 4).map(({ label }) => label)).toEqual([
@@ -133,19 +114,6 @@ describe("labels", () => {
       "5",
       "7",
     ]);
-  });
-
-  it("finds the label at or before a rank", () => {
-    const values = [
-      { rank: 0, label: "a" },
-      { rank: 20, label: "b" },
-      { rank: 40, label: "c" },
-    ];
-    expect(labelAt(values, 0)).toBe("a");
-    expect(labelAt(values, 19)).toBe("a");
-    expect(labelAt(values, 20)).toBe("b");
-    expect(labelAt(values, 99)).toBe("c");
-    expect(labelAt([], 5)).toBe(undefined);
   });
 });
 
@@ -191,7 +159,7 @@ describe("rail state", () => {
   });
 
   it("finds the nearest marker", () => {
-    const ticks = rankTicks(101, 5);
+    const ticks = offsetTicks(101, 5);
     expect(nearestTick(ticks, 0.1)).toBe(0);
     expect(nearestTick(ticks, 0.4)).toBe(2);
     expect(nearestTick(ticks, 0.99)).toBe(4);
@@ -206,7 +174,7 @@ describe("thumbPosition with items on screen", () => {
   });
 
   it("lands a jump where the thumb would sit", () => {
-    expect(positionToRank(1, 100, 10)).toBe(90);
-    expect(thumbPosition(positionToRank(0.5, 100, 10), 100, 10)).toBe(0.5);
+    expect(positionToOffset(1, 100, 10)).toBe(90);
+    expect(thumbPosition(positionToOffset(0.5, 100, 10), 100, 10)).toBe(0.5);
   });
 });

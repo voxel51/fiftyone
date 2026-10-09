@@ -17,7 +17,7 @@ import {
   hasGroupSlices,
   modalGroupSlice,
 } from "../../atoms/groups";
-import { modalPositions, modalSelector } from "../../atoms/modal";
+import { modalSelector } from "../../atoms/modal";
 import { dynamicGroupsViewMode } from "../../atoms/options";
 import { sidebarVisible } from "../../atoms/sidebar";
 import type { ModalSelector } from "../../session";
@@ -25,21 +25,6 @@ import type { ModalSelector } from "../../session";
 /** The open sample's selector, or null when none is open. */
 export const useModalSelector = (): ModalSelector | null =>
   useReverbValue(modalSelector);
-
-/**
- * The open sample's 1-based place in the order it was opened from, and the
- * order's length; null unless both were known exactly when it opened.
- */
-export const useModalPosition = (): { index: number; total: number } | null => {
-  const selector = useReverbValue(modalSelector);
-  const positions = useReverbValue(modalPositions);
-  const key = selector?.groupId ?? selector?.id;
-  const offset = key === undefined ? undefined : positions?.offsetOf(key);
-
-  return positions && offset !== undefined && offset < positions.total
-    ? { index: offset + 1, total: positions.total }
-    : null;
-};
 
 /** The slice a grouped sample is open on. */
 export const useModalGroupSlice = (): string | null =>

@@ -52,7 +52,8 @@ export default r(graphql`
     $hint: String
     $dynamicGroup: BSON = null
     $maxQueryTime: Int
-    $cursorPagination: Boolean = false
+    $order: OrderToken = null
+    $seek: OrderSeek = null
   ) {
     samples(
       dataset: $dataset
@@ -69,7 +70,8 @@ export default r(graphql`
       hint: $hint
       dynamicGroup: $dynamicGroup
       maxQueryTime: $maxQueryTime
-      cursorPagination: $cursorPagination
+      order: $order
+      seek: $seek
     ) {
       __typename
       ... on QueryTimeout {
@@ -84,6 +86,9 @@ export default r(graphql`
         }
         edges {
           cursor
+          fraction
+          offset
+          value
           node {
             __typename
             ... on ImageSample {

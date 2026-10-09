@@ -159,7 +159,6 @@ async def paginate_samples(
     hint: t.Optional[str] = None,
     dynamic_group: t.Optional[BSON] = None,
     max_query_time: t.Optional[int] = None,
-    cursor_pagination: t.Optional[bool] = False,
     order: t.Optional[str] = None,
     seek: t.Optional[SeekTarget] = None,
     info=None,
@@ -168,23 +167,13 @@ async def paginate_samples(
 
     With ``order`` (an order token), ``after`` and ``before`` are positions
     in that order, edges carry their sort ``value``, ``fraction`` and
-    ``offset`` when the order has them, and ``sort_by``, ``desc``, ``hint``
-    and ``cursor_pagination`` are ignored. ``seek`` starts the page at an
-    offset, fraction or sort value instead. The order's queries are killed
-    when the request behind ``info`` is abandoned.
+    ``offset`` when the order has them, and ``sort_by``, ``desc`` and
+    ``hint`` are ignored. ``seek`` starts the page at an offset, fraction or
+    sort value instead. The order's queries are killed when the request
+    behind ``info`` is abandoned.
 
-    Two cursor strategies are supported:
-
-    -   **Skip-based** (default, ``cursor_pagination=False``): ``after`` is
-        the 0-based index of the last sample returned on the prior page,
-        and the next page is fetched via ``$skip``. Used by the grid's
-        infinite scroll.
-    -   **Cursor-based** (``cursor_pagination=True``): ``after`` is the
-        sort-field value of the last sample on the prior page, serialized
-        as a string, and the next page is fetched via
-        ``$match {field: {$gt: value}}`` (or ``$lt`` when ``desc``). Used
-        by the grid scrubber to seek to a target sort-field value without
-        counting the rows before it. Requires ``sort_by`` to be set.
+    Without an order, ``after`` is the 0-based index of the last sample
+    returned on the prior page, and the next page is fetched via ``$skip``.
     """
     if order is not None:
         return await _paginate_ordered(
@@ -220,26 +209,7 @@ async def paginate_samples(
     if after is None:
         after = "-1"
 
-    # Backward cursor seek: `before` is the next-page-going-backward
-    # cursor (encoded sort-field value). We invert the comparison and the
-    # view's sort direction, fetch the same way, then reverse the
-    # in-memory result so the caller still sees ascending (or `desc`)
-    # ordering. Mutually exclusive with `after`.
-    backward = cursor_pagination and bool(sort_by) and before is not None
-    if backward:
-        op = "$gt" if desc else "$lt"
-        value = _decode_cursor_value(before)
-        view = view.match({sort_by: {op: value}})
-        # Re-sort opposite to the user-requested direction so the
-        # nearest-to-cursor samples come first; we'll reverse at the end.
-        view = view.sort_by(sort_by, reverse=not desc)
-    elif cursor_pagination and sort_by and after != "-1":
-        # Value-cursor strategy: `after` is the previous page's last
-        # sort-field value, encoded as a string. Filter rather than skip.
-        op = "$lt" if desc else "$gt"
-        value = _decode_cursor_value(after)
-        view = view.match({sort_by: {op: value}})
-    elif not cursor_pagination and int(after) > -1:
+    if int(after) > -1:
         view = view.skip(int(after) + 1)
 
     pipeline = await get_samples_pipeline(view, sample_filter)
@@ -256,33 +226,17 @@ async def paginate_samples(
         samples = samples[:first]
         more = True
 
-    if backward:
-        # Restore the caller-facing sort order (the matched set was
-        # fetched reverse-sorted to put the nearest-cursor samples first).
-        samples = list(reversed(samples))
-
     nodes = await _shape_nodes(view, samples, pagination_data)
 
-    edges = []
-    for idx, node in enumerate(nodes):
-        if cursor_pagination and sort_by:
-            # Encode the sort-field value of this sample as the cursor so
-            # subsequent pages can seek past it.
-            cursor = _encode_cursor_value(samples[idx].get(sort_by))
-        else:
-            cursor = str(idx + int(after) + 1)
-        edges.append(SampleEdge(node=node, cursor=cursor))
+    edges = [
+        SampleEdge(node=node, cursor=str(idx + int(after) + 1))
+        for idx, node in enumerate(nodes)
+    ]
 
     return SampleConnection(
         page_info=SamplePageInfo(
-            # For a backward fetch, `more` describes whether more rows
-            # exist on the still-earlier side (the cursor seek's
-            # "previous"). Forward fetches don't know — the client uses
-            # the field's `[min, max]` bounds to decide whether to walk
-            # backward from the seeked origin, so we report False here
-            # rather than making an extra query just to guess.
-            has_previous_page=more if backward else False,
-            has_next_page=False if backward else more,
+            has_previous_page=False,
+            has_next_page=more,
             start_cursor=edges[0].cursor if edges else None,
             end_cursor=edges[-1].cursor if edges else None,
         ),
@@ -464,33 +418,6 @@ def _media_asset_srcs(unaddressable):
     """
     srcs = {}
     return srcs
-
-
-def _encode_cursor_value(value: t.Any) -> str:
-    """Encodes a sort-field value as a stable string cursor. Numerics use
-    their string repr; everything else falls back to ``str()`` and the
-    decoder mirrors that."""
-    if value is None:
-        return ""
-    if isinstance(value, bool):
-        return "1" if value else "0"
-    return str(value)
-
-
-def _decode_cursor_value(cursor: str) -> t.Any:
-    """Inverse of {@link _encode_cursor_value}. Tries numeric parsing
-    first; falls back to the raw string."""
-    if cursor == "":
-        return None
-    try:
-        return int(cursor)
-    except ValueError:
-        pass
-    try:
-        return float(cursor)
-    except ValueError:
-        pass
-    return cursor
 
 
 async def _create_sample_item(

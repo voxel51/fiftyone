@@ -2,88 +2,153 @@ import { describe, expect, it } from "vitest";
 import {
   createPageCursors,
   MAX_CURSOR_PAGES,
-  cursorLinks,
-  forgetCursors,
-  seekFor,
+  pageLinks,
+  pageRequest,
+  pageSequence,
+  rememberCursors,
+  requestVariables,
 } from "./pageCursors";
 
-const cursors = () => {
-  const value = createPageCursors();
-  for (const page of [-2, -1, 0, 1, 2]) {
-    value.starts.set(page, `s${page}`);
-    value.ends.set(page, `e${page}`);
+const known = (...pages: number[]) => {
+  const cursors = createPageCursors();
+  for (const page of pages) {
+    rememberCursors(cursors, page, {
+      startCursor: `s${page}`,
+      endCursor: `e${page}`,
+    });
   }
-  return value;
+  return cursors;
 };
 
-describe("seekFor", () => {
-  it("seeks a forward page after the previous page's end", () => {
-    expect(seekFor(cursors(), 2)).toEqual({ after: "e1" });
+const request = (
+  key: number,
+  mode: "SMALL" | "INDEXED" | "SCROLL",
+  cursors = known(),
+  seek?: { fraction: number },
+) => pageRequest({ cursors, key, mode, pageSize: 20, seek });
+
+describe("pageRequest from a seek origin", () => {
+  const seek = { fraction: 0.4 };
+
+  it("fetches key 0 at the seek", () => {
+    expect(request(0, "INDEXED", known(), seek)).toEqual({ seek });
   });
 
-  it("seeks a backward page before the next page's start", () => {
-    expect(seekFor(cursors(), -2)).toEqual({ before: "s-1" });
+  it("chains forward after the end cursor of the key before", () => {
+    expect(request(1, "INDEXED", known(0), seek)).toEqual({ after: "e0" });
+    expect(request(2, "INDEXED", known(0, 1), seek)).toEqual({ after: "e1" });
   });
 
-  it("falls back to the other neighbor once a page is forgotten", () => {
-    const known = cursors();
-    forgetCursors(known, 0);
-    expect(seekFor(known, 1)).toEqual({ before: "s2" });
-    expect(seekFor(known, -1)).toEqual({ after: "e-2" });
+  it("chains backward before the start cursor of the key after", () => {
+    expect(request(-1, "INDEXED", known(0), seek)).toEqual({ before: "s0" });
+    expect(request(-2, "INDEXED", known(-1), seek)).toEqual({
+      before: "s-1",
+    });
   });
 
-  it("leaves the committed cursor alone for page 0", () => {
-    expect(seekFor(cursors(), 0)).toBeUndefined();
+  it("falls back to the other neighbor once one is unknown", () => {
+    expect(request(1, "INDEXED", known(2), seek)).toEqual({ before: "s2" });
+    expect(request(-1, "INDEXED", known(-2), seek)).toEqual({ after: "e-2" });
+  });
+
+  it("addresses nothing without a known neighbor", () => {
+    expect(request(5, "INDEXED", known(0), seek)).toBeUndefined();
   });
 });
 
-describe("cursorLinks", () => {
-  const base = { hasNext: false, hasPrevious: false, originHasPrevious: false };
+describe("pageRequest by mode", () => {
+  it("starts every order at its start without a seek", () => {
+    for (const mode of ["SMALL", "INDEXED", "SCROLL"] as const) {
+      expect(request(0, mode)).toEqual({ after: null });
+    }
+  });
 
-  it("links a backward seek forward, to the page it came from", () => {
-    expect(
-      cursorLinks({
-        ...base,
-        hasPrevious: true,
-        page: 3,
-        seek: { before: "s" },
-      }),
-    ).toEqual({ next: 4, previous: 2 });
-    expect(cursorLinks({ ...base, page: -3, seek: { before: "s" } })).toEqual({
-      next: -2,
+  it("never seeks a SCROLL order", () => {
+    expect(request(0, "SCROLL", known(), { fraction: 0.5 })).toEqual({
+      after: null,
+    });
+    expect(request(3, "SCROLL")).toBeUndefined();
+    expect(request(-1, "SCROLL", known(0))).toBeUndefined();
+  });
+
+  it("addresses any SMALL key by offset when its neighbors are unknown", () => {
+    expect(request(7, "SMALL")).toEqual({ seek: { offset: 140 } });
+    expect(request(7, "SMALL", known(6))).toEqual({ after: "e6" });
+  });
+
+  it("has nothing before the start of an order without a seek", () => {
+    expect(request(-1, "SMALL", known(0))).toBeUndefined();
+    expect(request(-1, "INDEXED", known(0))).toBeUndefined();
+  });
+});
+
+describe("pageLinks", () => {
+  const flags = (hasNext: boolean, hasPrevious: boolean) => ({
+    hasNext,
+    hasPrevious,
+  });
+
+  it("links the start of an order forward only", () => {
+    expect(pageLinks(0, { after: null }, flags(true, false))).toEqual({
+      next: 1,
       previous: null,
     });
   });
 
-  it("links a forward seek back, to the page it came from", () => {
-    expect(
-      cursorLinks({ ...base, hasNext: true, page: -3, seek: { after: "e" } }),
-    ).toEqual({ next: -2, previous: -4 });
+  it("links a page after a cursor back to the page it followed", () => {
+    expect(pageLinks(3, { after: "e2" }, flags(false, true))).toEqual({
+      next: null,
+      previous: 2,
+    });
   });
 
-  it("asks the bounds whether the seeked origin has a predecessor", () => {
-    expect(
-      cursorLinks({
-        ...base,
-        originHasPrevious: true,
-        page: 0,
-        seek: undefined,
-      }),
-    ).toEqual({ next: null, previous: -1 });
+  it("links a page before a cursor forward to the page it preceded", () => {
+    expect(pageLinks(-2, { before: "s-1" }, flags(false, false))).toEqual({
+      next: -1,
+      previous: null,
+    });
+  });
+
+  it("links a seek page both ways as the server reports", () => {
+    const seek = { seek: { fraction: 0.5 } };
+    expect(pageLinks(0, seek, flags(true, true))).toEqual({
+      next: 1,
+      previous: -1,
+    });
+    expect(pageLinks(0, seek, flags(true, false)).previous).toBeNull();
   });
 });
 
-describe("createPageCursors", () => {
-  it("keeps at most MAX_CURSOR_PAGES pages' boundaries", () => {
-    const known = createPageCursors();
-    for (let page = 0; page < MAX_CURSOR_PAGES * 4; page++) {
-      known.ends.set(page, `e${page}`);
-      known.starts.set(page, `s${page}`);
+describe("pageSequence", () => {
+  it("numbers forward pages from their key", () => {
+    expect(pageSequence(2, { after: "e1" }, 20, 20)(3)).toBe(43);
+  });
+
+  it("ends a short backward page where the next page starts", () => {
+    const at = pageSequence(-1, { before: "s0" }, 20, 5);
+    expect([at(0), at(4)]).toEqual([-5, -1]);
+  });
+});
+
+describe("cursors", () => {
+  it("keeps a bounded number of pages", () => {
+    const cursors = createPageCursors();
+    for (let page = 0; page < MAX_CURSOR_PAGES + 10; page++) {
+      rememberCursors(cursors, page, { startCursor: "s", endCursor: "e" });
     }
-    expect(known.ends.size).toBe(MAX_CURSOR_PAGES);
-    expect(known.starts.size).toBe(MAX_CURSOR_PAGES);
-    expect(seekFor(known, MAX_CURSOR_PAGES * 4 - 1)).toEqual({
-      after: `e${MAX_CURSOR_PAGES * 4 - 2}`,
+    expect(cursors.starts.size).toBe(MAX_CURSOR_PAGES);
+    expect(cursors.ends.size).toBe(MAX_CURSOR_PAGES);
+    expect(cursors.ends.has(0)).toBe(false);
+  });
+
+  it("maps a request onto the query's variables", () => {
+    expect(requestVariables({ before: "s0" })).toEqual({
+      after: null,
+      before: "s0",
+      seek: null,
+    });
+    expect(requestVariables({ seek: { offset: 40 } }).seek).toEqual({
+      offset: 40,
     });
   });
 });

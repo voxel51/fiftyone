@@ -2,6 +2,7 @@ import { useReverbCallback, useSetReverbState } from "@fiftyone/reverb";
 
 import { useCallback } from "react";
 import * as fos from "../atoms";
+import { modalOrderInput } from "../atoms/order";
 
 /**
  * Resets the modal's session state. Closing goes through `useClearModal`,
@@ -24,7 +25,7 @@ export default () => {
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
         reset(fos.hiddenLabels);
         fos.modalNavigation.set(null);
-        reset(fos.modalPositions);
+        reset(modalOrderInput);
         return true;
       },
     [],

@@ -9,5 +9,11 @@ export type Records = Map<string, number>;
  */
 export const MAX_RECORDS = 8192;
 
-export default (clear: string): Records =>
+const useRecords = (clear: string): Records =>
   usePanelMemo("records", clear, () => new BoundedMap(MAX_RECORDS));
+
+/** Sample id → place on the order's rail, bounded like the records. */
+export const useFractions = (clear: string): Records =>
+  usePanelMemo("fractions", clear, () => new BoundedMap(MAX_RECORDS));
+
+export default useRecords;
