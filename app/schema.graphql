@@ -573,6 +573,11 @@ type Order {
   Evenly spaced ticks: offsets in SMALL mode, round numbers or calendar steps in INDEXED mode, none in SCROLL mode
   """
   ticks(count: Int! = 6): [OrderTick!]!
+
+  """
+  The order's first page, read with the open so a grid's first screen takes one request. Null when it could not be read in time, so the page is requested on its own
+  """
+  firstPage(count: Int!, filter: SampleFilter = null, paginationData: Boolean = true, maxQueryTime: Int = null): SampleItemStrConnection
 }
 
 type OrderBounds {

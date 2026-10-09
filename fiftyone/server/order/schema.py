@@ -14,12 +14,14 @@ import functools
 import typing as t
 
 from graphql import GraphQLError
+from pymongo.errors import ExecutionTimeout
 import strawberry as gql
 
 import fiftyone as fo
 
 from fiftyone.server.data import Info
 from fiftyone.server.exceptions import QueryTimeout
+from fiftyone.server.filters import SampleFilter
 from fiftyone.server.order.backend import (
     BudgetExceeded,
     OrderError,
@@ -176,6 +178,42 @@ class Order:
             )
             for tick in ticks
         ]
+
+    @gql.field(
+        description="The order's first page, read with the open so a grid's "
+        "first screen takes one request. Null when it could not be read in "
+        "time, so the page is requested on its own"
+    )
+    async def first_page(
+        self,
+        count: int,
+        filter: t.Optional[SampleFilter] = None,
+        pagination_data: t.Optional[bool] = True,
+        max_query_time: t.Optional[int] = None,
+        info: Info = None,
+    ) -> t.Optional[
+        t.Annotated["SampleConnection", gql.lazy("fiftyone.server.samples")]
+    ]:
+        # the samples module reads orders through this one
+        from fiftyone.server.samples import paginate_samples
+
+        spec = self.handle.spec
+        try:
+            return await paginate_samples(
+                spec.dataset,
+                spec.stages,
+                spec.filters,
+                count,
+                extended_stages=spec.extended_stages,
+                sample_filter=filter,
+                pagination_data=pagination_data,
+                dynamic_group=spec.dynamic_group,
+                max_query_time=max_query_time,
+                order=self.token,
+                info=info,
+            )
+        except (ExecutionTimeout, GraphQLError):
+            return None
 
 
 @gql.type

@@ -2,7 +2,15 @@ import type * as foq from "@fiftyone/relay";
 import { describe, expect, it } from "vitest";
 import type { Order } from "../order/order";
 import { createPageCursors, rememberCursors } from "./pageCursors";
-import { createCursorStore, placePage, planPage } from "./orderedPages";
+import paginateSamplesQuery from "@fiftyone/relay/src/queries/__generated__/paginateSamplesQuery.graphql";
+import openOrderQuery from "@fiftyone/relay/src/queries/__generated__/openOrderQuery.graphql";
+import { firstPageArgs, toOrder } from "../order/order";
+import {
+  createCursorStore,
+  placePage,
+  planPage,
+  takeFirstPage,
+} from "./orderedPages";
 
 const variables = (page: number, pageSize: number) =>
   ({
@@ -128,5 +136,90 @@ describe("createCursorStore", () => {
     expect(cursorsFor("a", 1)).not.toBe(first);
     for (let origin = 2; origin < 8; origin++) cursorsFor("a", origin);
     expect(cursorsFor("a", 0)).not.toBe(first);
+  });
+});
+
+describe("takeFirstPage", () => {
+  const page = connection([{ fraction: 0 }]);
+  const opened = (args = firstPageArgs({ count: 20, filter: {} })) => ({
+    ...order("INDEXED"),
+    first: { args, connection: page },
+  });
+  const start = (seek?: { fraction: number }) =>
+    planPage({
+      cursors: createPageCursors(),
+      key: 0,
+      order: order("INDEXED"),
+      pageSize: 20,
+      seek,
+      variables: (key, size) =>
+        ({ ...variables(key, size), count: size }) as never,
+    })!;
+
+  it("serves the start page from the open, once", () => {
+    const held = opened();
+    expect(takeFirstPage(held, start())).toBe(page);
+    expect(takeFirstPage(held, start())).toBeUndefined();
+  });
+
+  it("leaves a seek's start page, and one read with other arguments, to a fetch", () => {
+    expect(takeFirstPage(opened(), start({ fraction: 0.5 }))).toBeUndefined();
+    const other = opened(firstPageArgs({ count: 50, filter: {} }));
+    expect(takeFirstPage(other, start())).toBeUndefined();
+    expect(other.first).toBeUndefined();
+  });
+});
+
+describe("openOrderQuery's first page", () => {
+  type Node = {
+    kind?: string;
+    name?: string;
+    type?: string;
+    selections?: Node[];
+  };
+  const find = (
+    nodes: Node[],
+    match: (node: Node) => boolean,
+  ): Node | undefined => {
+    for (const node of nodes) {
+      if (match(node)) return node;
+      const inner = node.selections && find(node.selections, match);
+      if (inner) return inner;
+    }
+    return undefined;
+  };
+
+  it("selects what paginateSamplesQuery selects of a connection", () => {
+    const connectionOf = (selections: Node[]) =>
+      find(selections, (node) => node.type === "SampleItemStrConnection");
+    const firstPage = find(
+      openOrderQuery.operation.selections as Node[],
+      (node) => node.name === "firstPage",
+    );
+    const samples = connectionOf(
+      paginateSamplesQuery.operation.selections as Node[],
+    );
+    expect(firstPage?.selections?.length).toBeGreaterThan(0);
+    expect(firstPage?.selections).toEqual(samples?.selections);
+  });
+
+  it("is carried on the opened order with its arguments", () => {
+    const args = firstPageArgs({ count: 50, filter: {} });
+    const opened = toOrder(
+      {
+        openOrder: {
+          __typename: "Order",
+          token: "t",
+          mode: "INDEXED",
+          total: null,
+          bounds: null,
+          ticks: [],
+          firstPage: { edges: [], pageInfo: {} },
+        },
+      } as never,
+      false,
+      args,
+    );
+    expect(opened.kind === "order" && opened.first?.args).toEqual(args);
   });
 });

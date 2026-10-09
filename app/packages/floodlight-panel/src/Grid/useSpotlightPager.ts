@@ -18,9 +18,11 @@ import { MAX_CURSOR_PAGES, type OrderSeek } from "./pageCursors";
 import {
   createCursorStore,
   fetchPage,
+  type PageResult,
   type Placed,
   placePage,
   planPage,
+  takeFirstPage,
 } from "./orderedPages";
 import type { Records } from "./useRecords";
 import { collectPages, type PageVariables } from "./samplePages";
@@ -171,21 +173,25 @@ const useSpotlightPager = ({
         const schema = await snapshot.getPromise(
           fos.fieldSchema({ space: fos.State.SPACE.SAMPLE }),
         );
-        // a page this panel has not requested comes from the network
+        // the open's first page, else a page this panel has not requested
+        // comes from the network
+        const first = takeFirstPage(opened, plan);
         const fetchPolicy = pages.has(key)
           ? "store-or-network"
           : "network-only";
         pages.set(key, true);
-        const result = await fetchPage(
-          environment,
-          plan.variables,
-          fetchPolicy,
-          signal,
-        ).catch((error) => {
-          if (signal?.aborted) throw error;
-          handleError(error);
-          return undefined;
-        });
+        const result: PageResult | undefined = first
+          ? { connection: first }
+          : await fetchPage(
+              environment,
+              plan.variables,
+              fetchPolicy,
+              signal,
+            ).catch((error) => {
+              if (signal?.aborted) throw error;
+              handleError(error);
+              return undefined;
+            });
         if (!result) return EMPTY;
         if ("timeout" in result) {
           result.timeout && handleTimeout(result.timeout);

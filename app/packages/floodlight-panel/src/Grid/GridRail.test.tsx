@@ -15,6 +15,7 @@ vi.mock("@fiftyone/state", () => ({
 afterEach(cleanup);
 
 const state = (mode: GridRailState["mode"]): GridRailState => ({
+  drag: vi.fn(),
   follow: () => () => undefined,
   jump: vi.fn(),
   mode,

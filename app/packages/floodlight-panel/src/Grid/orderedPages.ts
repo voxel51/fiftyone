@@ -10,7 +10,7 @@ import type { VariablesOf } from "react-relay";
 import { fetchQuery } from "react-relay";
 import type { IEnvironment } from "relay-runtime";
 import { BoundedMap } from "../host/bounded";
-import type { OpenedOrder } from "../order/order";
+import { firstPageArgs, type OpenedOrder } from "../order/order";
 import {
   createPageCursors,
   type OrderSeek,
@@ -137,6 +137,27 @@ export const createCursorStore = () => {
     }
     return cursors;
   };
+};
+
+/**
+ * The first page the order's open returned, for the start page planned with
+ * the same arguments. It is taken once: a later read of the page fetches it.
+ */
+export const takeFirstPage = (
+  order: OpenedOrder,
+  plan: PagePlan,
+): foq.PaginateSamplesConnection | undefined => {
+  if (order.kind !== "order" || !order.first) return undefined;
+  const { request, variables } = plan;
+  if (!request || !("after" in request) || request.after !== null) {
+    return undefined;
+  }
+  const { args, connection } = order.first;
+  order.first = undefined;
+  const same =
+    JSON.stringify(args) ===
+    JSON.stringify(firstPageArgs(variables as Record<string, unknown>));
+  return same ? connection : undefined;
 };
 
 export type PageResult =

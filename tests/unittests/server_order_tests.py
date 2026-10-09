@@ -1333,6 +1333,40 @@ class ServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(jumped.page_info.has_previous_page, True)
         self.assertEqual(jumped.page_info.has_next_page, True)
 
+    async def test_open_order_reads_the_first_page(self):
+        import fiftyone.server.order.schema as fooschema
+
+        input = fooschema.OrderInput(
+            dataset=self.dataset.name, view=[], sort_by="t"
+        )
+        opened = await fooschema.open_order(input)
+
+        async def shape(view, samples, pagination_data):
+            return [{"_id": sample["_id"]} for sample in samples]
+
+        with patch.object(foss, "_shape_nodes", new=shape):
+            first = await opened.first_page(count=5)
+            paged = await self._paginate(opened.token)
+
+        ids = lambda c: [e.node["_id"] for e in c.edges]
+        self.assertEqual(ids(first), _expected(self.dataset, "t", False)[:5])
+        self.assertEqual(ids(first), ids(paged))
+        self.assertEqual(first.page_info, paged.page_info)
+        self.assertEqual(first.total, N)
+
+    async def test_a_first_page_that_fails_is_null(self):
+        import fiftyone.server.order.schema as fooschema
+
+        opened = await fooschema.open_order(
+            fooschema.OrderInput(dataset=self.dataset.name, view=[])
+        )
+        with patch.object(
+            foss,
+            "_paginate_ordered",
+            side_effect=GraphQLError("budget exceeded"),
+        ):
+            self.assertIsNone(await opened.first_page(count=5))
+
     async def test_mismatched_view_raises(self):
         opened = foss.get_service().open(
             OrderSpec(dataset=self.dataset.name, stages=[], sort_by="t"),

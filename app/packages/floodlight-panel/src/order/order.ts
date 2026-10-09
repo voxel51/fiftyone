@@ -26,6 +26,20 @@ export interface OrderBounds {
   scale: OrderScale | null;
 }
 
+/** The page arguments an order's first page was read with. */
+export interface FirstPageArgs {
+  count: number;
+  filter: unknown;
+  paginationData: boolean;
+  maxQueryTime: number | null;
+}
+
+/** The first page an open returned, until the pager takes it. */
+export interface FirstPage {
+  args: FirstPageArgs;
+  connection: foq.PaginateSamplesConnection;
+}
+
 export interface Order {
   kind: "order";
   token: string;
@@ -36,6 +50,8 @@ export interface Order {
   bounds: OrderBounds | null;
   desc: boolean;
   ticks: OrderTick[];
+  /** Read with the open; the first read of the start page takes it. */
+  first?: FirstPage;
 }
 
 /** The view cannot be ordered (e.g. a similarity sort): it pages by skip. */
@@ -47,12 +63,23 @@ export type OpenedOrder = Order | Unordered;
 
 export const UNORDERED: Unordered = { kind: "unordered" };
 
+/** The arguments of a start page's `samples` variables a first page needs. */
+export const firstPageArgs = (
+  variables: Record<string, unknown>,
+): FirstPageArgs => ({
+  count: variables.count as number,
+  filter: variables.filter ?? null,
+  paginationData: (variables.paginationData as boolean | undefined) ?? true,
+  maxQueryTime: (variables.maxQueryTime as number | null | undefined) ?? null,
+});
+
 const MODES = new Set<string>(["SMALL", "INDEXED", "SCROLL"]);
 const SCALES = new Set<string>(["NUMBER", "DATE", "ID"]);
 
 export const toOrder = (
   data: foq.openOrderQuery$data,
   desc: boolean,
+  args?: FirstPageArgs,
 ): OpenedOrder => {
   const opened = data.openOrder;
   if (opened.__typename !== "Order" || !MODES.has(opened.mode)) {
@@ -72,24 +99,54 @@ export const toOrder = (
     },
     desc,
     ticks: opened.ticks.map(({ fraction, label }) => ({ fraction, label })),
+    // the same selection as paginateSamplesQuery's connection
+    first:
+      args && opened.firstPage
+        ? {
+            args,
+            connection: {
+              __typename: "SampleItemStrConnection",
+              ...opened.firstPage,
+            } as unknown as foq.PaginateSamplesConnection,
+          }
+        : undefined,
   };
 };
 
-/** Opens an order; one the server cannot open pages by skip instead. */
+/**
+ * Opens an order; one the server cannot open pages by skip instead. With
+ * `first`, the open also reads the order's first page; an open that fails
+ * with it (a server without it) opens again without it.
+ */
 export const openOrder = (
   environment: IEnvironment,
   input: OrderInput,
   signal: AbortSignal,
-) =>
+  first?: FirstPageArgs,
+): Promise<OpenedOrder> =>
   new Promise<OpenedOrder>((resolve) => {
     const subscription = fetchQuery<foq.openOrderQuery>(
       environment,
       foq.openOrder,
-      { input },
+      first
+        ? {
+            input,
+            withFirstPage: true,
+            count: first.count,
+            filter: first.filter as foq.openOrderQuery$variables["filter"],
+            paginationData: first.paginationData,
+            maxQueryTime: first.maxQueryTime,
+          }
+        : { input },
       { fetchPolicy: "network-only" },
     ).subscribe({
-      next: (data) => resolve(toOrder(data, Boolean(input.desc))),
-      error: () => resolve(UNORDERED),
+      next: (data) => resolve(toOrder(data, Boolean(input.desc), first)),
+      error: () =>
+        resolve(
+          first && !signal.aborted
+            ? openOrder(environment, input, signal)
+            : UNORDERED,
+        ),
     });
     signal.addEventListener("abort", () => subscription.unsubscribe());
   });
