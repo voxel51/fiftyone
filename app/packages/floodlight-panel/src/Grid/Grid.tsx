@@ -155,6 +155,23 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
       ),
     [page],
   );
+
+  // a click opens the sample; its page steps through the pages held above
+  const pages = useMemo(
+    () => ({
+      get: (key: number) => source.get(key),
+      positionOf: (id: string) => {
+        const rank = records.get(id);
+        return rank === undefined
+          ? undefined
+          : { key: Math.floor(rank / PAGE_SIZE), index: rank % PAGE_SIZE };
+      },
+    }),
+    [records, source],
+  );
+  const setSample = fos.useExpandSample(pages);
+  const setSampleRef = useRef(setSample);
+  setSampleRef.current = setSample;
   const wire = useInstanceEvents();
   const ownership = useMemo(() => createOwnership(), [cache]);
   const interims = useRef(new WeakSet<object>());
@@ -203,6 +220,7 @@ function Grid({ layout }: { layout: "grid" | "groups" | "strip" }) {
         ...(strip ? { offset: 0 } : {}),
         // swimlane rows abut so the view reads as one continuous stack
         spacing: useSwimlanes ? 0 : spacing,
+        onItemClick: (item) => setSampleRef.current(item),
         get: (key) =>
           sourceRef.current.get(key).then((p) => {
             loaded.items += p.items.length;
