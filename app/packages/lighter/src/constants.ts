@@ -8,6 +8,11 @@ export const LABEL_ARCHETYPE_PRIORITY = {
   KEYPOINT: 12,
   POLYLINE: 11,
   BOUNDING_BOX: 10,
+  // Full-media masks sit UNDER every bounded label: they cover the whole
+  // frame, so a click inside a box that happens to lie over a mask has to
+  // reach the box. Still above the media itself, which is not a label.
+  SEGMENTATION: 5,
+  HEATMAP: 4,
   IMAGE: 0,
 };
 

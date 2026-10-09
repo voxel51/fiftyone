@@ -264,10 +264,10 @@ const Modal = () => {
           return;
         }
 
-        // Video Explore mounts no looker at all (`VideoTimelineSurface`
-        // paints through Lighter), so `activeLookerRef.current` is never set
-        // there and this call is what actually closes the modal on that
-        // surface. "Clear the selection on the first Escape" still happens —
+        // Under `VFF_LIGHTER_VIDEO_EXPLORE`, Video Explore mounts no looker
+        // at all (`VideoTimelineSurface` paints through Lighter), so
+        // `activeLookerRef.current` is never set there and this call is what
+        // actually closes the modal on that surface. "Clear the selection on the first Escape" still happens —
         // it is implemented as a separate, higher-priority `Escape` binding
         // in `useVideoExploreKeybindings.ts` that is enabled only while a
         // selection exists, so `KeyManager` runs it INSTEAD of the default
