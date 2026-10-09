@@ -2,7 +2,7 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
@@ -36,6 +36,11 @@ function Grid() {
   useGroupMatchTileDecorator();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
+  // Hides the falling-pixels overlay. Called when the first tile's media
+  // loads, or when Spotlight finishes loading, whichever comes first
+  const reveal = useCallback(() => {
+    document.getElementById(pixels)?.classList.add(styles.hidden);
+  }, [pixels]);
   const spacing = useRecoilValue(gridSpacing);
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
@@ -64,6 +69,7 @@ function Grid() {
   const { getFontSize, lookerOptions, renderer } = useRenderer({
     cache,
     id,
+    onItemLoad: reveal,
     records,
     store,
   });
@@ -109,7 +115,7 @@ function Grid() {
   }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
 
   useEscape();
-  useEvents({ id, cache, pixels, resizing, set, spotlight });
+  useEvents({ id, cache, pixels, resizing, reveal, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
   useResize(id, setResizing);
 

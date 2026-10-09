@@ -16,6 +16,12 @@ export class Rejected extends Event {
   }
 }
 
+export class Render<K> extends Event {
+  constructor(readonly key: K) {
+    super("render");
+  }
+}
+
 export class RowChange<K> extends Event {
   constructor(
     readonly at: ID,
