@@ -38,15 +38,22 @@ const sliceOptionSuffix = ({ isSupported, isMissing }: AnnotationSliceInfo) => {
   return null;
 };
 
-const SliceOption = ({ info }: { info: AnnotationSliceInfo }) => {
+const SliceOption = ({
+  className,
+  info,
+}: {
+  className?: string;
+  info: AnnotationSliceInfo;
+}) => {
   const isDisabled = info.isMissing || !info.isSupported;
   return (
     <span
+      className={className}
       style={{
         opacity: isDisabled ? 0.5 : 1,
         cursor: isDisabled ? "not-allowed" : "pointer",
       }}
-      title={sliceOptionTitle(info)}
+      title={sliceOptionTitle(info) ?? info.name}
     >
       {info.name}
       {sliceOptionSuffix(info)}
@@ -121,8 +128,8 @@ export default function GroupAnnotation({
 
   const SliceOptionComponent = useMemo(
     () =>
-      ({ value }: { value: string }) => (
-        <SliceOption info={sliceInfoMap[value]} />
+      ({ className, value }: { className?: string; value: string }) => (
+        <SliceOption className={className} info={sliceInfoMap[value]} />
       ),
     [sliceInfoMap],
   );
