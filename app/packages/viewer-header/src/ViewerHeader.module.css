@@ -66,11 +66,6 @@
   font-size: revert-layer;
 }
 
-.active {
-  background: var(--color-content-interactive-secondary-hover);
-  color: var(--color-content-text-primary);
-}
-
 .crumbs {
   display: flex;
   align-items: center;

@@ -12,7 +12,7 @@ import {
 import type { ModalPosition } from "@fiftyone/state";
 import styles from "../ViewerHeader.module.css";
 import type { ViewerStepper } from "../types";
-import HeaderAction from "./HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 
 /**
  * Previous and next sample, and where it is: "n / total", or "n of many

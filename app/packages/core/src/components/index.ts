@@ -18,4 +18,5 @@ export { default as Loading } from "./Loading";
 export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
 export { default as ResourceCount } from "./ResourceCount";
 export { default as SavedQueriesMenu } from "./ViewSelection/SavedQueriesMenu";
+export { default as ScopeCrumb } from "./ViewSelection/ScopeCrumb";
 export { default as Snackbar } from "./Snackbar";

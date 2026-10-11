@@ -1,0 +1,9 @@
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1100px) {
+  .count {
+    display: none;
+  }
+}

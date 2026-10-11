@@ -1628,12 +1628,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/app-header@npm:*, @fiftyone/app-header@workspace:packages/app-header":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/app-header@workspace:packages/app-header"
+  dependencies:
+    "@testing-library/react": "catalog:"
+    "@voxel51/voodo": "catalog:"
+    clsx: "catalog:"
+    react: "catalog:"
+    typescript: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/app@workspace:packages/app":
   version: 0.0.0-use.local
   resolution: "@fiftyone/app@workspace:packages/app"
   dependencies:
     "@fiftyone/analytics": "npm:*"
     "@fiftyone/annotation": "npm:*"
+    "@fiftyone/app-header": "npm:*"
     "@fiftyone/commands": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/core": "npm:*"
@@ -1790,6 +1805,7 @@ __metadata:
   resolution: "@fiftyone/core@workspace:packages/core"
   dependencies:
     "@fiftyone/actions": "npm:*"
+    "@fiftyone/app-header": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/events": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
@@ -2659,6 +2675,7 @@ __metadata:
   resolution: "@fiftyone/viewer-header@workspace:packages/viewer-header"
   dependencies:
     "@fiftyone/actions": "npm:*"
+    "@fiftyone/app-header": "npm:*"
     "@fiftyone/components": "npm:*"
     "@fiftyone/operators": "npm:*"
     "@fiftyone/reverb": "workspace:*"

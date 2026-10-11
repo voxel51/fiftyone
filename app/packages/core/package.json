@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@fiftyone/actions": "*",
+        "@fiftyone/app-header": "*",
         "@fiftyone/components": "*",
         "@fiftyone/events": "*",
         "@fiftyone/feature-flags": "*",

@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Crumb } from "@fiftyone/app-header";
 import { getEventBus } from "@fiftyone/events";
 import { useReverbValue } from "@fiftyone/reverb";
 import { datasetName, useSetDataset } from "@fiftyone/state";
@@ -108,25 +109,18 @@ const DatasetSelector: React.FC<{
       anchor={PopoverAnchor.BottomStart}
       panelClassName={styles.panel}
       trigger={
-        <button
-          type="button"
-          className={clsx(styles.trigger, open && styles.open)}
+        <Crumb
+          open={open}
           onClick={() => changeOpen(!open)}
           aria-label="Switch dataset"
           aria-expanded={open}
           aria-haspopup="dialog"
           data-cy="selector-dataset"
-        >
-          <DatabaseIcon size={14} color={IconColor.Default} />
-          <Text
-            variant={TextVariant.HeadingSm}
-            color={label ? TextColor.Primary : TextColor.Secondary}
-            className={styles.name}
-          >
-            {label ?? "Select dataset"}
-          </Text>
-          <CaretDownIcon size={14} color={IconColor.Default} />
-        </button>
+          icon={<DatabaseIcon size={14} color={IconColor.Default} />}
+          label={label ?? "Select dataset"}
+          muted={!label}
+          trailing={<CaretDownIcon size={14} color={IconColor.Default} />}
+        />
       }
     >
       <div className={styles.search}>

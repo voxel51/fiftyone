@@ -12,6 +12,7 @@
     "main": "src/index.ts",
     "dependencies": {
         "@fiftyone/actions": "*",
+        "@fiftyone/app-header": "*",
         "@fiftyone/components": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/reverb": "workspace:*",

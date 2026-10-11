@@ -1,5 +1,5 @@
-/* The title, dataset selector and right-side actions sit on one row; anything
-   the shell puts under that row, the view bar, spans the window.
+/* One row holds the logo, the breadcrumb and the actions; anything beneath
+   it, a banner or the view bar, spans the window.
    The surface is the shell's own until the shell moves to design-system tokens
    as a whole — no voodo surface token matches it in the dark theme, and a
    header on a different grey than the panels around it reads as a seam. */
@@ -24,55 +24,31 @@
   border-bottom: 1px solid var(--color-content-border-subtle);
 }
 
-.belowRow {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 10px 16px;
-}
-
 .left {
   min-width: 0;
 }
 
-.home {
-  display: inline-flex;
+/* Tabs stretch to the row so their underline sits on its bottom border */
+.center {
+  display: flex;
+  align-self: stretch;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 9999px;
-  background: none;
+  min-width: 0;
 }
 
-button.home {
-  cursor: pointer;
+.actions {
+  margin-left: auto;
 }
 
-button.home:hover {
-  background: var(--color-content-interactive-secondary-hover);
+.banner,
+.belowRow {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-.logo {
-  width: 18px;
-  height: 18px;
-  transform: rotate(1turn);
-  /* Quick, with a spring's overshoot at the end, as one curve */
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.turned {
-  transform: rotate(0turn);
-}
-
-.slash {
-  flex-shrink: 0;
-  width: 12px;
-  height: 20px;
-  color: var(--color-content-border-strong);
+.belowRow {
+  padding: 10px 16px;
 }
 
 .wordmark {
@@ -84,7 +60,7 @@ button.home:hover {
   margin-right: var(--spacing-xs);
 }
 
-/* Focus mode: the first row folds away and the view bar tightens */
+/* Focus mode: the row folds away and the row beneath tightens */
 .focused .row {
   display: none;
 }

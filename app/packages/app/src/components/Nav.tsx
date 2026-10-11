@@ -3,25 +3,18 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
-import { SavedQueriesMenu } from "@fiftyone/core";
+import { AppHeader, HeaderLogo, useFocusMode } from "@fiftyone/app-header";
+import { SavedQueriesMenu, ScopeCrumb } from "@fiftyone/core";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
 import { ViewBar } from "@fiftyone/view-bar";
 import { useColorScheme } from "@mui/material";
 import {
-  Align,
-  Anchor,
   Button,
   DarkModeIcon,
-  IconAction,
   LightModeIcon,
-  Maximize2Icon,
-  Orientation,
   Size,
-  Spacing,
-  Stack,
-  Tooltip,
   Variant,
 } from "@voxel51/voodo";
 import React, { Suspense, useCallback, useMemo } from "react";
@@ -32,12 +25,9 @@ import { graphql } from "relay-runtime";
 import { useProduct } from "../product";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
-import Header from "./Header";
-import ScopeCrumb from "./ScopeCrumb";
+import logo from "../images/logo.png";
 import HeaderLinks from "./HeaderLinks";
-import styles from "./Nav.module.css";
 import Teams from "./Teams";
-import useFocusMode from "./useFocusMode";
 import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
 
@@ -120,11 +110,18 @@ const Nav: React.FC<
 
   return (
     <>
-      <Header
+      <AppHeader
+        logo={
+          <HeaderLogo
+            src={logo}
+            label="Refresh"
+            onClick={refresh}
+            data-cy="refresh-fo"
+          />
+        }
         title={hasDataset ? undefined : title}
         hidden={hidden}
-        onExitFocus={focused ? focus.exit : undefined}
-        onRefresh={refresh}
+        focus={hasDataset ? focus : undefined}
         crumbs={[
           <DatasetSelector
             key="dataset"
@@ -133,6 +130,31 @@ const Nav: React.FC<
           />,
           ...(hasDataset ? [<ScopeCrumb key="scope" />] : []),
         ]}
+        center={Status && <Status />}
+        actions={
+          <>
+            {HeaderActions ? (
+              <HeaderActions />
+            ) : (
+              enterpriseCta && <Teams disablePopover={hidden} />
+            )}
+            <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
+          </>
+        }
+        utilities={
+          <>
+            <Button
+              variant={Variant.Icon}
+              size={Size.Md}
+              borderless
+              leadingIcon={mode === "dark" ? LightModeIcon : DarkModeIcon}
+              title={mode === "dark" ? "Light mode" : "Dark mode"}
+              aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
+              onClick={toggleTheme}
+            />
+            <HeaderLinks />
+          </>
+        }
         belowRow={
           hasDataset && (
             <Suspense fallback={null}>
@@ -143,47 +165,7 @@ const Nav: React.FC<
             </Suspense>
           )
         }
-      >
-        {Status && <Status />}
-        <Stack
-          orientation={Orientation.Row}
-          align={Align.Center}
-          spacing={Spacing.Sm}
-          className={styles.actions}
-        >
-          {HeaderActions ? (
-            <HeaderActions />
-          ) : (
-            enterpriseCta && <Teams disablePopover={hidden} />
-          )}
-          <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
-          {/* Remounted as the row hides, so no menu stays open over the
-              sample page or in focus mode */}
-          <React.Fragment key={hidden || focused ? "hidden" : "shown"}>
-            {hasDataset && (
-              <Tooltip anchor={Anchor.Bottom} content="Focus mode (F)">
-                <IconAction
-                  icon={Maximize2Icon}
-                  size={Size.Md}
-                  aria-label="Focus mode"
-                  onClick={focus.toggle}
-                  data-cy="header-focus"
-                />
-              </Tooltip>
-            )}
-          </React.Fragment>
-          <Button
-            variant={Variant.Icon}
-            size={Size.Md}
-            borderless
-            leadingIcon={mode === "dark" ? LightModeIcon : DarkModeIcon}
-            title={mode === "dark" ? "Light mode" : "Dark mode"}
-            aria-label={mode === "dark" ? "Light mode" : "Dark mode"}
-            onClick={toggleTheme}
-          />
-          <HeaderLinks />
-        </Stack>
-      </Header>
+      />
       {children}
       <Analytics fragment={data} />
     </>

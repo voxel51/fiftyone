@@ -15,6 +15,7 @@
     "dependencies": {
         "@fiftyone/analytics": "*",
         "@fiftyone/annotation": "*",
+        "@fiftyone/app-header": "*",
         "@fiftyone/commands": "*",
         "@fiftyone/components": "*",
         "@fiftyone/core": "*",

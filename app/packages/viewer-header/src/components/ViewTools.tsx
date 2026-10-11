@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { useCopySampleLink } from "../hooks";
 import styles from "../ViewerHeader.module.css";
 import Fullscreen from "./Fullscreen";
-import HeaderAction from "./HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 
 /** How the sample shows, and sharing it. */
 const ViewTools = ({ utilities }: { utilities?: ReactNode }) => {

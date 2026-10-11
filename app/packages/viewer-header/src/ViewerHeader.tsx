@@ -5,7 +5,7 @@
 import { ArrowLeftStrokeIcon } from "@voxel51/voodo";
 import Breadcrumb from "./components/Breadcrumb";
 import Fullscreen from "./components/Fullscreen";
-import HeaderAction from "./components/HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 import ModeSwitch from "./components/ModeSwitch";
 import SampleTools from "./components/SampleTools";
 import SidebarToggle from "./components/SidebarToggle";

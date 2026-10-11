@@ -4,7 +4,7 @@
 
 import { PanelRightCloseIcon, PanelRightOpenIcon } from "@voxel51/voodo";
 import { useViewerSidebar } from "../hooks";
-import HeaderAction from "./HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 
 /** Shows or hides the sidebar the mode switch drives. */
 const SidebarToggle = () => {

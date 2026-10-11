@@ -6,7 +6,7 @@ import { useOutsideClick } from "@fiftyone/state";
 import { LayoutPanelTopIcon } from "@voxel51/voodo";
 import { useRef, useState } from "react";
 import styles from "../ViewerHeader.module.css";
-import HeaderAction from "./HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 import GroupVisibilityPopout, {
   GROUP_VISIBILITY_TITLE,
 } from "./GroupVisibilityPopout";

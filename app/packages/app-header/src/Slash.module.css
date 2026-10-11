@@ -1,0 +1,6 @@
+.slash {
+  flex-shrink: 0;
+  width: 12px;
+  height: 20px;
+  color: var(--color-content-border-strong);
+}

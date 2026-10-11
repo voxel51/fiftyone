@@ -13,7 +13,7 @@ import { useViewerContext } from "../hooks";
 import type { ViewerHeaderProps } from "../types";
 import styles from "../ViewerHeader.module.css";
 import GroupVisibility from "./GroupVisibility";
-import HeaderAction from "./HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 import HiddenLabels from "./HiddenLabels";
 
 const BrowseOperations = () => {

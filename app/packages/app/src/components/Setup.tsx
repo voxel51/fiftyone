@@ -4,14 +4,13 @@
  * What the App shows with no session to connect to: how to start one.
  */
 
+import { AppHeader, HeaderLogo } from "@fiftyone/app-header";
 import { CodeBlock, Highlighted } from "@fiftyone/components";
 import { isNotebook } from "@fiftyone/state";
 import {
-  Align,
   Button,
   Heading,
   HeadingLevel,
-  Justify,
   Orientation,
   Size,
   Spacing,
@@ -25,7 +24,7 @@ import { useState } from "react";
 import { useReverbValue } from "@fiftyone/reverb";
 
 import { useProduct } from "../product";
-import Header from "./Header";
+import logo from "../images/logo.png";
 import HeaderLinks from "./HeaderLinks";
 import styles from "./Setup.module.css";
 
@@ -125,17 +124,11 @@ const Setup = () => {
 
   return (
     <div className={styles.setup} data-cy="setup-page">
-      <Header title={title}>
-        <Stack
-          orientation={Orientation.Row}
-          align={Align.Center}
-          justify={Justify.End}
-          spacing={Spacing.Sm}
-          className={styles.links}
-        >
-          <HeaderLinks />
-        </Stack>
-      </Header>
+      <AppHeader
+        logo={<HeaderLogo src={logo} />}
+        title={title}
+        utilities={<HeaderLinks />}
+      />
       <div className={styles.page}>
         <Stack
           orientation={Orientation.Column}

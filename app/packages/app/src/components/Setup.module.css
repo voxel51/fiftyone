@@ -30,10 +30,3 @@
 .tabs {
   margin: 1em 0 3em 0;
 }
-
-/* The links share the header's first-row height, so they center on it like
-   the nav's actions do rather than riding the top of a top-aligned header */
-.links {
-  flex: 1;
-  height: 40px;
-}

@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Slash } from "@fiftyone/app-header";
 import {
   Text,
   TextBadge,
@@ -34,13 +35,7 @@ const Breadcrumb = ({
         {dataset}
       </Text>
     </button>
-    <Text
-      className={styles.datasetSlash}
-      variant={TextVariant.BodySecondary}
-      color={TextColor.Tertiary}
-    >
-      /
-    </Text>
+    <Slash className={styles.datasetSlash} />
     <Text
       className={styles.title}
       variant={TextVariant.HeadingSm}

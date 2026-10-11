@@ -1,0 +1,21 @@
+{
+    "name": "@fiftyone/app-header",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "test": "vitest"
+    },
+    "main": "src/index.ts",
+    "dependencies": {
+        "@voxel51/voodo": "catalog:",
+        "clsx": "catalog:",
+        "react": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "typescript": "catalog:",
+        "vite": "catalog:",
+        "vitest": "catalog:"
+    }
+}

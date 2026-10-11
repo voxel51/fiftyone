@@ -4,7 +4,7 @@
 
 import { MaximizeIcon, MinimizeIcon } from "@voxel51/voodo";
 import { useViewerFullscreen } from "../hooks";
-import HeaderAction from "./HeaderAction";
+import { HeaderIconAction as HeaderAction } from "@fiftyone/app-header";
 
 /** Enters or exits fullscreen, which hides the header; `f` does the same. */
 const Fullscreen = () => {
