@@ -5,14 +5,10 @@ import {
   useReverbValue,
   useReverbValueLoadable,
   useResetReverbState,
-  useSetReverbState,
 } from "@fiftyone/reverb";
 import {
   BackgroundColor,
-  CloseIcon,
-  getColorCssVar,
   GridViewIcon,
-  IconAction,
   ImageSearchIcon,
   Pill,
   Size,
@@ -27,11 +23,6 @@ import {
 } from "react";
 import styled from "styled-components";
 import Header from "../components/Grid/Header";
-import { ACTIONS_ROW_HEIGHT } from "../components/Grid/Header/Containers";
-import { FieldActionContext, GridSidebar } from "@fiftyone/sidebar";
-import { QuickEditEntry } from "../components/Modal/Sidebar/Annotate";
-import SchemaLensRow from "../components/SchemaLens/SchemaLensRow";
-import useSidebarSlide from "./useSidebarSlide";
 
 const Panel = styled.div`
   position: relative;
@@ -52,11 +43,7 @@ const Container = styled.div`
   box-sizing: border-box;
 `;
 
-// The grid scrolls up under the actions row; the sidebar sits below it
-/**
- * Where the grid's loading overlay renders: across the whole panel body,
- * over the grid and under the sidebar.
- */
+/** Where the grid's loading overlay renders: across the whole panel body */
 export const GridBackdropContext = createContext<HTMLElement | null>(null);
 
 const Backdrop = styled.div`
@@ -64,31 +51,6 @@ const Backdrop = styled.div`
   inset: 0;
   z-index: 2;
   pointer-events: none;
-`;
-
-const Sidebar = styled.div`
-  position: relative;
-  z-index: 3;
-  display: flex;
-  margin-top: ${ACTIONS_ROW_HEIGHT}px;
-  /* the grid runs to the panel's bottom edge; the sidebar card sits above it */
-  margin-bottom: 8px;
-  min-height: 0;
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-
-  & > [data-cy="schema-lens-row"] {
-    flex: 1;
-    min-width: 0;
-  }
-
-  & > [data-cy="sidebar-close"] {
-    margin-left: auto;
-  }
 `;
 
 const GridArea = styled.div`
@@ -99,39 +61,13 @@ const GridArea = styled.div`
 `;
 
 const SamplesPanel = ({ grid }: { grid: ReactNode }) => {
-  const showSidebar = useReverbValue(fos.sidebarVisible(false));
-  const setShowSidebar = useSetReverbState(fos.sidebarVisible(false));
-  const { gridStyle, rendered, sidebar, sidebarStyle } =
-    useSidebarSlide(showSidebar);
   const [backdrop, setBackdrop] = useState<HTMLDivElement | null>(null);
 
   return (
     <Panel>
       <Header />
       <Container>
-        {rendered && (
-          <Sidebar ref={sidebar} style={sidebarStyle}>
-            <FieldActionContext.Provider value={QuickEditEntry}>
-              <GridSidebar
-                header={
-                  <HeaderRow>
-                    <SchemaLensRow padded={false} />
-                    <IconAction
-                      aria-label="Hide sidebar"
-                      data-cy="sidebar-close"
-                      icon={CloseIcon}
-                      size={Size.Sm}
-                      title="Hide sidebar"
-                      style={{ color: getColorCssVar(TextColor.Secondary) }}
-                      onClick={() => setShowSidebar(false)}
-                    />
-                  </HeaderRow>
-                }
-              />
-            </FieldActionContext.Provider>
-          </Sidebar>
-        )}
-        <GridArea style={gridStyle}>
+        <GridArea>
           <GridBackdropContext.Provider value={backdrop}>
             {grid}
           </GridBackdropContext.Provider>
