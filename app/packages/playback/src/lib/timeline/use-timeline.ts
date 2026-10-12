@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo } from "react";
@@ -15,6 +16,7 @@ import {
   updatePlayheadStateAtom,
   updateTimelineConfigAtom,
 } from "./state";
+import type { TimelineEvents } from "./events";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { PlayheadState } from "../constants";
 
@@ -89,15 +91,11 @@ export const useTimeline = (name?: TimelineName) => {
   }, [isTimelineInitialized, refresh]);
 
   const play = useCallback(() => {
-    dispatchEvent(
-      new CustomEvent("play", { detail: { timelineName: timelineName } }),
-    );
+    getEventBus<TimelineEvents>().dispatch("timeline:play", { timelineName });
   }, [timelineName]);
 
   const pause = useCallback(() => {
-    dispatchEvent(
-      new CustomEvent("pause", { detail: { timelineName: timelineName } }),
-    );
+    getEventBus<TimelineEvents>().dispatch("timeline:pause", { timelineName });
   }, [timelineName]);
 
   const getPlayHeadState = useAtomCallback(

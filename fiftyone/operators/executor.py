@@ -784,7 +784,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
                 extended_stages=extended,
             )
         else:
-            self._view = dataset.load_saved_view(view_name)
+            self._view = fosv.get_view(dataset, view_name=view_name)
 
         return self._view
 

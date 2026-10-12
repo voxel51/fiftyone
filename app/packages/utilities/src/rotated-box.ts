@@ -67,6 +67,32 @@ export const getRotatedBoxCorners = (
 };
 
 /**
+ * Finds the northwest-most corner of a rotated bounding box, in normalized
+ * coordinates: the corner furthest up and to the left on screen, i.e. the
+ * one with the smallest `x + y` in pixel space.
+ *
+ * Label headers anchor here so they stay on a rotated box's geometry. For
+ * rotation `0` this is exactly the stored top-left corner, and for quarter
+ * turns it is the top-left corner the box visibly presents.
+ */
+export const getRotatedBoxNorthwestCorner = (
+  boundingBox: BoxDescriptor,
+  rotation: number,
+  dimensions: MediaDimensions,
+): Point => {
+  if (!rotation) {
+    return [boundingBox[0], boundingBox[1]];
+  }
+
+  const [mw, mh] = dimensions;
+  const reach = ([x, y]: Point) => x * mw + y * mh;
+
+  return getRotatedBoxCorners(boundingBox, rotation, dimensions).reduce(
+    (best, corner) => (reach(corner) < reach(best) ? corner : best),
+  );
+};
+
+/**
  * Tests whether a pixel-space point lies within a rotated bounding box.
  *
  * The point is inverse-rotated into the box's local frame around its center,

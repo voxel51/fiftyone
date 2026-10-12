@@ -56,8 +56,7 @@ export default function Teams({
 
   useEffect(() => {
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
-    // The intro is a one-time nudge for people, not for the e2e harness
-    if (!hasSeenTooltip && !window.IS_PLAYWRIGHT) {
+    if (!hasSeenTooltip) {
       setShowPopover(true);
     }
   }, []);

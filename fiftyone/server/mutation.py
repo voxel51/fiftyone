@@ -495,39 +495,6 @@ class Mutation(SetColorScheme):
         await dispatch_event(subscription, fose.SetSpaces(spaces=spaces))
         return True
 
-    @gql.mutation
-    def search_select_fields(
-        self, dataset_name: str, meta_filter: t.Optional[JSON]
-    ) -> t.List[str]:
-        if not meta_filter:
-            return []
-
-        state = get_state()
-        dataset = state.dataset
-        if dataset is None:
-            dataset = fod.load_dataset(dataset_name, reload=True)
-
-        try:
-            view = dataset.select_fields(meta_filter=meta_filter)
-        except Exception:
-            try:
-                view = dataset.select_fields(meta_filter)
-            except Exception:
-                view = dataset
-
-        res = []
-        try:
-            is_video = dataset.media_type == "video"
-            for stage in view._stages:
-                res += [
-                    st
-                    for st in stage.get_selected_fields(view, frames=is_video)
-                ]
-        except Exception:
-            res = []
-
-        return res
-
 
 def _build_result_view(view, form):
     if form.sample_ids:

@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { getLabelColorFromContext } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import type { Stage } from "@fiftyone/utilities";
@@ -38,8 +39,10 @@ import {
   type TimelineTracksScroller,
   type Track,
   type TrackEventMenuItem,
+  getPlayhead,
   useActivateStream,
   useDuration,
+  usePlaybackStore,
   usePlaybackStream,
 } from "@fiftyone/playback";
 import {
@@ -87,7 +90,11 @@ import {
 import { VideoFrameLabelsStream } from "../streams/VideoFrameLabelsStream";
 
 const DEFAULT_FRAME_FIELD = "frames.detections";
-const TRACKS_RENDERED_EVENT = "video-annotation-tracks-rendered";
+/** e2e specs wait on the timeline rows an edit or sample change commits */
+type FrameLabelsE2EEvents = {
+  /** the visible rows' track ids, comma-separated */
+  "e2e:video-annotation:tracks-rendered": { ids: string };
+};
 
 /** Base linked-overlay decoration the interaction layer attaches per row. */
 type BaseTrackDecoration = ReturnType<
@@ -273,12 +280,27 @@ export const RegisterFrameLabels: React.FC<{
     frameRate !== undefined &&
     Number.isFinite(frameRate);
 
+  const frameCount = Math.max(1, Math.round(duration * (frameRate ?? 0)));
+  // Everything that identifies the video, without the field set: a re-key
+  // inside one scope is a sidebar toggle on the same video and playhead.
+  const scopeKey = ready
+    ? `${sampleId}|${dataset}|${slice ?? ""}|${
+        dynamicGroup ?? ""
+      }|${frameRate}|${frameCount}`
+    : null;
+  // The scope last committed. Cleared while not ready, so a registration that
+  // comes back after the params dropped out opens at `initialTime` again.
+  const registeredScopeRef = useRef<string | null>(null);
+  const resume = scopeKey !== null && registeredScopeRef.current === scopeKey;
+  useEffect(() => {
+    registeredScopeRef.current = scopeKey;
+  }, [scopeKey]);
+
   if (!ready) {
     // Params incomplete; consumers read `null` until the registrar mounts.
     return <>{children}</>;
   }
 
-  const frameCount = Math.max(1, Math.round(duration * frameRate));
   const frameField = toPerFrameField(activeField);
   // All active per-frame fields, frame-relative, primary first — deduped + sorted
   // so the identity key is stable regardless of schema iteration order.
@@ -298,13 +320,12 @@ export const RegisterFrameLabels: React.FC<{
   // discard the move's unsaved edits. The primary follows in place via
   // `setPrimaryField` (below); only adding/removing a field re-mounts.
   const fieldSetKey = [...frameFields].sort().join(",");
-  const key = `${sampleId}|${dataset}|${slice ?? ""}|${
-    dynamicGroup ?? ""
-  }|${frameRate}|${frameCount}|${fieldSetKey}`;
+  const key = `${scopeKey}|${fieldSetKey}`;
 
   return (
     <FrameLabelsRegistration
       key={key}
+      resume={resume}
       initialTime={initialTime}
       sampleId={sampleId}
       dataset={dataset}
@@ -322,6 +343,11 @@ export const RegisterFrameLabels: React.FC<{
 
 interface FrameLabelsRegistrationProps {
   initialTime?: number | null;
+  /**
+   * Open at the playhead instead of `initialTime`: this mount replaces a
+   * registration for the same video, so the user's position stands.
+   */
+  resume: boolean;
   sampleId: string;
   dataset: string;
   view: Stage[];
@@ -337,6 +363,14 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   children,
   ...props
 }) => {
+  const store = usePlaybackStore();
+  // Fixed per mount (a stable getter, so the warmup runs once), and read when
+  // the warmup lands rather than now: the playhead keeps moving while the
+  // new stream loads, and seeking to where it was would pull it back.
+  const [resumeAt] = useState(() =>
+    props.resume ? () => getPlayhead(store) : null,
+  );
+
   // Construct once per mount; the parent re-mounts on identity changes.
   const streamRef = useRef<VideoFrameLabelsStream | null>(null);
   if (streamRef.current === null) {
@@ -380,7 +414,7 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   usePublishFrameLabelsStream(streamRef.current);
 
   // Warm the opening position before committing the first label overlays.
-  useWarmupThenSeek(streamRef.current, props.initialTime);
+  useWarmupThenSeek(streamRef.current, resumeAt ?? props.initialTime);
 
   return <>{children}</>;
 };
@@ -882,10 +916,9 @@ export const FrameLabelsTracks: React.FC<{
   // the timeline's rows commit before this parent effect runs
   useEffect(() => {
     if (ready) {
-      document.dispatchEvent(
-        new CustomEvent(TRACKS_RENDERED_EVENT, {
-          detail: { ids: visibleTracks.map(({ id }) => id) },
-        }),
+      getEventBus<FrameLabelsE2EEvents>().dispatch(
+        "e2e:video-annotation:tracks-rendered",
+        { ids: visibleTracks.map(({ id }) => id).join(",") },
       );
     }
   }, [ready, visibleTracks]);

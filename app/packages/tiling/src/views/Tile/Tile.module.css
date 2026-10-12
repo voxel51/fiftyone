@@ -28,7 +28,7 @@
 }
 
 .highlightedTitle {
-  color: var(--color-content-text-highlighted-pane-title, #ffd166);
+  color: var(--color-content-text-warning);
   font-weight: 600;
 }
 

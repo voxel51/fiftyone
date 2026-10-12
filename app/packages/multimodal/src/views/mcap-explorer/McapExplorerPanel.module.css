@@ -1,5 +1,5 @@
 .root {
-  background: var(--color-background-primary);
+  background: var(--color-content-bg-background);
   color: var(--color-content-text-primary);
   display: flex;
   flex-direction: column;

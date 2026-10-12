@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@fiftyone/commands": "workspace:^",
+        "@fiftyone/events": "*",
         "@fiftyone/tiling": "*",
         "@voxel51/voodo": "catalog:",
         "jotai": "catalog:",

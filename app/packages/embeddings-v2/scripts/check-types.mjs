@@ -26,6 +26,11 @@ try {
     {
       cwd: appRoot,
       encoding: "utf8",
+      // The default heap (~2GB on CI runners) runs out before tsc finishes
+      env: {
+        ...process.env,
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --max-old-space-size=4096`,
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
@@ -39,6 +44,21 @@ try {
 }
 
 const lines = output.split("\n");
+// A tsc crash (e.g. out of memory) exits non-zero without a diagnostic list,
+// and would otherwise read as "only outside diagnostics"
+const unrecognized = lines.filter(
+  (line) =>
+    line.trim() &&
+    !/^\s/.test(line) &&
+    !/^(.+\(\d+,\d+\): )?error TS\d+:/.test(line),
+);
+
+if (unrecognized.length) {
+  console.error("TypeScript did not complete for packages/embeddings-v2:");
+  console.error(output);
+  process.exit(1);
+}
+
 const localDiagnostics = lines
   // Workspace source dependencies still surface in this package check, so only
   // fail diagnostics owned by the embeddings-v2 package boundary.

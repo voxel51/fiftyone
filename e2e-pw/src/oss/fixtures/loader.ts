@@ -1,22 +1,23 @@
 import { Page } from "@playwright/test";
-import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
+import { getPythonCommand } from "src/oss/utils/commands";
 import {
   AbstractFiftyoneLoader,
   WaitUntilGridVisibleOptions,
 } from "src/shared/abstract-loader";
+import { EventUtils } from "src/shared/event-utils";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
-import { Duration } from "../utils";
 
-const clearPersistedBrowserState = async (page: Page) => {
-  if (page.isClosed()) {
-    return;
-  }
-
-  await page.evaluate(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-};
+/**
+ * A grid tile's terminal states: lookers finish drawing a canvas (or report
+ * an error); custom-renderer tiles are ready once their wrapper commits
+ */
+const MODAL_OPENED = "e2e:modal:opened";
+const COUNT_SHOWN = "e2e:components:entry-count-shown";
+const TILE_READY = [
+  "e2e:looker:canvas-loaded",
+  "e2e:looker:error-shown",
+  "e2e:grid:custom-renderer-mounted",
+];
 
 export class OssLoader extends AbstractFiftyoneLoader {
   constructor() {
@@ -24,46 +25,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
     this.pythonRunner = new PythonRunner(getPythonCommand);
   }
 
-  async loadZooDataset(
-    zooDatasetName: string,
-    id: string,
-    kwargs: Record<string, string> = {},
-  ) {
-    const kwargsStringified = getStringifiedKwargs(kwargs);
-
-    return this.pythonRunner.exec(`
-      import fcntl
-      import os
-
-      import fiftyone as fo
-      import fiftyone.zoo as foz
-
-      # parallel workers share the zoo download cache; an exclusive lock per
-      # dataset serializes the download, after which loads are cache hits
-      os.makedirs(fo.config.dataset_zoo_dir, exist_ok=True)
-      lock_path = os.path.join(
-        fo.config.dataset_zoo_dir, ".${zooDatasetName}.lock"
-      )
-      with open(lock_path, "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        dataset = foz.load_zoo_dataset(
-          "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
-        )
-
-      dataset.persistent = True
-    `);
-  }
-
-  async loadTestDataset() {
-    throw new Error("Method not implemented.");
-  }
-
   async executePythonCode(code: string) {
     return this.pythonRunner.exec(code);
-  }
-
-  async executePythonFixture() {
-    throw new Error("Method not implemented.");
   }
 
   async selectDatasetFromSelector(page: Page, datasetName: string) {
@@ -75,15 +38,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
     page: Page,
     datasetName: string,
     options?: WaitUntilGridVisibleOptions,
-    isRetry?: boolean,
   ): Promise<void> {
-    const { isEmptyDataset, readySelector, searchParams, withGrid } =
-      options ?? {
-        isEmptyDataset: false,
-        readySelector: undefined,
-        searchParams: undefined,
-        withGrid: true,
-      };
+    const { modalSample, readyEvent, searchParams, tiles } = options ?? {};
+    const eventUtils = new EventUtils(page);
+    await eventUtils.recordLoads();
 
     await page.addInitScript(() => {
       if (window.__FO_PLAYWRIGHT_INIT__) {
@@ -98,6 +56,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
         window.name = `${window.name}__FO_PLAYWRIGHT_STORAGE_CLEARED__`;
       }
 
+      // a user who has dismissed the one-time Enterprise intro and the
+      // query performance toast
+      window.localStorage.setItem("fiftyone-enterprise-tooltip-seen", "true");
+      window.sessionStorage.setItem("hideQueryPerformanceToast", "true");
+
       const handleCursorChange = (e: MouseEvent) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
         // elementFromPoint may return null (e.g. pointer outside the
@@ -107,31 +70,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
           return;
         }
         const cursor = window.getComputedStyle(element).cursor;
-        if (cursor !== window.__FO_PLAYWRIGHT_CURRENT_CURSOR) {
-          window.__FO_PLAYWRIGHT_CURRENT_CURSOR = cursor;
-          document.dispatchEvent(new CustomEvent("cursor-change"));
-        }
+        window.__FO_PLAYWRIGHT_CURRENT_CURSOR = cursor;
       };
 
       document.addEventListener("mousemove", handleCursorChange);
       document.addEventListener("mousemove", handleCursorChange);
       document.addEventListener("pointerdown", handleCursorChange);
       document.addEventListener("pointerup", handleCursorChange);
-
-      // log-visibility watchdog for every spec; specs asserting on loading
-      // screen counts arm an EventUtils.initCounter for
-      // "global-loading-screen" instead
-      let loadingScreens = 0;
-      document.addEventListener("global-loading-screen", () => {
-        loadingScreens += 1;
-        if (loadingScreens > 1) {
-          throw new Error(
-            "Global loading screen fired more than once — top-level Suspense boundary re-activated after initial page load",
-          );
-        }
-      });
-
-      window.IS_PLAYWRIGHT = true;
     });
 
     const forceDatasetFromSelector = async () => {
@@ -148,104 +93,92 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     };
 
-    const search = searchParams ? searchParams.toString() : undefined;
-    if (search) {
-      await page.goto(`/datasets/${datasetName}?${search}`, {
-        waitUntil: "domcontentloaded",
-      });
-    } else {
-      await page.goto(`/datasets/${datasetName}`, {
-        waitUntil: "domcontentloaded",
-      });
-    }
-
-    const pathname = await page.evaluate(() => window.location.pathname);
-    if (pathname !== `/datasets/${datasetName}`) {
-      await forceDatasetFromSelector();
-    }
-
-    const view = searchParams?.get("view");
-    if (view) {
-      const search = await page.evaluate(() => window.location.search);
-
-      const params = new URLSearchParams(search);
-      if (params.get("view") !== view) {
-        throw new Error(`wrong view: '${params.get("view")}'`);
-      }
-    }
-
-    try {
-      await page.waitForSelector(
-        `[data-cy=${
-          withGrid ? "spotlight-section-forward" : "panel-container"
-        }]`,
-        {
-          state: "visible",
-        },
-      );
-    } catch (e) {
-      if (isRetry) {
-        throw e;
+    const navigate = async () => {
+      const search = searchParams ? searchParams.toString() : undefined;
+      if (search) {
+        await page.goto(`/datasets/${datasetName}?${search}`, {
+          waitUntil: "domcontentloaded",
+        });
       } else {
-        if (page.isClosed()) {
-          throw e;
-        }
-
-        try {
-          const ctx = page.context();
-          await ctx.clearCookies();
-          await ctx.clearPermissions();
-          await clearPersistedBrowserState(page);
-
-          if (page.isClosed()) {
-            throw e;
-          }
-
-          await page.reload({ waitUntil: "domcontentloaded" });
-        } catch (cleanupError) {
-          if (page.isClosed()) {
-            throw e;
-          }
-
-          throw cleanupError;
-        }
-
-        return this.waitUntilGridVisible(page, datasetName, options, true);
+        await page.goto(`/datasets/${datasetName}`, {
+          waitUntil: "domcontentloaded",
+        });
       }
-    }
 
-    if (isEmptyDataset) {
-      return;
-    }
+      const pathname = await page.evaluate(() => window.location.pathname);
+      if (pathname !== `/datasets/${datasetName}`) {
+        await forceDatasetFromSelector();
+      }
 
-    if (readySelector) {
-      await page.waitForSelector(readySelector, {
-        state: "visible",
-        timeout: Duration.Seconds(10),
-      });
-      return;
-    }
+      const view = searchParams?.get("view");
+      if (view) {
+        const search = await page.evaluate(() => window.location.search);
 
-    // a grid tile's terminal state depends on its kind: lookers finish
-    // drawing a canvas (or report an error); custom-renderer tiles are
-    // ready once their wrapper commits
-    await page.waitForFunction(
-      () => {
-        if (document.querySelector(`[data-cy=looker-error-info]`)) {
-          return true;
+        const params = new URLSearchParams(search);
+        if (params.get("view") !== view) {
+          throw new Error(`wrong view: '${params.get("view")}'`);
         }
+      }
+    };
 
-        if (document.querySelector(`[data-cy=grid-custom-renderer]`)) {
-          return true;
+    // a deep link to a sample or group opens the modal as the page loads
+    const opensModal =
+      (searchParams?.has("id") || searchParams?.has("groupId")) ?? false;
+    const drawn = new Set<string>();
+    let tileReady = false;
+    let countsShown = !!readyEvent;
+    let modalOpened = !opensModal;
+    let modalLoaded = !modalSample;
+    let ready = !readyEvent;
+
+    await eventUtils.afterNavigation(
+      [
+        ...TILE_READY,
+        MODAL_OPENED,
+        COUNT_SHOWN,
+        ...(readyEvent ? [readyEvent] : []),
+      ],
+      navigate,
+      ({ event, detail }) => {
+        const { labelsPending, mediaPending, sampleId, thumbnail } = (detail ??
+          {}) as {
+          labelsPending?: boolean;
+          mediaPending?: boolean;
+          sampleId?: string;
+          thumbnail?: boolean;
+        };
+        if (event === readyEvent) ready = true;
+        if (event === MODAL_OPENED) modalOpened = true;
+        // the grid's entry counts load after its tiles
+        if (event === COUNT_SHOWN) {
+          countsShown ||=
+            (detail as { signal: string }).signal === "grid-elements";
         }
-
+        if (TILE_READY.includes(event)) {
+          if (!tiles) tileReady = true;
+          // a tile counts once it has drawn its media and all of its labels
+          if (
+            thumbnail &&
+            !labelsPending &&
+            !mediaPending &&
+            event === "e2e:looker:canvas-loaded"
+          ) {
+            drawn.add(sampleId);
+            tileReady ||= drawn.size === tiles;
+          }
+          if (thumbnail === false) {
+            modalLoaded ||=
+              event === "e2e:looker:canvas-loaded" ||
+              (modalSample === "loaded-or-error" &&
+                event === "e2e:looker:error-shown");
+          }
+        }
         return (
-          document.querySelector(`canvas`)?.getAttribute("canvas-loaded") ===
-          "true"
+          (readyEvent ? ready : tileReady && countsShown) &&
+          modalOpened &&
+          modalLoaded
         );
       },
-      {},
-      { timeout: Duration.Seconds(10) },
     );
   }
 }

@@ -1,13 +1,32 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
+
+export const PROMPT_EVENT = "e2e:operators:prompt";
+const OUTPUT_EVENT = "e2e:operators:output-shown";
+
+type PromptPhase = "input" | "executing" | "output" | "closed";
+
+type PromptDetail = {
+  operator: string;
+  phase: PromptPhase;
+  params: string;
+  ready: boolean;
+};
+
+export const promptDetail = (e: { detail?: unknown }) =>
+  e.detail as PromptDetail;
 
 export class OperatorsPromptPom {
   readonly page: Page;
   readonly locator: Locator;
   readonly assert: OperatorsPromptAsserter;
-  readonly selectionCount: Locator;
   readonly type: PromptType;
 
-  constructor(page: Page, type: PromptType = "modal") {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+    type: PromptType = "modal",
+  ) {
     this.page = page;
     this.assert = new OperatorsPromptAsserter(this);
     this.locator = this.page.getByTestId(`operators-prompt-${type}`);
@@ -32,21 +51,80 @@ export class OperatorsPromptPom {
     return this.footer.locator('button:text("Execute")');
   }
 
+  /** Type into the first input; resolves once the form has resolved it */
+  async typeInput(text: string) {
+    await this.eventUtils.after(
+      PROMPT_EVENT,
+      () => this.locator.locator("input").first().pressSequentially(text),
+      (e) => {
+        const { params, ready } = promptDetail(e);
+        return ready && Object.values(JSON.parse(params)).includes(text);
+      },
+    );
+  }
+
+  /** Execute, resolving once the run has shown its output or closed */
   async execute() {
-    await this.assert.canExecute();
-    return this.executeButton.click();
+    const executing = await this.eventUtils.arm(
+      PROMPT_EVENT,
+      (e) => promptDetail(e).phase === "executing",
+    );
+    try {
+      await this.eventUtils.after(
+        PROMPT_EVENT,
+        () => this.executeButton.click(),
+        (e) => ["output", "closed"].includes(promptDetail(e).phase),
+      );
+      await executing.received;
+    } finally {
+      await executing.dispose();
+    }
+  }
+
+  /**
+   * Run `action` and resolve once the view modal shows an output whose data
+   * has `key` equal to `value`
+   */
+  afterOutput<T>(
+    action: () => Promise<T>,
+    key: string,
+    value: unknown,
+  ): Promise<T> {
+    return this.eventUtils.after(
+      OUTPUT_EVENT,
+      action,
+      (e) => JSON.parse((e.detail as { data: string }).data)[key] === value,
+    );
   }
 
   cancel() {
-    return this.footer.locator('button:text("Cancel")').click();
+    return this.afterClosed(() =>
+      this.footer.locator('button:text("Cancel")').click(),
+    );
   }
 
   close() {
-    return this.footer.locator('button:text("Close")').click();
+    return this.afterClosed(() =>
+      this.footer.locator('button:text("Close")').click(),
+    );
   }
 
+  /** Dismiss the view modal's output */
   done() {
-    return this.footer.locator('button:text("Done")').click();
+    return this.eventUtils.after(
+      OUTPUT_EVENT,
+      () => this.footer.locator('button:text("Done")').click(),
+      (e) => (e.detail as { visible: boolean }).visible === false,
+    );
+  }
+
+  /** Run `action` and resolve once the prompt closes because of it */
+  afterClosed<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after(
+      PROMPT_EVENT,
+      action,
+      (e) => promptDetail(e).phase === "closed",
+    );
   }
 }
 
@@ -54,25 +132,29 @@ class OperatorsPromptAsserter {
   constructor(private readonly panelPom: OperatorsPromptPom) {}
 
   async isOpen() {
-    await expect(this.panelPom.locator).toBeVisible();
+    expect(await this.panelPom.locator.isVisible()).toBe(true);
   }
+
   async isClosed() {
-    await expect(this.panelPom.locator).toBeHidden();
+    expect(await this.panelPom.locator.count()).toBe(0);
   }
+
   async isExecuting() {
-    await expect(this.panelPom.locator).toContainText("Executing...");
+    expect(await this.panelPom.content.textContent()).toBe("Executing...");
   }
+
   async canExecute() {
-    await expect(this.panelPom.executeButton).toBeEnabled();
+    expect(await this.panelPom.executeButton.isEnabled()).toBe(true);
   }
 
   async isValidated() {
-    await expect(
-      this.panelPom.footer.locator(".MuiCircularProgress-root"),
-    ).toBeHidden();
-    await expect(
-      this.panelPom.footer.locator(".MuiCircularProgress-root"),
-    ).toBeHidden();
+    expect(
+      await this.panelPom.footer.locator(".MuiCircularProgress-root").count(),
+    ).toBe(0);
+  }
+
+  async hasContent(text: string) {
+    expect(await this.panelPom.content.textContent()).toBe(text);
   }
 }
 

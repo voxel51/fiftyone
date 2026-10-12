@@ -1,14 +1,17 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { AnnotationSaveIndicator } from "@fiftyone/annotation";
+import { getEventBus } from "@fiftyone/events";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
+import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import { useAnnotationContext } from "./Edit/useAnnotationContext";
-import GroupEntry from "./GroupEntry";
+import GroupEntry, { UNSCANNED_GROUP_NAME } from "./GroupEntry";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
+import UnscannedFieldEntry from "./UnscannedFieldEntry";
 import useEntries from "./useEntries";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 
@@ -20,10 +23,21 @@ const EmptyLabelsContainer = styled.div`
   gap: 0.5rem;
 `;
 
+/** e2e specs wait on the edit form replacing the label list, and back */
+type AnnotateSidebarE2EEvents = {
+  "e2e:annotate:editing": { editing: boolean };
+};
+
 export default function AnnotateSidebar() {
   usePrimitivesCount();
   const isEditingValue = useAnnotationContext().isEditing;
   const isGenerated = useRecoilValue(isGeneratedView);
+
+  useEffect(() => {
+    getEventBus<AnnotateSidebarE2EEvents>().dispatch("e2e:annotate:editing", {
+      editing: isEditingValue,
+    });
+  }, [isEditingValue]);
 
   // Don't show label list in edit mode or in generated views (patches/clips/frames)
   // In generated views, only the edit panel should be visible
@@ -47,7 +61,7 @@ export default function AnnotateSidebar() {
       </div>
       <Sidebar
         isDisabled={() => true}
-        render={(_key, _group, entry) => {
+        render={(_key, group, entry) => {
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }
@@ -86,6 +100,12 @@ export default function AnnotateSidebar() {
           }
 
           if (entry.kind === EntryKind.PATH) {
+            if (group === UNSCANNED_GROUP_NAME) {
+              return {
+                children: <UnscannedFieldEntry path={entry.path} />,
+                disabled: true,
+              };
+            }
             return {
               children: <PrimitiveEntry path={entry.path} />,
               disabled: false,

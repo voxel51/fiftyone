@@ -31,7 +31,7 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
         router.history.replace(
           resolveURL({
             currentPathname: router.history.location.pathname,
-            currentSearch: router.location.search,
+            currentSearch: router.history.location.search,
           }),
           {
             ...router.get().state,

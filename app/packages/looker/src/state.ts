@@ -199,6 +199,8 @@ export interface BaseOptions {
   showOverlays: boolean;
   showPatchLabels: boolean;
   shownLabelAttributes: { [path: string]: string[] };
+  // label fields whose detection box outlines are not drawn
+  hiddenBoundingBoxes: readonly string[];
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
@@ -478,6 +480,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showHelp: false,
   showPatchLabels: false,
   shownLabelAttributes: {},
+  hiddenBoundingBoxes: [],
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,

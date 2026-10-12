@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
+import {
+  LABEL_TYPE_OPTIONS_VIDEO,
+  FRAME_PREFIX_AUTO_ERROR,
+  FRAME_PREFIX_SAMPLE_ERROR,
+} from "./constants";
 import {
   createDefaultFormData,
   defaultClassesComponent,
@@ -189,12 +193,42 @@ describe("validateFieldName", () => {
 });
 
 describe("getLabelTypeOptions", () => {
-  it("offers the spatial set for a video frame field", () => {
-    expect(getLabelTypeOptions("video", true)).toBe(LABEL_TYPE_OPTIONS);
+  it("offers every label type on video; frame-level classification is absent", () => {
+    expect(getLabelTypeOptions("video")).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+    const ids = getLabelTypeOptions("video").map((o) => o.id);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "detections",
+        "polylines",
+        "classification",
+        "temporaldetections",
+      ]),
+    );
+  });
+});
+
+describe("validateFieldName with a video label scope", () => {
+  it("rejects a typed frames. prefix on a frame-level type", () => {
+    expect(validateFieldName("frames.dets", null, "video", "frame")).toBe(
+      FRAME_PREFIX_AUTO_ERROR,
+    );
+    expect(validateFieldName("dets", null, "video", "frame")).toBeNull();
   });
 
-  it("limits a sample-level video field to clip-level types", () => {
-    expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+  it("rejects a typed frames. prefix on a sample-level type", () => {
+    expect(validateFieldName("frames.cls", null, "video", "sample")).toBe(
+      FRAME_PREFIX_SAMPLE_ERROR,
+    );
+    expect(validateFieldName("cls", null, "video", "sample")).toBeNull();
+  });
+
+  it("checks duplicates against the prefixed name for frame-level types", () => {
+    expect(
+      validateFieldName("dets", { "frames.dets": {} }, "video", "frame"),
+    ).toBe("Field name already exists");
+    expect(
+      validateFieldName("dets", { dets: {} }, "video", "frame"),
+    ).toBeNull();
   });
 });
 
@@ -238,6 +272,38 @@ describe("reconcileComponent", () => {
       reconcileComponent({ component: "dropdown", classes: classes(2) })
         .component,
     ).toBe("dropdown");
+  });
+
+  it("keeps a primitive field's radio or dropdown when it has values", () => {
+    const scanned = {
+      type: "str",
+      component: "radio",
+      values: ["ego_vehicle", "other_vehicle"],
+    };
+    expect(reconcileComponent(scanned)).toEqual(scanned);
+    expect(
+      reconcileComponent({ ...scanned, component: "dropdown" }).component,
+    ).toBe("dropdown");
+  });
+
+  it("derives radio or dropdown for a text primitive field with values", () => {
+    expect(
+      reconcileComponent({ type: "int", component: "text", values: [1, 2] })
+        .component,
+    ).toBe("radio");
+    expect(
+      reconcileComponent({
+        type: "str",
+        component: "text",
+        values: classes(6),
+      }).component,
+    ).toBe("dropdown");
+  });
+
+  it("resets a primitive field to text and strips values when none remain", () => {
+    expect(
+      reconcileComponent({ type: "str", component: "radio", values: [] }),
+    ).toEqual({ type: "str", component: "text" });
   });
 
   it("resets to text and strips classes when none remain", () => {

@@ -16,6 +16,7 @@ import {
   Base3dScene,
   type ThreeSceneBackground,
 } from "../scene-3d/Base3dScene";
+import { FrameRenderedSignal } from "../webgpu/FrameRenderedSignal";
 import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
 import controlStyles from "../panel-ui/PanelControl.module.css";
 import { PanelNotices } from "../panel-ui/PanelNotices";
@@ -657,6 +658,10 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
       }
       surface={canvasSurface}
     >
+      <FrameRenderedSignal
+        detail={pointCloudFrameDetail(renderLayers, pointSize, canvasSurface)}
+        event="e2e:multimodal:point-cloud-frame-rendered"
+      />
       <PerspectiveCameraProjection
         onViewportAspectChange={onViewportAspectChange}
         projection={cameraProjection}
@@ -758,6 +763,24 @@ function PerspectiveCameraProjection({
   }, [camera, invalidate, projection]);
 
   return null;
+}
+
+function pointCloudFrameDetail(
+  renderLayers: readonly PreparedPointCloudPanelLayer[],
+  pointSize: number,
+  surface: string | undefined,
+) {
+  return {
+    contentTimesNs: renderLayers
+      .map(({ layer }) => layer.contentTimeNs?.toString() ?? "")
+      .join(","),
+    pointSize,
+    renderedPointCount: renderLayers.reduce(
+      (sum, { data }) => sum + data.renderedPointCount,
+      0,
+    ),
+    surface: surface ?? null,
+  };
 }
 
 function pointCloudColorOptions(

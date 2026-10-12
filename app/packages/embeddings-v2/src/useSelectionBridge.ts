@@ -2,6 +2,7 @@ import type { SelectionType } from "@fiftyone/state";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -191,6 +192,19 @@ export function useSelectionBridge({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [clearAll]);
+
+  // A response landing after unmount (a tab switch, a close) must not
+  // publish for a plot that is gone — the close effect may have just
+  // cleared the grid it would re-narrow. A layout effect's cleanup runs in
+  // the unmount commit itself, so the guard does not wait on the passive
+  // flush, which is deferred past paint for a close that is not a click
+  useLayoutEffect(
+    () => () => {
+      lassoSeq.current++;
+      clickSeq.current++;
+    },
+    [],
+  );
 
   // A patches run's points are labels, so sample-level ids (a samples-view
   // grid's checkboxes, other panels' selections) resolve through each

@@ -296,6 +296,70 @@ class ServerViewTests(unittest.TestCase):
         self.assertIn("clip-pred-test", sample)
 
     @drop_datasets
+    def test_pagination_data_includes_undeclared_rotation(self):
+        dataset = fo.Dataset("test")
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection=fo.Detection(
+                    bounding_box=[0.1, 0.1, 0.2, 0.2], rotation=0.25
+                ),
+                detections=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            bounding_box=[0.1, 0.1, 0.2, 0.2], rotation=0.5
+                        )
+                    ]
+                ),
+            )
+        )
+
+        # rotation is a dynamic attribute, so it is not declared
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("detection.rotation", schema)
+        self.assertNotIn("detections.detections.rotation", schema)
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+
+        self.assertEqual(sample["detection"]["rotation"], 0.25)
+        self.assertEqual(
+            sample["detections"]["detections"][0]["rotation"], 0.5
+        )
+
+    @drop_datasets
+    def test_pagination_data_includes_undeclared_frame_rotation(self):
+        dataset = fo.Dataset("test")
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        bounding_box=[0.1, 0.1, 0.2, 0.2], rotation=0.5
+                    )
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+
+        # the grid attaches each video's first frame, see `_handle_frames()`
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(attach_frames=True, detach_frames=False),
+            )
+        )
+
+        (frame,) = sample["frames"]
+        self.assertEqual(frame["detections"]["detections"][0]["rotation"], 0.5)
+
+    @drop_datasets
     def test_extended_frame_sample(self):
         dataset = fod.Dataset("test")
         sample = fos.Sample(

@@ -205,14 +205,21 @@ export const CuboidInstances = ({
     axesMaterial,
   ]);
 
-  // Geometry rebuilds depend on ordered membership, but color sync and
-  // pointer handlers must always receive current label data and UI state.
+  // Stable index maps, rebuilt only when the *set* of labels changes (not on
+  // every parent re-render, which produces a new array reference regardless
+  // of content) — the actively-edited label is always excluded from this
+  // array upstream (see `ThreeDLabels`), so membership changes are rare,
+  // user-driven events (select/deselect/create/delete).
   const membershipKey = useMemo(
     () => detections.map((label) => label.data._id).join("|"),
     [detections],
   );
 
-  const labelsByIndex = detections;
+  const labelsByIndex = useMemo(
+    () => detections,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [membershipKey],
+  );
 
   const count = labelsByIndex.length;
   // Rebuild every buffer when membership or batch-level rendering settings
@@ -638,7 +645,7 @@ const CuboidHoverWireframe = ({
   overlayRotationFallback,
 }: CuboidHoverWireframeProps) => {
   const isSimilarLabelHovered = useSimilarLabels3d(label);
-  const selected = label.ui.selected;
+  const selected = Boolean((label as { selected?: boolean }).selected);
 
   const strokeAndFillColor = use3dLabelColor({
     isSelected: selected,

@@ -21,8 +21,10 @@ from fiftyone.core.utils import datetime_to_timestamp, run_sync_task
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
+from fiftyone.server.data import Info
 from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.hooks as fosh
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
@@ -118,6 +120,7 @@ AggregateResult = t.Union[
 
 async def aggregate_resolver(
     form: AggregationForm,
+    info: Info = None,
 ) -> t.List[
     t.Annotated[
         t.Union[
@@ -138,6 +141,7 @@ async def aggregate_resolver(
     if not form.paths:
         return []
 
+    await fosh.on_graphql_request(info, form.dataset)
     view = await _load_view(form, form.slices)
 
     slice_view = None
@@ -161,14 +165,9 @@ async def aggregate_resolver(
             ]
         )
 
-    # Temporal tags are a virtual sidebar field. Count the root on this view;
-    # nested paths are not sample fields and have no Mongo aggregation.
-    paths = [
-        path
-        for path in form.paths
-        if path != fosv.TEMPORAL_TAGS
-        and not path.startswith(fosv.TEMPORAL_TAGS + ".")
-    ]
+    # Temporal tags are not sample fields, so there is nothing to aggregate
+    # over for them; they are counted separately on the same view
+    paths = [path for path in form.paths if path != fosv.TEMPORAL_TAGS]
 
     results = []
     if paths:
@@ -201,9 +200,8 @@ async def aggregate_resolver(
             results.append(deserialize(result[offset : length + offset]))
             offset += length
 
-    temporal_tags = None
-    if fosv.TEMPORAL_TAGS in form.paths:
-        temporal_tags = await run_sync_task(_temporal_tags_aggregation, view)
+    if len(paths) != len(form.paths):
+        results.append(await run_sync_task(_temporal_tags_aggregation, view))
 
     if slice_view:
         for result in results:
@@ -211,17 +209,7 @@ async def aggregate_resolver(
                 result.slice = await slice_view._async_aggregate(foa.Count())
                 break
 
-    resolved = iter(results)
-    ordered = []
-    for path in form.paths:
-        if path == fosv.TEMPORAL_TAGS:
-            ordered.append(temporal_tags)
-        elif path.startswith(fosv.TEMPORAL_TAGS + "."):
-            ordered.append(DataAggregation(path=path, count=0, exists=0))
-        else:
-            ordered.append(next(resolved))
-
-    return ordered
+    return results
 
 
 RESULT_MAPPING = {

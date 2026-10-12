@@ -55,29 +55,28 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
     onOrderChange?.(updatedItems);
   };
 
-  const autoFitNodes = useCallback(() => {
+  function autoFitNodes() {
     const containerElem = containerRef.current;
-    if (!containerElem) return undefined;
-    hideOverflowingNodes(containerElem, (hiddenCount, lastVisibleItemId) => {
+    if (!containerElem) return;
+    hideOverflowingNodes(containerElem, (_: number, lastVisibleItemId) => {
       const lastVisibleItem = itemsById[lastVisibleItemId];
-      setHidden(
-        hiddenCount === 0
-          ? 0
-          : items.length - ((lastVisibleItem?.index ?? -1) + 1),
-      );
+      if (lastVisibleItem?.index) {
+        const computedHidden = items.length - lastVisibleItem.index - 1;
+        setHidden(computedHidden);
+      }
     });
-  }, [items, itemsById]);
+  }
+
+  const ro = useMemo(() => {
+    return new ResizeObserver(autoFitNodes);
+  }, []);
 
   useLayoutEffect(() => {
-    const containerElem = containerRef.current;
-    if (!containerElem) return undefined;
-
-    // Operator placements can arrive after the row mounts without resizing it.
-    autoFitNodes();
-    const ro = new ResizeObserver(autoFitNodes);
-    ro.observe(containerElem);
-    return () => ro.disconnect();
-  }, [autoFitNodes]);
+    const containerElem = containerRef?.current;
+    if (containerElem) {
+      ro.observe(containerElem);
+    }
+  }, [ro, containerRef.current]); // eslint-disable-line
 
   const handleMove = useMemo(() => {
     return throttle((e: MoveEvent) => {
@@ -269,8 +268,7 @@ function MoreItems<T extends AdaptiveMenuItemPropsType>(
           }}
           icon={<ExpandMore />}
           title="More items"
-          open={open}
-          highlight={open}
+          highlight
         />
       }
       open={open}

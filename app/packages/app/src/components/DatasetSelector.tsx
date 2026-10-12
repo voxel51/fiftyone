@@ -3,6 +3,7 @@
  */
 
 import type { UseSearch } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { datasetName, useSetDataset } from "@fiftyone/state";
 import { Combobox, type ComboboxOption, Size } from "@voxel51/voodo";
 import React, {
@@ -15,6 +16,11 @@ import React, {
 import { useRecoilValue } from "recoil";
 
 import styles from "./DatasetSelector.module.css";
+
+/** e2e specs wait on the open list's results before reading them */
+type DatasetSelectorE2EEvents = {
+  "e2e:components:selector-results": { cy?: string };
+};
 
 /**
  * Dataset typeahead on voodo's `Combobox`. The option list is driven by the
@@ -98,12 +104,12 @@ const DatasetSelector: React.FC<{
     [setDataset],
   );
 
-  // The e2e harness arms a listener for this before opening the dropdown;
-  // the old selector announced its results the same way
+  // announced the same way as the legacy selector's results
   useEffect(() => {
     if (!open) return;
-    rootRef.current?.dispatchEvent(
-      new CustomEvent("selector-results-dataset", { bubbles: true }),
+    getEventBus<DatasetSelectorE2EEvents>().dispatch(
+      "e2e:components:selector-results",
+      { cy: "dataset" },
     );
   }, [open, values]);
 

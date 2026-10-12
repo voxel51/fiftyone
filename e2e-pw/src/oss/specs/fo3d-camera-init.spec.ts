@@ -7,12 +7,6 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-import fs from "node:fs";
-import {
-  getPlyCube,
-  getPlyPointCloud,
-} from "./fo3d-ascii-asset-factory/ply-factory";
-
 /**
  * Camera initialization e2e tests.
  *
@@ -20,20 +14,19 @@ import {
  * sources, and that the camera position persists across sample navigations and explore/annotate mode changes.
  */
 
+/** The status bar shows each coordinate to 2 places */
+const STATUS_BAR_PRECISION = 0.01;
+
 /** The default fallback camera position when no other source is available. */
 const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 5, -5];
 
 // ─── dataset: no camera props (bbox-based init) ────────────────────────────
 
 const basicDatasetName = getUniqueDatasetNameWithPrefix("cam-init-basic");
-const basicPlyMeshPath = `/tmp/cam-init-mesh-${basicDatasetName}.ply`;
-const basicPlyPcdPath = `/tmp/cam-init-pcd-${basicDatasetName}.ply`;
-const basicScenePath = `/tmp/cam-init-scene-${basicDatasetName}.fo3d`;
 
 // ─── dataset: explicit camera position in fo3d ─────────────────────────────
 
 const scenePosDatasetName = getUniqueDatasetNameWithPrefix("cam-init-scenepos");
-const scenePosScenePath = `/tmp/cam-init-scenepos-${scenePosDatasetName}.fo3d`;
 
 // Camera position and lookAt defined in the fo3d scene
 const SCENE_CAMERA_POSITION: [number, number, number] = [15, 10, 20];
@@ -50,58 +43,44 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  renderer3d: async ({ page }, use) => {
-    await use(new Renderer3dPom(page));
+  renderer3d: async ({ page, eventUtils }, use) => {
+    await use(new Renderer3dPom(page, eventUtils));
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  // Write PLY assets to disk (reused across both datasets)
-  fs.writeFileSync(basicPlyMeshPath, getPlyCube());
-  fs.writeFileSync(basicPlyPcdPath, getPlyPointCloud());
-
   // ── Dataset 1: no camera props → camera should init from bbox ──
+  await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName: basicDatasetName,
+    numSamples: 2,
+    sceneOptions: {
+      meshes: [
+        { shape: "cube", name: "mesh", scale: 2 },
+        {
+          shape: "point-cloud",
+          name: "pcd",
+          isPointCloud: true,
+          position: [-1, 0, 0],
+        },
+      ],
+    },
+  });
+
   // ── Dataset 2: explicit camera.position + camera.look_at in fo3d ──
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.Dataset("${basicDatasetName}")
-dataset.persistent = True
-
-scene = fo.Scene()
-mesh = fo.PlyMesh("mesh", "${basicPlyMeshPath}")
-mesh.scale = 2
-scene.add(mesh)
-
-pcd = fo.PlyMesh("pcd", "${basicPlyPcdPath}", is_point_cloud=True)
-pcd.position = [-1, 0, 0]
-scene.add(pcd)
-
-scene.write("${basicScenePath}")
-
-sample1 = fo.Sample(filepath="${basicScenePath}", name="sample1")
-sample2 = fo.Sample(filepath="${basicScenePath}", name="sample2")
-dataset.add_samples([sample1, sample2])
-
-dataset2 = fo.Dataset("${scenePosDatasetName}")
-dataset2.persistent = True
-
-scene = fo.Scene()
-mesh = fo.PlyMesh("mesh", "${basicPlyMeshPath}")
-scene.add(mesh)
-
-scene.camera = fo.PerspectiveCamera(
-    position=${JSON.stringify(SCENE_CAMERA_POSITION)},
-    look_at=${JSON.stringify(SCENE_CAMERA_LOOK_AT)},
-)
-
-scene.write("${scenePosScenePath}")
-
-sample = fo.Sample(filepath="${scenePosScenePath}", name="sample-with-cam")
-dataset2.add_samples([sample])
-  `);
+  await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName: scenePosDatasetName,
+    sceneOptions: {
+      meshes: [{ shape: "cube", name: "mesh" }],
+      camera: {
+        position: SCENE_CAMERA_POSITION,
+        lookAt: SCENE_CAMERA_LOOK_AT,
+      },
+    },
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -110,9 +89,9 @@ test.afterAll(async ({ foWebServer }) => {
 
 // ─── tests ─────────────────────────────────────────────────────────────────
 
-// Flaky: whichever test opens the modal first hits a camera-init stall (the
-// camera never re-frames/saves); skipping only the first test moved the same
-// failure to the next one, so quarantine the suite (was test.describe.serial)
+// Quarantined (was test.describe.serial): entering annotate reveals the scene
+// (e2e:looker3d:scene-ready) before its camera attaches, so the mode-switch test
+// reads no camera; the other tests pass on their events
 test.describe.skip("camera initialization", () => {
   test.afterEach(async ({ page, modal }) => {
     await modal.close({ ignoreError: true });
@@ -131,19 +110,17 @@ test.describe.skip("camera initialization", () => {
     // Ensure no saved camera state exists
     await renderer3d.clearSavedCameraState(basicDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            DEFAULT_CAMERA_POSITION,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(false);
+    // the scene reveals only once the camera has settled
+    expect(
+      positionsAreClose(
+        await renderer3d.getCameraPosition(),
+        DEFAULT_CAMERA_POSITION,
+      ),
+    ).toBe(false);
 
     const position = await renderer3d.getCameraPosition();
 
@@ -161,46 +138,28 @@ test.describe.skip("camera initialization", () => {
     fiftyoneLoader,
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, basicDatasetName);
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    // the scene saves its camera once initialized, and again only on a move
+    await renderer3d.afterCameraSaved(() =>
+      modal.looker3dControls.afterAllAssetsLoaded(() => grid.openFirstSample()),
+    );
 
     const cameraBefore = await renderer3d.getCameraPosition();
-
-    // Wait until saved camera state matches the live camera.
-    // localStorage can briefly contain an early fallback value.
-    await expect
-      .poll(async () => {
-        const saved = await renderer3d.getSavedCameraState(basicDatasetName);
-        if (!saved) {
-          return false;
-        }
-
-        return positionsAreClose(
-          saved.position as [number, number, number],
-          cameraBefore,
-          1.0,
-        );
-      })
-      .toBe(true);
-
-    const savedBefore = await renderer3d.getSavedCameraState(basicDatasetName);
-    expect(savedBefore).not.toBeNull();
-    expect(savedBefore?.position).toHaveLength(3);
-    expect(savedBefore?.target).toHaveLength(3);
+    const saved = await renderer3d.getSavedCameraState(basicDatasetName);
+    expect(
+      positionsAreClose(
+        saved?.position as [number, number, number],
+        cameraBefore,
+        STATUS_BAR_PRECISION,
+      ),
+    ).toBe(true);
 
     // Navigate to next sample, then come back
-    await modal.navigateNextSample();
-    await modal.navigatePreviousSample();
-
-    await expect
-      .poll(
-        async () => {
-          const currentCamera = await renderer3d.getCameraPosition();
-          return positionsAreClose(currentCamera, cameraBefore, 1.0);
-        },
-        { timeout: 10000, intervals: [500] },
-      )
-      .toBe(true);
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
+      modal.navigateNextSample(),
+    );
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
+      modal.navigatePreviousSample(),
+    );
 
     const positionAfter = await renderer3d.getCameraPosition();
 
@@ -226,20 +185,17 @@ test.describe.skip("camera initialization", () => {
     // Clear any saved state so we start fresh
     await renderer3d.clearSavedCameraState(scenePosDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            SCENE_CAMERA_POSITION,
-            1.0,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
+    expect(
+      positionsAreClose(
+        await renderer3d.getCameraPosition(),
+        SCENE_CAMERA_POSITION,
+        1.0,
+      ),
+    ).toBe(true);
   });
 
   test("camera position persists across explore/annotate mode switches", async ({
@@ -254,46 +210,36 @@ test.describe.skip("camera initialization", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, basicDatasetName);
     await renderer3d.clearSavedCameraState(basicDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
-    await modal.sidebar.switchMode("explore");
-
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
     const exploreCameraBefore = await renderer3d.getCameraPosition();
 
-    await modal.sidebar.switchMode("annotate");
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
+      modal.sidebar.switchMode("annotate"),
+    );
+    expect(
+      positionsAreClose(
+        await renderer3d.getCameraPosition(),
+        exploreCameraBefore,
+        modeSwitchTolerance,
+      ),
+    ).toBe(true);
 
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            exploreCameraBefore,
-            modeSwitchTolerance,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
-
-    await renderer3d.dragCameraBy(10, 10);
-    // we wait for canvas animation which takes a few ms to run, 100 to be safe
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(100);
+    // damping is off, so the camera has moved by the time the drag returns
+    // a drag in small steps, so the controls see pointer movement throughout
+    await modal.sampleCanvas3d.move(0.5, 0.5);
+    await modal.sampleCanvas3d.down();
+    for (let step = 0; step < 10; step++) {
+      await modal.sampleCanvas3d.movePixels(1, 1);
+    }
+    await modal.sampleCanvas3d.up();
 
     const annotateCameraAfterDrag = await renderer3d.getCameraPosition();
 
-    await modal.sidebar.switchMode("explore");
-
-    await expect
-      .poll(
-        async () =>
-          positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            annotateCameraAfterDrag,
-            modeSwitchTolerance,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
+    await modal.eventUtils.after("e2e:looker3d:scene-ready", () =>
+      modal.sidebar.switchMode("explore"),
+    );
 
     const exploreCameraAfterRoundTrip = await renderer3d.getCameraPosition();
 
@@ -319,48 +265,21 @@ test.describe.skip("camera initialization", () => {
     // Clear saved state to get a fresh bbox-based init
     await renderer3d.clearSavedCameraState(basicDatasetName);
 
-    await grid.openFirstSample();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
 
     // Record the initial camera position
     const initialPosition = await renderer3d.getCameraPosition();
 
-    // Use a public camera action to move the camera after initialization.
-    await modal.looker3dControls.setEgoView();
-
-    await expect
-      .poll(
-        async () =>
-          !positionsAreClose(
-            await renderer3d.getCameraPosition(),
-            initialPosition,
-          ),
-        { timeout: 10000 },
-      )
-      .toBe(true);
-
-    // Wait until the persisted camera state catches up with the rendered camera.
-    await expect
-      .poll(async () => {
-        const currentCamera = await renderer3d.getCameraPosition();
-        const savedState =
-          await renderer3d.getSavedCameraState(basicDatasetName);
-
-        if (!savedState) {
-          return false;
-        }
-
-        return positionsAreClose(
-          savedState.position as [number, number, number],
-          currentCamera,
-          1.0,
-        );
-      })
-      .toBe(true);
+    // Use a public camera action to move the camera after initialization;
+    // the scene saves the pose it moves to
+    await renderer3d.afterCameraSaved(() =>
+      modal.looker3dControls.setEgoView(),
+    );
 
     const newPosition = await renderer3d.getCameraPosition();
     const savedState = await renderer3d.getSavedCameraState(basicDatasetName);
-    expect(savedState).not.toBeNull();
 
     // Camera should have moved from its initial position.
     expect(
@@ -370,13 +289,10 @@ test.describe.skip("camera initialization", () => {
 
     expect(
       positionsAreClose(
-        savedState!.position as [number, number, number],
+        savedState?.position as [number, number, number],
         newPosition,
-        1.0,
+        STATUS_BAR_PRECISION,
       ),
-      `Expected localStorage to have ${newPosition}, but got ${
-        savedState!.position
-      }`,
     ).toBe(true);
   });
 });

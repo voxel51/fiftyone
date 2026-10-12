@@ -1,8 +1,14 @@
+import { getEventBus } from "@fiftyone/events";
 import { Button, Size, Variant } from "@voxel51/voodo";
 import { TagIcon } from "../stableIcons";
 import React, { useEffect } from "react";
 import { useTemporalTagContext } from "./TemporalTagContext";
 import styles from "./TemporalTag.module.css";
+
+/** e2e specs wait on the tag mode's phase (idle, ready, selecting, selected) */
+type TemporalTagE2EEvents = {
+  "e2e:playback:temporal-tag-mode": { phase: string };
+};
 
 /**
  * Toggle button for entering/exiting temporal tag selection mode.
@@ -39,6 +45,15 @@ const TemporalTagButton: React.FC = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [ctx]);
+
+  const phase = ctx?.onTagCreate ? ctx.state.phase : null;
+  useEffect(() => {
+    if (phase === null) return;
+    getEventBus<TemporalTagE2EEvents>().dispatch(
+      "e2e:playback:temporal-tag-mode",
+      { phase },
+    );
+  }, [phase]);
 
   if (!ctx?.onTagCreate) return null;
 

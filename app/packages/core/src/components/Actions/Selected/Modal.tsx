@@ -9,8 +9,8 @@ import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { ActionOptionProps } from "../Common";
+import { ActionOption } from "../Common";
 import Popout from "../Popout";
-import SelectionSection from "./SelectionSection";
 import {
   useClearSampleSelection,
   useClearSelectedLabels,
@@ -111,35 +111,35 @@ export default ({
     toIds(visibleFrameLabels),
   );
 
-  const sampleItems: ({ key: string } & ActionOptionProps)[] = [
-    {
+  const items: ({ key: string } & ActionOptionProps)[] = [];
+  if (selected.size > 0) {
+    items.push({
       key: "clear",
       text: `Clear selected ${elementNames.plural}`,
       title: `Deselect all selected ${elementNames.plural}`,
-      hidden: !selected.size,
       onClick: clearSelection,
-    },
-  ];
+    });
+  }
 
-  const labelItems: ({ key: string } & ActionOptionProps)[] = [
+  items.push(
     {
       key: "select",
-      text: `Select visible labels (current ${elementNames.singular})`,
+      text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
       onClick: closeAndCall(useSelectVisible(null, visibleSampleLabels)),
     },
     {
       key: "unselect",
-      text: `Unselect visible labels (current ${elementNames.singular})`,
+      text: `Unselect visible (current ${elementNames.singular})`,
       hidden: !hasVisibleSelection,
       onClick: closeAndCall(
         useUnselectVisible(undefined, toIds(visibleSampleLabels)),
       ),
     },
-  ];
+  );
 
   if (isVideo) {
-    labelItems.push(
+    items.push(
       {
         key: "select-frame",
         text: "Select visible labels (current frame)",
@@ -157,7 +157,7 @@ export default ({
     );
   }
 
-  labelItems.push(
+  items.push(
     {
       key: "clear-labels",
       text: "Clear selected labels",
@@ -179,7 +179,7 @@ export default ({
   );
 
   if (isVideo) {
-    labelItems.push({
+    items.push({
       key: "hide-unselected-labels-frame",
       text: "Hide unselected labels (current frame)",
       hidden: !hasFrameVisibleUnselected,
@@ -189,8 +189,9 @@ export default ({
 
   return (
     <Popout modal={true} fixed anchorRef={anchorRef}>
-      <SelectionSection label={elementNames.plural} items={sampleItems} />
-      <SelectionSection label="Labels" items={labelItems} />
+      {items.map(({ key, ...props }) => (
+        <ActionOption key={key} {...props} />
+      ))}
     </Popout>
   );
 };

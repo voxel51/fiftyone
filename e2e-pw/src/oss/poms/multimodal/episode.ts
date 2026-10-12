@@ -1,9 +1,40 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { Duration } from "src/oss/utils";
+import { exactText } from "src/oss/utils";
+import { EventCondition, EventUtils } from "src/shared/event-utils";
+import { EPISODE_CAPTURE, SampleCanvasPom } from "../modal/sample-canvas";
 
-const READY_TIMEOUT = Duration.Seconds(30);
+/** Detail of the app's `e2e:multimodal:point-cloud-frame-rendered` */
+interface PointCloudFrameDetail {
+  readonly contentTimesNs: string;
+  readonly pointSize: number;
+  readonly renderedPointCount: number;
+  readonly surface: string | null;
+}
 
-/** Shared user-facing episode interactions for modal and Explorer MCAP hosts. */
+/** Detail of the app's `e2e:multimodal:image-frame-rendered` */
+interface ImageFrameDetail {
+  readonly imageContentTimeNs: string | null;
+  readonly pointSize: number;
+  readonly projectedStreamCount: number;
+}
+
+/** The text a readout shows, with the padding spaces it renders collapsed */
+const readout = (text: string) => text.replace(/\s+/g, " ").trim();
+
+/** An `e2e:multimodal:*` ShownSignal condition on its detail */
+const shown = (
+  event: string,
+  matches: (detail: Record<string, unknown>) => boolean,
+): EventCondition => ({
+  events: `e2e:multimodal:${event}`,
+  predicate: (e) => matches((e.detail ?? {}) as Record<string, unknown>),
+});
+
+/**
+ * Shared user-facing episode interactions for modal and Explorer MCAP hosts.
+ * A step's effects (readouts, raw values, logs, pixels) are awaited through
+ * {@link EpisodePom.after} with the conditions below, then read once.
+ */
 export class EpisodePom {
   readonly shell: Locator;
   readonly state: Locator;
@@ -12,27 +43,171 @@ export class EpisodePom {
   constructor(
     private readonly page: Page,
     readonly scope: Locator,
+    private readonly eventUtils: EventUtils,
   ) {
     this.shell = scope.locator("[data-episode-playback-shell]");
     this.state = byDataTestId(scope, "episode-modal-state");
   }
 
+  /** The canvas surface at `target` (a tile, or a canvas within one) */
+  canvas(target: Locator): SampleCanvasPom {
+    return new SampleCanvasPom(
+      this.page,
+      this.eventUtils,
+      target,
+      EPISODE_CAPTURE,
+    );
+  }
+
+  /**
+   * Run `action` and resolve on the rendered frame of the modal 3D canvas
+   * that drew the point cloud captured at `drawn.at` (a UTC playhead time).
+   */
+  async afterPointCloudFrame<T>(
+    drawn: { at: string; pointCount: number; pointSize: number },
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const contentTimeNs = utcDateTimeToNanoseconds(drawn.at);
+    return this.eventUtils.after(
+      "e2e:multimodal:point-cloud-frame-rendered",
+      action,
+      (event) => {
+        const detail = event.detail as PointCloudFrameDetail;
+        return (
+          detail.surface === "modal-3d" &&
+          detail.contentTimesNs === contentTimeNs &&
+          detail.renderedPointCount === drawn.pointCount &&
+          detail.pointSize === drawn.pointSize
+        );
+      },
+    );
+  }
+
+  /**
+   * Run `action` and resolve on the rendered frame of the image tile that
+   * drew the image captured at `drawn.at` with `drawn.projectedStreams`
+   * point-cloud projections, at `drawn.pointSize` when given.
+   */
+  async afterImageFrame<T>(
+    drawn: { at: string; projectedStreams: number; pointSize?: number },
+    action: () => Promise<T>,
+  ): Promise<T> {
+    const contentTimeNs = utcDateTimeToNanoseconds(drawn.at);
+    return this.eventUtils.after(
+      "e2e:multimodal:image-frame-rendered",
+      action,
+      (event) => {
+        const detail = event.detail as ImageFrameDetail;
+        return (
+          detail.imageContentTimeNs === contentTimeNs &&
+          detail.projectedStreamCount === drawn.projectedStreams &&
+          (drawn.pointSize === undefined ||
+            detail.pointSize === drawn.pointSize)
+        );
+      },
+    );
+  }
+
+  /** Run `action` and resolve once each of `conditions` is met because of it */
+  async after<T>(
+    conditions: readonly EventCondition[],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.afterAll(conditions, action);
+  }
+
+  /** The episode shell for `fileName` has mounted (possibly still loading) */
+  shellShown(fileName: string): EventCondition {
+    return shown("episode-shell", (d) => d.fileName === fileName);
+  }
+
+  /** The episode for `fileName` is ready: no source swap is in flight */
+  ready(fileName: string | RegExp): EventCondition {
+    return shown("episode-ready", (d) =>
+      typeof fileName === "string"
+        ? d.fileName === fileName
+        : fileName.test(String(d.fileName)),
+    );
+  }
+
+  /** The playback state message reads `text` */
+  stateShown(text: string): EventCondition {
+    return shown("episode-state", (d) => d.text === text);
+  }
+
+  /** The UTC readout shows `time` */
+  utcTime(time: string): EventCondition {
+    return shown("utc-time", (d) => d.text === time);
+  }
+
+  /** The UTC readout shows a time other than `current` */
+  utcTimeChanged(current: string | null): EventCondition {
+    return shown("utc-time", (d) => d.text !== current);
+  }
+
+  /** The playhead readout shows `text` */
+  playhead(text: string): EventCondition {
+    return {
+      events: "e2e:playback:playhead-time",
+      predicate: (e) =>
+        readout((e.detail as { label: string }).label) === readout(text),
+    };
+  }
+
+  /**
+   * The raw tile for `stream` shows a newly settled record ("" for none): the
+   * one valid from `validFrom` (a UTC time) when given. A tile keeps its
+   * previous record through a failed read, so a wait on a change pins it
+   */
+  raw(stream: string, validFrom?: string): EventCondition {
+    const validFromNs =
+      validFrom === undefined ? undefined : utcDateTimeToNanoseconds(validFrom);
+    return shown(
+      "raw-shown",
+      (d) =>
+        d.stream === stream &&
+        (validFromNs === undefined || d.validFromNs === String(validFromNs)),
+    );
+  }
+
+  /** The log console, in `mode`, shows each of `texts` */
+  logs(texts: readonly string[], mode: "logs" | "diagnostics" = "logs") {
+    return shown("log-rows", (d) => {
+      const shownTexts = String(d.texts).split("\n");
+      return (
+        d.mode === mode && texts.every((text) => shownTexts.includes(text))
+      );
+    });
+  }
+
+  /**
+   * The image tile titled `title` has settled an empty state for the playhead
+   * at `second` into the episode
+   */
+  tileEmptyAt(title: string, second: number): EventCondition {
+    return shown(
+      "tile-empty",
+      (d) => d.title === title && d.playheadMs === Math.round(second * 1000),
+    );
+  }
+
+  /**
+   * The image tile titled `title` shows the frame it asked for: the one
+   * captured at `at` (a UTC time) when given
+   */
+  imageShown(title: string, at?: string): EventCondition {
+    const contentTimeNs =
+      at === undefined ? undefined : utcDateTimeToNanoseconds(at);
+    return shown(
+      "image-shown",
+      (d) =>
+        d.title === title &&
+        (contentTimeNs === undefined || d.contentTimeNs === contentTimeNs),
+    );
+  }
+
   get controls(): Locator {
     return byDataTestId(this.shell, "timeline-controls-root");
-  }
-
-  savedRangePin(sourceLabel: string): Locator {
-    return this.shell
-      .locator('[data-track-id^="fiftyone:saved-segments"]')
-      .filter({ hasText: sourceLabel })
-      .locator('[data-testid^="timeline-track-pin-"]')
-      .first();
-  }
-
-  async toggleTracksDrawer(): Promise<void> {
-    await byDataTestId(this.controls, "timeline-controls-toggle")
-      .first()
-      .click();
   }
 
   get timelineRuler(): Locator {
@@ -65,64 +240,71 @@ export class EpisodePom {
     return root.locator("[data-cy=episode-raw-meta]");
   }
 
-  async waitForReady(sourceLabel: string | RegExp): Promise<void> {
-    await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(
-      this.scope.getByText(sourceLabel, { exact: true }),
-    ).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
-    await expect
-      .poll(
-        () => this.shell.getAttribute("data-episode-source-transitioning"),
-        {
-          timeout: READY_TIMEOUT,
-        },
-      )
-      .toBeNull();
-    await expect(
-      byDataTestId(this.scope, "episode-preparing-scaffold"),
-    ).toBeHidden();
+  /**
+   * Run `action` (opening or loading an episode) and resolve once `fileName`
+   * is ready and each of `conditions` is met
+   */
+  async afterReady<T>(
+    fileName: string | RegExp,
+    action: () => Promise<T>,
+    conditions: readonly EventCondition[] = [],
+  ): Promise<T> {
+    return this.after([this.ready(fileName), ...conditions], action);
   }
 
-  /** Verifies useful episode topology is visible before source reads recover. */
+  /**
+   * Verifies useful episode topology is visible before source reads recover;
+   * open it with {@link shellShown}
+   */
   async expectWarmBootstrapShell(
     fileName: string,
     tileTitles: readonly string[],
   ): Promise<void> {
-    await expect(this.shell).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    expect(
+      await this.scope.getByText(fileName, { exact: true }).isVisible(),
+    ).toBe(true);
     await this.expectTileTitles(tileTitles);
-    await expect(
-      byDataTestId(this.scope, "episode-preparing-scaffold"),
-    ).toBeHidden();
+    expect(
+      await byDataTestId(this.scope, "episode-preparing-scaffold").isVisible(),
+    ).toBe(false);
   }
 
+  /** Page to the adjacent sample, `fileName`, once it and `conditions` are */
   async navigateDatasetSample(
     direction: "forward" | "backward",
     fileName: string,
+    conditions: readonly EventCondition[] = [],
   ): Promise<void> {
     await this.blurActiveElement();
-    await this.page.keyboard.press(
-      direction === "forward" ? "ArrowRight" : "ArrowLeft",
+    await this.afterReady(
+      fileName,
+      () =>
+        this.page.keyboard.press(
+          direction === "forward" ? "ArrowRight" : "ArrowLeft",
+        ),
+      conditions,
     );
-    await this.waitForReady(fileName);
   }
 
   async applyEgoView(
     tileTitle: string,
   ): Promise<Readonly<Record<string, number>>> {
     const inputs = await this.openViewpointInputs(tileTitle);
-    const previousPose = await this.readCameraPoseInputs(inputs);
+    // the committed values, as the inputs reflect them in aria-valuenow
+    const before = await this.readCameraPoseValues(inputs);
     await this.blurActiveElement();
-    await this.page.keyboard.press("e");
-    await expect
-      .poll(() => this.readCameraPoseInputs(inputs), {
-        timeout: READY_TIMEOUT,
-      })
-      .not.toEqual(previousPose);
+    // one commit publishes the whole pose, and a valid pose can keep a
+    // coordinate, so any coordinate changing means the new pose is in
+    await this.eventUtils.after(
+      "e2e:multimodal:camera-pose",
+      () => this.page.keyboard.press("e"),
+      (e) => {
+        const pose = e.detail as Record<string, number>;
+        return CAMERA_POSE_INPUT_NAMES.some(
+          (name) => Math.abs(pose[name] - before[name]) >= 5e-7,
+        );
+      },
+    );
     return this.readCameraPoseInputs(inputs);
   }
 
@@ -130,15 +312,22 @@ export class EpisodePom {
     tileTitle: string,
     expected: Readonly<Record<string, number>>,
   ): Promise<void> {
-    const inputs = await this.openViewpointInputs(tileTitle);
-    for (const [name, value] of Object.entries(expected)) {
-      const input = inputs.getByRole("spinbutton", { name });
-      await expect
-        .poll(() => input.inputValue().then(Number.parseFloat), {
-          timeout: READY_TIMEOUT,
-        })
-        .toBeCloseTo(value, 6);
-    }
+    const matches = (pose: Readonly<Record<string, number>>) =>
+      Object.entries(expected).every(
+        ([name, value]) => Math.abs(pose[name] - value) < 5e-7,
+      );
+    // a navigation or reload restores the pose once the camera appears, on
+    // its own; compared at 6-digit precision
+    await this.eventUtils.untilState(
+      "e2e:multimodal:camera-pose",
+      async () =>
+        matches(
+          await this.readCameraPoseValues(
+            await this.openViewpointInputs(tileTitle),
+          ),
+        ),
+      (e) => matches(e.detail as Record<string, number>),
+    );
   }
 
   async setSidebarToggle(
@@ -151,7 +340,6 @@ export class EpisodePom {
       name: accessibleName,
       exact: true,
     });
-    await expect(toggle).toBeVisible({ timeout: READY_TIMEOUT });
     if ((await toggle.isChecked()) !== checked) await toggle.click();
     await this.expectSidebarToggle(tileTitle, accessibleName, checked);
   }
@@ -166,8 +354,19 @@ export class EpisodePom {
       name: accessibleName,
       exact: true,
     });
-    if (checked) await expect(toggle).toBeChecked({ timeout: READY_TIMEOUT });
-    else await expect(toggle).not.toBeChecked({ timeout: READY_TIMEOUT });
+    // the setting renders from its store as the tile's settings open
+    expect(await toggle.getAttribute("aria-checked")).toBe(String(checked));
+  }
+
+  /** Size the camera tile's projected points (a plain number input). */
+  async setProjectionPointSize(tileTitle: string, size: number): Promise<void> {
+    await this.openTileSettings(tileTitle);
+    const input = this.scope.getByRole("spinbutton", {
+      name: "Point size",
+      exact: true,
+    });
+    await input.fill(String(size));
+    expect(await input.inputValue()).toBe(String(size));
   }
 
   async setSidebarNumber(
@@ -192,12 +391,26 @@ export class EpisodePom {
     value: number,
   ): Promise<void> {
     await this.openTileSettings(tileTitle);
-    await expect(
-      this.scope.getByRole("spinbutton", {
-        name: accessibleName,
-        exact: true,
-      }),
-    ).toHaveValue(String(value), { timeout: READY_TIMEOUT });
+    const input = this.scope.getByRole("spinbutton", {
+      name: accessibleName,
+      exact: true,
+    });
+    expect(await input.getAttribute("aria-valuenow")).toBe(String(value));
+  }
+
+  /** The pose the inputs hold, as committed (aria-valuenow) */
+  private async readCameraPoseValues(
+    inputs: Locator,
+  ): Promise<Readonly<Record<string, number>>> {
+    const pose: Record<string, number> = {};
+    for (const name of CAMERA_POSE_INPUT_NAMES) {
+      pose[name] = Number(
+        await inputs
+          .getByRole("spinbutton", { name })
+          .getAttribute("aria-valuenow"),
+      );
+    }
+    return pose;
   }
 
   private async readCameraPoseInputs(
@@ -218,22 +431,13 @@ export class EpisodePom {
     if ((await viewpoint.getAttribute("aria-expanded")) !== "true") {
       await viewpoint.click();
     }
-    await expect(viewpoint).toHaveAttribute("aria-expanded", "true");
+    expect(await viewpoint.getAttribute("aria-expanded")).toBe("true");
     return this.scope;
   }
 
   private async openTileSettings(tileTitle: string): Promise<void> {
     await this.tileTitle(tileTitle).first().click();
-    const panelTab = this.scope.getByRole("tab", {
-      name: tileTitle,
-      exact: true,
-    });
-    await expect(panelTab).toBeVisible({ timeout: READY_TIMEOUT });
-    await panelTab.click();
-  }
-
-  async expectFileName(fileName: string): Promise<void> {
-    await expect(this.scope.getByText(fileName, { exact: true })).toBeVisible();
+    await this.scope.getByRole("tab", { name: tileTitle, exact: true }).click();
   }
 
   async expectTileTitles(
@@ -241,23 +445,25 @@ export class EpisodePom {
     absent: readonly string[] = [],
   ): Promise<void> {
     for (const title of present) {
-      await expect(this.tileTitle(title).first()).toBeVisible();
+      expect(await this.tileTitle(title).first().isVisible()).toBe(true);
     }
     for (const title of absent) {
-      await expect(this.tileTitle(title)).toHaveCount(0);
+      expect(await this.tileTitle(title).count()).toBe(0);
     }
   }
 
   async expectTileTitleCount(title: string, count: number): Promise<void> {
-    await expect(this.tileTitle(title)).toHaveCount(count);
+    expect(await this.tileTitle(title).count()).toBe(count);
   }
 
   async addTile(type: string, title: string): Promise<void> {
     await this.shell
       .getByRole("button", { name: "Layout", exact: true })
       .click();
+    const before = await this.tileTitle(title).count();
+    // the layout adds the tile, and its header, in the click's render
     await this.page.locator(`[data-testid="episode-add-tile-${type}"]`).click();
-    await expect(this.tileTitle(title)).toBeVisible({ timeout: READY_TIMEOUT });
+    expect(await this.tileTitle(title).count()).toBe(before + 1);
   }
 
   async selectMessageSource(
@@ -269,13 +475,8 @@ export class EpisodePom {
       name: nextTitle,
       exact: true,
     });
-    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
-    await source.check();
+    await this.after([this.raw(nextTitle)], () => source.check());
     this.inspectedStream = nextTitle;
-    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
-    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
   async closeTile(title: string): Promise<void> {
@@ -288,7 +489,7 @@ export class EpisodePom {
       .first()
       .getByRole("button", { name: "Close", exact: true })
       .click();
-    await expect(this.tileTitle(title)).toHaveCount(remaining);
+    expect(await this.tileTitle(title).count()).toBe(remaining);
     if (remaining === 0 && this.inspectedStream === title) {
       this.inspectedStream = null;
     }
@@ -302,28 +503,30 @@ export class EpisodePom {
     await this.expectTileFullscreen(title);
   }
 
+  /** Leave fullscreen; the layout swaps the button in the click's render */
   async exitTileFullscreen(title: string): Promise<void> {
-    await this.tile(title)
-      .first()
+    const tile = this.tile(title).first();
+    await tile
       .getByRole("button", { name: "Exit fullscreen", exact: true })
       .click();
-    await expect(
-      this.tile(title)
-        .first()
-        .getByRole("button", { name: "Fullscreen", exact: true }),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    expect(
+      await tile
+        .getByRole("button", { name: "Fullscreen", exact: true })
+        .count(),
+    ).toBe(1);
   }
 
   async expectTileFullscreen(title: string): Promise<void> {
-    await expect(
-      this.tile(title)
+    expect(
+      await this.tile(title)
         .first()
-        .getByRole("button", { name: "Exit fullscreen", exact: true }),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+        .getByRole("button", { name: "Exit fullscreen", exact: true })
+        .count(),
+    ).toBe(1);
   }
 
   async expectTileCount(count: number): Promise<void> {
-    await expect(this.shell.locator(".mosaic-window")).toHaveCount(count);
+    expect(await this.shell.locator(".mosaic-window").count()).toBe(count);
   }
 
   tile(title: string): Locator {
@@ -343,24 +546,23 @@ export class EpisodePom {
     nextTitle: string,
   ): Promise<void> {
     await this.tileTitle(currentTitle).first().click();
-    const source = this.scope.locator('[aria-label="Source"]');
-    await expect(source).toBeVisible({ timeout: READY_TIMEOUT });
-    await source.click();
-    await this.page
-      .getByRole("option", { name: nextTitle, exact: true })
-      .click();
-    await expect(this.tileTitle(nextTitle).first()).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    await this.scope.locator('[aria-label="Source"]').click();
+    await this.after([this.imageShown(nextTitle)], () =>
+      this.page.getByRole("option", { name: nextTitle, exact: true }).click(),
+    );
   }
 
   async expectPaused(): Promise<void> {
-    await expect(
-      this.shell.getByRole("button", { name: "Play", exact: true }),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(
-      this.shell.getByRole("button", { name: "Pause", exact: true }),
-    ).toHaveCount(0);
+    expect(
+      await this.shell
+        .getByRole("button", { name: "Play", exact: true })
+        .count(),
+    ).toBe(1);
+    expect(
+      await this.shell
+        .getByRole("button", { name: "Pause", exact: true })
+        .count(),
+    ).toBe(0);
   }
 
   async expectTileEmpty(
@@ -369,56 +571,99 @@ export class EpisodePom {
   ): Promise<void> {
     const tile = this.tile(title);
     const empty = byDataTestId(tile, "episode-tile-empty-state");
-    await expect(empty).toContainText(message, { timeout: READY_TIMEOUT });
-    await expect(this.image(title)).toHaveCount(0);
+    expect(await empty.filter({ hasText: message }).count()).toBe(1);
+    expect(await this.image(title).count()).toBe(0);
   }
 
   async expectPlayhead(text: string): Promise<void> {
-    await expect(this.controls.getByText(text, { exact: true })).toBeVisible({
-      timeout: READY_TIMEOUT,
-    });
+    const shownText = await byDataTestId(
+      this.controls,
+      "timeline-playhead-time",
+    ).textContent();
+    expect(readout(shownText ?? "")).toBe(readout(text));
   }
 
   async expectUtcTime(time: string): Promise<void> {
-    await expect(this.timestampButton).toHaveText(time, {
-      timeout: READY_TIMEOUT,
-    });
+    expect(await this.timestampButton.textContent()).toBe(time);
     const timezone = byDataTestId(
       this.timestampReadout,
       "episode-timezone-picker",
     ).getByRole("combobox");
-    await expect(timezone).toHaveValue("UTC");
+    expect(await timezone.inputValue()).toBe("UTC");
   }
 
-  async expectUtcTimeAfterAtMostOneForwardStep(
+  /**
+   * Run `seek` (a seek or scrub toward `time`) and check it lands on `time`,
+   * or at most `maxStepMs` before it and one step forward reaches it: a seek
+   * snaps to the sampling grid, which may sit just before the target
+   */
+  async seekToUtcTime(
     time: string,
     maxStepMs: number,
+    seek: () => Promise<unknown>,
+    conditions: readonly EventCondition[] = [],
   ): Promise<void> {
     const targetMs = utcDateTimeToMilliseconds(time);
     if (targetMs === null) {
       throw new Error(`invalid UTC episode timestamp: ${time}`);
     }
-    await expect
-      .poll(
-        async () => {
-          const current = await this.timestampButton.textContent();
-          if (!current) return false;
-          const currentMs = utcDateTimeToMilliseconds(current);
-          if (currentMs === null) return false;
-          const delta = targetMs - currentMs;
-          return delta >= 0 && delta <= maxStepMs;
-        },
-        { timeout: READY_TIMEOUT },
-      )
-      .toBe(true);
-    if ((await this.timestampButton.textContent()) !== time) {
-      await this.stepForward();
+    const inRange = (text: string | null) => {
+      const currentMs = text ? utcDateTimeToMilliseconds(text) : null;
+      if (currentMs === null) return false;
+      const delta = targetMs - currentMs;
+      return delta >= 0 && delta <= maxStepMs;
+    };
+
+    // a coarse ruler seek can land on the time already shown, which moves
+    // nothing; only a seek that moved the playhead re-renders the readout
+    const before = await this.timestampButton.textContent();
+    const changed = this.utcTimeChanged(before);
+    const readout = await this.eventUtils.arm(
+      changed.events,
+      changed.predicate,
+    );
+    // `conditions` describe `time`, which a step after the seek may reach
+    const landed = await Promise.all(
+      conditions.map(({ events, predicate }) =>
+        this.eventUtils.arm(events, predicate),
+      ),
+    );
+    try {
+      try {
+        let moved = true;
+        await this.after(
+          [
+            {
+              events: "e2e:playback:seek-applied",
+              predicate: (e) => {
+                moved = (e.detail as { moved: boolean }).moved;
+                return true;
+              },
+            },
+          ],
+          seek,
+        );
+        if (moved) await readout.received;
+      } finally {
+        await readout.dispose();
+      }
+      const current = await this.timestampButton.textContent();
+      expect(
+        inRange(current),
+        `readout ${current} should be within ${maxStepMs}ms before ${time}`,
+      ).toBe(true);
+      if (current !== time) {
+        await this.after([this.utcTime(time)], () => this.stepForward());
+      }
+      await Promise.all(landed.map(({ received }) => received));
+    } finally {
+      await Promise.all(landed.map((armed) => armed.dispose()));
     }
     await this.expectUtcTime(time);
   }
 
   async expectNoUtcTime(): Promise<void> {
-    await expect(this.timestampReadout).toHaveCount(0);
+    expect(await this.timestampReadout.count()).toBe(0);
   }
 
   async stepForward(): Promise<void> {
@@ -442,29 +687,24 @@ export class EpisodePom {
       name: "Custom data sampling rate",
     });
     if (!(await preset.inputValue()).startsWith("Custom")) {
+      // choose by keyboard: focus stays on the input, so the list (which
+      // opens on focus) closes on the choice instead of reopening
       await preset.click();
-      const customOption = this.page.getByRole("option", {
-        name: "Custom…",
-        exact: true,
-      });
-      await customOption.click();
-      await expect(customRate).toBeVisible({ timeout: READY_TIMEOUT });
-      // The select opens immediately on focus. Wait for the custom controls to
-      // commit, then blur its input directly so portal closure cannot race a
-      // document-level Escape with the controlled selection rerender.
-      await preset.blur();
-      await expect(customOption).toBeHidden({ timeout: READY_TIMEOUT });
+      await preset.press("End");
+      await preset.press("Enter");
     }
     await customRate.click();
     await customRate.fill(String(rateHz));
     await customRate.press("Enter");
-    await this.scope
-      .getByRole("button", { name: "Apply sampling rate" })
-      .click();
+    await this.eventUtils.after(
+      "e2e:multimodal:sampling-rate",
+      () =>
+        this.scope.getByRole("button", { name: "Apply sampling rate" }).click(),
+      (e) => (e.detail as { rateHz: number }).rateHz === rateHz,
+    );
     await playback.click();
-    await expect(playback).toContainText(`Custom · ${rateHz} Hz`, {
-      timeout: READY_TIMEOUT,
-    });
+    // the collapsed header shows its title and summary in the click's render
+    expect(await playback.textContent()).toBe(`PlaybackCustom · ${rateHz} Hz`);
   }
 
   async seekToFraction(fraction: number): Promise<void> {
@@ -529,54 +769,56 @@ export class EpisodePom {
     absent: readonly string[] = [],
   ): Promise<void> {
     await this.openStreams();
+    const inspect = (stream: string) =>
+      this.scope.getByRole("button", {
+        name: `Inspect ${stream}`,
+        exact: true,
+      });
     for (const stream of present) {
-      await expect(
-        this.scope.getByRole("button", {
-          name: `Inspect ${stream}`,
-          exact: true,
-        }),
-      ).toBeVisible();
+      expect(await inspect(stream).isVisible()).toBe(true);
     }
     for (const stream of absent) {
-      await expect(
-        this.scope.getByRole("button", {
-          name: `Inspect ${stream}`,
-          exact: true,
-        }),
-      ).toHaveCount(0);
+      expect(await inspect(stream).count()).toBe(0);
     }
   }
 
+  /** A raw tile has lost its stream; wait with {@link raw}("") first */
   async expectRawSelectionCleared(): Promise<void> {
     const clearedTile = this.shell
       .locator("[data-cy=episode-raw-tile]")
       .filter({ hasText: "Choose a stream in the panel settings" });
-    await expect(clearedTile).toBeVisible({ timeout: READY_TIMEOUT });
-    await expect(byDataTestId(clearedTile, "episode-raw-tree")).toHaveCount(0);
+    expect(await clearedTile.count()).toBe(1);
+    expect(await byDataTestId(clearedTile, "episode-raw-tree").count()).toBe(0);
   }
 
   async inspectStream(stream: string): Promise<void> {
     await this.openStreams();
-    await this.scope
-      .getByRole("button", { name: "Inspect " + stream, exact: true })
-      .click();
+    // an episode's layout restores its raw tiles, and inspecting a stream
+    // already shown only focuses its tile, which sends nothing
+    if (
+      (await byDataTestId(this.tile(stream), "episode-raw-tree").count()) > 0
+    ) {
+      this.inspectedStream = stream;
+      return;
+    }
+    await this.after([this.raw(stream)], () =>
+      this.scope
+        .getByRole("button", { name: "Inspect " + stream, exact: true })
+        .click(),
+    );
     this.inspectedStream = stream;
-    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
-  async focusRawTile(stream: string): Promise<void> {
+  /** Read from the raw tile already showing `stream` */
+  focusRawTile(stream: string): void {
     this.inspectedStream = stream;
-    await expect(this.rawTree).toBeVisible({ timeout: READY_TIMEOUT });
   }
 
   rawField(path: string): Locator {
     return byDataTestId(this.rawTree, "episode-raw-node-" + path);
   }
 
-  async expectRawField(
-    path: string,
-    value: number | string | RegExp,
-  ): Promise<void> {
+  async expectRawField(path: string, value: number | string): Promise<void> {
     const segments = path.split(".");
     for (let depth = 1; depth < segments.length; depth++) {
       const parentPath = segments.slice(0, depth).join(".");
@@ -593,18 +835,16 @@ export class EpisodePom {
     }
     const renderedValue = this.rawField(path).locator("span").last();
     const expected =
-      typeof value === "number"
-        ? String(value)
-        : typeof value === "string"
-          ? JSON.stringify(value)
-          : value;
-    await expect(renderedValue).toHaveText(expected, {
-      timeout: READY_TIMEOUT,
-    });
+      typeof value === "number" ? String(value) : JSON.stringify(value);
+    expect(await renderedValue.textContent()).toBe(expected);
   }
 
-  async expectRawMeta(value: string | RegExp): Promise<void> {
-    await expect(this.rawMeta).toContainText(value, { timeout: READY_TIMEOUT });
+  /** The raw tile's message time relative to the recording start */
+  async expectRawMeta(relativeTime: string): Promise<void> {
+    const shownTime = this.rawMeta.locator(
+      'span[title="Message log time relative to the recording start"]',
+    );
+    expect(await shownTime.textContent()).toBe(relativeTime);
   }
 
   async expectLogs(
@@ -628,14 +868,22 @@ export class EpisodePom {
   ): Promise<void> {
     const logs = this.tile("Logs / Diagnostics");
     await logs.getByRole("button", { name: "Fullscreen", exact: true }).click();
-    await logs.getByRole("button", { name: view, exact: true }).click();
+    const viewButton = logs.getByRole("button", { name: view, exact: true });
+    // switching the view renders its rows; a view already showing had its
+    // rows waited on by the step that loaded them
+    if ((await viewButton.getAttribute("aria-pressed")) !== "true") {
+      await this.after(
+        [this.logs(present, view === "Logs" ? "logs" : "diagnostics")],
+        () => viewButton.click(),
+      );
+    }
     for (const text of present) {
-      await expect(logs.getByText(text, { exact: true })).toBeVisible({
-        timeout: READY_TIMEOUT,
-      });
+      expect(
+        await logs.getByText(text, { exact: true }).first().isVisible(),
+      ).toBe(true);
     }
     for (const text of absent) {
-      await expect(logs.getByText(text, { exact: true })).toHaveCount(0);
+      expect(await logs.getByText(text, { exact: true }).count()).toBe(0);
     }
     await logs
       .getByRole("button", { name: "Exit fullscreen", exact: true })
@@ -646,22 +894,22 @@ export class EpisodePom {
     await this.expectLogs([text]);
   }
 
+  /** The unsupported-recording message; open with {@link stateShown} */
   async expectUnsupported(streamCount = 1): Promise<void> {
-    await expect(
-      this.state.getByText(
-        "No previewable streams in this recording (" +
-          streamCount +
-          " streams found)",
-        { exact: true },
-      ),
-    ).toBeVisible({ timeout: READY_TIMEOUT });
+    expect(
+      await this.state
+        .getByText(unsupportedText(streamCount), { exact: true })
+        .isVisible(),
+    ).toBe(true);
   }
 
   async expectNoViewerError(): Promise<void> {
-    await expect(this.scope.getByText(/Failed to read recording/)).toHaveCount(
+    expect(await this.scope.getByText(/Failed to read recording/).count()).toBe(
       0,
     );
-    await expect(this.scope.locator("[data-cy=error-boundary]")).toHaveCount(0);
+    expect(await this.scope.locator("[data-cy=error-boundary]").count()).toBe(
+      0,
+    );
   }
 
   private tileTitle(title: string): Locator {
@@ -684,12 +932,18 @@ const CAMERA_POSE_INPUT_NAMES = [
   "Target Z",
 ] as const;
 
+/** The playback state message for a recording with nothing to preview */
+export const unsupportedText = (streamCount: number) =>
+  `No previewable streams in this recording (${streamCount} streams found)`;
+
 function byDataTestId(root: Locator, id: string): Locator {
   return root.locator('[data-testid="' + id + '"]');
 }
 
-function exactText(value: string): RegExp {
-  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+function utcDateTimeToNanoseconds(value: string): string {
+  const milliseconds = utcDateTimeToMilliseconds(value);
+  if (milliseconds === null) throw new Error(`Not a UTC date-time: ${value}`);
+  return (BigInt(milliseconds) * 1_000_000n).toString();
 }
 
 function utcDateTimeToMilliseconds(value: string): number | null {

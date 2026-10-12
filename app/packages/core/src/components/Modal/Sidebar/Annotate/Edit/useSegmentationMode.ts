@@ -21,6 +21,7 @@ import {
   SegmentationTool,
   useManualSegmentationTools,
 } from "./useManualSegmentationTools";
+import { isMaskDetection } from "./maskDetection";
 import { useMergeTool } from "./useMergeTool";
 import { usePenTool } from "./usePenTool";
 
@@ -196,14 +197,8 @@ export const useSegmentationMode = () => {
         // selected, deselect it — the Merge tool only operates on masks.
         const target = selectedLabelRef.current;
         const overlayId = target?.overlay?.id;
-        const data = target?.data as {
-          mask?: unknown;
-          mask_path?: unknown;
-        };
-        const hasMask =
-          target?.type === "Detection" && !!(data?.mask || data?.mask_path);
 
-        if (hasMask && overlayId) {
+        if (isMaskDetection(target) && overlayId) {
           mergeTool.setMergeTarget(overlayId);
         } else if (target) {
           onExit();

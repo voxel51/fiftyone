@@ -31,13 +31,21 @@ export class SelectorPom {
   }
 
   async openResults() {
-    const results = await this.eventUtils.arm(`selector-results-${this.title}`);
-    await this.input.focus();
-    await results.received;
+    await this.eventUtils.after(
+      "e2e:components:selector-results",
+      // a click delivers focus events even when the page lacks browser focus
+      () => this.input.click(),
+      (e) => (e.detail as { cy?: string }).cy === this.title,
+    );
   }
 
   async closeResults() {
-    this.input.blur();
+    await this.eventUtils.after(
+      "e2e:components:selector-results-closed",
+      // a blur is ignored while the pointer is over the results
+      () => this.input.press("Escape"),
+      (e) => (e.detail as { cy?: string }).cy === this.title,
+    );
   }
 }
 
@@ -45,7 +53,7 @@ class SelectorAsserter {
   constructor(private readonly selectorPom: SelectorPom) {}
 
   async verifyValue(value: string) {
-    await expect(this.selectorPom.input).toHaveValue(value);
+    expect(await this.selectorPom.input.inputValue()).toBe(value);
   }
 
   async verifyResults(values: string[]) {
@@ -53,11 +61,11 @@ class SelectorAsserter {
     expect(count).toBe(values.length);
 
     for (let index = 0; index < values.length; index++) {
-      await expect(
-        this.selectorPom.resultsContainer.getByTestId(
-          `selector-result-${values[index]}`,
-        ),
-      ).toBeVisible();
+      expect(
+        await this.selectorPom.resultsContainer
+          .getByTestId(`selector-result-${values[index]}`)
+          .isVisible(),
+      ).toBe(true);
     }
   }
 }

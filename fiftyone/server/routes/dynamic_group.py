@@ -20,6 +20,7 @@ from fiftyone.core.utils import run_sync_task
 import fiftyone.server.view as fosv
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
+import fiftyone.server.hooks as fosh
 from fiftyone.server.routes.sample import (
     _handle_top_level_patch,
     datetimes_match,
@@ -146,7 +147,8 @@ def _apply_member_patch(
         )
 
     sample = get_sample_from_dataset(dataset, sample_id)
-    _handle_top_level_patch(sample, ops)
+    with fosh.get().sample_write(sample, fosh.write_paths(ops)):
+        _handle_top_level_patch(sample, ops)
     return sample
 
 
@@ -259,7 +261,11 @@ class DynamicGroup(HTTPEndpoint):
                 return self._version_mismatch(view, written=written)
 
             written.append(sample.id)
-            samples.append(utils.json.serialize(sample))
+            samples.append(
+                fosh.get().transform_sample_dict(
+                    sample, utils.json.serialize(sample)
+                )
+            )
 
         member_ids, lmts = get_group_state(view)
         etag = generate_group_etag(max(lmts), len(member_ids))

@@ -21,10 +21,17 @@ const useStateUpdate: EventHandlerHook = ({
   return useCallback(
     (payload: { state: { [key: string]: unknown } }) => {
       const state = processState(session.current, payload.state);
+      // The schema lens is client state: a server-pushed view keeps the
+      // silent ExcludeFields on the page query (see makeRoutes), as the
+      // view setters do.
+      const { schemaExclusion } = router.location.state ?? {};
+      if (schemaExclusion?.length) {
+        state.schemaExclusion = schemaExclusion;
+      }
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,
-        currentSearch: router.location.search,
+        currentSearch: router.history.location.search,
         nextDataset: stateless
           ? getDatasetName()
           : ((payload.state.dataset as string) ?? null),

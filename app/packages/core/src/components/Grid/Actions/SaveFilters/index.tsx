@@ -103,6 +103,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
+        highlight={true}
         icon={loading ? <Loading /> : <Bookmark />}
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}

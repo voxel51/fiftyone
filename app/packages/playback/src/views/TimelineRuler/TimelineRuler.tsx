@@ -1,9 +1,10 @@
+import { getEventBus } from "@fiftyone/events";
 import { ContextMenu, MenuTextItem, useDragDelta } from "@voxel51/voodo";
 import clsx from "clsx";
 import React, { type ReactNode, useEffect, useRef } from "react";
 import { usePlayback } from "../../lib/playback/PlaybackProvider";
 import { usePlaybackStore } from "../../lib/playback/playback-store-context";
-import { setHoverTime } from "../../lib/playback/store-access";
+import { getCurrentTime, setHoverTime } from "../../lib/playback/store-access";
 import type { TimelineDisplayConversion } from "../../lib/playback/timeline-display";
 import { useTimelineDisplay } from "../../lib/playback/timeline-display";
 import type { TimelineMode } from "../../lib/playback/types";
@@ -95,6 +96,11 @@ function isTimeInsideView(time: number, viewStart: number, viewEnd: number) {
   );
 }
 
+/** e2e specs wait on a ruler seek, which may leave the playhead in place */
+type TimelineRulerE2EEvents = {
+  "e2e:playback:seek-applied": { moved: boolean };
+};
+
 export interface TimelineRulerProps {
   /** Width of the label column in pixels, to align with track rows. */
   labelWidth?: number;
@@ -124,6 +130,15 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
   const hoverTime = useHoverTime();
   const inspectionMarker = useInspectionMarker();
   const store = usePlaybackStore();
+
+  // A seek can land on the time already shown, which re-renders nothing
+  const announceSeek = (from: number) =>
+    getEventBus<TimelineRulerE2EEvents>().dispatch(
+      "e2e:playback:seek-applied",
+      {
+        moved: getCurrentTime(store) !== from,
+      },
+    );
 
   // Sequence mode has no such thing as frame 2.5 — `quantizeDuringScrub`
   // (see timeline-display.ts) says the display conversion should round
@@ -225,7 +240,10 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
     },
     // Flush the final target immediately instead of waiting out any trailing
     // fetch debounce; settle snapping is applied by the same action.
-    onDragEnd: settleSeek,
+    onDragEnd: () => {
+      settleSeek();
+      announceSeek(dragRef.current.startValue);
+    },
   });
 
   const loopStartDrag = useDragDelta({
@@ -295,6 +313,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
       if (laneX < 0 || laneX > laneWidth) return;
       const vs = dragRef.current.startVs;
       const ve = dragRef.current.startVe;
+      const from = getCurrentTime(store);
       // `seekSnapped` lands the click on a frame boundary in one step when
       // snapping is enabled; falls back to a continuous seek otherwise.
       seekSnapped(
@@ -303,6 +322,7 @@ const TimelineRuler: React.FC<TimelineRulerProps> = ({
         ),
       );
       settleSeek();
+      announceSeek(from);
     },
   });
 

@@ -52,3 +52,14 @@ export const indexToId = (integer: number) => {
 
   return (integer < 0 ? integer >>> 0 : integer).toString(16).padStart(24, "0");
 };
+
+/**
+ * The fixed id `DatasetFactory` gives the group at `groupIndex`, outside the
+ * range sample ids (`indexToId`) use, so a group never shares an id with a
+ * sample.
+ *
+ * @example
+ * groupIndexToId(0) // "100000000000000000000000"
+ */
+export const groupIndexToId = (groupIndex: number) =>
+  `1${indexToId(groupIndex).slice(1)}`;

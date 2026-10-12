@@ -296,6 +296,20 @@ export function writeExtendedSelectionMirror(overrideStage: unknown): void {
   currentOverrideStage = overrideStage;
 }
 
+/**
+ * Whether a dataset fragment update comes from a different dataset than the
+ * one before it. `datasetId` is the dataset's own id. `id` is minted per
+ * fetch whenever a view argument is sent, so it changes on every hard reload
+ * (a layout write, a refresh) and cannot tell a reload from a dataset switch.
+ */
+export function isDatasetChange(
+  data: { datasetId: string },
+  previous: { datasetId: string } | null,
+): boolean {
+  if (!previous) return false;
+  return data.datasetId !== previous.datasetId;
+}
+
 export const extendedSelection = graphQLSyncFragmentAtom<
   datasetFragment$key,
   {
@@ -312,7 +326,7 @@ export const extendedSelection = graphQLSyncFragmentAtom<
     keys: ["dataset"],
     default: { selection: null },
     read: (data, previous) => {
-      if (previous && data.id !== previous?.id) {
+      if (isDatasetChange(data, previous)) {
         currentSelection = { selection: null };
       }
 
@@ -341,7 +355,7 @@ export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
     keys: ["dataset"],
     default: null,
     read: (data, previous) => {
-      if (previous && data.id !== previous?.id) {
+      if (isDatasetChange(data, previous)) {
         currentOverrideStage = null;
       }
 

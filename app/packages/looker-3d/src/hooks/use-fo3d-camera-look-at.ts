@@ -1,10 +1,14 @@
+import { getEventBus } from "@fiftyone/events";
 import { useCallback } from "react";
 import type { PerspectiveCamera } from "three";
 import {
   setCameraControlsLookAt,
   type Fo3dCameraControls,
 } from "../fo3d/camera-controls";
-import { CAMERA_LOOK_AT_SETTLED_EVENT } from "../constants";
+import {
+  CAMERA_LOOK_AT_SETTLED_EVENT,
+  type Looker3dEvents,
+} from "../constants";
 import type { Vector3Input } from "../utils";
 
 interface LookAtParams {
@@ -42,7 +46,7 @@ export const useFo3dCameraLookAt = ({
       // wait for this instead of guessing a settle duration
       requestAnimationFrame(() =>
         requestAnimationFrame(() =>
-          document.dispatchEvent(new CustomEvent(CAMERA_LOOK_AT_SETTLED_EVENT)),
+          getEventBus<Looker3dEvents>().dispatch(CAMERA_LOOK_AT_SETTLED_EVENT),
         ),
       );
       return true;

@@ -10,7 +10,7 @@ import { datasetQuery } from "./queries";
 import { SelectorEffectContext, Setter } from "./selectorWithEffect";
 
 export interface PageQuery<T extends OperationType> {
-  event?: "fieldVisibility" | "modal" | "slice" | "spaces";
+  event?: "fieldVisibility" | "modal" | "slice" | "spaces" | "schemaExclusion";
   preloadedQuery: PreloadedQuery<T>;
   concreteRequest: ConcreteRequest;
   data: T["response"];

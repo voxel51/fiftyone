@@ -201,13 +201,6 @@ export type PanelOptions = {
   TabIndicator?: React.ComponentType;
 
   /**
-   * Replaces the label text in the panel's tab. A panel whose tab names what
-   * it is browsing (the samples panel names its scope) renders that here;
-   * the icon, indicator, help, and close controls stay.
-   */
-  TabLabel?: React.ComponentType;
-
-  /**
    * The category of the plugin.
    *
    * Defaults to `custom`.

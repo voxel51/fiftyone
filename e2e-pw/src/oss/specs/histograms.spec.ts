@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -17,40 +17,53 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
+const NUM_SAMPLES = 10;
 
-    samples = []
-    for i in range(0, 10):
-        sample = fo.Sample(
-            filepath=f"{i}.png",
-            detections=fo.Detections(detections=[fo.Detection(label=f"label-{i}")]),
-            classification=fo.Classification(label=f"label-{i}"),
-            bool=i % 2 == 0,
-            str=f"{i}",
-            int=i % 2,
-            float=i / 2,
-            list_str=[f"{i}"],
-            list_int=[i % 2],
-            list_float=[i / 2],
-            list_bool=[i % 2 == 0],
-        )
-        samples.append(sample)
-    
-    dataset.add_samples(samples)`);
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: NUM_SAMPLES,
+    schema: {
+      detections: "Detections",
+      classification: "Classification",
+      bool: "BooleanField",
+      str: "StringField",
+      int: "IntField",
+      float: "FloatField",
+      list_str: "ListField<StringField>",
+      list_int: "ListField<IntField>",
+      list_float: "ListField<FloatField>",
+      list_bool: "ListField<BooleanField>",
+    },
+    withSampleData: ({ index }, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: `label-${index}`,
+          bounding_box: [0.1, 0.1, 0.2, 0.2],
+        }),
+      ]),
+      classification: label.classification({ label: `label-${index}` }),
+      bool: index % 2 === 0,
+      str: `${index}`,
+      int: index % 2,
+      float: index / 2,
+      list_str: [`${index}`],
+      list_int: [index % 2],
+      list_float: [index / 2],
+      list_bool: [index % 2 === 0],
+    }),
+  });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("histograms panel", async ({ histogram, panel, page }) => {
-  await panel.open("Histograms");
-  await histogram.assert.isLoaded();
+test("histograms panel", async ({ histogram, panel }) => {
+  // bool: half True, half False
+  await histogram.afterLoad(() => panel.open("Histograms"), "bool");
+  await histogram.assert.hasScreenshot("bool", "histogram-bool.png");
 
   await histogram.assert.verifyField("bool");
 
@@ -67,6 +80,7 @@ test("histograms panel", async ({ histogram, panel, page }) => {
     "detections.detections.mask_path",
     "detections.detections.tags",
     "float",
+    "index",
     "int",
     "last_modified_at",
     "list_bool",
@@ -81,16 +95,10 @@ test("histograms panel", async ({ histogram, panel, page }) => {
     "str",
     "tags",
   ]);
-  // Field enumeration leaves the pointer over a result on some runners.
-  // Keep hover styling out of the visual assertion.
-  await page.mouse.move(0, 0);
-  await expect(histogram.locator).toHaveScreenshot("bool-histogram.png", {
-    animations: "allow",
-  });
   await histogram.selector.closeResults();
 
+  // float = i / 2 for i in 0..9, across 25 bins of width 0.18 on [0, 4.5]:
+  // one sample in each of bins 0, 2, 5, 8, 11, 13, 16, 19, 22 and 24
   await histogram.selectField("float");
-  await expect(histogram.locator).toHaveScreenshot("float-histogram.png", {
-    animations: "allow",
-  });
+  await histogram.assert.hasScreenshot("float", "histogram-float.png");
 });

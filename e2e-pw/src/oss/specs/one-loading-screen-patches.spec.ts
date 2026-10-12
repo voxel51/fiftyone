@@ -84,11 +84,9 @@ test("does not show when opening or navigating the modal in a patches view", asy
   });
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();
-  await modal.waitForSampleLoadDomAttribute();
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 });

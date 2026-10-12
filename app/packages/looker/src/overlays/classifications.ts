@@ -363,7 +363,7 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
     >(([field, labels]) => {
       return [
         field,
-        labels.filter((label) => {
+        (labels ?? []).filter((label) => {
           const shown = isShown(state, field, label) && label.label;
 
           if (!shown) {

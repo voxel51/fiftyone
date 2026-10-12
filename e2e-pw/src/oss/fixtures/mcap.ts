@@ -1,14 +1,21 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { ConsoleMessage, Locator } from "@playwright/test";
-import { expect, test as base } from "src/oss/fixtures";
+import type { ConsoleMessage } from "@playwright/test";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { McapExplorerPom } from "src/oss/poms/multimodal/mcap-explorer";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { getLocatorDominantColorShare } from "src/oss/utils/screenshot";
-import { MCAP_FIXTURE_CONTRACT } from "src/shared/media-factory/mcap";
+import type {
+  DatasetFactory,
+  MultimodalDatasetOptions,
+} from "src/shared/dataset-factory";
+import {
+  MCAP_FIXTURE_CONTRACT,
+  type McapFixtureKind,
+  type McapSpec,
+} from "src/shared/media-factory/mcap";
 
 const datasetName = getUniqueDatasetNameWithPrefix("mcap-correctness");
 export const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
@@ -17,20 +24,17 @@ export const alternateMediaDatasetName = getUniqueDatasetNameWithPrefix(
 export const workspaceDatasetName = getUniqueDatasetNameWithPrefix(
   "mcap-workspace-persistence",
 );
-const fixtureDir = path.join(os.tmpdir(), datasetName);
+// recordings the specs upload through the Explorer, outside any dataset
+const uploadDir = path.join(os.tmpdir(), `${datasetName}-uploads`);
 const originalMultimodalFlag = process.env.VFF_MULTIMODAL;
 const RENDERER_ERROR_PATTERN = /(?:webgpu|webgl|graphics renderer|gpu device)/i;
 
 export const { long, tinyA, tinyB } = MCAP_FIXTURE_CONTRACT;
 const { sidebar, unsupported } = MCAP_FIXTURE_CONTRACT;
 export const fixturePaths = {
-  episodeA: path.join(fixtureDir, tinyA.fileName),
-  episodeB: path.join(fixtureDir, tinyB.fileName),
-  invalid: path.join(fixtureDir, "not-an-mcap.txt"),
-  long: path.join(fixtureDir, long.fileName),
-  thumbnail: path.join(fixtureDir, "episode-thumbnail.png"),
-  thumbnailB: path.join(fixtureDir, "episode-thumbnail-b.png"),
-  unsupported: path.join(fixtureDir, unsupported.fileName),
+  episodeA: path.join(uploadDir, tinyA.fileName),
+  episodeB: path.join(uploadDir, tinyB.fileName),
+  invalid: path.join(uploadDir, "not-an-mcap.txt"),
 };
 export const cameraPoseFileNames = [
   "camera-pose-a.mcap",
@@ -38,18 +42,40 @@ export const cameraPoseFileNames = [
   "camera-pose-c.mcap",
   "camera-pose-d.mcap",
 ] as const;
-const cameraPosePaths = cameraPoseFileNames.map((fileName) =>
-  path.join(fixtureDir, fileName),
-);
 export const sidebarFileNames = [
   "sidebar-persistence-a.mcap",
   "sidebar-persistence-b.mcap",
   "sidebar-persistence-c.mcap",
   "sidebar-persistence-d.mcap",
 ] as const;
-const sidebarPaths = sidebarFileNames.map((fileName) =>
-  path.join(fixtureDir, fileName),
-);
+
+/** A sample's recording, under the file name the episode surfaces show */
+interface Recording {
+  fileName: string;
+  mcap: McapSpec;
+}
+
+const recording = (
+  { fileName, kind }: { fileName: string; kind: McapFixtureKind },
+  channelIdOffset?: number,
+): Recording => ({ fileName, mcap: { kind, channelIdOffset } });
+
+// samples that name the same file share its recording, as the three short
+// episodes share episode A's
+const recordings: Recording[] = [
+  recording(tinyA),
+  recording(tinyB),
+  recording(tinyA),
+  recording(long),
+  recording(tinyA),
+  recording(unsupported),
+  ...cameraPoseFileNames.map((fileName, index) =>
+    recording({ fileName, kind: tinyA.kind }, index % 2),
+  ),
+  ...sidebarFileNames.map((fileName, index) =>
+    recording({ fileName, kind: sidebar.kind }, index % 2 === 0 ? 0 : 3),
+  ),
+];
 export const sampleIndex = {
   episodeA: 0,
   episodeB: 1,
@@ -60,6 +86,21 @@ export const sampleIndex = {
   cameraPoseStart: 6,
   sidebarStart: 10,
 } as const;
+
+const createEpisodes = (
+  datasetFactory: typeof DatasetFactory,
+  name: string,
+  episodes: Recording[],
+  options: Pick<MultimodalDatasetOptions, "appConfig" | "mediaFields"> = {},
+) =>
+  datasetFactory.createDataset({
+    mediaType: "multimodal",
+    datasetName: name,
+    numSamples: episodes.length,
+    mcapOptions: (index) => episodes[index].mcap,
+    fileNames: (index) => episodes[index].fileName.replace(/\.mcap$/, ""),
+    ...options,
+  });
 
 type McapWorkerFixtures = {
   mcapEnvironment: void;
@@ -77,11 +118,14 @@ type McapFixtures = {
 
 export const test = base.extend<McapFixtures, McapWorkerFixtures>({
   mcapEnvironment: [
-    async ({ fiftyoneLoader, foWebServer, mediaFactory }, use) => {
+    async (
+      { datasetFactory, fiftyoneLoader, foWebServer, mediaFactory },
+      use,
+    ) => {
       process.env.VFF_MULTIMODAL = "1";
       try {
         await foWebServer.startWebServer();
-        await fs.mkdir(fixtureDir, { recursive: true });
+        await fs.mkdir(uploadDir, { recursive: true });
         await Promise.all([
           mediaFactory.createMcapFixture({
             kind: tinyA.kind,
@@ -91,91 +135,32 @@ export const test = base.extend<McapFixtures, McapWorkerFixtures>({
             kind: tinyB.kind,
             outputPath: fixturePaths.episodeB,
           }),
-          mediaFactory.createMcapFixture({
-            kind: unsupported.kind,
-            outputPath: fixturePaths.unsupported,
-          }),
-          mediaFactory.createMcapFixture({
-            kind: long.kind,
-            outputPath: fixturePaths.long,
-          }),
-          ...cameraPosePaths.map((outputPath, index) =>
-            mediaFactory.createMcapFixture({
-              channelIdOffset: index % 2,
-              kind: tinyA.kind,
-              outputPath,
-            }),
+          fs.writeFile(fixturePaths.invalid, "not an mcap file"),
+          createEpisodes(datasetFactory, datasetName, recordings),
+          createEpisodes(
+            datasetFactory,
+            alternateMediaDatasetName,
+            [recording(tinyA), recording(tinyB)],
+            {
+              mediaFields: {
+                thumbnail_path: (index) => ({
+                  fillColor: ["#ff00ff", "#00ffff"][index],
+                  width: 128,
+                  height: 96,
+                }),
+              },
+              appConfig: {
+                media_fields: ["filepath", "thumbnail_path"],
+                grid_media_field: "thumbnail_path",
+                modal_media_field: "filepath",
+              },
+            },
           ),
-          ...sidebarPaths.map((outputPath, index) =>
-            mediaFactory.createMcapFixture({
-              channelIdOffset: index % 2 === 0 ? 0 : 3,
-              kind: sidebar.kind,
-              outputPath,
-            }),
-          ),
-          mediaFactory.createImage({
-            fillColor: "#ff00ff",
-            height: 96,
-            hideLogs: true,
-            outputPath: fixturePaths.thumbnail,
-            width: 128,
-          }),
-          mediaFactory.createImage({
-            fillColor: "#00ffff",
-            height: 96,
-            hideLogs: true,
-            outputPath: fixturePaths.thumbnailB,
-            width: 128,
-          }),
+          createEpisodes(datasetFactory, workspaceDatasetName, [
+            recording(tinyA),
+            recording(tinyB),
+          ]),
         ]);
-        await fs.writeFile(fixturePaths.invalid, "not an mcap file");
-
-        await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-dataset = fo.Dataset("${datasetName}")
-dataset.persistent = True
-dataset.add_samples([
-    fo.Sample(filepath=r"${fixturePaths.episodeA}", name="episode-a"),
-    fo.Sample(filepath=r"${fixturePaths.episodeB}", name="episode-b"),
-    fo.Sample(filepath=r"${fixturePaths.episodeA}", name="short-before-long"),
-    fo.Sample(filepath=r"${fixturePaths.long}", name="long-episode"),
-    fo.Sample(filepath=r"${fixturePaths.episodeA}", name="short-after-long"),
-    fo.Sample(filepath=r"${fixturePaths.unsupported}", name="unsupported-episode"),
-    fo.Sample(filepath=r"${cameraPosePaths[0]}", name="camera-pose-a"),
-    fo.Sample(filepath=r"${cameraPosePaths[1]}", name="camera-pose-b"),
-    fo.Sample(filepath=r"${cameraPosePaths[2]}", name="camera-pose-c"),
-    fo.Sample(filepath=r"${cameraPosePaths[3]}", name="camera-pose-d"),
-    fo.Sample(filepath=r"${sidebarPaths[0]}", name="sidebar-persistence-a"),
-    fo.Sample(filepath=r"${sidebarPaths[1]}", name="sidebar-persistence-b"),
-    fo.Sample(filepath=r"${sidebarPaths[2]}", name="sidebar-persistence-c"),
-    fo.Sample(filepath=r"${sidebarPaths[3]}", name="sidebar-persistence-d"),
-])
-
-alternate_media_dataset = fo.Dataset("${alternateMediaDatasetName}")
-alternate_media_dataset.persistent = True
-alternate_media_dataset.add_samples([
-    fo.Sample(
-        filepath=r"${fixturePaths.episodeA}",
-        thumbnail_path=r"${fixturePaths.thumbnail}",
-    ),
-    fo.Sample(
-        filepath=r"${fixturePaths.episodeB}",
-        thumbnail_path=r"${fixturePaths.thumbnailB}",
-    ),
-])
-alternate_media_dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
-alternate_media_dataset.app_config.grid_media_field = "thumbnail_path"
-alternate_media_dataset.app_config.modal_media_field = "filepath"
-alternate_media_dataset.save()
-
-workspace_dataset = fo.Dataset("${workspaceDatasetName}")
-workspace_dataset.persistent = True
-workspace_dataset.add_samples([
-    fo.Sample(filepath=r"${fixturePaths.episodeA}", name="workspace-a"),
-    fo.Sample(filepath=r"${fixturePaths.episodeB}", name="workspace-b"),
-])
-        `);
 
         await use();
       } finally {
@@ -200,13 +185,13 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
         } catch (error) {
           console.warn("Error stopping FiftyOne webserver:", error);
         }
-        await fs.rm(fixtureDir, { force: true, recursive: true });
+        await fs.rm(uploadDir, { force: true, recursive: true });
       }
     },
     { auto: true, scope: "worker" },
   ],
-  explorer: async ({ page }, use) => {
-    const explorer = new McapExplorerPom(page);
+  explorer: async ({ eventUtils, page }, use) => {
+    const explorer = new McapExplorerPom(page, eventUtils);
     await use(explorer);
     await explorer.closeIfOpen();
   },
@@ -232,7 +217,6 @@ for dataset_name in ["${datasetName}", "${alternateMediaDatasetName}", "${worksp
           graphicsBackend === "webgl2"
             ? new URLSearchParams({ graphicsBackend })
             : undefined,
-        withGrid: true,
       });
       await use();
       await modal.close({ ignoreError: true });
@@ -274,18 +258,6 @@ export async function openMcapModal(
   await grid.openNthSample(index);
   // Multimodal has its own right panel, so the classic sidebar never mounts.
   await modal.enterFullscreen();
-}
-
-export async function expectDominantColor(
-  locator: Locator,
-  expected: readonly [number, number, number],
-): Promise<void> {
-  await expect(locator).toBeVisible();
-  await expect
-    .poll(() => getLocatorDominantColorShare(locator, expected), {
-      timeout: 20_000,
-    })
-    .toBeGreaterThan(0.15);
 }
 
 export { expect } from "src/oss/fixtures";

@@ -1,7 +1,7 @@
 import { useAnnotationEngine } from "@fiftyone/annotation";
 import {
-  LabelHoveredEvent,
-  LabelUnhoveredEvent,
+  FO_LABEL_HOVERED_EVENT,
+  FO_LABEL_UNHOVERED_EVENT,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
@@ -92,15 +92,13 @@ const useMeshTooltipProps = () => {
 
         if (!label.data.instance || !label.sampleId) return;
 
-        selectiveRenderingEventBus.emit(
-          new LabelHoveredEvent({
-            sampleId: label.sampleId,
-            labelId: label.data._id,
-            instanceId: label.data.instance._id,
-            field: label.path,
-            frameNumber: label.data.frame_number as number | undefined,
-          }),
-        );
+        selectiveRenderingEventBus.dispatch(FO_LABEL_HOVERED_EVENT, {
+          sampleId: label.sampleId,
+          labelId: label.data._id,
+          instanceId: label.data.instance._id,
+          field: label.path,
+          frameNumber: label.data.frame_number as number | undefined,
+        });
       },
     [],
   );
@@ -118,7 +116,7 @@ const useMeshTooltipProps = () => {
 
         if (!label.data.instance) return;
 
-        selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
+        selectiveRenderingEventBus.dispatch(FO_LABEL_UNHOVERED_EVENT, null);
       },
     [],
   );

@@ -50,7 +50,7 @@ const onSetDataset: RegisteredSetter =
     router.history.push(
       resolveURL({
         currentPathname: router.history.location.pathname,
-        currentSearch: router.location.search,
+        currentSearch: router.history.location.search,
         nextDataset: datasetName || null,
         extra: {
           groupId: null,

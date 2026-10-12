@@ -19,7 +19,10 @@ import type { InteractionState } from "../overlay/DetectionOverlay";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
-import { resolveSelectionClick } from "./resolveSelectionClick";
+import {
+  resolveSelectionClick,
+  type SelectionClickAction,
+} from "./resolveSelectionClick";
 import type { Point, Rect } from "../types";
 import { buildBrushCursor } from "./buildBrushCursor";
 import { InteractiveCreationHandler } from "./InteractiveCreationHandler";
@@ -257,6 +260,9 @@ export class InteractionManager {
   private visibilityPredicate?: (id: string) => boolean;
 
   private readonly CLICK_THRESHOLD = 3; // pixels, dictates drag vs. click
+  private readOnlyPanning = false;
+  /** The press began with the pan modifier, so its release never selects */
+  private pressReservedForPan = false;
   private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 3; // pixels
@@ -438,6 +444,7 @@ export class InteractionManager {
       // disableZoomPan / capture / pendingAction) and bail before any selection,
       // draw, or resize so the drag only pans.
       if (this.isPanModifierActive()) {
+        this.pressReservedForPan = true;
         return;
       }
 
@@ -461,36 +468,13 @@ export class InteractionManager {
         return;
       }
 
-      const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
-
       // the selected overlay still wins the hit test so drag/resize works
       const drawOverOverlay = this.isDrawingOverUnselected(handler);
 
-      // See `resolveSelectionClick` for the rule. The pointer event rides
-      // along only on the toggle path: it decides the `isShiftPressed` the
-      // select event carries, and no single-select surface should change what
-      // it reports.
-      const selectionAction = resolveSelectionClick({
-        isSelectableOverlay,
-        isSelected: isSelectableOverlay
-          ? this.selectionManager.isSelected(handler!.id)
-          : false,
-        isDrawingOver: drawOverOverlay,
-        multipleSelection: this.selectionManager.isMultipleSelection(),
-      });
-
-      if (selectionAction === "toggle") {
-        this.selectionManager.toggle(handler!.id, { event });
-      } else if (selectionAction === "select") {
-        this.selectionManager.select(handler!.id);
-      }
-
-      if (isSelectableOverlay && !drawOverOverlay) {
-        this.eventBus.dispatch("lighter:overlay-click", {
-          id: handler!.id,
-          point: worldPoint,
-        });
-      }
+      // read-only selects on release, so a press that pans selects nothing
+      const selectionAction = this.readOnly
+        ? "none"
+        : this.applySelectionClick(handler, event, worldPoint);
 
       // Select an overlay before issuing any edits. The cursor at this point
       // is a 'pointer' indicating selection, not painting/erasing/keypoint.
@@ -523,8 +507,8 @@ export class InteractionManager {
       }
     }
 
-    // Read-only stops here: selection above has already run, but handing the
-    // pointer to the overlay is what puts it into a move/resize/paint state.
+    // Read-only stops here: handing the pointer to the overlay is what puts it
+    // into a move/resize/paint state.
     if (this.readOnly) {
       return;
     }
@@ -544,7 +528,7 @@ export class InteractionManager {
         this.currentModifiers,
       );
       if (cursor) {
-        this.canvas.style.cursor = cursor;
+        this.setCursor(cursor);
       }
 
       // If this is a spatial overlay with move state, track drag/resize lifecycle.
@@ -581,11 +565,33 @@ export class InteractionManager {
     }
   };
 
+  /** Write the canvas cursor; e2e specs wait on the cursor a move leaves */
+  private setCursor(cursor: string): void {
+    this.canvas.style.cursor = cursor;
+    this.eventBus.dispatch("e2e:lighter:cursor", { cursor });
+  }
+
+  /** Looker's cursors for a read-only surface: panning, then any label. */
+  private readOnlyCursor(handler?: InteractionHandler): string {
+    if (this.readOnlyPanning) return "all-scroll";
+
+    return handler &&
+      handler.id !== this.canonicalMediaId &&
+      TypeGuards.isSelectable(handler)
+      ? "pointer"
+      : "default";
+  }
+
   private configureCursorStyle(
     handler: InteractionHandler,
     worldPoint: Point,
     scale: number,
   ): void {
+    if (this.readOnly) {
+      this.setCursor(this.readOnlyCursor(handler));
+      return;
+    }
+
     if (
       segmentationModeBridge.isActive() &&
       segmentationModeBridge.getActiveTool() === SegmentationTool.Merge
@@ -594,7 +600,7 @@ export class InteractionManager {
         handler instanceof DetectionOverlay &&
         handler.hasMask() &&
         handler.id !== segmentationModeBridge.getMergeTargetId();
-      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+      this.setCursor(isMergeable ? "cell" : "default");
       return;
     }
 
@@ -603,18 +609,16 @@ export class InteractionManager {
       TypeGuards.isSelectable(handler) && !handler.isSelected?.();
 
     if (isUnselectedOverlay && !this.isDrawModeActive()) {
-      this.canvas.style.cursor = "pointer";
+      this.setCursor("pointer");
     } else if (segmentationModeBridge.isActive()) {
-      this.canvas.style.cursor = buildBrushCursor(
-        segmentationModeBridge.getToolState(scale)!,
+      this.setCursor(
+        buildBrushCursor(segmentationModeBridge.getToolState(scale)!),
       );
     } else if (isUnselectedOverlay && detectionModeBridge.isActive()) {
-      this.canvas.style.cursor = "crosshair";
+      this.setCursor("crosshair");
     } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-      this.canvas.style.cursor = handler.getCursor(
-        worldPoint,
-        scale,
-        this.currentModifiers,
+      this.setCursor(
+        handler.getCursor(worldPoint, scale, this.currentModifiers),
       );
     }
   }
@@ -877,17 +881,23 @@ export class InteractionManager {
     const cursorHandler =
       handler && handler.id !== this.canonicalMediaId ? handler : undefined;
 
-    if (cursorHandler) {
+    if (this.readOnly) {
+      this.readOnlyPanning =
+        !!this.clickStartPoint && this.isSpatialDragEvent(event);
+      this.setCursor(this.readOnlyCursor(cursorHandler));
+    } else if (cursorHandler) {
       this.configureCursorStyle(cursorHandler, worldPoint, scale);
     } else if (segmentationModeBridge.isActive() && !interactiveHandler) {
       const isMergeTool =
         segmentationModeBridge.getActiveTool() === SegmentationTool.Merge;
 
-      this.canvas.style.cursor = isMergeTool
-        ? "default"
-        : buildBrushCursor(segmentationModeBridge.getToolState(scale)!);
+      this.setCursor(
+        isMergeTool
+          ? "default"
+          : buildBrushCursor(segmentationModeBridge.getToolState(scale)!),
+      );
     } else if (detectionModeBridge.isActive() && !interactiveHandler) {
-      this.canvas.style.cursor = "crosshair";
+      this.setCursor("crosshair");
     }
   };
 
@@ -1089,14 +1099,30 @@ export class InteractionManager {
     }
 
     this.renderer.enableZoomPan();
-    this.canvas.style.cursor =
+    this.setCursor(
       handler?.getCursor?.(worldPoint, scale, this.currentModifiers) ||
-      this.canvas.style.cursor;
-    this.clickStartPoint = undefined;
-    this.clickStartTime = 0;
+        this.canvas.style.cursor,
+    );
+    if (this.readOnly) {
+      this.readOnlyPanning = false;
+      this.setCursor(this.readOnlyCursor(handler));
+    }
+    this.endPress();
   };
 
+  /** Forget the press; a cancelled or abandoned gesture never gets a pointer-up */
+  private endPress(): void {
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
+    this.pressReservedForPan = false;
+    if (this.readOnlyPanning) {
+      this.readOnlyPanning = false;
+      this.setCursor(this.readOnlyCursor());
+    }
+  }
+
   private handlePointerCancel = (event: PointerEvent): void => {
+    this.endPress();
     if (this.pendingAction) {
       this.pendingAction = undefined;
       this.renderer.enableZoomPan();
@@ -1114,6 +1140,10 @@ export class InteractionManager {
   private handlePointerLeave = (event: PointerEvent): void => {
     // Cancel next hover cycle; no longer on the canvas
     this.cancelPendingHover();
+    // a press still held keeps its gesture; one released off-canvas is over
+    if (event.buttons === 0) {
+      this.endPress();
+    }
 
     // Clear hover state when leaving canvas
     if (this.hoveredHandler) {
@@ -1239,13 +1269,54 @@ export class InteractionManager {
         this.currentModifiers,
       );
       if (cursor) {
-        this.canvas.style.cursor = cursor;
+        this.setCursor(cursor);
       }
     }
   }
 
+  /**
+   * Select (or toggle) the overlay under a click per `resolveSelectionClick`,
+   * and announce the click. The event rides along only on the toggle path,
+   * where it decides the select event's `isShiftPressed`.
+   */
+  private applySelectionClick(
+    handler: InteractionHandler | undefined,
+    event: PointerEvent,
+    worldPoint: Point,
+  ): SelectionClickAction {
+    const isSelectableOverlay = !!handler && TypeGuards.isSelectable(handler);
+
+    // the selected overlay still wins the hit test so drag/resize works
+    const drawOverOverlay = this.isDrawingOverUnselected(handler);
+
+    const selectionAction = resolveSelectionClick({
+      isSelectableOverlay,
+      isSelected: isSelectableOverlay
+        ? this.selectionManager.isSelected(handler!.id)
+        : false,
+      isDrawingOver: drawOverOverlay,
+      multipleSelection: this.selectionManager.isMultipleSelection(),
+    });
+
+    if (selectionAction === "toggle") {
+      this.selectionManager.toggle(handler!.id, { event });
+    } else if (selectionAction === "select") {
+      this.selectionManager.select(handler!.id);
+    }
+
+    if (isSelectableOverlay && !drawOverOverlay) {
+      this.eventBus.dispatch("lighter:overlay-click", {
+        id: handler!.id,
+        point: worldPoint,
+      });
+    }
+
+    return selectionAction;
+  }
+
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
+    if (this.pressReservedForPan) return;
 
     // Check if this is a valid click (not a drag)
     if (!this.isSpatialDragEvent(event)) {
@@ -1263,6 +1334,13 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
+        if (this.readOnly) {
+          this.applySelectionClick(
+            handler,
+            event,
+            this.renderer.screenToWorld(point),
+          );
+        }
         event.preventDefault();
       }
       // Otherwise, handle regular click
@@ -1504,11 +1582,13 @@ export class InteractionManager {
       // event, and this rAF runs later. Writing "default" here would
       // overwrite that, producing the flicker between mode cursor and
       // "default" reported during bounding-box creation.
-      if (
+      if (this.readOnly) {
+        this.setCursor(this.readOnlyCursor());
+      } else if (
         !segmentationModeBridge.isActive() &&
         !detectionModeBridge.isActive()
       ) {
-        this.canvas.style.cursor = "default";
+        this.setCursor("default");
       }
 
       if (this.hoveredHandler) {
@@ -1541,9 +1621,10 @@ export class InteractionManager {
     // If we are hovering on a new overlay, hover the new one
     if (handler && this.hoveredHandler !== handler && !interactingHandler) {
       handler.onHoverEnter?.(point, event);
-      this.canvas.style.cursor =
+      this.setCursor(
         handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
-        this.canvas.style.cursor;
+          this.canvas.style.cursor,
+      );
 
       this.eventBus.dispatch("lighter:overlay-hover", {
         id: handler.id,
@@ -1553,9 +1634,10 @@ export class InteractionManager {
 
     // If we are hovering on the same overlay, move the hover
     if (this.hoveredHandler === handler) {
-      this.canvas.style.cursor =
+      this.setCursor(
         handler.getCursor?.(worldPoint, scale, this.currentModifiers) ||
-        this.canvas.style.cursor;
+          this.canvas.style.cursor,
+      );
 
       this.eventBus.dispatch("lighter:overlay-hover-move", {
         id: handler.id,
@@ -1581,14 +1663,14 @@ export class InteractionManager {
         handler instanceof DetectionOverlay &&
         handler.hasMask() &&
         handler.id !== segmentationModeBridge.getMergeTargetId();
-      this.canvas.style.cursor = isMergeable ? "cell" : "default";
+      this.setCursor(isMergeable ? "cell" : "default");
 
       return;
     }
 
     const scale = this.renderer.getScale();
-    this.canvas.style.cursor = buildBrushCursor(
-      segmentationModeBridge.getToolState(scale)!,
+    this.setCursor(
+      buildBrushCursor(segmentationModeBridge.getToolState(scale)!),
     );
   };
 

@@ -14,8 +14,16 @@ const compilePath = (path: string) =>
   });
 
 export type LocationState<T extends OperationType = OperationType> = {
-  event?: "modal" | "slice" | "spaces";
+  event?: "modal" | "slice" | "spaces" | "schemaExclusion";
   fieldVisibility?: State.FieldVisibilityStage;
+  /**
+   * Paths hidden by the active workflow task's schema policy. Rides the
+   * page query's `$extendedView` as a silent `ExcludeFields` (see
+   * `makeRoutes`), so the server never serializes the fields at all —
+   * unlike `fieldVisibility`, it is policy: no view-bar chip, not
+   * cleared by view changes, not user-editable.
+   */
+  schemaExclusion?: string[];
   groupSlice?: string;
   modalSelector?: ModalSelector;
   savedViewSlug?: string;

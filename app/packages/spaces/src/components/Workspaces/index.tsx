@@ -58,7 +58,7 @@ export default function Workspaces() {
   if (!canInitialize) return null;
 
   return (
-    <Box sx={{ position: "absolute", top: 0, right: 0, zIndex: 1 }}>
+    <Box sx={{ position: "relative" }}>
       <Button
         size="small"
         onClick={() => {

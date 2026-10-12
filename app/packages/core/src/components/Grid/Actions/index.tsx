@@ -6,7 +6,6 @@ import {
   useOperatorPlacements,
 } from "@fiftyone/operators";
 import { useItemsWithOrderPersistence } from "@fiftyone/utilities";
-import { useGridSelectionDataset } from "@fiftyone/state/src/selection";
 import { Box } from "@mui/material";
 import { useMemo } from "react";
 import BrowseOperationsAction from "../../Actions/BrowseOperations";
@@ -52,7 +51,6 @@ const Options = (props: AdaptiveMenuItemComponentPropsType) => (
 );
 
 export default () => {
-  const { enabled: episodeSelection } = useGridSelectionDataset();
   const { placements: primaryPlacements } = useOperatorPlacements(
     types.Places.SAMPLES_GRID_ACTIONS,
   );
@@ -122,10 +120,8 @@ export default () => {
           },
         };
       }),
-    ].filter(
-      (item) => !episodeSelection || !["tag", "selected"].includes(item.id),
-    );
-  }, [primaryPlacements, secondaryPlacements, episodeSelection]);
+    ];
+  }, [primaryPlacements, secondaryPlacements]);
   const { orderedItems, setOrder } = useItemsWithOrderPersistence(
     initialItems,
     "grid-actions-row",

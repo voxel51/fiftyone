@@ -1,5 +1,7 @@
+import { getEventBus } from "@fiftyone/events";
 import React from "react";
 import { SEEK_BAR_DEBOUNCE } from "../../lib/constants";
+import type { TimelineEvents } from "../../lib/timeline/events";
 import { TimelineName } from "../../lib/timeline/state";
 import { useFrameNumber } from "../../lib/timeline/use-frame-number";
 import { useTimeline } from "../../lib/timeline/use-timeline";
@@ -14,6 +16,13 @@ import {
   Speed,
   StatusIndicator,
 } from "./PlaybackElements";
+
+/** e2e specs wait on the status readout and playhead a timeline renders */
+type TimelineViewE2EEvents = {
+  "e2e:playback:status-shown": { timelineName: string; text: string };
+  "e2e:playback:playhead-state": { timelineName: string; state: string };
+  "e2e:playback:looping": { timelineName: string; loop: boolean };
+};
 
 interface TimelineProps {
   name: TimelineName;
@@ -39,6 +48,30 @@ export const Timeline = React.memo(
 
       const { loaded, loading } = useTimelineBuffers(name);
 
+      React.useEffect(() => {
+        getEventBus<TimelineViewE2EEvents>().dispatch(
+          "e2e:playback:status-shown",
+          {
+            timelineName: name,
+            text: `${frameNumber} / ${config.totalFrames}`,
+          },
+        );
+      }, [name, frameNumber, config.totalFrames]);
+
+      React.useEffect(() => {
+        getEventBus<TimelineViewE2EEvents>().dispatch("e2e:playback:looping", {
+          timelineName: name,
+          loop: config.loop,
+        });
+      }, [name, config.loop]);
+
+      React.useEffect(() => {
+        getEventBus<TimelineViewE2EEvents>().dispatch(
+          "e2e:playback:playhead-state",
+          { timelineName: name, state: playHeadState },
+        );
+      }, [name, playHeadState]);
+
       const onChangeSeek = React.useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
           const newSeekBarValue = Number(e.target.value);
@@ -49,19 +82,17 @@ export const Timeline = React.memo(
 
       const onSeekStart = React.useCallback(() => {
         pause();
-        dispatchEvent(
-          new CustomEvent("seek", {
-            detail: { timelineName: name, start: true },
-          }),
-        );
+        getEventBus<TimelineEvents>().dispatch("timeline:seek", {
+          timelineName: name,
+          start: true,
+        });
       }, [pause, name]);
 
       const onSeekEnd = React.useCallback(() => {
-        dispatchEvent(
-          new CustomEvent("seek", {
-            detail: { timelineName: name, start: false },
-          }),
-        );
+        getEventBus<TimelineEvents>().dispatch("timeline:seek", {
+          timelineName: name,
+          start: false,
+        });
       }, [name]);
 
       const [isHoveringSeekBar, setIsHoveringSeekBar] = React.useState(false);

@@ -1,4 +1,5 @@
 export * from "./accessors";
+export * from "./bounding-boxes";
 export * as constants from "./constants";
 export * from "./contextManager";
 export * from "./gridCustomRendererFailover";
