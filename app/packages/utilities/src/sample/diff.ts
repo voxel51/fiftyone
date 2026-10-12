@@ -352,6 +352,14 @@ export const mergeLabel = (
  * parents (the transient already carries the upserted/filtered list).
  */
 export const structuralSupplier: JSONDeltaSupplier = (a, b) => {
+  // fast-json-patch compares primitives with `===`, where NaN !== NaN. Two
+  // normalized-equal values must short-circuit here, or a NaN leaf (e.g. a
+  // skipped keypoint node's [NaN, NaN] coordinate) re-emits the same replace
+  // op against its own persisted echo on every autosave tick, forever.
+  if (equalsNormalized(a, b)) {
+    return [];
+  }
+
   const from = normalizeForCompare(a ?? {}) as
     | Record<string, unknown>
     | unknown[];

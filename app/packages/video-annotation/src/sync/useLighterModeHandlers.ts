@@ -12,6 +12,7 @@ import useExit from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/us
 import { useCurrentEditingOverlay } from "../state/accessors";
 import type {
   DetectionMode,
+  KeypointMode,
   PolylineMode,
   RegisterLighterHandler,
   SegmentationMode,
@@ -64,18 +65,20 @@ export const useRegisterEditorTeardownHandler = ({
  * Mode quit: right-click and Esc deactivate whichever create mode is active.
  * `lighter:detection-mode-quit` / `lighter:segmentation-mode-quit` target their
  * own mode; the generic `lighter:active-mode-quit-requested` self-filters across
- * detection, segmentation, and polyline.
+ * detection, segmentation, polyline, and keypoint.
  */
 export const useRegisterModeQuitHandlers = ({
   registerHandler,
   detectionMode,
   segmentationMode,
   polylineMode,
+  keypointMode,
 }: {
   registerHandler: RegisterLighterHandler;
   detectionMode: DetectionMode;
   segmentationMode: SegmentationMode;
   polylineMode: PolylineMode;
+  keypointMode: KeypointMode;
 }): void => {
   registerHandler(
     "lighter:detection-mode-quit",
@@ -108,8 +111,13 @@ export const useRegisterModeQuitHandlers = ({
 
       if (polylineMode.polylineModeActive) {
         polylineMode.deactivatePolylineMode();
+        return;
       }
-    }, [detectionMode, segmentationMode, polylineMode]),
+
+      if (keypointMode.keypointModeActive) {
+        keypointMode.deactivateKeypointMode();
+      }
+    }, [detectionMode, segmentationMode, polylineMode, keypointMode]),
   );
 };
 
@@ -146,10 +154,12 @@ export const useRegisterTrackDeletedHandler = ({
   detectionMode,
   segmentationMode,
   polylineMode,
+  keypointMode,
 }: {
   detectionMode: DetectionMode;
   segmentationMode: SegmentationMode;
   polylineMode: PolylineMode;
+  keypointMode: KeypointMode;
 }): void => {
   useAnnotationEventHandler(
     "annotation:trackDeleted",
@@ -163,6 +173,10 @@ export const useRegisterTrackDeletedHandler = ({
       if (polylineMode.polylineModeActive) {
         polylineMode.deactivatePolylineMode();
       }
-    }, [detectionMode, segmentationMode, polylineMode]),
+
+      if (keypointMode.keypointModeActive) {
+        keypointMode.deactivateKeypointMode();
+      }
+    }, [detectionMode, segmentationMode, polylineMode, keypointMode]),
   );
 };

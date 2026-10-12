@@ -84,6 +84,8 @@ interface AttributesSectionProps {
   onEditAttribute: (oldName: string, config: AttributeConfig) => void;
   onDeleteAttribute: (name: string) => void;
   onOrderChange?: (newOrder: AttributeConfig[]) => void;
+  /** Keypoint fields only: offer the per-point scope toggle */
+  allowPointScope?: boolean;
   /** Draft edits outside the attribute list (the access rows). */
   onConfigChange?: (config: object) => void;
   /** Video sample-level label types don't support dynamic attributes. */
@@ -126,6 +128,7 @@ const AttributesSection = ({
   onEditAttribute,
   onDeleteAttribute,
   onOrderChange,
+  allowPointScope = false,
   onConfigChange,
 }: AttributesSectionProps) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -241,6 +244,7 @@ const AttributesSection = ({
           canDrag: draggable,
           isEditing: true,
           readOnly: !!attr._source,
+          allowPointScope,
         });
       }
 
@@ -269,6 +273,7 @@ const AttributesSection = ({
               <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
                 {secondaryParts.join(" · ")}
               </Text>
+              {attr.scope === "point" && <Pill size={Size.Md}>Per-point</Pill>}
               {attr.read_only && <Pill size={Size.Md}>Read-only</Pill>}
               {attr.dynamic && <Pill size={Size.Md}>Dynamic</Pill>}
               {attr._source && <Pill size={Size.Md}>{attr._source}</Pill>}
@@ -279,6 +284,7 @@ const AttributesSection = ({
       };
     },
     [
+      allowPointScope,
       canHide,
       editingAttribute,
       editingFormState,
@@ -446,6 +452,7 @@ const AttributesSection = ({
           existingAttributes={existingAttributeNames}
           onSave={handleAddSave}
           onCancel={() => setIsAdding(false)}
+          allowPointScope={allowPointScope}
         />
       )}
 

@@ -4,7 +4,6 @@
 
 import {
   EDGE_THRESHOLD,
-  KEYPOINT_SELECTED_RADIUS,
   LABEL_ARCHETYPE_PRIORITY,
   PREVIEW_LINE_OPACITY,
 } from "../constants";
@@ -17,8 +16,8 @@ import {
   projectOntoSegment2d,
 } from "../utils/geometry";
 import {
+  type AddPointOptions,
   KeypointOverlay,
-  type KeypointLabel,
   type KeypointRenderContext,
 } from "./KeypointOverlay";
 import { BaseOverlay } from "./BaseOverlay";
@@ -41,9 +40,6 @@ export interface PolylineOptions {
 }
 
 const DEFAULT_FILL_OPACITY = 0.3;
-
-/** Screen-space gap between a lone vertex's marker and its label text. */
-const SINGLE_POINT_LABEL_GAP = 4;
 
 export type SegmentEndpoint = {
   segmentIdx: number;
@@ -92,7 +88,7 @@ const flattenPolylinePoints = (
  * For persistence, callers should read points back via {@link getNestedPoints}
  * to recover the original `[[number, number][], ...]` shape.
  */
-export class PolylineOverlay extends KeypointOverlay {
+export class PolylineOverlay extends KeypointOverlay<PolylineLabel> {
   private segmentBoundaries: number[];
   private polylineClosed: boolean;
   private polylineFilled: boolean;
@@ -127,20 +123,15 @@ export class PolylineOverlay extends KeypointOverlay {
   private textBounds?: Rect;
 
   constructor(options: PolylineOptions) {
-    const { flatPoints, connections, segmentBoundaries } =
-      flattenPolylinePoints(options.label.points ?? []);
+    const { connections, segmentBoundaries } = flattenPolylinePoints(
+      options.label.points ?? [],
+    );
 
-    // Synthesize a Keypoint-compatible label so the parent's render machinery
-    // operates on a flat point list
-    const flatLabel = {
-      ...options.label,
-      points: flatPoints,
-    } as unknown as KeypointLabel;
-
+    // the parent reads the nested segments through pointsFromLabel
     super({
       id: options.id,
       field: options.field,
-      label: flatLabel,
+      label: options.label,
       connections,
       closed: options.label.closed ?? false,
       draggable: options.draggable,
@@ -149,7 +140,6 @@ export class PolylineOverlay extends KeypointOverlay {
       variantStyles: options.variantStyles,
     });
 
-    this.label = options.label as unknown as KeypointLabel;
     this.segmentBoundaries = segmentBoundaries;
     this.polylineClosed = options.label.closed ?? false;
     this.polylineFilled = options.label.filled ?? false;
@@ -159,21 +149,28 @@ export class PolylineOverlay extends KeypointOverlay {
     return "PolylineOverlay";
   }
 
+  /** Nested segments, flattened in segment order (see getNestedPoints). */
+  protected override pointsFromLabel(
+    label: PolylineLabel,
+  ): ReadonlyArray<readonly unknown[]> {
+    return flattenPolylinePoints(label?.points ?? []).flatPoints;
+  }
+
   override applyLabel(label: PolylineLabel): void {
-    // Apply polyline-specific state (`closed`/`filled`/points) before the base
-    // label set so the overlay's derived getters are current.
-    const { flatPoints, connections, segmentBoundaries } =
-      flattenPolylinePoints(label.points ?? []);
+    // Polyline-specific state first, so the parent's point rebuild (through
+    // pointsFromLabel) lands on current segment boundaries and connections
+    const { connections, segmentBoundaries } = flattenPolylinePoints(
+      label.points ?? [],
+    );
 
     this.segmentBoundaries = segmentBoundaries;
     this.polylineClosed = label.closed ?? false;
     this.polylineFilled = label.filled ?? false;
 
-    this.setRelativePoints(flatPoints);
     this.setConnections(connections);
     this.setClosed(this.polylineClosed);
 
-    super.applyLabel(label as unknown as KeypointLabel);
+    super.applyLabel(label);
   }
 
   override getSelectionPriority(): number {
@@ -246,11 +243,11 @@ export class PolylineOverlay extends KeypointOverlay {
    * to target a specific segment.
    *
    * @param worldPoint Absolute (world-space) coordinates of the new point.
-   * @param variant Optional variant key used to determine render style.
-   * @param id Optional point id; one is generated when omitted.
+   * @param options Variant, point id (generated when omitted), and emit
+   *   flags, forwarded unchanged to {@link KeypointOverlay.addPoint}.
    * @returns The id of the new point.
    */
-  override addPoint(worldPoint: Point, variant?: string, id?: string): string {
+  override addPoint(worldPoint: Point, options?: AddPointOptions): string {
     // Bump boundaries BEFORE super, since `super.addPoint` synchronously
     // dispatches `lighter:keypoint-point-added`.
     if (this.segmentBoundaries.length === 0) {
@@ -259,7 +256,7 @@ export class PolylineOverlay extends KeypointOverlay {
       this.segmentBoundaries[this.segmentBoundaries.length - 1] += 1;
     }
 
-    const newId = super.addPoint(worldPoint, variant, id);
+    const newId = super.addPoint(worldPoint, options);
 
     this.setConnections(this.rebuildConnectionsFromBoundaries());
 
@@ -903,37 +900,24 @@ export class PolylineOverlay extends KeypointOverlay {
       return;
     }
 
-    if (ctx.absPoints.length === 0) {
-      return;
-    }
-
     if (!BaseOverlay.validBounds(this.bounds)) {
       return;
     }
 
-    const single = ctx.absPoints.length === 1;
-    const scale = renderer.getScale() || 1;
-    const position = single
-      ? {
-          x: ctx.absPoints[0].x,
-          y:
-            ctx.absPoints[0].y -
-            (KEYPOINT_SELECTED_RADIUS + SINGLE_POINT_LABEL_GAP) / scale,
-        }
-      : PolylineOverlay.computeCentroid(ctx.absPoints);
+    const placement = this.computeLabelTextPlacement(renderer, ctx.absPoints);
+    if (!placement) {
+      return;
+    }
 
     // `drawText` returns the absolute-space background rect; retain it for
     // hover/selection hit-testing.
     this.textBounds = renderer.drawText(
       this.label.label,
-      position,
+      placement.position,
       {
         fontColor: "#ffffff",
         backgroundColor: ctx.style.fillStyle || ctx.style.strokeStyle || "#000",
-        anchor: {
-          vertical: single ? "bottom" : "center",
-          horizontal: "center",
-        },
+        anchor: placement.anchor,
       },
       this.containerId,
     );
@@ -971,25 +955,6 @@ export class PolylineOverlay extends KeypointOverlay {
     }
 
     return super.getMouseDistance(point);
-  }
-
-  /**
-   * Returns the centroid (mean position) of the given points. Callers are
-   * responsible for ensuring the array is non-empty.
-   */
-  private static computeCentroid(points: Point[]): Point {
-    let sumX = 0;
-    let sumY = 0;
-
-    for (const p of points) {
-      sumX += p.x;
-      sumY += p.y;
-    }
-
-    return {
-      x: sumX / points.length,
-      y: sumY / points.length,
-    };
   }
 
   private static pointInRect(p: Point, r: Rect): boolean {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  LABEL_TYPE_OPTIONS_VIDEO,
   FRAME_PREFIX_AUTO_ERROR,
   FRAME_PREFIX_SAMPLE_ERROR,
+  getDefaultAttributesForType,
+  LABEL_TYPE_OPTIONS_3D,
+  LABEL_TYPE_OPTIONS_VIDEO,
 } from "./constants";
 import {
   createDefaultFormData,
@@ -12,6 +14,7 @@ import {
   getAttributeTypeLabel,
   getClassNameError,
   getLabelTypeOptions,
+  isFrameLevelLabelType,
   reconcileComponent,
   toAttributeConfig,
   toFormData,
@@ -159,6 +162,53 @@ describe("dynamic attribute flag", () => {
   });
 });
 
+describe("attribute scope", () => {
+  it("defaults to field scope for a new attribute", () => {
+    expect(createDefaultFormData().scope).toBe("field");
+  });
+
+  it("hydrates the form from a point-scoped config", () => {
+    const form = toFormData({
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+    });
+    expect(form.scope).toBe("point");
+  });
+
+  it("defaults the form to field scope when the config omits scope", () => {
+    expect(toFormData({ name: "color", type: "str" }).scope).toBe("field");
+  });
+
+  it("serializes point scope and omits field scope", () => {
+    const point = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+    });
+    expect(point.scope).toBe("point");
+
+    const field = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "color",
+      type: "str",
+    });
+    expect(field.scope).toBeUndefined();
+  });
+
+  it("drops the default value for point scope", () => {
+    const config = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+      default: "true",
+    });
+    expect(config.default).toBeUndefined();
+  });
+});
+
 describe("validateFieldName", () => {
   it("rejects '.' for non-video media", () => {
     expect(validateFieldName("frames.detections", null, "image")).toMatch(
@@ -229,6 +279,37 @@ describe("validateFieldName with a video label scope", () => {
     expect(
       validateFieldName("dets", { dets: {} }, "video", "frame"),
     ).toBeNull();
+  });
+
+  it("offers keypoints on image and video datasets, as a frame field on video", () => {
+    const ids = (options: { id: string }[]) => options.map((o) => o.id);
+    expect(ids(getLabelTypeOptions("image"))).toContain("keypoints");
+    expect(ids(getLabelTypeOptions("video"))).toContain("keypoints");
+    expect(isFrameLevelLabelType("keypoints")).toBe(true);
+    expect(ids(LABEL_TYPE_OPTIONS_3D)).not.toContain("keypoints");
+  });
+});
+
+describe("getDefaultAttributesForType", () => {
+  it("scopes a new keypoints field's confidence to the points", () => {
+    const confidence = getDefaultAttributesForType("keypoints", false).find(
+      (attr) => attr.name === "confidence",
+    );
+    expect(confidence).toEqual({
+      name: "confidence",
+      type: "float",
+      component: "text",
+      scope: "point",
+    });
+  });
+
+  it("keeps label-level confidence for the other label types", () => {
+    for (const type of ["detections", "polylines", "classification"]) {
+      const confidence = getDefaultAttributesForType(type, false).find(
+        (attr) => attr.name === "confidence",
+      );
+      expect(confidence?.scope).toBeUndefined();
+    }
   });
 });
 

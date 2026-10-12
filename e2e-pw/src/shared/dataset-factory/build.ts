@@ -28,6 +28,8 @@ const EMBEDDED_DOC_TYPES = new Set([
   "Detections",
   "Heatmap",
   "Instance",
+  "Keypoint",
+  "Keypoints",
   "Polyline",
   "Polylines",
   "Segmentation",
@@ -55,6 +57,7 @@ export interface BuildOptions extends Pick<
   | "promptableIndexes"
   | "savedViews"
   | "schema"
+  | "skeletons"
   | "staticTransforms"
 > {
   mediaType: "image" | "video" | "3d" | "point-cloud" | "multimodal" | "group";
@@ -113,6 +116,7 @@ export const build = (() => {
     samples,
     savedViews = {},
     schema = {},
+    skeletons = {},
     staticTransforms = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
@@ -122,6 +126,7 @@ export const build = (() => {
         indexes,
         labelSchemas,
         samples,
+        skeletons,
         staticTransforms,
       }),
       "json",
@@ -165,6 +170,13 @@ ${mediaTypeCode}
 ${Object.entries(schema)
   .map(([fieldPath, fieldType]) => addField(fieldPath, fieldType))
   .join("\n")}
+
+if payload["skeletons"]:
+    dataset.skeletons = {
+        name: fo.KeypointSkeleton(labels=s["labels"], edges=s["edges"])
+        for name, s in payload["skeletons"].items()
+    }
+    dataset.save()
 
 for transform in payload["staticTransforms"]:
     dataset.add_static_transform(StaticTransform(**transform))

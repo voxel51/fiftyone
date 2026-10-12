@@ -7,7 +7,7 @@ import {
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { ICONS } from "./Icons";
@@ -91,6 +91,16 @@ const LabelEntry = ({
   // full-identity read (sample included) — a hand-rolled instanceId+path match
   // would cross-light a same-id row from another slice in a grouped modal
   const isHovering = useInteraction(engine, (i) => i.isHovered(toRef()));
+
+  // Clicking the row swaps the sidebar to the edit form, unmounting this row
+  // before its mouse-leave can fire — without this cleanup the engine hover
+  // set on mouse-enter sticks, and the label renders emphasized for the whole
+  // edit session (which also suppresses keypoints' per-point emphasis).
+  // Clearing an un-hovered ref is a no-op, so an unconditional clear is safe.
+  useEffect(
+    () => () => engine.interaction.setHovered(toRef(), false),
+    [engine, toRef],
+  );
 
   // color reads only `field` + `label` off the overlay (cf. the 3D rows) — a
   // stub over the engine label is enough, no mounted Lighter overlay needed

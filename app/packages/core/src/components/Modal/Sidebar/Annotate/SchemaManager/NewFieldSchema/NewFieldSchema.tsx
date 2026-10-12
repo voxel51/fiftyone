@@ -513,6 +513,7 @@ const NewFieldSchema = () => {
               />
               <AttributesSection
                 attributes={attributes}
+                allowPointScope={labelType === "keypoints"}
                 canAddAttributes={supportsDynamicAttributes(
                   currentMediaType,
                   effectiveName || "new",
