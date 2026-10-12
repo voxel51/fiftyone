@@ -73,6 +73,7 @@ def plot_confusion_matrix(
     Returns:
         a matplotlib figure
     """
+    close_figure = ax is None and foc.is_jupyter_context()
     if ax is None:
         fig, ax = plt.subplots()
     else:
@@ -132,6 +133,9 @@ def plot_confusion_matrix(
         fig.suptitle(title)
 
     plt.tight_layout()
+
+    if close_figure:
+        plt.close(fig)
 
     return fig
 
