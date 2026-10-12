@@ -8,7 +8,7 @@ import { CallbackInterface } from "recoil";
 import { QueueItemStatus, RiskLevel } from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./ts";
-import { stringifyError } from "./utils";
+import { pickTrackedParams, stringifyError } from "./utils";
 import { ValidationContext, ValidationError } from "./validation";
 
 type RawInvocationRequest = {
@@ -259,6 +259,7 @@ export type OperatorConfigOptions = {
   skipInput?: boolean;
   skipOutput?: boolean;
   riskLevel?: RiskLevel;
+  trackedParams?: string[];
 };
 export class OperatorConfig {
   public name: string;
@@ -278,6 +279,7 @@ export class OperatorConfig {
   public skipInput: boolean;
   public skipOutput: boolean;
   public riskLevel: RiskLevel = RiskLevel.LOW;
+  public trackedParams: string[] = [];
 
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
@@ -299,6 +301,7 @@ export class OperatorConfig {
     this.skipInput = options.skipInput || false;
     this.skipOutput = options.skipOutput || false;
     this.riskLevel = options.riskLevel || RiskLevel.LOW;
+    this.trackedParams = options.trackedParams || [];
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -319,6 +322,7 @@ export class OperatorConfig {
       skipInput: json.skip_input,
       skipOutput: json.skip_output,
       riskLevel: json.risk_level,
+      trackedParams: json.tracked_params,
     });
   }
 }
@@ -724,24 +728,19 @@ export async function validateOperatorInputs(
 function trackOperatorExecution(
   operatorURI,
   params,
-  { info, delegated, isRemote, error },
+  { info, delegated, isRemote, error, trackedParams },
 ) {
   const analytics = usingAnalytics(info);
-  const paramKeys = Object.keys(params || {});
-  analytics.trackEvent("execute_operator", {
+  const properties = {
     uri: operatorURI,
     isRemote,
     delegated,
-    params: paramKeys,
-  });
+    params: Object.keys(params || {}),
+    paramValues: pickTrackedParams(trackedParams, params),
+  };
+  analytics.trackEvent("execute_operator", properties);
   if (error) {
-    analytics.trackEvent("execute_operator_error", {
-      uri: operatorURI,
-      isRemote,
-      delegated,
-      params: paramKeys,
-      error,
-    });
+    analytics.trackEvent("execute_operator_error", { ...properties, error });
   }
 }
 
@@ -842,6 +841,7 @@ export async function executeOperatorWithContext(
 
   trackOperatorExecution(operatorURI, params, {
     info: ctx._currentContext.info,
+    trackedParams: operator.config.trackedParams,
     delegated,
     isRemote,
     error,

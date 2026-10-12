@@ -163,3 +163,16 @@ export function optimizeCtx(ctx, liteValues) {
 
   return optimizedCtx;
 }
+
+export function pickTrackedParams(
+  trackedParams: string[],
+  params: Record<string, unknown>,
+) {
+  const values: Record<string, unknown> = {};
+  for (const name of trackedParams) {
+    if (params && name in params) {
+      values[name] = params[name];
+    }
+  }
+  return values;
+}

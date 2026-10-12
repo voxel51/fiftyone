@@ -290,7 +290,8 @@ def load_zoo_model(
             instance
 
     Returns:
-        a :class:`fiftyone.core.models.Model`
+        a :class:`fiftyone.core.models.Model`, whose ``zoo_name`` attribute is
+        the name of the zoo model it was loaded from
     """
     if model_name is not None:
         name = model_name
@@ -306,6 +307,7 @@ def load_zoo_model(
         error_level = fo.config.requirement_error_level
 
     model = _get_model(name_or_url, model_name=model_name)
+    zoo_name = model.name
     models_dir = fo.config.model_zoo_dir
 
     if model.manager is not None and not model.is_in_dir(models_dir):
@@ -326,6 +328,9 @@ def load_zoo_model(
     else:
         model_path = model.get_path_in_dir(models_dir)
         model = fom.load_model(config_dict, model_path=model_path, **kwargs)
+
+    # Many zoo models share a class, so usage records identify it by this
+    model.zoo_name = zoo_name
 
     if cache and key is not None:
         _MODELS[key] = model
