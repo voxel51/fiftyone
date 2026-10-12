@@ -221,7 +221,7 @@ export class EmbeddingsV2Pom {
 
   /**
    * Runs `action` and resolves once the layout change it made (the panel
-   * opening or closing, its open run, its color-by field) is saved: the save
+   * opening, its open run, its color-by field) is saved: the save
    * reloads the page, and the route commit that follows says so. The commit
    * names no save, so no other save may be in flight
    */

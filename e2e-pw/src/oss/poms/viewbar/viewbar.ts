@@ -107,6 +107,17 @@ export class ViewBarPom {
   }
 
   /**
+   * Folds the stages row with its toggle. The row unmounts in the toggle's
+   * commit, so whatever sits below the bar has stopped moving on return
+   */
+  async hideStages() {
+    const expanded = await this.stagesToggle.getAttribute("aria-expanded");
+    if (expanded === "true") {
+      await this.stagesToggle.click();
+    }
+  }
+
+  /**
    * Makes the stages of a non-empty bar visible. A view arriving from
    * anywhere but the search opens the row on its own, so this is the
    * idempotent path for the cases that do not; the row renders the view's

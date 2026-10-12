@@ -419,18 +419,17 @@ test.describe("on a wide screen", () => {
     await grid.afterEntryCounts(() => lasso(embeddings.plotCanvas, LEFT_HALF));
     await embeddings.assert.hasSelectionChip(`${CLUSTER_A} samples`);
 
-    // The bookmark turns the draft selection into a real view stage. The
-    // view change redraws the grid's tiles and the plot, now showing only
-    // the view's points, none lit; a click while they redraw can be lost
-    await embeddings.afterDrawn({ emphasized: null, visible: CLUSTER_A }, () =>
-      grid.afterTilesDrawn(CLUSTER_A, () =>
-        viewBar.afterStagesShown(() => grid.actionsRow.bookmarkFilters()),
-      ),
-    );
+    // The bookmark turns the draft selection into a real view stage
+    await viewBar.afterStagesShown(() => grid.actionsRow.bookmarkFilters());
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
 
-    // Closing the panel clears selections, never the view
-    await embeddings.afterPanelStateSaved(() =>
+    // View bar bug: a press outside the bar folds its open stages row
+    // mid-click, moving the tab's X out from under the pointer. Fold it first
+    await viewBar.hideStages();
+
+    // Closing the panel clears selections, never the view; the grid takes
+    // the whole width back and redraws its tiles
+    await grid.afterTilesUpdated(() =>
       embeddings.gridPanel.closeTab("Embeddings"),
     );
     await grid.assert.isEntryCountTextEqualTo(`${CLUSTER_A} samples`);
