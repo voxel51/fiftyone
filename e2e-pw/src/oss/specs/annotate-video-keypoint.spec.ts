@@ -139,12 +139,14 @@ test.describe("video keypoint creation", () => {
     await edit.assert.keypointNodeStatuses(["placed", "skipped", "target"]);
     await annotate.assert.keypointModeIsActive();
 
-    await edit.afterKeypointChecklist(() =>
-      sampleCanvas.click(...PLACEMENTS[2]),
+    // every placement writes the committed label, so the last one saves
+    await annotate.afterSave(() =>
+      edit.afterKeypointChecklist(() => sampleCanvas.click(...PLACEMENTS[2])),
     );
     await edit.assert.keypointNodeStatuses(["placed", "skipped", "placed"]);
 
-    await annotate.afterSave(() => edit.selectFieldChoice("label", "person"));
+    // a new label starts with the field's only class, so there is no class
+    // edit to make: picking "person" again would save nothing
     await edit.assert.verifyFieldValue("label", "person");
 
     // true round-trip: a fresh page finds the track and the frame label. The
