@@ -43,7 +43,10 @@ import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
 import { preloadEpisodeModal } from "../shell/modal-loader";
+import { publishLoadingLayout } from "../loading/loading-layout";
 import { useModalThumbnail } from "../loading/modal-thumbnail";
+import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
+import type { SourceBootstrap } from "../../../runtime/source-bootstrap-cache";
 import type {
   GridPosterProviderLookupStatus,
   ResolvedGridPosterProviderDescriptor,
@@ -133,6 +136,10 @@ const posterCaptureHarness = vi.hoisted(() => ({
   capture: vi.fn(),
 }));
 
+const bootstrapHarness = vi.hoisted(() => ({
+  bootstrap: null as SourceBootstrap | null,
+}));
+
 const sourceHarness = vi.hoisted(() => ({
   byteSource: null as ByteSourceDescriptor | null,
 }));
@@ -199,6 +206,16 @@ vi.mock("./grid-poster-codec", () => ({
 vi.mock("../shell/modal-loader", () => ({
   preloadEpisodeModal: vi.fn(),
   scheduleEpisodeModalPreload: vi.fn(),
+}));
+
+vi.mock("../loading/loading-layout", () => ({
+  publishLoadingLayout: vi.fn(),
+}));
+
+vi.mock("../../../runtime/react/source-bootstrap", () => ({
+  useSourceBootstrap: vi.fn((source: ByteSourceDescriptor | null) =>
+    source ? bootstrapHarness.bootstrap : null,
+  ),
 }));
 
 vi.mock("../../session/use-episode-preview-session", () => ({
@@ -367,6 +384,9 @@ afterEach(() => {
   previewHarness.preview.pause.mockClear();
   previewHarness.preview.play.mockClear();
   vi.mocked(preloadEpisodeModal).mockClear();
+  vi.mocked(publishLoadingLayout).mockClear();
+  vi.mocked(useSourceBootstrap).mockClear();
+  bootstrapHarness.bootstrap = null;
   snapshotHarness.requests.length = 0;
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
@@ -1027,6 +1047,35 @@ describe("GridRenderer", () => {
     }
   });
 
+  it("lays out a reference-backed tile from its own streams, not its shared asset", () => {
+    sourceHarness.byteSource = {
+      sourceId: "shared-episode-asset",
+      url: "memory://shared-episode-asset.mp4",
+    };
+    bootstrapHarness.bootstrap = {
+      manifest: {
+        streams: [{ id: "/other/episode", sourceName: "/other/episode" }],
+      },
+    } as unknown as SourceBootstrap;
+    previewHarness.preview.streamSourceNames = ["/cam/left"];
+
+    render(
+      <GridRenderer
+        ctx={rendererCtx(undefined, {
+          field: "filepath",
+          mediaReference: { key: "episode-1" },
+        })}
+      />,
+    );
+
+    expect(vi.mocked(useSourceBootstrap)).toHaveBeenLastCalledWith(null);
+    expect(
+      vi
+        .mocked(publishLoadingLayout)
+        .mock.lastCall?.[1].map((source) => source.sourceName),
+    ).toEqual(["/cam/left"]);
+  });
+
   it("only preloads the modal on hover while the grid is active", () => {
     const ctx = rendererCtx();
     const { container, rerender } = render(<GridRenderer ctx={ctx} />);
@@ -1519,10 +1568,13 @@ describe("GridRenderer", () => {
   });
 });
 
-function rendererCtx(openModal?: () => void) {
+function rendererCtx(
+  openModal?: () => void,
+  media: Record<string, unknown> = { field: "filepath" },
+) {
   return {
     dataset: { datasetId: "dataset-id", name: "dataset" },
-    media: { field: "filepath" },
+    media,
     sample: { sample: { id: "1" } },
     ...(openModal ? { openModal } : {}),
   } as never;

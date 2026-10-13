@@ -375,13 +375,16 @@ export function GridRenderer({
     }),
     [ctx.dataset.datasetId, ctx.media.field, sampleId],
   );
-  const bootstrap = useSourceBootstrap(source);
+  const referenceBacked = ctx.media.mediaReference != null;
+  // A reference-backed episode's asset may serve several episodes, so its
+  // physical bootstrap cannot describe this episode's streams. Those tiles
+  // publish their own reference-backed stream list below instead.
+  const bootstrap = useSourceBootstrap(referenceBacked ? null : source);
   const committedPosterCanvas = useRef<{
     identity: typeof thumbnailIdentity;
     canvas: HTMLCanvasElement;
   } | null>(null);
   const layoutStreams = bootstrap?.manifest?.streams;
-  const referenceBacked = ctx.media.mediaReference != null;
   // This effect shares grid inventory before the modal session is available.
   useEffect(() => {
     if (layoutStreams) {
