@@ -28,6 +28,7 @@ import {
   fieldSchema,
   lookerOptions,
   modalSample,
+  nullableModalSampleId,
   selectedLabelMap,
   selectedMediaField,
 } from "../../recoil";
@@ -174,6 +175,10 @@ export const useCurrentSampleId = () => {
 
   return loadable.state === "hasValue" ? loadable.contents : null;
 };
+
+/** Reads the selected grid sample ID without suspending on the sample query. */
+export const useNullableModalSampleId = (): string | null =>
+  useRecoilValue(nullableModalSampleId);
 
 /**
  * Gets the saved modal viewport (zoom/pan) state.
