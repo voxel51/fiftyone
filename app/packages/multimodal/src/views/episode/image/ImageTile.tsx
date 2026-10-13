@@ -42,6 +42,10 @@ import type { PanelNotice } from "../../../visualization/panel-ui/PanelNotices";
 import { useImagePanZoom } from "../../../visualization/media-2d/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/GpuPointCloudProjectionPicker";
 import { useDataStream } from "../playback/data-stream-context";
+import {
+  useFramePresentation,
+  useFrameUnavailable,
+} from "../../../visualization/webgpu/FramePresentation";
 import { usePublishImageAspectRatio } from "./image-aspect-ratios";
 import { groupImageLabelSources } from "./image-label-source-groups";
 import { useImageProjection } from "../settings/modal/state";
@@ -950,6 +954,12 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sourceKey,
     ],
   );
+  const onFrameRendered = useFramePresentation(
+    sourceKey,
+    requestedImageContentTimeNs !== null &&
+      committedImageContentTimeNs === requestedImageContentTimeNs,
+  );
+  useFrameUnavailable(sourceKey, tileId, Boolean(refusedCodec));
   const sceneChildren = useMemo(
     () => (
       <>
@@ -960,12 +970,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             projectedStreamCount: renderedProjectionLayers.length,
           }}
           event="e2e:multimodal:image-frame-rendered"
+          onRendered={onFrameRendered}
         />
         {panelSceneChildren}
       </>
     ),
     [
       committedImageContentTimeNs,
+      onFrameRendered,
       panelSceneChildren,
       pointCloudProjection.pointSize,
       renderedProjectionLayers.length,

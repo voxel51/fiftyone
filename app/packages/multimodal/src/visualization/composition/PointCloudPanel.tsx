@@ -122,6 +122,7 @@ export function PointCloudPanel({
   notices = EMPTY_NOTICES,
   onCameraPoseChange,
   onRenderStats,
+  onFrameRendered,
   pointSize = DEFAULT_POINT_SIZE,
   rayLayers = EMPTY_ARRAY,
   sceneUp = "z",
@@ -501,6 +502,7 @@ export function PointCloudPanel({
         measurePlaneUp={measurePlaneUp}
         onCameraPoseChange={onCameraPoseChange}
         onCanvasError={setCanvasError}
+        onFrameRendered={onFrameRendered}
         onMeasurePick={handleMeasurePick}
         onViewportAspectChange={handleViewportAspectChange}
         pointPickerRegistry={pointPickerRegistry}
@@ -595,6 +597,7 @@ interface PointCloudCanvasProps {
   readonly measurePlaneUp: NonNullable<PointCloudPanelProps["sceneUp"]>;
   readonly onCameraPoseChange: PointCloudPanelProps["onCameraPoseChange"];
   readonly onCanvasError: (error: string | null) => void;
+  readonly onFrameRendered?: () => void;
   readonly onMeasurePick: (point: MeasurementPoint) => void;
   readonly onViewportAspectChange: (aspect: number) => void;
   readonly pointPickerRegistry: ReturnType<
@@ -636,6 +639,7 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
     measurePlaneUp,
     onCameraPoseChange,
     onCanvasError,
+    onFrameRendered,
     onMeasurePick,
     onViewportAspectChange,
     pointPickerRegistry,
@@ -661,6 +665,7 @@ const PointCloudCanvas = memo(function PointCloudCanvas(
       <FrameRenderedSignal
         detail={pointCloudFrameDetail(renderLayers, pointSize, canvasSurface)}
         event="e2e:multimodal:point-cloud-frame-rendered"
+        onRendered={onFrameRendered}
       />
       <PerspectiveCameraProjection
         onViewportAspectChange={onViewportAspectChange}
