@@ -570,7 +570,7 @@ export function GridRenderer({
       onContextMenu={gridActivationHandler}
       onPointerDown={prepareModal}
       onPointerEnter={() => {
-        preloadEpisodeModal(sampleDescriptorFromContext(ctx));
+        if (interactive) preloadEpisodeModal(sampleDescriptorFromContext(ctx));
         playbackIntent.enter();
       }}
       onPointerLeave={playbackIntent.leave}

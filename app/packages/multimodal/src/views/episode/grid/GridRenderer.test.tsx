@@ -41,6 +41,7 @@ import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
+import { preloadEpisodeModal } from "../shell/modal-loader";
 import type {
   GridPosterProviderLookupStatus,
   ResolvedGridPosterProviderDescriptor,
@@ -191,6 +192,11 @@ vi.mock("../../session/use-stable-episode-source", () => ({
 
 vi.mock("./grid-poster-codec", () => ({
   captureGridPoster: posterCaptureHarness.capture,
+}));
+
+vi.mock("../shell/modal-loader", () => ({
+  preloadEpisodeModal: vi.fn(),
+  scheduleEpisodeModalPreload: vi.fn(),
 }));
 
 vi.mock("../../session/use-episode-preview-session", () => ({
@@ -358,6 +364,7 @@ afterEach(() => {
   previewHarness.preview.streamSourceNames = [];
   previewHarness.preview.pause.mockClear();
   previewHarness.preview.play.mockClear();
+  vi.mocked(preloadEpisodeModal).mockClear();
   snapshotHarness.requests.length = 0;
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
@@ -958,6 +965,20 @@ describe("GridRenderer", () => {
       expect(onContextMenu).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("only preloads the modal on hover while the grid is active", () => {
+    const ctx = rendererCtx();
+    const { container, rerender } = render(<GridRenderer ctx={ctx} />);
+    const root = getGridRendererRoot(container);
+
+    fireEvent.pointerOver(root);
+    expect(preloadEpisodeModal).toHaveBeenCalledTimes(1);
+    fireEvent.pointerOut(root);
+
+    rerender(<GridRenderer ctx={ctx} isGridActive={false} />);
+    fireEvent.pointerOver(root);
+    expect(preloadEpisodeModal).toHaveBeenCalledTimes(1);
+  });
 
   it("requires hover intent before starting playback", () => {
     vi.useFakeTimers();
