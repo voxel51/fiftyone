@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   buildTileEmptyStateModel,
   buildTileStreamNotice,
+  isTileEmptyStateFinal,
   useStabilizedNotices,
   type HealthNotice,
   type TileStreamNotice,
@@ -50,6 +51,23 @@ function useTileStreamNotice(
     startTimes,
     statuses,
     streams: stableStreams,
+  });
+}
+
+/**
+ * Whether a tile without a frame shows a final message at the playhead (no
+ * source, failed, or a gap the opening first-data seek will not resolve),
+ * rather than one that is still waiting for data. Requires a PlaybackProvider.
+ */
+export function useTileEmptyStateFinal(streams: readonly string[]): boolean {
+  const stableStreams = useStableStreams(streams);
+  const statuses = useStreamStatuses(stableStreams);
+  const startTimes = useStreamStartTimes(stableStreams);
+  const store = usePlaybackStore();
+  return isTileEmptyStateFinal({
+    playheadSec: getPlayhead(store),
+    startTimes,
+    statuses,
   });
 }
 

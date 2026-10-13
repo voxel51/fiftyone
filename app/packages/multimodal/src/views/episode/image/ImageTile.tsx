@@ -78,9 +78,11 @@ import styles from "../tiles/Tile.module.css";
 import {
   TileEmptyState,
   TileStatusBadge,
+  useTileEmptyStateFinal,
   useTileStreamWarningNotices,
 } from "../tiles/TileStreamState";
 import type { EpisodeTileProps } from "../tiles/tile-types";
+import { usePanelUnavailable } from "../tiles/use-panel-unavailable";
 import {
   useStreamContentFrame,
   usePlaybackStreamValue,
@@ -959,7 +961,21 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
     requestedImageContentTimeNs !== null &&
       committedImageContentTimeNs === requestedImageContentTimeNs,
   );
-  useFrameUnavailable(sourceKey, tileId, Boolean(refusedCodec));
+  const panel = usePanelUnavailable(`${sourceKey}\n${stream}`);
+  const sharedVideoRejected =
+    frame?.kind === "encoded-video" &&
+    !isSharedEncodedVideoVisualization(frame);
+  const emptyStateFinal = useTileEmptyStateFinal(stream ? [stream] : []);
+  // A pane that cannot produce a frame settles the destination: a refused
+  // codec or video, a failed decode or canvas, or a final empty state.
+  useFrameUnavailable(
+    sourceKey,
+    tileId,
+    Boolean(refusedCodec) ||
+      sharedVideoRejected ||
+      panel.unavailable ||
+      (!(frame && playbackFrame) && emptyStateFinal),
+  );
   const sceneChildren = useMemo(
     () => (
       <>
@@ -1019,6 +1035,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                   notices={imageNotices}
                   onImageLoaded={handleImageLoaded}
                   onResetView={imagePanZoom.resetView}
+                  onUnavailableChange={panel.onUnavailableChange}
                   priority={isPlaying ? "playing" : "visible"}
                   sceneChildren={sceneChildren}
                   stream={stream}
@@ -1042,6 +1059,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 notices={imageNotices}
                 onImageLoaded={handleImageLoaded}
                 onResetView={imagePanZoom.resetView}
+                onUnavailableChange={panel.onUnavailableChange}
                 sceneChildren={sceneChildren}
                 textureMesh={
                   rectifiedViewActive ? rectifiedDisplay?.textureMesh : null

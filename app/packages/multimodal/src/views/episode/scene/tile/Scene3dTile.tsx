@@ -82,8 +82,13 @@ import {
 } from "../../settings/modal/state";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { EpisodeTileProps } from "../../tiles/tile-types";
+import { usePanelUnavailable } from "../../tiles/use-panel-unavailable";
 import styles from "../../tiles/Tile.module.css";
-import { TileEmptyState, TileStatusBadge } from "../../tiles/TileStreamState";
+import {
+  TileEmptyState,
+  TileStatusBadge,
+  useTileEmptyStateFinal,
+} from "../../tiles/TileStreamState";
 import { locationHudLine, speedHudLine } from "../entities/pose-trajectory";
 import {
   useScene3dCameraTracking,
@@ -1023,13 +1028,19 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
     sourceKey,
     sceneHasRenderableContent && !sceneSnapshotSelection.heldReason,
   );
+  const canvas = usePanelUnavailable(sourceKey);
+  const emptyStateFinal = useTileEmptyStateFinal(selectedStreams);
+  // A scene that cannot produce a frame settles the destination: no selected
+  // sources, a failed canvas, or nothing renderable once its notices or final
+  // empty state are known.
   useFrameUnavailable(
     sourceKey,
     tileId,
     selectedStreams.length === 0 ||
+      canvas.unavailable ||
       (!sceneHasRenderableContent &&
-        displayedScene.notices.length > 0 &&
-        !sceneSnapshotSelection.heldReason),
+        !sceneSnapshotSelection.heldReason &&
+        (displayedScene.notices.length > 0 || emptyStateFinal)),
   );
   return (
     <>
@@ -1041,6 +1052,7 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
             onFrameRendered={onFrameRendered}
+            onUnavailableChange={canvas.onUnavailableChange}
             annotationLayers={displayedScene.annotationLayers}
             background={panelBackground}
             cameraPose={poseCommand}

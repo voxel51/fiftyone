@@ -20,6 +20,7 @@ import { FrameRenderedSignal } from "../webgpu/FrameRenderedSignal";
 import { WebGpuCanvas } from "../webgpu/WebGpuCanvas";
 import controlStyles from "../panel-ui/PanelControl.module.css";
 import { PanelNotices } from "../panel-ui/PanelNotices";
+import { useReportUnavailable } from "../panel-ui/use-report-unavailable";
 import { useKeyedIdentityMap } from "../panel-ui/use-keyed-identity-map";
 import {
   DEFAULT_POINT_CLOUD_CAMERA_PROJECTION,
@@ -123,6 +124,7 @@ export function PointCloudPanel({
   onCameraPoseChange,
   onRenderStats,
   onFrameRendered,
+  onUnavailableChange,
   pointSize = DEFAULT_POINT_SIZE,
   rayLayers = EMPTY_ARRAY,
   sceneUp = "z",
@@ -134,6 +136,7 @@ export function PointCloudPanel({
   worldGrid = null,
 }: PointCloudPanelProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  useReportUnavailable(canvasError !== null, onUnavailableChange);
   const [frustumTextureErrors, setFrustumTextureErrors] = useState<
     Readonly<Record<string, string>>
   >({});
