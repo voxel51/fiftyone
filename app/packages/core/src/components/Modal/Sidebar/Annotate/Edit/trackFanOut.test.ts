@@ -65,6 +65,17 @@ describe("splitTrackEdit", () => {
     expect(trackPartial).toEqual({ label: "car", index: 2 });
     expect(dynamicPartial).toEqual({ turn_signal: "left" });
   });
+
+  it("keeps caller-supplied extra per-frame keys out of both halves (keypoint parallel lists)", () => {
+    const { trackPartial, dynamicPartial } = splitTrackEdit(
+      { label: "person", confidence: [0.9, null], visible: [2, 1] },
+      new Set<string>(),
+      new Set(["confidence", "visible"]),
+    );
+
+    expect(trackPartial).toEqual({ label: "person" });
+    expect(dynamicPartial).toEqual({});
+  });
 });
 
 describe("buildForwardFill", () => {

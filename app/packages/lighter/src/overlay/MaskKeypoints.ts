@@ -3,7 +3,9 @@
  */
 
 import {
+  KEYPOINT_OUTLINE_WIDTH,
   KEYPOINT_RADIUS,
+  KEYPOINT_SELECTED_OUTLINE_WIDTH,
   KEYPOINT_SELECTED_RADIUS,
   PREVIEW_LINE_OPACITY,
   STROKE_WIDTH,
@@ -199,11 +201,12 @@ export class MaskKeypoints extends KeypointOverlay {
       }
     }
 
-    // 3. Batch all regular points into a single draw call
+    // 3. Batch all regular points into a single draw call. Point outlines
+    // are independent of the overlay's line width (which sizes the lines).
     const pointStyle: DrawStyle = {
       fillStyle: strokeColor,
       strokeStyle: "#ffffff",
-      lineWidth,
+      lineWidth: KEYPOINT_OUTLINE_WIDTH,
     };
 
     const regularPoints: Point[] = [];
@@ -218,6 +221,12 @@ export class MaskKeypoints extends KeypointOverlay {
     }
 
     if (regularPoints.length > 0) {
+      this.drawPointHalo(
+        renderer,
+        regularPoints,
+        KEYPOINT_RADIUS,
+        KEYPOINT_OUTLINE_WIDTH,
+      );
       renderer.drawPoints(
         regularPoints,
         KEYPOINT_RADIUS,
@@ -226,18 +235,19 @@ export class MaskKeypoints extends KeypointOverlay {
       );
     }
 
-    // Draw selected point at larger radius + inner highlight (separate calls)
+    // Selected point: the white outline thickens OUTWARD — total radius
+    // grows while the point's color stays visible in the core
     if (selectedPoint) {
-      renderer.drawPoint(
-        selectedPoint,
+      this.drawPointHalo(
+        renderer,
+        [selectedPoint],
         KEYPOINT_SELECTED_RADIUS,
-        pointStyle,
-        this.containerId,
+        KEYPOINT_SELECTED_OUTLINE_WIDTH,
       );
       renderer.drawPoint(
         selectedPoint,
-        KEYPOINT_RADIUS,
-        { fillStyle: "#ffffff" },
+        KEYPOINT_SELECTED_RADIUS,
+        { ...pointStyle, lineWidth: KEYPOINT_SELECTED_OUTLINE_WIDTH },
         this.containerId,
       );
     }
