@@ -68,3 +68,4 @@ operators:
   # dataset
   - delete_brain_run
   - get_field_schema
+  - list_pending_runs

@@ -2,6 +2,7 @@ import { usePanelContext } from "@fiftyone/spaces";
 import { Spinner } from "@voxel51/voodo";
 import { Suspense } from "react";
 import { SimilaritySearchViewProps } from "../types";
+import usePendingSimilarityRuns from "../hooks/usePendingSimilarityRuns";
 import { useSimilarityPanel } from "../hooks/useSimilarityPanel";
 import RunList from "./Home/RunList";
 import NewSearch from "./NewSearch/NewSearch";
@@ -11,8 +12,12 @@ import { FullCenter, FullSize } from "./styled";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   const panel = useSimilarityPanel(props);
+  const { runs: pendingRuns, loaded: pendingLoaded } = usePendingSimilarityRuns(
+    panel.brainKeys,
+    panel.unreadyBrainKeys,
+  );
 
-  if (!panel.loaded) {
+  if (!panel.loaded || !pendingLoaded) {
     return (
       <FullCenter>
         <Spinner />
@@ -20,7 +25,11 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
     );
   }
 
-  if (panel.brainKeys.length === 0 && panel.runs.length === 0) {
+  if (
+    panel.brainKeys.length === 0 &&
+    panel.runs.length === 0 &&
+    pendingRuns.length === 0
+  ) {
     return <SimilaritySearchCTA mode="onboarding" />;
   }
 
@@ -31,6 +40,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           runs={panel.runs}
           filteredRuns={panel.filteredRuns}
           brainKeys={panel.brainKeys}
+          pendingRuns={pendingRuns}
           appliedRunId={panel.appliedRunId}
           sampleMedia={panel.sampleMedia}
           onApply={panel.handleApply}
@@ -61,6 +71,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
       {panel.page === "similarity_index" && (
         <SimilarityIndex
           brainKeys={panel.brainKeys}
+          pendingRuns={pendingRuns}
           onBack={panel.navigateHome}
         />
       )}
