@@ -1,4 +1,3 @@
-import { Loading } from "@fiftyone/components";
 import { SpaceNodeJSON, useSpaces } from "@fiftyone/spaces";
 import { Space } from "@fiftyone/spaces/src/components";
 import { FIFTYONE_MODAL_SPACES_ID } from "@fiftyone/state/src/constants";
@@ -7,6 +6,7 @@ import {
   saveModalSpacesToLocalStorage,
   useModalSpaces,
 } from "./modal-spaces-utils";
+import { ModalSamplePending } from "./ModalSamplePending";
 
 const ModalSpaceImpl = React.memo(
   ({ defaultSpaces }: { defaultSpaces: SpaceNodeJSON }) => {
@@ -37,5 +37,5 @@ export const ModalSpace = () => {
     return <ModalSpaceImpl defaultSpaces={defaultModalSpaces} />;
   }
 
-  return <Loading>Pixelating...</Loading>;
+  return <ModalSamplePending />;
 };
