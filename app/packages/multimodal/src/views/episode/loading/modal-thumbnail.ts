@@ -1,34 +1,46 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { SampleRendererLoadingProps } from "@fiftyone/plugins";
 
-const MAX_ENTRIES = 32;
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_SNAPSHOTS = 32;
+const MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024;
 const MAX_CANVAS_DIMENSION = 512;
+const MAX_POSTER_KEYS = 512;
+const MAX_POSTER_URLS = 16;
 
 type Thumbnail =
   | { readonly kind: "image"; readonly url: string }
   | { readonly kind: "canvas"; readonly canvas: HTMLCanvasElement };
 
-interface Entry {
-  readonly thumbnail: Thumbnail;
+/** Encoded poster bytes, as the grid poster cache stores them. */
+interface EncodedPoster {
+  readonly bytes: Uint8Array;
+  readonly mimeType: string;
+}
+
+/** The grid's encoded-poster cache, read only for a destination being shown. */
+export interface ModalThumbnailPosterCache {
+  readonly peek: (posterKey: string) => EncodedPoster | null;
+  /** Notifies after any poster is stored. */
+  readonly subscribe: (listener: () => void) => () => void;
+}
+
+interface Snapshot {
   readonly bytes: number;
-  readonly origin: object;
+  readonly thumbnail: Extract<Thumbnail, { kind: "canvas" }>;
 }
 
-const entries = new Map<string, Entry>();
-const originTokens = new WeakMap<object, object>();
+interface PosterUrl {
+  readonly poster: EncodedPoster;
+  readonly thumbnail: Extract<Thumbnail, { kind: "image" }>;
+}
+
+const snapshots = new Map<string, Snapshot>();
+const posterKeys = new Map<string, string>();
+const posterUrls = new Map<string, PosterUrl>();
 const listeners = new Set<() => void>();
-let retainedBytes = 0;
-
-// Deduplicate without retaining the producer's encoded bytes or live canvas.
-function originToken(origin: object): object {
-  let token = originTokens.get(origin);
-  if (!token) {
-    token = {};
-    originTokens.set(origin, token);
-  }
-  return token;
-}
+let snapshotBytes = 0;
+let posterCache: ModalThumbnailPosterCache | null = null;
+let disconnectPosterCache: (() => void) | null = null;
 
 function keyFor(identity: SampleRendererLoadingProps): string {
   return JSON.stringify([
@@ -38,60 +50,40 @@ function keyFor(identity: SampleRendererLoadingProps): string {
   ]);
 }
 
-function dispose(entry: Entry): void {
-  if (entry.thumbnail.kind === "image") {
-    URL.revokeObjectURL(entry.thumbnail.url);
-  } else {
-    entry.thumbnail.canvas.width = 0;
-    entry.thumbnail.canvas.height = 0;
-  }
-}
-
-function publish(identity: SampleRendererLoadingProps, entry: Entry): void {
-  const key = keyFor(identity);
-  const previous = entries.get(key);
-  if (previous) {
-    retainedBytes -= previous.bytes;
-    dispose(previous);
-    entries.delete(key);
-  }
-  entries.set(key, entry);
-  retainedBytes += entry.bytes;
-  while (entries.size > MAX_ENTRIES || retainedBytes > MAX_BYTES) {
-    const oldest = entries.entries().next().value as [string, Entry];
-    entries.delete(oldest[0]);
-    retainedBytes -= oldest[1].bytes;
-    dispose(oldest[1]);
-  }
+function notify(): void {
   for (const listener of listeners) listener();
 }
 
-/** Retains encoded grid/provider posters independently of the renderer module. */
-export function publishModalThumbnail(
-  identity: SampleRendererLoadingProps,
-  poster: { readonly bytes: Uint8Array; readonly mimeType: string },
-): void {
-  if (!identity.sampleId || poster.bytes.byteLength > MAX_BYTES) return;
-  const key = keyFor(identity);
-  const previous = entries.get(key);
-  const origin = originToken(poster);
-  if (previous?.origin === origin) {
-    entries.delete(key);
-    entries.set(key, previous);
-    return;
-  }
-  const bytes = Uint8Array.from(poster.bytes).buffer;
-  publish(identity, {
-    bytes: bytes.byteLength,
-    origin,
-    thumbnail: {
-      kind: "image",
-      url: URL.createObjectURL(new Blob([bytes], { type: poster.mimeType })),
-    },
-  });
+function connectPosterCache(cache: ModalThumbnailPosterCache): void {
+  if (posterCache === cache) return;
+  disconnectPosterCache?.();
+  posterCache = cache;
+  disconnectPosterCache = cache.subscribe(notify);
 }
 
-/** Captures native/2D posters on activation before their live surface changes. */
+/**
+ * Records which grid poster cache entry belongs to a sample, so a destination
+ * reached later by click, keyboard, or next/back navigation can show it. No
+ * bytes are copied until a modal asks for that destination.
+ */
+export function registerModalThumbnailPoster(
+  identity: SampleRendererLoadingProps,
+  posterKey: string,
+  cache: ModalThumbnailPosterCache,
+): void {
+  if (!identity.sampleId) return;
+  connectPosterCache(cache);
+  const key = keyFor(identity);
+  const previous = posterKeys.get(key);
+  posterKeys.delete(key);
+  posterKeys.set(key, posterKey);
+  while (posterKeys.size > MAX_POSTER_KEYS) {
+    posterKeys.delete(posterKeys.keys().next().value as string);
+  }
+  if (previous !== posterKey) notify();
+}
+
+/** Captures a drawn 2D poster on activation, before its encoded copy exists. */
 export function captureModalThumbnail(
   identity: SampleRendererLoadingProps,
   source: HTMLCanvasElement,
@@ -119,11 +111,67 @@ export function captureModalThumbnail(
   } catch {
     return;
   }
-  publish(identity, {
-    bytes: canvas.width * canvas.height * 4,
-    origin: originToken(source),
-    thumbnail: { kind: "canvas", canvas },
-  });
+  const key = keyFor(identity);
+  const previous = snapshots.get(key);
+  if (previous) {
+    snapshots.delete(key);
+    snapshotBytes -= previous.bytes;
+    releaseCanvas(previous.thumbnail.canvas);
+  }
+  const bytes = canvas.width * canvas.height * 4;
+  snapshots.set(key, { bytes, thumbnail: { kind: "canvas", canvas } });
+  snapshotBytes += bytes;
+  while (snapshots.size > MAX_SNAPSHOTS || snapshotBytes > MAX_SNAPSHOT_BYTES) {
+    const [oldestKey, oldest] = snapshots.entries().next().value as [
+      string,
+      Snapshot,
+    ];
+    snapshots.delete(oldestKey);
+    snapshotBytes -= oldest.bytes;
+    releaseCanvas(oldest.thumbnail.canvas);
+  }
+  notify();
+}
+
+function releaseCanvas(canvas: HTMLCanvasElement): void {
+  canvas.width = 0;
+  canvas.height = 0;
+}
+
+// Object URLs are created once per destination poster and kept for the few
+// most recent destinations; the grid cache keeps the encoded bytes.
+function posterThumbnail(
+  posterKey: string,
+  poster: EncodedPoster,
+): Extract<Thumbnail, { kind: "image" }> {
+  const current = posterUrls.get(posterKey);
+  if (current?.poster === poster) return current.thumbnail;
+  if (current) URL.revokeObjectURL(current.thumbnail.url);
+  posterUrls.delete(posterKey);
+  const thumbnail = {
+    kind: "image",
+    url: URL.createObjectURL(
+      new Blob([Uint8Array.from(poster.bytes)], { type: poster.mimeType }),
+    ),
+  } as const;
+  posterUrls.set(posterKey, { poster, thumbnail });
+  while (posterUrls.size > MAX_POSTER_URLS) {
+    const [oldestKey, oldest] = posterUrls.entries().next().value as [
+      string,
+      PosterUrl,
+    ];
+    posterUrls.delete(oldestKey);
+    URL.revokeObjectURL(oldest.thumbnail.url);
+  }
+  return thumbnail;
+}
+
+function thumbnailFor(key: string): Thumbnail | null {
+  const snapshot = snapshots.get(key);
+  if (snapshot) return snapshot.thumbnail;
+  const posterKey = posterKeys.get(key);
+  const poster = posterKey ? (posterCache?.peek(posterKey) ?? null) : null;
+  return posterKey && poster ? posterThumbnail(posterKey, poster) : null;
 }
 
 function subscribe(listener: () => void): () => void {
@@ -136,9 +184,6 @@ export function useModalThumbnail(
   identity: SampleRendererLoadingProps,
 ): Thumbnail | null {
   const key = keyFor(identity);
-  const snapshot = useCallback(
-    () => entries.get(key)?.thumbnail ?? null,
-    [key],
-  );
+  const snapshot = useCallback(() => thumbnailFor(key), [key]);
   return useSyncExternalStore(subscribe, snapshot, () => null);
 }

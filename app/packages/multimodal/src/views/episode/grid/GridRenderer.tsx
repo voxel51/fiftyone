@@ -75,8 +75,16 @@ import {
 } from "../shell/modal-loader";
 import {
   captureModalThumbnail,
-  publishModalThumbnail,
+  registerModalThumbnailPoster,
+  type ModalThumbnailPosterCache,
 } from "../loading/modal-thumbnail";
+
+// The modal reads a destination's cached poster on demand, so the grid never
+// copies posters ahead of navigation.
+const modalThumbnailPosters: ModalThumbnailPosterCache = {
+  peek: (key) => getGridPosterCache().peek(key),
+  subscribe: (listener) => getGridPosterCache().subscribe(listener),
+};
 
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
 // the one hovered cell staleness-marks every visible point-cloud cell, so
@@ -444,7 +452,6 @@ export function GridRenderer({
       ]);
       if (capturedTokens.has(token)) return;
       capturedTokens.add(token);
-      captureModalThumbnail(thumbnailIdentity, canvas);
       captureGridPoster({
         entry: {
           height: size.height,
@@ -494,31 +501,28 @@ export function GridRenderer({
     (error: Error) => setNativeVideoError(error.message),
     [],
   );
-  // This effect hands off ready posters and schedules code loading in idle time.
+  // This effect schedules idle modal code loading once a poster is ready.
   useEffect(() => {
     if (!interactive) return;
-    if (effectivePoster)
-      publishModalThumbnail(thumbnailIdentity, effectivePoster);
     if (effectivePoster || nativePosterPainted || preview.status === "ready") {
       scheduleEpisodeModalPreload(sampleDescriptorFromContext(ctx));
     }
-  }, [
-    ctx,
-    effectivePoster,
-    interactive,
-    nativePosterPainted,
-    preview.status,
-    thumbnailIdentity,
-  ]);
+  }, [ctx, effectivePoster, interactive, nativePosterPainted, preview.status]);
+  // This effect records where this sample's poster is cached, so a modal
+  // reached later by click, keyboard, or next/back can read it on demand.
+  useEffect(() => {
+    if (cacheKey) {
+      registerModalThumbnailPoster(
+        thumbnailIdentity,
+        cacheKey,
+        modalThumbnailPosters,
+      );
+    }
+  }, [cacheKey, thumbnailIdentity]);
   const prepareModal = useCallback(() => {
     preloadEpisodeModal(sampleDescriptorFromContext(ctx));
-    const entry =
-      effectivePoster ??
-      (cacheKey ? getGridPosterCache().peek(cacheKey) : null);
-    if (entry) {
-      publishModalThumbnail(thumbnailIdentity, entry);
-      return;
-    }
+    // An encoded poster reaches the modal through its registered cache key.
+    if (cacheKey && getGridPosterCache().peek(cacheKey)) return;
     const committed = committedPosterCanvas.current;
     if (
       committed?.canvas.isConnected &&
@@ -528,7 +532,7 @@ export function GridRenderer({
     ) {
       captureModalThumbnail(thumbnailIdentity, committed.canvas);
     }
-  }, [cacheKey, ctx, effectivePoster, thumbnailIdentity]);
+  }, [cacheKey, ctx, thumbnailIdentity]);
   const posterImage =
     preview.frame?.kind === "image" ? preview.frame.image : null;
   const codecRejection =

@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ModalThumbnailPosterCache } from "./modal-thumbnail";
 
 const identity = (sampleId: string) => ({
   datasetId: "dataset",
@@ -10,6 +11,26 @@ const poster = () => ({
   bytes: new Uint8Array([1, 2, 3]),
   mimeType: "image/webp",
 });
+
+function posterCache() {
+  const entries = new Map<string, ReturnType<typeof poster>>();
+  const listeners = new Set<() => void>();
+  const cache: ModalThumbnailPosterCache = {
+    peek: (key) => entries.get(key) ?? null,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  return {
+    cache,
+    put: (key: string, value = poster()) => {
+      entries.set(key, value);
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
 beforeEach(() => {
   vi.resetModules();
   let next = 0;
@@ -23,9 +44,11 @@ afterEach(() => {
 
 describe("modal thumbnail ownership", () => {
   it("never substitutes an outgoing sample, dataset, or media field", async () => {
-    const { publishModalThumbnail, useModalThumbnail } =
+    const { registerModalThumbnailPoster, useModalThumbnail } =
       await import("./modal-thumbnail");
-    publishModalThumbnail(identity("a"), poster());
+    const posters = posterCache();
+    posters.put("poster-a");
+    registerModalThumbnailPoster(identity("a"), "poster-a", posters.cache);
     const { result, rerender } = renderHook((id) => useModalThumbnail(id), {
       initialProps: identity("a"),
     });
@@ -37,31 +60,86 @@ describe("modal thumbnail ownership", () => {
     rerender({ ...identity("a"), mediaField: "other" });
     expect(result.current).toBeNull();
   });
-  it("deduplicates posters, releases replaced URLs, and bounds retained entries", async () => {
-    const { publishModalThumbnail, useModalThumbnail } =
+
+  it("copies a poster only when its destination is shown", async () => {
+    const { registerModalThumbnailPoster, useModalThumbnail } =
       await import("./modal-thumbnail");
-    const a = poster();
-    publishModalThumbnail(identity("a"), a);
-    publishModalThumbnail(identity("a"), a);
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
-    publishModalThumbnail(identity("a"), poster());
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:0");
-    const { result } = renderHook(() => useModalThumbnail(identity("a")));
-    act(() => {
-      for (let i = 0; i < 32; i++)
-        publishModalThumbnail(identity(String(i)), poster());
-    });
-    expect(result.current).toBeNull();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:1");
-  });
-  it("bounds encoded bytes and owns native canvas snapshots", async () => {
-    const { captureModalThumbnail, publishModalThumbnail, useModalThumbnail } =
-      await import("./modal-thumbnail");
-    publishModalThumbnail(identity("a"), {
-      bytes: new Uint8Array(9 * 1024 * 1024),
-      mimeType: "image/png",
-    });
+    const posters = posterCache();
+    for (let i = 0; i < 40; i++) {
+      posters.put(`poster-${i}`);
+      registerModalThumbnailPoster(
+        identity(String(i)),
+        `poster-${i}`,
+        posters.cache,
+      );
+    }
     expect(URL.createObjectURL).not.toHaveBeenCalled();
+    const { result, rerender } = renderHook((id) => useModalThumbnail(id), {
+      initialProps: identity("0"),
+    });
+    rerender(identity("0"));
+    expect(result.current?.kind).toBe("image");
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a poster encoded after activation and follows replacements", async () => {
+    const { registerModalThumbnailPoster, useModalThumbnail } =
+      await import("./modal-thumbnail");
+    const posters = posterCache();
+    registerModalThumbnailPoster(identity("a"), "poster-a", posters.cache);
+    const { result } = renderHook(() => useModalThumbnail(identity("a")));
+    expect(result.current).toBeNull();
+    act(() => posters.put("poster-a"));
+    expect(result.current).toEqual({ kind: "image", url: "blob:0" });
+    act(() => posters.put("poster-a"));
+    expect(result.current).toEqual({ kind: "image", url: "blob:1" });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:0");
+  });
+
+  it("ignores a late poster for a sample's replaced cache key", async () => {
+    const { registerModalThumbnailPoster, useModalThumbnail } =
+      await import("./modal-thumbnail");
+    const posters = posterCache();
+    registerModalThumbnailPoster(identity("a"), "poster-old", posters.cache);
+    const { result } = renderHook(() => useModalThumbnail(identity("a")));
+    act(() =>
+      registerModalThumbnailPoster(identity("a"), "poster-new", posters.cache),
+    );
+    act(() => posters.put("poster-old"));
+    expect(result.current).toBeNull();
+    act(() => posters.put("poster-new"));
+    expect(result.current?.kind).toBe("image");
+  });
+
+  it("releases URLs for destinations no longer shown", async () => {
+    const { registerModalThumbnailPoster, useModalThumbnail } =
+      await import("./modal-thumbnail");
+    const posters = posterCache();
+    const { rerender } = renderHook((id) => useModalThumbnail(id), {
+      initialProps: identity("none"),
+    });
+    for (let i = 0; i < 17; i++) {
+      posters.put(`poster-${i}`);
+      registerModalThumbnailPoster(
+        identity(String(i)),
+        `poster-${i}`,
+        posters.cache,
+      );
+      rerender(identity(String(i)));
+    }
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:0");
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it("owns native canvas snapshots and prefers them to encoded posters", async () => {
+    const {
+      captureModalThumbnail,
+      registerModalThumbnailPoster,
+      useModalThumbnail,
+    } = await import("./modal-thumbnail");
+    const posters = posterCache();
+    posters.put("poster-a");
+    registerModalThumbnailPoster(identity("a"), "poster-a", posters.cache);
     const source = document.createElement("canvas");
     source.width = 1024;
     source.height = 512;
@@ -73,5 +151,6 @@ describe("modal thumbnail ownership", () => {
     source.width = 0;
     expect(result.current.canvas.width).toBe(512);
     expect(result.current.canvas.height).toBe(256);
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 });

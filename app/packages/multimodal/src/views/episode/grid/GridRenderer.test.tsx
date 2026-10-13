@@ -33,6 +33,7 @@ import type {
 import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import {
+  getGridPosterCache,
   gridPreviewStateKey,
   pointCloudPoseKey,
   type GridPosterCacheEntry,
@@ -42,6 +43,7 @@ import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
 import { preloadEpisodeModal } from "../shell/modal-loader";
+import { useModalThumbnail } from "../loading/modal-thumbnail";
 import type {
   GridPosterProviderLookupStatus,
   ResolvedGridPosterProviderDescriptor,
@@ -965,6 +967,65 @@ describe("GridRenderer", () => {
       expect(onContextMenu).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("leaves its poster in the grid cache until the modal asks for it", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "modal-thumbnail-registration",
+      url: "memory://modal-thumbnail-registration",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    bitmapViewHarness.commitOnFitEffect = true;
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:modal-thumbnail");
+    const thumbnail: { current: ReturnType<typeof useModalThumbnail> } = {
+      current: null,
+    };
+    const ThumbnailProbe = () => {
+      thumbnail.current = useModalThumbnail({
+        datasetId: "dataset-id",
+        mediaField: "filepath",
+        sampleId: "1",
+      });
+      return null;
+    };
+
+    try {
+      render(
+        <>
+          <GridRenderer ctx={rendererCtx()} />
+          <ThumbnailProbe />
+        </>,
+      );
+      await waitFor(() =>
+        expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(1),
+      );
+      expect(thumbnail.current).toBeNull();
+      expect(createObjectURL).not.toHaveBeenCalled();
+
+      const key = posterCaptureHarness.capture.mock.calls[0]?.[0].key;
+      act(() => {
+        getGridPosterCache().put(key, {
+          bytes: new Uint8Array([1, 2, 3]),
+          height: 100,
+          mimeType: "image/webp",
+          sourceKind: "image",
+          streamId: null,
+          streamSourceName: null,
+          streamSourceNames: [],
+          width: 100,
+        });
+      });
+      expect(thumbnail.current).toEqual({
+        kind: "image",
+        url: "blob:modal-thumbnail",
+      });
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+    } finally {
+      createObjectURL.mockRestore();
+    }
+  });
 
   it("only preloads the modal on hover while the grid is active", () => {
     const ctx = rendererCtx();
