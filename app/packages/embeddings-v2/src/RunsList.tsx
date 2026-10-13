@@ -24,7 +24,6 @@ import {
 import { PendingRunCard, RunScreen } from "@fiftyone/components";
 import {
   usePendingRunScreen,
-  type PendingRun,
   type PendingRunWithView,
 } from "@fiftyone/operators";
 import { useEffect, useState } from "react";
@@ -161,7 +160,7 @@ export default function RunsList({
   const isSettled = (key: string | null) =>
     Boolean(runs?.some((r) => r.brainKey === key && (r.ready || r.error)));
   const delegated = pendingRuns.filter((p) => !isSettled(p.brain_key));
-  const inProgress: PendingRun[] = (runs ?? [])
+  const inProgress: PendingRunWithView[] = (runs ?? [])
     .filter(
       (r) =>
         !r.ready &&
