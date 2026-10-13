@@ -10,7 +10,7 @@ import { getEventBus } from "@fiftyone/events";
 import { subscribe } from "@fiftyone/relay";
 import {
   isModalActive,
-  activeSchemaWireExclusions,
+  taskSchemaWireExclusions,
   theme,
   themeConfig,
   useSetExpandedSample,
@@ -70,8 +70,7 @@ const ColorScheme = () => {
 };
 
 /**
- * Syncs the active schema-policy exclusions (workflow task policy +
- * the admin Explore schema lens) into the
+ * Syncs the active workflow task's schema-policy exclusions into the
  * router's location state, reloading the page query with a silent
  * `ExcludeFields` in `$extendedView` (see `makeRoutes`). The server
  * then serializes the dataset schema, sample payloads, and counts
@@ -79,11 +78,12 @@ const ColorScheme = () => {
  * uses, on a parallel channel so it survives view changes and renders
  * no view-bar chip. The client-side `fieldSchema`/`labelFields`
  * filtering stays as the instant-apply layer while this reload is in
- * flight.
+ * flight. The Explore schema lens is client-side only (see
+ * `lensWireExclusions`): switching it reloads nothing.
  */
 const TaskSchemaExclusions = () => {
   const router = useRouterContext();
-  const exclusions = useRecoilValue(activeSchemaWireExclusions);
+  const exclusions = useRecoilValue(taskSchemaWireExclusions);
 
   useEffect(() => {
     const state = router.get().state;

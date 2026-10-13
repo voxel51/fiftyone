@@ -183,6 +183,58 @@ export const activeSchemaWireExclusions = selector<string[] | null>({
   },
 });
 
+const sortedUnion = (...lists: (readonly string[] | null | undefined)[]) => {
+  const paths = new Set(lists.flatMap((list) => list ?? []));
+  return paths.size ? [...paths].sort() : null;
+};
+
+/**
+ * The active task's hidden fields and attribute DB paths. These ride the
+ * server queries (the page query's `$extendedView`, the grid and
+ * aggregation stages, the modal sample query), because a task's viewer
+ * may not be allowed to see them.
+ */
+export const taskSchemaWireExclusions = selector<string[] | null>({
+  key: "taskSchemaWireExclusions",
+  get: ({ get }) =>
+    sortedUnion(get(taskFieldExclusions), get(taskAttrDbExclusions)),
+});
+
+/**
+ * The fields and attribute DB paths the Explore schema lens hides. Only
+ * viewers who may see every field can pick a lens (never in a task), so
+ * these are hidden in the client: switching the lens never reloads the
+ * page query or refetches the grid's or the modal's samples.
+ */
+export const lensWireExclusions = selector<string[] | null>({
+  key: "lensWireExclusions",
+  get: ({ get }) => {
+    const lens = lensContribution(
+      get(schemaLens),
+      get(taskSchemaGoverns),
+      get(datasetNameSelector),
+    );
+    return sortedUnion(lens?.excluded, lens?.excludedAttrDb);
+  },
+});
+
+/**
+ * The `ExcludeFields` view stage for the given paths, as a list of
+ * serialized stages (empty when there are none).
+ */
+export const exclusionViewStages = (paths: readonly string[] | null) =>
+  paths?.length
+    ? [
+        {
+          _cls: "fiftyone.core.stages.ExcludeFields",
+          kwargs: [
+            ["field_names", [...paths]],
+            ["_allow_missing", true],
+          ] as [string, unknown][],
+        },
+      ]
+    : [];
+
 /**
  * Whether the server is enforcing the active task's schema for this
  * viewer (set by the task entry effect alongside the task header:
@@ -196,56 +248,31 @@ export const taskExclusionsEnforcedByServer = atom<boolean>({
 });
 
 /**
- * The wire exclusions the CLIENT must carry on grid / aggregation
- * queries (`fieldExclusionStage`). When the server already enforces
- * the task's schema, sending the task's stage again only adds a
- * per-document projection to every full scan (8–16% on the label
- * histogram at 300k samples), so enforced viewers carry just the
- * Explore lens (which the server never applies); exempt viewers keep
- * the full union.
+ * The wire exclusions the CLIENT must carry on aggregation queries
+ * (`fieldExclusionStage`). When the server already enforces the task's
+ * schema, sending the task's stage again only adds a per-document
+ * projection to every full scan (8–16% on the label histogram at 300k
+ * samples), so enforced viewers carry just the Explore lens (which the
+ * server never applies); exempt viewers keep the full union.
  */
 export const activeSchemaStageExclusions = selector<string[] | null>({
   key: "activeSchemaStageExclusions",
-  get: ({ get }) => {
-    if (!get(taskExclusionsEnforcedByServer)) {
-      return get(activeSchemaWireExclusions);
-    }
-    const lens = lensContribution(
-      get(schemaLens),
-      get(taskSchemaGoverns),
-      get(datasetNameSelector),
-    );
-    const paths = [...(lens?.excluded ?? []), ...(lens?.excludedAttrDb ?? [])];
-    return paths.length ? [...new Set(paths)].sort() : null;
-  },
+  get: ({ get }) =>
+    get(taskExclusionsEnforcedByServer)
+      ? get(lensWireExclusions)
+      : get(activeSchemaWireExclusions),
 });
 
 /**
- * The active wire exclusions as serialized VIEW stages — for
- * per-sample queries (the modal's sample fetch) that do not ride the
- * page query's ``$extendedView`` channel. Appending the stage keeps
- * hidden fields out of those payloads too; empty when no schema
- * governs.
+ * Like `activeSchemaStageExclusions`, without the Explore lens: what the
+ * grid's sample query carries. The grid fetches lens-hidden fields and
+ * leaves them out of what it draws, so a lens switch keeps its samples,
+ * media and scroll position.
  */
-export const activeSchemaExclusionStages = selector<
-  { _cls: string; kwargs: [string, unknown][] }[]
->({
-  key: "activeSchemaExclusionStages",
-  get: ({ get }) => {
-    const excluded = get(activeSchemaWireExclusions);
-    if (!excluded?.length) {
-      return [];
-    }
-    return [
-      {
-        _cls: "fiftyone.core.stages.ExcludeFields",
-        kwargs: [
-          ["field_names", excluded],
-          ["_allow_missing", true],
-        ],
-      },
-    ];
-  },
+export const taskSchemaStageExclusions = selector<string[] | null>({
+  key: "taskSchemaStageExclusions",
+  get: ({ get }) =>
+    get(taskExclusionsEnforcedByServer) ? null : get(taskSchemaWireExclusions),
 });
 
 /** Union of the attribute-exclusion channels (task + Explore lens). */

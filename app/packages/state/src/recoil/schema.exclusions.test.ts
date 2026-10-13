@@ -9,6 +9,7 @@ import {
   TestSelectorFamily,
 } from "../../../../__mocks__/recoil";
 import { gatherPaths } from "./pathData/utils";
+import * as modal from "./modal";
 import * as schema from "./schema";
 import * as schemaSettings from "./schemaSettings.atoms";
 import { State } from "./types";
@@ -267,41 +268,158 @@ describe("task field exclusions and label enumeration", () => {
     expect(stage()).toStrictEqual(["car.detections.year", "clip2"]);
 
     // Enforced viewer inside a task: the server applies the task schema
-    // to page + aggregation queries, so the client sends nothing.
-    setMockAtoms({ taskExclusionsEnforcedByServer: true });
+    // to page + aggregation queries, so the client sends nothing (the lens
+    // contributes nothing in a task).
+    setMockAtoms({
+      taskExclusionsEnforcedByServer: true,
+      lensWireExclusions: null,
+    });
     expect(stage()).toBeNull();
 
-    // Enforced viewer with an Explore lens (no task): the lens is client-only
-    // and still rides the stage — fields and attr DB paths.
-    setMockAtoms({ taskSchemaGoverns: false });
+    // Enforced viewer with an Explore lens (no task): the server never
+    // applies the lens, so it still rides the aggregation stage.
+    setMockAtoms({ lensWireExclusions: ["gt", "gt.detections.conf"] });
     expect(stage()).toStrictEqual(["gt", "gt.detections.conf"]);
-
-    // Enforced viewer, nothing governing: null.
-    setMockAtoms({ schemaLens: null });
-    expect(stage()).toBeNull();
   });
 
-  it("activeSchemaExclusionStages serializes the wire union as a stage", () => {
-    const stages = <
-      TestSelector<typeof schemaSettings.activeSchemaExclusionStages>
-    >(<unknown>schemaSettings.activeSchemaExclusionStages);
+  it("splits the task's exclusions from the Explore lens's", () => {
+    const task = <TestSelector<typeof schemaSettings.taskSchemaWireExclusions>>(
+      (<unknown>schemaSettings.taskSchemaWireExclusions)
+    );
+    const lens = <TestSelector<typeof schemaSettings.lensWireExclusions>>(
+      (<unknown>schemaSettings.lensWireExclusions)
+    );
+    const gridStage = <
+      TestSelector<typeof schemaSettings.taskSchemaStageExclusions>
+    >(<unknown>schemaSettings.taskSchemaStageExclusions);
 
-    // The union itself has a dedicated test above; mock it as input.
     setMockAtoms({
-      activeSchemaWireExclusions: ["car.detections.year", "segmentations"],
+      taskFieldExclusions: ["clip2"],
+      taskAttrDbExclusions: ["car.detections.year"],
+      taskExclusionsEnforcedByServer: false,
+      taskSchemaGoverns: false,
+      schemaLens: {
+        dataset: "quickstart",
+        docId: "d1",
+        name: "lens",
+        excluded: ["gt"],
+        excludedAttrDb: ["gt.detections.conf"],
+      },
+      _datasetName__setter: "quickstart",
     });
-    expect(stages()).toStrictEqual([
+    expect(task()).toStrictEqual(["car.detections.year", "clip2"]);
+    expect(lens()).toStrictEqual(["gt", "gt.detections.conf"]);
+
+    // the grid's sample query carries the task's, never the lens's
+    setMockAtoms({ taskSchemaWireExclusions: task() });
+    expect(gridStage()).toStrictEqual(["car.detections.year", "clip2"]);
+
+    // a server that enforces the task leaves the grid stage empty
+    setMockAtoms({ taskExclusionsEnforcedByServer: true });
+    expect(gridStage()).toBeNull();
+
+    // in a task the lens contributes nothing
+    setMockAtoms({ taskSchemaGoverns: true });
+    expect(lens()).toBeNull();
+  });
+
+  it("modalSample keeps the task's exclusions in the query and drops the lens's from the sample", () => {
+    const modalSample = <TestSelector<typeof modal.modalSample>>(
+      (<unknown>modal.modalSample)
+    );
+    const fetched = {
+      urls: [],
+      sample: {
+        _id: "s1",
+        car: { detections: [{ label: "car", year: 2001 }] },
+        segmentations: {},
+      },
+    };
+
+    setMockAtoms({
+      modalSample: fetched,
+      lensWireExclusions: ["car.detections.year", "segmentations"],
+    });
+    const filtered = modalSample();
+    expect(filtered.sample).toStrictEqual({
+      _id: "s1",
+      car: { detections: [{ label: "car" }] },
+    });
+    expect(filtered.urls).toBe(fetched.urls);
+
+    // without a lens the fetched sample is read as is
+    setMockAtoms({ lensWireExclusions: null });
+    expect(modalSample()).toBe(fetched);
+  });
+
+  it("the modal sample query carries the task's exclusions, not the lens's", () => {
+    const modalView = <TestSelector<typeof modal.modalSampleView>>(
+      (<unknown>modal.modalSampleView)
+    );
+
+    setMockAtoms({
+      _view__setter: [],
+      taskSchemaWireExclusions: ["car.detections.year", "clip2"],
+      lensWireExclusions: ["gt"],
+    });
+    expect(modalView()).toStrictEqual([
       {
         _cls: "fiftyone.core.stages.ExcludeFields",
         kwargs: [
-          ["field_names", ["car.detections.year", "segmentations"]],
+          ["field_names", ["car.detections.year", "clip2"]],
           ["_allow_missing", true],
         ],
       },
     ]);
 
-    setMockAtoms({ activeSchemaWireExclusions: null });
-    expect(stages()).toStrictEqual([]);
+    setMockAtoms({ taskSchemaWireExclusions: null });
+    expect(modalView()).toStrictEqual([]);
+  });
+
+  it("lookers keep the lens's hidden fields in their schema, not the task's", () => {
+    setMockAtoms({
+      dataset: { name: "quickstart" },
+      sampleFields: [
+        labelField("ground_truth", DETECTIONS),
+        labelField("clip2", CLASSIFICATION),
+      ],
+      frameFields: [],
+      // the task hides ground_truth, the lens clip2
+      taskFieldExclusions: ["ground_truth"],
+      activeSchemaExclusions: ["clip2", "ground_truth"],
+    });
+
+    const looker = <TestSelectorFamily<typeof schema.lookerFieldSchema>>(
+      (<unknown>schema.lookerFieldSchema({ space: State.SPACE.SAMPLE }))
+    );
+    expect(Object.keys(looker())).toStrictEqual(["clip2"]);
+
+    const sidebar = <TestSelectorFamily<typeof schema.fieldSchema>>(
+      (<unknown>schema.fieldSchema({ space: State.SPACE.SAMPLE }))
+    );
+    expect(Object.keys(sidebar())).toStrictEqual([]);
+  });
+
+  it("activeFields leaves out the hidden fields", () => {
+    setMockAtoms({
+      _activeFields: () => ["ground_truth", "clip2", "clip2.label"],
+      sampleFields: [
+        labelField("ground_truth", DETECTIONS),
+        {
+          ...labelField("clip2", CLASSIFICATION),
+          fields: [
+            { ...labelField("label", CLASSIFICATION), path: "clip2.label" },
+          ],
+        },
+      ],
+      frameFields: [],
+      activeSchemaExclusions: ["clip2"],
+    });
+
+    const active = <TestSelectorFamily<typeof schema.activeFields>>(
+      (<unknown>schema.activeFields({ modal: false }))
+    );
+    expect(active()).toStrictEqual(["ground_truth"]);
   });
 
   it("labelPath falls back to the raw path when the field is unknown", () => {

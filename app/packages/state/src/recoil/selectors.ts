@@ -18,7 +18,12 @@ import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
 import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
-import { activeSchemaStageExclusions } from "./schemaSettings.atoms";
+import {
+  activeSchemaStageExclusions,
+  taskSchemaStageExclusions,
+} from "./schemaSettings.atoms";
+// A separate import: Enterprise extends the import lines at the top
+import type { GetRecoilValue } from "recoil";
 import type { SelectionType } from "./types";
 import { State } from "./types";
 import { isPatchesView } from "./view";
@@ -513,77 +518,102 @@ export const extendedStagesUnsorted = selector({
 
 /**
  * The `ExcludeFields` extended stage combining the user's Field
- * Visibility selection with the schema-policy exclusions the client is
+ * Visibility selection with the given schema-policy exclusions.
+ * Extended stages are applied server-side to grid / aggregation queries
+ * but never render in the view bar — exactly the silent channel a stage
+ * policy needs.
+ */
+const exclusionStage = (
+  fvStage: { cls?: string; kwargs?: { field_names?: string[] } } | null,
+  excluded: string[] | null,
+) => {
+  const names = new Set<string>([
+    ...(fvStage?.cls ? (fvStage.kwargs?.field_names ?? []) : []),
+    ...(excluded ?? []),
+  ]);
+  if (!names.size) {
+    return {};
+  }
+  return {
+    [fvStage?.cls ?? "fiftyone.core.stages.ExcludeFields"]: {
+      field_names: [...names],
+      _allow_missing: true,
+    },
+  };
+};
+
+/**
+ * Field Visibility plus the schema-policy exclusions the client is
  * responsible for (`activeSchemaStageExclusions`: the full union for
  * MANAGE viewers, the Explore lens only for viewers the server already
- * enforces). Extended stages are applied server-side to grid /
- * aggregation queries but never render in the view bar — exactly the
- * silent channel a stage policy needs.
+ * enforces).
  */
 const fieldExclusionStage = selector({
   key: "fieldExclusionStage",
-  get: ({ get }) => {
-    const fvStage = get(fieldVisibilityStage);
-    const taskExcluded = get(activeSchemaStageExclusions);
-    const names = new Set<string>([
-      ...(fvStage?.cls ? (fvStage.kwargs?.field_names ?? []) : []),
-      ...(taskExcluded ?? []),
-    ]);
-    if (!names.size) {
-      return {};
-    }
-    return {
-      [fvStage?.cls ?? "fiftyone.core.stages.ExcludeFields"]: {
-        field_names: [...names],
-        _allow_missing: true,
-      },
-    };
-  },
+  get: ({ get }) =>
+    exclusionStage(get(fieldVisibilityStage), get(activeSchemaStageExclusions)),
 });
+
+/** Like `fieldExclusionStage`, without the Explore lens (the grid's). */
+const gridFieldExclusionStage = selector({
+  key: "gridFieldExclusionStage",
+  get: ({ get }) =>
+    exclusionStage(get(fieldVisibilityStage), get(taskSchemaStageExclusions)),
+});
+
+const withSimilarityOrSort = (
+  get: GetRecoilValue,
+  exclusion: object,
+  sorted: boolean,
+) => {
+  const sort = get(gridSortBy);
+  const similarity = get(atoms.similarityParameters);
+  const rest: object = { ...exclusion };
+
+  if (similarity) {
+    rest["fiftyone.core.stages.SortBySimilarity"] = similarity
+      ? similarity
+      : undefined;
+  } else if (sorted && sort) {
+    rest["fiftyone.core.stages.SortBy"] = {
+      field_or_expr: sort.field,
+      reverse: sort.descending,
+      create_index: false,
+    };
+  }
+
+  return {
+    ...get(extendedStagesUnsorted),
+    ...rest,
+  };
+};
 
 export const extendedStages = selector({
   key: "extendedStages",
-  get: ({ get }) => {
-    const sort = get(gridSortBy);
-    const similarity = get(atoms.similarityParameters);
-    const rest: object = { ...get(fieldExclusionStage) };
-
-    if (similarity) {
-      rest["fiftyone.core.stages.SortBySimilarity"] = similarity
-        ? similarity
-        : undefined;
-    } else if (sort) {
-      rest["fiftyone.core.stages.SortBy"] = {
-        field_or_expr: sort.field,
-        reverse: sort.descending,
-        create_index: false,
-      };
-    }
-
-    return {
-      ...get(extendedStagesUnsorted),
-      ...rest,
-    };
-  },
+  get: ({ get }) => withSimilarityOrSort(get, get(fieldExclusionStage), true),
 });
 
 export const extendedStagesNoSort = selector({
   key: "extendedStagesNoSort",
-  get: ({ get }) => {
-    const similarity = get(atoms.similarityParameters);
-    const rest: object = { ...get(fieldExclusionStage) };
+  get: ({ get }) => withSimilarityOrSort(get, get(fieldExclusionStage), false),
+});
 
-    if (similarity) {
-      rest["fiftyone.core.stages.SortBySimilarity"] = similarity
-        ? similarity
-        : undefined;
-    }
+/**
+ * The extended stages of the grid's sample query: `extendedStages` without
+ * the Explore lens, whose hidden fields the grid leaves out of what it
+ * draws instead (see `taskSchemaStageExclusions`).
+ */
+export const gridExtendedStages = selector({
+  key: "gridExtendedStages",
+  get: ({ get }) =>
+    withSimilarityOrSort(get, get(gridFieldExclusionStage), true),
+});
 
-    return {
-      ...get(extendedStagesUnsorted),
-      ...rest,
-    };
-  },
+/** `gridExtendedStages` without the grid sort. */
+export const gridExtendedStagesNoSort = selector({
+  key: "gridExtendedStagesNoSort",
+  get: ({ get }) =>
+    withSimilarityOrSort(get, get(gridFieldExclusionStage), false),
 });
 
 export const selectedPatchIds = selectorFamily({

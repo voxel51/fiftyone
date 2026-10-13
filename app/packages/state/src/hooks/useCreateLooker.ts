@@ -57,11 +57,14 @@ export default <T extends AbstractLooker<BaseState>>(
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
-  const fieldSchema =
-    sampleSchema ??
-    useRecoilValue(schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }));
+  // A caller rendering samples from outside the dataset passes their
+  // schema; the hook still runs every render
+  const datasetSchema = useRecoilValue(
+    schemaAtoms.lookerFieldSchema({ space: State.SPACE.SAMPLE }),
+  );
+  const fieldSchema = sampleSchema ?? datasetSchema;
   const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME }),
+    schemaAtoms.lookerFieldSchema({ space: State.SPACE.FRAME }),
   );
 
   const shouldRenderImaVidLooker = useRecoilValue(

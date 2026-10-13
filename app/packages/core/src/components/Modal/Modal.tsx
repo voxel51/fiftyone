@@ -127,6 +127,7 @@ const ModalErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 const Modal = () => {
   useAnnotationStatus();
   useModalLifecycleSignal();
+  fos.useSyncModalSidebarGroups();
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);

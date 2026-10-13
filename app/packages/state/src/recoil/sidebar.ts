@@ -459,6 +459,37 @@ const groupUpdater = (
   };
 };
 
+/**
+ * Returns `target` with every path of `source` that it lacks, each added to
+ * the group of the same name (or in a new group when `target` has none),
+ * so `target`'s own order and groups are kept. Returns `target` itself when
+ * it lacks nothing.
+ */
+export const withMissingSidebarPaths = (
+  target: State.SidebarGroup[],
+  source: State.SidebarGroup[],
+): State.SidebarGroup[] => {
+  const present = new Set(target.flatMap((group) => group.paths));
+  let next: State.SidebarGroup[] | null = null;
+
+  for (const group of source) {
+    const missing = group.paths.filter((path) => !present.has(path));
+    if (!missing.length) continue;
+
+    next ??= target.map((g) => ({ ...g, paths: [...g.paths] }));
+    const existing = next.find((g) => g.name === group.name);
+    if (existing) {
+      existing.paths.push(...missing);
+    } else {
+      next.push({ ...group, paths: missing });
+    }
+
+    for (const path of missing) present.add(path);
+  }
+
+  return next ?? target;
+};
+
 export const sidebarGroupsDefinition = (() => {
   let configGroups: State.SidebarGroup[] = [];
   let current: State.SidebarGroup[] = [];
