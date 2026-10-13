@@ -13,12 +13,13 @@ import {
 import { ModalLoadingOverlay } from "./ModalLoadingOverlay";
 
 const tiling = vi.hoisted(() => ({
+  expandedTileId: null as string | null,
   tiles: { camera: { type: "image" } } as Record<string, { type: string }>,
 }));
 vi.mock("@fiftyone/tiling", () => ({
   collectTileIds: () => Object.keys(tiling.tiles),
   useTiling: () => ({
-    expandedTileId: null,
+    expandedTileId: tiling.expandedTileId,
     layout: Object.keys(tiling.tiles)[0],
     tiles: tiling.tiles,
   }),
@@ -30,6 +31,7 @@ vi.mock("./EpisodeModalLoading", () => ({
 }));
 afterEach(() => {
   cleanup();
+  tiling.expandedTileId = null;
   vi.useRealTimers();
 });
 
@@ -43,6 +45,7 @@ interface Destination {
   readonly pending: boolean;
   readonly presented?: boolean;
   readonly sourceKey?: string;
+  readonly reportedSourceKey?: string;
   readonly unavailableTileId?: string | null;
   readonly visitKey?: string;
 }
@@ -94,7 +97,7 @@ function renderDestination(initial: Destination) {
       <Shell sourceKey={sourceKey} visitKey={next.visitKey ?? "visit"}>
         <Probe
           presented={next.presented ?? false}
-          sourceKey={sourceKey}
+          sourceKey={next.reportedSourceKey ?? sourceKey}
           unavailableTileId={next.unavailableTileId ?? null}
         />
         <ModalLoadingOverlay identity={identity} pending={next.pending} />
@@ -137,9 +140,34 @@ describe("modal loading overlay", () => {
       pending: true,
       unavailableTileId: "camera",
     });
-    expect(covered()).toBe(true);
-    destination.rerender({ pending: false, unavailableTileId: "camera" });
     expect(covered()).toBe(false);
+    // Another stream can remain pending after this pane starts retrying.
+    destination.rerender({ pending: true });
+    expect(covered()).toBe(false);
+  });
+
+  it("ignores an error in a hidden pane until that pane is expanded", () => {
+    tiling.tiles = { camera: { type: "image" }, lidar: { type: "3d" } };
+    tiling.expandedTileId = "lidar";
+    const destination = renderDestination({
+      pending: true,
+      unavailableTileId: "camera",
+    });
+    expect(covered()).toBe(true);
+    tiling.expandedTileId = "camera";
+    destination.rerender({ pending: true, unavailableTileId: "camera" });
+    expect(covered()).toBe(false);
+  });
+
+  it("does not reveal an outgoing pane's error while the destination loads", () => {
+    tiling.tiles = { camera: { type: "image" } };
+    renderDestination({
+      pending: true,
+      sourceKey: "destination",
+      reportedSourceKey: "outgoing",
+      unavailableTileId: "camera",
+    });
+    expect(covered()).toBe(true);
   });
 
   it("stays dismissed through URL renewals, retries, and later seeks", () => {

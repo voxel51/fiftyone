@@ -13,9 +13,9 @@ import {
 /**
  * Covers the media viewport until the destination can show its own state:
  * a media frame paints, a visible media pane reaches a final empty or error
- * state, or the layout has no media pane to wait for. Pending source work
- * keeps the cover because the shell hides media surfaces until playhead data
- * is ready; the visit watchdog is the backstop for work that never settles.
+ * state, or the layout has no media pane to wait for. A destination's terminal
+ * notice is actionable even while other streams load. Media frames still wait
+ * for the shell to reveal its surfaces; the visit watchdog bounds stalled work.
  */
 export function ModalLoadingOverlay({
   identity,
@@ -34,10 +34,8 @@ export function ModalLoadingOverlay({
     (id) => tiles[id]?.type === "image" || tiles[id]?.type === "3d",
   );
   const outcome =
-    !pending &&
-    (presented ||
-      mediaIds.length === 0 ||
-      mediaIds.some((id) => unavailable.has(id)));
+    mediaIds.some((id) => unavailable.has(id)) ||
+    (!pending && (presented || mediaIds.length === 0));
   // This layout effect latches the visit before paint so a URL renewal, a
   // retry, or a later seek cannot bring the cover back.
   useLayoutEffect(() => {
