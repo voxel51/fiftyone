@@ -132,6 +132,7 @@
         "@bufbuild/protobuf": "^2.11.0",
         "@date-fns/tz": "^1.5.0",
         "@fiftyone/components": "*",
+        "@fiftyone/events": "*",
         "@fiftyone/playback": "workspace:*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",

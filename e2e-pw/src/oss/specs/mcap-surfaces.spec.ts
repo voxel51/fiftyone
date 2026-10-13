@@ -1,8 +1,7 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import {
   alternateMediaDatasetName,
   expect,
-  expectDominantColor,
   fixturePaths,
   openMcapModal,
   sampleIndex,
@@ -11,9 +10,9 @@ import {
   tinyA,
   tinyB,
 } from "src/oss/fixtures/mcap";
-import { getLocatorScreenshotDifference } from "src/oss/utils/screenshot";
-
-const SOURCE_FACTS_DATABASE_NAME = "fiftyone-multimodal-source-facts";
+import { unsupportedText } from "src/oss/poms/multimodal/episode";
+import { collapseWhitespace } from "src/oss/utils";
+import { indexToId } from "src/shared/utils";
 
 test.describe("MCAP surfaces", () => {
   test("renders an MCAP grid preview and opens the episode modal", async ({
@@ -21,22 +20,29 @@ test.describe("MCAP surfaces", () => {
     modal,
     page,
   }) => {
-    const tile = grid.getNthTile(0);
-    await expect(tile.locator("canvas")).toBeVisible();
-    await expect(
-      page.getByTestId("selector-episode-grid-stream"),
-    ).toHaveAttribute("placeholder", "Stream: Auto");
+    // episode A backs three tiles; only episode B's draw names one tile
+    await grid.untilTileDrawn(tinyB.fileName);
+    const tile = grid.getNthTile(sampleIndex.episodeB);
+    expect(await tile.locator("canvas").isVisible()).toBe(true);
+    expect(
+      await page
+        .getByTestId("selector-episode-grid-stream")
+        .getAttribute("placeholder"),
+    ).toBe("Stream: Auto");
 
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
+    const start = "2024-01-01 00:00:00.000";
+    const playhead = "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000";
+    await modal.episode.afterReady(
+      tinyA.fileName,
+      () => openMcapModal(grid, modal, sampleIndex.episodeA),
+      [modal.episode.utcTime(start), modal.episode.playhead(playhead)],
+    );
     await modal.episode.expectTileTitles(
       ["camera/front", "points"],
       ["Logs / Diagnostics"],
     );
-    await modal.episode.expectUtcTime("2024-01-01 00:00:00.000");
-    await modal.episode.expectPlayhead(
-      "2024-01-01 00:00:00.000 / 2024-01-01 00:00:02.000",
-    );
+    await modal.episode.expectUtcTime(start);
+    await modal.episode.expectPlayhead(playhead);
     await modal.episode.expectNoViewerError();
   });
 
@@ -45,22 +51,30 @@ test.describe("MCAP surfaces", () => {
     modal,
     page,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
-    await expect
-      .poll(() => sourceFactsEntryCount(page), { timeout: 10_000 })
-      .toBeGreaterThan(0);
+    // opening the episode persists its source facts
+    await modal.eventUtils.after(
+      "e2e:multimodal:source-facts-saved",
+      async () => {
+        await modal.episode.afterReady(tinyA.fileName, () =>
+          openMcapModal(grid, modal, sampleIndex.episodeA),
+        );
+      },
+      (e) =>
+        (e.detail as { sourceId: string }).sourceId ===
+        indexToId(sampleIndex.episodeA),
+    );
 
     await modal.close();
     await page.evaluate(async () => {
       await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
     });
-    await page.reload();
-    await expect(grid.locator).toBeVisible({ timeout: 30_000 });
+    await grid.reload();
 
     const sourceUrl = new RegExp(tinyA.fileName.replace(/\./g, "\\."));
     await page.route(sourceUrl, (route) => route.abort("failed"));
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
+    await modal.episode.after([modal.episode.shellShown(tinyA.fileName)], () =>
+      openMcapModal(grid, modal, sampleIndex.episodeA),
+    );
     await modal.episode.expectWarmBootstrapShell(tinyA.fileName, [
       "camera/front",
       "points",
@@ -68,8 +82,9 @@ test.describe("MCAP surfaces", () => {
 
     await modal.close();
     await page.unroute(sourceUrl);
-    await openMcapModal(grid, modal, sampleIndex.episodeA);
-    await modal.episode.waitForReady(tinyA.fileName);
+    await modal.episode.afterReady(tinyA.fileName, () =>
+      openMcapModal(grid, modal, sampleIndex.episodeA),
+    );
     await modal.episode.expectNoViewerError();
   });
 
@@ -81,37 +96,35 @@ test.describe("MCAP surfaces", () => {
       modal,
     }) => {
       const tile = grid.getNthTile(0);
-      await expect(tile).toHaveAttribute("data-cy", "looker");
-      await expectDominantColor(tile.locator("canvas"), [255, 0, 255]);
+      expect(await tile.getAttribute("data-cy")).toBe("looker");
+      await grid.assert.hasTileScreenshots("alternate-media-tile", 2);
 
-      await openMcapModal(grid, modal, 0);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(tinyA.fileName, () =>
+        openMcapModal(grid, modal, 0),
+      );
       await modal.episode.expectTileTitles(
         ["camera/front", "points"],
         ["Logs / Diagnostics"],
       );
       await modal.episode.expectNoViewerError();
 
-      const lookerAttached = await modal.armLookerAttached();
-      await modal.selectMediaField("thumbnail_path");
-      await lookerAttached.received;
-      await modal.waitForSampleLoadDomAttribute();
-      await expectDominantColor(
-        modal.modalContainer.locator("canvas"),
-        [255, 0, 255],
+      await modal.afterSampleLoaded(() =>
+        modal.afterLookerAttached(() =>
+          modal.selectMediaField("thumbnail_path"),
+        ),
       );
+      await modal.sampleCanvas.assert.hasScreenshot("alternate-media-1.png");
 
-      const nextLookerAttached = await modal.armLookerAttached();
-      await modal.getSampleNavigation("forward").click();
-      await nextLookerAttached.received;
-      await modal.waitForSampleLoadDomAttribute();
-      await expectDominantColor(
-        modal.modalContainer.locator("canvas"),
-        [0, 255, 255],
+      await modal.afterSampleFileLoaded(tinyB.fileName, () =>
+        modal.afterLookerAttached(() =>
+          modal.getSampleNavigation("forward").click(),
+        ),
       );
+      await modal.sampleCanvas.assert.hasScreenshot("alternate-media-2.png");
 
-      await modal.selectMediaField("filepath");
-      await modal.episode.waitForReady(tinyB.fileName);
+      await modal.episode.afterReady(tinyB.fileName, () =>
+        modal.selectMediaField("filepath"),
+      );
       await modal.episode.expectTileTitles(
         ["camera/rear", "camera/side", "scan/rear"],
         ["Logs / Diagnostics"],
@@ -126,13 +139,20 @@ test.describe("MCAP surfaces", () => {
     await explorer.open();
     await explorer.expectInvalidExtension(fixturePaths.invalid);
 
-    await explorer.upload(fixturePaths.episodeA);
-    await explorer.episode.waitForReady(tinyA.fileName);
-    await explorer.episode.expectUtcTime("2024-01-01 00:00:00.000");
+    const start = "2024-01-01 00:00:00.000";
+    await explorer.episode.afterReady(
+      tinyA.fileName,
+      () => explorer.upload(fixturePaths.episodeA),
+      [explorer.episode.utcTime(start)],
+    );
+    await explorer.episode.expectUtcTime(start);
     await explorer.unmount();
 
-    await explorer.upload(fixturePaths.episodeB);
-    await explorer.episode.waitForReady(tinyB.fileName);
+    await explorer.episode.afterReady(
+      tinyB.fileName,
+      () => explorer.upload(fixturePaths.episodeB),
+      [explorer.episode.playhead("0:00.00 / 0:01.50")],
+    );
     await explorer.episode.expectStreams(
       ["/camera/rear", "/camera/side", "/scan/rear", "/status"],
       ["/camera/front", "/points", "/log", "/pose"],
@@ -140,7 +160,10 @@ test.describe("MCAP surfaces", () => {
     await explorer.episode.expectNoUtcTime();
     await explorer.episode.expectPlayhead("0:00.00 / 0:01.50");
     await explorer.episode.setSamplingRate(2);
-    await explorer.episode.stepForward();
+    await explorer.episode.after(
+      [explorer.episode.playhead("0:00.50 / 0:01.50")],
+      () => explorer.episode.stepForward(),
+    );
     await explorer.episode.expectPlayhead("0:00.50 / 0:01.50");
   });
 
@@ -148,7 +171,10 @@ test.describe("MCAP surfaces", () => {
     grid,
     modal,
   }) => {
-    await openMcapModal(grid, modal, sampleIndex.unsupported);
+    await modal.episode.after(
+      [modal.episode.stateShown(unsupportedText(1))],
+      () => openMcapModal(grid, modal, sampleIndex.unsupported),
+    );
     await modal.episode.expectUnsupported();
     await modal.episode.expectNoViewerError();
   });
@@ -166,67 +192,93 @@ test.describe("MCAP surfaces", () => {
         "webgl2",
       );
 
-      await openMcapModal(grid, modal, sampleIndex.episodeA);
-      await modal.episode.waitForReady(tinyA.fileName);
+      await modal.episode.afterReady(tinyA.fileName, () =>
+        openMcapModal(grid, modal, sampleIndex.episodeA),
+      );
       await modal.episode.setSamplingRate(1);
       const pointTile = modal.episode.tile("points");
       const canvas = pointTile.locator('[data-graphics-surface="modal-3d"]');
-      await expect(canvas).toHaveAttribute("data-graphics-backend", "webgl2");
+      expect(await canvas.getAttribute("data-graphics-backend")).toBe("webgl2");
 
-      const pointPanel = pointTile.locator("[data-point-cloud-rendered-count]");
-      await expectPointCloudSpread(pointPanel, 4, 1);
-      const firstFramePixels = await canvas.screenshot();
-      await modal.episode.stepForward();
-      await expectPointCloudSpread(pointPanel, 4, 2);
-      await expectPixelDifference(canvas, firstFramePixels, {
-        minimumChangedPixels: 4,
-        minimumSpan: 16,
-      });
-      const secondFramePixels = await canvas.screenshot();
-      await modal.episode.stepForward();
-      await expectPointCloudSpread(pointPanel, 5, 3);
-      await expectPixelDifference(canvas, secondFramePixels, {
-        minimumChangedPixels: 4,
-        minimumSpan: 16,
-      });
+      // largest points so each frame's cloud is plain to see; each capture
+      // follows the frame that drew that cloud
+      await modal.episode.afterPointCloudFrame(
+        { at: "2024-01-01 00:00:00.000", pointCount: 4, pointSize: 10 },
+        () => modal.episode.setSidebarNumber("points", "Point size (px)", 10),
+      );
+      await modal.episode
+        .canvas(canvas)
+        .assert.hasScreenshot("point-frame-1.png");
+      await modal.episode.afterPointCloudFrame(
+        { at: "2024-01-01 00:00:01.000", pointCount: 4, pointSize: 10 },
+        () => modal.episode.stepForward(),
+      );
+      await modal.episode
+        .canvas(canvas)
+        .assert.hasScreenshot("point-frame-2.png");
+      await modal.episode.afterPointCloudFrame(
+        { at: "2024-01-01 00:00:02.000", pointCount: 5, pointSize: 10 },
+        () => modal.episode.stepForward(),
+      );
+      await modal.episode
+        .canvas(canvas)
+        .assert.hasScreenshot("point-frame-3.png");
 
       await modal.close();
-      await openMcapModal(grid, modal, sampleIndex.sidebarStart);
-      await modal.episode.waitForReady(sidebarFileNames[0]);
-      await modal.episode.setSidebarToggle(
-        "camera/front",
-        "Toggle pointcloud projections",
-        false,
+      // projections start off, so the first image frame shows none
+      await modal.episode.afterImageFrame(
+        { at: "2024-01-01 00:00:00.000", projectedStreams: 0 },
+        async () => {
+          await modal.episode.afterReady(sidebarFileNames[0], () =>
+            openMcapModal(grid, modal, sampleIndex.sidebarStart),
+          );
+          await modal.episode.setSidebarToggle(
+            "camera/front",
+            "Toggle pointcloud projections",
+            false,
+          );
+        },
       );
       const imageCanvas = modal.episode.shell.locator(
         '[data-graphics-surface="modal-images"]',
       );
-      await expect(imageCanvas).toHaveAttribute(
-        "data-graphics-backend",
+      expect(await imageCanvas.getAttribute("data-graphics-backend")).toBe(
         "webgl2",
       );
-      const projectionOff = await imageCanvas.screenshot();
-      await modal.episode.setSidebarToggle(
-        "camera/front",
-        "Toggle pointcloud projections",
-        true,
+      // only the camera tile's area of the shared image canvas
+      const cameraTile = modal.episode.tile("camera/front");
+      await modal.episode
+        .canvas(cameraTile)
+        .assert.hasScreenshot("projection-off.png");
+      // largest projected points so the overlay is plain to see
+      await modal.episode.afterImageFrame(
+        { at: "2024-01-01 00:00:00.000", projectedStreams: 1, pointSize: 10 },
+        async () => {
+          await modal.episode.setSidebarToggle(
+            "camera/front",
+            "Toggle pointcloud projections",
+            true,
+          );
+          await modal.episode.setProjectionPointSize("camera/front", 10);
+        },
       );
-      await expectPixelDifference(imageCanvas, projectionOff, {
-        minimumChangedPixels: 4,
-        minimumSpan: 12,
-      });
+      await modal.episode
+        .canvas(cameraTile)
+        .assert.hasScreenshot("projection-on.png");
 
       await modal.episode.scope
         .getByRole("tab", { name: "Scene", exact: true })
         .click();
       await modal.episode.scope.getByRole("button", { name: "Stats" }).click();
-      await expect(modal.episode.scope.getByText("Graphics")).toBeVisible();
+      expect(await modal.episode.scope.getByText("Graphics").isVisible()).toBe(
+        true,
+      );
       await expectStatsRow(
         modal.episode.scope,
         "Requested backend",
         "WebGL2 (diagnostic override)",
       );
-      await expectStatsRow(modal.episode.scope, "WebGPU devices", /^0 \/ \d+$/);
+      await expectStatsRow(modal.episode.scope, "WebGPU devices", "0 / 16");
       await expectStatsRow(
         modal.episode.scope,
         "Surface · modal-3d",
@@ -243,110 +295,14 @@ test.describe("MCAP surfaces", () => {
   });
 });
 
-async function sourceFactsEntryCount(page: Page): Promise<number> {
-  return page.evaluate(async (databaseName) => {
-    const databases = await indexedDB.databases();
-    if (!databases.some((database) => database.name === databaseName)) return 0;
-    return new Promise<number>((resolve) => {
-      const request = indexedDB.open(databaseName);
-      let settled = false;
-      const settle = (database: IDBDatabase | null, value: number) => {
-        if (settled) return;
-        settled = true;
-        database?.close();
-        resolve(value);
-      };
-      request.onerror = () => settle(null, 0);
-      request.onblocked = () => settle(null, 0);
-      request.onsuccess = () => {
-        const database = request.result;
-        if (settled) {
-          database.close();
-          return;
-        }
-        if (!database.objectStoreNames.contains("entries")) {
-          settle(database, 0);
-          return;
-        }
-        const transaction = database.transaction("entries", "readonly");
-        const count = transaction.objectStore("entries").count();
-        transaction.onabort = () => settle(database, 0);
-        count.onerror = () => settle(database, 0);
-        count.onsuccess = () => settle(database, count.result);
-      };
-    });
-  }, SOURCE_FACTS_DATABASE_NAME);
-}
-
-async function expectPointCloudSpread(
-  panel: Locator,
-  minimumRenderedCount: number,
-  minimumSpreadAxes: number,
-): Promise<void> {
-  await expect(panel).toBeVisible();
-  await expect
-    .poll(
-      async () => {
-        const count = Number(
-          await panel.getAttribute("data-point-cloud-rendered-count"),
-        );
-        return Number.isFinite(count) ? count : 0;
-      },
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThanOrEqual(minimumRenderedCount);
-  await expect
-    .poll(
-      async () => {
-        const bounds =
-          (await panel.getAttribute("data-point-cloud-bounds-size")) ?? "";
-        return bounds
-          .split(",")
-          .map(Number)
-          .filter((value) => Number.isFinite(value) && value > 0.1).length;
-      },
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThanOrEqual(minimumSpreadAxes);
-}
-
-async function expectPixelDifference(
-  locator: Locator,
-  baseline: Buffer,
-  {
-    minimumChangedPixels,
-    minimumSpan,
-  }: {
-    readonly minimumChangedPixels: number;
-    readonly minimumSpan: number;
-  },
-): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const difference = await getLocatorScreenshotDifference(
-          locator,
-          baseline,
-        );
-        return {
-          changed:
-            difference !== null &&
-            difference.changedPixels >= minimumChangedPixels,
-          spanned:
-            difference !== null &&
-            Math.max(difference.width, difference.height) >= minimumSpan,
-        };
-      },
-      { timeout: 20_000 },
-    )
-    .toEqual({ changed: true, spanned: true });
-}
-
 async function expectStatsRow(
   scope: Locator,
   label: string,
-  value: string | RegExp,
+  value: string,
 ): Promise<void> {
   const row = scope.locator(`[data-stats-row=${JSON.stringify(label)}]`);
-  await expect(row.locator("span").last()).toHaveText(value);
+  const text = collapseWhitespace(
+    await row.locator("span").last().textContent(),
+  );
+  expect(text).toBe(value);
 }

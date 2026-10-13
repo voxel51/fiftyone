@@ -6,7 +6,7 @@
  * engine-derived sidebar list + edit form (not screenshots) so the checks pin
  * behavior rather than pixels.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -54,17 +54,17 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  await modal.sampleCanvas.afterRenderer(SampleCanvasType.LIGHTER, () =>
+    modal.sidebar.switchMode("annotate"),
+  );
 });
 
-/** Poll the engine-derived Labels count until it settles on `expected`. */
+/** The engine-derived Labels count, once it settles on `expected`. */
 const expectLabelsCount = async (modal: ModalPom, expected: number) => {
-  await expect
-    .poll(() => modal.sidebar.annotate.getActiveLabelsCount())
-    .toBe(expected);
+  await modal.sidebar.annotate.assert.hasActiveLabelsCount(expected);
 };
 
 /** Draw a detection box across the given relative corners (annotate mode). */
@@ -114,42 +114,34 @@ test.describe.serial("2D Lighter annotation", () => {
   });
 
   test("a drawn detection persists (verified from a fresh browser context)", async ({
-    browser,
     fiftyoneLoader,
     modal,
-    page,
+    openFreshPage,
   }) => {
     const before = await modal.sidebar.annotate.getActiveLabelsCount();
 
-    // the new box autosaves via POST/PATCH dataset/.../sample/...; await it so
-    // the verification can't race the persist
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
-    );
-    await drawBox(modal, [0.1, 0.1], [0.28, 0.28]);
-    await modal.sidebar.edit.exitToList();
+    // the new box autosaves; wait on the save so the verification can't race
+    // the persist
+    await modal.sidebar.annotate.afterSave(async () => {
+      await drawBox(modal, [0.1, 0.1], [0.28, 0.28]);
+      await modal.sidebar.edit.exitToList();
+    });
     await expectLabelsCount(modal, before + 1);
-    await saved;
 
     // verify from a brand-new context (no shared client cache): proves the box
     // round-tripped and exercises load-time bridge hydration. A mid-test reload
     // can't be used because a nested dataset URL 404s its relative bundle.
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
+    const freshPage = await openFreshPage();
 
-    try {
-      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-        searchParams: new URLSearchParams({ id }),
-      });
-      const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-      await freshModal.waitForSampleLoadDomAttribute();
-      await freshModal.sidebar.switchMode("annotate");
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
+    });
+    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+    await freshModal.afterLighterReady(() =>
+      freshModal.sidebar.switchMode("annotate"),
+    );
 
-      await expectLabelsCount(freshModal, before + 1);
-    } finally {
-      await context.close();
-    }
+    await expectLabelsCount(freshModal, before + 1);
   });
 });

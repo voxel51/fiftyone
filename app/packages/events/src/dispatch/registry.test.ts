@@ -120,3 +120,21 @@ describe("getEventBus", () => {
     expect(__test__.registry.has("default")).toBe(true);
   });
 });
+
+describe("__FO_EVENTS__", () => {
+  test("a second copy of the package keeps the App's handle", async () => {
+    Object.defineProperty(navigator, "webdriver", {
+      configurable: true,
+      value: true,
+    });
+    const existing = { tap: vi.fn(), dispatch: vi.fn() };
+    window.__FO_EVENTS__ = existing;
+    vi.resetModules();
+
+    await import("./registry");
+    delete (navigator as { webdriver?: boolean }).webdriver;
+
+    expect(window.__FO_EVENTS__).toBe(existing);
+    delete window.__FO_EVENTS__;
+  });
+});

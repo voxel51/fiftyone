@@ -8,6 +8,7 @@ FiftyOne Server /events route
 
 import typing as t
 
+import anyio
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from sse_starlette.sse import EventSourceResponse
@@ -31,7 +32,17 @@ class Events(HTTPEndpoint):
         if polling:
             return await dispatch_polling_event_listener(request, payload)
 
-        return EventSourceResponse(
+        return _EventSourceResponse(
             add_event_listener(request, payload),
             ping=2,
         )
+
+
+class _EventSourceResponse(EventSourceResponse):
+    async def __call__(self, scope, receive, send):
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            # A cancelled send can leave the listener suspended at a yield.
+            with anyio.CancelScope(shield=True):
+                await self.body_iterator.aclose()

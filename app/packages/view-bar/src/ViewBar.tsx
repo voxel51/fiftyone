@@ -44,6 +44,7 @@ import { kindsByFtype, operatorsFrom } from "./builder/catalog";
 import { fromSource, isEnvelope, sourceOf } from "./builder/envelope";
 import { ClearViewButton } from "./ClearViewButton";
 import { allowedFields } from "./fields";
+import { dispatchStagesShown } from "./e2eEvents";
 import { InsertSlot } from "./InsertSlot";
 import { LanguageSearch } from "./LanguageSearch";
 import styles from "./ViewBar.module.css";
@@ -751,6 +752,11 @@ const ViewBarInner: React.FC<{
       focusLastSlot();
     }
   }, [stagesRowOpen, focusLastSlot]);
+
+  const shownStages = stagesRowOpen ? state.stages.length : 0;
+  useEffect(() => {
+    if (shownStages) dispatchStagesShown(shownStages);
+  }, [shownStages]);
 
   serializeWorkingRef.current = serializeWorking;
 

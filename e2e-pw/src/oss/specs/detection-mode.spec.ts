@@ -49,11 +49,12 @@ test.describe.serial("detection mode", () => {
   test.beforeEach(async ({ datasetName, fiftyoneLoader, modal, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+      modalSample: "loaded-or-error",
     });
 
-    await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-    await modal.sidebar.switchMode("annotate");
+    // the canvas takes pointer moves only after Lighter's first render
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("toggle button deactivates detection mode", async ({ modal }) => {
@@ -109,7 +110,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.move(0.6, 0.6);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nwse-resize");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "draw-and-quit-detection-selected.png",
     );
 
@@ -119,7 +120,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "draw-and-quit-exited-detection-mode.png",
     );
   });
@@ -176,7 +177,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.move(0.8, 0.6);
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.assert.hasCursor("nesw-resize");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "multiple-detections-second-selected.png",
     );
 
@@ -186,7 +187,7 @@ test.describe.serial("detection mode", () => {
     await modal.sampleCanvas.up();
     await modal.sidebar.annotate.assert.detectionModeIsActive(false);
     await modal.sampleCanvas.assert.hasCursor("default");
-    await modal.sampleCanvas.assert.hasScreenshot(
+    await modal.sampleCanvas.assert.hasMediaScreenshot(
       "multiple-detections-exited-detection-mode.png",
     );
   });

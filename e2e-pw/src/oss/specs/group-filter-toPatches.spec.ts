@@ -21,41 +21,39 @@ const test = base.extend<{
   },
 });
 
+// one "carrot" per sample, so one patch per group of the active slice
+const NUM_GROUPS = 5;
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.add_group_field("group", default="left")
-    dataset.persistent = True
-    group = fo.Group()
-    slices = ["left", "right"]
-    samples = []
-
-    for i in range(0, 10):
-        sample = fo.Sample(
-            filepath=f"{i}-first.png", 
-            group=group.element(name=slices[i%2]),
-            predictions=fo.Detections(
-                detections = [
-                    fo.Detection(
-                        label = "carrot",
-                        confidence = 0.8,                    
-                    ),
-                    fo.Detection(
-                        label = "not-carrot",
-                        confidence = 0.25
-                    )
-                ]
-            )
-        )
-        samples.append(sample)
-    dataset.add_samples(samples)
-    `);
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: NUM_GROUPS,
+    slices: [
+      { name: "left", mediaType: "image" },
+      { name: "right", mediaType: "image" },
+    ],
+    schema: { predictions: "Detections" },
+    withSampleData: (_, { label }) => ({
+      predictions: label.detections([
+        label.detection({
+          label: "carrot",
+          confidence: 0.8,
+          bounding_box: [0.1, 0.1, 0.2, 0.2],
+        }),
+        label.detection({
+          label: "not-carrot",
+          confidence: 0.25,
+          bounding_box: [0.4, 0.4, 0.2, 0.2],
+        }),
+      ]),
+    }),
+  });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -69,28 +67,29 @@ test(`group dataset with filters converts toPatches correctly`, async ({
   sidebar,
   eventUtils,
 }) => {
-  await grid.assert.isEntryCountTextEqualTo("5 groups with slice");
+  await grid.assert.isEntryCountTextEqualTo(`${NUM_GROUPS} groups with slice`);
 
   // apply a sidebar filter
-  const entryExpandPromise = await eventUtils.arm("animation-onRest");
-  await sidebar.clickFieldDropdown("predictions");
-  await entryExpandPromise.received;
+  await eventUtils.after("animation-onRest", async () => {
+    await sidebar.clickFieldDropdown("predictions");
+  });
 
-  await sidebar.waitForElement("checkbox-carrot");
   await sidebar.applyLabelFromList(["carrot"], "select-detections-with-label");
 
   // convert to patches
   await grid.actionsRow.toggleToClipsOrPatches();
-  const toPatchesRefresh = await grid.armGridRefresh();
-  await gridActionsRow.clickToPatchesByLabelField("predictions");
-  await toPatchesRefresh.received;
+  await grid.afterEntryCounts(() =>
+    grid.run(async () => {
+      await gridActionsRow.clickToPatchesByLabelField("predictions");
+    }),
+  );
 
   // verify result:
-  await grid.assert.isEntryCountTextEqualTo("5 patches");
+  await grid.assert.isEntryCountTextEqualTo(`${NUM_GROUPS} patches`);
 
   // not-carrot should not be in the sidebar filter anymore
-  const expandPromise = await eventUtils.arm("animation-onRest");
-  await sidebar.clickFieldDropdown("predictions");
-  await expandPromise.received;
+  await eventUtils.after("animation-onRest", async () => {
+    await sidebar.clickFieldDropdown("predictions");
+  });
   expect(await page.getByTestId("checkbox-not-carrot").count()).toEqual(0);
 });

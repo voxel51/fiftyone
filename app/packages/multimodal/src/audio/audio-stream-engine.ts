@@ -92,9 +92,8 @@ export interface AudioStreamEngine {
 }
 
 /**
- * Test seam mirroring `__FO_TEST_SAM2_WORKER_FACTORY`: jsdom has no
- * `AudioWorklet`, so tests substitute the whole transport rather than
- * leaving this path uncovered.
+ * Test seam: jsdom has no `AudioWorklet`, so tests substitute the whole
+ * transport rather than leaving this path uncovered.
  */
 declare global {
   // eslint-disable-next-line no-var

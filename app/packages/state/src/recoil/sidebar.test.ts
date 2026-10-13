@@ -611,3 +611,44 @@ describe("collapsedPaths resolution", () => {
     expect(collapsed()).toStrictEqual(new Set(["dict_list"]));
   });
 });
+
+describe("sidebarPaths", () => {
+  const paths = <TestSelector<typeof sidebar.sidebarPaths>>(
+    (<unknown>sidebar.sidebarPaths)
+  );
+
+  it("returns the same array when only a group's expanded state changes", () => {
+    setMockAtoms({
+      sidebarGroupsDefinition: () => [
+        { name: "tags", paths: [], expanded: true },
+        { name: "labels", paths: ["ground_truth"], expanded: true },
+      ],
+    });
+    const first = paths();
+
+    setMockAtoms({
+      sidebarGroupsDefinition: () => [
+        { name: "tags", paths: [], expanded: false },
+        { name: "labels", paths: ["ground_truth"], expanded: true },
+      ],
+    });
+    expect(paths()).toBe(first);
+  });
+
+  it("returns a new array when the paths change", () => {
+    setMockAtoms({
+      sidebarGroupsDefinition: () => [
+        { name: "labels", paths: ["ground_truth"], expanded: true },
+      ],
+    });
+    const first = paths();
+
+    setMockAtoms({
+      sidebarGroupsDefinition: () => [
+        { name: "labels", paths: ["ground_truth", "predictions"] },
+      ],
+    });
+    expect(paths()).toStrictEqual(["ground_truth", "predictions"]);
+    expect(paths()).not.toBe(first);
+  });
+});

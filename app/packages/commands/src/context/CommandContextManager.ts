@@ -53,6 +53,11 @@ function isTextEditingTarget(el: Element | null): boolean {
   }
   return el instanceof HTMLElement && el.isContentEditable;
 }
+
+/** True inside a modal dialog, which makes everything behind it inert. */
+function isInModalDialog(el: Element | null): boolean {
+  return Boolean(el?.closest('[aria-modal="true"]'));
+}
 //callback for context changes
 export type CommandContextListener = (newId: string) => void;
 
@@ -260,8 +265,13 @@ export class CommandContextManager {
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
     // Text editing always wins over shortcuts; held-key repeats never
     // re-fire commands. Non-text controls (checkbox/button) stay subject
-    // to shortcuts — see `isTextEditingTarget`.
-    if (isTextEditingTarget(document.activeElement) || event.repeat) {
+    // to shortcuts — see `isTextEditingTarget` — unless a modal dialog
+    // holds them, since the shortcuts act on what it covers.
+    if (
+      isTextEditingTarget(document.activeElement) ||
+      isInModalDialog(document.activeElement) ||
+      event.repeat
+    ) {
       return;
     }
 

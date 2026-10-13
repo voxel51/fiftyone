@@ -13,6 +13,7 @@ import { fieldAttributeCount, fieldType } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 import {
   docFieldTier,
+  isProtectedPath,
   PROTECTED_PATHS,
   type SchemaDoc,
   type SchemaDocTier,
@@ -76,6 +77,7 @@ export const useDatasetFieldTypes = (): Record<string, string> => {
 export const useOverviewRows = ({
   datasetSchemas,
   datasetFields = {},
+  protectedPaths = PROTECTED_PATHS,
   doc,
   docMode,
   search,
@@ -84,6 +86,8 @@ export const useOverviewRows = ({
   datasetSchemas: Record<string, unknown> | null;
   /** All top-level dataset fields, see :func:`useDatasetFieldTypes`. */
   datasetFields?: Record<string, string>;
+  /** The paths no schema can hide, see `useProtectedPaths`. */
+  protectedPaths?: ReadonlySet<string>;
   doc: SchemaDoc | null;
   docMode: boolean;
   search: string;
@@ -120,7 +124,7 @@ export const useOverviewRows = ({
       if (docMode && doc) {
         out.push({
           path,
-          tier: docFieldTier(doc, path) as SchemaDocTier,
+          tier: docFieldTier(doc, path, protectedPaths) as SchemaDocTier,
           setUp: path in doc.label_schema,
           system,
           unsupported,
@@ -139,7 +143,15 @@ export const useOverviewRows = ({
       }
     }
     return out;
-  }, [rowPaths, search, datasetSchemas, datasetFields, docMode, doc]);
+  }, [
+    rowPaths,
+    search,
+    datasetSchemas,
+    datasetFields,
+    docMode,
+    doc,
+    protectedPaths,
+  ]);
 
   const sections = useMemo(() => {
     const order = new Map(activeFields.map((p, i) => [p, i]));
@@ -151,7 +163,8 @@ export const useOverviewRows = ({
     // never annotatable) last among them; every un-selectable row — the
     // protected paths that can never be hidden, then system fields —
     // sits together at the bottom of Active.
-    const hideable = (r: RowData) => !r.system && !PROTECTED_PATHS.has(r.path);
+    const hideable = (r: RowData) =>
+      !r.system && !isProtectedPath(r.path, protectedPaths);
     const unsupportedLast = (a: RowData, b: RowData) =>
       Number(a.unsupported) - Number(b.unsupported);
     return {
@@ -162,12 +175,12 @@ export const useOverviewRows = ({
         .filter((r) => !r.setUp && hideable(r))
         .sort(unsupportedLast),
       unhideable: visible
-        .filter((r) => !r.system && PROTECTED_PATHS.has(r.path))
+        .filter((r) => !r.system && isProtectedPath(r.path, protectedPaths))
         .sort(byStoredOrder),
       system: visible.filter((r) => r.system),
       hidden: rows.filter((r) => r.tier === "hidden"),
     };
-  }, [rows, activeFields]);
+  }, [rows, activeFields, protectedPaths]);
 
   // Batched per-row display metadata (doc-aware via the envelope
   // overlay in `effectiveLabelSchemasData`).

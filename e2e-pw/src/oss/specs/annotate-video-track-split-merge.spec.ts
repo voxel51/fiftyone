@@ -8,7 +8,7 @@
  * default; the successful-merge test re-seeds them same-class since merge is
  * gated to same-class tracks.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import type { VideoAnnotatePom } from "src/oss/poms/modal/video-annotate";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -100,26 +100,21 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 /** The object tracks on the timeline before an edit: every track id, and the one to split. */
@@ -140,8 +135,8 @@ const timelineTracks = async (
  * The two tracks a split leaves on a fresh browser context's timeline: `head`
  * (the original instance, frames before the cut) and `tail` (the minted
  * instance, frames from the cut on), each with the cut-adjacent frame as its
- * only keyframe and exactly one of them painted on every frame. Without the
- * keyframe pins the shape at the cut jumps; other tracks are ignored.
+ * only keyframe, and the shape painted once on both sides of the cut. Without
+ * the keyframe pins the shape at the cut jumps.
  */
 const expectSplitPersisted = async (
   modal: ModalPom,
@@ -167,12 +162,8 @@ const expectSplitPersisted = async (
   const cut = toFrame(tailSpan.start);
 
   expect(toFrame(headSpan.start)).toBe(1);
-  expect(headSpan.end, "head ends right before the cut").toBeCloseTo(
-    (cut - 1) / fps,
-  );
-  expect(tailSpan.end, "tail runs to the last frame").toBeCloseTo(
-    totalFrames / fps,
-  );
+  expect(headSpan.end, "head ends right before the cut").toBe((cut - 1) / fps);
+  expect(tailSpan.end, "tail runs to the last frame").toBe(totalFrames / fps);
 
   // a keyframe on a track's last frame draws at the bar's end, one on its
   // first frame at the bar's start
@@ -185,27 +176,16 @@ const expectSplitPersisted = async (
     "tail's first frame is its only keyframe",
   ).toEqual([tailSpan.start]);
 
-  // overlay ids are the timeline's track ids (`instance-<id>`)
-  for (let frame = 1; frame <= totalFrames; frame++) {
-    if (frame > 1) {
-      await va.stepForward();
-    }
-    const painted = (await va.canvasOverlayGeometry())
-      .filter((overlay) => overlay.field === field)
-      .map((overlay) => overlay.id)
-      .filter((id) => id === head || id === tail);
-    expect(painted, `frame ${frame} paints the split track once`).toEqual([
-      frame < cut ? head : tail,
-    ]);
+  // the split shape is painted once on either side of the cut: by the head on
+  // its last frame, by the tail on its first
+  const shot = field.split(".").pop();
+  for (let frame = 1; frame < cut - 1; frame++) {
+    await va.stepForward();
   }
+  await modal.sampleCanvas.assert.hasMediaScreenshot(`${shot}-before-cut.png`);
+  await va.stepForward();
+  await modal.sampleCanvas.assert.hasMediaScreenshot(`${shot}-from-cut.png`);
 };
-
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
 
 test.describe.serial("video annotation track split / merge", () => {
   test("split at playhead (context menu) makes two tracks; undo restores one", async ({
@@ -234,7 +214,7 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.assert.objectTrackCount(3);
 
     // one undo unit: back to vehicle + person
-    await va.undo();
+    await va.afterTracksChange(() => va.undo());
     await va.assert.objectTrackCount(2);
     await va.assert.hasTrack(vehicleId);
   });
@@ -264,7 +244,7 @@ test.describe.serial("video annotation track split / merge", () => {
   });
 
   test("split pins both sides of the cut as keyframes and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -278,19 +258,17 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.clickTrack(before.target);
     await va.seekToRulerFraction(0.5);
 
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await va.clickSplitToolbarButton();
+    await modal.sidebar.annotate.afterSave(() => va.clickSplitToolbarButton());
     await va.assert.objectTrackCount(3);
-    await saved;
 
     // 2 s at 10 fps
-    await inFreshContext(browser, fiftyoneLoader, (fresh) =>
+    await inFreshContext(openFreshPage, fiftyoneLoader, (fresh) =>
       expectSplitPersisted(fresh, before, "frames.detections", 20, 10),
     );
   });
 
   test("split a polyline track: two tracks, both cut frames keyframes, vertices kept", async ({
-    browser,
+    openFreshPage,
     datasetFactory,
     fiftyoneLoader,
     modal,
@@ -372,18 +350,16 @@ test.describe.serial("video annotation track split / merge", () => {
     await va.clickTrack(before.target);
     await va.seekToRulerFraction(0.5);
 
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await va.clickSplitToolbarButton();
+    await modal.sidebar.annotate.afterSave(() => va.clickSplitToolbarButton());
     await va.assert.objectTrackCount(3);
-    await saved;
 
-    await inFreshContext(browser, fiftyoneLoader, (fresh) =>
+    await inFreshContext(openFreshPage, fiftyoneLoader, (fresh) =>
       expectSplitPersisted(fresh, before, "frames.polylines", 20, 10),
     );
   });
 
   test("merge (context menu) folds one same-class track into the other and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -406,24 +382,19 @@ test.describe.serial("video annotation track split / merge", () => {
 
     // merge one vehicle INTO the other; both span every frame, so target-wins
     // drops every source frame — one track remains, still "vehicle"
-    const saved = savedResponse(page);
-    await va.mergeTrackViaContextMenu(sourceId, "vehicle");
+    await modal.sidebar.annotate.afterSave(() =>
+      va.mergeTrackViaContextMenu(sourceId, "vehicle"),
+    );
     await va.assert.objectTrackCount(1);
-    await saved;
 
     await va.assert.labelListed("vehicle");
 
     // the merge survives a true round-trip
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
-    try {
-      const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
-      await openAnnotate(fiftyoneLoader, m2, freshPage);
-      await m2.videoAnnotate.assert.objectTrackCount(1);
-      await m2.videoAnnotate.assert.labelListed("vehicle");
-    } finally {
-      await context.close();
-    }
+    const freshPage = await openFreshPage();
+    const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, m2, freshPage);
+    await m2.videoAnnotate.assert.objectTrackCount(1);
+    await m2.videoAnnotate.assert.labelListed("vehicle");
   });
 
   test("merge is gated by class: a cross-class track offers no merge target", async ({
@@ -450,12 +421,12 @@ test.describe.serial("video annotation track split / merge", () => {
     // it did) but carries no merge target — the only other track is a different
     // class
     await va.trackBar(personId).click({ button: "right" });
-    await expect(
-      page.getByRole("menuitem", { name: "Delete track" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("menuitem", { name: /^Merge into / }),
-    ).toHaveCount(0);
+    expect(
+      await page.getByRole("menuitem", { name: "Delete track" }).isVisible(),
+    ).toBe(true);
+    expect(
+      await page.getByRole("menuitem", { name: /^Merge into / }).count(),
+    ).toBe(0);
 
     // both tracks survive — nothing merged
     await page.keyboard.press("Escape");

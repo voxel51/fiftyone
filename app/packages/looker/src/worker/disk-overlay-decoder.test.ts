@@ -54,6 +54,31 @@ describe("decodeOverlayOnDisk", () => {
     expect(enqueueFetch).not.toHaveBeenCalled();
   });
 
+  it("re-inits a painted mask's image for recoloring and closes its bitmap once", async () => {
+    const close = vi.fn();
+    const label = {
+      mask: { bitmap: { width: 2, height: 3, close }, image: null },
+      mask_path: "/path/to/mask",
+    };
+
+    await expect(
+      decodeOverlayOnDisk(
+        "testField",
+        label,
+        COLORING,
+        CUSTOMIZE_COLOR_SETTING,
+        COLOR_SCALE,
+        SOURCES,
+        SEGMENTATION,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(label.mask.bitmap).toBeNull();
+    expect((label.mask.image as ArrayBuffer).byteLength).toBe(2 * 3 * 4);
+    expect(enqueueFetch).not.toHaveBeenCalled();
+  });
+
   it("should fetch and decode overlay when label has overlay path field", async () => {
     const field = "testField";
     const label = { mask_path: "/path/to/mask", mask: null as MaskUnion };

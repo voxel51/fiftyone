@@ -68,6 +68,7 @@ import {
   loadedSchemaDoc,
   selectedSchemaDocId,
   LIST_LABEL_SCHEMA_DOCS_OPERATOR,
+  useProtectedPaths,
   useSchemaDocs,
   withoutFieldTier,
   type SchemaDocContentEntry,
@@ -92,6 +93,7 @@ const SchemaOverview = () => {
   const { tab, setTab } = useSchemaEditorGUIJSONToggle();
   const datasetSchemas = useLabelSchemasData();
   const datasetFields = useDatasetFieldTypes();
+  const protectedPaths = useProtectedPaths();
   const { fields: activeFields, setFields: setActiveFieldsOrder } =
     useActiveFieldsList();
 
@@ -168,6 +170,7 @@ const SchemaOverview = () => {
   const { sections, activeSet, rowTypes, rowAttrCounts } = useOverviewRows({
     datasetSchemas: datasetSchemas as Record<string, unknown> | null,
     datasetFields,
+    protectedPaths,
     doc,
     docMode,
     search,

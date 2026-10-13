@@ -10,7 +10,7 @@ export type PythonCommandGenerator = (argv: string[]) => string;
 export class PythonRunner {
   constructor(
     private readonly pythonCommandGenerator: PythonCommandGenerator,
-    private readonly env?: Record<string, string>,
+    env?: Record<string, string>,
   ) {
     this.pythonCommandGenerator = pythonCommandGenerator;
 

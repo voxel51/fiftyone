@@ -18,6 +18,7 @@ import type {
   DetectionOverlay,
   DetectionOverlayOptions,
   KeypointLabel,
+  KeypointOverlay,
   PolylineOverlay,
 } from "@fiftyone/lighter";
 import type { DetectionLabel, KeypointSkeleton } from "@fiftyone/looker";
@@ -178,25 +179,41 @@ export const classificationAdapter: LighterAdapter = {
 export const makeKeypointAdapter = (
   deps: LighterAdapterDeps = {},
 ): LighterAdapter => ({
-  buildHandle: (ref, label) => ({
-    factoryKey: "keypoint",
-    options: {
-      id: ref.instanceId,
-      field: ref.path,
-      label,
-      connections: deps.getSkeleton?.(ref.path)?.edges ?? [],
-      closed: false,
-    },
-  }),
+  buildHandle: (ref, label) => {
+    const skeleton = deps.getSkeleton?.(ref.path) ?? null;
+
+    return {
+      factoryKey: "keypoint",
+      options: {
+        id: ref.instanceId,
+        field: ref.path,
+        label,
+        connections: skeleton?.edges ?? [],
+        closed: false,
+        draggable: true,
+        // Skeleton nodes are cleared back to [NaN, NaN] holes, never
+        // deleted — a node's index is its identity
+        deletable: !skeleton,
+        selectable: true,
+      },
+    };
+  },
 
   updateHandle: (overlay, label) => {
     overlay.applyLabel(label as unknown as KeypointLabel);
   },
 
-  toLabel: (overlay) => withoutId(overlay.label as Record<string, unknown>),
+  toLabel: (handle) => {
+    const overlay = handle as KeypointOverlay;
+    const label = withoutId(overlay.label as Record<string, unknown>);
+
+    // Live geometry — `overlay.label.points` is a snapshot from creation /
+    // last reconciliation (cf. polylineAdapter). Holes persist as [NaN, NaN].
+    return { ...label, points: overlay.getRelativePoints() };
+  },
 });
 
-/** Skeleton-less keypoint adapter — points only. */
+/** Skeleton-less keypoint adapter — points render unconnected. */
 export const keypointAdapter: LighterAdapter = makeKeypointAdapter();
 
 export const polylineAdapter: LighterAdapter = {

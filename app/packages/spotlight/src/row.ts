@@ -16,7 +16,11 @@ export default class Row<K, V> {
   readonly #config: SpotlightConfig<K, V>;
   readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
-  readonly #row: { item: ItemData<K, V>; element: HTMLDivElement }[];
+  readonly #row: {
+    item: ItemData<K, V>;
+    element: HTMLDivElement;
+    open?: () => void;
+  }[];
   readonly #width: number;
 
   constructor({
@@ -46,19 +50,21 @@ export default class Row<K, V> {
       const element = create(DIV);
       element.style.top = pixels(ZERO);
 
-      if (config.onItemClick) {
+      const activate = config.onItemClick
+        ? (event?: MouseEvent) => {
+            focus(item.id);
+            config.onItemClick({ event, item, iter });
+          }
+        : undefined;
+
+      if (activate) {
         const handler = (event: MouseEvent) => {
           if (event.metaKey || event.shiftKey || event.ctrlKey) {
             return;
           }
 
           event.preventDefault();
-          focus(item.id);
-          config.onItemClick({
-            event,
-            item,
-            iter,
-          });
+          activate(event);
         };
 
         element.addEventListener("click", handler, {
@@ -70,7 +76,7 @@ export default class Row<K, V> {
       }
 
       this.#container.appendChild(element);
-      return { element, item };
+      return { element, item, open: activate && (() => activate()) };
     });
 
     const height = this.height;
@@ -168,7 +174,7 @@ export default class Row<K, V> {
       element.appendChild(this.#container);
     }
 
-    for (const { element, item } of this.#row) {
+    for (const { element, item, open } of this.#row) {
       const width = item.aspectRatio * this.height;
       if (this.#aborter.signal.aborted) {
         return;
@@ -178,6 +184,7 @@ export default class Row<K, V> {
         id: item.id,
         dimensions: [width, this.height],
         element,
+        open,
         spotlight,
         zooming,
       });

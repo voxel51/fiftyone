@@ -28,6 +28,7 @@ from .model_evaluation import (
     ConfigureScenarioPlotResolver,
     ListScenarios,
 )
+from .undeclared_fields import CleanUpUndeclaredFields
 from .annotation import (
     ActivateLabelSchemas,
     CreateAndActivateField,
@@ -41,7 +42,7 @@ from .annotation import (
     ValidateLabelSchemas,
 )
 from .dataset import DeleteBrainRun, GetFieldSchema
-from .undeclared_fields import CleanUpUndeclaredFields
+from .pending_runs import ListPendingRuns
 
 logger = logging.getLogger(__name__)
 
@@ -3342,6 +3343,7 @@ def register(p):
     p.register(DeleteSelectedLabels)
     p.register(DeleteSampleField)
     p.register(DeleteFrameField)
+    p.register(CleanUpUndeclaredFields)
     p.register(AddDynamicSampleFields)
     p.register(AddDynamicFrameFields)
     p.register(RemoveDynamicSampleFields)
@@ -3390,4 +3392,4 @@ def register(p):
     # dataset
     p.register(DeleteBrainRun)
     p.register(GetFieldSchema)
-    p.register(CleanUpUndeclaredFields)
+    p.register(ListPendingRuns)

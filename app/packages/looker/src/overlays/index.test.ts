@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { zoomAspectRatio } from "../zoom";
 import { RegularLabel } from "./base";
 import DetectionOverlay from "./detection";
 import * as index from "./index";
@@ -52,5 +53,37 @@ describe("label overlay processing", () => {
     expect(hashLabelWithUndefinedIndexUndefinedId).toEqual(
       "only-label-no-index-no-id",
     );
+  });
+});
+
+describe("zoom points", () => {
+  it("include a Polylines field's points", () => {
+    const schema = {
+      lanes: {
+        dbField: "lanes",
+        embeddedDocType: "fiftyone.core.labels.Polylines",
+        fields: {},
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        name: "lanes",
+        path: "lanes",
+      },
+    } as never;
+    const sample = {
+      lanes: {
+        _cls: "Polylines",
+        polylines: [
+          {
+            points: [
+              [
+                [0.1, 0.1],
+                [0.5, 0.3],
+              ],
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(zoomAspectRatio(sample, schema, 1)).toBeCloseTo(2);
   });
 });

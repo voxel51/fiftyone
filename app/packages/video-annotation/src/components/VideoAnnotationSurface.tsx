@@ -11,7 +11,8 @@ import {
   useEngineSelector,
 } from "@fiftyone/annotation";
 import { Size, Spinner } from "@voxel51/voodo";
-import React, { useMemo, useState } from "react";
+import { getEventBus } from "@fiftyone/events";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAutoInterpolate } from "../hooks/useAutoInterpolate";
 import { useEndPointSessionOnFrameChange } from "../hooks/useEndPointSessionOnFrameChange";
 import { useRegisterVideoAnnotationKeybindings } from "../hooks/useRegisterVideoAnnotationKeybindings";
@@ -150,6 +151,20 @@ const STRATEGY_REGISTRAR: Record<DecodeStrategy, React.FC<RegistrarProps>> = {
 export interface VideoAnnotationSurfaceProps {
   sample: ModalSample;
 }
+
+/** e2e specs wait on the surface lifting its cover */
+type SurfaceE2EEvents = {
+  "e2e:video-annotation:surface-revealed": undefined;
+};
+
+const RevealedSignal = () => {
+  useEffect(() => {
+    getEventBus<SurfaceE2EEvents>().dispatch(
+      "e2e:video-annotation:surface-revealed",
+    );
+  }, []);
+  return null;
+};
 
 /**
  * Composition root for the video annotation surface. Wires
@@ -319,6 +334,7 @@ const VideoAnnotationSurfaceForSample: React.FC<
           />
         )}
       </div>
+      {revealed && <RevealedSignal />}
       {!revealed && (
         <div className={styles.cover}>
           <Spinner size={Size.Lg} />

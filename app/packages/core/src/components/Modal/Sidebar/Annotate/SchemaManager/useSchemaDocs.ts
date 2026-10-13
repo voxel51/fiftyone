@@ -21,6 +21,7 @@ import {
   taskLabelSchemaDoc,
 } from "../state";
 import { operatorAsPromise, type Operator } from "../useSchemaManager";
+import { PROTECTED_PATHS } from "./schemaDocTypes";
 import type {
   AttributesByPath,
   DeclareResponse,
@@ -104,6 +105,28 @@ export interface SchemaDocsApi {
     schemaId: string | null,
   ): Promise<{ declared: string[]; skipped: AttributesByPath }>;
 }
+
+/**
+ * The paths no schema can hide on the current dataset: `PROTECTED_PATHS`
+ * plus a group dataset's group field and the group's `id` and `name`,
+ * which tie its slices together (mirrors
+ * `fiftyone.core.label_schema_docs.protected_paths`).
+ */
+export const useProtectedPaths = (): ReadonlySet<string> => {
+  const groupField = fos.useGroupField();
+  return useMemo(
+    () =>
+      groupField
+        ? new Set([
+            ...PROTECTED_PATHS,
+            groupField,
+            `${groupField}.id`,
+            `${groupField}.name`,
+          ])
+        : PROTECTED_PATHS,
+    [groupField],
+  );
+};
 
 export const useSchemaDocs = (): SchemaDocsApi => {
   // ``useOperatorExecutor`` returns a new object identity per render;

@@ -190,6 +190,18 @@ export function withEvents<
   return WithElement;
 }
 
+/**
+ * Whether the frame a video last presented, at `mediaTime` seconds, is the one
+ * its seek to `target` shows. Chromium can fire `seeked` before presenting the
+ * target frame, when a canvas draw gets nothing or the frame from before the
+ * seek, and a seek to the frame already presented presents nothing new.
+ */
+export const presentsSeekTarget = (
+  mediaTime: number | null,
+  target: number,
+  frameRate: number,
+) => mediaTime !== null && Math.abs(target - mediaTime) < 1 / frameRate;
+
 const makeAcquirer = (
   maxVideos: number,
 ): [() => Promise<[HTMLVideoElement, () => void]>, () => void] => {

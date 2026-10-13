@@ -29,6 +29,32 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
 import { Scene2D } from "../core/Scene2D";
+import { CoordinateSystem2D } from "../core/CoordinateSystem2D";
+import {
+  KeypointOverlay,
+  type KeypointLabel,
+} from "../overlay/KeypointOverlay";
+import { MockRenderer2D } from "../renderer/MockRenderer2D";
+import { GuidedKeypointHandler } from "./GuidedKeypointHandler";
+
+/**
+ * A keypoint overlay over an identity 100×100 media region, so the test
+ * pointer at canvas (10, 10) lands on relative (0.1, 0.1).
+ */
+const makeKeypoint = (points: [number, number][]): KeypointOverlay => {
+  const coordinateSystem = new CoordinateSystem2D();
+  coordinateSystem.updateTransform({ x: 0, y: 0, width: 100, height: 100 });
+
+  const overlay = new KeypointOverlay({
+    id: "kp1",
+    field: "keypoints",
+    label: { label: "person", points } as KeypointLabel,
+  });
+  overlay.setRenderer(new MockRenderer2D());
+  overlay.setCoordinateSystem(coordinateSystem);
+
+  return overlay;
+};
 
 /** A stub overlay handler that hit-tests true everywhere. */
 const makeHandler = (id: string) => {
@@ -65,13 +91,30 @@ const makeCanvas = (): HTMLCanvasElement => {
   return canvas;
 };
 
-const pointerDown = (canvas: HTMLCanvasElement) => {
+const pointerDown = (canvas: HTMLCanvasElement, { shiftKey = false } = {}) => {
   canvas.dispatchEvent(
     new MouseEvent("pointerdown", {
       clientX: 10,
       clientY: 10,
+      shiftKey,
       bubbles: true,
     }),
+  );
+};
+
+const pointerCancel = (canvas: HTMLCanvasElement) => {
+  canvas.dispatchEvent(new MouseEvent("pointercancel", { bubbles: true }));
+};
+
+const pointerMove = (canvas: HTMLCanvasElement, clientX: number) => {
+  canvas.dispatchEvent(
+    new MouseEvent("pointermove", { clientX, clientY: 10, bubbles: true }),
+  );
+};
+
+const pointerUp = (canvas: HTMLCanvasElement, clientX = 10) => {
+  canvas.dispatchEvent(
+    new MouseEvent("pointerup", { clientX, clientY: 10, bubbles: true }),
   );
 };
 
@@ -92,6 +135,7 @@ describe("InteractionManager read-only", () => {
         getScale: () => 1,
         screenToWorld: (p: unknown) => p,
         disableZoomPan,
+        enableZoomPan: vi.fn(),
       } as unknown as Renderer2D,
       `read-only-test-${Math.random()}`,
     );
@@ -131,6 +175,70 @@ describe("InteractionManager read-only", () => {
     expect(onPointerDown).toHaveBeenCalled();
   });
 
+  describe("selection", () => {
+    const readOnlyOverlay = () => {
+      const { handler } = makeHandler("d1");
+      manager.addHandler(handler);
+      selection.addSelectable(handler as unknown as Selectable);
+      manager.setReadOnly(true);
+    };
+
+    it("selects on a click when read-only", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas);
+      expect(selection.isSelected("d1")).toBe(false);
+
+      pointerUp(canvas);
+      expect(selection.isSelected("d1")).toBe(true);
+    });
+
+    it("shows Looker's cursors: pointer on a label, all-scroll while panning", () => {
+      readOnlyOverlay();
+
+      pointerMove(canvas, 10);
+      expect(canvas.style.cursor).toBe("pointer");
+
+      pointerDown(canvas);
+      pointerMove(canvas, 40);
+      expect(canvas.style.cursor).toBe("all-scroll");
+
+      pointerUp(canvas, 40);
+      expect(canvas.style.cursor).toBe("pointer");
+    });
+
+    it("does not select when a read-only press pans instead", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas);
+      pointerUp(canvas, 40);
+
+      expect(selection.isSelected("d1")).toBe(false);
+    });
+
+    it("does not select when a Shift press for panning is released in place", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas, { shiftKey: true });
+      pointerUp(canvas);
+
+      expect(selection.isSelected("d1")).toBe(false);
+    });
+
+    it("drops the pan cursor when a pan is cancelled", () => {
+      readOnlyOverlay();
+
+      pointerDown(canvas);
+      pointerMove(canvas, 40);
+      expect(canvas.style.cursor).toBe("all-scroll");
+
+      // an unpressed move far from the old press must not read as a pan
+      pointerCancel(canvas);
+      pointerMove(canvas, 60);
+      expect(canvas.style.cursor).toBe("pointer");
+    });
+  });
+
   describe("camera", () => {
     // The guard here is the inverse of the others: read-only must NOT disable
     // pan/zoom. Bailing out of the drag without restoring the camera would
@@ -154,6 +262,70 @@ describe("InteractionManager read-only", () => {
       pointerDown(canvas);
 
       expect(disableZoomPan).toHaveBeenCalled();
+    });
+  });
+
+  // Explore is moving to Lighter, so keypoint placement and node drags are
+  // part of the same safety property (review of the keypoint PR, 2026-09-30)
+  describe("keypoint placement and node drags", () => {
+    const hole: [number, number] = [NaN, NaN];
+
+    it("never places a node when read-only", () => {
+      const overlay = makeKeypoint([hole]);
+      const onPlaced = vi.fn();
+      manager.addHandler(
+        new GuidedKeypointHandler(overlay, {
+          getTargetIndex: () => 0,
+          onPlaced,
+        }),
+      );
+      manager.setReadOnly(true);
+
+      pointerDown(canvas);
+
+      expect(onPlaced).not.toHaveBeenCalled();
+      expect(overlay.getRelativePoints()[0][0]).toBeNaN();
+    });
+
+    it("DOES place a node when editable", () => {
+      const overlay = makeKeypoint([hole]);
+      const onPlaced = vi.fn();
+      manager.addHandler(
+        new GuidedKeypointHandler(overlay, {
+          getTargetIndex: () => 0,
+          onPlaced,
+        }),
+      );
+      manager.setReadOnly(false);
+
+      pointerDown(canvas);
+
+      expect(onPlaced).toHaveBeenCalledWith(0);
+      expect(overlay.getRelativePoints()[0]).toEqual([0.1, 0.1]);
+    });
+
+    it("never hands a press on a placed node to the overlay when read-only", () => {
+      const overlay = makeKeypoint([[0.1, 0.1]]);
+      const onPointerDown = vi.spyOn(overlay, "onPointerDown");
+      manager.addHandler(overlay);
+      manager.setReadOnly(true);
+
+      pointerDown(canvas);
+
+      // the overlay's own pointer-down is what starts a node drag
+      expect(onPointerDown).not.toHaveBeenCalled();
+      expect(overlay.getRelativePoints()[0]).toEqual([0.1, 0.1]);
+    });
+
+    it("DOES hand a press on a placed node to the overlay when editable", () => {
+      const overlay = makeKeypoint([[0.1, 0.1]]);
+      const onPointerDown = vi.spyOn(overlay, "onPointerDown");
+      manager.addHandler(overlay);
+      manager.setReadOnly(false);
+
+      pointerDown(canvas);
+
+      expect(onPointerDown).toHaveBeenCalled();
     });
   });
 
@@ -265,6 +437,16 @@ describe("Scene2D read-only affordances", () => {
 
     expect(overlay.getDraggable()).toBe(false);
     expect(overlay.getResizeable()).toBe(false);
+  });
+
+  it("strips the node-drag affordance from keypoint overlays", () => {
+    const scene = makeScene();
+    scene.setReadOnly(true);
+
+    const overlay = makeKeypoint([[0.1, 0.1]]);
+    scene.addOverlay(overlay);
+
+    expect(overlay.getDraggable()).toBe(false);
   });
 
   it("leaves affordances alone on an editable scene", () => {

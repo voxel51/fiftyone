@@ -34,6 +34,7 @@ import {
   UNFOCUSED_LABEL_OPACITY,
 } from "../constants";
 import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
+import { useAnnounceLineWidths } from "../hooks/use-announce-line-widths";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import { useThreeDLabelState } from "../state";
 import { useFo3dContext } from "../fo3d/context";
@@ -97,6 +98,8 @@ export const ThreeDLabels = ({
     setPolylineWidth,
     showCuboidOrientation,
   } = useThreeDLabelState();
+
+  useAnnounceLineWidths(cuboidLineWidth, polylineWidth, isMainPanel);
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",

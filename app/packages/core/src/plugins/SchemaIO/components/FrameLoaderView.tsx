@@ -1,3 +1,8 @@
+import {
+  forwardingLegacyDomEvent,
+  getEventBus,
+  isLegacyDomMirror,
+} from "@fiftyone/events";
 import React, { useEffect, useRef, useState } from "react";
 import { ViewPropsType } from "../utils/types";
 import { DEFAULT_FRAME_NUMBER } from "@fiftyone/playback/src/lib/constants";
@@ -8,6 +13,9 @@ import { useTimeline } from "@fiftyone/playback/src/lib/timeline/use-timeline";
 import _ from "lodash";
 
 const FRAME_LOADED_EVENT = "frames-loaded";
+
+/** A frame loader view received frames, as the data its `localId` names */
+type FrameLoaderEvents = { [FRAME_LOADED_EVENT]: { localId: string } };
 
 export default function FrameLoaderView(props: ViewPropsType) {
   const { schema, path, data } = props;
@@ -23,11 +31,9 @@ export default function FrameLoaderView(props: ViewPropsType) {
   useEffect(() => {
     localIdRef.current = Math.random().toString(36).substring(7);
     if (data?.frames) frameDataRef.current = data.frames;
-    window.dispatchEvent(
-      new CustomEvent(FRAME_LOADED_EVENT, {
-        detail: { localId: localIdRef.current },
-      }),
-    );
+    getEventBus<FrameLoaderEvents>().dispatch(FRAME_LOADED_EVENT, {
+      localId: localIdRef.current,
+    });
   }, [data?.signature]);
 
   const loadRange = React.useCallback(
@@ -48,23 +54,36 @@ export default function FrameLoaderView(props: ViewPropsType) {
             bufm.current.addNewRange(range);
             resolve();
           } else {
-            const onFramesLoaded = (e) => {
-              if (
-                e instanceof CustomEvent &&
-                e.detail.localId === localIdRef.current
-              ) {
-                window.removeEventListener(FRAME_LOADED_EVENT, onFramesLoaded);
-                bufm.current.addNewRange(range);
-                resolve();
-              }
-            };
-            window.addEventListener(FRAME_LOADED_EVENT, onFramesLoaded);
+            const off = getEventBus<FrameLoaderEvents>().on(
+              FRAME_LOADED_EVENT,
+              ({ localId }) => {
+                if (localId === localIdRef.current) {
+                  off();
+                  bufm.current.addNewRange(range);
+                  resolve();
+                }
+              },
+            );
           }
         });
       }
     },
     [triggerEvent, on_load_range, localIdRef.current],
   );
+
+  // a plugin may still announce loaded frames with the window event
+  useEffect(() => {
+    const forward = (e: Event) =>
+      !isLegacyDomMirror(e) &&
+      forwardingLegacyDomEvent(() =>
+        getEventBus<FrameLoaderEvents>().dispatch(
+          FRAME_LOADED_EVENT,
+          (e as CustomEvent<{ localId: string }>).detail,
+        ),
+      );
+    window.addEventListener(FRAME_LOADED_EVENT, forward);
+    return () => window.removeEventListener(FRAME_LOADED_EVENT, forward);
+  }, []);
 
   const [_currentFrame, setCurrentFrame] = useState(DEFAULT_FRAME_NUMBER);
 

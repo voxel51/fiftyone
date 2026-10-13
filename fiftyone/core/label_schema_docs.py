@@ -90,11 +90,16 @@ DEFAULT_TIERS = ("explore", "hidden")
 #: The exclusion stage rides with ``_allow_missing`` (which skips
 #: ``ExcludeFields.validate``), and stripping e.g. ``filepath`` from
 #: sample docs crashes the server's sample serialization outright.
-#: Nested metadata children stay excludable (tolerated downstream).
+#: Their children are protected too (:func:`is_protected`): hiding e.g.
+#: ``metadata.width`` makes the server re-read every sample's media for
+#: its dimensions, and a failed read renders it square at 30 fps.
 PROTECTED_PATHS = frozenset(
     {
         "id",
         "filepath",
+        # replaces ``filepath`` as a sample's media identity on
+        # reference-backed (multimodal) datasets
+        "media_reference",
         "tags",
         "metadata",
         "created_at",
@@ -106,6 +111,27 @@ PROTECTED_PATHS = frozenset(
         "frames.last_modified_at",
     }
 )
+
+#: Protected paths whose children stay hideable: ``frames`` holds every
+#: frame field, so only the frame fields listed above are protected.
+_PROTECTED_CONTAINERS = frozenset({"frames"})
+
+
+def is_protected(path: str, protected: frozenset = PROTECTED_PATHS) -> bool:
+    """Whether a schema can never hide ``path``: it is in ``protected``
+    (:func:`protected_paths`) or nested under a protected field, like
+    ``metadata.width`` or ``group.name``. Fields under ``frames`` are
+    only protected when listed themselves.
+    """
+    if path in protected:
+        return True
+    parent = path
+    while "." in parent:
+        parent = parent.rsplit(".", 1)[0]
+        if parent in protected and parent not in _PROTECTED_CONTAINERS:
+            return True
+    return False
+
 
 #: Label attributes a schema can never hide: identity (``id``), tagging
 #: (``tags``), instance linking (``index``) and the geometry the
@@ -279,10 +305,34 @@ def snapshot_content(dataset) -> dict:
     )
 
 
+def protected_paths(dataset) -> frozenset:
+    """The paths no schema can hide on ``dataset``: :data:`PROTECTED_PATHS`
+    plus its group field and the group's ``id`` and ``name``, which tie a
+    group dataset's slices together.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`, or ``None``
+
+    Returns:
+        a frozenset of paths
+    """
+    group_field = getattr(dataset, "group_field", None)
+    if not group_field:
+        return PROTECTED_PATHS
+
+    return PROTECTED_PATHS | {
+        group_field,
+        f"{group_field}.id",
+        f"{group_field}.name",
+    }
+
+
 def schema_universe(dataset) -> tuple:
     """The dataset's top-level field paths (sample fields, plus
-    ``frames.``-prefixed frame fields for video), minus protected
-    paths — what a ``hidden`` visibility default expands over.
+    ``frames.``-prefixed frame fields of a video dataset or of a group
+    dataset's video slices), minus protected paths
+    (:func:`protected_paths`) — what a ``hidden`` visibility default
+    expands over.
 
     The universe must be the dataset's ACTUAL fields: stored
     label-schema entries only exist for fields someone configured for
@@ -301,17 +351,22 @@ def schema_universe(dataset) -> tuple:
         pass
     if paths:
         try:
-            if getattr(dataset, "media_type", None) == "video":
-                paths.extend(
-                    f"frames.{name}"
-                    for name in dataset.get_frame_field_schema() or {}
-                )
+            # Frame fields exist on a video dataset and on a group
+            # dataset with video slices (whose media type is "group"): a
+            # schema covers every slice
+            paths.extend(
+                f"frames.{name}"
+                for name in dataset.get_frame_field_schema() or {}
+            )
         except Exception:  # pylint: disable=broad-except
             pass
     else:
         stored = _stored_label_schemas(dataset)
         paths = [k for k, v in stored.items() if isinstance(v, Mapping)]
-    return tuple(dict.fromkeys(p for p in paths if p not in PROTECTED_PATHS))
+    protected = protected_paths(dataset)
+    return tuple(
+        dict.fromkeys(p for p in paths if not is_protected(p, protected))
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -682,7 +737,11 @@ def _masked_attributes(entry: Mapping, attr_tiers: Mapping) -> list:
     return out
 
 
-def resolve(doc: Mapping, universe: Iterable[str]) -> dict:
+def resolve(
+    doc: Mapping,
+    universe: Iterable[str],
+    protected: Optional[Iterable[str]] = None,
+) -> dict:
     """Resolves a schema doc into the render payload.
 
     Returns ``{id, name, label_schemas, active, excluded_paths,
@@ -691,8 +750,10 @@ def resolve(doc: Mapping, universe: Iterable[str]) -> dict:
     Annotate sidebar renders from, ``active`` is the annotate-tier field
     list, and the ``excluded_*`` lists feed the silent Explore exclusion
     channels. ``universe`` (the dataset's field paths) expands a
-    ``hidden`` default.
+    ``hidden`` default. ``protected`` (:func:`protected_paths`, default
+    :data:`PROTECTED_PATHS`) are never hidden.
     """
+    protected = PROTECTED_PATHS if protected is None else frozenset(protected)
     doc = _to_current_shape(dict(doc))
     label_schema = doc.get("label_schema") or {}
     visibility = doc.get("visibility") or {}
@@ -712,7 +773,7 @@ def resolve(doc: Mapping, universe: Iterable[str]) -> dict:
     # the field's own tier (an explore-tier field can hide attributes).
     for path in sorted(field_paths):
         tier = _field_tier(vis_fields, default_tier, label_schema, path)
-        if tier == "hidden" and path in PROTECTED_PATHS:
+        if tier == "hidden" and is_protected(path, protected):
             # Required fields degrade to explore rather than excluding.
             tier = "explore"
         vis_entry = vis_fields.get(path)
@@ -726,6 +787,8 @@ def resolve(doc: Mapping, universe: Iterable[str]) -> dict:
                     and isinstance(name, str)
                     and name
                     and name not in PROTECTED_ATTRIBUTES
+                    # e.g. a group's ``id`` and ``name``
+                    and not is_protected(f"{path}.{name}", protected)
                 ]
                 excluded_attrs.update(
                     f"{path}.{name}" for name in hidden_names
@@ -774,7 +837,7 @@ def resolve(doc: Mapping, universe: Iterable[str]) -> dict:
         excluded.update(
             p
             for p in universe
-            if p not in field_paths and p not in PROTECTED_PATHS
+            if p not in field_paths and not is_protected(p, protected)
         )
 
     return {

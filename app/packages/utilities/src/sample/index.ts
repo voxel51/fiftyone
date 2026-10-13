@@ -24,7 +24,14 @@ export type { LabelOpsSummary } from "./labelOps";
 export { applyDeltas } from "./apply";
 // Sample's canonical value-equality (collapses DateTime shapes); reused by
 // reconcilers to decide whether a change is a no-op echo of Sample's truth.
-export { equalsNormalized } from "./normalize";
+// NONFINITE_FIELDS is the shared home of the non-finite wire convention's
+// field gate (the write-side encoder in core imports it); the annotation
+// layer grows it from the dataset schema via registerNonfiniteFields.
+export {
+  equalsNormalized,
+  NONFINITE_FIELDS,
+  registerNonfiniteFields,
+} from "./normalize";
 export { Sample, SampleChangeKind } from "./sample";
 export type {
   SampleChange,

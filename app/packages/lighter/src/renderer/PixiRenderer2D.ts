@@ -105,12 +105,14 @@ export class PixiRenderer2D implements Renderer2D {
         if (this.app && this.isReady()) {
           this.app.renderer.resize(width, height);
 
+          // Scene2D rebuilds overlays against the new size here, so the draw
+          // below shows them in the same frame as the resized media
+          this.eventBus.dispatch("lighter:resize", { width, height });
+
           // Force immediate render to prevent black flash
           if (this.viewport) {
             this.app.renderer.render(this.app.stage);
           }
-
-          this.eventBus.dispatch("lighter:resize", { width, height });
         }
       }
     });

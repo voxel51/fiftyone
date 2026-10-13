@@ -1,4 +1,5 @@
 import { PillButton } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
@@ -10,6 +11,15 @@ import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Grid from "./Grid";
 import Modal from "./Modal";
+
+/** e2e specs read the selected counts once they have rendered */
+type SelectedE2EEvents = {
+  "e2e:actions:selected-shown": {
+    modal: boolean;
+    samples: number;
+    labels: number;
+  };
+};
 
 export default ({
   modal,
@@ -54,6 +64,14 @@ export default ({
       setLoading(false);
     };
   }, []);
+
+  useEffect(() => {
+    getEventBus<SelectedE2EEvents>().dispatch("e2e:actions:selected-shown", {
+      modal,
+      samples: samples.size,
+      labels: labels.size,
+    });
+  }, [modal, samples.size, labels.size]);
 
   if (samples.size < 1 && labels.size < 1 && !modal) {
     return null;

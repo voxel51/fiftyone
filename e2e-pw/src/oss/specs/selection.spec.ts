@@ -3,7 +3,10 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
+const test = base.extend<{
+  grid: GridPom;
+  modal: ModalPom;
+}>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
@@ -20,33 +23,33 @@ const extensionDatasetNamePairs = ["mp4", "pcd", "png"].map(
     ] as const,
 );
 
+const NUM_SAMPLES = 5;
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  let pythonCode = `
-      import fiftyone as fo
-  `;
-
-  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-    pythonCode += `
-      # ${extension} dataset
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-  
-      samples = []
-      for i in range(0, 5):
-          sample = fo.Sample(filepath=f"{i}.${extension}")
-          samples.append(sample)
-      
-      dataset.add_samples(samples)
-
-      `;
-  });
-  await fiftyoneLoader.executePythonCode(pythonCode);
+  for (const [extension, datasetName] of extensionDatasetNamePairs) {
+    const numSamples = NUM_SAMPLES;
+    if (extension === "mp4") {
+      await datasetFactory.createDataset({
+        mediaType: "video",
+        datasetName,
+        numSamples,
+        videoOptions: { container: "mp4" },
+      });
+    } else if (extension === "pcd") {
+      await datasetFactory.createDataset({
+        mediaType: "point-cloud",
+        datasetName,
+        numSamples,
+      });
+    } else {
+      await datasetFactory.createDataset({ datasetName, numSamples });
+    }
+  }
 });
 
 test.describe.serial("selection", () => {
@@ -58,36 +61,43 @@ test.describe.serial("selection", () => {
       modal,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-      await grid.assert.isEntryCountTextEqualTo("5 samples");
-      await grid.toggleSelectFirstSample();
+      await grid.assert.isEntryCountTextEqualTo(`${NUM_SAMPLES} samples`);
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isSelectionCountEqualTo(1);
-      await grid.toggleSelectNthSample(4);
+      await grid.afterSelectionChanged(() =>
+        grid.toggleSelectNthSample(NUM_SAMPLES - 1),
+      );
       await grid.assert.isSelectionCountEqualTo(2);
-      await grid.toggleSelectFirstSample();
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isSelectionCountEqualTo(1);
-      await grid.toggleSelectNthSample(4);
+      await grid.afterSelectionChanged(() =>
+        grid.toggleSelectNthSample(NUM_SAMPLES - 1),
+      );
       await grid.assert.isSelectionCountEqualTo(0);
 
       // verify selection clears on escape
-      await grid.toggleSelectFirstSample();
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isSelectionCountEqualTo(1);
       page.once("dialog", (dialog) => dialog.accept());
-      await page.press("body", "Escape");
+      await grid.afterSelectionChanged(() => page.press("body", "Escape"));
       await grid.assert.isSelectionCountEqualTo(0);
 
       // check modal
       await page.reload();
       const isPcd = extension === "pcd";
+      // the 3D viewer covers the sample checkbox until its scene settles
+      const settled = (action: () => Promise<void>) =>
+        isPcd ? modal.afterLooker3dSettled(action) : action();
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-      await grid.toggleSelectFirstSample();
+      await grid.afterSelectionChanged(() => grid.toggleSelectFirstSample());
       await grid.assert.isNthSampleSelected(0);
-      await grid.openNthSample(1);
+      await settled(() => grid.openNthSample(1));
       await modal.assert.verifySelectionCount(1);
       await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(2);
       await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(1);
-      await modal.navigatePreviousSample(true);
+      await settled(() => modal.navigatePreviousSample(true));
       await modal.toggleSelection(isPcd);
       await modal.assert.verifySelectionCount(0);
 

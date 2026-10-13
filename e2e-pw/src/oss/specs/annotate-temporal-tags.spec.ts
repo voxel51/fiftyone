@@ -29,6 +29,8 @@ const ID_ATTRIBUTE = {
 };
 
 const TAG = "review";
+const CLIP_SECONDS = 2;
+const CLIP_NS = CLIP_SECONDS * 1e9;
 
 const test = base.extend<{
   grid: GridPom;
@@ -47,7 +49,7 @@ const seedVideoDataset = (datasetFactory: typeof DatasetFactory) =>
     datasetName: videoDataset,
     numSamples: 1,
     sampleFrames: true,
-    videoOptions: { frameRate: 5 },
+    videoOptions: { frameRate: 5, duration: CLIP_SECONDS },
     schema: { "frames.detections": "Detections" },
     labelSchemas: {
       "frames.detections": {
@@ -75,6 +77,7 @@ test.describe.serial("video temporal tags", () => {
   });
 
   test("a tag drawn in the modal lands on the tile and survives a reload", async ({
+    eventUtils,
     fiftyoneLoader,
     grid,
     modal,
@@ -83,43 +86,51 @@ test.describe.serial("video temporal tags", () => {
   }) => {
     // Counted while no tag exists, so the count checked once the modal closes
     // is only right if the tag mutation itself refetched it.
-    await sidebar.clickFieldDropdown("_temporal_tags");
-    await expect(
-      page.getByTestId("categorical-filter-_temporal_tags"),
-    ).toContainText("No results");
+    await eventUtils.afterAll(
+      [sidebar.filterValuesShown("_temporal_tags", [])],
+      () => sidebar.clickFieldDropdown("_temporal_tags"),
+    );
+    expect(
+      await page.getByTestId("categorical-filter-_temporal_tags").textContent(),
+    ).toBe("No results");
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.sidebar.switchMode("annotate");
-    await modal.videoAnnotate.waitForSurface();
+    await modal.afterSampleLoaded(() => grid.openFirstSample());
+    await modal.videoAnnotate.afterSurface(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
-    await modal.videoAnnotate.createTemporalTag(TAG);
-
-    await expect
-      .poll(async () => await modal.videoAnnotate.temporalTagTrackIds())
-      .toEqual([`temporal-tag::${TAG}`]);
-
-    await modal.close({ ignoreError: true });
+    await eventUtils.afterAll(
+      [sidebar.filterValuesShown("_temporal_tags", [`${TAG}:1`])],
+      async () => {
+        await modal.videoAnnotate.createTemporalTag(TAG);
+        expect(await modal.videoAnnotate.temporalTagTrackIds()).toEqual([
+          `temporal-tag::${TAG}`,
+        ]);
+        await modal.close({ ignoreError: true });
+      },
+    );
 
     // The lane draws only for tags the sidebar has active, the same gate the
     // multimodal grid uses.
-    await sidebar.clickFieldCheckbox("_temporal_tags");
+    await grid.afterTemporalTagMarks(1, () =>
+      sidebar.clickFieldCheckbox("_temporal_tags"),
+    );
+    expect(await grid.temporalTagMarkCount()).toBe(1);
+    const markStyle = await grid.temporalTagMarkStyle();
 
-    await expect.poll(async () => await grid.temporalTagMarkCount()).toBe(1);
-
-    await expect(
-      await sidebar.getAttributeItemCount("_temporal_tags", TAG),
-    ).toHaveText("1");
+    expect(
+      await (
+        await sidebar.getAttributeItemCount("_temporal_tags", TAG)
+      ).textContent(),
+    ).toBe("1");
 
     // A reload keeps nothing client-side, so a mark that comes back was read
-    // from the tag routes.
+    // from the tag routes. It comes back on the clip's axis, not the tags': a
+    // lane scaled to its only tag would run that tag's mark all the way to
+    // the right edge, instead of where it was drawn before the reload.
     await fiftyoneLoader.waitUntilGridVisible(page, videoDataset);
-
-    await expect.poll(async () => await grid.temporalTagMarkCount()).toBe(1);
-
-    // On the clip's axis, not the tags': a lane scaled to its only tag would
-    // run that tag's mark all the way to the right edge.
-    const { left, width } = await grid.temporalTagMarkGeometry();
-    expect(left + width).toBeLessThan(99);
+    await grid.untilTemporalTagMarks(1, CLIP_NS);
+    expect(await grid.temporalTagMarkCount()).toBe(1);
+    expect(await grid.temporalTagMarkStyle()).toBe(markStyle);
   });
 });

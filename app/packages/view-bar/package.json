@@ -13,6 +13,7 @@
     "dependencies": {
         "@fiftyone/analytics": "*",
         "@fiftyone/components": "*",
+        "@fiftyone/events": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/relay": "*",
         "@fiftyone/state": "*",

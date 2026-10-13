@@ -7,7 +7,7 @@
  * `detections` and keeps following the playhead. Re-seeded clean per test on a
  * 40-frame clip so the extent isn't clamped.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -72,18 +72,20 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Draw a detection box across the given relative corners (annotate mode). */
 const drawBox = async (modal: ModalPom) => {
   await modal.sidebar.annotate.detectionMode("Detections");
-  await modal.sampleCanvas.move(0.55, 0.55, "crosshair");
-  await modal.sampleCanvas.down();
-  await modal.sampleCanvas.move(0.78, 0.78);
-  await modal.sampleCanvas.up();
+  await modal.videoAnnotate.afterTracksChange(async () => {
+    await modal.sampleCanvas.move(0.55, 0.55);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.78, 0.78);
+    await modal.sampleCanvas.up();
+  });
 };
 
 const stepForward = async (modal: ModalPom, n: number) => {
@@ -111,13 +113,9 @@ test.describe.serial("video annotation fresh draw", () => {
 
     // commit the fresh draw (a class) so it — and the auto-extended filler —
     // enter engine presence; an uncommitted draft isn't listed in the sidebar
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
-    await saved;
     await modal.sidebar.edit.exitToList();
     await blur(page);
 
@@ -146,28 +144,20 @@ test.describe.serial("video annotation fresh draw", () => {
     // the form reads the schema field immediately (no deselect/reselect). The
     // schema exposes the frame field at its real path, so that field is
     // `frames.detections` — one namespace across schema, form, and engine.
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.currentField("frames.detections");
 
     // committing a class keeps the form bound; the field stays `detections`
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the form follows the playhead without a manual reselect: still open, still
     // bound to the schema field on the next frame
     await blur(page);
     await va.stepForward();
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.edit.assert.currentField("frames.detections");
   });
 
   test("undo removes a freshly-drawn box (engine undo on video)", async ({
@@ -186,11 +176,11 @@ test.describe.serial("video annotation fresh draw", () => {
     // auto-extend filler coalesces into the draw's undo unit, so a SINGLE undo
     // removes the whole freshly-drawn track (box + filler).
     await modal.sidebar.edit.assert.undoIsEnabled();
-    await modal.sidebar.edit.undo();
+    await va.afterTracksChange(() => modal.sidebar.edit.undo());
     await va.assert.objectTrackCount(0);
 
     // redo re-creates the whole track in one step
-    await modal.sidebar.edit.redo();
+    await va.afterTracksChange(() => modal.sidebar.edit.redo());
     await va.assert.objectTrackCount(1);
   });
 });

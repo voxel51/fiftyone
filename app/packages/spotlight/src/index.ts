@@ -20,8 +20,9 @@ import {
   ZERO,
   ZOOMING_COEFFICIENT,
 } from "./constants";
+import { EventDispatcher, type EventHandler } from "@fiftyone/events";
 import createScrollReader from "./createScrollReader";
-import type { EventCallback, RowChange } from "./events";
+import type { EventCallback, SpotlightEvents } from "./events";
 import { Load, Rejected } from "./events";
 import Section from "./section";
 import tile from "./tile";
@@ -42,14 +43,18 @@ import {
   sum,
 } from "./utilities";
 
-export { Load, Rejected, RowChange } from "./events";
+export { Load, Rejected, RowChange, type SpotlightEvents } from "./events";
 export * from "./types";
 
-export default class Spotlight<K, V> extends EventTarget {
+type Listeners = Map<string, Map<object, () => void>>;
+
+export default class Spotlight<K, V> {
   readonly #aborter = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
+  readonly #events = new EventDispatcher<SpotlightEvents<K>>();
   readonly #keys = new WeakMap<ID, K>();
+  readonly #listeners: Listeners = new Map();
 
   #backward: Section<K, V>;
   #focused?: ID;
@@ -62,7 +67,10 @@ export default class Spotlight<K, V> extends EventTarget {
   #validate?: (key: string, add: number) => void;
 
   constructor(config: SpotlightConfig<K, V>) {
-    super();
+    this.#aborter.signal.addEventListener("abort", () => {
+      this.#events.clearAll();
+      this.#listeners.clear();
+    });
     this.#config = {
       maxRows: DEFAULT_MAX_ROWS,
       offset: DEFAULT_OFFSET,
@@ -81,33 +89,40 @@ export default class Spotlight<K, V> extends EventTarget {
     return this.#loaded;
   }
 
-  addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
-  addEventListener(type: "rejected", callback: EventCallback<Rejected>): void;
-  addEventListener(
-    type: "rowchange",
-    callback: EventCallback<RowChange<K>>,
-  ): void;
-  addEventListener(
-    type: string,
-    callback: EventListenerOrEventListenerObject,
+  addEventListener<E extends keyof SpotlightEvents<K>>(
+    type: E,
+    callback: EventCallback<SpotlightEvents<K>[E]>,
   ): void {
-    super.addEventListener(type, callback, { signal: this.#aborter.signal });
+    if (this.#aborter.signal.aborted) {
+      return;
+    }
+
+    let byCallback = this.#listeners.get(type);
+    if (!byCallback) {
+      byCallback = new Map();
+      this.#listeners.set(type, byCallback);
+    }
+    if (byCallback.has(callback)) {
+      return;
+    }
+
+    const handler = (event: SpotlightEvents<K>[E]) =>
+      typeof callback === "function"
+        ? callback(event)
+        : callback.handleEvent(event);
+    byCallback.set(
+      callback,
+      this.#events.on(type, handler as EventHandler<SpotlightEvents<K>[E]>),
+    );
   }
 
-  removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
-  removeEventListener(
-    type: "rejected",
-    callback: EventCallback<Rejected>,
-  ): void;
-  removeEventListener(
-    type: "rowchange",
-    callback: EventCallback<RowChange<K>>,
-  ): void;
-  removeEventListener(
-    type: string,
-    callback: EventListenerOrEventListenerObject,
+  removeEventListener<E extends keyof SpotlightEvents<K>>(
+    type: E,
+    callback: EventCallback<SpotlightEvents<K>[E]>,
   ): void {
-    super.removeEventListener(type, callback);
+    const byCallback = this.#listeners.get(type);
+    byCallback?.get(callback)?.();
+    byCallback?.delete(callback);
   }
 
   attach(elementOrElementId: HTMLElement | string): void {
@@ -250,7 +265,7 @@ export default class Spotlight<K, V> extends EventTarget {
     proposed = Math.max(proposed, MIN_ASPECT_RATIO_RECOMMENDATION);
     if (proposed < current) {
       this.#rejected = true;
-      this.dispatchEvent(new Rejected(proposed));
+      this.#events.dispatch("rejected", new Rejected(proposed));
     }
   }
 
@@ -340,7 +355,7 @@ export default class Spotlight<K, V> extends EventTarget {
         await Promise.allSettled(promises);
         if (!this.#loaded) {
           this.#loaded = true;
-          this.dispatchEvent(new Load(this.#config.key));
+          this.#events.dispatch("load", new Load(this.#config.key));
         }
       },
     };
@@ -412,7 +427,7 @@ export default class Spotlight<K, V> extends EventTarget {
     });
 
     if (rowChange) {
-      this.dispatchEvent(rowChange);
+      this.#events.dispatch("rowchange", rowChange);
     }
 
     if (!go && offset !== false) {
@@ -461,7 +476,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     if (!this.#config.maxItemsSizeBytes) {
       this.#loaded = true;
-      this.dispatchEvent(new Load(this.#config.key));
+      this.#events.dispatch("load", new Load(this.#config.key));
     }
   }
 

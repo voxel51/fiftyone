@@ -44,17 +44,12 @@ export class SchemaManagerPom {
   }
 
   /**
-   * Go back using the top-left arrow
-   */
-  async back() {
-    await this.locator.getByTestId("schema-manager-back").click();
-  }
-
-  /**
    * Close the modal
    */
   async close() {
-    await this.locator.getByTestId("close-schema-manager").click();
+    await this.eventUtils.after("e2e:schema-manager:closed", () =>
+      this.locator.getByTestId("close-schema-manager").click(),
+    );
   }
 
   /**
@@ -77,16 +72,18 @@ export class SchemaManagerPom {
    * schema manager modal to open
    */
   async open() {
-    const trigger = await this.lensTrigger();
-    if (await trigger.isVisible()) {
-      await trigger.click();
-      await this.page
-        .getByRole("menu")
-        .getByTestId("open-schema-manager")
-        .click();
-      return;
-    }
-    await this.page.getByTestId("open-schema-manager").click();
+    await this.eventUtils.after("e2e:schema-manager:opened", async () => {
+      const trigger = await this.lensTrigger();
+      if (await trigger.isVisible()) {
+        await trigger.click();
+        await this.page
+          .getByRole("menu")
+          .getByTestId("open-schema-manager")
+          .click();
+        return;
+      }
+      await this.page.getByTestId("open-schema-manager").click();
+    });
   }
 
   /**
@@ -155,8 +152,8 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.assert.isHiddenFieldRow(field);
+    // the move is a round-trip; the row lands in its new section after it
+    await this.afterFieldIn("hidden", field, () => this.moveFields());
   }
 
   /**
@@ -169,8 +166,21 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.assert.isActiveFieldRow(field);
+    await this.afterFieldIn("active", field, () => this.moveFields());
+  }
+
+  /** Run `action` and resolve once `section` renders a row for `field` */
+  private afterFieldIn<T>(
+    section: "active" | "hidden",
+    field: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after("e2e:schema-manager:fields", action, (e) => {
+      const detail = e.detail as { section: string; paths: string };
+      return (
+        detail.section === section && detail.paths.split(",").includes(field)
+      );
+    });
   }
 }
 
@@ -189,7 +199,7 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.activeFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
@@ -201,14 +211,14 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.hiddenFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
    * Is schema manager modal closed
    */
   async isClosed() {
-    await expect(this.schemaManagerPom.locator).toBeHidden();
+    expect(await this.schemaManagerPom.locator.isVisible()).toBe(false);
   }
 
   /**
@@ -216,13 +226,6 @@ class SchemaManagerAsserter {
    */
   async isOpen() {
     await expect(this.schemaManagerPom.locator).toBeVisible();
-  }
-
-  /**
-   * Is the schema entry point (the schema row's trigger) disabled
-   */
-  async isDisabled() {
-    await expect(await this.schemaManagerPom.lensTrigger()).toBeDisabled();
   }
 
   /**
