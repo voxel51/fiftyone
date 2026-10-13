@@ -251,6 +251,8 @@ interface WorkspacePanel {
  * Python for a workspace with the grid on the left and `panels` as tabs on
  * the right, the first one showing. Every space names its `active_child`, as
  * the App's own saves do: without one a space renders its tab but no content.
+ * The split states its sizes: a split without them saves its measured sizes
+ * a moment after it lays out, and that save reloads the page.
  */
 const splitWorkspace = (panels: WorkspacePanel[]): string => {
   const tabs = panels
@@ -272,8 +274,20 @@ const splitWorkspace = (panels: WorkspacePanel[]): string => {
     ],
     orientation="horizontal",
     active_child="${panels[0].id}",
+    sizes=[0.5, 0.5],
 )`;
 };
+
+export const RUN_WORKSPACE = "run";
+
+/** The grid beside the embeddings panel, open on the run, uncolored */
+export const runWorkspace = splitWorkspace([
+  {
+    type: "Embeddings",
+    id: "embeddings",
+    state: `dict(brainResult="${BRAIN_KEY}")`,
+  },
+]);
 
 export const PLOT_WORKSPACE = "plot";
 

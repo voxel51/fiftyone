@@ -30,6 +30,8 @@ import {
   PROBE_FILE,
   probeLine,
   RIGHT_HALF,
+  RUN_WORKSPACE,
+  runWorkspace,
   STALE_WORKSPACE,
   staleWorkspace,
   TABS_WORKSPACE,
@@ -94,15 +96,18 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.describe("on the whole dataset", () => {
+  test.use({
+    seed: { ...twoClusters, workspaces: { [RUN_WORKSPACE]: runWorkspace } },
+  });
+
   test.beforeEach(async ({ datasetName, embeddings, fiftyoneLoader, page }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    // Opening the panel and opening a run each save the layout, and each
-    // save reloads the page. Waiting out both leaves no reload in flight for
-    // a test's own save wait to mistake for its save
-    await embeddings.afterPanelStateSaved(() => embeddings.openInSplit());
-    await embeddings.afterPanelStateSaved(() =>
-      embeddings.openRun(BRAIN_KEY, TOTAL),
-    );
+    // The workspace opens the panel on the run with its split sizes set, so
+    // setup saves no layout: each layout save reloads the page, and a reload
+    // in flight can swallow a test's click or satisfy its own save wait
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ workspace: RUN_WORKSPACE }),
+    });
+    await embeddings.untilDrawn({ points: TOTAL });
   });
 
   test("a lasso scopes the grid to the points it encloses", async ({
