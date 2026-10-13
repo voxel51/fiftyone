@@ -550,6 +550,8 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     resetTiles,
     defaultLeftOpen,
     onLeftOpenChange,
+    defaultTimelineTracksOpen,
+    onTimelineTracksOpenChange,
     defaultLeftSidebarWidth,
     onLeftSidebarWidthChange,
     sceneUpAxis,
@@ -570,6 +572,13 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     resolveTile: getTileDefinition,
     sources: shellSources,
   });
+  const handleTimelineDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      onTimelineTracksOpenChange(open);
+      onTimelineDrawerOpenChange?.(open);
+    },
+    [onTimelineDrawerOpenChange, onTimelineTracksOpenChange],
+  );
 
   if (!source) {
     return <PlaybackState text="No episode source selected" />;
@@ -836,6 +845,9 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   sharedImageWebGpuViews
                                   defaultRightOpen={false}
                                   defaultLeftOpen={defaultLeftOpen}
+                                  defaultTimelineTracksOpen={
+                                    defaultTimelineTracksOpen
+                                  }
                                   onLeftOpenChange={onLeftOpenChange}
                                   leftSidebarWidth={defaultLeftSidebarWidth}
                                   onLeftSidebarWidthChange={
@@ -845,7 +857,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   onTagCreate={onTagCreate}
                                   onTagUpdate={onTagUpdate}
                                   onTimelineDrawerOpenChange={
-                                    onTimelineDrawerOpenChange
+                                    handleTimelineDrawerOpenChange
                                   }
                                   timelineDrawerMaxSize={timelineDrawerMaxSize}
                                 >

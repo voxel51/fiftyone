@@ -29,12 +29,18 @@ describe("loading layout geometry", () => {
       },
     };
     writeModalLayout(
-      { layout, sidebarWidthPx: 420.6, leftSidebarOpen: false },
+      {
+        layout,
+        sidebarWidthPx: 420.6,
+        leftSidebarOpen: false,
+        timelineTracksOpen: true,
+      },
       identity.datasetId,
     );
     const { result, unmount } = renderHook(() => useLoadingLayout(identity));
     expect(result.current.leftWidth).toBe(421);
     expect(result.current.leftOpen).toBe(false);
+    expect(result.current.tracksOpen).toBe(true);
     expect(loadingPanes(result.current.layout)).toEqual([
       { id: "3d-1", left: 0, top: 0, width: 70, height: 100 },
       {

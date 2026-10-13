@@ -338,6 +338,32 @@ describe("PlaybackShell shell", () => {
     expect(timeline.getAttribute("aria-label")).toBe("Hide timeline tracks");
   });
 
+  it("restores an expanded Tracks drawer and reports visibility changes", () => {
+    const onTimelineDrawerOpenChange = vi.fn();
+    render(
+      <PlaybackShell
+        defaultTimelineTracksOpen
+        fileName="x"
+        onTimelineDrawerOpenChange={onTimelineDrawerOpenChange}
+        tracks={[
+          {
+            id: "track-a",
+            label: "Track A",
+            color: "#4a9eff",
+            events: [],
+          },
+        ]}
+      />,
+    );
+
+    const toggle = screen.getByTestId("tiling-header-toggle-timeline-tracks");
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(onTimelineDrawerOpenChange).toHaveBeenCalledWith(true);
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(onTimelineDrawerOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("opens the left sidebar when Add tile spawns a panel", () => {
     const onLeftOpenChange = vi.fn();
     render(

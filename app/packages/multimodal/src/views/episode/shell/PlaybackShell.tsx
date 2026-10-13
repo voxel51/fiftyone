@@ -153,6 +153,8 @@ export interface PlaybackShellProps {
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
   defaultRightOpen?: boolean;
+  /** Whether the bottom Tracks drawer starts open. @default false */
+  defaultTimelineTracksOpen?: boolean;
   /** Observes left-sidebar visibility — e.g. to persist the choice. */
   onLeftOpenChange?: (open: boolean) => void;
   /** Observes right-sidebar visibility — e.g. to persist the choice. */
@@ -266,6 +268,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
   defaultRightOpen = true,
+  defaultTimelineTracksOpen = false,
   onLeftOpenChange,
   onRightOpenChange,
   mainOverlay,
@@ -320,6 +323,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               }
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
+              timelineDrawerDefaultOpen={defaultTimelineTracksOpen}
               onLeftOpenChange={onLeftOpenChange}
               onRightOpenChange={onRightOpenChange}
               mainOverlay={mainOverlay}
@@ -333,9 +337,6 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               timelineDrawerMaxSize={timelineDrawerMaxSize}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
-              // Start with the tracks drawer collapsed. Pinned tracks remain
-              // visible below the ruler until the user expands the drawer.
-              timelineDrawerDefaultOpen={false}
               decorateTrack={decorateTrack}
               timelineRulerOverlay={timelineRulerOverlay}
             />
