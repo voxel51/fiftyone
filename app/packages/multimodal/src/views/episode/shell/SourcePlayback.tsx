@@ -1,4 +1,10 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
+import {
+  FramePresentationProvider,
+  useHasPresentedFrame,
+} from "../../../visualization/webgpu/FramePresentation";
+import { EpisodeModalLoading } from "../loading/EpisodeModalLoading";
+import { ModalLoadingOverlay } from "../loading/ModalLoadingOverlay";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
 import {
   usePlaybackStore,
@@ -31,10 +37,7 @@ import type { SourceFactsScope } from "../../../runtime/source-facts";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
 import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
 import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
-import {
-  sourceBootstrapKey,
-  type SourceBootstrap,
-} from "../../../runtime/source-bootstrap-cache";
+import type { SourceBootstrap } from "../../../runtime/source-bootstrap-cache";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
 import {
   releaseGpuImageAnnotationResources,
@@ -157,6 +160,7 @@ export interface SourcePlaybackProps {
     readonly datasetId: string;
     readonly sampleId: string;
   };
+  readonly destinationSampleId?: string | null;
   readonly headerActions?: React.ReactNode;
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
@@ -191,10 +195,37 @@ export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
       scopeKey={layoutScopeFor(props.layoutScopeKey, props.source)}
       mediaField={props.cameraPreferenceField}
     >
-      <SourcePlaybackContent {...props} />
+      <FramePresentationProvider
+        sourceKey={presentationSourceKey(
+          props.source,
+          props.destinationSampleId ??
+            props.episodeContext?.sampleId ??
+            props.session?.manifest?.episodeId,
+        )}
+        presentationKey={
+          props.destinationSampleId ??
+          props.episodeContext?.sampleId ??
+          props.session?.manifest?.episodeId
+        }
+      >
+        <SourcePlaybackContent {...props} />
+      </FramePresentationProvider>
     </PortableLayoutHost>
   </VisibleStreamsProvider>
 );
+
+// Pixel resources belong to an episode, while physical byte caches remain shared.
+function presentationSourceKey(
+  source: ByteSourceDescriptor | null,
+  episodeId?: string,
+): string {
+  return source
+    ? JSON.stringify([
+        episodeSourceAccessKey(source),
+        episodeId ?? source.sourceId,
+      ])
+    : "";
+}
 
 // Capture, restore, and local persistence must resolve the same scope.
 function layoutScopeFor(
@@ -212,6 +243,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   timelineRulerOverlay,
   fileName,
   episodeContext,
+  destinationSampleId,
   headerActions,
   initialSeekTimeNs,
   layoutScopeKey,
@@ -281,18 +313,24 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       sourceAvailable: source !== null,
     });
   const sourceKey = useMemo(
-    () => (source ? sourceBootstrapKey(source) : ""),
-    [source],
-  );
-  const sourceAccessKey = useMemo(
-    () => (source ? episodeSourceAccessKey(source) : ""),
-    [source],
+    () =>
+      presentationSourceKey(
+        source,
+        episodeContext?.sampleId ?? session?.manifest?.episodeId,
+      ),
+    [source, episodeContext?.sampleId, session?.manifest?.episodeId],
   );
   const sourceReadBudgetAccount = useMemo(() => {
     const account = session?.boundedRead?.openAccount();
     return account ? createScheduledSourceReadBudgetAccount(account) : null;
   }, [session]);
-  const bootstrap = useSourceBootstrap(source);
+  const byteBootstrap = useSourceBootstrap(source);
+  // A reference-backed episode's poster asset may serve several episodes.
+  // Its physical bootstrap cannot authenticate an episode-specific poster.
+  const bootstrap =
+    !episodeContext || source?.sourceId === episodeContext.sampleId
+      ? byteBootstrap
+      : null;
   const poster: PosterImage | undefined =
     bootstrap?.poster?.kind === "image" ? bootstrap.poster : undefined;
   const posterStreamId = bootstrap?.posterStreamId ?? null;
@@ -301,13 +339,14 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       poster
         ? {
             frame: poster.image,
-            sourceKey: sourceAccessKey,
+            sourceKey,
             streamId: posterStreamId,
           }
         : null,
-    [poster, posterStreamId, sourceAccessKey],
+    [poster, posterStreamId, sourceKey],
   );
   const [presentedSourceKey, setPresentedSourceKey] = useState("");
+  const framePresented = useHasPresentedFrame();
   const handlePlayheadDataReady = useCallback(
     () => setPresentedSourceKey(sourceKey),
     [sourceKey],
@@ -544,12 +583,21 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     );
   }
   if (status !== "ready" && !shellInventory) {
+    if (episodeContext) {
+      return (
+        <EpisodeModalLoading
+          datasetId={episodeContext.datasetId}
+          mediaField={cameraPreferenceField ?? "filepath"}
+          sampleId={destinationSampleId ?? episodeContext.sampleId}
+        />
+      );
+    }
     return (
       <PreparingPlayback
         fileName={fileName}
         poster={poster}
         posterStream={bootstrap?.posterStreamId}
-        sourceKey={sourceAccessKey}
+        sourceKey={sourceKey}
       />
     );
   }
@@ -595,7 +643,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
-        transformTopologySourceKey={playbackSource ? sourceAccessKey : null}
+        transformTopologySourceKey={playbackSource ? sourceKey : null}
         viewportScopeKey={effectiveLayoutScopeKey}
       >
         <FrameTransformsProvider>
@@ -608,15 +656,14 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                       <LogConsoleProvider
                         budgetAccount={sourceReadBudgetAccount}
                         session={readyInventory ? session : null}
-                        sourceKey={playbackSource ? sourceAccessKey : null}
+                        sourceKey={playbackSource ? sourceKey : null}
                       >
                         <DataStreamProvider
-                          expectedSourceKey={
-                            playbackSource ? sourceAccessKey : null
-                          }
+                          expectedOwner={session}
+                          expectedSourceKey={playbackSource ? sourceKey : null}
                         >
                           <SourceVideoPlaybackProvider
-                            sourceKey={playbackSource ? sourceAccessKey : null}
+                            sourceKey={playbackSource ? sourceKey : null}
                           >
                             <SourceResourceBoundary />
                             <Scene3dViewSettingsProvider
@@ -759,6 +806,19 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                         error={status === "error"}
                                         text={transitionMessage}
                                       />
+                                    ) : episodeContext ? (
+                                      <ModalLoadingOverlay
+                                        identity={{
+                                          datasetId: episodeContext.datasetId,
+                                          mediaField:
+                                            cameraPreferenceField ?? "filepath",
+                                          sampleId:
+                                            destinationSampleId ??
+                                            episodeContext.sampleId,
+                                        }}
+                                        pending={transitioning}
+                                        presented={framePresented}
+                                      />
                                     ) : null
                                   }
                                   rightSidebar={
@@ -798,6 +858,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     }
                                     session={readyInventory ? session : null}
                                     source={playbackSource}
+                                    presentationSourceKey={sourceKey}
                                     timelineSamplingRateHz={
                                       timelineSamplingRateHz
                                     }

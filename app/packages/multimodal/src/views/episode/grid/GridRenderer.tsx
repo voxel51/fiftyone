@@ -57,6 +57,9 @@ import {
   type GridPosterFreshness,
 } from "./grid-poster-cache";
 import { captureGridPoster } from "./grid-poster-codec";
+import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
+import { sceneSourcesFromStreamDescriptors } from "../../../stream-selection/scene-sources";
+import { publishLoadingLayout } from "../loading/loading-layout";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 import { useGridPosterCache } from "./use-grid-poster-cache";
 import {
@@ -66,6 +69,14 @@ import {
 import { peekSourceBootstrap } from "../../../runtime";
 import { useHydratedSourceFacts } from "./use-hydrated-source-facts";
 import { LeRobotGridHoverVideo } from "./LeRobotGridHoverVideo";
+import {
+  preloadEpisodeModal,
+  scheduleEpisodeModalPreload,
+} from "../shell/modal-loader";
+import {
+  captureModalThumbnail,
+  publishModalThumbnail,
+} from "../loading/modal-thumbnail";
 
 // Trailing debounce for shared-pose and cell-resize re-snapshots: orbiting
 // the one hovered cell staleness-marks every visible point-cloud cell, so
@@ -348,6 +359,52 @@ export function GridRenderer({
     readonly cacheKey: string | null;
     readonly tokens: Set<string>;
   }>({ cacheKey: null, tokens: new Set() });
+  const thumbnailIdentity = useMemo(
+    () => ({
+      datasetId: ctx.dataset.datasetId,
+      mediaField: ctx.media.field,
+      sampleId: sampleId ?? null,
+    }),
+    [ctx.dataset.datasetId, ctx.media.field, sampleId],
+  );
+  const bootstrap = useSourceBootstrap(source);
+  const committedPosterCanvas = useRef<{
+    identity: typeof thumbnailIdentity;
+    canvas: HTMLCanvasElement;
+  } | null>(null);
+  const layoutStreams = bootstrap?.manifest?.streams;
+  const referenceBacked = ctx.media.mediaReference != null;
+  // This effect shares grid inventory before the modal session is available.
+  useEffect(() => {
+    if (layoutStreams) {
+      publishLoadingLayout(
+        thumbnailIdentity,
+        sceneSourcesFromStreamDescriptors(layoutStreams),
+        source?.readProfile,
+        preview.streamSourceName,
+      );
+    } else if (preview.nativeVideo || referenceBacked) {
+      publishLoadingLayout(
+        thumbnailIdentity,
+        stableStreams.streams.map((sourceName) => ({
+          id: sourceName,
+          sourceName,
+          label: sourceName.replace(/^\//, ""),
+          type: "image",
+        })),
+        source?.readProfile,
+        preview.streamSourceName,
+      );
+    }
+  }, [
+    layoutStreams,
+    thumbnailIdentity,
+    source?.readProfile,
+    preview.streamSourceName,
+    preview.nativeVideo,
+    referenceBacked,
+    stableStreams,
+  ]);
   const handlePosterCanvasCommitted = useCallback(
     (
       capturedSourceKind: "image" | "point-cloud",
@@ -355,6 +412,7 @@ export function GridRenderer({
       size: BitmapDrawSize,
       snapshotPoseKey?: string,
     ) => {
+      committedPosterCanvas.current = { identity: thumbnailIdentity, canvas };
       // announced like a looker tile's draw, so grid loads count it; a canvas
       // not yet laid out (or detached) commits too, and redraws once it is
       const shown = canvas.getBoundingClientRect();
@@ -386,6 +444,7 @@ export function GridRenderer({
       ]);
       if (capturedTokens.has(token)) return;
       capturedTokens.add(token);
+      captureModalThumbnail(thumbnailIdentity, canvas);
       captureGridPoster({
         entry: {
           height: size.height,
@@ -406,6 +465,7 @@ export function GridRenderer({
     },
     [
       cacheKey,
+      thumbnailIdentity,
       ctx.sample.sample,
       preview.streamId,
       preview.streamSourceName,
@@ -434,6 +494,40 @@ export function GridRenderer({
     (error: Error) => setNativeVideoError(error.message),
     [],
   );
+  // This effect hands off ready posters and schedules code loading in idle time.
+  useEffect(() => {
+    if (!interactive) return;
+    if (effectivePoster)
+      publishModalThumbnail(thumbnailIdentity, effectivePoster);
+    if (effectivePoster || nativePosterPainted || preview.status === "ready") {
+      scheduleEpisodeModalPreload();
+    }
+  }, [
+    effectivePoster,
+    interactive,
+    nativePosterPainted,
+    preview.status,
+    thumbnailIdentity,
+  ]);
+  const prepareModal = useCallback(() => {
+    preloadEpisodeModal();
+    const entry =
+      effectivePoster ??
+      (cacheKey ? getGridPosterCache().peek(cacheKey) : null);
+    if (entry) {
+      publishModalThumbnail(thumbnailIdentity, entry);
+      return;
+    }
+    const committed = committedPosterCanvas.current;
+    if (
+      committed?.canvas.isConnected &&
+      committed.identity.datasetId === thumbnailIdentity.datasetId &&
+      committed.identity.mediaField === thumbnailIdentity.mediaField &&
+      committed.identity.sampleId === thumbnailIdentity.sampleId
+    ) {
+      captureModalThumbnail(thumbnailIdentity, committed.canvas);
+    }
+  }, [cacheKey, effectivePoster, thumbnailIdentity]);
   const posterImage =
     preview.frame?.kind === "image" ? preview.frame.image : null;
   const codecRejection =
@@ -473,12 +567,21 @@ export function GridRenderer({
       className={rootClassName}
       onClick={gridActivationHandler}
       onContextMenu={gridActivationHandler}
-      onPointerEnter={playbackIntent.enter}
+      onPointerDown={prepareModal}
+      onPointerEnter={() => {
+        preloadEpisodeModal();
+        playbackIntent.enter();
+      }}
       onPointerLeave={playbackIntent.leave}
       ref={setRootElement}
     >
       {blocksGridActivation && ctx.openModal ? (
-        <OpenModalButton openModal={ctx.openModal} />
+        <OpenModalButton
+          openModal={() => {
+            prepareModal();
+            ctx.openModal?.();
+          }}
+        />
       ) : null}
       {codecRejection ? (
         <div className={classes.codecRejection} role="alert">

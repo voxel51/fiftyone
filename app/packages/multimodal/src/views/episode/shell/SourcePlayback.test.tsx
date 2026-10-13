@@ -72,6 +72,10 @@ const sourceFactsHarness = vi.hoisted(() => ({
 
 vi.mock("../../../runtime/source-facts-service", () => sourceFactsHarness);
 
+vi.mock("../loading/ModalLoadingOverlay", () => ({
+  ModalLoadingOverlay: () => null,
+}));
+
 vi.mock("./PlaybackShell", () => {
   const MockPlaybackShell = ({
     children,

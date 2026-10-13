@@ -456,7 +456,7 @@ describe("GridRenderer", () => {
       gridPreviewStateKey({
         datasetId: "dataset-id",
         episodeId: "1",
-        mediaField: undefined,
+        mediaField: "filepath",
         selectedSourceName: null,
         source,
       }),
@@ -1440,6 +1440,7 @@ describe("GridRenderer", () => {
 function rendererCtx(openModal?: () => void) {
   return {
     dataset: { datasetId: "dataset-id", name: "dataset" },
+    media: { field: "filepath" },
     sample: { sample: { id: "1" } },
     ...(openModal ? { openModal } : {}),
   } as never;

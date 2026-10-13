@@ -90,11 +90,12 @@ vi.mock("../../../visualization/webgpu/WebGpuViewStage", async () => {
   };
 });
 
-import PlaybackShell, {
+import PlaybackShell from "./PlaybackShell";
+import {
   clampSidebarWidth,
   SIDEBAR_MAX_WIDTH_PX,
   SIDEBAR_MIN_WIDTH_PX,
-} from "./PlaybackShell";
+} from "../layout/sidebar-geometry";
 
 const AddCameraTileMenuItem = () => {
   const { addTile } = useTiling();
