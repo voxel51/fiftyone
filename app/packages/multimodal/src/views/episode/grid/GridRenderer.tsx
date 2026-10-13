@@ -381,6 +381,7 @@ export function GridRenderer({
   // publish their own reference-backed stream list below instead.
   const bootstrap = useSourceBootstrap(referenceBacked ? null : source);
   const committedPosterCanvas = useRef<{
+    cacheKey: string | null;
     identity: typeof thumbnailIdentity;
     canvas: HTMLCanvasElement;
   } | null>(null);
@@ -423,7 +424,11 @@ export function GridRenderer({
       size: BitmapDrawSize,
       snapshotPoseKey?: string,
     ) => {
-      committedPosterCanvas.current = { identity: thumbnailIdentity, canvas };
+      committedPosterCanvas.current = {
+        cacheKey,
+        identity: thumbnailIdentity,
+        canvas,
+      };
       // announced like a looker tile's draw, so grid loads count it; a canvas
       // not yet laid out (or detached) commits too, and redraws once it is
       const shown = canvas.getBoundingClientRect();
@@ -529,6 +534,7 @@ export function GridRenderer({
     const committed = committedPosterCanvas.current;
     if (
       committed?.canvas.isConnected &&
+      committed.cacheKey === cacheKey &&
       committed.identity.datasetId === thumbnailIdentity.datasetId &&
       committed.identity.mediaField === thumbnailIdentity.mediaField &&
       committed.identity.sampleId === thumbnailIdentity.sampleId

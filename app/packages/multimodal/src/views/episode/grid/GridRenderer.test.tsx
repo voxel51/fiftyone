@@ -1047,6 +1047,61 @@ describe("GridRenderer", () => {
     }
   });
 
+  it("does not capture the previous camera while its replacement is loading", () => {
+    sourceHarness.byteSource = {
+      sourceId: "modal-thumbnail-camera-change",
+      url: "memory://modal-thumbnail-camera-change",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    const thumbnail: { current: ReturnType<typeof useModalThumbnail> } = {
+      current: null,
+    };
+    const ThumbnailProbe = () => {
+      thumbnail.current = useModalThumbnail({
+        datasetId: "dataset-id",
+        mediaField: "filepath",
+        sampleId: "1",
+      });
+      return null;
+    };
+    const view = () => (
+      <>
+        <GridRenderer ctx={rendererCtx()} />
+        <ThumbnailProbe />
+      </>
+    );
+    const { container, rerender } = render(view());
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 100;
+    container.appendChild(canvas);
+    act(() =>
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(canvas, {
+        width: 100,
+        height: 100,
+      }),
+    );
+    fireEvent.pointerDown(getGridRendererRoot(container));
+    expect(thumbnail.current?.kind).toBe("canvas");
+
+    gridStreamHarness.selected = "/camera/rear";
+    rerender(view());
+    expect(thumbnail.current).toBeNull();
+    // The old canvas is still connected, but belongs to the previous key.
+    fireEvent.pointerDown(getGridRendererRoot(container));
+    expect(thumbnail.current).toBeNull();
+
+    act(() =>
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(canvas, {
+        width: 100,
+        height: 100,
+      }),
+    );
+    fireEvent.pointerDown(getGridRendererRoot(container));
+    expect(thumbnail.current?.kind).toBe("canvas");
+  });
+
   it("lays out a reference-backed tile from its own streams, not its shared asset", () => {
     sourceHarness.byteSource = {
       sourceId: "shared-episode-asset",

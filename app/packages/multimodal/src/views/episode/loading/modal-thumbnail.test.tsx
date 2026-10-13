@@ -131,14 +131,13 @@ describe("modal thumbnail ownership", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 
-  it("owns native canvas snapshots and prefers them to encoded posters", async () => {
+  it("owns a canvas snapshot until its encoded poster arrives", async () => {
     const {
       captureModalThumbnail,
       registerModalThumbnailPoster,
       useModalThumbnail,
     } = await import("./modal-thumbnail");
     const posters = posterCache();
-    posters.put("poster-a");
     registerModalThumbnailPoster(identity("a"), "poster-a", posters.cache);
     const source = document.createElement("canvas");
     source.width = 1024;
@@ -152,5 +151,37 @@ describe("modal thumbnail ownership", () => {
     expect(result.current.canvas.width).toBe(512);
     expect(result.current.canvas.height).toBe(256);
     expect(URL.createObjectURL).not.toHaveBeenCalled();
+    const snapshotCanvas = result.current.canvas;
+    act(() => posters.put("poster-a"));
+    expect(result.current?.kind).toBe("image");
+    expect(snapshotCanvas.width).toBe(0);
+    expect(snapshotCanvas.height).toBe(0);
+  });
+
+  it("discards a canvas snapshot when the sample's poster key changes", async () => {
+    const {
+      captureModalThumbnail,
+      registerModalThumbnailPoster,
+      useModalThumbnail,
+    } = await import("./modal-thumbnail");
+    const posters = posterCache();
+    registerModalThumbnailPoster(identity("a"), "old-camera", posters.cache);
+    const source = document.createElement("canvas");
+    source.width = 100;
+    source.height = 100;
+    captureModalThumbnail(identity("a"), source);
+    const { result } = renderHook(() => useModalThumbnail(identity("a")));
+    if (result.current?.kind !== "canvas") throw new Error("missing snapshot");
+    const snapshotCanvas = result.current.canvas;
+    act(() =>
+      registerModalThumbnailPoster(identity("a"), "new-camera", posters.cache),
+    );
+    expect(result.current).toBeNull();
+    expect(snapshotCanvas.width).toBe(0);
+    // Completion of the old grid encode must not restore the old camera.
+    act(() => posters.put("old-camera"));
+    expect(result.current).toBeNull();
+    act(() => posters.put("new-camera"));
+    expect(result.current?.kind).toBe("image");
   });
 });

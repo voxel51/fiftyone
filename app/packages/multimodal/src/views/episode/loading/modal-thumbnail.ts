@@ -58,7 +58,15 @@ function connectPosterCache(cache: ModalThumbnailPosterCache): void {
   if (posterCache === cache) return;
   disconnectPosterCache?.();
   posterCache = cache;
-  disconnectPosterCache = cache.subscribe(notify);
+  disconnectPosterCache = cache.subscribe(() => {
+    // A canvas only bridges the encode. Retire it once the current poster is
+    // available so later replacements or evictions cannot reveal old pixels.
+    for (const key of snapshots.keys()) {
+      const posterKey = posterKeys.get(key);
+      if (posterKey && cache.peek(posterKey)) releaseSnapshot(key);
+    }
+    notify();
+  });
 }
 
 /**
@@ -75,6 +83,7 @@ export function registerModalThumbnailPoster(
   connectPosterCache(cache);
   const key = keyFor(identity);
   const previous = posterKeys.get(key);
+  if (previous !== posterKey) releaseSnapshot(key);
   posterKeys.delete(key);
   posterKeys.set(key, posterKey);
   while (posterKeys.size > MAX_POSTER_KEYS) {
@@ -112,12 +121,7 @@ export function captureModalThumbnail(
     return;
   }
   const key = keyFor(identity);
-  const previous = snapshots.get(key);
-  if (previous) {
-    snapshots.delete(key);
-    snapshotBytes -= previous.bytes;
-    releaseCanvas(previous.thumbnail.canvas);
-  }
+  releaseSnapshot(key);
   const bytes = canvas.width * canvas.height * 4;
   snapshots.set(key, { bytes, thumbnail: { kind: "canvas", canvas } });
   snapshotBytes += bytes;
@@ -131,6 +135,14 @@ export function captureModalThumbnail(
     releaseCanvas(oldest.thumbnail.canvas);
   }
   notify();
+}
+
+function releaseSnapshot(key: string): void {
+  const snapshot = snapshots.get(key);
+  if (!snapshot) return;
+  snapshots.delete(key);
+  snapshotBytes -= snapshot.bytes;
+  releaseCanvas(snapshot.thumbnail.canvas);
 }
 
 function releaseCanvas(canvas: HTMLCanvasElement): void {
