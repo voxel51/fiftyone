@@ -219,6 +219,17 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(_read_counts("a"), [1])
         self.assertEqual(_read_counts("b"), [])
 
+    async def test_connecting_app_count_is_sent_again(self):
+        # the second send is the write that fails on a stream closed just
+        # before this App connected, so the server stops counting it
+        with mock.patch.object(fosl, "_COUNT_RESEND_DELAY", 0):
+            await _Connection("a").open()
+            await _Connection("b").open()
+            self.assertEqual(_read_counts("a"), [2])
+
+            await asyncio.sleep(0.01)
+            self.assertEqual(_read_counts("a"), [2])
+
     async def test_reconnect_dispatches_unchanged_count(self):
         await _Connection("a").open()
         stale = _Connection("b")
