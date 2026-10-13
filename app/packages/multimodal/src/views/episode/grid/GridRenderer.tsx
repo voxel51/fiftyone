@@ -1,6 +1,7 @@
 import { getEventBus } from "@fiftyone/events";
 import type { SampleRendererProps } from "@fiftyone/plugins";
 import { multimodalGridFit, type MultimodalGridFit } from "@fiftyone/state";
+import type { SampleMediaDescriptor } from "@fiftyone/utilities";
 import { Clickable, Icon, IconName, Size, Spinner } from "@voxel51/voodo";
 import {
   useCallback,
@@ -376,6 +377,21 @@ export function GridRenderer({
     [ctx.dataset.datasetId, ctx.media.field, sampleId],
   );
   const referenceBacked = ctx.media.mediaReference != null;
+  const referenceStreams = useMemo(() => {
+    // The picker sorts camera names, but the episode manifest follows its
+    // asset inventory. Keep that order so a poster lands in its eventual pane.
+    const remaining = new Set(stableStreams.streams);
+    const ordered: string[] = [];
+    const media = (
+      ctx.sample.sample as { _media?: SampleMediaDescriptor | null }
+    )._media;
+    for (const { featureName } of media?.assets ?? []) {
+      if (featureName && remaining.delete(featureName)) {
+        ordered.push(featureName);
+      }
+    }
+    return [...ordered, ...remaining];
+  }, [ctx.sample.sample, stableStreams]);
   // A reference-backed episode's asset may serve several episodes, so its
   // physical bootstrap cannot describe this episode's streams. Those tiles
   // publish their own reference-backed stream list below instead.
@@ -398,7 +414,7 @@ export function GridRenderer({
     } else if (preview.nativeVideo || referenceBacked) {
       publishLoadingLayout(
         thumbnailIdentity,
-        stableStreams.streams.map((sourceName) => ({
+        referenceStreams.map((sourceName) => ({
           id: sourceName,
           sourceName,
           label: sourceName.replace(/^\//, ""),
@@ -415,7 +431,7 @@ export function GridRenderer({
     preview.streamSourceName,
     preview.nativeVideo,
     referenceBacked,
-    stableStreams,
+    referenceStreams,
   ]);
   const handlePosterCanvasCommitted = useCallback(
     (

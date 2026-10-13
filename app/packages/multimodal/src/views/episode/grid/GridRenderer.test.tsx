@@ -1131,6 +1131,47 @@ describe("GridRenderer", () => {
     ).toEqual(["/cam/left"]);
   });
 
+  it("keeps reference camera panes in asset order instead of picker order", () => {
+    previewHarness.preview.streamSourceNames = [
+      "observation.images.front_side",
+      "observation.images.side",
+      "observation.images.wrist",
+    ];
+    previewHarness.preview.streamSourceName = "observation.images.front_side";
+    const cameraNames = [
+      "observation.images.side",
+      "observation.images.wrist",
+      "observation.images.front_side",
+    ];
+
+    render(
+      <GridRenderer
+        ctx={rendererCtx(
+          undefined,
+          { field: "filepath", mediaReference: { key: "episode-1" } },
+          {
+            id: "1",
+            _media: {
+              assets: cameraNames.map((featureName) => ({
+                id: featureName,
+                featureName,
+                role: "video-stream",
+                selector: { kind: "whole-file" },
+              })),
+              poster: cameraNames[2],
+            },
+          },
+        )}
+      />,
+    );
+
+    const publication = vi.mocked(publishLoadingLayout).mock.lastCall;
+    expect(publication?.[1].map((source) => source.sourceName)).toEqual(
+      cameraNames,
+    );
+    expect(publication?.[3]).toBe(cameraNames[2]);
+  });
+
   it("only preloads the modal on hover while the grid is active", () => {
     const ctx = rendererCtx();
     const { container, rerender } = render(<GridRenderer ctx={ctx} />);
@@ -1626,11 +1667,12 @@ describe("GridRenderer", () => {
 function rendererCtx(
   openModal?: () => void,
   media: Record<string, unknown> = { field: "filepath" },
+  sample: Record<string, unknown> = { id: "1" },
 ) {
   return {
     dataset: { datasetId: "dataset-id", name: "dataset" },
     media,
-    sample: { sample: { id: "1" } },
+    sample: { sample },
     ...(openModal ? { openModal } : {}),
   } as never;
 }
