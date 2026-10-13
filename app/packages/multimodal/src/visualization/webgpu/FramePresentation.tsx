@@ -2,9 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useState,
-  useLayoutEffect,
 } from "react";
 import type { ReactNode } from "react";
 
@@ -30,37 +30,38 @@ export function FramePresentationProvider({
   readonly children: ReactNode;
 }) {
   const scopeKey = JSON.stringify([sourceKey, presentationKey]);
-  const [renderedSourceKey, setRenderedSourceKey] = useState<string | null>(
-    null,
-  );
-  // This effect resets A -> B -> A even when B never rendered a frame.
-  useLayoutEffect(() => setRenderedSourceKey(null), [scopeKey]);
-  const onPresented = useCallback(
-    () => setRenderedSourceKey(scopeKey),
-    [scopeKey],
-  );
-  const presented = renderedSourceKey === scopeKey;
+  // Each scope change, including A -> B -> A, opens a new epoch. Callbacks
+  // bound to an earlier epoch cannot mark the current scope presented or
+  // unavailable, even when its source and sample match again.
+  const [scope, setScope] = useState({ epoch: 0, key: scopeKey });
+  if (scope.key !== scopeKey) {
+    setScope({ epoch: scope.epoch + 1, key: scopeKey });
+  }
+  const { epoch } = scope;
+  const [presentedEpoch, setPresentedEpoch] = useState<number | null>(null);
+  const onPresented = useCallback(() => setPresentedEpoch(epoch), [epoch]);
+  const presented = presentedEpoch === epoch;
   const [unavailable, setUnavailableState] = useState({
-    sourceKey: "",
+    epoch: -1,
     tileIds: EMPTY_TILE_IDS,
   });
   const setUnavailable = useCallback(
     (tileId: string, value: boolean) => {
       setUnavailableState((current) => {
-        if (!value && current.sourceKey !== scopeKey) return current;
+        if (!value && current.epoch !== epoch) return current;
         const currentIds =
-          current.sourceKey === scopeKey ? current.tileIds : EMPTY_TILE_IDS;
+          current.epoch === epoch ? current.tileIds : EMPTY_TILE_IDS;
         if (currentIds.has(tileId) === value) return current;
         const tileIds = new Set(currentIds);
         if (value) tileIds.add(tileId);
         else tileIds.delete(tileId);
-        return { sourceKey: scopeKey, tileIds };
+        return { epoch, tileIds };
       });
     },
-    [scopeKey],
+    [epoch],
   );
   const unavailableTileIds =
-    unavailable.sourceKey === scopeKey ? unavailable.tileIds : EMPTY_TILE_IDS;
+    unavailable.epoch === epoch ? unavailable.tileIds : EMPTY_TILE_IDS;
   const value = useMemo(
     () => ({
       onPresented,

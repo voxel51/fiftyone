@@ -41,6 +41,9 @@ describe("destination frame presentation", () => {
     episode = "a";
     rerender();
     expect(result.current.presented).toBe(false);
+    // A late frame from the first visit to A cannot present the second visit.
+    act(() => outgoing?.());
+    expect(result.current.presented).toBe(false);
     act(() => result.current.rendered?.());
     expect(result.current.presented).toBe(true);
   });
