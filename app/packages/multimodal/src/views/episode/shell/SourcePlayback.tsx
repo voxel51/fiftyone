@@ -1,8 +1,6 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
-import {
-  FramePresentationProvider,
-  useHasPresentedFrame,
-} from "../../../visualization/webgpu/FramePresentation";
+import { FramePresentationProvider } from "../../../visualization/webgpu/FramePresentation";
+import { DestinationVisitProvider } from "../loading/destination-visit";
 import { EpisodeModalLoading } from "../loading/EpisodeModalLoading";
 import { ModalLoadingOverlay } from "../loading/ModalLoadingOverlay";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
@@ -189,30 +187,34 @@ export interface SourcePlaybackProps {
  * feed it a byte source; it owns inventory loading, episode providers, tiling,
  * layout persistence, and the playback chrome around the discovered streams.
  */
-export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
-  <VisibleStreamsProvider>
-    <PortableLayoutHost
-      scopeKey={layoutScopeFor(props.layoutScopeKey, props.source)}
-      mediaField={props.cameraPreferenceField}
-    >
-      <FramePresentationProvider
-        sourceKey={presentationSourceKey(
-          props.source,
-          props.destinationSampleId ??
-            props.episodeContext?.sampleId ??
-            props.session?.manifest?.episodeId,
-        )}
-        presentationKey={
-          props.destinationSampleId ??
-          props.episodeContext?.sampleId ??
-          props.session?.manifest?.episodeId
-        }
+export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => {
+  const destinationId =
+    props.destinationSampleId ??
+    props.episodeContext?.sampleId ??
+    props.session?.manifest?.episodeId;
+  return (
+    <VisibleStreamsProvider>
+      <PortableLayoutHost
+        scopeKey={layoutScopeFor(props.layoutScopeKey, props.source)}
+        mediaField={props.cameraPreferenceField}
       >
-        <SourcePlaybackContent {...props} />
-      </FramePresentationProvider>
-    </PortableLayoutHost>
-  </VisibleStreamsProvider>
-);
+        <FramePresentationProvider
+          sourceKey={presentationSourceKey(props.source, destinationId)}
+          presentationKey={destinationId}
+        >
+          <DestinationVisitProvider
+            visitKey={JSON.stringify([
+              destinationId ?? props.source?.sourceId ?? null,
+              props.cameraPreferenceField ?? null,
+            ])}
+          >
+            <SourcePlaybackContent {...props} />
+          </DestinationVisitProvider>
+        </FramePresentationProvider>
+      </PortableLayoutHost>
+    </VisibleStreamsProvider>
+  );
+};
 
 // Pixel resources belong to an episode, while physical byte caches remain shared.
 function presentationSourceKey(
@@ -346,7 +348,6 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     [poster, posterStreamId, sourceKey],
   );
   const [presentedSourceKey, setPresentedSourceKey] = useState("");
-  const framePresented = useHasPresentedFrame();
   const handlePlayheadDataReady = useCallback(
     () => setPresentedSourceKey(sourceKey),
     [sourceKey],
@@ -826,7 +827,6 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                             episodeContext.sampleId,
                                         }}
                                         pending={transitioning}
-                                        presented={framePresented}
                                       />
                                     ) : null
                                   }
