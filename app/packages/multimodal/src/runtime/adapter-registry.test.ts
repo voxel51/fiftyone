@@ -66,11 +66,21 @@ describe("format adapter registry", () => {
     registerFormatAdapter({ detect: () => true, id: "fixture", load });
     const controller = new AbortController();
     const cancelled = loadFormatAdapter({}, { signal: controller.signal });
+    const onCancelled = vi.fn();
+    void cancelled.catch(onCancelled);
     const preload = loadFormatAdapter({});
     const open = loadFormatAdapter({});
     await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
     controller.abort();
-    finishExtensions();
+    try {
+      await vi.waitFor(() =>
+        expect(onCancelled).toHaveBeenCalledWith(
+          expect.objectContaining({ name: "AbortError" }),
+        ),
+      );
+    } finally {
+      finishExtensions();
+    }
 
     await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
     await expect(preload).resolves.toBe(adapter);

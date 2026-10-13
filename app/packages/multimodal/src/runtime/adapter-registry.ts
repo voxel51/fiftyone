@@ -4,7 +4,7 @@ import type {
   FormatAdapter,
   SampleDescriptor,
 } from "../ports";
-import { throwIfAborted } from "../utils/cancellation";
+import { createAbortError, throwIfAborted } from "../utils/cancellation";
 
 const descriptors = new Map<string, AdapterDescriptor>();
 const adapterLoads = new Map<AdapterDescriptor, Promise<FormatAdapter>>();
@@ -67,8 +67,29 @@ export async function loadFormatAdapter(
       });
     adapterLoads.set(descriptor, loading);
   }
-  const adapter = await loading;
-  throwIfAborted(options?.signal);
+  const signal = options?.signal;
+  if (!signal) return loading;
+  const sharedLoad = loading;
+  const adapter = await new Promise<FormatAdapter>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+    sharedLoad.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  throwIfAborted(signal);
   return adapter;
 }
 
