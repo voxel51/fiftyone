@@ -46,6 +46,9 @@ describe("destination frame presentation", () => {
     expect(result.current.presented).toBe(false);
     act(() => result.current.rendered?.());
     expect(result.current.presented).toBe(true);
+    // Nor can that old callback undo a frame from the current visit.
+    act(() => outgoing?.());
+    expect(result.current.presented).toBe(true);
   });
   it("reveals terminal panes without reporting a media frame and rejects outgoing errors", () => {
     let destination = "a";

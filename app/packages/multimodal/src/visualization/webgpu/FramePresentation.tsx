@@ -33,35 +33,46 @@ export function FramePresentationProvider({
   // Each scope change, including A -> B -> A, opens a new epoch. Callbacks
   // bound to an earlier epoch cannot mark the current scope presented or
   // unavailable, even when its source and sample match again.
-  const [scope, setScope] = useState({ epoch: 0, key: scopeKey });
-  if (scope.key !== scopeKey) {
-    setScope({ epoch: scope.epoch + 1, key: scopeKey });
-  }
-  const { epoch } = scope;
-  const [presentedEpoch, setPresentedEpoch] = useState<number | null>(null);
-  const onPresented = useCallback(() => setPresentedEpoch(epoch), [epoch]);
-  const presented = presentedEpoch === epoch;
-  const [unavailable, setUnavailableState] = useState({
-    epoch: -1,
-    tileIds: EMPTY_TILE_IDS,
+  const [scope, setScope] = useState({
+    epoch: 0,
+    key: scopeKey,
+    presented: false,
+    unavailableTileIds: EMPTY_TILE_IDS,
   });
+  if (scope.key !== scopeKey) {
+    setScope({
+      epoch: scope.epoch + 1,
+      key: scopeKey,
+      presented: false,
+      unavailableTileIds: EMPTY_TILE_IDS,
+    });
+  }
+  const { epoch, presented, unavailableTileIds } = scope;
+  const onPresented = useCallback(
+    () =>
+      setScope((current) =>
+        current.epoch !== epoch || current.presented
+          ? current
+          : { ...current, presented: true },
+      ),
+    [epoch],
+  );
   const setUnavailable = useCallback(
     (tileId: string, value: boolean) => {
-      setUnavailableState((current) => {
-        if (!value && current.epoch !== epoch) return current;
-        const currentIds =
-          current.epoch === epoch ? current.tileIds : EMPTY_TILE_IDS;
-        if (currentIds.has(tileId) === value) return current;
-        const tileIds = new Set(currentIds);
+      setScope((current) => {
+        if (
+          current.epoch !== epoch ||
+          current.unavailableTileIds.has(tileId) === value
+        )
+          return current;
+        const tileIds = new Set(current.unavailableTileIds);
         if (value) tileIds.add(tileId);
         else tileIds.delete(tileId);
-        return { epoch, tileIds };
+        return { ...current, unavailableTileIds: tileIds };
       });
     },
     [epoch],
   );
-  const unavailableTileIds =
-    unavailable.epoch === epoch ? unavailable.tileIds : EMPTY_TILE_IDS;
   const value = useMemo(
     () => ({
       onPresented,
