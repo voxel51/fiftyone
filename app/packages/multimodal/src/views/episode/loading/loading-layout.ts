@@ -1,4 +1,5 @@
 import type { SampleRendererLoadingProps } from "@fiftyone/plugins";
+import { collectTileIds } from "@fiftyone/tiling";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { MosaicNode } from "react-mosaic-component";
 import type { ByteSourceReadProfile, SceneSource } from "../../../ir";
@@ -70,7 +71,12 @@ function readLoadingLayout(
   hint?: LoadingLayout,
 ): LoadingLayout {
   const saved = readModalLayout(identity.datasetId);
-  const layout = saved?.expandedTileId ?? saved?.layout ?? hint?.layout ?? null;
+  const expandedTileId =
+    saved?.expandedTileId &&
+    collectTileIds(saved.layout ?? null).includes(saved.expandedTileId)
+      ? saved.expandedTileId
+      : undefined;
+  const layout = expandedTileId ?? saved?.layout ?? hint?.layout ?? null;
   return {
     layout: saved?.layout === null ? null : layout,
     titles: { ...hint?.titles, ...saved?.tileTitles },

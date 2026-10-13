@@ -83,4 +83,24 @@ describe("loading layout geometry", () => {
     );
     expect(other.result.current.layout).toBeNull();
   });
+
+  it.each(["image-1", undefined, null] as const)(
+    "ignores a stale expanded tile with saved layout %s",
+    (layout) => {
+      const destination = {
+        ...identity,
+        datasetId: `stale-expanded-${String(layout)}`,
+      };
+      publishLoadingLayout(destination, [
+        { id: "front", sourceName: "/front", label: "Front", type: "image" },
+      ]);
+      writeModalLayout(
+        { layout, expandedTileId: "removed-tile" },
+        destination.datasetId,
+      );
+
+      const { result } = renderHook(() => useLoadingLayout(destination));
+      expect(result.current.layout).toBe(layout === null ? null : "image-1");
+    },
+  );
 });
