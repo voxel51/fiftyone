@@ -500,9 +500,10 @@ export function GridRenderer({
     if (effectivePoster)
       publishModalThumbnail(thumbnailIdentity, effectivePoster);
     if (effectivePoster || nativePosterPainted || preview.status === "ready") {
-      scheduleEpisodeModalPreload();
+      scheduleEpisodeModalPreload(sampleDescriptorFromContext(ctx));
     }
   }, [
+    ctx,
     effectivePoster,
     interactive,
     nativePosterPainted,
@@ -510,7 +511,7 @@ export function GridRenderer({
     thumbnailIdentity,
   ]);
   const prepareModal = useCallback(() => {
-    preloadEpisodeModal();
+    preloadEpisodeModal(sampleDescriptorFromContext(ctx));
     const entry =
       effectivePoster ??
       (cacheKey ? getGridPosterCache().peek(cacheKey) : null);
@@ -527,7 +528,7 @@ export function GridRenderer({
     ) {
       captureModalThumbnail(thumbnailIdentity, committed.canvas);
     }
-  }, [cacheKey, effectivePoster, thumbnailIdentity]);
+  }, [cacheKey, ctx, effectivePoster, thumbnailIdentity]);
   const posterImage =
     preview.frame?.kind === "image" ? preview.frame.image : null;
   const codecRejection =
@@ -569,7 +570,7 @@ export function GridRenderer({
       onContextMenu={gridActivationHandler}
       onPointerDown={prepareModal}
       onPointerEnter={() => {
-        preloadEpisodeModal();
+        preloadEpisodeModal(sampleDescriptorFromContext(ctx));
         playbackIntent.enter();
       }}
       onPointerLeave={playbackIntent.leave}
