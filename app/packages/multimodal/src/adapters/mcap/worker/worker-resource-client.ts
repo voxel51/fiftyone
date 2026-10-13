@@ -1,4 +1,7 @@
-import { getFetchParameters, mergeHeaders } from "@fiftyone/utilities";
+import {
+  getFetchParameters,
+  mergeHeaders,
+} from "@fiftyone/utilities/src/fetch";
 import { createMultimodalQueryClient } from "../../../query";
 import type { ByteFillSlotClass, ByteReadDebugLog } from "../../../query/bytes";
 import type { DecodedOutputCache } from "../../../query/decoding";
