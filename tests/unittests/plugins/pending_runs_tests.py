@@ -35,6 +35,7 @@ class ListPendingRunsTests(unittest.TestCase):
             "fiftyone.operators.registry.OperatorRegistry.operator_exists",
             return_value=True,
         ).start()
+        self.addCleanup(patch.stopall)
         self.svc = DelegatedOperationService()
         self.dataset_id = ObjectId()
 
@@ -42,7 +43,6 @@ class ListPendingRunsTests(unittest.TestCase):
         self.svc._repo._collection.delete_many(
             {"operator": {"$regex": PREFIX}}
         )
-        patch.stopall()
 
     def _queue(self, operator, dataset_id=None, state=None, **kwargs):
         dataset_id = dataset_id or self.dataset_id

@@ -360,8 +360,15 @@ export const useSimilarityPanel = (props: SimilaritySearchViewProps) => {
   const hasUnready = state.unreadyBrainKeys.length > 0;
   useEffect(() => {
     if (!hasUnready) return undefined;
+    let inFlight = false;
     const id = window.setInterval(() => {
-      if (!document.hidden) triggers.getBrainKeys();
+      if (document.hidden || inFlight) return;
+      inFlight = true;
+      triggers.getBrainKeys(undefined, {
+        onSettled: () => {
+          inFlight = false;
+        },
+      });
     }, UNREADY_POLL_MS);
     return () => window.clearInterval(id);
   }, [hasUnready, triggers]);

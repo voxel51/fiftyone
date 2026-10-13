@@ -12,6 +12,17 @@ const POLL_MS = 5000;
 const FAILED = "failed";
 const NO_STAGE_OPERATORS: string[] = [];
 
+type PendingRunsResult = {
+  datasetName: string | null;
+  runs: PendingRun[];
+  loaded: boolean;
+};
+const NOT_LOADED: PendingRunsResult = {
+  datasetName: null,
+  runs: [],
+  loaded: false,
+};
+
 export type PendingRun = {
   id: string;
   operator: string;
@@ -54,36 +65,54 @@ export default function usePendingRuns(
   const available = loadResult === OperatorLoadResult.SUCCESS;
   const executeRef = useRef(execute);
   executeRef.current = execute;
-  const [runs, setRuns] = useState<PendingRun[]>([]);
-  const [loaded, setLoaded] = useState(false);
   const datasetName = fos.useCurrentDatasetName();
+  const [result, setResult] = useState<PendingRunsResult>(NOT_LOADED);
+  const latestRequest = useRef(0);
+  const inFlight = useRef(false);
 
-  const refresh = useCallback(
-    () =>
-      executeRef.current(
-        { operators, stage_operators: stageOperators },
-        {
-          callback: (result) => {
-            if (!result?.error) setRuns((result?.result as PendingRun[]) ?? []);
-            setLoaded(true);
-          },
+  // A response is dropped once a newer request started or the dataset changed
+  const refresh = useCallback(() => {
+    const request = ++latestRequest.current;
+    inFlight.current = true;
+    return executeRef.current(
+      { operators, stage_operators: stageOperators },
+      {
+        callback: (response) => {
+          if (request !== latestRequest.current) return;
+          inFlight.current = false;
+          setResult((previous) => ({
+            datasetName,
+            loaded: true,
+            runs: response?.error
+              ? previous.datasetName === datasetName
+                ? previous.runs
+                : []
+              : ((response?.result as PendingRun[]) ?? []),
+          }));
         },
-      ),
-    [operators, stageOperators],
-  );
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operators, stageOperators, datasetName]);
 
   // Executing before the operator registry loads throws on the next render
   // and takes the panel down when it is restored at page load
   useEffect(() => {
     if (!operatorsInitialized) return;
     if (available) refresh();
-    else setLoaded(true);
-  }, [operatorsInitialized, available, refresh, refreshKey]);
+    else setResult({ datasetName, runs: [], loaded: true });
+  }, [operatorsInitialized, available, refresh, refreshKey, datasetName]);
+
+  // Results of another dataset are not this dataset's runs
+  const { runs, loaded } =
+    result.datasetName === datasetName ? result : NOT_LOADED;
 
   const active = runs.some((run) => run.run_state !== FAILED);
   useEffect(() => {
     if (!active) return undefined;
-    const timer = setInterval(refresh, POLL_MS);
+    const timer = setInterval(() => {
+      if (!inFlight.current) refresh();
+    }, POLL_MS);
     return () => clearInterval(timer);
   }, [active, refresh]);
 
