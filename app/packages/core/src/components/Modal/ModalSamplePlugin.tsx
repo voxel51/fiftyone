@@ -37,7 +37,7 @@ export const ModalSample = React.memo(() => {
   return (
     <ContentColumn data-cy="sample-canvas">
       <ErrorBoundary onReset={() => {}}>
-        <Suspense fallback={<ModalSamplePending />}>
+        <Suspense fallback={<ModalSamplePending fallback={null} />}>
           {isGroup ? (
             <Group />
           ) : (

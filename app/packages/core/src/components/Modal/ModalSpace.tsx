@@ -1,3 +1,4 @@
+import { Loading } from "@fiftyone/components";
 import { SpaceNodeJSON, useSpaces } from "@fiftyone/spaces";
 import { Space } from "@fiftyone/spaces/src/components";
 import { FIFTYONE_MODAL_SPACES_ID } from "@fiftyone/state/src/constants";
@@ -37,5 +38,5 @@ export const ModalSpace = () => {
     return <ModalSpaceImpl defaultSpaces={defaultModalSpaces} />;
   }
 
-  return <ModalSamplePending />;
+  return <ModalSamplePending fallback={<Loading>Pixelating...</Loading>} />;
 };

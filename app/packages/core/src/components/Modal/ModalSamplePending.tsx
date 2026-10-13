@@ -1,10 +1,16 @@
-import { Loading } from "@fiftyone/components";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
-/** Shows renderer-owned loading UI without reading the pending sample query. */
-export function ModalSamplePending() {
+/**
+ * Shows renderer-owned loading UI without reading the pending sample query.
+ * Datasets whose renderer provides none keep the caller's `fallback`.
+ */
+export function ModalSamplePending({
+  fallback,
+}: {
+  readonly fallback: ReactNode;
+}) {
   const dataset = fos.useCurrentDataset();
   const sampleId = fos.useNullableModalSampleId();
   const mediaField = fos.useSelectedMediaFieldModal();
@@ -31,6 +37,6 @@ export function ModalSamplePending() {
       sampleId={sampleId}
     />
   ) : (
-    <Loading>Pixelating...</Loading>
+    <>{fallback}</>
   );
 }
