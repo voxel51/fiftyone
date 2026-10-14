@@ -49,6 +49,11 @@ import {
 } from "../recoil";
 
 import { useSelectionRangeConstraint } from "../selection/range-constraint";
+import { constrainsScope, withSelectionScope } from "../recoil/aggregations";
+import {
+  selectionScopeBoundary,
+  selectionScopeRevision,
+} from "../recoil/selectionScope";
 import { resetExtendedSelectionTransaction } from "../hooks/useResetExtendedSelection";
 
 export {
@@ -322,6 +327,22 @@ export function useGridViewScope() {
     extendedStages: useRecoilValue(extendedStages),
     sort: useRecoilValue(gridSortBy),
     refresh: useRecoilValue(refresher),
+  };
+}
+
+/** Sidebar filters and the browsing boundary shared by grid-linked panels. */
+export function useScopedGridFilters() {
+  const currentFilters = useRecoilValue(filters);
+  const boundary = useRecoilValue(selectionScopeBoundary);
+  const revision = useRecoilValue(selectionScopeRevision);
+  const scopedFilters = useMemo(
+    () => withSelectionScope(currentFilters, boundary),
+    [currentFilters, boundary],
+  );
+  return {
+    filters: scopedFilters,
+    boundary,
+    revision: constrainsScope(boundary) ? revision : 0,
   };
 }
 

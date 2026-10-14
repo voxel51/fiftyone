@@ -6,7 +6,6 @@ import {
   useGridSelection,
   useLoadGridSelection,
   useSyncLegacySelection,
-  useSyncSelectionScope,
 } from "@fiftyone/state/src/selection";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -48,7 +47,6 @@ const MAX_ROWS = 200;
 function Grid() {
   useLoadGridSelection();
   useSyncLegacySelection();
-  useSyncSelectionScope();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);

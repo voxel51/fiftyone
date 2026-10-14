@@ -197,7 +197,7 @@ export function useRunPlotData(
   run: VisualizationRun,
 ): RunPlotData {
   const view = useRecoilValue(fos.view) as unknown[];
-  const filters = useRecoilValue(fos.filters);
+  const { filters, revision: scopeRevision } = fos.useScopedGridFilters();
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage,
@@ -471,6 +471,7 @@ export function useRunPlotData(
     resolvedCount,
     localMask,
     source.serverMasks,
+    scopeRevision,
   );
   // color covers the resolved prefix; only apply once it covers every
   // rendered point (the renderer no-ops on a length mismatch anyway)

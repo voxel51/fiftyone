@@ -25,7 +25,7 @@ export const sampleLocationMapAtom = atom<SampleLocationMap | null>({
 });
 
 const fetchGeoLocations = async (params: {
-  filters: fos.State.Filters;
+  filters: object | null;
   view: fos.State.Stage[];
   extended: typeof fos.extendedStages;
   dataset: string;
@@ -46,12 +46,14 @@ const useFetchGeoLocations = ({
   filters,
   extended,
   view,
+  revision,
 }: {
   path: string;
+  revision: number;
   dataset: fos.State.Dataset;
   view: fos.State.Stage[];
   extended: typeof fos.extendedStages;
-  filters: fos.State.Filters;
+  filters: object | null;
 }): {
   loading: boolean;
 } => {
@@ -65,47 +67,38 @@ const useFetchGeoLocations = ({
       JSON.stringify(view),
       JSON.stringify(extended),
       path,
+      revision,
     ].join("-");
-  }, [dataset, filters, view, path, extended]);
+  }, [dataset, filters, view, path, extended, revision]);
 
+  // This effect reloads locations when the grid scope changes. An older
+  // request may populate the cache, but cannot replace the current map.
   React.useEffect(() => {
-    setLoading(true);
-
-    // Check if response is already in cache
-    if (geoLocationsCache.has(key)) {
-      const cachedResponse = geoLocationsCache.get(key);
-
-      if (cachedResponse) {
-        setSampleLocationMap(cachedResponse);
-        setLoading(false);
-        return;
-      }
-
-      return;
+    const cached = geoLocationsCache.get(key);
+    if (cached) {
+      setSampleLocationMap(cached);
+      setLoading(false);
+      return undefined;
     }
-
-    // preemptively set key to null to avoid race condition
-    geoLocationsCache.set(key, null);
-
-    // Otherwise fetch from server
+    let active = true;
+    setLoading(true);
     fetchGeoLocations({
       filters,
       view,
       extended,
       dataset: dataset.name,
       path,
-    })
-      .then((res) => {
-        geoLocationsCache.set(key, res);
+    }).then((res) => {
+      geoLocationsCache.set(key, res);
+      if (active) {
         setSampleLocationMap(res);
         setLoading(false);
-      })
-      .catch((e) => {
-        console.error(e);
-        geoLocationsCache.delete(key);
-        setLoading(false);
-      });
-  }, [key, dataset, filters, view, path, extended]);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [key, dataset, filters, view, path, extended, revision]);
 
   return {
     loading,
