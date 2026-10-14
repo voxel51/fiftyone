@@ -215,7 +215,6 @@ describe("field visibility during a hard refresh", () => {
           name: "dataset",
           savedViewSlug: "kept",
           extendedView: [
-            ...STATE.view,
             ...(stage ? [stage] : []),
             {
               _cls: STAGE._cls,

@@ -109,14 +109,19 @@ export const createRouter = <T extends OperationType>(
         throw e;
       }
 
+      const loadingResource = nextCurrentEntryResource;
       requestAnimationFrame(() => {
+        if (nextCurrentEntryResource !== loadingResource) return;
         for (const [_, [__, onPending]] of subscribers) onPending?.();
       });
 
-      const loadingResource = nextCurrentEntryResource;
       loadingResource.load().then((entry) => {
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
+            // Another transition can start after the load resolves but before
+            // this frame runs. Never publish its superseded entry while the
+            // next resource is still loading.
+            if (nextCurrentEntryResource !== loadingResource) return;
             let current: Entry<T> | undefined = undefined;
             try {
               current = currentEntryResource.read();
