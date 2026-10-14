@@ -186,7 +186,12 @@ async def aggregate_resolver(
 
     # Temporal tags are not sample fields, so there is nothing to aggregate
     # over for them; they are counted separately on the same view
-    paths = [path for path in form.paths if path != fosv.TEMPORAL_TAGS]
+    paths = [
+        path
+        for path in form.paths
+        if path != fosv.TEMPORAL_TAGS
+        and not path.startswith(fosv.TEMPORAL_TAGS + ".")
+    ]
 
     results = []
     if paths:

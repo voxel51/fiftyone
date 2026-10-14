@@ -199,7 +199,7 @@ def sample_position(dataset, request):
         return {"index": None}
     collection = view._dataset._sample_collection
     max_time = request.get("maxQueryTime")
-    max_time_ms = int(max_time) * 1000 if max_time else None
+    max_time_ms = max(1, int(float(max_time) * 1000)) if max_time else None
     pipeline = view._pipeline()
     sort_index = _final_sort(pipeline)
     if sort_index is not None:
@@ -2174,6 +2174,20 @@ def _tag_members(view, provider, streams_cache=None):
     return fosel.normalize_members(result)
 
 
+def _tag_anchors(dataset, tag, cache):
+    if tag.anchor:
+        return {tag.anchor}
+    if dataset.media_type == "video":
+        return set(_sample_streams(None, dataset, cache))
+    sample_id = str(tag.sample_id)
+    key = ("tag-sample", sample_id)
+    if key not in cache:
+        cache[key] = dataset.select_fields(["media_reference", "metadata"])[
+            sample_id
+        ]
+    return set(_sample_streams(cache[key], dataset, cache))
+
+
 def _sample_streams(sample, dataset, cache=None):
     if dataset.media_type == "video" or (
         sample is not None and sample.media_type == "video"
@@ -2329,15 +2343,7 @@ def tag_selection(
             )
             if streams is None:
                 continue
-            anchors = (
-                {tag.anchor}
-                if tag.anchor
-                else set(
-                    _sample_streams(
-                        dataset[str(tag.sample_id)], dataset, streams_cache
-                    )
-                )
-            )
+            anchors = _tag_anchors(dataset, tag, streams_cache)
             if anchors <= streams:
                 existing.append(tag)
 
@@ -2429,15 +2435,7 @@ def _applied_tags(dataset, view, full_view, full, targets, target):
             )
             if streams is None:
                 continue
-            anchors = (
-                {tag.anchor}
-                if tag.anchor
-                else set(
-                    _sample_streams(
-                        dataset[str(tag.sample_id)], dataset, streams_cache
-                    )
-                )
-            )
+            anchors = _tag_anchors(dataset, tag, streams_cache)
             if anchors <= streams:
                 key = (str(tag.sample_id), tag.index_type, tag.start, tag.end)
                 covered.setdefault(tag.tag, set()).update(

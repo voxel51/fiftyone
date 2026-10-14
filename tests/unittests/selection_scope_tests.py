@@ -11,6 +11,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime
 
 from bson import ObjectId
@@ -720,6 +721,19 @@ class SamplePositionTests(unittest.TestCase):
         return sample_position(
             self.dataset, {"sampleId": sample_id, **request}
         )["index"]
+
+    def test_fractional_query_deadline_keeps_aggregation_bounded(self):
+        with patch.object(
+            foss.foo, "aggregate", wraps=foss.foo.aggregate
+        ) as aggregate:
+            self.assertEqual(self._position(self.ids[4], maxQueryTime=0.5), 4)
+        deadlines = [
+            call.kwargs["maxTimeMS"]
+            for call in aggregate.call_args_list
+            if "maxTimeMS" in call.kwargs
+        ]
+        self.assertTrue(deadlines)
+        self.assertEqual(set(deadlines), {500})
 
     def test_sorted_positions_include_values_of_other_bson_types(self):
         # Query comparisons bracket BSON types; aggregation comparisons must

@@ -55,7 +55,7 @@ class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
             "hidden_labels": [],
             "index": 0,
             "mixed": False,
-            "paths": ["_temporal_tags", "filepath"],
+            "paths": ["_temporal_tags", "_temporal_tags.label", "filepath"],
             "sample_ids": [],
             "slice": None,
             "slices": None,
@@ -69,6 +69,7 @@ class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
             {
                 "aggregations": [
                     {"path": "_temporal_tags", "count": 0, "exists": 0},
+                    {"path": "_temporal_tags.label", "count": 0, "exists": 0},
                     {"path": "filepath", "count": 1, "exists": 1},
                 ]
             },
