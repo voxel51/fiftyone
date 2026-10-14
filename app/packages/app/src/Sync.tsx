@@ -44,6 +44,7 @@ import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
+import { changesSampleIdentity } from "./useSetters/selectionIdentity";
 import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
@@ -143,8 +144,6 @@ const dispatchSideEffect = ({
   }
 
   session.selectedLabels = [];
-  session.selectedSamples = new Map();
-  session.sampleSelectionStyle = fos.DEFAULT_SELECTION_STYLE;
 
   const currentDataset = (
     currentEntry.preloadedQuery.variables as Partial<DatasetPageQuery$variables>
@@ -152,6 +151,26 @@ const dispatchSideEffect = ({
   const nextDataset = (
     nextEntry.preloadedQuery.variables as Partial<DatasetPageQuery$variables>
   ).name;
+
+  // A directly loaded saved query may have no stages in history yet. Let
+  // the tray reconcile its resolved domain rather than treat it as samples.
+  const currentViewKnown =
+    !currentEntry.state.savedViewSlug ||
+    Boolean(currentEntry.state.view?.length);
+  const nextViewKnown =
+    !nextEntry.state.savedViewSlug || Boolean(nextEntry.state.view?.length);
+  if (
+    currentDataset !== nextDataset ||
+    (currentViewKnown &&
+      nextViewKnown &&
+      changesSampleIdentity(
+        currentEntry.state.view ?? [],
+        nextEntry.state.view ?? [],
+      ))
+  ) {
+    session.selectedSamples = new Map();
+    session.sampleSelectionStyle = fos.DEFAULT_SELECTION_STYLE;
+  }
 
   if (!nextDataset) {
     session.sessionSpaces = fos.GRID_SPACES_DEFAULT;
@@ -173,10 +192,9 @@ const dispatchSideEffect = ({
     session.sessionGroupSlice = nextEntry.state.groupSlice || undefined;
   }
 
-  let update = !fos.viewsAreEqual(
-    currentEntry.state.view,
-    nextEntry.state.view,
-  );
+  let update =
+    currentEntry.state.savedViewSlug !== nextEntry.state.savedViewSlug ||
+    !fos.viewsAreEqual(currentEntry.state.view, nextEntry.state.view);
   if (currentDataset !== nextDataset) {
     update = true;
     session.colorScheme = fos.ensureColorScheme(

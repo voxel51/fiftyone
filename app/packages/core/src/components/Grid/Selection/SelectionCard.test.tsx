@@ -517,7 +517,7 @@ describe("SelectionCard", () => {
 
   it("distinguishes out-of-results and unavailable episodes while keeping them actionable", () => {
     const view = render(<Card group={captured} candidate={null} />);
-    expect(screen.getByText("Not in results")).toBeTruthy();
+    expect(screen.getByText("Not in view")).toBeTruthy();
     expect(
       screen
         .getByRole("button", { name: "Open drive.mp4" })
@@ -526,7 +526,7 @@ describe("SelectionCard", () => {
     view.unmount();
     render(<Card group={{ ...full, unavailable: true }} candidate={null} />);
     expect(screen.getByText("Unavailable")).toBeTruthy();
-    expect(screen.queryByText("Not in results")).toBeNull();
+    expect(screen.queryByText("Not in view")).toBeNull();
     expect(
       screen
         .getByRole("button", { name: "drive.mp4 is unavailable" })
@@ -540,7 +540,7 @@ describe("SelectionCard", () => {
 
   it("does not flag an episode as outside the results while its match is unknown", () => {
     render(<Card group={captured} />);
-    expect(screen.queryByText("Not in results")).toBeNull();
+    expect(screen.queryByText("Not in view")).toBeNull();
   });
 
   it("sizes minimum-height cards from the media aspect ratio", () => {
@@ -610,7 +610,7 @@ describe("SelectionCard", () => {
       expect(locate).toHaveBeenCalledWith("episode", expect.any(AbortSignal)),
     );
     await waitFor(() => expect(button.hasAttribute("disabled")).toBe(true));
-    expect(button.title).toBe("Not in current results");
+    expect(button.title).toBe("Not in view");
     view.rerender(
       <Card group={full} candidate={{ ...full }} locate={locate} />,
     );
@@ -638,7 +638,7 @@ describe("SelectionCard", () => {
       name: "Show drive.mp4 in grid",
     });
     expect(retry.hasAttribute("disabled")).toBe(false);
-    expect(retry.title).not.toBe("Not in current results");
+    expect(retry.title).not.toBe("Not in view");
   });
 
   it.each([new Error("network"), new DOMException("timeout", "TimeoutError")])(
@@ -673,7 +673,7 @@ describe("SelectionCard", () => {
       name: "Show drive.mp4 in grid",
     });
     expect(button.hasAttribute("disabled")).toBe(true);
-    expect(button.title).toBe("Not in current results");
+    expect(button.title).toBe("Not in view");
     outside.unmount();
     render(<Card group={full} candidate={full} />);
     expect(

@@ -3,17 +3,12 @@
  */
 
 import { setView, type setViewMutation } from "@fiftyone/relay";
-import {
-  DEFAULT_SELECTION_STYLE,
-  datasetName,
-  view,
-  stateSubscription,
-} from "@fiftyone/state";
+import { datasetName, view, stateSubscription } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
-import { convertsSampleIdentity } from "./selectionIdentity";
+import { changesSampleIdentity } from "./selectionIdentity";
 import type { RegisteredSetter } from "./registerSetter";
 
 const onSetViewName: RegisteredSetter =
@@ -37,7 +32,7 @@ const onSetViewName: RegisteredSetter =
         datasetName: dataset,
         form: {},
       },
-      onCompleted: (_, errors) => {
+      onCompleted: ({ setView: nextView }, errors) => {
         // A saved query that fails to build keeps the current view and says
         // why, rather than opening the full dataset in its place
         if (errors?.length) {
@@ -45,13 +40,11 @@ const onSetViewName: RegisteredSetter =
           return;
         }
 
-        // Saved stages are not known until the response arrives. Their IDs
-        // may belong to a converted view, so only a plain-view reset can
-        // retain them.
-        if (slug || convertsSampleIdentity(previousView))
+        // The response includes the saved stages, so compatible queries
+        // retain their captures just like edits in the view bar.
+        if (changesSampleIdentity(previousView, nextView ?? []))
           sessionRef.current.selectedSamples = new Map();
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.sampleSelectionStyle = DEFAULT_SELECTION_STYLE;
         sessionRef.current.fieldVisibilityStage = undefined;
         // The silent schema-policy exclusion (`$extendedView`) must survive
         // a saved-query change; only Field Visibility resets. It is read
@@ -65,7 +58,7 @@ const onSetViewName: RegisteredSetter =
             nextView: slug || undefined,
           }),
           {
-            view: [],
+            view: nextView ?? [],
             schemaExclusion,
           },
         );

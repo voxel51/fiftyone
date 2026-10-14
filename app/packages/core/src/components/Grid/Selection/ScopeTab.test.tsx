@@ -416,7 +416,7 @@ describe("SamplesScopeTab", () => {
       expect(mocks.clearViewConstraints).toHaveBeenCalledOnce();
     },
   );
-  it("names every sample with its count and opens a subset with a fresh selection", async () => {
+  it("names every sample with its count and opens a subset without clearing captures", async () => {
     render(<SamplesScopeTab />);
     expect(trigger().textContent).toContain("All samples");
     expect(trigger().textContent).toContain("48");
@@ -429,7 +429,7 @@ describe("SamplesScopeTab", () => {
     expect(screen.getByText("16 samples")).toBeTruthy();
     expect(screen.queryByLabelText("Search subsets")).toBeNull();
     fireEvent.click(row);
-    expect(mocks.selection.clear).toHaveBeenCalledTimes(1);
+    expect(mocks.selection.clear).not.toHaveBeenCalled();
     expect(mocks.setBoundary).toHaveBeenCalledWith({
       subsetId: "hard",
       subsetScope: "episodes",
@@ -584,7 +584,7 @@ describe("SamplesScopeTab", () => {
         subsetScope: undefined,
       }),
     );
-    expect(mocks.selection.clear).toHaveBeenCalled();
+    expect(mocks.selection.clear).not.toHaveBeenCalled();
   });
 
   it("deletes an inactive subset without switching scope or clearing selection", async () => {

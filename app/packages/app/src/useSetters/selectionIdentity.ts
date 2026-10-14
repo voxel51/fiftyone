@@ -1,8 +1,7 @@
-import type { State } from "@fiftyone/state";
+import { viewConversion } from "@fiftyone/state/src/selection/model";
 
-/** View stages after which a selected sample id no longer names a result. */
-const CONVERTING_STAGE =
-  /\.(ToPatches|ToEvaluationPatches|ToFrames|ToClips|ToTrajectories)$/;
-
-export const convertsSampleIdentity = (stages: State.Stage[]) =>
-  stages.some((stage) => CONVERTING_STAGE.test(stage._cls));
+/** Whether navigation changes the entity IDs used by the sample selection. */
+export const changesSampleIdentity = (
+  previous: readonly unknown[],
+  next: readonly unknown[],
+) => viewConversion(previous)?.key !== viewConversion(next)?.key;
