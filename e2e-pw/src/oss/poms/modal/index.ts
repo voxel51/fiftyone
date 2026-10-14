@@ -1,9 +1,10 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { EventUtils } from "src/shared/event-utils";
+import { EventCondition, EventUtils } from "src/shared/event-utils";
 import { afterPopout } from "../action-row/popout";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { EpisodePom } from "../multimodal/episode";
 import { ModalPanelPom } from "../panels/modal-panel";
+import { savedSegmentsShown } from "../saved-segments";
 import { collapseWhitespace, escapeRegExp } from "src/oss/utils";
 import { ModalAnnotate3dPom } from "./annotate-3d";
 import { ModalGroupActionsPom } from "./group-actions";
@@ -75,6 +76,38 @@ export class ModalPom {
     this.videoAnnotate = new VideoAnnotatePom(page, this);
     this.annotate3d = new ModalAnnotate3dPom(page, this);
     this.episode = new EpisodePom(page, this.locator, eventUtils);
+  }
+
+  /** The saved subset's read-only range marks on the existing media timeline. */
+  get savedRangeTracks() {
+    return this.locator.locator('[data-track-id^="fiftyone:saved-segments"]');
+  }
+
+  /**
+   * Run `action` and resolve once the timeline has drawn the open sample's
+   * saved segments and, when given, `seek` has moved the playhead to where
+   * they start
+   */
+  async afterSavedRangesShown<T>(
+    action: () => Promise<T>,
+    seek?: EventCondition,
+  ): Promise<T> {
+    return this.eventUtils.afterAll(
+      [savedSegmentsShown("timeline"), ...(seek ? [seek] : [])],
+      action,
+    );
+  }
+
+  get savedRangeBars() {
+    return this.savedRangeTracks
+      .first()
+      .locator("[data-event-index]:not([data-resize-handle])");
+  }
+
+  savedRangeBarsFor(sourceLabel: string) {
+    return this.savedRangeTracks
+      .filter({ hasText: sourceLabel })
+      .locator("[data-event-index]:not([data-resize-handle])");
   }
 
   get groupLooker() {
@@ -394,6 +427,37 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
+  /** The timeline's saved-range bars carry exactly `titles`, in order */
+  async showsSavedRanges(titles: readonly string[]) {
+    expect(
+      await this.modalPom.savedRangeBars.evaluateAll((bars) =>
+        bars.map((bar) => bar.getAttribute("title") ?? ""),
+      ),
+    ).toEqual(titles);
+  }
+
+  /** The saved-range track for `source` carries exactly `titles`, in order */
+  async showsSavedRangesFor(source: string, titles: readonly string[]) {
+    expect(
+      await this.modalPom
+        .savedRangeBarsFor(source)
+        .evaluateAll((bars) =>
+          bars.map((bar) => bar.getAttribute("title") ?? ""),
+        ),
+    ).toEqual(titles);
+  }
+
+  /** The timeline's playhead readout reads exactly `text` */
+  async playheadReads(text: string) {
+    expect(
+      collapseWhitespace(
+        await this.modalPom.locator
+          .locator('[data-testid="timeline-playhead-time"]')
+          .textContent(),
+      ),
+    ).toBe(text);
+  }
+
   async isClosed() {
     expect(await this.modalPom.locator.isVisible()).toBe(false);
   }
@@ -425,7 +489,11 @@ class ModalAsserter {
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
-    expect(await action.first().textContent()).toBe(String(n));
+    await expect(action.first()).toHaveText(
+      n === 0
+        ? "0 samples · 0 labels"
+        : `${n.toLocaleString()} sample${n === 1 ? "" : "s"}`,
+    );
   }
 
   async verifyCarouselLength(expectedCount: number) {

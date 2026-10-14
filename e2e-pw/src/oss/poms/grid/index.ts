@@ -1,9 +1,10 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { collapseWhitespace } from "src/oss/utils";
 import { expectScreenshot } from "src/oss/utils/screenshot";
 import { ArmedEvent, EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
-import { GridTaggerPom } from "../action-row/tagger/grid-tagger";
+import { savedSegmentsShown } from "../saved-segments";
 import { UrlPom } from "../url";
 
 /**
@@ -83,7 +84,6 @@ export class GridPom {
   readonly assert: GridAsserter;
   readonly actionsRow: GridActionsRowPom;
   readonly sliceSelector: GridSliceSelectorPom;
-  readonly tagger: GridTaggerPom;
   readonly url: UrlPom;
 
   readonly locator: Locator;
@@ -96,7 +96,6 @@ export class GridPom {
     this.url = new UrlPom(page, eventUtils);
     this.actionsRow = new GridActionsRowPom(page);
     this.sliceSelector = new GridSliceSelectorPom(page);
-    this.tagger = new GridTaggerPom(page, eventUtils);
 
     this.locator = page.getByTestId("fo-grid");
   }
@@ -124,9 +123,11 @@ export class GridPom {
   async toggleSelectNthSample(n: number) {
     const tile = this.getNthTile(n);
     if (await this.isCustomRendererTile(tile)) {
-      // the selection checkbox is revealed on tile hover
-      await tile.hover();
-      await tile.getByRole("checkbox").click();
+      // the selection checkbox is revealed in the tile's top selection region
+      await tile.hover({ position: { x: 10, y: 5 } });
+      const checkbox = tile.locator("[data-fo-selection-checkbox]");
+      await expect(checkbox).toBeVisible();
+      await checkbox.click();
       return;
     }
     await tile.click({ position: { x: 10, y: 5 } });
@@ -450,6 +451,36 @@ export class GridPom {
     });
   }
 
+  /** Run `action` and resolve once `tiles` tiles have drawn their saved segments */
+  async afterSavedSegmentsShown<T>(
+    action: () => Promise<T>,
+    tiles = 1,
+  ): Promise<T> {
+    const { events, predicate } = savedSegmentsShown("tile");
+    let shown = 0;
+    return this.eventUtils.after(
+      events,
+      action,
+      (e) => Boolean(predicate?.(e)) && ++shown === tiles,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once `count` custom-rendered tiles (episodes,
+   * say) have mounted because of it
+   */
+  async afterCustomTilesMounted<T>(
+    count: number,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    let mounted = 0;
+    return this.eventUtils.after(
+      "e2e:grid:custom-renderer-mounted",
+      action,
+      () => ++mounted === count,
+    );
+  }
+
   async run<T>(wrap: () => Promise<T>): Promise<T> {
     const refresh = await this.armGridRefresh();
     try {
@@ -505,17 +536,40 @@ class GridAsserter {
     expect(await tagElement.isVisible()).toBe(false);
   }
 
+  /** The tiles' saved-segment badges read exactly `texts`, in grid order */
+  async savedSegmentCounts(texts: readonly string[]) {
+    expect(
+      await this.gridPom.locator
+        .getByTestId("saved-segment-tile")
+        .evaluateAll((badges) =>
+          badges.map((badge) => (badge as HTMLElement).innerText.trim()),
+        ),
+    ).toEqual(texts);
+  }
+
+  /** The tile's saved-segment badge describes exactly `title` */
+  async describesSavedSegments(title: string) {
+    expect(
+      await this.gridPom.locator
+        .getByTestId("saved-segment-tile")
+        .getAttribute("title"),
+    ).toBe(title);
+  }
+
+  /**
+   * The selection tray counts `n` selected samples; with none, it shows no
+   * count. Read once after {@link GridPom.afterSelectionChanged}
+   */
   async isSelectionCountEqualTo(n: number) {
-    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
-      "action-manage-selected",
+    const pills = await this.gridPom.page
+      .getByRole("region", { name: "Selection" })
+      .locator("[data-kind]")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => (node as HTMLElement).innerText),
+      );
+    expect(pills.map(collapseWhitespace)).toEqual(
+      n ? [`${n.toLocaleString()} sample${n === 1 ? "" : "s"} selected`] : [],
     );
-
-    if (n === 0) {
-      expect(await action.count()).toBe(0);
-      return;
-    }
-
-    expect(await action.first().textContent()).toBe(String(n));
   }
 
   /**

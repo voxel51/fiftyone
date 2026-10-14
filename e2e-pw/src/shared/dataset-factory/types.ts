@@ -271,6 +271,33 @@ export interface BaseDatasetOptions<S extends SampleScaffold = SampleScaffold> {
   };
 
   /**
+   * Saved subsets by name, each listing the indexes of the samples it
+   * holds; an empty list creates an empty subset. Applied after `savedViews`.
+   *
+   * @example
+   * { "Existing": [], "Firsts": [0, 1] }
+   */
+  subsets?: {
+    [name: string]: number[];
+  };
+
+  /**
+   * Temporal tags added with `fiftyone.core.tags.add_temporal_tags` after
+   * `subsets`: each spans `[start, end)` nanoseconds into the media of the
+   * sample at index `sample`, optionally on one `anchor` stream.
+   *
+   * @example
+   * [{ sample: 0, start: 200_000_000, end: 500_000_000, tag: "braking" }]
+   */
+  temporalTags?: {
+    sample: number;
+    start: number;
+    end: number;
+    tag: string;
+    anchor?: string;
+  }[];
+
+  /**
    * Keys of text-promptable similarity indexes to compute on the dataset.
    *
    * Each is a real sklearn similarity index over deterministic random
@@ -379,10 +406,14 @@ export interface ImageDatasetOptions extends BaseDatasetOptions {
   mediaType?: "image";
 
   /**
-   * The number of samples to include in the dataset. At most 100
+   * The number of samples to include. Above 100, supply `imagePoolSize` to
+   * reuse media instead of generating one file per sample.
    * @default 1
    */
   numSamples?: number;
+
+  /** Number of generated images to cycle through, from 1 to 100. */
+  imagePoolSize?: number;
 
   /**
    * Whether samples should be numbered/indexed.

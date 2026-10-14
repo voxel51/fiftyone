@@ -58,7 +58,9 @@ export interface BuildOptions extends Pick<
   | "savedViews"
   | "schema"
   | "skeletons"
+  | "subsets"
   | "staticTransforms"
+  | "temporalTags"
 > {
   mediaType: "image" | "video" | "3d" | "point-cloud" | "multimodal" | "group";
   samples: SampleSpec[];
@@ -98,7 +100,7 @@ const addField = (fieldPath: string, fieldType: FieldType) => {
 /**
  * Builds a dataset from generated media: declares `schema`, inserts the sample
  * (and frame) documents directly into the underlying MongoDB collections with
- * their fixed ids, then applies `labelSchemas` and `savedViews`.
+ * their fixed ids, then applies `labelSchemas`, `savedViews` and `subsets`.
  */
 export const build = (() => {
   const loader = new OssLoader();
@@ -118,6 +120,8 @@ export const build = (() => {
     schema = {},
     skeletons = {},
     staticTransforms = [],
+    subsets = {},
+    temporalTags = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
       JSON.stringify({
@@ -128,6 +132,8 @@ export const build = (() => {
         samples,
         skeletons,
         staticTransforms,
+        subsets,
+        temporalTags,
       }),
       "json",
     );
@@ -156,6 +162,8 @@ from bson import ObjectId, json_util
 import fiftyone as fo
 from fiftyone import ViewField as F
 from fiftyone.core.camera import StaticTransform
+import fiftyone.core.subsets as fosub
+import fiftyone.core.tags as fotags
 
 with open("${payload}") as f:
     payload = json_util.loads(f.read())
@@ -257,6 +265,26 @@ ${
 ${Object.entries(savedViews)
   .map(([name, view]) => `dataset.save_view("${name}", ${view})`)
   .join("\n")}
+
+for name, indexes in payload["subsets"].items():
+    fosub.save_subset(
+        dataset, name, samples=[payload["samples"][i]["id"] for i in indexes]
+    )
+
+if payload["temporalTags"]:
+    fotags.add_temporal_tags(
+        dataset,
+        [
+            fotags.TemporalTag(
+                payload["samples"][t["sample"]]["id"],
+                t["start"],
+                t["end"],
+                t["tag"],
+                anchor=t.get("anchor"),
+            )
+            for t in payload["temporalTags"]
+        ],
+    )
 
 for key, value in payload["appConfig"].items():
     if key == "color_scheme":

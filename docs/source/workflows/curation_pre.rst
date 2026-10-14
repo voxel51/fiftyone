@@ -15,7 +15,7 @@ FiftyOne Enterprise Data Quality 🚀 panel.
 
 In the FiftyOne App, the :ref:`Embeddings panel <app-embeddings-panel>` and
 :ref:`similarity search <app-similarity-search-panel>` make these workflows
-point-and-click, and :ref:`saved views <app-saving-views>` let you turn the
+point-and-click, and :ref:`saved queries <app-saving-queries>` let you turn the
 subsets you discover into named slices of your dataset.
 
 .. toctree::

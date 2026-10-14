@@ -1,5 +1,6 @@
 import { Locator, Page } from "src/oss/fixtures";
 import { escapeRegExp } from "src/oss/utils";
+import type { EventCondition } from "src/shared/event-utils";
 import { ModalPom } from ".";
 
 /** The readout's text, with the padding spaces it renders collapsed */
@@ -44,6 +45,15 @@ export class ModalVideoControlsPom {
       () => this.togglePlay(),
     );
     await this.togglePlay();
+  }
+
+  /** The playhead readout shows `text` */
+  playhead(text: string): EventCondition {
+    return {
+      events: "e2e:playback:playhead-time",
+      predicate: (e) =>
+        readout((e.detail as { label: string }).label) === readout(text),
+    };
   }
 
   /** Run `action` and resolve once the playhead readout satisfies `shows` */
