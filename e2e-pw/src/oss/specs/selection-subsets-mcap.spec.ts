@@ -200,6 +200,9 @@ test("whole episodes and segments retain separate action scopes", async ({
   await tray.createSubset("Mixed drive");
   await grid.afterCustomTilesMounted(1, () => tray.openCreatedSubset());
   await grid.assert.isTileCountEqualTo(1);
+  await tray.assert.pills(["1 episode selected", "1 segment selected"]);
+  await tray.clearKind("episode", 1);
+  await tray.clear();
   await tray.assert.targetsAllResults();
   await modal.episode.afterReady(tinyA.fileName, () => grid.openFirstSample());
   await modal.close();

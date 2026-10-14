@@ -314,3 +314,27 @@ test.describe("saved queries and subsets", () => {
     await savedQueries.assert.isUnloaded();
   });
 });
+
+test("saved queries and browser history retain captured samples", async ({
+  grid,
+  page,
+  savedQueries,
+  tray,
+}) => {
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
+  await tray.afterSettled(() => grid.toggleSelectNthSample(1), { cards: 2 });
+  const selected = await tray.getSelectedSampleNames();
+  await savedQueries.open();
+  await tray.afterSettled(() => savedQueries.load(EVEN.slug), {
+    cards: 2,
+    outside: 1,
+  });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.outsideResults(1);
+  await tray.afterSettled(() => page.goBack(), { cards: 2 });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.selectedSamples(2);
+  await tray.afterSettled(() => page.goForward(), { cards: 2, outside: 1 });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.outsideResults(1);
+});

@@ -206,6 +206,7 @@ test("LeRobot whole episodes and temporal ranges reopen with their source", asyn
   await modal.close();
 
   await grid.afterEntryCounts(() => tray.chooseAllSamples());
+  await tray.clear();
   await sidebar.clickFieldDropdown("_temporal_tags");
   await grid.afterEntryCounts(() => sidebar.applyFilter("inspection"));
   await tray.untilSettledEmpty("Act on 1 segment across 1 episode");

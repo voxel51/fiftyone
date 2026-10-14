@@ -120,6 +120,7 @@ test("generated frame membership reopens on the original video frames", async ({
   grid,
   modal,
   page,
+  savedQueries,
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
@@ -143,10 +144,17 @@ test("generated frame membership reopens on the original video frames", async ({
   // switch counts its own scope from the first count shown
   await grid.afterEntryCounts(() => tray.chooseAllSamples());
   await grid.assert.isEntryCountTextEqualTo("2 samples");
+  await savedQueries.open();
+  await tray.afterSettled(
+    () => grid.afterEntryCounts(() => savedQueries.load("frames")),
+    { cards: 2 },
+  );
+  await grid.assert.isEntryCountTextEqualTo("40 frames");
+  await tray.assert.pills(["2 frames selected"]);
+
+  // Reopen the subset on its saved frames after restoring the source view.
   await grid.afterEntryCounts(() => tray.chooseSubset("Source frames"));
-  await tray.untilSettledEmpty();
   await grid.assert.isEntryCountTextEqualTo("2 frames");
-  await tray.assert.targetsAllResults();
 });
 
 test("saved video event ranges retain their frame bounds after source edits", async ({

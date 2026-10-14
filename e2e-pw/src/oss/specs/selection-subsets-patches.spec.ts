@@ -1,6 +1,7 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { SavedQueriesPom } from "src/oss/poms/saved-queries";
+import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
@@ -88,15 +89,57 @@ test("patch subsets preserve two labels from one parent across scope switches", 
 
   // a samples subset and a patches subset each reopen in their own view,
   // counted within the subset from the first count shown
-  await grid.afterEntryCounts(() => tray.chooseSubset("Other parent"));
-  await grid.assert.isEntryCountTextEqualTo("1 sample");
-  expect(await tray.cards.count()).toBe(0);
-  await grid.afterTagsRenderedNamed(["0.png"], () =>
-    grid.afterEntryCounts(() => tray.chooseSubset("First parent patches")),
+  await tray.afterSettled(
+    () => grid.afterEntryCounts(() => tray.chooseSubset("Other parent")),
+    { cards: 1 },
   );
-  await tray.untilSettledEmpty();
+  await grid.assert.isEntryCountTextEqualTo("1 sample");
+  await tray.assert.selectedSamples(1);
+  await tray.afterSettled(
+    () =>
+      grid.afterTagsRenderedNamed(["0.png"], () =>
+        grid.afterEntryCounts(() => tray.chooseSubset("First parent patches")),
+      ),
+    { cards: 2 },
+  );
   await grid.assert.isEntryCountTextEqualTo("2 patches");
-  await tray.assert.targetsAllResults();
+  await tray.assert.pills(["2 patches selected"]);
   await grid.assert.nthSampleHasTagValue(0, "predictions", "parent-0-cat");
   await grid.assert.nthSampleHasTagValue(1, "predictions", "parent-0-dog");
 });
+
+for (const entry of ["menu", "direct link"] as const) {
+  test(`patch captures survive saved-query history from ${entry}`, async ({
+    eventUtils,
+    datasetName,
+    fiftyoneLoader,
+    grid,
+    page,
+    tray,
+  }) => {
+    if (entry === "direct link") {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+        searchParams: new URLSearchParams({ view: "patches" }),
+      });
+    } else {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      const savedQueries = new SavedQueriesPom(page, eventUtils);
+      await savedQueries.open();
+      await grid.afterTagsRenderedNamed(["0.png"], () =>
+        grid.afterEntryCounts(() => savedQueries.load("patches")),
+      );
+    }
+    await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
+    const viewBar = new ViewBarPom(page, eventUtils);
+    const editor = await viewBar.addStage("Limit");
+    await editor.fill("limit", "2");
+    await grid.afterEntryCounts(() => grid.run(() => editor.commit("limit")));
+    await grid.assert.isEntryCountTextEqualTo("2 patches");
+    await grid.afterEntryCounts(() => grid.run(() => page.goBack()));
+    await grid.assert.isEntryCountTextEqualTo("4 patches");
+    await tray.assert.pills(["1 patch selected"]);
+    await grid.afterEntryCounts(() => grid.run(() => page.goForward()));
+    await grid.assert.isEntryCountTextEqualTo("2 patches");
+    await tray.assert.pills(["1 patch selected"]);
+  });
+}
