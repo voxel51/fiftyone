@@ -32,7 +32,8 @@
         "./visualization": "./src/visualization/index.ts",
         "./visualization/composition": "./src/visualization/composition/index.ts",
         "./visualization/media-2d": "./src/visualization/media-2d/ImagePanel.tsx",
-        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts"
+        "./visualization/scene-3d": "./src/visualization/scene-3d/index.ts",
+        "./extensions/grid-selection": "./src/extensions/grid-selection/index.ts"
     },
     "typesVersions": {
         "*": {
@@ -116,6 +117,9 @@
             ],
             "visualization/scene-3d": [
                 "src/visualization/scene-3d/index.ts"
+            ],
+            "extensions/grid-selection": [
+                "src/extensions/grid-selection/index.ts"
             ]
         }
     },
