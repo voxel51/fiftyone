@@ -10,6 +10,7 @@ import {
   TypographyProps,
   useTheme,
 } from "@mui/material";
+import { Button as VoodoButton } from "@voxel51/voodo";
 import React, { FunctionComponent } from "react";
 import MuiButton from "../MuiButton";
 import MuiIconFont from "../MuiIconFont";
@@ -106,14 +107,13 @@ export default function PanelCTA(props: PanelCTAProps) {
               )}
               {IS_APP_MODE_FIFTYONE && (
                 <Box pt={2}>
-                  <MuiButton
-                    variant="contained"
-                    color="primary"
+                  <VoodoButton
+                    variant="primary"
                     href={LOGIN_LINK}
                     target="_blank"
                   >
                     Login
-                  </MuiButton>
+                  </VoodoButton>
                 </Box>
               )}
             </Stack>
