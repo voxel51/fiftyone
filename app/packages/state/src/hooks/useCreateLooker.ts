@@ -120,7 +120,7 @@ export default <T extends AbstractLooker<BaseState>>(
         } else if (nativeLookerType === "3d") {
           create = ThreeDLooker;
         } else if (nativeLookerType === "video") {
-          create = VideoLooker;
+          create = isFrame ? FrameLooker : VideoLooker;
         } else if (mimeType !== null && shouldRenderImaVidLooker) {
           create = ImaVidLooker;
         }
@@ -139,7 +139,10 @@ export default <T extends AbstractLooker<BaseState>>(
             ...fieldSchema,
           },
           sources: urls,
-          frameNumber: create === FrameLooker ? frameNumber : undefined,
+          frameNumber:
+            create === FrameLooker
+              ? (frameNumber ?? sample.frame_number)
+              : undefined,
           frameRate,
           isDynamicGroup,
           sampleId: sample._id,

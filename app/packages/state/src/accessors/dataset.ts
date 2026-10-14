@@ -304,6 +304,9 @@ export const useDynamicGroupGroupBy = (): string | null => {
 /** Whether the current view is a patches view. */
 export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
 
+/** Whether the current view contains individual video frames. */
+export const useIsFramesView = (): boolean => useRecoilValue(isFramesView);
+
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
 export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 
