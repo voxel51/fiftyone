@@ -92,7 +92,7 @@ export default function Teams({
             target="_blank"
             id="fo-cta-enterprise-button"
           >
-            Explore Enterprise
+            Upgrade
           </Button>
         }
       >
