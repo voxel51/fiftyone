@@ -26,7 +26,8 @@ export class SubsetPages {
     };
     this.pages.delete(key);
     this.pages.set(key, page);
-    if (this.pages.size > 32) this.pages.delete(this.pages.keys().next().value);
+    if (this.pages.size > 32)
+      this.pages.delete(this.pages.keys().next().value!);
     page.pending.then(
       (value) => {
         page.value = value;

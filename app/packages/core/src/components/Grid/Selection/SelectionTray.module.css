@@ -986,7 +986,7 @@
   border: 1px solid var(--tray-border);
   border-radius: 8px;
   background: var(--tray-popover);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px var(--tray-shadow);
   font-family: var(--tray-font);
   color: var(--tray-text);
 }
@@ -1047,7 +1047,7 @@
   padding: 6px;
   border-radius: 999px;
   background: var(--tray-overlay);
-  color: white;
+  color: var(--tray-text-on-color);
 }
 
 .open:hover .openHint,
@@ -1434,7 +1434,7 @@
 .tileSelect[data-picked="true"] {
   padding: 0 2px;
   background: var(--tray-accent);
-  color: white;
+  color: var(--tray-text-on-color);
 }
 
 [data-fo-selection-hover="false"]

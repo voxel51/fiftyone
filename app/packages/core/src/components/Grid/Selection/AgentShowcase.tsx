@@ -80,6 +80,8 @@ const showcaseTheme = {
   "--agent-skeleton": cssVar.color.skeleton.base,
   "--agent-shimmer": cssVar.color.skeleton.shimmer,
   "--agent-overlay": cssVar.color.scrim.heavy,
+  "--agent-brand-primary": cssVar.color.brand.primary,
+  "--agent-brand-accent": cssVar.color.brand.accent,
   "--agent-focus": cssVar.color.focus.ring,
   "--agent-font-xs": cssVar.text.xs,
   "--agent-space-sm": cssVar.spacing.sm,
