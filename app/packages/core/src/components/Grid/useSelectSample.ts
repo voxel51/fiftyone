@@ -2,9 +2,11 @@ import type { ThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import type { Sample } from "@fiftyone/state";
 import { selectedSampleObjects, selectedSamples } from "@fiftyone/state";
 import type { SelectionType } from "@fiftyone/state";
+import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
+import type { GridSelectionClick } from "./useGridSelectionClick";
 
 export const addRange = (
   index: number,
@@ -16,6 +18,10 @@ export const addRange = (
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k]),
   );
+  // A bounded cache can have evicted every earlier selection's location.
+  // Without a retained anchor, Shift-click adds only the clicked sample.
+  if (!items.length)
+    return new Set([...selected, ...[reverse[index]].filter(Boolean)]);
   const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
 
   const close = get(records, items[min]);
@@ -24,7 +30,8 @@ export const addRange = (
 
   const added = new Array(end - start + 1)
     .fill(0)
-    .map((_, i) => reverse[i + start]);
+    .map((_, i) => reverse[i + start])
+    .filter(Boolean);
 
   return new Set([...selected, ...added]);
 };
@@ -90,13 +97,20 @@ export const removeRange = (
   return next;
 };
 
-export default (records: Records) => {
+export default (records: Records, pickTile: GridSelectionClick) => {
+  const selection = useGridSelection();
   const ref =
     useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
   ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
       async (params: ThumbnailSelectionDetail<Sample>) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
+
+        if (selection.enabled) {
+          // Picks land in the focused sections; Shift ranges within them.
+          await pickTile(sampleId, shiftKey);
+          return;
+        }
 
         const current = new Map(await snapshot.getPromise(selectedSamples));
         const currentObjects = new Map(
@@ -147,7 +161,7 @@ export default (records: Records) => {
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
       },
-    [records],
+    [records, selection, pickTile],
   );
   return ref;
 };

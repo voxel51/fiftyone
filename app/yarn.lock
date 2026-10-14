@@ -1769,6 +1769,7 @@ __metadata:
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
     "@fiftyone/utilities": "npm:*"
+    "@fiftyone/view-bar": "npm:*"
     "@monaco-editor/react": "npm:^4.5.0"
     "@mui/icons-material": "catalog:"
     "@mui/material": "catalog:"

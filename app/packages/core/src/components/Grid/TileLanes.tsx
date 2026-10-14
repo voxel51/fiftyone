@@ -3,7 +3,10 @@ import {
   gridOverlayKey,
   useGridOverlays,
 } from "@fiftyone/multimodal/extensions/timeline";
-import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
+import {
+  EpisodeGridOverlay,
+  TileLaneScope,
+} from "@fiftyone/multimodal/grid-overlay";
 
 /**
  * One grid tile's footer lanes, whatever renders the tile: the temporal-tag
@@ -18,11 +21,11 @@ export function TileLanes({
 }) {
   const overlays = useGridOverlays();
   return (
-    <>
+    <TileLaneScope>
       {showTags ? <EpisodeGridOverlay ctx={ctx} /> : null}
       {overlays.map((Overlay) => (
         <Overlay key={gridOverlayKey(Overlay)} ctx={ctx} />
       ))}
-    </>
+    </TileLaneScope>
   );
 }

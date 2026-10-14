@@ -642,7 +642,7 @@ class SetView extends Operator {
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("view", new types.Object(), { view: new types.HiddenView({}) });
-    inputs.str("name", { label: "Name or slug of a saved view" });
+    inputs.str("name", { label: "Name or slug of a saved query" });
     return new types.Property(inputs);
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -657,7 +657,7 @@ class SetView extends Operator {
         savedViews.find((view) => slug === view.slug);
       if (!savedView) {
         throw new Error(
-          `Saved view with name or slug "${name}" does not exist`,
+          `Saved query with name or slug "${name}" does not exist`,
         );
       }
       hooks.setViewName(slug);

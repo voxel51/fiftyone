@@ -73,6 +73,16 @@ export const showOperatorPromptSelector = selector({
   },
 });
 
+/** Whether the open operator prompt belongs to this action. */
+export function useOperatorPromptOpen(uri: string): boolean {
+  const prompt = useRecoilValue(promptingOperatorState);
+  return (
+    !!prompt &&
+    resolveOperatorURI(prompt.operatorName, { keepMethod: true }) ===
+      resolveOperatorURI(uri, { keepMethod: true })
+  );
+}
+
 export const usePromptOperatorInput = () => {
   const setRecentlyUsedOperators = useSetRecoilState(
     recentlyUsedOperatorsState,
@@ -1083,6 +1093,7 @@ export function useOperatorBrowser() {
 
   const onKeyDown = useCallback(
     (e) => {
+      if (e.key === "`" && e.ctrlKey) return;
       if (e.key !== "`" && !isVisible) return;
       if (e.key === "`" && isOperatorPaletteOpened) return;
       if (BROWSER_CONTROL_KEYS.includes(e.key) && !editingField)

@@ -94,7 +94,6 @@ packages/core/src/components/Filters/use-incomplete-results.tsx
 packages/core/src/components/Filters/use-label-attribute-icon.tsx
 packages/core/src/components/Grid/Actions/index.tsx
 packages/core/src/components/Grid/Actions/Patches/index.tsx
-packages/core/src/components/Grid/Actions/SaveFilters/index.tsx
 packages/core/src/components/Grid/GridCustomRendererItem.tsx
 packages/core/src/components/Grid/Header/Header.tsx
 packages/core/src/components/Grid/Header/Sort.tsx
@@ -134,8 +133,6 @@ packages/core/src/components/Sidebar/Entries/GroupEntries.tsx
 packages/core/src/components/Sidebar/Entries/PathValueEntry.tsx
 packages/core/src/components/Sidebar/Entries/QueryPerformanceIcon.tsx
 packages/core/src/components/Sidebar/SidebarContainer.tsx
-packages/core/src/components/Sidebar/ViewSelection/styledComponents.tsx
-packages/core/src/components/Sidebar/ViewSelection/ViewDialog.tsx
 packages/core/src/components/Snackbar.tsx
 packages/core/src/components/Starter/index.tsx
 packages/core/src/components/ViewBar/ViewBar.tsx

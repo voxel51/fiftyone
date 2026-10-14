@@ -1,5 +1,6 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useCallback, useMemo, useRef } from "react";
 import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { registerTile, unregisterTile } from "./gridTileRegistry";
@@ -8,6 +9,7 @@ import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
+import type { GridSelectionClick } from "./useGridSelectionClick";
 import { useTileIntervalOverlay } from "./useTileIntervalOverlay";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -89,16 +91,21 @@ export default function useRenderer({
   id,
   records,
   store,
+  pickTile,
 }: {
   cache: LookerCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
+  pickTile: GridSelectionClick;
 }) {
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
-  const selectSample = useSelectSample(records);
+  const selectSample = useSelectSample(records, pickTile);
+  const selection = useGridSelection();
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const sampleRenderer = useGridCustomRendererItem(createLooker);
   const tileOverlay = useTileIntervalOverlay();
 
@@ -192,6 +199,10 @@ export default function useRenderer({
         id,
         getFontSize(),
       );
+      if (selectionRef.current.enabled)
+        item.updateOptions({
+          selected: selectionRef.current.membership.has(key),
+        });
 
       item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail),
