@@ -18,6 +18,7 @@ import {
   LIST_FIELD,
   isFo3dSamplePath,
   isNullish,
+  Schema,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -41,6 +42,7 @@ export default <T extends AbstractLooker<BaseState>>(
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight?: (sample: Sample) => boolean,
   enableTimeline?: boolean,
+  sampleSchema?: Schema,
 ) => {
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
@@ -55,9 +57,9 @@ export default <T extends AbstractLooker<BaseState>>(
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
-  const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }),
-  );
+  const fieldSchema =
+    sampleSchema ??
+    useRecoilValue(schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }));
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME }),
   );
