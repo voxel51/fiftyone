@@ -158,9 +158,7 @@ def _before_sorted(sort, target):
             for prior, _ in keys[:index]
         ]
         comparison = {
-            "$lt"
-            if order > 0
-            else "$gt": [
+            "$lt" if order > 0 else "$gt": [
                 "$" + key,
                 {"$literal": target[key]},
             ]

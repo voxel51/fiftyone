@@ -13,7 +13,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.server.selection as foss
 
-
 QUERY_SECONDS = 5
 PAGE_SIZE = 20
 
@@ -84,12 +83,16 @@ def sample_neighborhood(dataset, request):
                 return view, {
                     "kind": "seek",
                     "ids": ids,
-                    "previous": _cursor(ids, "before")
-                    if (more if before else True)
-                    else None,
-                    "next": _cursor(ids, "after")
-                    if (True if before else more)
-                    else None,
+                    "previous": (
+                        _cursor(ids, "before")
+                        if (more if before else True)
+                        else None
+                    ),
+                    "next": (
+                        _cursor(ids, "after")
+                        if (True if before else more)
+                        else None
+                    ),
                 }
 
         # A continuation must not switch from relative cursor pages to
@@ -176,9 +179,11 @@ def _seek_predicate(sort, values, before, inclusive=False):
         # Query equality matches both null and missing, like Mongo sorting,
         # and preserves index bounds through a long run of null sort values.
         prefix = [
-            {k: None}
-            if value is None
-            else {"$expr": {"$eq": ["$" + k, {"$literal": value}]}}
+            (
+                {k: None}
+                if value is None
+                else {"$expr": {"$eq": ["$" + k, {"$literal": value}]}}
+            )
             for (k, _), value in zip(keys[:index], values[:index])
         ]
         comparison = "$lt" if (order > 0) == before else "$gt"
