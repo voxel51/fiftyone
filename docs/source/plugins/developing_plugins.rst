@@ -2201,7 +2201,7 @@ executed in the background while you continue to use the App.
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments
+    :ref:`Voxel51 <enterprise-delegated-operations>` deployments
     come out of the box with a connected compute cluster for executing
     delegated operations at scale.
 
@@ -2348,7 +2348,7 @@ on their execution context from within
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current
+    :ref:`Voxel51 <fiftyone-enterprise>` users can view the current
     progress of their delegated operations from the
     :ref:`Runs page <enterprise-managing-delegated-operations>`.
 
@@ -2408,14 +2408,14 @@ Distributed execution __SUB_NEW__
 
 .. versionadded:: 1.8.0
 
-In FiftyOne Enterprise, delegated operations can be
+In Voxel51, delegated operations can be
 :ref:`distributed across multiple workers <enterprise-distributed-execution>`
 to accelerate computation on large datasets.
 
 Distributed execution is not available in FiftyOne Open Source, but plugin
 authors can still utilize the distributed execution paradigm described here so
 that their operators can be executed in a distributed fashion when used in
-FiftyOne Enterprise. When an operator that supports distributed execution is
+Voxel51. When an operator that supports distributed execution is
 used in FiftyOne Open Source, its
 :meth:`execute() <fiftyone.operators.Operator.execute>` method will simply be
 called exactly once with the full target view on which the operator was invoked.
@@ -2503,7 +2503,7 @@ Operator pipelines __SUB_NEW__
 .. versionadded:: 1.10.0
 
 In addition to developing individual operators,
-:ref:`FiftyOne Enterprise <fiftyone-enterprise>` allows you to define a linear
+:ref:`Voxel51 <fiftyone-enterprise>` allows you to define a linear
 composition of regular operators into a single **operator pipeline**. An
 operator pipeline acts as a single, higher-level operation composed of
 multiple discrete **stages**, where each stage is a call to another operator.
@@ -2511,7 +2511,7 @@ multiple discrete **stages**, where each stage is a call to another operator.
 .. note::
 
     Currently, **Operator Pipelines** are only supported for **delegated**
-    **execution** within FiftyOne Enterprise. Immediate execution or use
+    **execution** within Voxel51. Immediate execution or use
     in FiftyOne Open Source is not supported for this feature.
 
 .. _pipeline-operator-interface:

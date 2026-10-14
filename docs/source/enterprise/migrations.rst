@@ -5,27 +5,27 @@ Migrations
 
 .. default-role:: code
 
-This page describes how to migrate between FiftyOne Enterprise versions, both
-for :ref:`admins <enterprise-upgrading>` migrating the core FiftyOne Enterprise
+This page describes how to migrate between Voxel51 versions, both
+for :ref:`admins <enterprise-upgrading>` migrating the core Voxel51
 infrastructure and :ref:`individual users <enterprise-upgrade-python-sdk>` who
-need to install a new version of the FiftyOne Enterprise Python SDK.
+need to install a new version of the Voxel51 Python SDK.
 
 Refer to :ref:`this section <enterprise-migrating-datasets>` to see how to
-migrate existing datasets from FiftyOne Open Source to FiftyOne Enterprise.
+migrate existing datasets from FiftyOne Open Source to Voxel51.
 
 .. _enterprise-upgrade-python-sdk:
 
 Upgrading your Python SDK
 _________________________
 
-Users can upgrade their FiftyOne Enterprise Python client to the latest version
+Users can upgrade their Voxel51 Python client to the latest version
 as follows:
 
 .. code-block:: shell
 
     pip install --index-url https://${TOKEN}@pypi.fiftyone.ai --upgrade fiftyone
 
-A specific FiftyOne Enterprise client version can be installed like so:
+A specific Voxel51 client version can be installed like so:
 
 .. code-block:: shell
 
@@ -33,7 +33,7 @@ A specific FiftyOne Enterprise client version can be installed like so:
 
 .. note::
 
-    You can find your `TOKEN` by logging into the FiftyOne Enterprise App and
+    You can find your `TOKEN` by logging into the Voxel51 App and
     clicking on the :ref:`account icon <enterprise-python-sdk>` in the upper
     right.
 
@@ -42,12 +42,12 @@ A specific FiftyOne Enterprise client version can be installed like so:
 Upgrading your deployment
 _________________________
 
-The basic **admin workflow** for upgrading a FiftyOne Enterprise deployment is:
+The basic **admin workflow** for upgrading a Voxel51 deployment is:
 
 -   :ref:`Upgrade <enterprise-upgrade-python-sdk>` all automated services and
-    individual user workflows that use the FiftyOne Enterprise Python SDK to an
+    individual user workflows that use the Voxel51 Python SDK to an
     appropriate SDK version
--   Upgrade your core FiftyOne Enterprise infrastructure (via Kubernetes,
+-   Upgrade your core Voxel51 infrastructure (via Kubernetes,
     Docker, etc)
 -   Upgrade your database's version, as described below
 
@@ -57,7 +57,7 @@ The basic **admin workflow** for upgrading a FiftyOne Enterprise deployment is:
     including compatible SDK versions, deployment assets, and upgrade
     assistance.
 
-New FiftyOne Enterprise versions occasionally introduce data model changes that
+New Voxel51 versions occasionally introduce data model changes that
 require database migrations when upgrading your deployment.
 
 Admins can check a deployment's current version via the Python SDK as shown
@@ -66,7 +66,7 @@ below:
 .. code-block:: shell
 
     $ fiftyone migrate --info
-    FiftyOne Enterprise version: 0.7.1
+    Voxel51 version: 0.7.1
     FiftyOne compatibility version: 0.15.1
     Database version: 0.15.1
 
@@ -79,13 +79,13 @@ below:
     migration required, but there could be.
 
 `Unlike FiftyOne Open Source  <https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations>`_,
-a FiftyOne Enterprise database is not automatically upgraded when a user
+a Voxel51 database is not automatically upgraded when a user
 connects to the database with a newer Python client version. Instead, an admin
 must manually upgrade your database by installing the newest version of the
-FiftyOne Enterprise SDK locally, assuming admin privileges, and running the
+Voxel51 SDK locally, assuming admin privileges, and running the
 following command:
 
-Beginning with FiftyOne Enterprise `v2.14.0`, there is a new migration tool
+Beginning with Voxel51 `v2.14.0`, there is a new migration tool
 which is designed specifically for Enterprise deployments. It is similar in use
 to the existing `fiftyone migrate` command, but does not come packaged with the
 FiftyOne distribution by default.
@@ -174,18 +174,18 @@ provide the version which you want to restore.
 Downgrading your deployment without the Enterprise Migration Tool
 _________________________________________________________________
 
-**For migrations done prior to FiftyOne Enterprise v2.14.0 and the Enterprise Migration Tool**
+**For migrations done prior to Voxel51 v2.14.0 and the Enterprise Migration Tool**
 
-Admins can also downgrade their FiftyOne Enterprise deployment to an older
+Admins can also downgrade their Voxel51 deployment to an older
 version if necessary.
 
 The steps are the same as :ref:`when upgrading <enterprise-upgrading>`, except
 that you’ll need to know the appropriate database version to migrate down to.
-Each version of FiftyOne Enterprise corresponds to a version of FiftyOne Open
+Each version of Voxel51 corresponds to a version of FiftyOne Open
 Source  called its "open source compatibility version", and this versioning
 system is used to set the database version.
 
-For example, you can downgrade to FiftyOne Enterprise v0.10 like so:
+For example, you can downgrade to Voxel51 v0.10 like so:
 
 .. code-block:: shell
 
@@ -201,7 +201,7 @@ For example, you can downgrade to FiftyOne Enterprise v0.10 like so:
 .. note::
 
     Contact your Voxel51 support team if you need to know the open source
-    compatibility version for a particular FiftyOne Enterprise version that
+    compatibility version for a particular Voxel51 version that
     you wish to downgrade to.
 
 .. _enterprise-migrating-datasets:
@@ -210,7 +210,7 @@ Migrating datasets to Enterprise
 ________________________________
 
 Any datasets that you have created via FiftyOne Open Source can be migrated to
-your FiftyOne Enterprise deployment by exporting them in
+your Voxel51 deployment by exporting them in
 :ref:`FiftyOneDataset <FiftyOneDataset-export>` format:
 
 .. code-block:: python
@@ -227,7 +227,7 @@ your FiftyOne Enterprise deployment by exporting them in
         export_media=False,
     )
 
-and then re-importing them with the FiftyOne Enterprise SDK connected to your
+and then re-importing them with the Voxel51 SDK connected to your
 Enterprise deployment:
 
 .. code-block:: python
@@ -243,9 +243,9 @@ Enterprise deployment:
     )
 
 Note that you'll need to update any local filepaths to cloud paths in order to
-use the dataset in FiftyOne Enterprise.
+use the dataset in Voxel51.
 
-If you need to upload the local media to the cloud, the FiftyOne Enterprise SDK
+If you need to upload the local media to the cloud, the Voxel51 SDK
 provides a builtin utility for this:
 
 .. code-block:: python

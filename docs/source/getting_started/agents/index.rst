@@ -23,7 +23,7 @@ testing in the App.
    This guide covers **AI coding agents** (Claude Code, Cursor, VS Code
    Copilot, Gemini CLI, and others) used to build FiftyOne plugins from
    your terminal. If you are looking for the built-in AI assistant inside
-   the FiftyOne Enterprise App, see :ref:`FiftyOne Agent <enterprise-agent>`
+   the Voxel51 App, see :ref:`FiftyOne Agent <enterprise-agent>`
    instead.
 
 You'll learn how to:
@@ -167,7 +167,7 @@ Next Steps
 - :ref:`Agent Ecosystem <agents-ecosystem>`: browse all available skills for your agent
 - :ref:`Developing Skills <agents-developing>`: build your own agent skills
 - :ref:`FiftyOne Plugins <fiftyone-plugins>`: the full plugin system reference
-- :ref:`FiftyOne Agent <enterprise-agent>`: the built-in AI assistant in FiftyOne Enterprise
+- :ref:`FiftyOne Agent <enterprise-agent>`: the built-in AI assistant in Voxel51
 
 .. _getting-started-agents-resources:
 

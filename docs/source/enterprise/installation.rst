@@ -1,21 +1,21 @@
 .. _enterprise-installation:
 
-FiftyOne Enterprise Installation
-================================
+Voxel51 Installation
+====================
 
 .. default-role:: code
 
-FiftyOne Enterprise deployments come with a centralized FiftyOne Enterprise App
+Voxel51 deployments come with a centralized Voxel51 App
 and database that allows your entire team to collaborate securely on the same
-datasets. FiftyOne Enterprise is deployed entirely into your environment, either
+datasets. Voxel51 is deployed entirely into your environment, either
 on-premises or in a private cloud. Your data never leaves your environment.
 
-FiftyOne Enterprise can be deployed on a wide variety of infrastructure
+Voxel51 can be deployed on a wide variety of infrastructure
 solutions, including Kubernetes and Docker.
 
 .. note::
 
-    Detailed instructions for the initial FiftyOne Enterprise deployment, along
+    Detailed instructions for the initial Voxel51 deployment, along
     with all necessary components, are made available by your Voxel51 support
     team during the onboarding process.
 
@@ -24,12 +24,12 @@ solutions, including Kubernetes and Docker.
 Python SDK
 ----------
 
-While the :ref:`FiftyOne Enterprise App <enterprise-app>` allows for countless new
+While the :ref:`Voxel51 App <enterprise-app>` allows for countless new
 App-centric workflows, any existing Python-based workflows that you've fallen
 in love with in the open-source version of FiftyOne are still directly
 applicable!
 
-FiftyOne Enterprise requires an updated Python SDK, which is a wrapper around the
+Voxel51 requires an updated Python SDK, which is a wrapper around the
 open-source FiftyOne package that adds new functionality like support for
 cloud-backed media.
 
@@ -150,7 +150,7 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 Cloud credentials
 -----------------
 
-In order to utilize cloud-backed media functionality of FiftyOne Enterprise, at
+In order to utilize cloud-backed media functionality of Voxel51, at
 least one cloud source must be configured with proper credentials. Below are
 instructions for configuring each supported cloud provider for local SDK use
 or directly to the Enterprise containers. An admin can also :ref:`configure
@@ -172,7 +172,7 @@ multimodal (MCAP) datasets. Without CORS, these assets fail to load with a
 browser error, even when other media displays correctly in the App.
 
 When configuring CORS, set the allowed origin(s) to the URL(s) from which your
-users access the FiftyOne Enterprise App, and allow the ``GET`` and ``HEAD``
+users access the Voxel51 App, and allow the ``GET`` and ``HEAD``
 methods. For media that is read in byte ranges (such as MCAP), also allow the
 ``Range`` request header and expose the ``Content-Range``, ``Content-Length``,
 and ``Accept-Ranges`` response headers. Details are provided below for each
@@ -241,7 +241,7 @@ and the shared credentials file should use
 
 .. note::
 
-    FiftyOne Enterprise requires either the `s3:ListBucket` or
+    Voxel51 requires either the `s3:ListBucket` or
     `s3:GetBucketLocation` permission in order to access objects in S3 buckets.
 
     If you wish to use multi-account credentials, your credentials must have
@@ -569,7 +569,7 @@ Extra client arguments
 ______________________
 
 Configuring credentials following the instructions above is almost always
-sufficient for FiftyOne Enterprise to properly utilize them. In rare cases where the
+sufficient for Voxel51 to properly utilize them. In rare cases where the
 cloud provider client needs non-default configuration, you can add extra client
 kwargs via the :ref:`media cache config <enterprise-media-cache-config>`:
 
@@ -755,7 +755,7 @@ AI model weights
 .. customavailablein::
     :enterprise_version: 2.19.0
 
-The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
+The Voxel51 App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's
 CDN and no configuration is required.
 

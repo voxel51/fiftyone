@@ -44,8 +44,7 @@ models, and maximize data and model quality more efficiently than ever before
 🤝
 
 If you're looking to scale to production-grade, collaborative, cloud-native
-enterprise workloads, check out
-**[FiftyOne Enterprise](http://voxel51.com/enterprise)** 🚀
+enterprise workloads, check out **[Voxel51](https://app.voxel51.com/)** 🚀
 
 <div id='installation'/>
 
@@ -473,18 +472,17 @@ Full documentation is available at [fiftyone.ai](https://fiftyone.ai).
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; additional resources &nbsp; 🚁
 
-| [FiftyOne Enterprise](https://voxel51.com/enterprise) | [Building Plugins](https://docs.voxel51.com/plugins/index.html) | [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) | [FiftyOne Brain](https://docs.voxel51.com/brain.html) | [VoxelGPT](https://github.com/voxel51/voxelgpt) |
-| ----------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- |
+| [Voxel51](https://app.voxel51.com/) | [Building Plugins](https://docs.voxel51.com/plugins/index.html) | [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) | [FiftyOne Brain](https://docs.voxel51.com/brain.html) | [VoxelGPT](https://github.com/voxel51/voxelgpt) |
+| ----------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- |
 
 </div>
 
-<div id='fiftyone-enterprise'/>
+<div id='voxel51'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; FiftyOne Enterprise &nbsp; 🏎️
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; Voxel51 &nbsp; 🏎️
 
-Want to securely collaborate on billions of samples in the cloud and connect to
-your compute resources to automate your workflows? Check out
-[FiftyOne Enterprise](https://voxel51.com/enterprise).
+Want to securely collaborate with your team in the cloud and automate your
+workflows? Get started with [Voxel51](https://app.voxel51.com/).
 
 <div id='faq'/>
 

@@ -14,7 +14,7 @@ Step-by-Step Recap
 
 **Step 1: Prepare Your Dataset and Delegated Operators**
 
-You learned how to set up the foundation for Auto Labeling by preparing your dataset in FiftyOne Enterprise and configuring GPU-enabled delegated operators. This included understanding the infrastructure requirements and ensuring your environment is ready for auto labeling workflows.
+You learned how to set up the foundation for Auto Labeling by preparing your dataset in Voxel51 and configuring GPU-enabled delegated operators. This included understanding the infrastructure requirements and ensuring your environment is ready for auto labeling workflows.
 
 **Step 2: Configure Your Auto Labeling Run**
 
@@ -50,7 +50,7 @@ Suggested Exercises
 Resources and Further Reading
 ----------------------------
 
-* `FiftyOne Enterprise Documentation <https://docs.voxel51.com/enterprise/index.html#>`_
+* `Voxel51 Documentation <https://docs.voxel51.com/enterprise/index.html#>`_
 
 * `Delegated Operations Guide <https://docs.voxel51.com/enterprise/plugins.html#enterprise-delegated-operations>`_
 
@@ -73,7 +73,7 @@ Now that you've mastered Auto Labeling with FiftyOne, here are some suggested ne
 
 * **Scale Your Annotation** - Use Auto Labeilng to accelerate annotation on large-scale datasets with thousands of images
 
-* **Join the Community** - Connect with other FiftyOne Enterprise users to share Auto Labeling best practices and advanced techniques
+* **Join the Community** - Connect with other Voxel51 users to share Auto Labeling best practices and advanced techniques
 
 * **Apply to Production** - Implement Auto Labeling in your production annotation pipelines to reduce manual labeling costs and improve data quality
 
