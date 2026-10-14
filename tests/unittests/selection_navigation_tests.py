@@ -92,10 +92,13 @@ class GridNavigationTests(unittest.TestCase):
         request = {"sortBy": "score"}
         view, _, _ = foss._scoped_view(self.dataset, request)
         ids = view.values("id")
-        self.assertEqual(
-            self.navigate(ids[30], **request),
-            {"kind": "offset", "index": 30},
-        )
+        # Mongo's tied field order need not be identity order. Counting with
+        # an invented identity tie-breaker must never replace the grid scan.
+        with patch.object(foss, "_count", side_effect=AssertionError):
+            self.assertEqual(
+                self.navigate(ids[30], **request),
+                {"kind": "offset", "index": 30},
+            )
 
     def test_limit_after_sort_cannot_be_ignored(self):
         view = self.dataset.sort_by("id").limit(12)._serialize()

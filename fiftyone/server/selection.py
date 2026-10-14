@@ -142,10 +142,12 @@ def _final_sort(pipeline):
 def _before_sorted(sort, target):
     """Matches documents the sort places before ``target``.
 
-    Ties on every sort key fall back to ``_id`` order, which is the best a
-    caller can do when the sort itself does not break them.
+    Only sorts with an explicit identity key have a reproducible order for
+    ties. Other sorts must walk the grid pipeline rather than invent one.
     """
     keys = list(sort.items())
+    if "_id" not in sort:
+        return None
     if any(
         target.get(key) is None or isinstance(target.get(key), (list, dict))
         for key, _ in keys
@@ -164,9 +166,6 @@ def _before_sorted(sort, target):
             ]
         }
         clauses.append({"$and": prefix + [comparison]})
-    tie = [{"$eq": ["$" + key, {"$literal": target[key]}]} for key, _ in keys]
-    tie.append({"$lt": ["$_id", {"$literal": target["_id"]}]})
-    clauses.append({"$and": tie})
     return {"$expr": {"$or": clauses}}
 
 
