@@ -3382,7 +3382,7 @@ Voxel51 2.7.0
 
 Includes all updates from :ref:`FiftyOne 1.4.0 <release-notes-v1.4.0>`, plus:
 
-- Renamed FiftyOne Teams to Voxel51
+- Renamed FiftyOne Teams to FiftyOne Enterprise (now Voxel51)
 - Expanded functionality of the :ref:`Runs page <enterprise-runs-page>`,
   including providing Admins a view of
   :ref:`delegated operations <enterprise-delegated-operations>` 
