@@ -199,7 +199,18 @@ def sample_position(dataset, request):
         return {"index": None}
     collection = view._dataset._sample_collection
     max_time = request.get("maxQueryTime")
-    max_time_ms = max(1, int(float(max_time) * 1000)) if max_time else None
+    max_time_ms = None
+    if max_time is not None:
+        try:
+            max_time = float(max_time)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "Query time must be a finite nonnegative number"
+            ) from None
+        if not math.isfinite(max_time) or max_time < 0:
+            raise ValueError("Query time must be a finite nonnegative number")
+        if max_time:
+            max_time_ms = max(1, int(max_time * 1000))
     pipeline = view._pipeline()
     sort_index = _final_sort(pipeline)
     if sort_index is not None:

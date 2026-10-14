@@ -722,6 +722,12 @@ class SamplePositionTests(unittest.TestCase):
             self.dataset, {"sampleId": sample_id, **request}
         )["index"]
 
+    def test_invalid_query_deadlines_report_a_clear_error(self):
+        for deadline in ("bad", "inf", "nan", -1, {}):
+            with self.subTest(deadline=deadline):
+                with self.assertRaisesRegex(ValueError, "finite nonnegative"):
+                    self._position(self.ids[4], maxQueryTime=deadline)
+
     def test_fractional_query_deadline_keeps_aggregation_bounded(self):
         with patch.object(
             foss.foo, "aggregate", wraps=foss.foo.aggregate
