@@ -15,6 +15,7 @@
  */
 
 import { useTrackEvent } from "@fiftyone/analytics";
+import { useEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import {
   Align,
@@ -113,6 +114,12 @@ import type { WorkingStage } from "./state";
  */
 export let rollbackViewBar: () => void = () => undefined;
 
+/** Requests other App surfaces send the bar on the shared event bus */
+export type ViewBarEvents = {
+  /** Open the stages row, or fold it when it is open */
+  "view-bar:toggle-stages": undefined;
+};
+
 /** Every slice qualifies — a slice-picking param is not media-type fussy. */
 const ALL_SLICE_MEDIA_TYPES: fos.GroupSliceMediaType[] = [
   "image",
@@ -134,10 +141,20 @@ const STILL_IN_BAR = [
   "[data-floating-ui-portal]",
 ].join(", ");
 
-const ViewBarInner: React.FC<{
+interface ViewBarProps {
   /** What this surface may offer; everything, unless the host says less. */
   capabilities?: ViewBarCapabilities;
-}> = ({ capabilities = OPEN_CAPABILITIES }) => {
+  /**
+   * A host control for the search row, placed just before the stages toggle
+   * (e.g. the Saved queries menu, which needs data the bar does not load).
+   */
+  accessory?: React.ReactNode;
+}
+
+const ViewBarInner: React.FC<ViewBarProps> = ({
+  capabilities = OPEN_CAPABILITIES,
+  accessory,
+}) => {
   const servedDefs = fos.useStageDefinitions();
   const stageDefs = useMemo(
     () => gateDefinitions(servedDefs as StageDefinition[], capabilities),
@@ -741,6 +758,8 @@ const ViewBarInner: React.FC<{
   ]);
 
   const stagesRowOpen = stagesOpen;
+  // Applied stages, not drafts still being edited in the row.
+  const stagesActive = currentView.length > 0;
   const stagesRowOpenRef = useRef(false);
   stagesRowOpenRef.current = stagesRowOpen;
   // Opening via the toggle lands the keyboard in the row. The row mounts in
@@ -782,12 +801,25 @@ const ViewBarInner: React.FC<{
       setEditingId(null);
       applyOnLeaveRef.current();
       if (stagesRowOpenRef.current) {
-        setStagesOpen(false);
+        // The row folds once the press completes. Folding on mousedown moves
+        // everything below the bar up under the pointer, so the click would
+        // land on whatever slid beneath it, not on what was pressed
+        window.removeEventListener("mouseup", onUp);
+        window.addEventListener("mouseup", onUp, { once: true });
       }
+    };
+    // The click follows mouseup in the same task; fold after it
+    let foldTimer: ReturnType<typeof setTimeout> | undefined;
+    const onUp = () => {
+      foldTimer = setTimeout(() => setStagesOpen(false), 0);
     };
 
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mouseup", onUp);
+      clearTimeout(foldTimer);
+    };
   }, []);
 
   /**
@@ -838,6 +870,14 @@ const ViewBarInner: React.FC<{
     focusOnOpen.current = true;
     setStagesOpen(true);
   }, [stagesRowOpen, closeStagesRow]);
+
+  // This effect subscribes to requests from elsewhere in the App (the subset
+  // picker's stage count) to open or fold the stages row.
+  const bus = useEventBus<ViewBarEvents>();
+  useEffect(
+    () => bus.on("view-bar:toggle-stages", toggleStagesRow),
+    [bus, toggleStagesRow],
+  );
 
   /**
    * The bar's Escape: the editor popover is portaled, so an Escape here means
@@ -898,6 +938,7 @@ const ViewBarInner: React.FC<{
           <ClearViewButton onClear={clearView} />
         </Stack>
       )}
+      {accessory}
       {/* The stages toggle: opens the second row where the view is built.
             Carries the stage count so an applied view stays discoverable
             while the row is folded away. */}
@@ -920,17 +961,28 @@ const ViewBarInner: React.FC<{
           }}
           className={styles.stagesToggle}
         >
+          {/* Applied stages light the toggle in the accent, so a filtered
+              view never passes for the whole dataset. */}
           <Icon
             name={IconName.Sliders}
             size={Size.Sm}
-            color={stagesRowOpen ? TextColor.Primary : TextColor.Secondary}
+            color={
+              stagesActive
+                ? TextColor.Accent
+                : stagesRowOpen
+                  ? TextColor.Primary
+                  : TextColor.Secondary
+            }
           />
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          <Text
+            variant={TextVariant.Sm}
+            color={stagesActive ? TextColor.Accent : TextColor.Secondary}
+          >
             Stages
           </Text>
           {state.stages.length > 0 && (
             <TextBadge
-              color={TextColor.Secondary}
+              color={stagesActive ? TextColor.Accent : TextColor.Secondary}
               className={styles.stagesCount}
             >
               {state.stages.length}
@@ -1050,9 +1102,7 @@ const ViewBarInner: React.FC<{
  * dataset, and the per-dataset conveniences (match count, index recency,
  * query history) initialize on mount.
  */
-const ViewBar: React.FC<{
-  capabilities?: ViewBarCapabilities;
-}> = (props) => {
+const ViewBar: React.FC<ViewBarProps> = (props) => {
   const datasetName = fos.useCurrentDatasetName();
   return <ViewBarInner key={datasetName ?? ""} {...props} />;
 };

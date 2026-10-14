@@ -3,8 +3,10 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Enterprise 2.25.1
---------------------------
+.. _fiftyone-enterprise-2-25-1:
+
+Voxel51 2.25.1
+--------------
 *Released September 28, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.22.1 <release-notes-v1.22.1>`, plus:
@@ -50,8 +52,10 @@ App
   label field's classes, so fields with many classes get a searchable list
   `#8464 <https://github.com/voxel51/fiftyone/pull/8464>`_
 
-FiftyOne Enterprise 2.25.0
---------------------------
+.. _fiftyone-enterprise-2-25-0:
+
+Voxel51 2.25.0
+--------------
 *Released September 11, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.22.0 <release-notes-v1.22.0>`, plus:
@@ -212,8 +216,10 @@ Brain
   dataset size, and embeddings with more than 2000 dimensions
   `#311 <https://github.com/voxel51/fiftyone-brain/pull/311>`_
 
-FiftyOne Enterprise 2.24.1
---------------------------
+.. _fiftyone-enterprise-2-24-1:
+
+Voxel51 2.24.1
+--------------
 *Released August 21, 2026*
 
 - Fixed a bug that prevented embeddings and similarity search on camera
@@ -221,8 +227,10 @@ FiftyOne Enterprise 2.24.1
 - Multimodal stream discovery is now cached, so the embeddings form opens
   much faster
 
-FiftyOne Enterprise 2.24.0
---------------------------
+.. _fiftyone-enterprise-2-24-0:
+
+Voxel51 2.24.0
+--------------
 *Released August 19, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.21.0 <release-notes-v1.21.0>`, plus:
@@ -338,8 +346,10 @@ Brain
   `#304 <https://github.com/voxel51/fiftyone-brain/pull/304>`_,
   `#301 <https://github.com/voxel51/fiftyone-brain/pull/301>`_
 
-FiftyOne Enterprise 2.23.1
---------------------------
+.. _fiftyone-enterprise-2-23-1:
+
+Voxel51 2.23.1
+--------------
 *Released August 5, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.20.1 <release-notes-v1.20.1>`, plus:
@@ -359,8 +369,10 @@ App
 - Fixed a crash that occurred when opening the Embeddings panel
   `#8181 <https://github.com/voxel51/fiftyone/pull/8181>`_
 
-FiftyOne Enterprise 2.23.0
---------------------------
+.. _fiftyone-enterprise-2-23-0:
+
+Voxel51 2.23.0
+--------------
 *Released July 31, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
@@ -389,7 +401,7 @@ Includes all updates from :ref:`FiftyOne 1.20.0 <release-notes-v1.20.0>`, plus:
   logs — progress logs capture more output, and run metrics report GPU
   usage correctly, including for delegated executor services
 - Fixes: the datasets listing page shows the multimodal dataset type,
-  multimodal writes honor your FiftyOne Enterprise cloud credentials,
+  multimodal writes honor your Voxel51 cloud credentials,
   workflow canvas connections render after page reloads, the schedule
   dropdown no longer lists named delegation targets, and datasets no
   longer incorrectly appear locked
@@ -494,8 +506,10 @@ Documentation
   reorganized guide pages for easier navigation
   `#8108 <https://github.com/voxel51/fiftyone/pull/8108>`_
 
-FiftyOne Enterprise 2.22.1
---------------------------
+.. _fiftyone-enterprise-2-22-1:
+
+Voxel51 2.22.1
+--------------
 *Released July 22, 2026*
 
 App
@@ -504,8 +518,10 @@ App
 
 .. _release-notes-enterprise-v2.22.0:
 
-FiftyOne Enterprise 2.22.0
---------------------------
+.. _fiftyone-enterprise-2-22-0:
+
+Voxel51 2.22.0
+--------------
 *Released July 14, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.19.0 <release-notes-v1.19.0>`, plus:
@@ -661,8 +677,10 @@ Documentation
   `#7974 <https://github.com/voxel51/fiftyone/pull/7974>`_
 
 
-FiftyOne Enterprise 2.21.0
---------------------------
+.. _fiftyone-enterprise-2-21-0:
+
+Voxel51 2.21.0
+--------------
 *Released July 1, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.18.0 <release-notes-v1.18.0>`, plus:
@@ -776,8 +794,10 @@ Documentation
   customization `#7753 <https://github.com/voxel51/fiftyone/pull/7753>`_;
   CLI/skills docs `#7558 <https://github.com/voxel51/fiftyone/pull/7558>`_
 
-FiftyOne Enterprise 2.20.0
---------------------------
+.. _fiftyone-enterprise-2-20-0:
+
+Voxel51 2.20.0
+--------------
 *Released June 8, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.17.0 <release-notes-v1.17.0>`. No
@@ -842,8 +862,10 @@ General
 
 .. _release-notes-enterprise-v2.19.0:
 
-FiftyOne Enterprise 2.19.0
---------------------------
+.. _fiftyone-enterprise-2-19-0:
+
+Voxel51 2.19.0
+--------------
 *Released May 28, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.16.0 <release-notes-v1.16.0>`, plus:
@@ -851,7 +873,7 @@ Includes all updates from :ref:`FiftyOne 1.16.0 <release-notes-v1.16.0>`, plus:
 FiftyOne Agent
 
 - Added the :ref:`FiftyOne Agent <enterprise-agent>`: an AI-powered assistant
-  built into the FiftyOne Enterprise App that lets you work with your datasets
+  built into the Voxel51 App that lets you work with your datasets
   using natural language, including data import, model inference, duplicate
   detection, model evaluation, and annotation, all from a conversational
   interface
@@ -1005,8 +1027,10 @@ Documentation
   `#7509 <https://github.com/voxel51/fiftyone/pull/7509>`_
 
 
-FiftyOne Enterprise 2.18.1
---------------------------
+.. _fiftyone-enterprise-2-18-1:
+
+Voxel51 2.18.1
+--------------
 *Released May 7, 2026*
 
 App
@@ -1017,16 +1041,18 @@ App
 
 Security
 
-- Updated a number of dependencies in the FiftyOne Enterprise App in order to
+- Updated a number of dependencies in the Voxel51 App in order to
   resolve security vulnerabilities: `picomatch`, `protobufjs`,
   `@xmldom/xmldom`, and `langchain-core`
-- Updated a number of dependencies in the FiftyOne Enterprise API in order to
+- Updated a number of dependencies in the Voxel51 API in order to
   resolve security vulnerabilities: `ujson` and `pyjwt`
 
 .. _release-notes-enterprise-v2.18.0:
 
-FiftyOne Enterprise 2.18.0
---------------------------
+.. _fiftyone-enterprise-2-18-0:
+
+Voxel51 2.18.0
+--------------
 *Released May 1, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.15.0 <release-notes-v1.15.0>`, plus:
@@ -1035,7 +1061,7 @@ Core
 
 - Added support for :ref:`Service Accounts <enterprise-service-accounts>`,
   allowing teams to create non-human accounts designed for programmatic,
-  automated, or machine-to-machine access to FiftyOne Enterprise
+  automated, or machine-to-machine access to Voxel51
 - Removed immediate execution option from builtin operators that should always
   be :ref:`delegated <enterprise-delegated-operations>` due to their compute
   needs
@@ -1086,8 +1112,10 @@ Plugins
   visualizing non-native media types in the App grid/modal
   `#7164 <https://github.com/voxel51/fiftyone/pull/7164>`_
 
-FiftyOne Enterprise 2.17.2
---------------------------
+.. _fiftyone-enterprise-2-17-2:
+
+Voxel51 2.17.2
+--------------
 *Released April 22, 2026*
 
 App
@@ -1113,8 +1141,10 @@ FiftyOne 1.14.2
 
 This release does not include any open-source updates.
 
-FiftyOne Enterprise 2.17.1
---------------------------
+.. _fiftyone-enterprise-2-17-1:
+
+Voxel51 2.17.1
+--------------
 *Released April 6, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.14.1 <release-notes-v1.14.1>`, plus:
@@ -1137,8 +1167,10 @@ FiftyOne 1.14.1
 
 .. _release-notes-enterprise-v2.17.0:
 
-FiftyOne Enterprise 2.17.0
---------------------------
+.. _fiftyone-enterprise-2-17-0:
+
+Voxel51 2.17.0
+--------------
 *Released March 31, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.14.0 <release-notes-v1.14.0>`, plus:
@@ -1337,8 +1369,10 @@ Documentation
 
 
 
-FiftyOne Enterprise 2.16.5
---------------------------
+.. _fiftyone-enterprise-2-16-5:
+
+Voxel51 2.16.5
+--------------
 *Released March 23, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.5 <release-notes-v1.13.5>`, plus:
@@ -1370,8 +1404,10 @@ Models
   `#7197 <https://github.com/voxel51/fiftyone/pull/7197>`_
 
 
-FiftyOne Enterprise 2.16.4
---------------------------
+.. _fiftyone-enterprise-2-16-4:
+
+Voxel51 2.16.4
+--------------
 *Released March 9, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.4 <release-notes-v1.13.4>`, plus:
@@ -1403,8 +1439,10 @@ App
   `#7137 <https://github.com/voxel51/fiftyone/pull/7137>`_
 
 
-FiftyOne Enterprise 2.16.3
---------------------------
+.. _fiftyone-enterprise-2-16-3:
+
+Voxel51 2.16.3
+--------------
 *Released March 3, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.3 <release-notes-v1.13.3>`, plus:
@@ -1471,8 +1509,10 @@ FiftyOne 1.13.3
   `#6995 <https://github.com/voxel51/fiftyone/pull/6995>`_
 
 
-FiftyOne Enterprise 2.16.2
---------------------------
+.. _fiftyone-enterprise-2-16-2:
+
+Voxel51 2.16.2
+--------------
 *Released February 20, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.2 <release-notes-v1.13.2>`, plus:
@@ -1505,8 +1545,10 @@ App
 
 
 
-FiftyOne Enterprise 2.16.1
---------------------------
+.. _fiftyone-enterprise-2-16-1:
+
+Voxel51 2.16.1
+--------------
 *Released February 18, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.1 <release-notes-v1.13.1>`, plus:
@@ -1542,8 +1584,10 @@ App
 
 .. _release-notes-enterprise-v2.16.0:
 
-FiftyOne Enterprise 2.16.0
---------------------------
+.. _fiftyone-enterprise-2-16-0:
+
+Voxel51 2.16.0
+--------------
 *Released February 12, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.0 <release-notes-v1.13.0>`, plus:
@@ -1638,8 +1682,10 @@ CLI
 
 .. _release-notes-enterprise-v2.15.0:
 
-FiftyOne Enterprise 2.15.0
---------------------------
+.. _fiftyone-enterprise-2-15-0:
+
+Voxel51 2.15.0
+--------------
 *Released February 4, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.12.0 <release-notes-v1.12.0>`, plus:
@@ -1797,8 +1843,10 @@ Docs
 
 
 
-FiftyOne Enterprise 2.14.1
---------------------------
+.. _fiftyone-enterprise-2-14-1:
+
+Voxel51 2.14.1
+--------------
 *Released January 14, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.11.1 <release-notes-v1.11.1>`, plus:
@@ -1829,8 +1877,10 @@ Security
 
 .. _release-notes-enterprise-v2.14.0:
 
-FiftyOne Enterprise 2.14.0
---------------------------
+.. _fiftyone-enterprise-2-14-0:
+
+Voxel51 2.14.0
+--------------
 *Released December 5, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.11.0 <release-notes-v1.11.0>`, plus:
@@ -2003,8 +2053,10 @@ Database
   `#6533 <https://github.com/voxel51/fiftyone/pull/6533>`_
 
 
-FiftyOne Enterprise 2.13.1
---------------------------
+.. _fiftyone-enterprise-2-13-1:
+
+Voxel51 2.13.1
+--------------
 *Released November 19, 2025*
 
 Plugins
@@ -2018,8 +2070,10 @@ Security
   vulnerabilities: `h2`, `starlette`, `aiohttp`, and `brotli`.
 
 
-FiftyOne Enterprise 2.13.0
---------------------------
+.. _fiftyone-enterprise-2-13-0:
+
+Voxel51 2.13.0
+--------------
 *Released October 31, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.10.0 <release-notes-v1.10.0>`, plus:
@@ -2092,8 +2146,10 @@ App
   `#6437 <https://github.com/voxel51/fiftyone/pull/6437>`_
 
 
-FiftyOne Enterprise 2.12.0
---------------------------
+.. _fiftyone-enterprise-2-12-0:
+
+Voxel51 2.12.0
+--------------
 *Released October 20, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.9.0 <release-notes-v1.9.0>`, plus:
@@ -2227,8 +2283,10 @@ Security
 
 
 
-FiftyOne Enterprise 2.11.2
---------------------------
+.. _fiftyone-enterprise-2-11-2:
+
+Voxel51 2.11.2
+--------------
 *Released September 25, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.8.1 <release-notes-v1.8.1>`, plus:
@@ -2245,8 +2303,10 @@ FiftyOne 1.8.1
   render properly. `#6351 <https://github.com/voxel51/fiftyone/pull/6351>`_
 
 
-FiftyOne Enterprise 2.11.1
---------------------------
+.. _fiftyone-enterprise-2-11-1:
+
+Voxel51 2.11.1
+--------------
 *Released September 11, 2025*
 
 - Fixed a permissioning edge case that could cause users to view the names of
@@ -2254,8 +2314,10 @@ FiftyOne Enterprise 2.11.1
 
 .. _release-notes-enterprise-v2.11.0:
 
-FiftyOne Enterprise 2.11.0
---------------------------
+.. _fiftyone-enterprise-2-11-0:
+
+Voxel51 2.11.0
+--------------
 *Released September 3, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.8.0 <release-notes-v1.8.0>`, plus:
@@ -2425,8 +2487,10 @@ Deprecations
   `#6091 <https://github.com/voxel51/fiftyone/pull/6091>`_,
   `#5984 <https://github.com/voxel51/fiftyone/pull/5984>`_
 
-FiftyOne Enterprise 2.10.2
---------------------------
+.. _fiftyone-enterprise-2-10-2:
+
+Voxel51 2.10.2
+--------------
 *Released Aug 5, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.7.2 <release-notes-v1.7.2>`, plus:
@@ -2517,8 +2581,10 @@ Security
   vulnerability. `#6216 <https://github.com/voxel51/fiftyone/pull/6216>`_
 
 
-FiftyOne Enterprise 2.10.1
---------------------------
+.. _fiftyone-enterprise-2-10-1:
+
+Voxel51 2.10.1
+--------------
 *Released July 21, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.7.1 <release-notes-v1.7.1>`, plus:
@@ -2599,8 +2665,10 @@ Zoo
 
 .. _release-notes-enterprise-v2.10.0:
 
-FiftyOne Enterprise 2.10.0
---------------------------
+.. _fiftyone-enterprise-2-10-0:
+
+Voxel51 2.10.0
+--------------
 *Released July 1, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.7.0 <release-notes-v1.7.0>`, plus:
@@ -2759,8 +2827,10 @@ Zoo
 
 .. _release-notes-enterprise-v2.9.1:
 
-FiftyOne Enterprise 2.9.1
--------------------------
+.. _fiftyone-enterprise-2-9-1:
+
+Voxel51 2.9.1
+-------------
 *Released June 24, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
@@ -2787,8 +2857,8 @@ Includes all updates from :ref:`FiftyOne 1.6.0 <release-notes-v1.6.0>`, plus:
 - Fixed vulnerabilities in `prismjs`, `jinja2`, and `@babel`
 - Kubernetes 1.29 transitioned to end-of-life effective February of 2025, so
   in accordance with our
-  :ref:`deprecation schedule <deprecation-kubernetes-1.29>`, FiftyOne
-  Enterprise 2.9 and later might not be compatible with it
+  :ref:`deprecation schedule <deprecation-kubernetes-1.29>`, Voxel51
+  2.9 and later might not be compatible with it
 
 .. _release-notes-v1.6.0:
 
@@ -2986,8 +3056,10 @@ Docs
   explaining how persistent selections of samples and labels work in the App
   `#5959 <https://github.com/voxel51/fiftyone/pull/5959>`_
 
-FiftyOne Enterprise 2.8.2
--------------------------
+.. _fiftyone-enterprise-2-8-2:
+
+Voxel51 2.8.2
+-------------
 *Released May 9, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.5.2 <release-notes-v1.5.2>`
@@ -3004,8 +3076,10 @@ Core
   environment incorrectly.
   `#5884 <https://github.com/voxel51/fiftyone/pull/5884>`_
 
-FiftyOne Enterprise 2.8.1
--------------------------
+.. _fiftyone-enterprise-2-8-1:
+
+Voxel51 2.8.1
+-------------
 *Released May 8, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.5.1 <release-notes-v1.5.1>`
@@ -3055,8 +3129,10 @@ Docs
 
 .. _release-notes-enterprise-v2.8.0:
 
-FiftyOne Enterprise 2.8.0
--------------------------
+.. _fiftyone-enterprise-2-8-0:
+
+Voxel51 2.8.0
+-------------
 *Released May 2, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.5.0 <release-notes-v1.5.0>`, plus:
@@ -3255,8 +3331,10 @@ Database
   :ref:`database validation is disabled <using-a-different-mongodb-version>`
   `#5682 <https://github.com/voxel51/fiftyone/pull/5682>`_
 
-FiftyOne Enterprise 2.7.2
--------------------------
+.. _fiftyone-enterprise-2-7-2:
+
+Voxel51 2.7.2
+-------------
 *Released April 4, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.4.1 <release-notes-v1.4.1>`
@@ -3284,8 +3362,10 @@ App
   `#5655 <https://github.com/voxel51/fiftyone/pull/5655>`_
 
 
-FiftyOne Enterprise 2.7.1
--------------------------
+.. _fiftyone-enterprise-2-7-1:
+
+Voxel51 2.7.1
+-------------
 *Released March 24, 2025*
 
 - Fixed the 
@@ -3294,13 +3374,15 @@ FiftyOne Enterprise 2.7.1
 
 .. _release-notes-enterprise-v2.7.0:
 
-FiftyOne Enterprise 2.7.0
--------------------------
+.. _fiftyone-enterprise-2-7-0:
+
+Voxel51 2.7.0
+-------------
 *Released March 21, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.4.0 <release-notes-v1.4.0>`, plus:
 
-- Renamed FiftyOne Teams to FiftyOne Enterprise
+- Renamed FiftyOne Teams to FiftyOne Enterprise (now Voxel51)
 - Expanded functionality of the :ref:`Runs page <enterprise-runs-page>`,
   including providing Admins a view of
   :ref:`delegated operations <enterprise-delegated-operations>` 
@@ -3526,8 +3608,10 @@ Docs
   `#5558 <https://github.com/voxel51/fiftyone/pull/5558>`_,
   `#235 <https://github.com/voxel51/fiftyone-brain/pull/235>`_
 
-FiftyOne Enterprise 2.6.2
--------------------------
+.. _fiftyone-enterprise-2-6-2:
+
+Voxel51 2.6.2
+-------------
 *Released March 12, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.3.2 <release-notes-v1.3.2>`
@@ -3545,8 +3629,10 @@ SDK
   that caused model evaluation to fail in certain cases
   `#5472 <https://github.com/voxel51/fiftyone/pull/5472>`_
 
-FiftyOne Enterprise 2.6.1
--------------------------
+.. _fiftyone-enterprise-2-6-1:
+
+Voxel51 2.6.1
+-------------
 *Released February 28, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.3.1 <release-notes-v1.3.1>`, plus:
@@ -3568,8 +3654,10 @@ App
 - Fixed a bug with sample updates after tagging in the modal
   `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
 
-FiftyOne Enterprise 2.6.0
--------------------------
+.. _fiftyone-enterprise-2-6-0:
+
+Voxel51 2.6.0
+-------------
 *Released February 10, 2025*
 
 - Improved backwards compatibility between an older SDK and newer deployment.
@@ -3577,16 +3665,20 @@ FiftyOne Enterprise 2.6.0
   often used for compliance reasons.
 - Fixed a bug where invite email smtp configuration was not saving correctly.
 
-FiftyOne Enterprise 2.5.1
--------------------------
+.. _fiftyone-enterprise-2-5-1:
+
+Voxel51 2.5.1
+-------------
 *Released February 3, 2025*
 
 - Fixed a bug where we displayed a session error before initial user login
 
 .. _release-notes-enterprise-v2.5.0:
 
-FiftyOne Enterprise 2.5.0
--------------------------
+.. _fiftyone-enterprise-2-5-0:
+
+Voxel51 2.5.0
+-------------
 *Released January 24, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
@@ -3745,22 +3837,26 @@ CLI
   :ref:`fiftyone plugins list <cli-fiftyone-plugins-list>` command
   `#5333 <https://github.com/voxel51/fiftyone/pull/5333>`_
 
-FiftyOne Enterprise 2.4.0
--------------------------
+.. _fiftyone-enterprise-2-4-0:
+
+Voxel51 2.4.0
+-------------
 *Released January 10, 2025*
 
 - Added ability to set a user-specific auth header when making media queries.
 
 .. _release-notes-enterprise-v2.3.0:
 
-FiftyOne Enterprise 2.3.0
--------------------------
+.. _fiftyone-enterprise-2-3-0:
+
+Voxel51 2.3.0
+-------------
 *Released December 20, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
 
 - Added an example :ref:`Databricks connector <data-lens-databricks>` showing
-  how to connect FiftyOne Enterprise to your lakehouse via
+  how to connect Voxel51 to your lakehouse via
   :ref:`Data Lens <data-lens>`
 - Added a :ref:`Data Lens connector <data-lens-snippet-remap-fields>`
   that demonstrates how to allow users to dynamically configure the field(s)
@@ -3850,8 +3946,10 @@ Zoo
 
 .. _release-notes-enterprise-v2.2.0:
 
-FiftyOne Enterprise 2.2.0
--------------------------
+.. _fiftyone-enterprise-2-2-0:
+
+Voxel51 2.2.0
+-------------
 *Released December 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
@@ -3987,8 +4085,10 @@ Plugins
   `#5181 <https://github.com/voxel51/fiftyone/pull/5181>`_
 
 
-FiftyOne Enterprise 2.1.3
--------------------------
+.. _fiftyone-enterprise-2-1-3:
+
+Voxel51 2.1.3
+-------------
 *Released November 8, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`.
@@ -4037,15 +4137,19 @@ App
   `#5046 <https://github.com/voxel51/fiftyone/pull/5046>`_
 
 
-FiftyOne Enterprise 2.1.2
--------------------------
+.. _fiftyone-enterprise-2-1-2:
+
+Voxel51 2.1.2
+-------------
 *Released October 31, 2024*
 
 - Fixed an issue that prevented `delegation_target` from being properly set when
   running delegated operations with orchestrator registration enabled
 
-FiftyOne Enterprise 2.1.1
--------------------------
+.. _fiftyone-enterprise-2-1-1:
+
+Voxel51 2.1.1
+-------------
 *Released October 14, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.1 <release-notes-v1.0.1>`, plus:
@@ -4081,8 +4185,10 @@ Core
 
 .. _release-notes-enterprise-v2.1.0:
 
-FiftyOne Enterprise 2.1.0
--------------------------
+.. _fiftyone-enterprise-2-1-0:
+
+Voxel51 2.1.0
+-------------
 *Released October 1, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.0 <release-notes-v1.0.0>`, plus:
@@ -4201,8 +4307,10 @@ FiftyOne 0.25.2
 - Require `pymongo<4.9` to fix database connections
 - Require `pydicom<3` for :ref:`DICOM datasets <DICOMDataset-import>`
 
-FiftyOne Enterprise 2.0.1
--------------------------
+.. _fiftyone-enterprise-2-0-1:
+
+Voxel51 2.0.1
+-------------
 *Released September 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.25.1 <release-notes-v0.25.1>`, plus:
@@ -4269,8 +4377,10 @@ Plugins
 
 .. _release-notes-enterprise-v2.0.0:
 
-FiftyOne Enterprise 2.0.0
--------------------------
+.. _fiftyone-enterprise-2-0-0:
+
+Voxel51 2.0.0
+-------------
 *Released August 20, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.25.0 <release-notes-v0.25.0>`, plus:
@@ -4456,8 +4566,10 @@ Zoo
   `#4509 <https://github.com/voxel51/fiftyone/pull/4509>`_,
   `#4512 <https://github.com/voxel51/fiftyone/pull/4512>`_
 
-FiftyOne Enterprise 1.7.1
--------------------------
+.. _fiftyone-enterprise-1-7-1:
+
+Voxel51 1.7.1
+-------------
 *Released June 11, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.24.1 <release-notes-v0.24.1>`, plus:
@@ -4508,8 +4620,10 @@ Annotation
 
 .. _release-notes-enterprise-v1.7.0:
 
-FiftyOne Enterprise 1.7.0
--------------------------
+.. _fiftyone-enterprise-1-7-0:
+
+Voxel51 1.7.0
+-------------
 *Released May 29, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.24.0 <release-notes-v0.24.0>`, plus:
@@ -4519,8 +4633,8 @@ Includes all updates from :ref:`FiftyOne 0.24.0 <release-notes-v0.24.0>`, plus:
 - Added support for customizing the role that a user will have when sending an
   invitation for a new user to access a specific dataset
 - Added the ability to configure the expiration time for signed URLs used by
-  your FiftyOne Enterprise deployment
-- Fixed a regression from FiftyOne Enterprise 1.6 that could cause login errors when
+  your Voxel51 deployment
+- Fixed a regression from Voxel51 1.6 that could cause login errors when
   accepting invites
 
 .. _release-notes-v0.24.0:
@@ -4621,17 +4735,21 @@ Zoo
 - Fixed a bug with :ref:`YOLO-NAS inference <super-gradients-integration>`
   `#4429 <https://github.com/voxel51/fiftyone/pull/4429>`_
 
-FiftyOne Enterprise 1.6.1
--------------------------
+.. _fiftyone-enterprise-1-6-1:
+
+Voxel51 1.6.1
+-------------
 *Released May 10, 2024*
 
 Bugs
 
-- Fixed an issue with logging into FiftyOne Enterprise in Enterprise Proxy
+- Fixed an issue with logging into Voxel51 in Enterprise Proxy
   environments
 
-FiftyOne Enterprise 1.6.0
--------------------------
+.. _fiftyone-enterprise-1-6-0:
+
+Voxel51 1.6.0
+-------------
 *Released April 30, 2024*
 
 What's New
@@ -4639,25 +4757,29 @@ What's New
 - Added :ref:`Groups <enterprise-groups>` for managing and dataset access for groups
   of users
 - Introduced a new :ref:`Pluggable Authentication <pluggable-auth>` system for
-  customizing FiftyOne Enterprise authentication
+  customizing Voxel51 authentication
 - Removed Auth0 as a hard dependency for Enterprise deployments with the
   introduction of :ref:`Internal Mode <internal-mode>`
 - Added support for directly authenticating with
   :ref:`Identity Providers <identity-providers>`
-- Added a :ref:`Super Admin UI <super-admin-ui>` for administering FiftyOne
-  Enterprise deployments
+- Added a :ref:`Super Admin UI <super-admin-ui>` for administering Voxel51
+  deployments
 - Added the ability to search for users on the Users page
 
-FiftyOne Enterprise 1.5.10
---------------------------
+.. _fiftyone-enterprise-1-5-10:
+
+Voxel51 1.5.10
+--------------
 *Released April 18, 2024*
 
 - Fixed an issue where video datasets were not loading due to ffmpeg dependency
 
 .. _release-notes-enterprise-v1.5.9:
 
-FiftyOne Enterprise 1.5.9
--------------------------
+.. _fiftyone-enterprise-1-5-9:
+
+Voxel51 1.5.9
+-------------
 *Released April 15, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.8 <release-notes-v0.23.8>`, plus:
@@ -4789,8 +4911,10 @@ Zoo
 
 .. _release-notes-enterprise-v1.5.8:
 
-FiftyOne Enterprise 1.5.8
--------------------------
+.. _fiftyone-enterprise-1-5-8:
+
+Voxel51 1.5.8
+-------------
 *Released March 21, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.7 <release-notes-v0.23.7>`.
@@ -4898,8 +5022,10 @@ Core
 
 .. _release-notes-enterprise-v1.5.7:
 
-FiftyOne Enterprise 1.5.7
--------------------------
+.. _fiftyone-enterprise-1-5-7:
+
+Voxel51 1.5.7
+-------------
 *Released March 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.6 <release-notes-v0.23.6>`, plus:
@@ -4956,8 +5082,10 @@ Bugs
   selection is present
   `#4113 <https://github.com/voxel51/fiftyone/pull/4113>`_
 
-FiftyOne Enterprise 1.5.6
--------------------------
+.. _fiftyone-enterprise-1-5-6:
+
+Voxel51 1.5.6
+-------------
 *Released February 14, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.5 <release-notes-v0.23.5>`, plus:
@@ -5005,8 +5133,10 @@ Bugs
 
 .. _release-notes-enterprise-v1.5.5:
 
-FiftyOne Enterprise 1.5.5
--------------------------
+.. _fiftyone-enterprise-1-5-5:
+
+Voxel51 1.5.5
+-------------
 *Released January 25, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.4 <release-notes-v0.23.4>`, plus:
@@ -5034,8 +5164,10 @@ Brain
 
 .. _release-notes-enterprise-v1.5.4:
 
-FiftyOne Enterprise 1.5.4
--------------------------
+.. _fiftyone-enterprise-1-5-4:
+
+Voxel51 1.5.4
+-------------
 *Released January 19, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.3 <release-notes-v0.23.3>`, plus:
@@ -5153,8 +5285,10 @@ Tutorials
 
 .. _release-notes-enterprise-v1.5.3:
 
-FiftyOne Enterprise 1.5.3
--------------------------
+.. _fiftyone-enterprise-1-5-3:
+
+Voxel51 1.5.3
+-------------
 *Released December 21, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.2 <release-notes-v0.23.2>`, plus:
@@ -5249,8 +5383,10 @@ Plugins
 
 .. _release-notes-enterprise-v1.5.2:
 
-FiftyOne Enterprise 1.5.2
--------------------------
+.. _fiftyone-enterprise-1-5-2:
+
+Voxel51 1.5.2
+-------------
 *Released December 11, 2023*
 
 Bugs
@@ -5260,8 +5396,10 @@ Bugs
 
 .. _release-notes-enterprise-v1.5.1:
 
-FiftyOne Enterprise 1.5.1
--------------------------
+.. _fiftyone-enterprise-1-5-1:
+
+Voxel51 1.5.1
+-------------
 *Released December 8, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.1 <release-notes-v0.23.1>`
@@ -5295,8 +5433,10 @@ Core
 
 .. _release-notes-enterprise-v1.5.0:
 
-FiftyOne Enterprise 1.5.0
--------------------------
+.. _fiftyone-enterprise-1-5-0:
+
+Voxel51 1.5.0
+-------------
 *Released December 6, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.0 <release-notes-v0.23.0>`, plus:
@@ -5520,8 +5660,10 @@ Bugs
 
 .. _release-notes-enterprise-v1.4.5:
 
-FiftyOne Enterprise 1.4.5
--------------------------
+.. _fiftyone-enterprise-1-4-5:
+
+Voxel51 1.4.5
+-------------
 *Released November 21, 2023*
 
 General
@@ -5530,8 +5672,10 @@ General
 
 .. _release-notes-enterprise-v1.4.4:
 
-FiftyOne Enterprise 1.4.4
--------------------------
+.. _fiftyone-enterprise-1-4-4:
+
+Voxel51 1.4.4
+-------------
 *Released November 3, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
@@ -5612,8 +5756,10 @@ CLI
 
 .. _release-notes-enterprise-v1.4.3:
 
-FiftyOne Enterprise 1.4.3
--------------------------
+.. _fiftyone-enterprise-1-4-3:
+
+Voxel51 1.4.3
+-------------
 *Released October 20, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.2 <release-notes-v0.22.2>`, plus:
@@ -5701,8 +5847,10 @@ Zoo
 
 .. _release-notes-enterprise-v1.4.2:
 
-FiftyOne Enterprise 1.4.2
--------------------------
+.. _fiftyone-enterprise-1-4-2:
+
+Voxel51 1.4.2
+-------------
 *Released October 6, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.1 <release-notes-v0.22.1>`, plus:
@@ -5781,8 +5929,10 @@ Plugins
 
 .. _release-notes-enterprise-v1.4.1:
 
-FiftyOne Enterprise 1.4.1
--------------------------
+.. _fiftyone-enterprise-1-4-1:
+
+Voxel51 1.4.1
+-------------
 *Released September 21, 2023*
 
 Bugs
@@ -5791,8 +5941,10 @@ Bugs
 
 .. _release-notes-enterprise-v1.4.0:
 
-FiftyOne Enterprise 1.4.0
--------------------------
+.. _fiftyone-enterprise-1-4-0:
+
+Voxel51 1.4.0
+-------------
 *Released September 20, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.22.0 <release-notes-v0.22.0>`, plus:
@@ -5927,8 +6079,10 @@ Zoo
 
 .. _release-notes-enterprise-v1.3.6:
 
-FiftyOne Enterprise 1.3.6
--------------------------
+.. _fiftyone-enterprise-1-3-6:
+
+Voxel51 1.3.6
+-------------
 *Released August 8, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.6 <release-notes-v0.21.6>`.
@@ -5948,8 +6102,10 @@ App
 
 .. _release-notes-enterprise-v1.3.5:
 
-FiftyOne Enterprise 1.3.5
--------------------------
+.. _fiftyone-enterprise-1-3-5:
+
+Voxel51 1.3.5
+-------------
 *Released August 7, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.5 <release-notes-v0.21.5>`, plus:
@@ -6110,8 +6266,10 @@ FiftyOne 0.21.4
 
 .. _release-notes-enterprise-v1.3.3:
 
-FiftyOne Enterprise 1.3.3
--------------------------
+.. _fiftyone-enterprise-1-3-3:
+
+Voxel51 1.3.3
+-------------
 *Released July 12, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.3 <release-notes-v0.21.3>`, plus:
@@ -6164,8 +6322,10 @@ Core
 
 .. _release-notes-enterprise-v1.3.2:
 
-FiftyOne Enterprise 1.3.2
--------------------------
+.. _fiftyone-enterprise-1-3-2:
+
+Voxel51 1.3.2
+-------------
 *Released July 5, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.2 <release-notes-v0.21.2>`.
@@ -6185,8 +6345,10 @@ App
 
 .. _release-notes-enterprise-v1.3.1:
 
-FiftyOne Enterprise 1.3.1
--------------------------
+.. _fiftyone-enterprise-1-3-1:
+
+Voxel51 1.3.1
+-------------
 *Released June 30, 2023*
 
 Includes all features from :ref:`FiftyOne 0.21.1 <release-notes-v0.21.1>`,
@@ -6294,8 +6456,10 @@ Annotation
 
 .. _release-notes-enterprise-v1.3.0:
 
-FiftyOne Enterprise 1.3.0
--------------------------
+.. _fiftyone-enterprise-1-3-0:
+
+Voxel51 1.3.0
+-------------
 *Released May 31, 2023*
 
 Includes all features from :ref:`FiftyOne 0.21.0 <release-notes-v0.21.0>`,
@@ -6433,8 +6597,10 @@ Tutorials
 
 .. _release-notes-enterprise-v1.2.1:
 
-FiftyOne Enterprise 1.2.1
--------------------------
+.. _fiftyone-enterprise-1-2-1:
+
+Voxel51 1.2.1
+-------------
 *Released April 5, 2023*
 
 Includes all features from :ref:`FiftyOne 0.20.1 <release-notes-v0.20.1>`,
@@ -6529,8 +6695,10 @@ Documentation
 
 .. _release-notes-enterprise-v1.2:
 
-FiftyOne Enterprise 1.2
------------------------
+.. _fiftyone-enterprise-1-2:
+
+Voxel51 1.2
+-----------
 *Released March 22, 2023*
 
 Includes all features from :ref:`FiftyOne 0.20.0 <release-notes-v0.20.0>`,
@@ -6538,7 +6706,7 @@ plus:
 
 Admin settings
 
-- Admins who use SSO to authorize new users to auto-join their FiftyOne Enterprise
+- Admins who use SSO to authorize new users to auto-join their Voxel51
   deployment can now configure the :ref:`default role <enterprise-roles>` for those
   users
 - Admins can now configure the
@@ -6774,8 +6942,10 @@ Tutorials
 
 .. _release-notes-enterprise-v1.1.1:
 
-FiftyOne Enterprise 1.1.1
--------------------------
+.. _fiftyone-enterprise-1-1-1:
+
+Voxel51 1.1.1
+-------------
 *Released February 14, 2023*
 
 Includes all features from :ref:`FiftyOne 0.19.1 <release-notes-v0.19.1>`,
@@ -6807,8 +6977,10 @@ Core
 
 .. _release-notes-enterprise-v1.1:
 
-FiftyOne Enterprise 1.1
------------------------
+.. _fiftyone-enterprise-1-1:
+
+Voxel51 1.1
+-----------
 *Released February 9, 2023*
 
 Includes all features from :ref:`FiftyOne 0.19.0 <release-notes-v0.19.0>`,
@@ -6847,7 +7019,7 @@ FiftyOne 0.19.0
 
 News
 
-- :ref:`FiftyOne Enterprise <fiftyone-enterprise>` documentation is now publicly
+- :ref:`Voxel51 <fiftyone-enterprise>` documentation is now publicly
   available! `#2388 <https://github.com/voxel51/fiftyone/pull/2388>`_
 
 App
@@ -7045,8 +7217,10 @@ Docs
 
 .. _release-notes-enterprise-v1.0:
 
-FiftyOne Enterprise 1.0
------------------------
+.. _fiftyone-enterprise-1-0:
+
+Voxel51 1.0
+-----------
 *Released November 8, 2022*
 
 Includes all features from :ref:`FiftyOne 0.18.0 <release-notes-v0.18.0>`,
@@ -7054,7 +7228,7 @@ plus:
 
 News
 
-- FiftyOne Enterprise is now generally available,
+- Voxel51 is now generally available,
   :ref:`read more here <fiftyone-enterprise>`!
 
 .. _release-notes-v0.18.0:

@@ -1,24 +1,24 @@
 .. _enterprise-app:
 
-FiftyOne Enterprise App
-=======================
+Voxel51 App
+===========
 
 .. default-role:: code
 
-The FiftyOne Enterprise App allows you to visualize, browse, and interact with your
+The Voxel51 App allows you to visualize, browse, and interact with your
 individual datasets like you can with the :ref:`FiftyOne App <fiftyone-app>`,
 but with expanded features for organizing, permissioning, versioning, and
 sharing your team's datasets, all from a centralized web portal.
 
 This page provides a brief overview of some features available only in the
-FiftyOne Enterprise App.
+Voxel51 App.
 
 .. _enterprise-homepage:
 
 The homepage
 ____________
 
-When you login to the FiftyOne Enterprise App, you'll land on the homepage pictured
+When you login to the Voxel51 App, you'll land on the homepage pictured
 below.
 
 In the top bar of this page, on the left side, the gray number next to
@@ -127,7 +127,7 @@ description, and tags for the dataset:
 .. note::
 
    What next? Use the
-   :ref:`FiftyOne Enterprise Python SDK <enterprise-python-sdk>` to upload new
+   :ref:`Voxel51 Python SDK <enterprise-python-sdk>` to upload new
    samples, labels, and metadata to your dataset. A common approach is to
    automate this process via
    :ref:`cloud functions <enterprise-cloud-functions>`.
@@ -157,7 +157,7 @@ just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
 Comments
 --------
 
-When using a dataset in the FiftyOne Enterprise App, you can add comments
+When using a dataset in the Voxel51 App, you can add comments
 to samples and start threads with your team. Comments are a great way to
 provide feedback, ask questions, or collaborate with your team. They are
 especially useful for
@@ -197,7 +197,7 @@ tiles and ordered dynamic groups played as video are not supported.
 Managing a dataset
 __________________
 
-The FiftyOne Enterprise App provides a number of options for managing existing
+The Voxel51 App provides a number of options for managing existing
 datasets, as described below.
 
 You can access these options from the :ref:`Samples tab <enterprise-using-datasets>`
@@ -269,7 +269,7 @@ the modal to confirm this action.
 
 .. note::
 
-   The FiftyOne Enterprise App ships with AI-assisted mask segmentation for
+   The Voxel51 App ships with AI-assisted mask segmentation for
    annotation workflows. The feature works out of the box with no
    configuration. Deployments that prefer to serve the model weights from
    their own infrastructure can do so via the

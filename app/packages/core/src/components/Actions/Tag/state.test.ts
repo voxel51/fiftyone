@@ -46,3 +46,30 @@ describe("Resolves tag counts", () => {
     expect(state.overrideFilters(true, new Set("sample"))).toBe(true);
   });
 });
+
+describe("event pins in tag parameters", () => {
+  it("omits modal pins while preserving grid event filters", () => {
+    const filters = {
+      _events: { values: ['["a","brake"]'] },
+      tags: { values: ["train"] },
+    };
+    const params = {
+      dataset: "dataset",
+      view: [],
+      filters,
+      selectedSamples: new Map(),
+      selectedLabels: [],
+      hiddenLabels: [],
+      activeFields: [],
+      groupData: null,
+      targetLabels: false,
+      sampleId: "ep",
+    };
+    expect(state.tagParameters({ ...params, modal: true }).filters).toEqual({
+      tags: { values: ["train"] },
+    });
+    expect(state.tagParameters({ ...params, modal: false }).filters).toEqual(
+      filters,
+    );
+  });
+});

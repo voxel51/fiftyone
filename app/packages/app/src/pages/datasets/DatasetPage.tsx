@@ -5,8 +5,10 @@
 import {
   ActivityToast,
   Dataset,
+  EmptyDatasetSelection,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
+  SavedQueries,
   SchemaManagerOutlet,
   Snackbar,
   Starter,
@@ -114,7 +116,17 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const isEmpty = count === 0;
 
   return (
-    <Nav fragment={data} hasDataset={!isEmpty}>
+    <Nav
+      fragment={data}
+      hasDataset={!isEmpty}
+      viewBarAccessory={
+        // The header sits outside the page's dataset context; the menu reads
+        // the saved views this page query already loaded
+        <datasetQueryContext.Provider value={data}>
+          <SavedQueries />
+        </datasetQueryContext.Provider>
+      }
+    >
       <div className={style.page} data-cy={"dataset-page"}>
         <DatasetGridRendererFailover />
         {/* Rendered outside the isEmpty branch so the schema manager URL
@@ -124,7 +136,14 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
             depend on `datasetQueryContext.Provider`. */}
         <SchemaManagerOutlet />
         {isEmpty ? (
-          <Starter mode="ADD_SAMPLE" />
+          <div
+            style={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+              <Starter mode="ADD_SAMPLE" />
+            </div>
+            <EmptyDatasetSelection />
+          </div>
         ) : (
           <datasetQueryContext.Provider value={data}>
             <OperatorCore />

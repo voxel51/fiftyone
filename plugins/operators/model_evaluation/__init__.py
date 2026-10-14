@@ -389,8 +389,8 @@ class ConfigureScenario(foo.Operator):
             # TODO: Implement design for this case
             self.render_no_values_warning(
                 inputs,
-                "saved views",
-                link="[Learn how to create a saved view](https://docs.voxel51.com/user_guide/using_views.html#saving-views)",
+                "saved queries",
+                link="[Learn how to save a query](https://docs.voxel51.com/user_guide/app.html#app-saving-queries)",
             )
             return
 
@@ -407,7 +407,7 @@ class ConfigureScenario(foo.Operator):
                 ctx,
                 view_names,
                 inputs,
-                with_description=f"{len(view_names)} saved views available",
+                with_description=f"{len(view_names)} saved queries available",
             )
 
     def get_scenario_values_key(self, params):
@@ -518,7 +518,7 @@ class ConfigureScenario(foo.Operator):
                 else (
                     "field"
                     if scenario_type == ScenarioType.SAMPLE_FIELD
-                    else "saved view"
+                    else "saved query"
                 )
             )
 
@@ -615,7 +615,7 @@ class ConfigureScenario(foo.Operator):
 
         scenario_type = get_scenario_type(ctx.params)
         scenario_type_display = (
-            "saved views"
+            "saved queries"
             if scenario_type == "view"
             else (
                 "attribute values"
@@ -664,7 +664,7 @@ class ConfigureScenario(foo.Operator):
                 else (
                     "field"
                     if scenario_type == ScenarioType.SAMPLE_FIELD
-                    else "saved view"
+                    else "saved query"
                 )
             )
             self.render_empty_sample_distribution(
@@ -1011,7 +1011,7 @@ class ConfigureScenario(foo.Operator):
             _, scenario_subsets = self.get_selected_values(ctx.params)
 
             if len(scenario_subsets) == 0:
-                raise ValueError("No saved views selected")
+                raise ValueError("No saved queries selected")
 
             scenario_field = None
 
@@ -1115,7 +1115,7 @@ class ConfigureScenarioPlotResolver(foo.Operator):
         elif scenario_type == ScenarioType.SAMPLE_FIELD:
             x_axis_title = "Field value"
         elif scenario_type == ScenarioType.VIEW:
-            x_axis_title = "Saved view"
+            x_axis_title = "Saved query"
 
         preview_container.plot(
             "plot_preview",

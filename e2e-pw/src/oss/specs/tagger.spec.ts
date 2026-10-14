@@ -1,7 +1,7 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { GridTaggerPom } from "src/oss/poms/action-row/tagger/grid-tagger";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { createDetectionsDataset } from "./detections-data";
@@ -12,7 +12,7 @@ const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
   sidebar: SidebarPom;
-  tagger: GridTaggerPom;
+  tray: SelectionTrayPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -23,8 +23,8 @@ const test = base.extend<{
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  tagger: async ({ page, eventUtils }, use) => {
-    await use(new GridTaggerPom(page, eventUtils));
+  tray: async ({ page, eventUtils }, use) => {
+    await use(new SelectionTrayPom(page, eventUtils));
   },
 });
 
@@ -42,40 +42,29 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test.describe.serial("tag", () => {
-  test("sample tag and label tag loads correct aggregation number on default view", async ({
-    grid,
-    tagger,
+  test("tag picker offers sample and label targets on the default view", async ({
+    page,
+    tray,
   }) => {
-    await tagger.afterCountShown("sample", () =>
-      grid.actionsRow.toggleTagSamplesOrLabels(),
-    );
-    expect(await tagger.getTagInputTextPlaceholder("sample")).toBe(
-      "+ tag 5 samples",
-    );
-
-    await tagger.setActiveTaggerMode("label");
-    expect(await tagger.getTagInputTextPlaceholder("label")).toBe(
-      "+ tag 37 labels",
-    );
-
-    await grid.actionsRow.toggleTagSamplesOrLabels();
+    await tray.openTagPicker();
+    await expect(page.getByText("Tag all 5 samples in view")).toBeVisible();
+    await page.getByRole("radio", { name: "Labels" }).click();
+    await expect(page.getByRole("radio", { name: "Labels" })).toBeChecked();
+    await tray.closeTagPicker();
   });
 
   test("In grid, I can add a new sample tag to all samples", async ({
     grid,
     page,
     sidebar,
-    tagger,
+    tray,
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
     // tagging remounts the grid; the tiles' tags render as they redraw
     await grid.afterTilesDrawn(5, () =>
       grid.run(async () => {
-        await tagger.afterCountShown("sample", () =>
-          grid.actionsRow.toggleTagSamplesOrLabels(),
-        );
-        await tagger.addNewTag("sample", "test1");
+        await tray.tagSamples("test1", { allInView: true });
       }),
     );
 
@@ -87,18 +76,14 @@ test.describe.serial("tag", () => {
     grid,
     page,
     sidebar,
-    tagger,
+    tray,
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
     // tagging remounts the grid; the tiles' tags render as they redraw
     await grid.afterTilesDrawn(5, () =>
       grid.run(async () => {
-        await tagger.afterCountShown("sample", () =>
-          grid.actionsRow.toggleTagSamplesOrLabels(),
-        );
-        await tagger.setActiveTaggerMode("label");
-        await tagger.addNewTag("label", "labelTest");
+        await tray.tagLabels("labelTest", { allInView: true });
       }),
     );
     // every ground_truth and predictions label is tagged: 3 + 3 on the first

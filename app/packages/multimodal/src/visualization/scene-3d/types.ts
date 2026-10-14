@@ -427,6 +427,10 @@ export interface PointCloudPanelProps {
     source: ThreeCameraPoseChangeSource,
   ) => void;
   readonly onRenderStats?: (stats: PointCloudPanelRenderStats) => void;
+  /** Called after a frame is rendered, independently of diagnostic signals. */
+  readonly onFrameRendered?: () => void;
+  /** Reports whether a canvas failure prevents drawing the scene. */
+  readonly onUnavailableChange?: (unavailable: boolean) => void;
   readonly pointSize?: number;
   /** World axis treated as up by the shared 3D scene. @default "z" */
   readonly sceneUp?: ThreeSceneUpAxis;

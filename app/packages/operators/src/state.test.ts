@@ -1,19 +1,26 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, fireEvent, renderHook } from "@testing-library/react";
 import React, { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   OperatorExecutionOption,
+  operatorBrowserChoices,
+  useOperatorBrowser,
   useOperatorPromptSubmitOptions,
 } from "./state";
+
+const recoilMocks = vi.hoisted(() => ({
+  useRecoilState: vi.fn(),
+  useRecoilValue: vi.fn(),
+}));
 
 vi.mock("recoil", () => ({
   atom: vi.fn(() => ({ key: "mocked-atom" })),
   selector: vi.fn(() => ({ key: "mocked-selector" })),
   selectorFamily: vi.fn(() => () => ({ key: "mocked-selector-family" })),
   useRecoilCallback: vi.fn(),
-  useRecoilState: vi.fn(() => [null, vi.fn()]),
+  useRecoilState: recoilMocks.useRecoilState.mockReturnValue([null, vi.fn()]),
   useRecoilTransaction_UNSTABLE: vi.fn(),
-  useRecoilValue: vi.fn(),
+  useRecoilValue: recoilMocks.useRecoilValue,
   useRecoilValueLoadable: vi.fn(),
   useSetRecoilState: vi.fn(),
 }));
@@ -435,3 +442,23 @@ type ExecutionOptions = {
   availableOrchestrators?: Array<{ id: string; instanceID: string }>;
   isLoading?: boolean;
 };
+
+describe("useOperatorBrowser", () => {
+  it("reserves Ctrl+` for the tray and keeps plain ` opening operators", () => {
+    const setVisible = vi.fn();
+    recoilMocks.useRecoilState.mockReturnValue([false, setVisible]);
+    recoilMocks.useRecoilValue.mockImplementation((state: unknown) =>
+      state === operatorBrowserChoices ? [] : false,
+    );
+    const view = renderHook(() => useOperatorBrowser());
+
+    expect(fireEvent.keyDown(document.body, { key: "`", ctrlKey: true })).toBe(
+      true,
+    );
+    expect(setVisible).not.toHaveBeenCalled();
+
+    expect(fireEvent.keyDown(document.body, { key: "`" })).toBe(false);
+    expect(setVisible).toHaveBeenCalledWith(true);
+    view.unmount();
+  });
+});

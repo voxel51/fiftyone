@@ -99,7 +99,7 @@ function Checkbox<T>({
           {countAtom && (
             <SuspenseEntryCounts
               countAtom={countAtom}
-              subcountAtom={subcountAtom}
+              subcountAtom={subcountAtom ?? countAtom}
             />
           )}
         </NameAndCountContainer>

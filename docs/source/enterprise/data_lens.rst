@@ -9,7 +9,7 @@ Data Lens
     :enterprise_version: 2.2.0
 
 Data Lens is a feature built into the
-:ref:`FiftyOne Enterprise App <enterprise-app>` that allows you to use FiftyOne
+:ref:`Voxel51 App <enterprise-app>` that allows you to use FiftyOne
 to explore and import samples from external data sources.
 
 Whether your data resides in a database like PostgreSQL or a data lake like

@@ -289,6 +289,7 @@ describe("useModalLayout", () => {
   it("restores persisted sidebar state and a valid tile arrangement", () => {
     writeModalLayout({
       leftSidebarOpen: false,
+      timelineTracksOpen: true,
       layout: {
         direction: "row",
         first: "image-default",
@@ -298,6 +299,7 @@ describe("useModalLayout", () => {
     });
     const { result } = renderLayoutHook(SCENE_SOURCES);
     expect(result.current.defaultLeftOpen).toBe(false);
+    expect(result.current.defaultTimelineTracksOpen).toBe(true);
     expect(result.current.initialLayout).toEqual({
       direction: "row",
       first: "image-default",
@@ -737,12 +739,14 @@ describe("useModalLayout", () => {
     expect(read?.leftSidebarOpen).toBe(true);
   });
 
-  it("persists sidebar state and width under the hook's dataset", () => {
+  it("persists sidebar, track drawer, and width state under the hook's dataset", () => {
     const { result } = renderLayoutHook(SCENE_SOURCES, "dataset-a");
     act(() => result.current.onLeftOpenChange(false));
+    act(() => result.current.onTimelineTracksOpenChange(true));
     act(() => result.current.onLeftSidebarWidthChange(420));
     const read = readModalLayout("dataset-a");
     expect(read?.leftSidebarOpen).toBe(false);
+    expect(read?.timelineTracksOpen).toBe(true);
     expect(read?.sidebarWidthPx).toBe(420);
   });
 

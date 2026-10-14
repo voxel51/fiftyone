@@ -2,6 +2,12 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import {
+  useGridSelection,
+  useLoadGridSelection,
+  useSyncLegacySelection,
+  useSyncSelectionScope,
+} from "@fiftyone/state/src/selection";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
@@ -16,24 +22,33 @@ import {
 } from "./recoil";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
+import useGridJump from "./useGridJump";
+import useGridSelectionClick from "./useGridSelectionClick";
+import { useBucketTileDecorator } from "./Selection/bucketTileDecorator";
+import useTileHover from "./useTileHover";
 import useLabelVisibility from "./useLabelVisibility";
 import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
-import TileDecoratorPortals from "./TileDecoratorPortals";
 import useResize from "./useResize";
+import TileDecoratorPortals from "./TileDecoratorPortals";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
+import { SelectionTrayPortal } from "./Selection/SelectionTrayPortal";
+import SelectionTray from "./Selection/SelectionTray";
+import { useSavedSegmentTileDecorator } from "./Selection/savedSegmentTileDecorator";
 import { useGroupMatchTileDecorator } from "./GroupMatchPills";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
 
 function Grid() {
-  useGroupMatchTileDecorator();
+  useLoadGridSelection();
+  useSyncLegacySelection();
+  useSyncSelectionScope();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
@@ -44,6 +59,11 @@ function Grid() {
   useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
+  const { get, set, jump: anchor } = useScrollLocation(pageReset);
+  const resetLocation = React.useCallback(
+    () => anchor({ page: 0, at: null }),
+    [anchor],
+  );
 
   // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
@@ -54,21 +74,38 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
-  const { page, store } = useSpotlightPager({
+  const { page, store, getPreview, prepare } = useSpotlightPager({
     clearRecords: reset,
+    scopeKey: pageReset,
     pageSelector: pageParameters,
     records,
+    resetLocation,
     zoomSelector: gridCrop,
   });
 
+  const selection = useGridSelection(getPreview);
+  useSavedSegmentTileDecorator(
+    Boolean(
+      selection.request.boundary.subsetId &&
+      selection.request.boundary.subsetScope === "segments" &&
+      !selection.conversion,
+    ),
+  );
+  useGroupMatchTileDecorator();
+  const pickTile = useGridSelectionClick({ records, selection, page });
+  useBucketTileDecorator(selection.enabled && selection.buckets.length > 1, {
+    datasetId: selection.datasetId,
+    domainId: selection.domainId,
+    unit: selection.unit,
+    select: pickTile,
+  });
   const { getFontSize, lookerOptions, renderer } = useRenderer({
     cache,
     id,
     records,
     store,
+    pickTile,
   });
-  const { get, set } = useScrollLocation(pageReset);
-
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
 
@@ -76,8 +113,15 @@ function Grid() {
   // through a ref so their identities are not rebuild triggers — a transient
   // identity change from an unrelated state update must not destroy and
   // recreate the grid
-  const refs = React.useRef({ get, page, renderer, setSample });
-  refs.current = { get, page, renderer, setSample };
+  const refs = React.useRef({
+    get,
+    page,
+    renderer,
+    setSample,
+    selection,
+    pickTile,
+  });
+  refs.current = { get, page, renderer, setSample, selection, pickTile };
 
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
@@ -102,22 +146,64 @@ function Grid() {
       scrollbar: true,
       spacing,
 
-      get: (next) => refs.current.page(next),
-      onItemClick: (item) => refs.current.setSample(item),
+      get: (next) => refs.current.page(next, reset),
+      onItemClick: (item) => {
+        const { selection } = refs.current;
+        const { ctrlKey, metaKey, shiftKey } = item.event;
+        // Command/Ctrl-click picks the tile into the focused sections, and
+        // Shift-click picks the range up to it; a plain click opens it.
+        if (selection.enabled && (ctrlKey || metaKey || shiftKey)) {
+          void refs.current.pickTile(item.item.id.description, shiftKey);
+          return undefined;
+        }
+        return shiftKey ? undefined : refs.current.setSample(item);
+      },
       rowAspectRatioThreshold: zoom,
     });
   }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
 
+  const jump = useGridJump({
+    scopeKey: pageReset,
+    datasetId: selection.datasetId,
+    request: selection.request,
+    anchor,
+    prepare,
+    spotlight,
+  });
+
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
+  useTileHover(id);
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
   useResize(id, setResizing);
 
   return (
     <div className={styles.gridContainer}>
-      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
-      <div id={pixels} className={styles.fallingPixels} />
-      <TileDecoratorPortals />
+      <div className={styles.gridViewport}>
+        <div
+          id={id}
+          className={styles.spotlightGrid}
+          data-cy="fo-grid"
+          data-selection-buckets={
+            selection.enabled && selection.buckets.length > 1 ? true : undefined
+          }
+        />
+        <div id={pixels} className={styles.fallingPixels} />
+        {/* Renders per-tile decorators (status badges, etc.) as portals
+            into the overlay div reserved by `useRenderer.showItem`.
+            Lives outside the Spotlight host so Spotlight's own DOM
+            churn never touches React-managed tree. */}
+        <TileDecoratorPortals />
+      </div>
+      {selection.enabled && (
+        <SelectionTrayPortal>
+          <SelectionTray
+            key={selection.domainId}
+            locate={jump}
+            getPreview={getPreview}
+          />
+        </SelectionTrayPortal>
+      )}
     </div>
   );
 }

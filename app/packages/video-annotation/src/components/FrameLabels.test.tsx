@@ -53,6 +53,7 @@ vi.mock("../streams/VideoFrameLabelsStream", () => ({
   VideoFrameLabelsStream: class {
     setPrimaryField = vi.fn();
     dispose = vi.fn();
+    subscribeToBufferChanges = () => () => undefined;
   },
 }));
 

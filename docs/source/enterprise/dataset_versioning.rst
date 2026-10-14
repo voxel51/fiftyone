@@ -8,7 +8,7 @@ Dataset Versioning
 .. customavailablein::
     :enterprise_version: 1.4.0
 
-FiftyOne Enterprise provides native support for versioning your datasets!
+Voxel51 provides native support for versioning your datasets!
 
 Dataset Versioning allows you to capture the state of your dataset in time so
 that it can be referenced in the future. This enables workflows like recalling
@@ -27,7 +27,7 @@ annotation added, etc) as well as helping to prevent accidental data loss.
 Overview
 ________
 
-Dataset Versioning in FiftyOne Enterprise is implemented as a linear sequence of
+Dataset Versioning in Voxel51 is implemented as a linear sequence of
 read-only :ref:`Snapshots <dataset-versioning-snapshots>`. In other words,
 creating a new Snapshot creates a permanent record of the dataset’s contents
 that can be loaded and viewed at any time in the future, but not directly
@@ -53,7 +53,7 @@ allows dataset snapshots to be as lightweight and versatile as possible.
     +------------------------+-----------------------------------------+
     | Dataset-level metadata | Schema, tags, and other metadata        |
     |                        +-----------------------------------------+
-    |                        | Saved views                             |
+    |                        | Saved queries                           |
     |                        +-----------------------------------------+
     |                        | Runs and run results                    |
     +------------------------+-----------------------------------------+
@@ -81,7 +81,7 @@ Dataset Versioning has been built with an extensible architecture so that
 different versioning backends can be swapped in. Each backend may have
 different tradeoffs in terms of performance, storage, and deployment needs, so
 users should be able to choose the best fit for their needs. In addition, many
-users may already have a versioning solution external to FiftyOne Enterprise, and
+users may already have a versioning solution external to Voxel51, and
 the goal is to support integration around those use cases as well.
 
 Currently, only the
@@ -100,7 +100,7 @@ are :ref:`on the roadmap <dataset-versioning-roadmap>`.
 Snapshots
 _________
 
-Dataset Versioning in FiftyOne Enterprise is implemented as a linear history of
+Dataset Versioning in Voxel51 is implemented as a linear history of
 **Snapshots**. A Snapshot captures the state of a dataset at a particular point
 in time as an immutable object. Compare this concept to creating commits and
 tags in a single branch of a version control system such as git or svn; a
@@ -136,7 +136,7 @@ choices and user actions.
     Virtual Snapshot
         A Snapshot whose state and contents are stored by the pluggable backend
         versioning implementation in whatever way it chooses. In order to be
-        loaded by FiftyOne Enterprise users, the Snapshot must be *materialized*
+        loaded by Voxel51 users, the Snapshot must be *materialized*
         into its workable form in MongoDB. This is done through a combination
         of the overarching versioning infrastructure and the specific
         versioning backend.
@@ -707,7 +707,7 @@ better suit the users' needs and technology preferences. In the future, this
 section will contain information and discussion about each of these available
 backends, including their strengths/limitations and configuration options.
 
-For the initial release in FiftyOne Enterprise v1.4.0, however, there is only one
+For the initial release in Voxel51 v1.4.0, however, there is only one
 backend choice described below. Additional backends may be implemented in the
 future, but for now, releasing dataset versioning with the first
 iteration was prioritized so that users can begin to see value and provide
@@ -814,7 +814,7 @@ following advice:
 Configuration
 -------------
 
-Since Snapshots impact the storage needs of FiftyOne Enterprise, some guard rails
+Since Snapshots impact the storage needs of Voxel51, some guard rails
 have been put in place to control the maximum amount of Snapshots that can be
 created. If a threshold has been exceeded while a user attempts to create a
 new Snapshot, they will receive an error informing them that it may be time to
@@ -850,7 +850,7 @@ Roadmap
 _______
 
 The following are some items that are on the roadmap for future iterations
-of the dataset versioning system. Keep an eye out for future FiftyOne Enterprise
+of the dataset versioning system. Keep an eye out for future Voxel51
 versions for these additional features!
 
 **Near term**

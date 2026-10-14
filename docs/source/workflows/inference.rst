@@ -9,7 +9,7 @@ identically whether you're using a :ref:`Model Zoo <model-zoo>` model or your
 own, and stores whatever your model produces — classifications, detections,
 segmentations, keypoints, heatmaps, and more — as native FiftyOne labels.
 
-If you're using FiftyOne Enterprise with :doc:`cloud-backed media
+If you're using Voxel51 with :doc:`cloud-backed media
 <../enterprise/cloud_media>` 🚀, download media locally within your inference
 loop using the media caching utilities.
 

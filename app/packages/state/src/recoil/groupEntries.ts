@@ -9,7 +9,14 @@ export const groupLength = selectorFamily<
   get:
     (params) =>
     ({ get }) =>
-      get(fos.sidebarGroup({ ...params, loading: true })).length,
+      get(
+        fos.sidebarGroup({
+          ...params,
+          loading: true,
+          filtered: false,
+          flatEvents: false,
+        }),
+      ).length,
 });
 
 export const numGroupFieldsFiltered = selectorFamily<

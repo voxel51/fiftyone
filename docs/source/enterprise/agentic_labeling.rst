@@ -12,7 +12,7 @@ Agentic Labeling labels your images with a prompt-driven vision-language
 model (VLM). You describe what you want in plain language, optionally show
 the model a few examples, and it produces labels like classifications,
 detections, captions, or per-region labels across your dataset for review.
-Agentic Labeling is available as a panel in the FiftyOne Enterprise App.
+Agentic Labeling is available as a panel in the Voxel51 App.
 
 .. _agentic-labeling-vs-auto-labeling:
 

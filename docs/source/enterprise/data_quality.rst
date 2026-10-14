@@ -9,7 +9,7 @@ Data Quality
     :enterprise_version: 2.2.0
 
 The Data Quality panel is a builtin feature of the
-:ref:`FiftyOne Enterprise App <enterprise-app>` that automatically scans your
+:ref:`Voxel51 App <enterprise-app>` that automatically scans your
 dataset for common quality issues and helps you explore and take action to
 resolve them.
 

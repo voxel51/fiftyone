@@ -8,23 +8,27 @@ export type FrameRenderedDetail = Readonly<
 >;
 
 /**
- * Test signal for browser automation: after each frame its R3F root renders,
- * dispatches the `e2e:` bus event `event` with `detail` as committed for that
- * frame. The bus drops the event outside automation.
+ * Reports presentation after its R3F root renders, then dispatches the test
+ * signal with the detail committed for that frame. The bus drops the event
+ * outside automation; the presentation callback runs in normal playback too.
  */
 export function FrameRenderedSignal({
   detail,
   event,
+  onRendered,
 }: {
   readonly detail: FrameRenderedDetail;
   readonly event: `e2e:${string}`;
+  readonly onRendered?: () => void;
 }) {
   const detailRef = useRef(detail);
+  const onRenderedRef = useRef(onRendered);
   const renderedRef = useRef(false);
 
   // This layout effect pairs the detail with the commit the next frame draws.
   useLayoutEffect(() => {
     detailRef.current = detail;
+    onRenderedRef.current = onRendered;
   });
 
   // Priority 0 leaves R3F's automatic render in place for this root.
@@ -38,6 +42,7 @@ export function FrameRenderedSignal({
       addAfterEffect(() => {
         if (!renderedRef.current) return;
         renderedRef.current = false;
+        onRenderedRef.current?.();
         getEventBus<Record<string, FrameRenderedDetail>>().dispatch(
           event,
           detailRef.current,
