@@ -1,27 +1,61 @@
 import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
+import {
+  extendedSelection,
+  extendedSelectionOverrideStage,
+  selectedSamples,
+  similarityParameters,
+} from "../recoil/atoms";
+import { hasFilters } from "../recoil/filters";
+import { fieldVisibilityStage } from "../recoil/schemaSettings.atoms";
+import { groupSlice } from "../recoil/groups";
+import {
+  anyTagging,
+  canTagSamplesOrLabels,
+  canEditSavedViews,
+  readOnly,
   dataset,
   datasetId,
   datasetName,
-  dynamicGroupParameters,
+  datasetSampleCount,
   expressionCatalog,
   extendedStages,
-  fieldSchema,
   filters,
   groupField,
+  dynamicGroupParameters,
+  fieldSchema,
   groupMediaTypes,
+  gridSortBy,
   isGroup,
+  isClipsView,
+  isFramesView,
+  isPatchesView,
   isOrderedDynamicGroup,
   parentMediaTypeSelector,
   selectedMediaField,
+  refresher,
   skeleton,
   stageDefinitions,
   State,
   view,
+  viewName,
 } from "../recoil";
-import { isPatchesView } from "../recoil/view";
+
+import { useSelectionRangeConstraint } from "../selection/range-constraint";
+import { resetExtendedSelectionTransaction } from "../hooks/useResetExtendedSelection";
+
+export {
+  useHoldScopedCountsUntilNextPage,
+  useSetSelectionBoundaries,
+  useSetSelectionScopeBoundary,
+} from "../recoil/selectionScope";
 
 /**
  * Get the current dataset ID.
@@ -276,6 +310,82 @@ export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 /** The applied view's stages. */
 export const useView = (): State.Stage[] => useRecoilValue(view);
 
+/** Current grid pipeline inputs, without pagination or explicit selection. */
+export function useGridViewScope() {
+  return {
+    rangeConstraint: useSelectionRangeConstraint(useCurrentDatasetName()),
+    view: useView(),
+    filters: useRecoilValue(filters),
+    extendedStages: useRecoilValue(extendedStages),
+    sort: useRecoilValue(gridSortBy),
+    refresh: useRecoilValue(refresher),
+  };
+}
+
+/** The dataset's estimated sample count, before any view stage or filter. */
+export function useDatasetSampleCount() {
+  return useRecoilValue(datasetSampleCount);
+}
+
+/** Clears the outgoing query's constraints when opening a new browsing scope. */
+export function useClearGridViewConstraints() {
+  return useRecoilCallback(
+    ({ set, reset }) =>
+      () => {
+        set(filters, {});
+        reset(gridSortBy);
+        reset(similarityParameters);
+        resetExtendedSelectionTransaction({ set, reset });
+      },
+    [],
+  );
+}
+
+/** Whether the view converts parent episodes into another result identity. */
+export function useIsConvertedView() {
+  const clips = useRecoilValue(isClipsView);
+  const frames = useRecoilValue(isFramesView);
+  const patches = useRecoilValue(isPatchesView);
+  return clips || frames || patches;
+}
+
+/** Shared tagging policy, including session permissions. */
+export function useSelectionTagDisabledReason(): string | null {
+  const permission = useRecoilValue(canTagSamplesOrLabels);
+  const locked = useRecoilValue(readOnly);
+  const tagging = useRecoilValue(anyTagging);
+  if (locked) return "This session is read-only";
+  if (!permission.enabled)
+    return (
+      permission.message?.replace("#action", "tag episodes or segments") ??
+      "Tagging is not permitted"
+    );
+  return tagging ? "Another tagging operation is in progress" : null;
+}
+
+/** Saved subsets follow the dataset metadata editing permission. */
+export function useSelectionSubsetDisabledReason(): string | null {
+  const permission = useRecoilValue(canEditSavedViews);
+  const locked = useRecoilValue(readOnly);
+  if (locked) return "This session is read-only";
+  return permission.enabled
+    ? null
+    : "Editing subsets requires dataset edit permission";
+}
+
+/**
+ * The legacy selected-samples session, read and written as one accessor so
+ * the grid selection tray can stay in step with lookers, the modal, and
+ * operators without new Recoil usage elsewhere.
+ */
+export function useLegacySelectedSamples() {
+  return useRecoilState(selectedSamples);
+}
+
+/** The active group slice the grid shows, or null outside grouped datasets. */
+export function useGridGroupSlice(): string | null {
+  return useRecoilValue(groupSlice);
+}
 /** The grid's sidebar filters. */
 export const useFilters = (): State.Filters => useRecoilValue(filters);
 
@@ -283,3 +393,33 @@ export const useFilters = (): State.Filters => useRecoilValue(filters);
  * sent them. */
 export const useExtendedStages = (): Record<string, unknown> =>
   useRecoilValue(extendedStages);
+
+/** The loaded saved view's name, or null while the view is unsaved. */
+export const useLoadedSavedViewName = (): string | null =>
+  useRecoilValue(viewName);
+
+/** Loads a saved view by slug into the working view. */
+export const useSetSavedViewName = () => useSetRecoilState(viewName);
+
+/** Whether the viewer may save, edit, and delete saved views, and why not. */
+export const useSavedViewEditPermission = () =>
+  useRecoilValue(canEditSavedViews);
+
+/** Returns the working view to the unsaved full dataset. */
+export const useResetView = () => useResetRecoilState(view);
+
+/**
+ * The App state that saving a view compiles into stages beside the view
+ * bar's own: sidebar filters, sorting, field visibility, and selections made
+ * in plots or by search.
+ */
+export function useSavedViewTransientState() {
+  return {
+    filters: useRecoilValue(hasFilters(false)),
+    sort: useRecoilValue(gridSortBy),
+    similarity: useRecoilValue(similarityParameters),
+    fieldVisibility: useRecoilValue(fieldVisibilityStage),
+    extendedSelection: useRecoilValue(extendedSelection),
+    overrideStage: useRecoilValue(extendedSelectionOverrideStage),
+  };
+}

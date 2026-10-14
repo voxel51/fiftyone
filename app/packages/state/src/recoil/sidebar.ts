@@ -34,6 +34,7 @@ import type {
 } from "@fiftyone/utilities";
 import {
   DICT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LABELS_PATH,
   LABEL_DOC_TYPES,
@@ -54,8 +55,10 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
+import { EVENTS_FIELD } from "../event-facets/identity";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { filters, modalFilters } from "./filters";
 import { activeModalSidebarSample } from "./groups";
 import { isLargeVideo } from "./options";
 import { cumulativeValues, values } from "./pathData";
@@ -78,6 +81,7 @@ import {
   datasetName,
   disableFrameFiltering,
   isVideoDataset,
+  isMultimodalDataset,
   stateSubscription,
 } from "./selectors";
 import { State } from "./types";
@@ -353,7 +357,9 @@ export const resolveGroups = (
   }, {});
 
   groups = groups.map((group) => {
-    return typeof expanded[group.name] === "boolean"
+    // Keep local expansion choices when refreshed dataset metadata arrives.
+    return typeof group.expanded !== "boolean" &&
+      typeof expanded[group.name] === "boolean"
       ? { ...group, expanded: expanded[group.name] }
       : { ...group };
   });
@@ -459,67 +465,120 @@ const groupUpdater = (
   };
 };
 
-export const sidebarGroupsDefinition = (() => {
-  let configGroups: State.SidebarGroup[] = [];
-  let current: State.SidebarGroup[] = [];
-  return graphQLSyncFragmentAtomFamily<
-    sidebarGroupsFragment$key,
-    State.SidebarGroup[],
-    boolean
-  >(
-    {
-      fragments: [datasetFragment, sidebarGroupsFragment],
-      keys: ["dataset"],
-      sync: (modal) => !modal,
-      read: (data, prev) => {
-        configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
+type SidebarGroupsState = {
+  datasetId: string | null;
+  groups: State.SidebarGroup[];
+};
+
+const sidebarGroupsState = graphQLSyncFragmentAtomFamily<
+  sidebarGroupsFragment$key,
+  SidebarGroupsState,
+  boolean
+>(
+  {
+    fragments: [datasetFragment, sidebarGroupsFragment],
+    keys: ["dataset"],
+    sync: (modal) => !modal,
+    read: (data) => {
+      const sampleFields = collapseFields(
+        readFragment(sampleFieldsFragment, data as sampleFieldsFragment$key)
+          .sampleFields,
+      );
+      const frameFields = collapseFields(
+        readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
+          .frameFields,
+      );
+      const configGroups = (data.appConfig?.sidebarGroups || []).map(
+        (group) => ({
           ...group,
           paths: [...group.paths],
-        }));
-        current = resolveGroups(
-          collapseFields(
-            readFragment(sampleFieldsFragment, data as sampleFieldsFragment$key)
-              .sampleFields,
-          ),
-          collapseFields(
-            readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
-              .frameFields,
-          ),
-          data?.datasetId === prev?.datasetId ? current : [],
-          configGroups,
-        );
+        }),
+      );
 
-        return current;
-      },
-      default: [],
+      // Snapshot readers must update their own store, not a shared module cache.
+      return (current) => ({
+        datasetId: data.datasetId,
+        groups: resolveGroups(
+          sampleFields,
+          frameFields,
+          current.datasetId === data.datasetId ? current.groups : [],
+          configGroups,
+        ),
+      });
     },
-    {
-      effects: (modal) =>
-        modal
-          ? []
-          : [
-              ({ onSet }) => {
-                onSet((next) => {
-                  current = next;
-                });
-              },
-            ],
-      key: "sidebarGroupsDefinition",
+    default: { datasetId: null, groups: [] },
+  },
+  { key: "sidebarGroupsState" },
+);
+
+/** Sidebar definitions and local choices, isolated by store and modal context. */
+export const sidebarGroupsDefinition = selectorFamily<
+  State.SidebarGroup[],
+  boolean
+>({
+  key: "sidebarGroupsDefinition",
+  get:
+    (modal) =>
+    ({ get }) =>
+      get(sidebarGroupsState(modal)).groups,
+  set:
+    (modal) =>
+    ({ reset, set }, groups) => {
+      const state = sidebarGroupsState(modal);
+      if (groups instanceof DefaultValue) reset(state);
+      else set(state, (current) => ({ ...current, groups }));
     },
-  );
-})();
+});
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
+  {
+    modal: boolean;
+    loading: boolean;
+    filtered?: boolean;
+    persist?: boolean;
+    flatEvents?: boolean;
+  }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true }) =>
+    ({ modal, loading, filtered = true, flatEvents = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
 
-      let groups = get(sidebarGroupsDefinition(modal))
+      let definitions = get(sidebarGroupsDefinition(modal));
+      if (
+        flatEvents &&
+        get(isMultimodalDataset) &&
+        get(field("events"))?.ftype === DYNAMIC_EMBEDDED_DOCUMENT_FIELD
+      ) {
+        const legacyFilters = Object.keys(get(modal ? modalFilters : filters));
+        // Keep filtered physical paths visible so saved-view filters can be
+        // inspected and cleared; otherwise show the combined event facet.
+        definitions = definitions.map((group) => ({
+          ...group,
+          paths: group.paths.filter(
+            (path) =>
+              path !== EVENTS_FIELD &&
+              (!(path === "events" || path.startsWith("events.")) ||
+                legacyFilters.some(
+                  (filteredPath) =>
+                    filteredPath === path ||
+                    filteredPath.startsWith(`${path}.`),
+                )),
+          ),
+        }));
+        const events = definitions.find((group) => group.name === "events");
+        if (events) events.paths = [EVENTS_FIELD, ...events.paths];
+        else
+          definitions.push({
+            name: "events",
+            paths: [EVENTS_FIELD],
+            expanded: true,
+          });
+      }
+
+      let groups = definitions
         .map(({ paths, ...rest }) => ({
           ...rest,
 
@@ -584,6 +643,7 @@ export const sidebarGroups = selectorFamily<
       if (newGroups instanceof DefaultValue) return;
 
       const allPaths = new Set(newGroups.flatMap(({ paths }) => paths));
+      const definitions = get(sidebarGroupsDefinition(modal));
 
       const groups = newGroups.map(({ name, paths, expanded }) => {
         if (["tags"].includes(name)) {
@@ -591,16 +651,10 @@ export const sidebarGroups = selectorFamily<
         }
 
         const result = [];
-        const current = [
-          ...get(
-            sidebarGroup({
-              modal,
-              group: name,
-              loading: false,
-              filtered: false,
-            }),
-          ),
-        ];
+        // Render-only facets must never replace the stored schema paths.
+        const current = (
+          definitions.find((group) => group.name === name)?.paths ?? []
+        ).filter((path) => path !== EVENTS_FIELD);
 
         const fill = (path?: string) => {
           while (current.length && current[0] !== path) {
@@ -617,12 +671,9 @@ export const sidebarGroups = selectorFamily<
         };
 
         for (const path of paths) {
+          if (path === EVENTS_FIELD) continue;
+          if (current.includes(path)) fill(path);
           result.push(path);
-          if (!current.includes(path)) {
-            continue;
-          }
-
-          fill(path);
         }
 
         fill();
@@ -960,7 +1011,13 @@ export const sidebarGroupMapping = selectorFamily<
 
 export const sidebarGroup = selectorFamily<
   string[],
-  { modal: boolean; group: string; loading: boolean; filtered?: boolean }
+  {
+    modal: boolean;
+    group: string;
+    loading: boolean;
+    filtered?: boolean;
+    flatEvents?: boolean;
+  }
 >({
   key: "sidebarGroup",
   get:

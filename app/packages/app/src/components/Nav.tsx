@@ -76,8 +76,10 @@ const Nav: React.FC<
   React.PropsWithChildren<{
     fragment: NavFragment$key;
     hasDataset: boolean;
+    /** A dataset page control for the view bar's search row. */
+    viewBarAccessory?: React.ReactNode;
   }>
-> = ({ children, fragment, hasDataset }) => {
+> = ({ children, fragment, hasDataset, viewBarAccessory }) => {
   const data = useFragment(
     graphql`
       fragment NavFragment on Query {
@@ -114,7 +116,7 @@ const Nav: React.FC<
         {hasDataset ? (
           <Suspense fallback={<div className={styles.spacer} />}>
             <div className={styles.bar}>
-              <ViewBar />
+              <ViewBar accessory={viewBarAccessory} />
             </div>
           </Suspense>
         ) : (

@@ -11,6 +11,7 @@ import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import * as sidebarExpandedAtoms from "../recoil/sidebarExpanded";
+import { EVENTS_FIELD } from "../event-facets/identity";
 import { is3d } from "@fiftyone/utilities";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
@@ -21,7 +22,9 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const modalFilters = Object.fromEntries(
     Object.entries(filters).filter(
       ([path]) =>
-        paths.some((p) => path.startsWith(p)) || path === "_label_tags",
+        paths.some((p) => path.startsWith(p)) ||
+        path === "_label_tags" ||
+        path === EVENTS_FIELD,
     ),
   );
 
@@ -87,7 +90,7 @@ export default () => {
       }
       // do not set modal filters from grid when navigation is not provided
       navigation && (await setModalFilters(cbInterface));
-      navigation && modalAtoms.modalNavigation.set(navigation);
+      modalAtoms.modalNavigation.set(navigation ?? null);
     },
     [environment],
   );

@@ -28,6 +28,7 @@ import {
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
 import { computeActiveFields } from "../activeFields";
+import { EVENTS_FIELD } from "../event-facets/identity";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
@@ -58,7 +59,8 @@ export const filterPaths = (
 ): string[] => {
   return paths
     ? paths.filter((path) => {
-        if (path === "_label_tags" || path === "_temporal_tags") return true;
+        if (["_label_tags", "_temporal_tags", EVENTS_FIELD].includes(path))
+          return true;
 
         const keys = path.split(".");
         let fields = schema;
@@ -156,6 +158,7 @@ export const pathIsShown = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
+      if (path === EVENTS_FIELD) return true;
       if (
         path.startsWith("tags.") ||
         path.startsWith("_label_tags.") ||
