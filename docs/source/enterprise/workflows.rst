@@ -9,7 +9,7 @@ Workflows provide a flexible framework for orchestrating data operations
 across your team to bring humans into the loop. You define a multi-stage
 pipeline, run it over a dataset, assign work to members, and track progress
 one sample at a time. For example, in an annotate-and-review pipeline you
-build a workflow once, start it on a set of samples, and FiftyOne Enterprise
+build a workflow once, start it on a set of samples, and Voxel51
 routes each sample through the stages you defined to your annotation team
 until it is fully labeled and approved.
 
@@ -19,7 +19,7 @@ The Annotate Tab
 ----------------
 
 Workflows live in the **Annotate** tab of the
-:ref:`FiftyOne Enterprise App <enterprise-app>` within a dataset. Open the
+:ref:`Voxel51 App <enterprise-app>` within a dataset. Open the
 tab to see two areas:
 
 - **My Tasks** — work currently assigned to you, with a progress bar and a

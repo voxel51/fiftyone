@@ -5,28 +5,28 @@ Roles and permissions
 
 .. default-role:: code
 
-FiftyOne Enterprise is built for collaboration, with the goal of making it as
+Voxel51 is built for collaboration, with the goal of making it as
 easy as possible for engineers, data scientists, and stakeholders to work
 together to build high quality datasets and computer vision models.
 
-Accordingly, FiftyOne Enterprise gives you the flexibility to configure user
+Accordingly, Voxel51 gives you the flexibility to configure user
 roles, user groups and fine-grained permissions so that you can safely and
 securely collaborate both inside and outside your organization at all stages of
 your workflows.
 
 This page introduces the basic roles and permissions available in
-FiftyOne Enterprise.
+Voxel51.
 
 .. _enterprise-roles:
 
 Roles
 _____
 
-FiftyOne Enterprise has five user roles: Admin, Member, Collaborator,
+Voxel51 has five user roles: Admin, Member, Collaborator,
 Labeler, and Guest.
 
 Admins can access user management features by clicking on their account icon in
-the upper-right of the FiftyOne Enterprise App and navigating to the
+the upper-right of the Voxel51 App and navigating to the
 "Settings > Team > Users" page:
 
 .. image:: /images/enterprise/admin_team_users_page.png
@@ -125,7 +125,7 @@ view other users of the deployment.
 Groups
 ------
 
-User groups in FiftyOne Enterprise allow organization admins to manage a
+User groups in Voxel51 allow organization admins to manage a
 collection of users as a single entity. This simplifies the process of
 assigning permissions to multiple users, making it more efficient to control
 access to datasets.
@@ -164,7 +164,7 @@ Service accounts
     :enterprise_version: 2.18.0
 
 Service accounts are non-human principals designed for programmatic, automated,
-or machine-to-machine access to FiftyOne Enterprise. They authenticate
+or machine-to-machine access to Voxel51. They authenticate
 exclusively via API keys and cannot log in interactively through the App.
 
 Common use cases include:
@@ -248,9 +248,9 @@ ___________
 
 Admins and users with the **Can manage** permission on a dataset can configure
 a dataset's permissions under the dataset's
-:ref:`Manage tab <enterprise-managing-datasets>` in the FiftyOne Enterprise App.
+:ref:`Manage tab <enterprise-managing-datasets>` in the Voxel51 App.
 
-In FiftyOne Enterprise, dataset permissions for a user are determined by both
+In Voxel51, dataset permissions for a user are determined by both
 the access they receive from their groups' permissions and individual
 permissions assigned to them.
 
@@ -329,7 +329,7 @@ The following permissions are available to each user role:
 
    Authorized users can use the "Grant access" workflow to give **Can view**
    , **Can tag**, or **Can edit** access to a dataset to an email address that 
-   is not yet user of a FiftyOne Enterprise deployment.
+   is not yet user of a Voxel51 deployment.
 
    When the invitation is accepted, the user will become a Guest if the
    **Can view** permission is chosen, a Labeler if the **Can tag** permission is

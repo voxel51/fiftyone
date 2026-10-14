@@ -796,7 +796,7 @@ operator's input modal when executing it from within the App:
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can also specify an optional
+    :ref:`Voxel51 <fiftyone-enterprise>` users can also specify an optional
     delegation target for their delegated operations:
 
     .. code-block:: python
@@ -882,7 +882,7 @@ are executed in the background while you continue to work.
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments
+    :ref:`Voxel51 <enterprise-delegated-operations>` deployments
     come out of the box with a connected compute cluster for executing
     delegated operations at scale.
 
@@ -912,11 +912,11 @@ curation, and evaluation are performed.
 
     Want to run delegated operations at scale?
     `Contact us <https://voxel51.com/talk-to-sales>`_ about
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, an open source-compatible
+    :ref:`Voxel51 <fiftyone-enterprise>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
     native cloud dataset support, and much more!
 
-    Think of FiftyOne Enterprise as the single source of truth on which you
+    Think of Voxel51 as the single source of truth on which you
     co-develop your data and models together 📈
 
 .. _delegated-orchestrator:
@@ -953,10 +953,10 @@ in the environment where you run the App/SDK, e.g. by setting:
 
 .. _delegated-orchestrator-enterprise:
 
-FiftyOne Enterprise
--------------------
+Voxel51
+-------
 
-:ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come
+:ref:`Voxel51 <enterprise-delegated-operations>` deployments come
 out of the box with a connected compute cluster for executing delegated
 operations at scale. They can also be connected to your own compute solution,
 such as Databricks or Anyscale.
@@ -969,11 +969,11 @@ other work in the App.
 
     Want to take advantage of this functionality?
     `Contact us <https://voxel51.com/talk-to-sales>`_ about
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, an open source-compatible
+    :ref:`Voxel51 <fiftyone-enterprise>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
     native cloud dataset support, and much more!
 
-    Think of FiftyOne Enterprise as the single source of truth on which you
+    Think of Voxel51 as the single source of truth on which you
     co-develop your data and models together 📈
 
 .. _managing-delegated-operations:
