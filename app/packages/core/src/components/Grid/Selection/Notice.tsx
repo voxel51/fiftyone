@@ -28,10 +28,7 @@ interface NoticeProps {
 
 /** A compact, toned feedback block for dialogs and pickers. */
 export function Notice({ tone, icon, title, children, role }: NoticeProps) {
-  const Icon =
-    typeof icon === "string"
-      ? null
-      : (icon as FC<IconProps>);
+  const Icon = typeof icon === "string" ? null : (icon as FC<IconProps>);
   return (
     <div className={styles.notice} data-tone={tone} role={role}>
       {Icon && (
