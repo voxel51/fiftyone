@@ -40,13 +40,6 @@ from fiftyone.server.events.state import (
     increment_app_count,
 )
 
-# How long after an App connects its count is sent again. The server learns
-# that a closed App's stream is gone only when a write to it fails, and the
-# first write after the close still succeeds; the connecting App's count is
-# that first write, and this second one fails, so an App closed just before
-# another opens stops counting before the App shows the shared session banner
-_COUNT_RESEND_DELAY = 0.5
-
 
 async def add_event_listener(
     request: Request, payload: ListenPayload
@@ -78,9 +71,6 @@ async def add_event_listener(
     if is_app:
         # dispatched once this connection's listeners can receive it too
         dispatch_app_count()
-        asyncio.get_running_loop().call_later(
-            _COUNT_RESEND_DELAY, dispatch_app_count
-        )
 
     # however the stream ends, including a close while it waits at a yield,
     # the connection stops counting
