@@ -28,6 +28,7 @@ from .model_evaluation import (
     ConfigureScenarioPlotResolver,
     ListScenarios,
 )
+from .undeclared_fields import CleanUpUndeclaredFields
 from .annotation import (
     ActivateLabelSchemas,
     CreateAndActivateField,
@@ -3342,6 +3343,7 @@ def register(p):
     p.register(DeleteSelectedLabels)
     p.register(DeleteSampleField)
     p.register(DeleteFrameField)
+    p.register(CleanUpUndeclaredFields)
     p.register(AddDynamicSampleFields)
     p.register(AddDynamicFrameFields)
     p.register(RemoveDynamicSampleFields)

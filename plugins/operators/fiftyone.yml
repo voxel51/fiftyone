@@ -20,6 +20,7 @@ operators:
   - delete_selected_labels
   - delete_sample_field
   - delete_frame_field
+  - clean_up_undeclared_fields
   - add_dynamic_sample_fields
   - add_dynamic_frame_fields
   - remove_dynamic_sample_fields
