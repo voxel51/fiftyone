@@ -161,6 +161,10 @@ class CSVDatasetImporter(
                 if value:
                     kwargs[key] = value
 
+        tags = kwargs.get("tags", None)
+        if etau.is_str(tags):
+            kwargs["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+
         return fos.Sample(filepath=filepath, **kwargs)
 
     @property

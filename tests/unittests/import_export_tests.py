@@ -2647,6 +2647,29 @@ class CSVDatasetTests(ImageDatasetTests):
         return dataset
 
     @drop_datasets
+    def test_csv_dataset_tags(self):
+        dataset = self._make_dataset()
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields=["filepath", "tags"],
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+        )
+
+        self.assertEqual(len(dataset2), 3)
+        self.assertListEqual(
+            sorted(sorted(tags) for tags in dataset2.values("tags")),
+            [[], ["bar", "foo"], ["eggs", "spam"]],
+        )
+
+    @drop_datasets
     def test_csv_dataset(self):
         dataset = self._make_dataset()
 
