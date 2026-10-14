@@ -75,6 +75,18 @@ class HFDatasetDocGenerator:
             logger.warning(f"Failed to parse YAML frontmatter: {e}")
             return None, readme_content
 
+    def _first_heading_level(self, markdown: str) -> Optional[int]:
+        in_fence = False
+        for line in markdown.splitlines():
+            if line.lstrip().startswith(("```", "~~~")):
+                in_fence = not in_fence
+            elif not in_fence:
+                match = re.match(r"(#{1,6})\s", line)
+                if match:
+                    return len(match.group(1))
+
+        return None
+
     def _make_description(self, name, tasks, license_info=""):
         if tasks:
             task_str = ", ".join(tasks[:3]).replace("-", " ")
@@ -238,7 +250,20 @@ This is a **Hugging Face dataset**. For large datasets, ensure `huggingface_hub>
 ```
 
 """
-                f.write(note + self._make_hf_badge(dataset.id) + "\n" + readme)
+                # The page title is the first heading, so cards that open
+                # with an H2 like "## Installation" need an H1 of their own
+                title = (
+                    ""
+                    if self._first_heading_level(readme or "") == 1
+                    else f"# {display_name}\n\n"
+                )
+                f.write(
+                    title
+                    + note
+                    + self._make_hf_badge(dataset.id)
+                    + "\n"
+                    + readme
+                )
 
             image = (
                 self._extract_image(dataset.card_data or "", dataset.id)
