@@ -310,9 +310,16 @@ test("tagging saved segments writes temporal ranges, not whole episodes", async 
   const freshPage = await openFreshPage();
   await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
   const freshSidebar = new SidebarPom(freshPage);
-  const freshTray = new SelectionTrayPom(freshPage, new EventUtils(freshPage));
+  const freshEvents = new EventUtils(freshPage);
+  const freshGrid = new GridPom(freshPage, freshEvents);
+  const freshTray = new SelectionTrayPom(freshPage, freshEvents);
+  // Captures are shared with the server session. Clear the restored pick so
+  // this check acts on the tagged ranges it filters, not that explicit pick.
+  await freshTray.clear();
   // a fresh page browses every episode
   await freshSidebar.clickFieldDropdown("_temporal_tags");
-  await freshSidebar.applyFilter("reviewed-range");
+  await freshGrid.afterEntryCounts(() =>
+    freshSidebar.applyFilter("reviewed-range"),
+  );
   await freshTray.untilSettledEmpty("Act on 2 segments across 1 episode");
 });

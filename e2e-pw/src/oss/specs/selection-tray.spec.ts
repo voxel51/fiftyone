@@ -211,6 +211,7 @@ test("selection follows the grid and modal, and clear can be undone and redone",
 
 test("all current results include offscreen samples in a saved subset", async ({
   datasetName,
+  eventUtils,
   fiftyoneLoader,
   grid,
   openFreshPage,
@@ -229,13 +230,12 @@ test("all current results include offscreen samples in a saved subset", async ({
   // nothing selected: the subset captures every result, drawn or not
   const name = "First sixty";
   await tray.createSubset(name);
-  await tray.openCreatedSubset();
+  await eventUtils.after("e2e:app:page-change", () => tray.openCreatedSubset());
   await tray.assert.subsetScope(name, 60);
-
-  // View stages are shared through the server session, including with a new
-  // browser context. Clear Limit before checking the dataset-wide scope.
-  await grid.run(() => viewBar.removeStage(0));
-  await tray.assert.subsetScope(name, 60);
+  // Opening a subset clears the Limit that found its members. Wait for that
+  // view transition before checking persistence, rather than racing it with
+  // a second removal of the outgoing stage.
+  await viewBar.assert.stageCount(0);
 
   const freshPage = await openFreshPage();
   await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);

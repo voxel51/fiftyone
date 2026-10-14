@@ -117,6 +117,10 @@ export class SelectionTrayPom {
       },
       (e) => isSettledEmpty(e.detail),
     );
+    if (summary !== undefined)
+      expect(
+        await this.locator.getByText(summary, { exact: true }).count(),
+      ).toBe(1);
   }
 
   async clear() {
