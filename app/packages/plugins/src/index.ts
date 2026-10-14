@@ -234,6 +234,7 @@ export type {
   ModalConfig,
   SampleRendererGridClickBehavior,
   SampleRendererGridSlot,
+  SampleRendererLoadingProps,
   SampleRendererMatchContext,
   SampleRendererMediaContext,
   SampleRendererOptions,

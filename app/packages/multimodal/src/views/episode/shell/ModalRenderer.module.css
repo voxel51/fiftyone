@@ -73,6 +73,98 @@
   width: 100%;
 }
 
+.loadingOverlay {
+  inset: 0;
+  position: absolute;
+  z-index: 5;
+}
+
+.loadingShell {
+  background: var(--color-content-bg-background);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.loadingShell > .preparingHeader {
+  flex: 0 0 38px;
+}
+
+.loadingShell > .preparingTimeline {
+  flex-shrink: 0;
+}
+
+.loadingViewport,
+.loadingMosaic {
+  height: 100%;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+/* Match react-mosaic's outer inset as well as its per-tile margins. */
+.loadingMosaic {
+  height: calc(100% - 6px);
+  margin: 3px;
+}
+
+.loadingBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.loadingSidebar {
+  box-sizing: border-box;
+  border-right: 1px solid var(--color-content-border-default);
+  flex-shrink: 0;
+  padding: 16px;
+}
+
+.loadingPane {
+  background: var(--color-content-bg-card-nested);
+  border: 1px solid var(--color-content-border-default);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+}
+
+.loadingPaneHeader {
+  align-items: center;
+  background: var(--color-content-bg-secondary);
+  border-bottom: 1px solid var(--color-content-border-default);
+  display: flex;
+  flex-shrink: 0;
+  height: 28px;
+  padding-left: 8px;
+}
+
+.loadingPaneBody,
+.loadingUnknown {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+  position: relative;
+}
+
+.loadingUnknown {
+  height: 100%;
+}
+
+.loadingPaneSkeleton {
+  background: var(--color-content-bg-secondary);
+  border-radius: 2px;
+  height: 8px;
+  margin: 12px;
+  width: 72px;
+}
+
 .preparingHeader {
   align-items: center;
   border-bottom: 1px solid var(--fo-palette-divider);

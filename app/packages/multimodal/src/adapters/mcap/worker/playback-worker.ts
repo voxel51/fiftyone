@@ -1,4 +1,4 @@
-import { setFetchFunction } from "@fiftyone/utilities";
+import { setFetchFunction } from "@fiftyone/utilities/src/fetch";
 import { errorMessage } from "../../../utils/errors";
 import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 import {

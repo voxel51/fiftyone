@@ -38,6 +38,8 @@ vi.mock("recoil", () => ({
   useSetRecoilState: () => () => undefined,
 }));
 
+vi.mock("./ModalSamplePending", () => ({ ModalSamplePending: () => null }));
+
 vi.mock("./Sample2D", () => ({
   Sample2D: () => {
     React.useEffect(() => {

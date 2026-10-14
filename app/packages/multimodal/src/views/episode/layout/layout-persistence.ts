@@ -27,8 +27,8 @@ type LayoutE2EEvents = {
 };
 
 /**
- * Persistence for the episode modal's chrome: sidebar visibility, sidebar
- * width, the mosaic tile arrangement, and the currently expanded tile.
+ * Persistence for the episode modal's chrome: sidebar/track visibility,
+ * sidebar width, the mosaic tile arrangement, and the currently expanded tile.
  *
  * One localStorage key holding scoped entries plus a browser-wide fallback
  * for callers that do not provide a scope. Samples in a dataset are
@@ -94,6 +94,8 @@ export interface PersistedModalLayout {
   defaultCameraPreferences?: PersistedCameraPreferences;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
+  /** Whether the bottom Tracks drawer was last open. */
+  timelineTracksOpen?: boolean;
   /** Episode data-sampling cadence. Dataset/source-scoped only. */
   timelineSamplingRateHz?: number;
 }
@@ -248,6 +250,10 @@ export function sanitizeModalLayout(
         ? candidate.sidebarWidthPx
         : undefined,
     tileTitles: sanitizeTileTitles(candidate.tileTitles),
+    timelineTracksOpen:
+      typeof candidate.timelineTracksOpen === "boolean"
+        ? candidate.timelineTracksOpen
+        : undefined,
     timelineSamplingRateHz: sanitizeTimelineSamplingRateHz(
       candidate.timelineSamplingRateHz,
     ),
