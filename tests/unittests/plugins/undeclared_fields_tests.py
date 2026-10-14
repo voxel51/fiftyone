@@ -15,7 +15,7 @@ from mongoengine.errors import FieldDoesNotExist
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.operators as foo
-from fiftyone.operators.executor import ExecutionContext
+from fiftyone.operators.executor import ExecutionContext, Executor
 
 from decorators import drop_datasets  # pylint: disable=import-error
 import plugins.operators.undeclared_fields as fouf  # pylint: disable=import-error
@@ -261,7 +261,8 @@ class UndeclaredFieldsTests(unittest.TestCase):
 
 def _context(dataset, **params):
     return ExecutionContext(
-        request_params={"dataset_name": dataset.name, "params": params}
+        request_params={"dataset_name": dataset.name, "params": params},
+        executor=Executor(),
     )
 
 
@@ -292,16 +293,14 @@ class CleanUpUndeclaredFieldsOperatorTests(unittest.TestCase):
         dataset = _dataset()
         sample_id = dataset.values("id")[0]
         _store(dataset, sample_id, eval_tp=3, eval_fp=1)
-        uri = "@voxel51/operators/clean_up_undeclared_fields"
+        op = foo.get_operator("@voxel51/operators/clean_up_undeclared_fields")
 
-        result = foo.execute_operator(
-            uri, {"dataset": dataset.name, "params": {"action": "scan"}}
-        )
-        self.assertIsNone(result.error)
-        self.assertEqual(len(result.result["found"]), 2)
+        # executes the operator directly: execute_operator() also resolves
+        # secrets, which is not what this tests
+        result = op.execute(_context(dataset, action="scan"))
+        self.assertEqual(len(result["found"]), 2)
 
         # the form now reads the stored scan
-        op = foo.get_operator(uri)
         props = op.resolve_input(_context(dataset, action="remove")).to_json()[
             "type"
         ]["properties"]
@@ -310,15 +309,10 @@ class CleanUpUndeclaredFieldsOperatorTests(unittest.TestCase):
             sorted(props["fields"]["default"]), ["eval_fp", "eval_tp"]
         )
 
-        result = foo.execute_operator(
-            uri,
-            {
-                "dataset": dataset.name,
-                "params": {"action": "remove", "fields": ["eval_tp"]},
-            },
+        result = op.execute(
+            _context(dataset, action="remove", fields=["eval_tp"])
         )
-        self.assertIsNone(result.error)
-        self.assertEqual(result.result["removed"], ["eval_tp"])
+        self.assertEqual(result["removed"], ["eval_tp"])
 
         # the removed field drops out of the stored scan
         props = op.resolve_input(_context(dataset, action="remove")).to_json()[
