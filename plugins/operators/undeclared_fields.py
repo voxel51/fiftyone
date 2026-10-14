@@ -6,6 +6,9 @@ Builtin operators.
 |
 """
 
+from datetime import datetime
+
+import fiftyone.core.fields as fof
 import fiftyone.core.odm.utils as foou
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
@@ -14,6 +17,9 @@ _FRAMES_PREFIX = "frames."
 
 # BSON types of the same Python type, so declaring one field covers both
 _EQUIVALENT_TYPES = {"long": "int"}
+
+# Ints and doubles mixed in one field fit a float field
+_NUMERIC_TYPES = {"int", "double"}
 
 
 def find_undeclared_fields(dataset):
@@ -25,6 +31,8 @@ def find_undeclared_fields(dataset):
     when a field is removed from the schema while documents still store
     it, for example by a run that is deleted while it is writing.
     Undeclared attributes of labels are not reported: labels accept them.
+
+    This reads every sample (and frame) of the dataset.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -54,7 +62,8 @@ def find_undeclared_fields(dataset):
 
 
 def remove_undeclared_fields(dataset, fields):
-    """Removes the stored values of the given undeclared fields.
+    """Removes the stored values of the given undeclared fields, and marks
+    the samples and frames that stored them as modified.
 
     A field that the schema declares when this runs is never touched, so a
     field declared since it was found keeps its values.
@@ -69,6 +78,7 @@ def remove_undeclared_fields(dataset, fields):
     """
     dataset.reload()
 
+    now = datetime.utcnow()
     removed = []
     for coll, schema, names, prefix in _targets(dataset, fields):
         declared = set(_declared_names(schema))
@@ -78,7 +88,7 @@ def remove_undeclared_fields(dataset, fields):
 
         coll.update_many(
             {"$or": [{n: {"$exists": True}} for n in names]},
-            {"$unset": {n: "" for n in names}},
+            [{"$unset": names}, {"$set": {"last_modified_at": now}}],
         )
         removed.extend(prefix + n for n in names)
 
@@ -90,7 +100,8 @@ def declare_undeclared_fields(dataset, fields):
     type of their stored values.
 
     A field whose values have more than one type cannot be declared, and is
-    skipped.
+    skipped, except ints mixed with floats, which are declared as a float
+    field. So is a field whose name cannot be a field name.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -123,29 +134,43 @@ def declare_undeclared_fields(dataset, fields):
                 skipped[path] = "already declared"
                 continue
 
+            try:
+                foou.validate_field_name(
+                    name,
+                    media_type=dataset.media_type,
+                    is_frame_field=bool(prefix),
+                )
+            except ValueError as e:
+                skipped[path] = "it is not a valid field name (%s)" % e
+                continue
+
             value_types = _value_types(coll, name)
             if not value_types:
                 skipped[path] = "it stores only null values"
                 continue
 
-            if len(value_types) > 1:
+            numeric = value_types == _NUMERIC_TYPES
+            if len(value_types) > 1 and not numeric:
                 skipped[path] = "its values have different types (%s)" % (
                     ", ".join(sorted(value_types))
                 )
                 continue
 
-            doc = coll.find_one(
-                {name: {"$exists": True, "$ne": None}}, {name: 1}
-            )
-
             try:
-                value = foou.deserialize_value(doc[name])
-                kwargs = foou.get_implied_field_kwargs(value)
+                if numeric:
+                    kwargs = {"ftype": fof.FloatField}
+                else:
+                    doc = coll.find_one(
+                        {name: {"$exists": True, "$ne": None}}, {name: 1}
+                    )
+                    value = foou.deserialize_value(doc[name])
+                    kwargs = foou.get_implied_field_kwargs(value)
+
+                add_field(name, **kwargs)
             except Exception as e:
-                skipped[path] = "its type cannot be inferred (%s)" % e
+                skipped[path] = "it could not be declared (%s)" % e
                 continue
 
-            add_field(name, **kwargs)
             declared.append(path)
 
     return declared, skipped
@@ -242,112 +267,195 @@ def _value_types(coll, name):
     return value_types
 
 
+# The last scan's results live in the dataset's execution store, so that
+# opening the form never scans: only the Scan action, which by default runs
+# as a delegated operation, does
+_STORE_NAME = "clean_up_undeclared_fields"
+_SCAN_KEY = "last_scan"
+
+
+def _last_scan(ctx):
+    try:
+        return ctx.store(_STORE_NAME).get(_SCAN_KEY)
+    except Exception:
+        return None
+
+
+def _save_scan(ctx, found):
+    scan = {
+        "scanned_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        # a list, not a dict: frame fields' names contain dots
+        "fields": [
+            {"field": field, "count": entry["count"], "types": entry["types"]}
+            for field, entry in sorted(found.items())
+        ],
+    }
+    ctx.store(_STORE_NAME).set(_SCAN_KEY, scan)
+    return scan
+
+
+def _forget_fields(ctx, fields):
+    scan = _last_scan(ctx)
+    if not scan or not fields:
+        return
+
+    fields = set(fields)
+    scan["fields"] = [e for e in scan["fields"] if e["field"] not in fields]
+    ctx.store(_STORE_NAME).set(_SCAN_KEY, scan)
+
+
+def _stored_on(entry):
+    unit = "frame" if entry["field"].startswith(_FRAMES_PREFIX) else "sample"
+    count = entry["count"]
+    return "%d %s%s" % (count, unit, "" if count == 1 else "s")
+
+
 class CleanUpUndeclaredFields(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
             name="clean_up_undeclared_fields",
             label="Clean up undeclared fields",
+            dynamic=True,
             allow_delegated_execution=True,
             allow_immediate_execution=True,
+            default_choice_to_delegated=True,
             risk_level=types.RiskLevel.HIGH,
         )
 
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        found = find_undeclared_fields(ctx.dataset)
-        if not found:
-            prop = inputs.str(
-                "msg",
+        scan = _last_scan(ctx)
+        found = scan["fields"] if scan else []
+
+        if scan is None:
+            inputs.str(
+                "scan_status",
                 label=(
-                    "Every value stored on this dataset has a field in its "
-                    "schema"
+                    "This dataset has not been scanned yet. Values stored "
+                    "under fields its schema does not declare stop the "
+                    "samples and frames that store them from being loaded "
+                    "or saved; scan to find them."
                 ),
                 view=types.Notice(),
             )
-            prop.invalid = True
-            return types.Property(
-                inputs, view=types.View(label="Clean up undeclared fields")
+        elif not found:
+            inputs.str(
+                "scan_status",
+                label=(
+                    "The last scan (%s) found no values stored under "
+                    "undeclared fields." % scan["scanned_at"]
+                ),
+                view=types.Notice(),
             )
-
-        rows = ["| Field | Stored on | Value types |", "| --- | --- | --- |"]
-        for field, entry in sorted(found.items()):
-            unit = "frame" if field.startswith(_FRAMES_PREFIX) else "sample"
-            count = entry["count"]
-            rows.append(
-                "| `%s` | %d %s%s | %s |"
-                % (
-                    field,
-                    count,
-                    unit,
-                    "" if count == 1 else "s",
-                    ", ".join(entry["types"]),
+        else:
+            rows = [
+                "| Field | Stored on | Value types |",
+                "| --- | --- | --- |",
+            ]
+            for entry in found:
+                rows.append(
+                    "| `%s` | %s | %s |"
+                    % (
+                        entry["field"],
+                        _stored_on(entry),
+                        ", ".join(entry["types"]),
+                    )
                 )
+
+            inputs.str(
+                "summary",
+                label=(
+                    "The last scan (%s) found values stored under fields "
+                    "the dataset's schema does not declare. Samples and "
+                    "frames that store them cannot be loaded or saved."
+                    % scan["scanned_at"]
+                ),
+                default="\n".join(rows),
+                view=types.MarkdownView(read_only=True),
             )
-
-        inputs.str(
-            "summary",
-            label=(
-                "These values are stored under fields the dataset's schema "
-                "does not declare. Samples and frames that store them "
-                "cannot be loaded or saved."
-            ),
-            default="\n".join(rows),
-            view=types.MarkdownView(read_only=True),
-        )
-
-        field_choices = types.AutocompleteView(allow_duplicates=False)
-        for field in sorted(found):
-            field_choices.add_choice(field, label=field)
-
-        inputs.list(
-            "fields",
-            types.String(),
-            label="Fields",
-            description="The undeclared fields to clean up",
-            default=sorted(found),
-            required=True,
-            view=field_choices,
-        )
 
         action_choices = types.RadioGroup()
         action_choices.add_choice(
-            "remove",
-            label="Remove the stored values",
-            description="Deletes the values. This cannot be undone",
-        )
-        action_choices.add_choice(
-            "declare",
-            label="Add the fields to the schema",
+            "scan",
+            label="Scan the dataset",
             description=(
-                "Keeps the values and declares each field with their type. "
-                "Fields whose values have different types are skipped"
+                "Finds the values stored under undeclared fields. Reads "
+                "every sample and frame, so on a large dataset it can take "
+                "a while"
             ),
         )
+        if found:
+            action_choices.add_choice(
+                "remove",
+                label="Remove the stored values",
+                description="Deletes the values. This cannot be undone",
+            )
+            action_choices.add_choice(
+                "declare",
+                label="Add the fields to the schema",
+                description=(
+                    "Keeps the values and declares each field with their "
+                    "type. Fields whose values have different types are "
+                    "skipped"
+                ),
+            )
+
         inputs.enum(
             "action",
             action_choices.values(),
             label="Action",
-            default="remove",
+            default="scan",
             required=True,
             view=action_choices,
         )
+
+        action = ctx.params.get("action", None) or "scan"
+        if action in ("remove", "declare") and found:
+            field_choices = types.AutocompleteView(allow_duplicates=False)
+            for entry in found:
+                field_choices.add_choice(entry["field"], label=entry["field"])
+
+            inputs.list(
+                "fields",
+                types.String(),
+                label="Fields",
+                description=(
+                    "The undeclared fields to clean up. Each is checked "
+                    "against the current schema first"
+                ),
+                default=[entry["field"] for entry in found],
+                required=True,
+                view=field_choices,
+            )
 
         return types.Property(
             inputs, view=types.View(label="Clean up undeclared fields")
         )
 
     def execute(self, ctx):
-        fields = ctx.params.get("fields", None) or []
-        action = ctx.params.get("action", None) or "remove"
+        action = ctx.params.get("action", None) or "scan"
 
+        if action == "scan":
+            scan = _save_scan(ctx, find_undeclared_fields(ctx.dataset))
+            return {
+                "found": [
+                    "%s (%s; %s)"
+                    % (e["field"], _stored_on(e), ", ".join(e["types"]))
+                    for e in scan["fields"]
+                ]
+            }
+
+        fields = ctx.params.get("fields", None) or []
         if action == "declare":
             declared, skipped = declare_undeclared_fields(ctx.dataset, fields)
-            result = {"declared": declared, "removed": [], "skipped": skipped}
+            _forget_fields(ctx, declared)
+            result = {"declared": declared, "skipped": skipped}
         else:
             removed = remove_undeclared_fields(ctx.dataset, fields)
-            result = {"declared": [], "removed": removed, "skipped": {}}
+            _forget_fields(ctx, removed)
+            result = {"removed": removed}
 
         ctx.trigger("reload_dataset")
 
@@ -355,13 +463,16 @@ class CleanUpUndeclaredFields(foo.Operator):
 
     def resolve_output(self, ctx):
         outputs = types.Object()
-        outputs.list("removed", types.String(), label="Removed")
-        outputs.list("declared", types.String(), label="Declared")
-        outputs.obj(
-            "skipped",
-            label="Skipped",
-            view=types.KeyValueView(),
-        )
+
+        action = ctx.params.get("action", None) or "scan"
+        if action == "scan":
+            outputs.list("found", types.String(), label="Undeclared fields")
+        elif action == "declare":
+            outputs.list("declared", types.String(), label="Declared")
+            outputs.obj("skipped", label="Skipped", view=types.KeyValueView())
+        else:
+            outputs.list("removed", types.String(), label="Removed")
+
         return types.Property(
-            outputs, view=types.View(label="Undeclared fields cleaned up")
+            outputs, view=types.View(label="Clean up undeclared fields")
         )

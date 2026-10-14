@@ -7,14 +7,18 @@ Undeclared field operator tests.
 """
 
 import unittest
+from unittest import mock
 
 from bson import ObjectId
 from mongoengine.errors import FieldDoesNotExist
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.operators as foo
+from fiftyone.operators.executor import ExecutionContext
 
 from decorators import drop_datasets  # pylint: disable=import-error
+import plugins.operators.undeclared_fields as fouf  # pylint: disable=import-error
 from plugins.operators.undeclared_fields import (  # pylint: disable=import-error
     declare_undeclared_fields,
     find_undeclared_fields,
@@ -149,6 +153,120 @@ class UndeclaredFieldsTests(unittest.TestCase):
         self.assertEqual(removed, ["frames.orphan"])
         self.assertEqual(find_undeclared_fields(dataset), {})
         self.assertEqual(dataset.values("frames.score"), [[0.1]])
+
+    @drop_datasets
+    def test_remove_marks_documents_modified(self):
+        dataset = _dataset()
+        ids = dataset.values("id")
+        before = dict(zip(ids, dataset.values("last_modified_at")))
+        _store(dataset, ids[0], eval_tp=3)
+
+        remove_undeclared_fields(dataset, ["eval_tp"])
+
+        after = dict(
+            zip(dataset.values("id"), dataset.values("last_modified_at"))
+        )
+        self.assertGreater(after[ids[0]], before[ids[0]])
+        # documents that stored nothing are untouched
+        for other in ids[1:]:
+            self.assertEqual(after[other], before[other])
+
+    @drop_datasets
+    def test_declare_ints_mixed_with_floats_as_a_float_field(self):
+        dataset = _dataset()
+        ids = dataset.values("id")
+        _store(dataset, ids[0], conf=1)
+        _store(dataset, ids[1], conf=0.5)
+
+        declared, skipped = declare_undeclared_fields(dataset, ["conf"])
+
+        self.assertEqual((declared, skipped), (["conf"], {}))
+        self.assertIsInstance(dataset.get_field("conf"), fof.FloatField)
+        self.assertEqual(_load(dataset, ids[0])["conf"], 1)
+
+    @drop_datasets
+    def test_declare_skips_invalid_names_and_goes_on(self):
+        dataset = _dataset()
+        sample_id = dataset.values("id")[0]
+        _store(dataset, sample_id, _private=1, eval_tp=3)
+
+        found = find_undeclared_fields(dataset)
+        self.assertIn("_private", found)
+
+        declared, skipped = declare_undeclared_fields(
+            dataset, ["_private", "eval_tp"]
+        )
+
+        self.assertEqual(declared, ["eval_tp"])
+        self.assertIn("not a valid field name", skipped["_private"])
+
+
+def _context(dataset, **params):
+    return ExecutionContext(
+        request_params={"dataset_name": dataset.name, "params": params}
+    )
+
+
+class CleanUpUndeclaredFieldsOperatorTests(unittest.TestCase):
+    @drop_datasets
+    def test_opening_the_form_never_scans(self):
+        dataset = _dataset()
+        _store(dataset, dataset.values("id")[0], eval_tp=3)
+        op = foo.get_operator("@voxel51/operators/clean_up_undeclared_fields")
+
+        with mock.patch.object(
+            fouf, "find_undeclared_fields", wraps=fouf.find_undeclared_fields
+        ) as scan:
+            props = op.resolve_input(_context(dataset)).to_json()["type"][
+                "properties"
+            ]
+
+            self.assertEqual(scan.call_count, 0)
+
+        # never scanned: only the scan action is offered
+        self.assertIn("scan_status", props)
+        actions = [c["value"] for c in props["action"]["view"]["choices"]]
+        self.assertEqual(actions, ["scan"])
+        self.assertNotIn("fields", props)
+
+    @drop_datasets
+    def test_scan_then_remove(self):
+        dataset = _dataset()
+        sample_id = dataset.values("id")[0]
+        _store(dataset, sample_id, eval_tp=3, eval_fp=1)
+        uri = "@voxel51/operators/clean_up_undeclared_fields"
+
+        result = foo.execute_operator(
+            uri, {"dataset": dataset.name, "params": {"action": "scan"}}
+        )
+        self.assertIsNone(result.error)
+        self.assertEqual(len(result.result["found"]), 2)
+
+        # the form now reads the stored scan
+        op = foo.get_operator(uri)
+        props = op.resolve_input(_context(dataset, action="remove")).to_json()[
+            "type"
+        ]["properties"]
+        self.assertIn("summary", props)
+        self.assertEqual(
+            sorted(props["fields"]["default"]), ["eval_fp", "eval_tp"]
+        )
+
+        result = foo.execute_operator(
+            uri,
+            {
+                "dataset": dataset.name,
+                "params": {"action": "remove", "fields": ["eval_tp"]},
+            },
+        )
+        self.assertIsNone(result.error)
+        self.assertEqual(result.result["removed"], ["eval_tp"])
+
+        # the removed field drops out of the stored scan
+        props = op.resolve_input(_context(dataset, action="remove")).to_json()[
+            "type"
+        ]["properties"]
+        self.assertEqual(props["fields"]["default"], ["eval_fp"])
 
 
 if __name__ == "__main__":
