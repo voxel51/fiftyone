@@ -50,6 +50,8 @@ class AggregationForm:
     slices: t.Optional[t.List[str]]
     view: BSONArray
     view_name: t.Optional[str] = None
+    event_search: t.Optional[str] = None
+    event_offset: int = 0
 
 
 @gql.interface
@@ -103,12 +105,28 @@ class StringAggregation(Aggregation):
     values: t.Optional[t.List[StringAggregationValue]] = None
 
 
+@gql.type
+class EventFacetValue:
+    projection: str
+    id: str
+    name: str
+    label: str
+    count: int
+
+
+@gql.type
+class EventAggregation(Aggregation):
+    total: int
+    events: t.List[EventFacetValue]
+
+
 # Internal helper return type. Not exposed as a GraphQL field, so we
 # deliberately omit ``gql.union(...)`` — registering a Strawberry union
 # here causes the schema converter to dedupe the identical member set
 # inside ``AggregationResponse`` below, producing an illegal
 # union-of-unions at schema build time.
 AggregateResult = t.Union[
+    EventAggregation,
     BooleanAggregation,
     DataAggregation,
     IntAggregation,
@@ -124,6 +142,7 @@ async def aggregate_resolver(
 ) -> t.List[
     t.Annotated[
         t.Union[
+            EventAggregation,
             BooleanAggregation,
             DataAggregation,
             IntAggregation,
@@ -200,8 +219,9 @@ async def aggregate_resolver(
             results.append(deserialize(result[offset : length + offset]))
             offset += length
 
-    if len(paths) != len(form.paths):
-        results.append(await run_sync_task(_temporal_tags_aggregation, view))
+    temporal_tags = None
+    if fosv.TEMPORAL_TAGS in form.paths:
+        temporal_tags = await run_sync_task(_temporal_tags_aggregation, view)
 
     if slice_view:
         for result in results:
@@ -209,7 +229,17 @@ async def aggregate_resolver(
                 result.slice = await slice_view._async_aggregate(foa.Count())
                 break
 
-    return results
+    resolved = iter(results)
+    ordered = []
+    for path in form.paths:
+        if path == fosv.TEMPORAL_TAGS:
+            ordered.append(temporal_tags)
+        elif path.startswith(fosv.TEMPORAL_TAGS + "."):
+            ordered.append(DataAggregation(path=path, count=0, exists=0))
+        else:
+            ordered.append(next(resolved))
+
+    return ordered
 
 
 RESULT_MAPPING = {
