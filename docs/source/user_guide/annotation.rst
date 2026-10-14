@@ -485,6 +485,16 @@ Attributes
 
 The editing panel also enables editing the label, tags, confidence, index properties, and custom properties depending on the configured annotation schema.
 
+.. _deleting-labels:
+
+Deleting Labels
+~~~~~~~~~~~~~~~
+
+To delete a label instance, select it on the Annotation Canvas or in the :ref:`list of label instances <list-of-label-instances>`, then either choose "Delete label" from the kebab menu at the top of the editing panel or press the ``Delete`` or ``Backspace`` key. Like all in-App edits, deletions are :ref:`saved automatically <saving-and-reverting-changes>` and can be undone with ``Ctrl+``/``Cmd+z`` while the expanded view remains open.
+
+.. note::
+   Labels can be edited, but not deleted, in :ref:`object patches views <app-object-patches>`. To delete a label, open its sample in a regular dataset view.
+
 ----
 
 .. _how-to-video-annotation:
