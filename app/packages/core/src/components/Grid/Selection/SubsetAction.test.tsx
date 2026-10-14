@@ -36,6 +36,7 @@ vi.mock("@fiftyone/state", () => ({
   useClearGridViewConstraints: () => vi.fn(),
   useHoldScopedCountsUntilNextPage: () => vi.fn(),
   useGridViewScope: () => ({ refresh: 0 }),
+  useSavedViewTransientState: () => ({ fieldVisibility: null }),
   useSetView: () => mocks.setView,
   useView: () => [],
 }));

@@ -178,6 +178,7 @@ vi.mock("@fiftyone/state", () => ({
   useGroupSlices: () => ["left", "right"],
   useSelectionSubsetDisabledReason: () => null,
   useLoadedSavedViewName: () => null,
+  useSavedViewTransientState: () => ({ fieldVisibility: null }),
   useGridViewScope: () => ({ refresh: 0 }),
   useClearGridViewConstraints: () => vi.fn(),
   useSetExpandedSample: () => mocks.setExpandedSample,

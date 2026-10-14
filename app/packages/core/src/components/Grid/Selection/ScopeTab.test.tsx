@@ -50,6 +50,8 @@ const mocks = vi.hoisted(() => ({
   setView: vi.fn(),
   clearViewConstraints: vi.fn(),
   holdCounts: vi.fn(),
+  savedViewName: null as string | null,
+  fieldVisibility: null as unknown,
   request: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
@@ -65,7 +67,10 @@ vi.mock("@fiftyone/state", () => ({
   useSetGroupSlice: () => vi.fn(),
   useGroupSlices: () => ["left", "right"],
   useSelectionSubsetDisabledReason: () => null,
-  useLoadedSavedViewName: () => null,
+  useLoadedSavedViewName: () => mocks.savedViewName,
+  useSavedViewTransientState: () => ({
+    fieldVisibility: mocks.fieldVisibility,
+  }),
   useDatasetSampleCount: () => 48,
   useClearGridViewConstraints: () => mocks.clearViewConstraints,
   useHoldScopedCountsUntilNextPage: () => mocks.holdCounts,
@@ -132,6 +137,8 @@ const requestDeleteSubset = async () => {
 beforeEach(() => {
   localStorage.clear();
   mocks.boundary = {};
+  mocks.savedViewName = null;
+  mocks.fieldVisibility = null;
   mocks.selection.conversion = null;
   mocks.selection.mediaType = "image";
   mocks.selection.subsetViewId = undefined;
@@ -332,6 +339,36 @@ describe("SamplesScopeTab", () => {
         );
       expect(mocks.setView).toHaveBeenCalledWith(view);
       expect(mocks.clearViewConstraints).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("opens an unconverted subset without replacing an unchanged grid view", async () => {
+    render(<SamplesScopeTab />);
+    fireEvent.click(trigger());
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Hard negatives/ }),
+    );
+    expect(mocks.setBoundary).toHaveBeenCalledWith({
+      subsetId: "hard",
+      subsetScope: "episodes",
+    });
+    expect(mocks.clearViewConstraints).toHaveBeenCalledOnce();
+    expect(mocks.setView).not.toHaveBeenCalled();
+    expect(mocks.holdCounts).not.toHaveBeenCalled();
+  });
+
+  it.each(["saved query", "field visibility"])(
+    "resets %s even when the view stages match the subset",
+    async (constraint) => {
+      if (constraint === "saved query") mocks.savedViewName = "Empty query";
+      else mocks.fieldVisibility = { kwargs: { field_names: ["filepath"] } };
+      render(<SamplesScopeTab />);
+      fireEvent.click(trigger());
+      fireEvent.click(
+        await screen.findByRole("button", { name: /^Hard negatives/ }),
+      );
+      expect(mocks.setView).toHaveBeenCalledWith([]);
+      expect(mocks.holdCounts).toHaveBeenCalledOnce();
     },
   );
 

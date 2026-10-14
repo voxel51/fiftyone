@@ -37,6 +37,8 @@ export function useOpenSubset(datasetId: string) {
   const resetBoundaries = useResetSelectionBoundaries();
   const setView = fos.useSetView();
   const currentView = fos.useView();
+  const savedViewName = fos.useLoadedSavedViewName();
+  const { fieldVisibility } = fos.useSavedViewTransientState();
   const holdCounts = fos.useHoldScopedCountsUntilNextPage();
   const setGroupSlice = fos.useSetGroupSlice();
   const groupSlices = fos.useGroupSlices();
@@ -53,8 +55,11 @@ export function useOpenSubset(datasetId: string) {
       // The boundary and the cleared query apply now, but a new view arrives
       // with the next page; counts wait for it rather than show the new scope
       // over the outgoing view
-      if (JSON.stringify(nextView) !== JSON.stringify(currentView))
-        holdCounts();
+      const changesView =
+        JSON.stringify(nextView) !== JSON.stringify(currentView) ||
+        savedViewName !== null ||
+        Boolean(fieldVisibility);
+      if (changesView) holdCounts();
       invalidate();
       if (preferredGroupSlice && groupSlices.includes(preferredGroupSlice))
         setGroupSlice(preferredGroupSlice);
@@ -68,7 +73,9 @@ export function useOpenSubset(datasetId: string) {
       if (!subsetId) resetBoundaries(datasetId);
       if (targetDomain === domainId) setBoundary({ subsetId, subsetScope });
       else openBoundary(targetDomain, { subsetId, subsetScope });
-      setView(nextView);
+      // An unchanged unsaved view needs only the boundary refresh. Sending
+      // it through the server would replace that grid again after it mounts.
+      if (changesView) setView(nextView);
     },
     [
       invalidate,
@@ -81,6 +88,8 @@ export function useOpenSubset(datasetId: string) {
       resetBoundaries,
       setView,
       currentView,
+      savedViewName,
+      fieldVisibility,
       holdCounts,
       setGroupSlice,
       groupSlices,
