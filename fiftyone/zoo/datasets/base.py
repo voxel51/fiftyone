@@ -4671,7 +4671,7 @@ class HiltiSLAMChallenge2023Dataset(FiftyOneDataset):
 
     Camera frames are published at 10 Hz on both rigs, on the LiDAR's clock.
     The handheld cameras record at 40 Hz and every fourth frame is kept; the
-    robot's already record at 10 Hz and every frame is kept.
+    robot's cameras already record at 10 Hz and every frame is kept.
 
     The three additional Site 2 handheld runs carry rapidly flashing lights
     in their camera streams, which the source flags as a photosensitivity

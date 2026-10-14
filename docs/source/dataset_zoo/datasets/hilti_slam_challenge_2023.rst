@@ -59,10 +59,10 @@ and 63 surveyed reference positions.
         # Everything except the runs with flashing lights
         view = dataset.match({"has_flashing_lights": False})
 
-        # The runs recorded from the robot rather than by hand
-        view = dataset.match({"platform": "robot"})
-
         session = fo.launch_app(dataset, view=view)
+
+        # The runs recorded from the robot rather than by hand
+        session.view = view.match({"platform": "robot"})
 
   .. group-tab:: CLI
 
