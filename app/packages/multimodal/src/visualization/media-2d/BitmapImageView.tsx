@@ -298,9 +298,14 @@ function useBitmapCanvas(
 
     // Backing store follows the canvas's CSS size at DPR 1 — deliberate
     // parity with WebGpuCanvas's DEFAULT_DPR = 1; raising preview DPR is
-    // a follow-up decision, not a side effect of this path. Clamped ≥1×1
-    // so a not-yet-laid-out cell never creates a zero-size canvas.
+    // a follow-up decision, not a side effect of this path.
     const layoutRect = canvas.getBoundingClientRect();
+    // A canvas out of the document (a grid tile while the grid rebuilds)
+    // measures 0×0; taking that as its size would re-decode the image at 1×1
+    // and show that pixel stretched once the tile is back.
+    if (layoutRect.width === 0 || layoutRect.height === 0) {
+      return;
+    }
     const width = Math.max(1, Math.round(layoutRect.width));
     const height = Math.max(1, Math.round(layoutRect.height));
     if (trackCssSize) {
