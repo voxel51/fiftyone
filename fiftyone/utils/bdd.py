@@ -422,38 +422,35 @@ def download_bdd100k_dataset(
 
     etau.ensure_dir(scratch_dir)
 
-    images_zip = os.path.join(scratch_dir, _BDD100K_IMAGES_ZIP)
-    labels_zip = os.path.join(scratch_dir, _BDD100K_LABELS_ZIP)
-
     extracted_dir = os.path.join(scratch_dir, "bdd100k")
-    extracted_val_images = os.path.join(extracted_dir, "images", "100k", "val")
-    extracted_val_labels = os.path.join(extracted_dir, "labels", "100k", "val")
 
-    if not os.path.isfile(images_zip):
-        logger.info("Downloading BDD100K images from %s...", _BDD100K_IA_BASE)
-        etaw.download_file(
-            "%s/%s" % (_BDD100K_IA_BASE, _BDD100K_IMAGES_ZIP),
-            path=images_zip,
-        )
-    else:
-        logger.info("Using existing archive '%s'", images_zip)
+    # Whatever is reused from the scratch directory is complete: an archive
+    # is renamed into place once it has downloaded in full, and its marker is
+    # written once it has extracted in full, so an interrupted step is
+    # repeated rather than reused
+    for name, filename in (
+        ("images", _BDD100K_IMAGES_ZIP),
+        ("labels", _BDD100K_LABELS_ZIP),
+    ):
+        archive = os.path.join(scratch_dir, filename)
+        if not os.path.isfile(archive):
+            logger.info(
+                "Downloading BDD100K %s from %s...", name, _BDD100K_IA_BASE
+            )
+            etaw.download_file(
+                "%s/%s" % (_BDD100K_IA_BASE, filename),
+                path=archive + ".part",
+            )
+            os.replace(archive + ".part", archive)
+        else:
+            logger.info("Using existing archive '%s'", archive)
 
-    if not os.path.isfile(labels_zip):
-        logger.info("Downloading BDD100K labels from %s...", _BDD100K_IA_BASE)
-        etaw.download_file(
-            "%s/%s" % (_BDD100K_IA_BASE, _BDD100K_LABELS_ZIP),
-            path=labels_zip,
-        )
-    else:
-        logger.info("Using existing archive '%s'", labels_zip)
-
-    if not os.path.isdir(extracted_val_images):
-        logger.info("Extracting images archive...")
-        etau.extract_archive(images_zip, outdir=scratch_dir)
-
-    if not os.path.isdir(extracted_val_labels):
-        logger.info("Extracting labels archive...")
-        etau.extract_archive(labels_zip, outdir=scratch_dir)
+        marker = os.path.join(scratch_dir, "%s.extracted" % name)
+        if not os.path.isfile(marker):
+            logger.info("Extracting %s archive...", name)
+            etau.extract_archive(archive, outdir=scratch_dir)
+            with open(marker, "w"):
+                pass
 
     for split in ("train", "val"):
         mot_dir = os.path.join(extracted_dir, "labels", "100k", split)
@@ -527,7 +524,9 @@ def _convert_mot_to_legacy_labels(mot_dir, out_path):
             }
         )
 
-    etas.write_json(entries, out_path)
+    # Renamed into place once written, so a reused file is complete
+    etas.write_json(entries, out_path + ".part")
+    os.replace(out_path + ".part", out_path)
 
 
 def _convert_mot_poly2d(mot_poly2d, category):
@@ -538,8 +537,10 @@ def _convert_mot_poly2d(mot_poly2d, category):
     areas (``area/*``) are closed polygons; lane markings (``lane/*``) are
     open polylines.
     """
-    vertices = [[pt[0], pt[1]] for pt in mot_poly2d if len(pt) >= 2]
-    types = "".join(pt[2] for pt in mot_poly2d if len(pt) >= 3)
+    # A point without its type is dropped, so vertices and types stay aligned
+    points = [pt for pt in mot_poly2d if len(pt) >= 3]
+    vertices = [[pt[0], pt[1]] for pt in points]
+    types = "".join(pt[2] for pt in points)
     return [
         {
             "vertices": vertices,
