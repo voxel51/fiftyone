@@ -477,8 +477,8 @@ class CustomAvailableInDirective(Directive):
     version each was introduced in, linking to the corresponding entries
     in the release notes.
 
-    Omit `oss_version` for a feature that is exclusive to FiftyOne
-    Enterprise; a "Book a Demo" CTA is rendered in its place. Omit
+    Omit `oss_version` for a feature that is exclusive to
+    Voxel51; a "Book a Demo" CTA is rendered in its place. Omit
     `enterprise_version` for a feature that isn't available in Enterprise.
 
     Example usage::
@@ -528,7 +528,7 @@ class CustomAvailableInDirective(Directive):
             )
             versions.append(
                 '<a href="%s.html#fiftyone-enterprise-%s">'
-                "FiftyOne Enterprise %s</a>"
+                "Voxel51 %s</a>"
                 % (
                     prefix,
                     enterprise_version.replace(".", "-"),
@@ -567,7 +567,7 @@ _AVAILABLE_IN_TEMPLATE = """
 _AVAILABLE_IN_CTA_TEMPLATE = """
     <div class="available-in-cta">
         <a href="https://voxel51.com/book-a-demo" class="available-in-cta-link" rel="noopener noreferrer" target="_blank">
-            Schedule a demo to get started with FiftyOne Enterprise
+            Schedule a demo to get started with Voxel51
         </a>
     </div>
 """

@@ -12,7 +12,7 @@ In-App Annotation
 .. admonition:: Managing an annotation team?
    :class: tip
 
-   Learn how FiftyOne Enterprise can help you organize and coordinate
+   Learn how Voxel51 can help you organize and coordinate
    annotation projects across your team with FiftyOne
    :ref:`Annotation Workflows <enterprise-workflows>`!
 
@@ -426,7 +426,7 @@ The kebab menu on an existing detection label in the right sidebar allows you to
 .. image:: /_static/images/annotation/mask_ai_assistance.gif
    :alt: AI assistance tool
 
-The AI assistance tool allows you to use mask segmentation models to draw masks. This tool allows you to click any number of positive and negative points per object as prompts to the model to refine the mask boundaries. For FiftyOne Enterprise customers, ask your Voxel51 Customer Success representative about bringing your own finetuned models for AI assisted segmentation.
+The AI assistance tool allows you to use mask segmentation models to draw masks. This tool allows you to click any number of positive and negative points per object as prompts to the model to refine the mask boundaries. For Voxel51 customers, ask your Voxel51 Customer Success representative about bringing your own finetuned models for AI assisted segmentation.
 
 .. image:: /_static/images/annotation/mask_brush_tool.gif
    :alt: Brush tool
@@ -1005,7 +1005,7 @@ Instead of drawing a mask by hand, you can prompt one with a segmentation
 model. Select the AI assistance tool in the mask toolbar, then click positive
 points on the object and negative points on regions to exclude; the model
 returns a mask after each click, so you can add points to refine it before
-saving. A built-in model works out of the box, and FiftyOne Enterprise
+saving. A built-in model works out of the box, and Voxel51
 deployments can run larger, finetuned models as a
 :ref:`service <enterprise-services>` on their own GPUs.
 
@@ -1023,7 +1023,7 @@ Video object tracking
 
 On video, prompt an object's mask on one frame and track it across the
 remaining frames automatically. Review the tracked masks and add prompts on
-any frame to correct them. Video tracking is a FiftyOne Enterprise feature
+any frame to correct them. Video tracking is a Voxel51 feature
 powered by a segmentation model running as a
 :ref:`service <enterprise-services>`.
 
@@ -1045,7 +1045,7 @@ Agentic Labeling
 Agentic Labeling uses a prompt-driven vision-language model to label an image
 dataset from a few examples: describe what you want, optionally add positive
 and negative example samples, preview the results, then apply the agent across
-your dataset for review. It runs as a FiftyOne Enterprise
+your dataset for review. It runs as a Voxel51
 :ref:`service <enterprise-services>` that an administrator starts.
 
 .. image:: https://cdn.voxel51.com/enterprise_agentic_labeling/al_test_results.webp

@@ -5,13 +5,13 @@ Cloud-Backed Media
 
 .. default-role:: code
 
-FiftyOne Enterprise datasets may contain samples whose filepath refers to cloud
+Voxel51 datasets may contain samples whose filepath refers to cloud
 object storage paths and/or publicly available URLs.
 
 .. note::
 
-   :ref:`Click here <enterprise-cloud-credentials>` to see how to configure FiftyOne
-   Enterprise to load your cloud credentials!
+   :ref:`Click here <enterprise-cloud-credentials>` to see how to configure Voxel51
+   to load your cloud credentials!
 
 .. _enterprise-cloud-media-caching:
 
@@ -83,7 +83,7 @@ of virtual CPU cores on your machine to download media files.
 When the cache is full, local files are automatically deleted in reverse order
 of when they were last accessed (i.e., oldest deleted first).
 
-You can configure the behavior of FiftyOne Enterprise’s media cache in any of
+You can configure the behavior of Voxel51’s media cache in any of
 the following ways.
 
 1. Configure your media cache on a per-session basis by setting any of the
@@ -854,15 +854,15 @@ method to pass URLs for your S3-backed media when creating Labelbox data rows.
 AWS Lambda and Google Cloud Functions
 _____________________________________
 
-FiftyOne Enterprise can easily be used in AWS Lambda Functions and Google Cloud
+Voxel51 can easily be used in AWS Lambda Functions and Google Cloud
 Functions.
 
 **Requirements**
 
-We recommend including FiftyOne Enterprise in your  function’s `requirements.txt`
+We recommend including Voxel51 in your  function’s `requirements.txt`
 file by passing your token as a build environment variable, e.g.,
 `FIFTYONE_ENTERPRISE_TOKEN` and then using the syntax below to specify the version
-of the FiftyOne Enterprise client to use:
+of the Voxel51 client to use:
 
 .. code-block:: text
 

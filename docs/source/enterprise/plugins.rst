@@ -1,14 +1,14 @@
 .. _enterprise-plugins:
 
-FiftyOne Enterprise Plugins
-===========================
+Voxel51 Plugins
+===============
 
 .. default-role:: code
 
 .. customavailablein::
     :enterprise_version: 1.3.0
 
-FiftyOne Enterprise provides native support for installing and running
+Voxel51 provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
 to extend and customize the functionality of your Enterprise deployment to suit
 your needs.
@@ -366,7 +366,7 @@ ____________________
 FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed in the background on a connected compute cluster.
 
-With FiftyOne Enterprise, your team can
+With Voxel51, your team can
 :ref:`upload and permission <enterprise-plugins-page>` custom operations that
 your users can execute from the Enterprise App, all of which run against a
 central orchestrator :ref:`configured by <enterprise-delegated-orchestrator>`
@@ -374,10 +374,10 @@ your admins.
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
 enables you to organize and compute on your data. With delegated operations,
-FiftyOne Enterprise becomes both a dataset management/visualization tool and a
+Voxel51 becomes both a dataset management/visualization tool and a
 workflow automation tool that defines how your data-centric workflows like
-ingestion, curation, and evaluation are performed. In short, think of FiftyOne
-Enterprise as the single source of truth on which you co-develop your data and
+ingestion, curation, and evaluation are performed. In short, think of Voxel51
+as the single source of truth on which you co-develop your data and
 models together.
 
 What can delegated operations do for you? Get started by installing any of
@@ -445,7 +445,7 @@ _____________________
 
 .. versionadded:: 2.11.0
 
-FiftyOne Enterprise supports distributed execution of delegated operations
+Voxel51 supports distributed execution of delegated operations
 across many workers in parallel.
 
 When you schedule a
@@ -491,7 +491,7 @@ including fine-grained details about each individual worker, from the
 Configuring your orchestrator(s)
 ________________________________
 
-FiftyOne Enterprise offers a builtin orchestrator that is configured as part of
+Voxel51 offers a builtin orchestrator that is configured as part of
 your team's deployment with a default level of compute capacity.
 
 As you scale your usage of FiftyOne, you'll likely want to scale your
@@ -517,7 +517,7 @@ On-demand compute
     On-demand compute is currently in **beta** and its API or functionality may
     change in future releases.
 
-FiftyOne Enterprise supports executing delegated operations on-demand in
+Voxel51 supports executing delegated operations on-demand in
 your connected external compute platform. With on-demand compute, resources are
 only provisioned and used when they're actually needed, minimizing idle times.
 
@@ -527,13 +527,13 @@ On-demand compute is currently supported on FiftyOne's Kubernetes Orchestrator,
 
 Administrators can refer to the
 `deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_
-to learn how to configure on-demand compute for their FiftyOne Enterprise
+to learn how to configure on-demand compute for their Voxel51
 deployment.
 
 External orchestrators
 ----------------------
 
-It is also possible to connect your FiftyOne Enterprise deployment to other
+It is also possible to connect your Voxel51 deployment to other
 externally-managed workflow orchestration tools, such as
 `Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_, and
 `Spark <https://spark.apache.org/>`_. Please contact your Voxel51 support team
@@ -566,15 +566,15 @@ status.
 Services run on your own GPU infrastructure, provisioned through the service
 orchestrator. Administrators can refer to the
 `deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-service-orchestrator.md>`_
-to learn how to configure the service orchestrator for their FiftyOne
-Enterprise deployment.
+to learn how to configure the service orchestrator for their Voxel51
+deployment.
 
 .. _enterprise-managing-delegated-operations:
 
 Managing delegated operations
 _____________________________
 
-Every dataset in FiftyOne Enterprise has a Runs page that allows users with access
+Every dataset in Voxel51 has a Runs page that allows users with access
 to monitor and explore delegated operations scheduled against that dataset.
 
 All scheduled operations are maintained in a queue and will be automatically

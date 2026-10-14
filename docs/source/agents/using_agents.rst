@@ -311,7 +311,7 @@ Which tools are available depends on your integration:
      - Use case
    * - Voxel-Agent
      - ``app`` + ``sdk``
-     - Agent in :ref:`FiftyOne Enterprise <fiftyone-enterprise>` (full UI control + data operations)
+     - Agent in :ref:`Voxel51 <fiftyone-enterprise>` (full UI control + data operations)
    * - Terminal / CLI
      - ``session`` + ``sdk``
      - Headless agent (launch the App, query data, execute operators)
