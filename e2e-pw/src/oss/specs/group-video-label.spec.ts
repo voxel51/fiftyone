@@ -95,7 +95,7 @@ test.describe.serial("groups video labels", () => {
       await modal.assert.verifyModalSamplePluginTitle(slice, { pinned: true });
 
       await modal.sampleCanvas.move(0.5, 0.5);
-      // an exact reading: a stale one from the previous slice resets on load
+      // Play past the first frame, then check the slice's rendered labels.
       await modal.video.playUntilDuration("0:00.20");
 
       await modal.groupSampleCanvas.assert.hasScreenshot(`${slice}-played.png`);

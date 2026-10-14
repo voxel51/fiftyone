@@ -37,6 +37,25 @@ describe("dataset route page query variables", () => {
     ).toEqual([...VIEW, FIELD_VISIBILITY]);
   });
 
+  it("extends a saved query without sending its synchronized stages again", () => {
+    const variables = datasetRoute()(
+      {
+        view: VIEW,
+        fieldVisibility: FIELD_VISIBILITY,
+        schemaExclusion: ["secret"],
+      } as LocationState,
+      { name: "my-dataset", savedViewSlug: "kept" },
+    );
+    expect(variables.savedViewSlug).toBe("kept");
+    expect(variables.extendedView).toEqual([
+      FIELD_VISIBILITY,
+      {
+        _cls: "fiftyone.core.stages.ExcludeFields",
+        kwargs: { field_names: ["secret"], _allow_missing: true },
+      },
+    ]);
+  });
+
   it("appends the schema exclusion last, as a silent ExcludeFields", () => {
     expect(
       transform({

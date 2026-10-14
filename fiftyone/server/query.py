@@ -57,6 +57,7 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
+from fiftyone.server.view import load_saved_view_by_slug
 from fiftyone.server.workspace import Workspace
 
 DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
@@ -707,18 +708,15 @@ async def serialize_dataset(
         except fod.DatasetNotFoundError:
             return None
 
-        view_name = None
-        try:
-            doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
-            view = dataset.load_saved_view(doc.name)
-            view_name = view.name
-            if serialized_view:
-                for stage in serialized_view:
-                    view = view.add_stage(fosg.ViewStage._from_dict(stage))
-        except:
-            view: fov.DatasetView = fov.DatasetView._build(
-                dataset, serialized_view or []
-            )
+        # A saved view that exists but fails to build raises rather than
+        # loading the full dataset in its place
+        view = load_saved_view_by_slug(dataset, saved_view_slug)
+        view_name = view.name if view is not None else None
+        if view is None:
+            view = fov.DatasetView._build(dataset, serialized_view or [])
+        elif serialized_view:
+            for stage in serialized_view:
+                view = view.add_stage(fosg.ViewStage._from_dict(stage))
 
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)

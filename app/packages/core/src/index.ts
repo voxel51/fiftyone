@@ -7,3 +7,5 @@ export * from "./hooks";
 export * from "./plugins";
 export * from "./utils/labels";
 export * from "./utils/links";
+
+export { EmptyDatasetSelection } from "./components/Grid/Selection/EmptyDatasetSelection";

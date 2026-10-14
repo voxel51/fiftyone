@@ -40,6 +40,7 @@ import {
   type Track,
   type TrackEventMenuItem,
   getPlayhead,
+  bumpStreamRangesVersion,
   useActivateStream,
   useDuration,
   usePlaybackStore,
@@ -402,6 +403,13 @@ const FrameLabelsRegistration: React.FC<FrameLabelsRegistrationProps> = ({
   useEffect(() => () => stream.dispose(), [stream]);
 
   usePlaybackStream(streamRef.current);
+
+  // This effect wakes pending Play when labels or masks finish buffering.
+  // The engine is idle while Play is pending, so its RAF cannot notice this.
+  useEffect(
+    () => stream.subscribeToBufferChanges(() => bumpStreamRangesVersion(store)),
+    [stream, store],
+  );
 
   // Registration alone leaves the stream dormant, which the engine skips
   // entirely — no readiness barrier, no prefetch. Nothing renders from its

@@ -3,18 +3,23 @@ import os from "node:os";
 import path from "node:path";
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
+import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{
   grid: GridPom;
   sidebar: SidebarPom;
+  tray: SelectionTrayPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
+  },
+  tray: async ({ page, eventUtils }, use) => {
+    await use(new SelectionTrayPom(page, eventUtils));
   },
 });
 
@@ -44,6 +49,7 @@ test("grid tagging refreshes visible tiles across pages without reloading", asyn
   grid,
   page,
   sidebar,
+  tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   const filepath = (index: number) => path.join(mediaDir, `${index}.png`);
@@ -66,10 +72,7 @@ test("grid tagging refreshes visible tiles across pages without reloading", asyn
 
   const tagged = await grid.tagsRenderedMark();
   await grid.run(async () => {
-    await grid.tagger.afterCountShown("sample", () =>
-      grid.actionsRow.toggleTagSamplesOrLabels(),
-    );
-    await grid.tagger.addNewTag("sample", "grid-test");
+    await tray.tagSamples("grid-test", { allInView: true });
   });
 
   // Tagging keeps the scroll position: check the tile in view and the later

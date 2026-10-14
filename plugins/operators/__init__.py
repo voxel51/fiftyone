@@ -2434,7 +2434,7 @@ class ListSavedViews(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="list_saved_views",
-            label="List saved views",
+            label="List saved queries",
             unlisted=True,
             risk_level=types.RiskLevel.LOW,
         )
@@ -2448,7 +2448,7 @@ class LoadSavedView(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="load_saved_view",
-            label="Load saved view",
+            label="Load saved query",
             dynamic=True,
             risk_level=types.RiskLevel.LOW,
         )
@@ -2468,19 +2468,21 @@ class LoadSavedView(foo.Operator):
                 saved_view_selector.values(),
                 default=None,
                 required=True,
-                label="Saved view",
-                description="The saved view to load",
+                label="Saved query",
+                description="The saved query to load",
                 view=saved_view_selector,
             )
         else:
             prop = inputs.str(
                 "msg",
-                label="This dataset has no saved views",
+                label="This dataset has no saved queries",
                 view=types.Warning(),
             )
             prop.invalid = True
 
-        return types.Property(inputs, view=types.View(label="Load saved view"))
+        return types.Property(
+            inputs, view=types.View(label="Load saved query")
+        )
 
     def execute(self, ctx):
         name = ctx.params["name"]
@@ -2493,7 +2495,7 @@ class ReloadSavedView(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="reload_saved_view",
-            label="Reload saved view",
+            label="Reload saved query",
             dynamic=True,
             risk_level=types.RiskLevel.LOW,
         )
@@ -2503,7 +2505,7 @@ class ReloadSavedView(foo.Operator):
             return types.Placement(
                 types.Places.SAMPLES_GRID_ACTIONS,
                 types.Button(
-                    label="Reload saved view",
+                    label="Reload saved query",
                     icon="autorenew",
                     prompt=True,
                 ),
@@ -2514,7 +2516,7 @@ class ReloadSavedView(foo.Operator):
 
         _get_reload_saved_view_inputs(ctx, inputs)
 
-        view = types.View(label="Reload saved view")
+        view = types.View(label="Reload saved query")
         return types.Property(inputs, view=view)
 
     def execute(self, ctx):
@@ -2533,7 +2535,7 @@ def _get_reload_saved_view_inputs(ctx, inputs):
 
     if not saved_views:
         warning = types.Warning(
-            label="This dataset has no saved views that may need reloading"
+            label="This dataset has no saved queries that may need reloading"
         )
         prop = inputs.view("warning", warning)
         prop.invalid = True
@@ -2553,8 +2555,8 @@ def _get_reload_saved_view_inputs(ctx, inputs):
         view_choices.values(),
         default=default,
         required=True,
-        label="Saved view",
-        description="The name of a saved view to reload",
+        label="Saved query",
+        description="The name of a saved query to reload",
         view=view_choices,
     )
 
@@ -2576,7 +2578,7 @@ def _get_reload_saved_view_inputs(ctx, inputs):
 
     if last_modified_at is None:
         view = types.Warning(
-            label=f"Saved view '{name}' may need to be reloaded"
+            label=f"Saved query '{name}' may need to be reloaded"
         )
         inputs.view("notice", view)
     elif last_modified_at > view_doc.last_modified_at:
@@ -2584,8 +2586,8 @@ def _get_reload_saved_view_inputs(ctx, inputs):
         dt_str = humanize.naturaldelta(dt)
         view = types.Warning(
             label=(
-                f"Saved view '{name}' may need to be reloaded.\n\n"
-                f"The dataset was last modified {dt_str} after the view was "
+                f"Saved query '{name}' may need to be reloaded.\n\n"
+                f"The dataset was last modified {dt_str} after the query was "
                 "generated."
             )
         )
@@ -2595,7 +2597,7 @@ def _get_reload_saved_view_inputs(ctx, inputs):
         dt_str = humanize.naturaldelta(dt)
         view = types.Notice(
             label=(
-                f"Saved view '{name}' is up-to-date.\n\n"
+                f"Saved query '{name}' is up-to-date.\n\n"
                 f"It was generated {dt_str} after the dataset was last "
                 "modified."
             )
@@ -2623,7 +2625,7 @@ class SaveView(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="save_view",
-            label="Save view",
+            label="Save query",
             dynamic=True,
             risk_level=types.RiskLevel.MEDIUM,
         )
@@ -2640,7 +2642,7 @@ class SaveView(foo.Operator):
             "name",
             required=True,
             label="Name",
-            description="A new or existing name for the view",
+            description="A new or existing name for the query",
             view=saved_view_selector,
         )
 
@@ -2649,7 +2651,7 @@ class SaveView(foo.Operator):
             default=None,
             required=False,
             label="Description",
-            description="An optional description for the view",
+            description="An optional description for the query",
         )
 
         inputs.str(
@@ -2658,7 +2660,7 @@ class SaveView(foo.Operator):
             required=False,
             label="Color",
             description=(
-                "An optional RGB color string like `#FF6D04` for the view"
+                "An optional RGB color string like `#FF6D04` for the query"
             ),
         )
 
@@ -2668,11 +2670,11 @@ class SaveView(foo.Operator):
             inputs.view(
                 "overwrite",
                 types.Notice(
-                    label=f"This will overwrite existing saved view '{name}'"
+                    label=f"This will overwrite existing saved query '{name}'"
                 ),
             )
 
-        return types.Property(inputs, view=types.View(label="Save view"))
+        return types.Property(inputs, view=types.View(label="Save query"))
 
     def execute(self, ctx):
         name = ctx.params.get("name", None)
@@ -2696,7 +2698,7 @@ class EditSavedViewInfo(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="edit_saved_view_info",
-            label="Edit saved view info",
+            label="Edit saved query info",
             dynamic=True,
             risk_level=types.RiskLevel.MEDIUM,
         )
@@ -2707,7 +2709,7 @@ class EditSavedViewInfo(foo.Operator):
         _edit_saved_view_info_inputs(ctx, inputs)
 
         return types.Property(
-            inputs, view=types.View(label="Edit saved view info")
+            inputs, view=types.View(label="Edit saved query info")
         )
 
     def execute(self, ctx):
@@ -2726,7 +2728,7 @@ def _edit_saved_view_info_inputs(ctx, inputs):
     if not saved_views:
         prop = inputs.str(
             "msg",
-            label="This dataset has no saved views",
+            label="This dataset has no saved queries",
             view=types.Warning(),
         )
         prop.invalid = True
@@ -2741,8 +2743,8 @@ def _edit_saved_view_info_inputs(ctx, inputs):
         saved_view_selector.values(),
         default=ctx.view.name,
         required=True,
-        label="Saved view",
-        description="The saved view to edit",
+        label="Saved query",
+        description="The saved query to edit",
         view=saved_view_selector,
     )
 
@@ -2757,14 +2759,14 @@ def _edit_saved_view_info_inputs(ctx, inputs):
         default=info.get("name"),
         required=False,
         label="New name",
-        description="A new name for the saved view",
+        description="A new name for the saved query",
     )
 
     new_name = ctx.params.get("new_name", None)
     if new_name != name and new_name in saved_views:
         new_name_prop.invalid = True
         new_name_prop.error_message = (
-            f"Saved view with name '{new_name}' already exists"
+            f"Saved query with name '{new_name}' already exists"
         )
 
     inputs.str(
@@ -2772,7 +2774,7 @@ def _edit_saved_view_info_inputs(ctx, inputs):
         default=info.get("description"),
         required=False,
         label="Description",
-        description="An optional description for the saved view",
+        description="An optional description for the saved query",
     )
 
     inputs.str(
@@ -2781,7 +2783,7 @@ def _edit_saved_view_info_inputs(ctx, inputs):
         required=False,
         label="Color",
         description=(
-            "An optional RGB color string like `#FF6D04` for the saved view"
+            "An optional RGB color string like `#FF6D04` for the saved query"
         ),
     )
 
@@ -2791,7 +2793,7 @@ class DeleteSavedView(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="delete_saved_view",
-            label="Delete saved view",
+            label="Delete saved query",
             dynamic=True,
             risk_level=types.RiskLevel.HIGH,
         )
@@ -2802,7 +2804,7 @@ class DeleteSavedView(foo.Operator):
         _delete_saved_view_inputs(ctx, inputs)
 
         return types.Property(
-            inputs, view=types.View(label="Delete saved view")
+            inputs, view=types.View(label="Delete saved query")
         )
 
     def execute(self, ctx):
@@ -2818,7 +2820,7 @@ def _delete_saved_view_inputs(ctx, inputs):
     if not saved_views:
         prop = inputs.str(
             "msg",
-            label="This dataset has no saved views",
+            label="This dataset has no saved queries",
             view=types.Warning(),
         )
         prop.invalid = True
@@ -2831,8 +2833,8 @@ def _delete_saved_view_inputs(ctx, inputs):
     inputs.list(
         "names",
         types.String(),
-        label="Saved view",
-        description="The saved view(s) to delete",
+        label="Saved query",
+        description="The saved queries to delete",
         view=saved_view_selector,
         required=True,
     )

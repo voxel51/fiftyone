@@ -61,7 +61,10 @@ const makeRoutes = () => {
 
         const view = state?.view || [];
 
-        const extendedView = [...view];
+        // The server loads a saved query before applying extendedView. Route
+        // state can already contain those saved stages after session sync;
+        // sending them again applies conversions and grouping twice.
+        const extendedView = variables.savedViewSlug ? [] : [...view];
         if (state.fieldVisibility) {
           extendedView.push(state.fieldVisibility);
         }

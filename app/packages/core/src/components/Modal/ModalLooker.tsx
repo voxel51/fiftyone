@@ -88,6 +88,7 @@ const ModalLookerContent = React.memo(
       fos.shouldRenderImaVidLooker(true),
     );
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
+    const isFramesView = fos.useIsFramesView();
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
     const selectedMedia = fos.resolveMediaFieldLooker({
@@ -115,6 +116,11 @@ const ModalLookerContent = React.memo(
     }
 
     if (isVideo) {
+      // Dynamic frame views use a video filepath for a single frozen frame.
+      // Their documents contain frame fields directly, not a video's frames
+      // collection, so they cannot supply the playback timeline's label stream.
+      if (isFramesView)
+        return <ModalLookerNoTimeline sample={sample} showControls />;
       if (isAnnotate) {
         return <VideoAnnotationSurface sample={sample} />;
       }

@@ -10,7 +10,7 @@ import useSetModalState from "./useSetModalState";
 
 export type Sample = Exclude<PaginateSamplesNode, null>;
 
-export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
+export default (store: WeakMap<ID, Sample>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
 

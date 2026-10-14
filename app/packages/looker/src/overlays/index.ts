@@ -122,7 +122,7 @@ export const accumulateOverlays = <State extends BaseState>(
     if (TAGS.has(docType)) {
       classifications.push([
         path,
-        docType in LABEL_LISTS ? label[LABEL_LISTS[docType]] : [label],
+        docType in LABEL_LISTS ? (label[LABEL_LISTS[docType]] ?? []) : [label],
       ]);
       continue;
     }

@@ -25,6 +25,7 @@ import createScrollReader from "./createScrollReader";
 import type { EventCallback, SpotlightEvents } from "./events";
 import { Load, Rejected } from "./events";
 import Section from "./section";
+import { revealRow } from "./reveal";
 import tile from "./tile";
 import type {
   At,
@@ -87,6 +88,73 @@ export default class Spotlight<K, V> {
 
   get loaded() {
     return this.#loaded;
+  }
+
+  /** Reveals a retained row, resolving only after it has rendered. */
+  async revealItem(description: string, signal: AbortSignal): Promise<boolean> {
+    const controller = new AbortController();
+    const external = signal;
+    const cancel = () => controller.abort(external.reason);
+    const retire = () => controller.abort();
+    external.addEventListener("abort", cancel, { once: true });
+    this.#aborter.signal.addEventListener("abort", retire, { once: true });
+    this.#element.addEventListener("wheel", retire, {
+      once: true,
+      passive: true,
+    });
+    this.#element.addEventListener("touchstart", retire, {
+      once: true,
+      passive: true,
+    });
+    if (external.aborted) cancel();
+    if (this.#aborter.signal.aborted) retire();
+    signal = controller.signal;
+    try {
+      signal.throwIfAborted();
+      if (!this.#loaded) {
+        await new Promise<void>((resolve, reject) => {
+          const cleanup = () => {
+            this.removeEventListener("load", loaded);
+            signal.removeEventListener("abort", aborted);
+          };
+          const loaded = () => {
+            cleanup();
+            resolve();
+          };
+          const aborted = () => {
+            cleanup();
+            reject(signal.reason);
+          };
+          this.addEventListener("load", loaded);
+          signal.addEventListener("abort", aborted, { once: true });
+        });
+      }
+      signal.throwIfAborted();
+      const forward = this.#forward.find(description);
+      const backward = forward ? null : this.#backward.find(description);
+      if (!forward && !backward) return false;
+      const top = forward
+        ? this.#pivot + forward.from
+        : this.#backward.height - backward.from - backward.height;
+      await revealRow(
+        this.#element,
+        top + this.#config.offset,
+        (forward ?? backward).height,
+        signal,
+        () =>
+          this.#render({
+            zooming: false,
+            dispatchOffset: true,
+            ...this.#measure(),
+          }),
+      );
+      return true;
+    } finally {
+      external.removeEventListener("abort", cancel);
+      this.#aborter.signal.removeEventListener("abort", retire);
+      this.#element.removeEventListener("wheel", retire);
+      this.#element.removeEventListener("touchstart", retire);
+    }
   }
 
   addEventListener<E extends keyof SpotlightEvents<K>>(

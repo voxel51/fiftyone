@@ -1,7 +1,6 @@
-import React, { MouseEventHandler, useEffect } from "react";
+import React, { MouseEventHandler } from "react";
 
 import { IconButton, useTheme } from "@fiftyone/components";
-import { getEventBus } from "@fiftyone/events";
 import { useHover } from "@fiftyone/state";
 import { Check, Edit } from "@mui/icons-material";
 import {
@@ -19,11 +18,6 @@ export interface DatasetViewOption {
   description?: string;
   slug?: string;
 }
-
-/** e2e specs wait on an option's hover actions rendering */
-type SelectionOptionE2EEvents = {
-  "e2e:components:selection-option": { slug: string; hovered: boolean };
-};
 
 interface Props {
   item: DatasetViewOption;
@@ -49,15 +43,8 @@ export default function (props: Props) {
   } = props;
 
   const [hoverRef, isHovered] = useHover();
-  const { label, slug = "" } = item;
+  const { label } = item;
   const theme = useTheme();
-
-  useEffect(() => {
-    getEventBus<SelectionOptionE2EEvents>().dispatch(
-      "e2e:components:selection-option",
-      { slug, hovered: isHovered },
-    );
-  }, [slug, isHovered]);
 
   return (
     <SelectionRow ref={hoverRef} onClick={onClick} data-cy={dataCy}>

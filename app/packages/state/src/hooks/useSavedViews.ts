@@ -5,6 +5,27 @@ import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 
+/**
+ * Per-call options for the saved view mutations. ``onError`` receives a
+ * failed request or a GraphQL error; without it, errors go to the page's
+ * error boundary as before.
+ */
+export interface SavedViewMutationOptions {
+  onError?: (error: Error) => void;
+}
+
+export interface CreateSavedViewOptions extends SavedViewMutationOptions {
+  /**
+   * The sample IDs to save as a ``Select`` stage. Defaults to the current
+   * sample selection; pass an empty list to save the view without it.
+   */
+  sampleIds?: string[];
+}
+
+function firstError(errors: readonly { message: string }[] | null | undefined) {
+  return errors?.length ? new Error(errors[0].message) : null;
+}
+
 export default function useSavedViews() {
   const datasetNameValue = useRecoilValue(fos.datasetName);
   const onError = useErrorHandler();
@@ -21,16 +42,22 @@ export default function useSavedViews() {
     (
       nameValue: string,
       onDeleteSuccess: (deletedId: string | null) => void,
+      options: SavedViewMutationOptions = {},
     ) => {
       if (nameValue) {
         deleteView({
-          onError,
+          onError: options.onError ?? onError,
           variables: {
             viewName: nameValue,
             datasetName: datasetNameValue,
             subscription,
           },
           onCompleted: (data, err) => {
+            const error = firstError(err);
+            if (error && options.onError) {
+              options.onError(error);
+              return;
+            }
             if (err) {
               console.error("handleDeleteView error:", err);
             }
@@ -53,19 +80,22 @@ export default function useSavedViews() {
         onSuccess: (
           savedView: foq.createSavedViewMutation$data["createSavedView"],
         ) => void,
+        options: CreateSavedViewOptions = {},
       ) => {
         if (name) {
           saveView({
-            onError,
+            onError: options.onError ?? onError,
             variables: {
               viewName: name,
               datasetName: datasetNameValue,
               viewStages: view,
               form: {
                 filters: await snapshot.getPromise(fos.filters),
-                sampleIds: Array.from(
-                  (await snapshot.getPromise(fos.selectedSamples)).keys(),
-                ),
+                sampleIds:
+                  options.sampleIds ??
+                  Array.from(
+                    (await snapshot.getPromise(fos.selectedSamples)).keys(),
+                  ),
                 slice: await snapshot.getPromise(fos.groupSlice),
                 extended: await snapshot.getPromise(fos.extendedStages),
               },
@@ -74,6 +104,11 @@ export default function useSavedViews() {
               subscription,
             },
             onCompleted: (data, err) => {
+              const error = firstError(err);
+              if (error && options.onError) {
+                options.onError(error);
+                return;
+              }
               if (err) {
                 console.error("handleCreateSavedView response error:", err);
               }
@@ -89,15 +124,16 @@ export default function useSavedViews() {
     (
       initialName: string,
       name: string,
-      description: string,
-      color: string,
+      description: string | null,
+      color: string | null,
       onSuccess: (
         savedView: foq.updateSavedViewMutation$data["updateSavedView"],
       ) => void,
+      options: SavedViewMutationOptions = {},
     ) => {
       if (initialName) {
         updateView({
-          onError,
+          onError: options.onError ?? onError,
           variables: {
             subscription,
             datasetName: datasetNameValue,
@@ -108,8 +144,13 @@ export default function useSavedViews() {
               description,
             },
           },
-          onCompleted: ({ updateSavedView }) => {
-            onSuccess(updateSavedView);
+          onCompleted: (data, err) => {
+            const error = firstError(err);
+            if (error && options.onError) {
+              options.onError(error);
+              return;
+            }
+            onSuccess(data?.updateSavedView);
           },
         });
       }

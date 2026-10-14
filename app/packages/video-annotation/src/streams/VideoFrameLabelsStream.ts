@@ -178,6 +178,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
   // the stream itself holds no edit state — it is a read-only window seed
   // and the engine owns all label mutations.
   private readonly editListeners = new Set<() => void>();
+  private readonly bufferListeners = new Set<() => void>();
 
   constructor(opts: VideoFrameLabelsStreamOptions) {
     super(opts.id, {
@@ -503,6 +504,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         for (const source of borrowed) {
           maskBitmapCache.release(source);
         }
+        this.notifyBufferChanges();
         return;
       }
 
@@ -511,10 +513,12 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
           maskBitmapCache.release(source);
         }
         this.maskUndecodable.add(frame);
+        this.notifyBufferChanges();
         return;
       }
 
       this.maskHeld.set(frame, borrowed);
+      this.notifyBufferChanges();
     });
   }
 
@@ -723,6 +727,18 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     };
   }
 
+  /** Subscribe to fetched-window and decoded-mask readiness changes. */
+  subscribeToBufferChanges(listener: () => void): () => void {
+    this.bufferListeners.add(listener);
+    return () => {
+      this.bufferListeners.delete(listener);
+    };
+  }
+
+  private notifyBufferChanges(): void {
+    for (const listener of this.bufferListeners) listener();
+  }
+
   private notifyEdits(): void {
     for (const listener of this.editListeners) {
       listener();
@@ -752,12 +768,15 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       return;
     }
 
-    const promise = this.doFetch(startFrame, numFrames).finally(() => {
+    const promise = this.doFetch(startFrame, numFrames).then((fetched) => {
       for (let f = startFrame; f < startFrame + numFrames; f++) {
         if (this.inflight.get(f) === promise) {
           this.inflight.delete(f);
         }
       }
+      // Empty fetched frames become ready only after their in-flight marker
+      // is removed. Wake pending Play after the readiness change is visible.
+      if (fetched) this.notifyBufferChanges();
     });
 
     for (let f = startFrame; f < startFrame + numFrames; f++) {
@@ -767,7 +786,10 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
     return promise;
   }
 
-  private async doFetch(startFrame: number, numFrames: number): Promise<void> {
+  private async doFetch(
+    startFrame: number,
+    numFrames: number,
+  ): Promise<boolean> {
     const endFrame = Math.min(startFrame + numFrames - 1, this.frameCount);
 
     try {
@@ -800,6 +822,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
       // Also when nothing landed: a window with no frame documents is still an
       // answer, and the first landing is what settles a store born loading
       this.notifyEdits();
+      return true;
     } catch (error) {
       // Surface but don't crash — the engine will keep asking; subsequent
       // prefetch calls will retry the missing frames.
@@ -807,6 +830,7 @@ export class VideoFrameLabelsStream extends PlaybackStreamBase<FrameLabelSnapsho
         `[VideoFrameLabelsStream] fetch failed for [${startFrame}, ${endFrame}]`,
         error,
       );
+      return false;
     }
   }
 }

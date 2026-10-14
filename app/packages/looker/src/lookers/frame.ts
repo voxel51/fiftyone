@@ -8,8 +8,13 @@ import { LookerUtils } from "./shared";
 import { zoomToContent } from "../zoom";
 
 export class FrameLooker extends AbstractLooker<FrameState> {
-  getElements(config) {
-    return getFrameElements(config, this.updater, this.getDispatchEvent());
+  getElements(config: FrameState["config"]) {
+    return getFrameElements({
+      abortController: this.abortController,
+      config,
+      dispatchEvent: this.getDispatchEvent(),
+      update: this.updater,
+    });
   }
 
   getInitialState(

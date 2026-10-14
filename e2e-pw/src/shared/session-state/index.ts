@@ -74,18 +74,20 @@ const readState = async (baseURL: string): Promise<SessionState> => {
 };
 
 /**
- * The stages the server currently holds for `datasetName`, in order. Empty
- * when the session is on the unfiltered dataset.
+ * The stages the server on `serverPort` currently holds for `datasetName`, in
+ * order. Empty when the session is on the unfiltered dataset. The read goes to
+ * the FiftyOne server itself: the dev App server proxies only some routes, and
+ * `/events` is not one of them.
  *
  * Throws when the session is on a different dataset, so a test that navigated
  * somewhere unexpected fails as a wrong navigation rather than as an empty
  * view.
  */
 export const getSessionView = async (
-  baseURL: string,
+  serverPort: number,
   datasetName: string,
 ): Promise<SerializedStage[]> => {
-  const state = await readState(baseURL);
+  const state = await readState(`http://127.0.0.1:${serverPort}`);
 
   if (state.dataset !== datasetName) {
     throw new Error(

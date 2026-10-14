@@ -12,25 +12,11 @@ import useLabelAttributeIcon from "../use-label-attribute-icon";
 import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
+import CategoricalFilterContainer from "./Container";
 import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
 import type { ResultsAtom } from "./useSelected";
 import useSelected from "./useSelected";
-
-const StringFilterContainer = styled.div`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
-  border-radius: 2px;
-  color: ${({ theme }) => theme.text.secondary};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  position: relative;
-`;
-
-const NamedStringFilterContainer = styled.div`
-  margin: 3px;
-  font-weight: bold;
-`;
 
 const NamedStringFilterHeader = styled.div`
   display: flex;
@@ -101,61 +87,61 @@ const StringFilter = ({
   }
 
   return (
-    <NamedStringFilterContainer
-      data-cy={`categorical-filter-${path}`}
-      onClick={(e) => e.stopPropagation()}
+    <CategoricalFilterContainer
+      path={path}
+      heading={
+        named &&
+        field && (
+          <FieldLabelAndInfo
+            nested
+            field={field}
+            color={color}
+            template={({ label, hoverTarget }) => (
+              <NamedStringFilterHeader>
+                <span ref={hoverTarget}>{label}</span>
+                <span style={{ alignItems: "center", display: "flex" }}>
+                  {icon}
+                  {attributeIcon}
+                </span>
+              </NamedStringFilterHeader>
+            )}
+          />
+        )
+      }
     >
-      {named && field && (
-        <FieldLabelAndInfo
-          nested
-          field={field}
-          color={color}
-          template={({ label, hoverTarget }) => (
-            <NamedStringFilterHeader>
-              <span ref={hoverTarget}>{label}</span>
-              <span style={{ alignItems: "center", display: "flex" }}>
-                {icon}
-                {attributeIcon}
-              </span>
-            </NamedStringFilterHeader>
-          )}
+      {showSearch && !skeleton && (
+        <Selector
+          useSearch={useSearch}
+          placeholder={`+ ${
+            isFilterMode ? "filter" : "set visibility"
+          } by ${name}`}
+          cy={`sidebar-search-${path}`}
+          component={ResultComponent}
+          onSelect={onSelect}
+          inputStyle={{
+            color: theme.text.secondary,
+            fontSize: "1rem",
+            width: "100%",
+          }}
+          footer={footer}
+          containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
+          toKey={(value) => String(value.value)}
+          id={path}
+          DuringSuspense={withQueryPerformanceTimeout(modal, path)}
         />
       )}
-      <StringFilterContainer onMouseDown={(event) => event.stopPropagation()}>
-        {showSearch && !skeleton && (
-          <Selector
-            useSearch={useSearch}
-            placeholder={`+ ${
-              isFilterMode ? "filter" : "set visibility"
-            } by ${name}`}
-            cy={`sidebar-search-${path}`}
-            component={ResultComponent}
-            onSelect={onSelect}
-            inputStyle={{
-              color: theme.text.secondary,
-              fontSize: "1rem",
-              width: "100%",
-            }}
-            footer={footer}
-            containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-            toKey={(value) => String(value.value)}
-            id={path}
-            DuringSuspense={withQueryPerformanceTimeout(modal, path)}
-          />
-        )}
-        <Checkboxes
-          color={color}
-          resultColor={valueColor}
-          excludeAtom={excludeAtom}
-          modal={modal}
-          isMatchingAtom={isMatchingAtom}
-          path={path}
-          results={results?.results || null}
-          selectedAtom={selectedAtom}
-          skeleton={skeleton}
-        />
-      </StringFilterContainer>
-    </NamedStringFilterContainer>
+      <Checkboxes
+        color={color}
+        resultColor={valueColor}
+        excludeAtom={excludeAtom}
+        modal={modal}
+        isMatchingAtom={isMatchingAtom}
+        path={path}
+        results={results?.results || null}
+        selectedAtom={selectedAtom}
+        skeleton={skeleton}
+      />
+    </CategoricalFilterContainer>
   );
 };
 

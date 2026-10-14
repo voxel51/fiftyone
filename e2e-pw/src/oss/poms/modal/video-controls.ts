@@ -1,5 +1,5 @@
 import { Locator, Page } from "src/oss/fixtures";
-import { escapeRegExp } from "src/oss/utils";
+import type { EventCondition } from "src/shared/event-utils";
 import { ModalPom } from ".";
 
 /** The readout's text, with the padding spaces it renders collapsed */
@@ -34,16 +34,13 @@ export class ModalVideoControlsPom {
     await this.playPauseButton.click();
   }
 
-  /** Play until the readout reads `text`, then pause. */
-  private async playUntilReadout(text: string, matchBeginning: boolean) {
-    const pattern = new RegExp(
-      `^${escapeRegExp(text)}${matchBeginning ? "" : "$"}`,
-    );
-    await this.afterReadout(
-      (shown) => pattern.test(shown),
-      () => this.togglePlay(),
-    );
-    await this.togglePlay();
+  /** The playhead readout shows `text` */
+  playhead(text: string): EventCondition {
+    return {
+      events: "e2e:playback:playhead-time",
+      predicate: (e) =>
+        readout((e.detail as { label: string }).label) === readout(text),
+    };
   }
 
   /** Run `action` and resolve once the playhead readout satisfies `shows` */
@@ -58,8 +55,22 @@ export class ModalVideoControlsPom {
     );
   }
 
+  /** Play through `durationText`, then pause before reading the canvas. */
   async playUntilDuration(durationText: string) {
-    await this.playUntilReadout(durationText, true);
+    const [minutes, seconds] = durationText.split(":").map(Number);
+    const target = minutes * 60 + seconds;
+    await this.afterReadout(
+      (shown) => {
+        const [current] = shown.split(" / ");
+        const [currentMinutes, currentSeconds] = current.split(":").map(Number);
+        // Playback can advance several frames between React commits. The
+        // first rendered time at or beyond the target proves it played;
+        // requiring one exact intermediate label can miss that frame forever.
+        return currentMinutes * 60 + currentSeconds >= target;
+      },
+      () => this.togglePlay(),
+    );
+    await this.togglePlay();
   }
 }
 

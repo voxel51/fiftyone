@@ -41,7 +41,7 @@ const SidebarList: React.FC = () => {
     },
   ];
   const fieldGroups = useRecoilValue(
-    fos.sidebarGroups({ modal: false, loading: false }),
+    fos.sidebarGroups({ modal: false, loading: false, flatEvents: false }),
   )
     .filter((g) => g.name !== "tags")
     .map((group) => ({

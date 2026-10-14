@@ -159,7 +159,13 @@ export const tagParameters = ({
     ...params,
     filters: overrideFilters(params.modal, selectedSamples)
       ? {}
-      : params.filters,
+      : params.modal
+        ? Object.fromEntries(
+            Object.entries(params.filters ?? {}).filter(
+              ([path]) => path !== fos.EVENTS_FIELD,
+            ),
+          )
+        : params.filters,
     label_fields: activeFields,
     target_labels: targetLabels,
     slices: groupData?.slices,

@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { Bookmark } from "@mui/icons-material";
+import { SlidersIcon } from "@voxel51/voodo";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import Loading from "../../../Actions/Loading";
 import type { ActionProps } from "../../../Actions/types";
@@ -103,8 +103,7 @@ export default ({ adaptiveMenuItemProps }: ActionProps) => {
     <ActionDiv {...(getStringAndNumberProps(adaptiveMenuItemProps) || {})}>
       <PillButton
         open={false}
-        highlight={true}
-        icon={loading ? <Loading /> : <Bookmark />}
+        icon={loading ? <Loading /> : <SlidersIcon size={18} />}
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}
         title={"Convert current filters and/or sorting to view stages"}

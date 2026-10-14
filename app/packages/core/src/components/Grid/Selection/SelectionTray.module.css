@@ -1,0 +1,1493 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tray shell
+ * ------------------------------------------------------------------------- */
+
+.tray {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--tray-bg);
+  color: var(--tray-text);
+  border-top: 1px solid var(--tray-border);
+  font-family: var(--tray-font);
+}
+
+/* Expandable strip of selected episodes. Its height is user-driven; the
+ * collapse transition is disabled while dragging so the handle tracks the
+ * pointer exactly. */
+.strip {
+  position: relative;
+  overflow: hidden;
+  background: var(--tray-strip-bg);
+  transition: height var(--tray-duration) var(--tray-easing);
+}
+
+.strip[data-dragging="true"] {
+  transition: none;
+}
+
+.handle {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.handle::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: var(--tray-border);
+}
+
+.grip {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--tray-border-strong);
+  opacity: 0;
+  transition: opacity var(--tray-duration-fast) var(--tray-easing);
+}
+
+.handle:hover .grip,
+.handle:focus-visible .grip,
+.strip[data-dragging="true"] .grip {
+  opacity: 1;
+}
+
+.handle:focus-visible {
+  outline: none;
+}
+
+.handle:focus-visible .grip {
+  box-shadow: 0 0 0 2px var(--tray-focus);
+}
+
+.cards {
+  box-sizing: border-box;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: var(--tray-strip-gap);
+  padding: var(--tray-strip-pad-top) var(--tray-space-sm)
+    var(--tray-strip-pad-bottom);
+  scrollbar-gutter: stable;
+}
+
+/* ---------------------------------------------------------------------------
+ * Bottom bar
+ * ------------------------------------------------------------------------- */
+
+.bar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tray-space-xs) var(--tray-space-sm);
+  min-height: 44px;
+  padding: var(--tray-space-xs) var(--tray-space-sm);
+}
+
+.scope {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tray-space-xs) var(--tray-space-sm);
+  flex: 0 1 auto;
+  min-width: 0;
+  /* Sits a hair in from the bar edge so the sentence does not hug the pane. */
+  margin-left: 2px;
+}
+
+.summaryText {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tray-space-xs) var(--tray-space-sm);
+  min-width: 0;
+}
+
+/* Match the action buttons' rendered type size. */
+.summary .summaryLabel {
+  font-size: 14px;
+}
+
+/* One pill per selected archetype: "4 samples selected", with its own clear.
+ * The count reads in the primary color, the rest recedes, and the clear sits
+ * flush with the pill's rounded end. */
+.bar .countPill {
+  padding: 4px 4px 4px 10px;
+  white-space: nowrap;
+}
+
+.countPillBody {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.countPillCount {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar .countPillClear {
+  margin-left: 2px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.bar button,
+.menuRow {
+  color: var(--tray-text-secondary);
+}
+
+.bar button:enabled:is(:hover, :focus-visible, [aria-expanded="true"]),
+.menuRow:enabled:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  color: var(--tray-text-primary);
+}
+
+/* Keep unavailable actions readable instead of applying VOODO's opacity fade. */
+.bar button:disabled,
+.menuRow:disabled {
+  color: var(--tray-text-secondary);
+  opacity: 1;
+}
+
+/* Match text and icon-only controls, with room for the larger tray icons. */
+.bar .toolbarButton {
+  min-height: 32px;
+  line-height: 20px;
+}
+
+.toolbarButton svg {
+  display: block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  /* Optical alignment with the label's cap height, below its line-box center. */
+  transform: translateY(1px);
+}
+
+.actions .collapseDivider {
+  flex: none;
+  align-self: center;
+  height: 20px;
+  margin: 0 var(--tray-space-xs);
+  opacity: 0.5;
+}
+
+/* An action whose panel is open holds its hover look, the way a button
+   stays lit while its menu is open. */
+.bar .toolbarButton:enabled[aria-expanded="true"] {
+  background: var(--tray-control-hover);
+}
+
+.menuRow:enabled[aria-expanded="true"] {
+  background: var(--tray-raised);
+}
+
+/* Marks a panel's own button for it without adding a box around it. */
+.surfaceTrigger {
+  display: contents;
+}
+
+.truncate {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.tipWrap {
+  display: inline-flex;
+}
+
+.shortcutTooltip {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-sm);
+}
+
+.shortcutKeys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+}
+
+/* Long hints wrap; panels shift inward at either viewport edge. */
+.tooltip {
+  box-sizing: border-box;
+  max-width: min(500px, calc(100vw - 16px));
+  white-space: normal;
+  overflow-wrap: anywhere;
+  translate: var(--tray-tooltip-offset, 0px) 0;
+}
+
+/* VOODO renders its arrow last. Counter the panel's shift over the trigger. */
+.tooltip > :last-child {
+  left: clamp(
+    8px,
+    calc(50% - var(--tray-tooltip-offset, 0px)),
+    calc(100% - 8px)
+  );
+}
+
+.inlineAlert {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  min-width: 0;
+}
+
+/* The fold between the first and last cards of a long selection. */
+.fold {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: var(--tray-card-w-min);
+  height: var(--tray-card-h);
+  margin: 0;
+  padding: 8px;
+  border: 1px dashed var(--tray-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tray-text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    background-color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.fold:hover,
+.fold:focus-visible {
+  background: var(--tray-raised);
+  border-color: var(--tray-accent);
+}
+
+.fold:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 2px;
+}
+
+.foldAction {
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Episode card
+ * ------------------------------------------------------------------------- */
+
+.card {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: var(--tray-card-w);
+  max-width: 100%;
+  height: var(--tray-card-h);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--tray-card-bg);
+  border: 1px solid var(--tray-border);
+  animation: cardIn var(--tray-duration) var(--tray-easing);
+  transition:
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    box-shadow var(--tray-duration-fast) var(--tray-easing);
+}
+
+.card:hover {
+  border-color: var(--tray-border-strong);
+}
+
+.card:focus-within {
+  border-color: var(--tray-accent);
+}
+
+.card[data-unavailable="true"] {
+  border-style: dashed;
+}
+
+/* The card answering a hovered grid tile: the grid's own nudge and ring. */
+.card[data-mirrored="true"] {
+  border-color: var(--tray-accent);
+  box-shadow: inset 0 0 0 1px var(--tray-accent);
+}
+
+.card .preview {
+  transition: transform var(--tray-duration) var(--tray-easing);
+}
+
+.card[data-mirrored="true"] .preview {
+  transform: scale(1.04);
+}
+
+.card[data-outside="true"] .media {
+  opacity: 0.45;
+  filter: saturate(0.3);
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.preview {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--tray-strip-bg);
+}
+
+.squarePreview {
+  aspect-ratio: 1;
+}
+
+.open {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.open:disabled {
+  cursor: default;
+}
+
+.open:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: -2px;
+}
+
+.media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity var(--tray-duration-fast) var(--tray-easing);
+}
+
+.imageFrame {
+  width: 100%;
+  height: 100%;
+}
+
+.crop {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.rendererHost,
+.lookerHost {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.lookerHost {
+  pointer-events: none;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--tray-text-muted);
+}
+
+.kind {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--tray-overlay);
+  pointer-events: none;
+}
+
+/* Card tools (locate in grid, remove) show on hover or focus. */
+.locateStatus {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.tools {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--tray-duration-fast) var(--tray-easing);
+}
+
+.card:hover .tools,
+.card:focus-within .tools,
+.tools:focus-within {
+  opacity: 1;
+}
+
+.card .tool {
+  background: var(--tray-overlay) !important;
+}
+
+.card .tool:disabled {
+  opacity: 0.5;
+}
+
+.footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 6px 6px;
+  pointer-events: none;
+}
+
+.flags > * {
+  pointer-events: auto;
+}
+
+.ellipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Range track
+ * ------------------------------------------------------------------------- */
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tray-raised);
+  overflow: hidden;
+}
+
+.rangeBar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--tray-accent);
+}
+
+.track[data-tone="current"] .rangeBar {
+  background: var(--tray-info);
+}
+
+/* ---------------------------------------------------------------------------
+ * Flag chip that opens the mismatch popover
+ * ------------------------------------------------------------------------- */
+
+.flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: var(--tray-font-xs);
+  line-height: 16px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--tray-text);
+  background: color-mix(in srgb, var(--tray-info) 22%, transparent);
+  border-color: color-mix(in srgb, var(--tray-info) 45%, transparent);
+}
+
+.flag:hover {
+  background: color-mix(in srgb, var(--tray-info) 32%, transparent);
+}
+
+.flag:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Popover / modal panels
+ * ------------------------------------------------------------------------- */
+
+.panel {
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--tray-space-sm);
+  padding: var(--tray-space-xs);
+  font-family: var(--tray-font);
+  color: var(--tray-text);
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--tray-space-sm) var(--tray-space-sm);
+  align-items: start;
+}
+
+.compareLabel {
+  padding-top: 2px;
+  min-width: 56px;
+}
+
+.compareBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.panelActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--tray-space-xs);
+}
+
+.notice {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  padding: var(--tray-space-sm);
+  border-radius: 6px;
+  background: var(--tray-raised);
+}
+
+.notice[data-tone="error"] {
+  background: color-mix(in srgb, var(--tray-destructive) 14%, transparent);
+}
+
+.notice[data-tone="success"] {
+  background: color-mix(in srgb, var(--tray-success) 14%, transparent);
+}
+
+.notice[data-tone="warning"] {
+  background: color-mix(in srgb, var(--tray-warning) 14%, transparent);
+}
+
+.noticeIcon {
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.noticeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Segmented radio group */
+.segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+}
+
+.segment {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--tray-text-secondary);
+  font: inherit;
+  font-size: var(--tray-font-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--tray-duration-fast) var(--tray-easing),
+    color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.segment[aria-checked="true"] {
+  background: var(--tray-raised);
+  color: var(--tray-text);
+}
+
+.segment:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: -2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * In-place action panels: the tag picker and add-to-subset
+ * ------------------------------------------------------------------------- */
+
+.sheet {
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 24px));
+  font-family: var(--tray-font);
+  color: var(--tray-text);
+}
+
+.subsetSheet {
+  width: min(240px, calc(100vw - 24px));
+}
+
+.subsetFormSheet {
+  width: min(324px, calc(100vw - 24px));
+}
+
+.subsetFormSheet .sheetBody {
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.subsetNameInput {
+  border-color: var(--tray-border-strong);
+  background: var(--tray-card-bg);
+}
+
+.subsetCreateIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.emptySubsetIntro {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.emptySubsetText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The same panel inside a modal takes the modal's width, not its own. */
+.modalSheet {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--tray-font);
+  color: var(--tray-text);
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 8px;
+}
+
+.sheetTitle {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+}
+
+.scopeTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.scopeStagesLink {
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.sheetActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.listEmpty {
+  padding: 10px 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--tray-raised);
+}
+
+.row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: -2px;
+}
+
+.rowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rowText > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The scope panel is narrower than the action sheets. */
+.scopeSheet {
+  width: min(288px, calc(100vw - 24px));
+}
+
+/* A rule between the picker's groups. VOODO's horizontal divider grows along
+   a row; in this column, growing would take its 1px height, so it keeps its
+   own size. The double class outranks the flex utility. */
+.rule.rule {
+  flex: none;
+}
+
+/* Descriptions wrap to two lines, then trail off; the title holds the rest. */
+.rowText > .rowClamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.subsetRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.subsetRow:hover,
+.subsetRow:focus-within {
+  background: var(--tray-raised);
+}
+
+.subsetChoice {
+  flex: 1;
+  min-width: 0;
+}
+
+.subsetEdit {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.subsetEditIcon {
+  color: var(--tray-text-secondary);
+}
+
+.subsetEdit:hover .subsetEditIcon,
+.subsetEdit:focus-visible .subsetEditIcon {
+  color: var(--tray-accent);
+}
+
+.subsetCount {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.subsetRow:hover .subsetEdit,
+.subsetRow:focus-within .subsetEdit {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.subsetRow:hover .subsetCount,
+.subsetRow:focus-within .subsetCount {
+  opacity: 0;
+}
+
+@media (hover: none) {
+  .subsetCount {
+    opacity: 0;
+  }
+
+  .subsetEdit {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.rule {
+  margin: 2px 0;
+  border: 0;
+  border-top: 1px solid var(--tray-border);
+}
+
+/* Confirmation dialogs */
+.confirmationCheckbox:not([data-checked]) {
+  border-color: var(--tray-border-strong);
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tray-space-md);
+  font-family: var(--tray-font);
+  color: var(--tray-text);
+}
+
+.footerActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--tray-space-xs);
+}
+
+/* Overflow action panel: tray-owned so its actions stay mounted while closed */
+.more {
+  position: relative;
+  display: inline-flex;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 224px;
+  padding: 4px;
+  border: 1px solid var(--tray-border);
+  border-radius: 8px;
+  background: var(--tray-popover);
+  box-shadow: 0 8px 24px var(--tray-shadow);
+  font-family: var(--tray-font);
+  color: var(--tray-text);
+}
+
+.menu[hidden] {
+  display: none;
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-sm);
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuRow:enabled:hover {
+  background: var(--tray-raised);
+}
+
+.menuRow:disabled {
+  cursor: not-allowed;
+}
+
+.menuRow:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: -2px;
+}
+
+.menuRowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Count pill and its Clear control stay on one line when the bar wraps */
+/* Hover affordance that the card body opens the viewer */
+.openHint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--tray-duration-fast) var(--tray-easing);
+}
+
+.openHint > span {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 999px;
+  background: var(--tray-overlay);
+  color: var(--tray-text-on-color);
+}
+
+.open:hover .openHint,
+.open:focus-visible .openHint {
+  opacity: 1;
+}
+
+/* Read-only result unit when there is nothing to switch to */
+/* The samples tab's scope trigger sits inline with the panel icon. */
+.scopeTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+
+/* Tighter than the default pill so the count reads as a badge, not a label. */
+.scopeTrigger .scopeCount {
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+}
+
+.scopeStages {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0.8;
+  animation: scopeStagesPulse 3.2s ease-in-out infinite;
+}
+
+.scopeStages svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes scopeStagesPulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Bare icons size from their container; make the switch affordance visible. */
+.scopeChevron {
+  display: inline-flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  /* Breathing room after the count so the caret reads as its own control. */
+  margin-left: 8px;
+}
+
+.scopeChevron svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--tray-duration-fast) var(--tray-easing);
+}
+
+/* Headless UI marks the open trigger; the chevron flips to point at the menu. */
+[data-open] .scopeChevron svg,
+[aria-expanded="true"] .scopeChevron svg {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scopeStages {
+    animation: none;
+  }
+
+  .scopeChevron svg {
+    transition: none;
+  }
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Sections: the split tray's working selections side by side
+ * ------------------------------------------------------------------------- */
+
+.columns {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  height: 100%;
+  padding: var(--tray-strip-pad-top) 8px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* A section reads as a quiet panel; the active one is outlined and lit. */
+.column {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 168px;
+  min-height: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tray-section-bg) 30%, transparent);
+  opacity: 0.7;
+  cursor: pointer;
+  transition:
+    background var(--tray-duration-fast) var(--tray-easing),
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    opacity var(--tray-duration-fast) var(--tray-easing);
+}
+
+.column:hover {
+  background: color-mix(in srgb, var(--tray-section-bg) 60%, transparent);
+  opacity: 1;
+}
+
+.column[data-active="true"] {
+  border-color: var(--tray-border-strong);
+  background: var(--tray-section-bg);
+  opacity: 1;
+}
+
+/* A card dragged over a section lights it as the place it will land. */
+.column[data-dropping="true"] {
+  border-color: var(--tray-accent);
+  background: color-mix(
+    in srgb,
+    var(--tray-accent) 10%,
+    var(--tray-section-bg)
+  );
+  opacity: 1;
+}
+
+.card[draggable="true"] {
+  cursor: grab;
+}
+
+.columnHeader {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  min-width: 0;
+}
+
+/* The section's shape, round; lit in the accent while active. */
+.sectionShape {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tray-icon);
+  cursor: pointer;
+  transition:
+    background var(--tray-duration-fast) var(--tray-easing),
+    color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.sectionShape:hover {
+  background: var(--tray-raised);
+  color: var(--tray-text);
+}
+
+.sectionShape[data-active="true"] {
+  background: color-mix(in srgb, var(--tray-accent) 15%, transparent);
+  color: var(--tray-icon-decorative);
+}
+
+.sectionShape:focus-visible,
+.shapeChoice:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+.sectionShape span,
+.shapeChoice span,
+.tileSelect span {
+  display: inline-flex;
+}
+
+.shapePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--tray-border);
+  border-radius: 8px;
+  background: var(--tray-popover);
+}
+
+.shapePalette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 216px;
+}
+
+.shapeChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--tray-border-input);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tray-icon);
+  cursor: pointer;
+  transition:
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.shapeChoice:enabled:hover {
+  border-color: var(--tray-border-hover);
+  color: var(--tray-text);
+}
+
+.shapeChoice[aria-pressed="true"] {
+  border-color: var(--tray-accent);
+  background: color-mix(in srgb, var(--tray-accent) 10%, transparent);
+  color: var(--tray-accent);
+}
+
+.shapeChoice:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* The name doubles as the section's button, so a keyboard can make it
+   active too. */
+.columnName {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.columnName:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+.column[data-active="true"] .columnName > * {
+  font-weight: 500;
+}
+
+/* Keycaps share a raised bottom edge across section headers and tooltips. */
+.sectionKey,
+.shortcutKey {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  border: 1px solid var(--tray-border-strong);
+  border-bottom-width: 3px;
+  border-radius: 3px;
+  background: var(--tray-raised);
+  color: var(--tray-text-secondary);
+  font-family: var(--tray-font-mono);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sectionKey {
+  width: 20px;
+  margin-top: 2px;
+  margin-left: 10px;
+  padding: 0;
+}
+
+.shortcutKey {
+  min-width: 20px;
+  padding: 0 var(--tray-space-xs);
+}
+
+.renameField {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.renameField input {
+  width: 144px;
+}
+
+.columnEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.sectionCount {
+  padding: 0 2px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--tray-border) 60%, transparent);
+}
+
+.columnCards {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 6px;
+  min-height: 0;
+  margin-top: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* The bar's history: split, undo, and redo. */
+.history {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The split tray's checkbox: the shape a pick would land in, where the
+ * checkbox sits and at its size; picked, it fills with every section's shape.
+ * Like the checkbox, an unpicked one shows only over the tile's top. */
+.tileSelect {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  height: 18px;
+  min-width: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--tray-accent);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.tileSelect[data-picked="true"] {
+  padding: 0 2px;
+  background: var(--tray-accent);
+  color: var(--tray-text-on-color);
+}
+
+[data-fo-selection-hover="false"]
+  .tileSelect:not([data-picked="true"]):not(:focus-visible) {
+  visibility: hidden;
+}
+
+.tileSelect:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strip,
+  .card,
+  .card .preview,
+  .tools,
+  .media,
+  .grip,
+  .segment,
+  .column,
+  .sectionShape,
+  .shapeChoice {
+    transition: none;
+    animation: none;
+  }
+
+  .card[data-mirrored="true"] .preview {
+    transform: none;
+  }
+}
+.savedSegments {
+  position: absolute;
+  top: 32px;
+  right: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--tray-overlay);
+  pointer-events: auto;
+}
+
+.scopeSheet .sheetBody,
+.subsetSheet .sheetBody {
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.scopeSheet .row,
+.subsetSheet .row {
+  min-height: 36px;
+  gap: 8px;
+}
+
+.scopeSheet .list:empty {
+  display: none;
+}

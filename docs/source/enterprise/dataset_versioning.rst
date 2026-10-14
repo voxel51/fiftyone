@@ -53,7 +53,7 @@ allows dataset snapshots to be as lightweight and versatile as possible.
     +------------------------+-----------------------------------------+
     | Dataset-level metadata | Schema, tags, and other metadata        |
     |                        +-----------------------------------------+
-    |                        | Saved views                             |
+    |                        | Saved queries                           |
     |                        +-----------------------------------------+
     |                        | Runs and run results                    |
     +------------------------+-----------------------------------------+
