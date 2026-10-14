@@ -23,7 +23,7 @@ export const STATUS_COLORS: Record<RunStatus, TextColor> = {
   [RunStatus.Pending]: TextColor.Muted,
   [RunStatus.Running]: TextColor.Info,
   [RunStatus.Completed]: TextColor.Success,
-  [RunStatus.Failed]: TextColor.Destructive,
+  [RunStatus.Failed]: TextColor.Failure,
 };
 
 export const STATUS_LABELS: Record<RunStatus, string> = {
@@ -72,3 +72,5 @@ export const UPLOAD_ACCEPTED_TYPES = ".png,.jpg,.jpeg,.webp,.bmp,.tiff";
 export const MIDDLE_DOT = "\u00B7";
 export const CHECK_MARK = "\u2705";
 export const CROSS_MARK = "\u274C";
+
+export const UNREADY_POLL_MS = 5_000;

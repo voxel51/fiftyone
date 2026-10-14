@@ -24,13 +24,13 @@ const SEVERITY_ICON: Record<HealthSeverity, IconName> = {
 };
 
 const SEVERITY_ICON_COLOR: Record<HealthSeverity, IconColor> = {
-  error: IconColor.Destructive,
+  error: IconColor.Failure,
   info: IconColor.Info,
   warning: IconColor.Warning,
 };
 
 const SEVERITY_TEXT_COLOR: Record<HealthSeverity, TextColor> = {
-  error: TextColor.Destructive,
+  error: TextColor.Failure,
   info: TextColor.Info,
   warning: TextColor.Warning,
 };

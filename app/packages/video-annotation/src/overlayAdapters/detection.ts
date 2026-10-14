@@ -65,6 +65,7 @@ export function toDetectionLabel(box: SyntheticBox): VideoDetectionLabel {
     _id: box._id,
     label: box.label,
     bounding_box: box.bounding_box,
+    rotation: box.rotation,
     index: box.index,
     instance: box.instance,
   };

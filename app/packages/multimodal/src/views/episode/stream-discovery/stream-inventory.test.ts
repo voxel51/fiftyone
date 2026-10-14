@@ -271,6 +271,31 @@ describe("buildStreamInventoryRows", () => {
     );
     expect(row(rows, "camera.video").countLabel).toBeNull();
   });
+
+  it("reports a camera whose encoding has no decoder as unsupported", () => {
+    // A renderable *kind* of stream is not a playable one, and saying so has
+    // the sidebar promising a picture the tile can never show
+    const camera = stream(
+      "/camera/front",
+      "sensor_msgs/Image",
+      "mp4",
+      "ros1msg",
+      "12",
+      "unsupported-encoding",
+    );
+
+    expect(
+      buildStreamInventoryRows({
+        sceneSources: sceneSourcesFromStreamDescriptors([camera]),
+        streams: [camera],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        sourceType: SCENE_SOURCE_TYPE.IMAGE,
+        supportStatus: "encoding-unsupported",
+      }),
+    ]);
+  });
 });
 
 function row(rows: readonly StreamInventoryRow[], stream: string) {

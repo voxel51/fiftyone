@@ -54,20 +54,16 @@ class LevaAsserter {
   constructor(private readonly modalLevaPom: ModalLevaPom) {}
 
   async verifyDefaultFolders() {
-    await Promise.all(
-      DEFAULT_FOLDER_NAMES.map((folderName) =>
-        expect(this.modalLevaPom.getFolder(folderName)).toContainText(
-          folderName,
-        ),
-      ),
-    );
+    for (const folderName of DEFAULT_FOLDER_NAMES) {
+      expect(await this.modalLevaPom.getFolder(folderName).textContent()).toBe(
+        folderName,
+      );
+    }
   }
 
   async verifyAssetFolders(assetNames: string[]) {
-    await Promise.all(
-      assetNames.map((assetName) =>
-        expect(this.modalLevaPom.getFolder(assetName)).toHaveCount(2),
-      ),
-    );
+    for (const assetName of assetNames) {
+      expect(await this.modalLevaPom.getFolder(assetName).count()).toBe(2);
+    }
   }
 }

@@ -25,7 +25,8 @@ export type ItemClick<K, V> = (
 ) => void;
 
 export interface ItemClickInterface<K, V> {
-  event: MouseEvent;
+  /** the click, or none when the item is opened through `open` */
+  event?: MouseEvent;
   item: ItemData<K, V>;
   iter: { next: (from: number, soft?: boolean) => Promise<ID | undefined> };
 }
@@ -60,6 +61,8 @@ export type Show<K, V> = (ctx: {
   id: ID;
   dimensions: [number, number];
   element: HTMLDivElement;
+  /** opens the item as a click on it does, when `onItemClick` is set */
+  open?: () => void;
   spotlight: Spotlight<K, V>;
   zooming: boolean;
 }) => Promise<number>;

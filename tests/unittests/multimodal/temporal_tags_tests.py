@@ -10,18 +10,16 @@ import time
 import unittest
 
 from bson import ObjectId
-from decorators import drop_collection, drop_datasets
+from decorators import drop_datasets, isolate_temporal_tags
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.core.tags as fota
 from fiftyone.multimodal.schemas import v1 as foms
 
-drop_tags = drop_collection(fota.TAGS_COLLECTION_NAME)
-
 
 class TemporalTagTests(unittest.TestCase):
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_validation_and_defaults(self):
         dataset, sample_ids = _make_dataset()
@@ -198,7 +196,7 @@ class TemporalTagTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             temporal_tags.first()
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_provenance_upserts(self):
         dataset, sample_ids = _make_dataset()
@@ -287,7 +285,7 @@ class TemporalTagTests(unittest.TestCase):
             manual.last_modified_at.isoformat(), "2026-01-02T00:00:00"
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_parent_timestamps_on_crud(self):
         dataset, sample_ids = _make_dataset(2)
@@ -397,7 +395,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertGreater(after_clear_first, before_clear_first)
         self.assertGreater(after_clear_second, before_clear_second)
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_updates_preserve_identity_and_touch_parents(self):
         dataset, sample_ids = _make_dataset(2)
@@ -468,7 +466,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(resized.last_modified_by, "bob")
         self.assertGreater(resized.last_modified_at, updated.last_modified_at)
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_update_validation_and_scoping(self):
         dataset, sample_ids = _make_dataset(2)
@@ -524,7 +522,7 @@ class TemporalTagTests(unittest.TestCase):
             [(0, 10, "review"), (20, 30, "other")],
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_storage_filtering_counts_and_deletion(self):
         dataset, sample_ids = _make_dataset(2)
@@ -631,7 +629,7 @@ class TemporalTagTests(unittest.TestCase):
             fota.delete_temporal_tags(dataset, delete_all=True), 1
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_anchor_identity_filtering_counts_and_deletion(self):
         dataset, sample_ids = _make_dataset()
@@ -703,7 +701,7 @@ class TemporalTagTests(unittest.TestCase):
             [],
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_creates_query_indexes(self):
         dataset, sample_ids = _make_dataset()
@@ -742,7 +740,7 @@ class TemporalTagTests(unittest.TestCase):
             ],
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_view_scoped_operations(self):
         dataset, sample_ids = _make_dataset(3)
@@ -861,7 +859,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(fota.TemporalTags(view).clear(), 2)
         self.assertEqual(fota.count_temporal_tags(dataset), {"shared": 1})
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_sample_collection_temporal_tag_convenience(self):
         dataset, sample_ids = _make_dataset(3)
@@ -921,7 +919,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(view.temporal_tags.delete(tags="review"), 1)
         self.assertEqual(dataset.temporal_tags.count(), {"shared": 1})
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_match_temporal_tags(self):
         dataset, sample_ids = _make_dataset(4)
@@ -995,7 +993,7 @@ class TemporalTagTests(unittest.TestCase):
             {sample_ids[0], sample_ids[2], sample_ids[3]},
         )
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_generated_view_operations_use_backing_dataset(self):
         dataset = fo.Dataset()
@@ -1026,7 +1024,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertEqual(fota.count_temporal_tags(patches), {"patch": 1})
         self.assertEqual(fota.count_temporal_tags(dataset), {})
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_sample_delete_and_clear_lifecycle(self):
         dataset, sample_ids = _make_dataset(3)
@@ -1072,7 +1070,7 @@ class TemporalTagTests(unittest.TestCase):
 
         self.assertEqual(_temporal_tag_count(dataset._doc.id), 0)
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_dataset_delete_and_clone_lifecycle(self):
         dataset, sample_ids = _make_dataset(2)
@@ -1127,7 +1125,7 @@ class TemporalTagTests(unittest.TestCase):
 
         self.assertEqual(_temporal_tag_count(dataset_id), 0)
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_low_level_dataset_delete_lifecycle(self):
         dataset, sample_ids = _make_dataset(2)
@@ -1165,7 +1163,7 @@ class TemporalTagTests(unittest.TestCase):
         self.assertNotIn(dataset_name, fo.list_datasets())
         self.assertEqual(_temporal_tag_count(dataset_id), 0)
 
-    @drop_tags
+    @isolate_temporal_tags
     @drop_datasets
     def test_drop_orphan_tags(self):
         orphan_dataset, orphan_sample_ids = _make_dataset(1)

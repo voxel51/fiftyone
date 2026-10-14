@@ -623,6 +623,11 @@ const prettyNumber = (value: number | NONFINITE): string => {
   if (typeof value === "string") {
     return value;
   }
+
+  if (value === null || value === undefined) {
+    return "null";
+  }
+
   let string = null;
 
   if (Array.isArray(value)) {

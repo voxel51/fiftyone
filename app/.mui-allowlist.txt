@@ -123,12 +123,6 @@ packages/core/src/components/Modal/Sidebar/Annotate/QuickEditEntry.tsx
 packages/core/src/components/Modal/Sidebar/Annotate/SchemaManager/styled.ts
 packages/core/src/components/Modal/TooltipInfo.tsx
 packages/core/src/components/QueryPerformanceToast.tsx
-packages/core/src/components/Schema/SchemaSearchHelp.tsx
-packages/core/src/components/Schema/SchemaSearch.tsx
-packages/core/src/components/Schema/SchemaSelectControls.tsx
-packages/core/src/components/Schema/SchemaSelectionRow.tsx
-packages/core/src/components/Schema/SchemaSelection.tsx
-packages/core/src/components/Schema/SchemaSettings.tsx
 packages/core/src/components/Sidebar/Entries/Draggable.tsx
 packages/core/src/components/Sidebar/Entries/FilterablePathEntry/Arrow.tsx
 packages/core/src/components/Sidebar/Entries/FilterablePathEntry/DisabledReason.tsx

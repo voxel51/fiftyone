@@ -1,58 +1,77 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Editing an EXISTING 2D segmentation mask with the brush tool. The covered
- * mask specs only create-from-scratch and full-remove; this exercises the
- * incremental brush strokes on an already-painted mask:
- *   - an "Add" stroke that extends beyond the mask grows the pixel count and
- *     persists,
- *   - a "Remove" stroke erases pixels and is undoable on the engine stack.
- *
- * Mask state is read back from Python (`getDetectionsState`) — a true server
- * round-trip. The Add stroke grows the masked region beyond the seed bbox, so
- * the raw pixel count is a robust grow signal there. The Remove stroke is
- * asserted on COVERAGE FRACTION (`maskCoverage`), NOT raw pixels: the mask is
- * re-rasterized to the overlay's pixel resolution on commit (e.g. 50×50 →
- * ~124×165), so the raw count rises even when the painted area shrinks — only
- * the coverage fraction reflects the erase.
- *
- * SEED THE MASK VIA `fo.Detection`, not the factory JSON: the server's mask
- * encoder only converts an embedded numpy `mask` to the zlib-base64 the app
- * decodes when the label's `_cls` is a mask class (see annotate-2d-mask).
+ * Editing an existing 2D mask with the brush, verified in a fresh browser
+ * context: an Add stroke past the seed bbox widens the persisted bounding box,
+ * a Remove stroke lowers the covered fraction and is undoable. Coverage, not
+ * raw pixels, is compared because the mask is re-rasterized to the overlay's
+ * resolution on commit, and the seeded detection carries `_cls` so its numpy
+ * mask decodes.
  */
-import { expect, test as base, type Page } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
+import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
 
 const datasetName = getUniqueDatasetNameWithPrefix("annotate-2d-mask-edit");
 
 /** Fixed ObjectId addressing the single sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
 
-const isSamplePatch = (method: string) =>
-  ["POST", "PATCH", "PUT"].includes(method);
+/** The seeded detection's bounding box width */
+const SEED_WIDTH = 0.2;
+/** The persisted width after the Add stroke, as the editor renders it */
+const GROWN_WIDTH = "0.4971774193548387";
+/**
+ * The persisted mask's covered fraction after the Remove stroke; the brush
+ * rasterizes differently per platform, like screenshot baselines
+ */
+const ERASED_COVERAGE = {
+  darwin: 0.8824259440104166,
+  linux: 0.8823445638020834,
+}[process.platform as "darwin" | "linux"];
 
-const savedSample = (page: Page) =>
-  page.waitForResponse(
-    (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+/** Open the seeded detection's editor in a brand-new browser context. */
+const inFreshContext = async (
+  openFreshPage: () => Promise<Page>,
+  fiftyoneLoader: AbstractFiftyoneLoader,
+  verify: (modal: ModalPom) => Promise<void>,
+) => {
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  await freshModal.assert.isOpen();
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
   );
+  // the seeded label is masked; its preview draws once the form opens
+  await freshModal.sidebar.edit.afterMaskPreview(() =>
+    freshModal.sidebar.annotate.selectActiveLabel("cat", 0),
+  );
+  await verify(freshModal);
+};
 
-/** A masked "cat" detection at a small bbox, mask fully set within the box. */
-const seedMaskedDetection = () => `
-import fiftyone as fo
-import numpy as np
+/** Brush-erase across the seeded bbox center. */
+const eraseSeedCenter = async (modal: ModalPom) => {
+  await modal.sidebar.edit.afterMaskPreview(() =>
+    modal.sidebar.annotate.selectActiveLabel("cat", 0),
+  );
+  await modal.sidebar.edit.assert.inSegmentationMode(true);
 
-dataset = fo.load_dataset("${datasetName}")
-sample = dataset.first()
-sample.detections = fo.Detections(detections=[
-    fo.Detection(
-        label="cat",
-        bounding_box=[0.4, 0.4, 0.2, 0.2],
-        mask=np.ones((50, 50), dtype=bool),
-    )
-])
-sample.save()
-`;
+  // seed mask is fully set within its bbox → coverage starts at 1.0.
+  expect(await modal.sidebar.edit.maskPreviewCoverage()).toBe(1);
+
+  await modal.sidebar.annotate.pickTool("Brush");
+  await modal.sidebar.annotate.pickMaskMode("Remove");
+
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5),
+  );
+};
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -60,20 +79,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  await datasetFactory.createDataset({
-    datasetName,
-    imageOptions: { fillColor: "white", width: 640, height: 480 },
-    schema: { detections: "Detections" },
-  });
-  await annotateSDK.updateLabelSchema(datasetName, "detections", {
-    type: "detections",
-    classes: ["cat", "dog"],
-    attributes: [],
-    component: "dropdown",
-  });
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "detections");
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -81,97 +88,104 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.describe.serial("2D annotation mask edit (brush)", () => {
-  test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
-    // Re-seed a clean masked detection per test (serial, shared dataset).
-    await fiftyoneLoader.executePythonCode(seedMaskedDetection());
+  test.beforeEach(async ({ datasetFactory, fiftyoneLoader, modal, page }) => {
+    // a fresh masked detection per test (serial, shared dataset name)
+    await datasetFactory.createDataset({
+      datasetName,
+      imageOptions: { fillColor: "white", width: 640, height: 480 },
+      schema: { detections: "Detections" },
+      labelSchemas: {
+        detections: {
+          type: "detections",
+          classes: ["cat", "dog"],
+          attributes: [],
+          component: "dropdown",
+        },
+      },
+      // a masked "cat" detection at a small bbox, mask fully set within the box
+      withSampleData: (_, { createId, mask }) => ({
+        detections: {
+          _cls: "Detections",
+          detections: [
+            {
+              _id: createId(),
+              _cls: "Detection",
+              tags: [],
+              label: "cat",
+              bounding_box: [0.4, 0.4, 0.2, 0.2],
+              mask: mask(50, 50),
+            },
+          ],
+        },
+      }),
+    });
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded",
     });
-    await modal.waitForSampleLoadDomAttribute();
     await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
   });
 
   test("an Add brush stroke grows the mask and persists", async ({
-    annotateSDK,
+    fiftyoneLoader,
     modal,
-    page,
+    openFreshPage,
   }) => {
     await modal.sidebar.annotate.selectActiveLabel("cat", 0);
     await modal.sidebar.edit.assert.inSegmentationMode(true);
 
-    const before = (
-      await annotateSDK.getDetectionsState(datasetName, "detections")
-    ).maskPixels;
-    expect(before).toBeGreaterThan(0);
+    expect(await modal.sidebar.edit.getFieldValue("dimensions.width")).toBe(
+      String(SEED_WIDTH),
+    );
 
     await modal.sidebar.annotate.pickTool("Brush");
     await modal.sidebar.annotate.pickMaskMode("Add");
 
     // paint a stroke well outside the seeded bbox ([0.4,0.4]+0.2) so the mask
     // grows rather than re-covering already-set pixels.
-    const saved = savedSample(page);
-    await modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.drag(0.7, 0.5, 0.85, 0.5),
+    );
 
-    await expect
-      .poll(
-        async () =>
-          (await annotateSDK.getDetectionsState(datasetName, "detections"))
-            .maskPixels,
-        // each readback spawns a python process; the default 5s starves under
-        // CI load (the commit + re-rasterization round-trip needs room).
-        { timeout: 20_000 },
-      )
-      .toBeGreaterThan(before);
+    // the persisted mask reaches past the seeded box: its bounding box widened
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
+      await fresh.sidebar.edit.assert.hasMaskPreview();
+      expect(await fresh.sidebar.edit.getFieldValue("dimensions.width")).toBe(
+        GROWN_WIDTH,
+      );
+    });
   });
 
-  test("a Remove brush stroke erases pixels and is undoable", async ({
-    annotateSDK,
+  test("a Remove brush stroke erases pixels", async ({
+    fiftyoneLoader,
     modal,
-    page,
+    openFreshPage,
   }) => {
-    await modal.sidebar.annotate.selectActiveLabel("cat", 0);
-    await modal.sidebar.edit.assert.inSegmentationMode(true);
-
-    // seed mask is fully set within its bbox → coverage starts at 1.0.
-    const before = (
-      await annotateSDK.getDetectionsState(datasetName, "detections")
-    ).maskCoverage;
-    expect(before).toBeGreaterThan(0);
-
-    await modal.sidebar.annotate.pickTool("Brush");
-    await modal.sidebar.annotate.pickMaskMode("Remove");
-
-    // erase across the seeded bbox center.
-    const saved = savedSample(page);
-    await modal.sampleCanvas.drag(0.42, 0.5, 0.58, 0.5);
-    await saved;
+    await eraseSeedCenter(modal);
 
     // coverage drops — raw pixel count is unreliable across the commit's mask
     // re-rasterization, the covered FRACTION is not.
-    await expect
-      .poll(
-        async () =>
-          (await annotateSDK.getDetectionsState(datasetName, "detections"))
-            .maskCoverage,
-        { timeout: 20_000 },
-      )
-      .toBeLessThan(before);
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(
+        ERASED_COVERAGE,
+      );
+    });
+  });
+
+  test("a Remove brush stroke is undoable", async ({
+    fiftyoneLoader,
+    modal,
+    openFreshPage,
+  }) => {
+    await eraseSeedCenter(modal);
 
     // the erase is one undoable engine unit — undo restores full coverage.
     await modal.sidebar.edit.assert.undoIsEnabled();
-    const restored = savedSample(page);
-    await modal.sidebar.edit.undo();
-    await restored;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
 
-    await expect
-      .poll(
-        async () =>
-          (await annotateSDK.getDetectionsState(datasetName, "detections"))
-            .maskCoverage,
-        { timeout: 20_000 },
-      )
-      .toBe(before);
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (fresh) => {
+      expect(await fresh.sidebar.edit.maskPreviewCoverage()).toBe(1);
+    });
   });
 });

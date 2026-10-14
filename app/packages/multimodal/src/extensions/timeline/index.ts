@@ -15,29 +15,16 @@ export type {
   TimelineSection,
   TimelineTrackDecorator,
 } from "./types";
-// The embedding-window selection crosses this seam as a plain external store:
-// an edition PUBLISHES into it and the shared renderers read it through the
-// hooks here — inert (empty) until something publishes
 export {
-  firstMatchWindow,
-  publishMcapEmbeddingSelection,
-  useMcapEmbeddingSelectionSnapshot,
-  useSampleRendererEmbeddingWindows,
-  useSampleRendererFirstMatch,
-  type EmbeddingWindow,
-  type McapEmbeddingSelection,
-  type McapEmbeddingWindowMark,
-} from "./embedding-selection";
+  publishSampleFocus,
+  useSampleFocus,
+  type ResolvedSampleFocus,
+  type SampleFocus,
+} from "./sample-focus";
 // Edition-contributed grid-tile overlays, rendered by the shared grid
 export {
-  registerMcapGridOverlay,
-  useMcapGridOverlays,
-  type McapGridOverlayComponent,
+  gridOverlayKey,
+  registerGridOverlay,
+  useGridOverlays,
+  type GridOverlayComponent,
 } from "./grid-overlay-registry";
-// Shared episode-source plumbing an edition overlay renders through.
-// (Only runtime/ re-exports belong here — the extensions layer may not
-// reach views/ or temporal-tags/; editions import those directly.)
-export {
-  getSourceBootstrapSnapshot,
-  subscribeSourceBootstrap,
-} from "../../runtime/source-bootstrap-cache";

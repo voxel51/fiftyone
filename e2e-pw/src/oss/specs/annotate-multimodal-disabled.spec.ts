@@ -19,17 +19,9 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  // ``.mcap`` gives the sample the ``multimodal`` media type, which makes the
-  // whole dataset multimodal (media type can't change after creation).
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.add_sample(fo.Sample(filepath="/tmp/${datasetName}.mcap"))
-    dataset.persistent = True
-  `);
+  await datasetFactory.createDataset({ mediaType: "multimodal", datasetName });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -46,18 +38,21 @@ test.describe.serial("annotate-multimodal-disabled", () => {
     modal,
     page,
   }) => {
-    await grid.openFirstSample();
+    await modal.afterOpened(() => grid.openFirstSample());
 
     // Multimodal media renders through its own MM sidebar (Inspect/Fields
     // tabs) instead of the classic sidebar entirely, so there's no
     // explore/annotate mode switcher to switch into "annotate" mode with in
     // the first place — nothing left to disable.
-    await expect(modal.sidebar.locator).toHaveCount(0);
+    expect(await modal.sidebar.locator.count()).toBe(0);
 
     // ...and no leftover control offering to toggle a sidebar that can never
     // mount.
-    await expect(
-      page.getByTestId("modal").getByTestId("action-toggle-sidebar"),
-    ).toHaveCount(0);
+    expect(
+      await page
+        .getByTestId("modal")
+        .getByTestId("action-toggle-sidebar")
+        .count(),
+    ).toBe(0);
   });
 });

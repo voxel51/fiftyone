@@ -65,10 +65,49 @@ describe("splitTrackEdit", () => {
     expect(trackPartial).toEqual({ label: "car", index: 2 });
     expect(dynamicPartial).toEqual({ turn_signal: "left" });
   });
+
+  it("keeps caller-supplied extra per-frame keys out of both halves (keypoint parallel lists)", () => {
+    const { trackPartial, dynamicPartial } = splitTrackEdit(
+      { label: "person", confidence: [0.9, null], visible: [2, 1] },
+      new Set<string>(),
+      new Set(["confidence", "visible"]),
+    );
+
+    expect(trackPartial).toEqual({ label: "person" });
+    expect(dynamicPartial).toEqual({});
+  });
 });
 
 describe("buildForwardFill", () => {
   const dynRef = (frame: number): LabelRef => frameRef(frame);
+
+  it("forward-fills a BARE-path track (image dynamic group played as video)", () => {
+    // dgva frame occurrences live on sample-level paths, so the fill must be
+    // namespace-agnostic
+    const bareRef = (frame: number): LabelRef => ({
+      sample: "s1",
+      path: "boxes",
+      instanceId: "t1",
+      frame,
+    });
+    const engine = stubEngine([
+      { ref: bareRef(1), data: { _id: "a", occluded: false } },
+      { ref: bareRef(2), data: { _id: "b", occluded: false } },
+      { ref: bareRef(3), data: { _id: "c", occluded: false } },
+      { ref: bareRef(4), data: { _id: "d", occluded: true } },
+    ]);
+
+    const writes = buildForwardFill(
+      engine,
+      bareRef(1),
+      { occluded: true },
+      { occluded: false },
+    );
+
+    // frames 2 and 3 adopt the toggle; frame 4 is a preserved change point
+    expect(writes.map((w) => w.ref.frame)).toEqual([2, 3]);
+    expect(writes.every((w) => w.forward.occluded === true)).toBe(true);
+  });
 
   it("fills later frames holding the prior value, stopping at the next change", () => {
     const engine = stubEngine([

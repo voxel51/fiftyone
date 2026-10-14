@@ -24,6 +24,11 @@ export interface SyntheticBox {
   /** Normalized [x, y, w, h] in [0, 1]. */
   bounding_box: [number, number, number, number];
   /**
+   * Scalar 2D rotation in radians (oriented bounding boxes). Propagation
+   * lerps it along the shortest arc between keyframes.
+   */
+  rotation?: number;
+  /**
    * FiftyOne track index, when present. Carried so downstream color-
    * mapping can use `COLOR_BY.INSTANCE`'s `${label}-${index}-...` hash
    * (otherwise instance mode would collapse tracked detections of the
@@ -65,11 +70,34 @@ export interface SyntheticPolyline {
 }
 
 /**
- * Either geometry propagation can interpolate between two keyframes. Agents
+ * A tracked keypoint as the propagation path sees it — the flat-geometry
+ * sibling of {@link SyntheticPolyline}. `points` is one normalized [x, y]
+ * pair per skeleton node; an unplaced/occluded node is `[NaN, NaN]` (the
+ * keypoint hole convention), which interpolation must preserve.
+ */
+export interface SyntheticKeypoint {
+  id: string;
+  /** Real MongoDB `_id` when the keypoint has been persisted. */
+  _id?: string;
+  label: string;
+  /** One normalized [x, y] pair per node; `[NaN, NaN]` marks a hole. */
+  points: [number, number][];
+  /** FiftyOne track index, when present. */
+  index?: number;
+  instance?: { _cls: "Instance"; _id?: string };
+  /** `true` for user-authored / propagation source; `false` for interpolated. */
+  keyframe: boolean;
+}
+
+/**
+ * Any geometry propagation can interpolate between two keyframes. Agents
  * narrow to the one they handle; `useVideoPropagate` picks the agent from the
  * field's label type, so the pairing is decided before an agent ever sees it.
  */
-export type SyntheticKeyframe = SyntheticBox | SyntheticPolyline;
+export type SyntheticKeyframe =
+  | SyntheticBox
+  | SyntheticPolyline
+  | SyntheticKeypoint;
 
 export interface FrameLabelSnapshot {
   frameNumber: number;
@@ -82,6 +110,8 @@ export interface RawDetection {
   index?: number;
   label?: string;
   bounding_box?: [number, number, number, number];
+  /** Scalar 2D rotation in radians; 3D detections carry a list instead. */
+  rotation?: number | number[];
   instance?: { _cls: "Instance"; _id?: string } | null;
   mask_path?: string;
   mask?: unknown;
@@ -154,6 +184,8 @@ export interface LocalDetection {
   index?: number;
   label?: string;
   bounding_box: [number, number, number, number];
+  /** Scalar 2D rotation in radians. */
+  rotation?: number;
   instance?: { _cls: "Instance"; _id?: string } | null;
   /**
    * Auto-promote-on-edit: callers handling user-initiated edits (draw,

@@ -8,7 +8,6 @@ import type {
 import { getEpisodeTimeRange } from "./episode-time-range-registry";
 import {
   getSourceBootstrap,
-  getSourceBootstrapSnapshot,
   getSourceSessionHints,
   peekSourceBootstrap,
   publishCurrentSourceFacts,
@@ -78,7 +77,7 @@ describe("source bootstrap cache", () => {
     // The eviction is a change to THIS source's snapshot: the subscriber
     // re-reads and sees the removal, instead of rendering stale facts
     expect(notified).toBeGreaterThan(0);
-    expect(getSourceBootstrapSnapshot(first)).toBeNull();
+    expect(peekSourceBootstrap(first)).toBeNull();
     unsubscribe();
   });
 

@@ -1,43 +1,59 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { collapseWhitespace } from "src/oss/utils";
 import { ModalPom } from ".";
 
+/** Dispatched after the timeline commits a changed set of rows, with their ids */
+const TRACKS_RENDERED = "e2e:video-annotation:tracks-rendered";
+
+const renderedIds = (e: { detail?: unknown }) =>
+  (e.detail as { ids: string }).ids.split(",").filter(Boolean);
+
 /**
- * The video-annotation surface: the ImaVid media tile, the timeline of
- * per-instance frame-label tracks + temporal-detection (TD) interval rows, and
- * the playback controls (from `@fiftyone/playback`). Composes with the shared
- * modal POMs (`modal.sidebar.annotate` / `modal.sidebar.edit` /
- * `modal.sampleCanvas`) — only the video-specific timeline/playback affordances
- * live here.
- *
- * Timeline tracks expose `data-track-id`: an object track's id is the engine
- * `instanceId`; a TD track's id is `td-<field>-<detectionId>`.
+ * Prefix of a temporal-tag row's track id. Must match
+ * `TEMPORAL_TAG_TRACK_PREFIX` in `@fiftyone/playback`, which mints these ids —
+ * this package cannot import from the app workspace.
+ */
+const TEMPORAL_TAG_TRACK_PREFIX = "temporal-tag::";
+
+/**
+ * The video-annotation surface: the ImaVid tile, the timeline of per-instance
+ * frame-label tracks and temporal-detection (TD) rows, and the playback
+ * controls, composing with the shared modal POMs. Tracks expose
+ * `data-track-id`: an object track's id is the engine `instanceId`, a TD
+ * track's is `td-<field>-<detectionId>`.
  */
 export class VideoAnnotatePom {
   readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: VideoAnnotateAsserter;
-  readonly topBar: Locator;
-  readonly statusSlot: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new VideoAnnotateAsserter(this);
-    this.topBar = page.getByTestId("video-annotation-top-bar");
-    this.statusSlot = page.getByTestId("video-annotation-status-slot");
+  }
+
+  /** The dynamic group's order-by value beside the clock, `(value)`. */
+  get orderByReadout(): Locator {
+    return this.page.getByTestId("timeline-order-by-readout");
+  }
+
+  /** The timeline clock; in frame display it reads `#frame / #total`. */
+  get clock(): Locator {
+    return this.page.locator('[data-testid="timeline-playhead-time"]');
   }
 
   /**
-   * Wait until the video-annotation surface has mounted AND the timeline
-   * has committed its tracks (`data-timeline-loaded="true"` — stamped once
-   * label schemas land and the frame index resolves). Track reads after
-   * this are deterministic single-shots; no polling required.
+   * Run `action` (e.g. the switch to annotate) and resolve once the
+   * video-annotation surface it mounts has lifted its cover. The cover stays
+   * until media, store and tracks are ready (clicks before land on it), so
+   * track reads after this are deterministic single reads.
    */
-  async waitForSurface() {
-    await expect(this.topBar).toBeVisible();
-    await expect(
-      this.page.locator('[data-timeline-loaded="true"]'),
-    ).toBeAttached();
+  async afterSurface<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:video-annotation:surface-revealed",
+      action,
+    );
   }
 
   /** All distinct timeline track ids (object instanceIds + `td-…` rows). */
@@ -61,15 +77,23 @@ export class VideoAnnotatePom {
     );
   }
 
+  /** Object (frame-label) track rows: not TD rows, not attribute sub-tracks. */
+  get objectTracks(): Locator {
+    return this.page.locator(
+      '[data-track-id]:not([data-track-id^="td-"]):not([data-track-id*="::"])',
+    );
+  }
+
+  /** Temporal-detection track rows (`td-…`). */
+  get temporalTracks(): Locator {
+    return this.page.locator('[data-track-id^="td-"]');
+  }
+
   /**
-   * Wait until at least one object track has built (timeline warmup is async),
-   * then return the first object track's id. Use instead of indexing
-   * `objectTrackIds()` directly right after the surface mounts.
+   * The first object track's id; the surface reveals only once its frame
+   * tracks have resolved (see {@link afterSurface})
    */
   async firstObjectTrackId(): Promise<string> {
-    await expect
-      .poll(async () => (await this.objectTrackIds()).length)
-      .toBeGreaterThan(0);
     return (await this.objectTrackIds())[0];
   }
 
@@ -89,17 +113,18 @@ export class VideoAnnotatePom {
    * so target the attribute directly.
    */
   async toggleTrackExpansion(parentId: string) {
-    await this.page
-      .locator(`[data-testid="timeline-track-expand-${parentId}"]`)
-      .first()
-      .click();
+    await this.afterTracksChange(() =>
+      this.page
+        .locator(`[data-testid="timeline-track-expand-${parentId}"]`)
+        .first()
+        .click(),
+    );
   }
 
   /**
-   * The value-segment bars within a sub-track row — one per coalesced run of an
-   * equal attribute value. The bar `title` carries the value (e.g. "off").
-   * Scoped to the first row copy (`track` uses `.first()`), since a pinned row
-   * mounts in both the timeline header and the drawer body on this base.
+   * The value-segment bars within a sub-track row, one per coalesced run of an
+   * equal attribute value, with the value in the bar `title`. Scoped to the
+   * first row copy since a pinned row mounts in both the header and the drawer.
    */
   segmentBars(subTrackId: string): Locator {
     return this.track(subTrackId).locator(
@@ -110,6 +135,109 @@ export class VideoAnnotatePom {
   /** Timeline track ids for temporal-detection rows (`td-<field>-<id>`). */
   async temporalTrackIds(): Promise<string[]> {
     return (await this.trackIds()).filter((id) => id.startsWith("td-"));
+  }
+
+  /**
+   * Timeline track ids for temporal-TAG rows (`temporal-tag::<value>`). Not to
+   * be confused with {@link temporalTrackIds}, which is temporal detections.
+   */
+  async temporalTagTrackIds(): Promise<string[]> {
+    return (await this.trackIds()).filter((id) =>
+      id.startsWith(TEMPORAL_TAG_TRACK_PREFIX),
+    );
+  }
+
+  /** The tag-mode toggle in the timeline controls (also bound to Shift+T). */
+  get temporalTagModeButton(): Locator {
+    return this.page.locator('[data-testid="temporal-tag-mode-button"]');
+  }
+
+  /** The create/edit popup, addressed by its dialog role. */
+  temporalTagPopup(mode: "Create" | "Edit" = "Create"): Locator {
+    return this.page.getByRole("dialog", { name: `${mode} temporal tag` });
+  }
+
+  /**
+   * Run `action` and resolve once the temporal-tag mode reaches `phase`
+   * (`idle`, `ready`, `selecting`, `selected`) because of it
+   */
+  private async afterTagMode<T>(
+    phase: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:playback:temporal-tag-mode",
+      action,
+      (e) => (e.detail as { phase: string }).phase === phase,
+    );
+  }
+
+  /**
+   * Drag a range on the tag-mode overlay and save it under `label`,
+   * resolving once its row is on the timeline and tag mode has closed.
+   *
+   * The drag only has to land somewhere in the ruler's right half; the popup's
+   * nudge buttons then walk the bounds to a fixed number of steps, so the
+   * persisted interval does not depend on where the pointer went and callers
+   * never do pixel arithmetic to assert it.
+   */
+  async createTemporalTag(label: string, { nudges = 2 } = {}) {
+    // Shift+T rather than clicking the toggle: on a grouped modal the media
+    // canvas overlaps the controls row and swallows the click, and the hotkey
+    // is the same documented affordance.
+    expect(await this.temporalTagModeButton.isVisible()).toBe(true);
+    await this.afterTagMode("ready", () => this.page.keyboard.press("Shift+T"));
+    expect(await this.temporalTagModeButton.getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+
+    const overlay = this.page.locator(
+      '[data-testid="temporal-tag-range-overlay"]',
+    );
+    const box = await overlay.boundingBox();
+    if (!box) {
+      throw new Error("temporal tag range overlay is not on screen");
+    }
+
+    // Right half only: the label column occupies the left edge of the overlay.
+    const y = box.y + box.height / 2;
+    const from = box.x + box.width * 0.55;
+    const to = box.x + box.width * 0.8;
+
+    await this.page.mouse.move(from, y);
+    await this.page.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await this.page.mouse.move(from + ((to - from) * i) / 8, y);
+    }
+    await this.afterTagMode("selected", () => this.page.mouse.up());
+
+    const popup = this.temporalTagPopup();
+    expect(await popup.isVisible()).toBe(true);
+
+    // Same count on both edges keeps the interval's width fixed as well as its
+    // endpoints' relationship to wherever the drag started.
+    for (let i = 0; i < nudges; i++) {
+      await popup.getByRole("button", { name: "Start +0.1s" }).click();
+      await popup.getByRole("button", { name: "End +0.1s" }).click();
+    }
+
+    await popup.getByRole("textbox", { name: "Tag" }).fill(label);
+
+    const trackId = `${TEMPORAL_TAG_TRACK_PREFIX}${label}`;
+    await this.modal.eventUtils.afterAll(
+      [
+        {
+          events: TRACKS_RENDERED,
+          predicate: (e) => renderedIds(e).includes(trackId),
+        },
+        {
+          events: "e2e:playback:temporal-tag-mode",
+          predicate: (e) => (e.detail as { phase: string }).phase === "idle",
+        },
+      ],
+      () => popup.getByRole("button", { name: "Accept" }).click(),
+    );
+    expect(await popup.isVisible()).toBe(false);
   }
 
   /** A timeline track row by its id (object instanceId or `td-…`). */
@@ -149,10 +277,8 @@ export class VideoAnnotatePom {
 
   /**
    * Pin an object track so its row stays in the always-visible timeline header
-   * once the drawer closes. The pin button only mounts while the row is
-   * rendered, so open the drawer to reach it, pin, then restore the closed
-   * default — the pinned row remains in the header, ready for interaction
-   * without the drawer open. Call once from the closed default.
+   * once the drawer closes. The pin button mounts only while the row renders,
+   * so this opens the drawer, pins, and restores the closed default.
    */
   async pinTrack(trackId: string) {
     await this.openTracksDrawer();
@@ -176,38 +302,99 @@ export class VideoAnnotatePom {
       .first();
   }
 
-  /** The human-readable interval span shown in a track bar's `title` tooltip. */
-  async trackBarTitle(trackId: string): Promise<string> {
-    return (await this.trackBar(trackId).getAttribute("title")) ?? "";
+  /**
+   * Run `action` and resolve once the timeline has rendered exactly the rows
+   * `ids`, in any order.
+   */
+  async afterTracksRendered<T>(ids: string[], action: () => Promise<T>) {
+    const want = [...ids].sort().join(",");
+    return this.modal.eventUtils.after(
+      TRACKS_RENDERED,
+      action,
+      (e) => [...renderedIds(e)].sort().join(",") === want,
+    );
   }
 
   /**
-   * Drag a TD interval's END resize handle by `dxPx` pixels (positive = later),
-   * resizing its `support` end. The drag uses document-level mouse listeners and
-   * a 3px threshold, so move in several steps past it before releasing.
+   * Run `action` and resolve once the timeline has committed a set of rows
+   * other than the one on screen before it, so the action must add or remove
+   * a track (or show or hide sub-tracks).
    */
-  async dragTemporalIntervalEnd(trackId: string, dxPx: number) {
-    const handle = this.page
-      .locator(`[data-track-id="${trackId}"] [data-resize-handle="end"]`)
-      .first();
-    const box = await handle.boundingBox();
+  async afterTracksChange<T>(action: () => Promise<T>) {
+    const before = (await this.trackIds()).sort().join(",");
+    return this.modal.eventUtils.after(
+      TRACKS_RENDERED,
+      action,
+      (e) => [...renderedIds(e)].sort().join(",") !== before,
+    );
+  }
 
-    if (!box) {
-      throw new Error(`no end resize handle for track ${trackId}`);
-    }
+  /**
+   * Page to the adjacent sample with the modal's arrow keybinding, resolving
+   * once the timeline shows none of the current sample's rows and the next
+   * surface has revealed. Samples must not share track ids.
+   */
+  async navigateSample(direction: "next" | "previous") {
+    const current = new Set(await this.trackIds());
+    // the surface remounts per sample, so the next one reveals anew
+    await this.afterSurface(() =>
+      this.modal.eventUtils.after(
+        TRACKS_RENDERED,
+        () =>
+          this.page.keyboard.press(
+            direction === "next" ? "ArrowRight" : "ArrowLeft",
+          ),
+        (e) => {
+          const ids = renderedIds(e);
+          return ids.length > 0 && !ids.some((id) => current.has(id));
+        },
+      ),
+    );
+  }
 
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    const steps = 8;
+  /** The label text in a track row's left column. */
+  trackLabel(trackId: string): Locator {
+    return this.track(trackId).locator("[data-track-label]");
+  }
 
-    await this.page.mouse.move(x, y);
-    await this.page.mouse.down();
+  /** Right-click a track's interval bar and read its context menu items. */
+  async trackContextMenuItems(trackId: string): Promise<string[]> {
+    await this.modal.eventUtils.after("e2e:playback:lane-menu-opened", () =>
+      this.trackBar(trackId).click({ button: "right" }),
+    );
+    return this.page.getByRole("menuitem").allTextContents();
+  }
 
-    for (let i = 1; i <= steps; i++) {
-      await this.page.mouse.move(x + (dxPx * i) / steps, y);
-    }
+  /**
+   * A track's presence intervals in seconds, read off its rendered lane. The
+   * row must be mounted (drawer open or pinned).
+   */
+  async trackIntervals(
+    trackId: string,
+  ): Promise<Array<{ start: number; end: number }>> {
+    return this.page
+      .locator(`[data-track-id="${trackId}"] [data-event-kind="interval"]`)
+      .evaluateAll((bars) =>
+        bars.map((bar) => ({
+          start: Number(bar.getAttribute("data-event-start")),
+          end: Number(bar.getAttribute("data-event-end")),
+        })),
+      );
+  }
 
-    await this.page.mouse.up();
+  /**
+   * Times (seconds) of a track's keyframe markers, ascending: a frame's start,
+   * or the bar's end for a track's last frame. The row must be mounted.
+   */
+  async keyframeTimes(trackId: string): Promise<number[]> {
+    const times = await this.page
+      .locator(`[data-track-id="${trackId}"] [data-event-kind="point"]`)
+      .evaluateAll((markers) =>
+        markers.map((marker) =>
+          Number(marker.getAttribute("data-event-start")),
+        ),
+      );
+    return times.sort((a, b) => a - b);
   }
 
   /**
@@ -217,7 +404,9 @@ export class VideoAnnotatePom {
    */
   async deleteTrackViaContextMenu(trackId: string) {
     await this.trackBar(trackId).click({ button: "right" });
-    await this.page.getByRole("menuitem", { name: "Delete track" }).click();
+    await this.afterTracksChange(() =>
+      this.page.getByRole("menuitem", { name: "Delete track" }).click(),
+    );
   }
 
   /**
@@ -227,9 +416,9 @@ export class VideoAnnotatePom {
    */
   async splitTrackViaContextMenu(trackId: string) {
     await this.trackBar(trackId).click({ button: "right" });
-    await this.page
-      .getByRole("menuitem", { name: "Split at playhead" })
-      .click();
+    await this.afterTracksChange(() =>
+      this.page.getByRole("menuitem", { name: "Split at playhead" }).click(),
+    );
   }
 
   /**
@@ -254,12 +443,9 @@ export class VideoAnnotatePom {
 
   /** Click the toolbar "Split" button (enabled with exactly one track selected). */
   async clickSplitToolbarButton() {
-    await this.page.locator('button[aria-label="Split"]').click();
-  }
-
-  /** Click the toolbar "Merge" button (enabled with exactly two tracks selected). */
-  async clickMergeToolbarButton() {
-    await this.page.locator('button[aria-label="Merge"]').click();
+    await this.afterTracksChange(() =>
+      this.page.locator('button[aria-label="Split"]').click(),
+    );
   }
 
   /**
@@ -269,9 +455,11 @@ export class VideoAnnotatePom {
    */
   async mergeTrackViaContextMenu(sourceTrackId: string, targetLabel: string) {
     await this.trackBar(sourceTrackId).click({ button: "right" });
-    await this.page
-      .getByRole("menuitem", { name: `Merge into ${targetLabel}` })
-      .click();
+    await this.afterTracksChange(() =>
+      this.page
+        .getByRole("menuitem", { name: `Merge into ${targetLabel}` })
+        .click(),
+    );
   }
 
   /** Undo the last annotation edit (the ModalAnnotate undo keybinding). */
@@ -285,17 +473,20 @@ export class VideoAnnotatePom {
    * the robust path while the ImaVid buffer settles.
    */
   async stepForward() {
-    await this.page.keyboard.press(".");
+    await this.stepAndApply(".");
   }
 
   /** Move the playhead back one frame (the "," Modal-context keybinding). */
   async stepBack() {
-    await this.page.keyboard.press(",");
+    await this.stepAndApply(",");
   }
 
-  /** Toggle playback (play/pause) via the timeline control. */
-  async togglePlay() {
-    await this.page.getByTestId("timeline-controls-play-pause").click();
+  /** Canvas and sidebar reads are only valid once the scene shows the frame. */
+  private stepAndApply(key: string) {
+    return this.modal.eventUtils.after(
+      "e2e:video-annotation:frame-applied",
+      () => this.page.keyboard.press(key),
+    );
   }
 
   /**
@@ -310,19 +501,20 @@ export class VideoAnnotatePom {
       .locator("[data-cy^='annotate-label-']");
   }
 
+  /** The listed label rows under a schema path (e.g. `frames.detections`). */
+  labelRowsFor(path: string): Locator {
+    return this.page
+      .getByTestId("modal")
+      .getByTestId("sidebar")
+      .locator(`[data-cy^='annotate-label-'][data-cy-path='${path}']`);
+  }
+
   /** A listed label row by its class text (e.g. "approach", "vehicle"). */
   labelRow(labelText: string): Locator {
     return this.page
       .getByTestId("modal")
       .getByTestId("sidebar")
       .locator(`[data-cy^='annotate-label-'][data-cy-label='${labelText}']`);
-  }
-
-  /** The class texts of every label row currently listed in the sidebar. */
-  async listedLabels(): Promise<string[]> {
-    return this.labelRows.evaluateAll((els) =>
-      els.map((e) => e.getAttribute("data-cy-label") ?? ""),
-    );
   }
 
   /**
@@ -354,39 +546,6 @@ export class VideoAnnotatePom {
   }
 
   /**
-   * Draw a polyline by clicking each vertex on the canvas (polyline mode must
-   * already be active). The first click seeds a new polyline via the creation
-   * handler; each subsequent click extends it from the nearest endpoint.
-   *
-   * @param vertices Container-relative [0, 1] points, one per vertex.
-   */
-  async drawPolyline(vertices: Array<[number, number]>) {
-    for (const [x, y] of vertices) {
-      await this.modal.sampleCanvas.click(x, y);
-    }
-  }
-
-  /**
-   * Paint a mask brush stroke on the canvas (segmentation mode + the Brush tool
-   * must already be active). With nothing selected the stroke's first move
-   * creates a fresh masked detection, then paints onto it.
-   *
-   * @param path Container-relative [0, 1] points; the first is the press point,
-   *   the rest are drag positions before release.
-   */
-  async paintMaskStroke(path: Array<[number, number]>) {
-    const [first, ...rest] = path;
-    await this.modal.sampleCanvas.move(first[0], first[1]);
-    await this.modal.sampleCanvas.down();
-
-    for (const [x, y] of rest) {
-      await this.modal.sampleCanvas.move(x, y);
-    }
-
-    await this.modal.sampleCanvas.up();
-  }
-
-  /**
    * Create a temporal detection at the current playhead via the "New TD"
    * toolbar action (a 1-second support window starting at the playhead frame).
    */
@@ -394,93 +553,72 @@ export class VideoAnnotatePom {
     // target the actual button by element, not by role: the toolbar slot sits
     // inside the timeline controls row, and pinning the selector to `button`
     // keeps it unambiguous regardless of what wraps it.
-    await this.page.locator('button[aria-label="New TD"]').click();
-  }
-
-  /**
-   * The distinct fields of the overlays currently rendered on the canvas.
-   * Canvas overlays are PIXI (not DOM), so this reads the scene through the
-   * `__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS` e2e affordance the surface exposes —
-   * the only handle a spec has on what the canvas is actually painting.
-   */
-  async canvasOverlayFields(): Promise<string[]> {
-    return this.page.evaluate(
-      () =>
-        (
-          window as unknown as {
-            __FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?: () => string[];
-          }
-        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_FIELDS?.() ?? [],
+    await this.afterTracksChange(() =>
+      this.page.locator('button[aria-label="New TD"]').click(),
     );
-  }
-
-  /**
-   * The live geometry of the overlays the canvas is painting, as the OVERLAY
-   * holds it — deliberately not what the engine stores. Reads the
-   * `__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY` affordance; use it to catch a
-   * projection that updated the store but never reached the canvas.
-   */
-  async canvasOverlayGeometry(): Promise<
-    Array<{
-      id: string;
-      field: string;
-      type: string;
-      points?: [number, number][];
-    }>
-  > {
-    return this.page.evaluate(
-      () =>
-        (
-          window as unknown as {
-            __FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?: () => Array<{
-              id: string;
-              field: string;
-              type: string;
-              points?: [number, number][];
-            }>;
-          }
-        ).__FO_PLAYWRIGHT_SCENE_OVERLAY_GEOMETRY?.() ?? [],
-    );
-  }
-
-  /** The vertices of the single polyline overlay on the canvas, if any. */
-  async canvasPolylinePoints(): Promise<[number, number][] | undefined> {
-    const overlays = await this.canvasOverlayGeometry();
-
-    return overlays.find((o) => o.type === "PolylineOverlay")?.points;
   }
 }
 
 class VideoAnnotateAsserter {
   constructor(private readonly va: VideoAnnotatePom) {}
 
+  /** The order-by readout shows `text`, e.g. `(30)`. */
+  async orderByReadout(text: string) {
+    // the readout pads with non-breaking spaces to its widest value
+    expect(collapseWhitespace(await this.va.orderByReadout.textContent())).toBe(
+      text,
+    );
+  }
+
+  /** The clock shows `text`. */
+  async clock(text: string) {
+    expect(collapseWhitespace(await this.va.clock.textContent())).toBe(text);
+  }
+
   /** Assert the number of object (frame-label) tracks on the timeline. */
   async objectTrackCount(expected: number) {
-    await expect
-      .poll(async () => (await this.va.objectTrackIds()).length)
-      .toBe(expected);
+    expect(await this.va.objectTracks.count()).toBe(expected);
   }
 
   /** Assert the number of temporal-detection rows on the timeline. */
   async temporalTrackCount(expected: number) {
-    await expect
-      .poll(async () => (await this.va.temporalTrackIds()).length)
-      .toBe(expected);
+    expect(await this.va.temporalTracks.count()).toBe(expected);
+  }
+
+  /** Assert a track row's left-column label. */
+  async trackLabel(trackId: string, text: string) {
+    expect(await this.va.trackLabel(trackId).textContent()).toBe(text);
+  }
+
+  /** Assert a track's context menu lists exactly `items`, in order. */
+  async trackContextMenuItems(trackId: string, items: string[]) {
+    expect(await this.va.trackContextMenuItems(trackId)).toEqual(items);
+  }
+
+  /** Assert a track's interval bars have no resize handles. */
+  async trackNotResizable(trackId: string) {
+    expect(
+      await this.va.track(trackId).locator("[data-resize-handle]").count(),
+    ).toBe(0);
   }
 
   /** Assert a track with the given id is present on the timeline. */
   async hasTrack(trackId: string, present = true) {
-    await expect
-      .poll(async () => (await this.va.trackIds()).includes(trackId))
-      .toBe(present);
+    expect(await this.va.track(trackId).count()).toBe(present ? 1 : 0);
+  }
+
+  /** Assert the sub-track rows under a parent, by attribute name. */
+  async subTracks(parentId: string, attrs: string[]) {
+    expect((await this.va.subTrackIds(parentId)).sort()).toEqual(
+      attrs.map((attr) => `${parentId}::${attr}`).sort(),
+    );
   }
 
   /**
-   * Assert a track's interval bar is (not) actionable. A closed drawer keeps the
-   * bar mounted and on-screen but non-interactive; pinning the row into the
-   * header or opening the drawer makes it clickable again. Actionability — not
-   * mere visibility — is what timeline interactions (clicks, context menus)
-   * actually depend on.
+   * Assert a track's interval bar is (not) actionable, which is what clicks and
+   * context menus depend on rather than mere visibility. A closed drawer keeps
+   * the bar mounted but non-interactive; pinning or opening the drawer makes it
+   * clickable.
    */
   async trackBarActionable(trackId: string, actionable = true) {
     const bar = this.va.trackBar(trackId);
@@ -489,40 +627,46 @@ class VideoAnnotateAsserter {
       return;
     }
 
-    // the bar must stay mounted and on-screen — otherwise a rejected trial
-    // click would prove "gone", not "non-actionable"
-    await expect(bar).toBeVisible();
+    // the bar must stay mounted and on-screen — otherwise a failed hit-test
+    // would prove "gone", not "non-actionable"
+    expect(await bar.isVisible()).toBe(true);
 
-    let rejected = false;
-    try {
-      await bar.click({ trial: true, timeout: 1500 });
-    } catch {
-      rejected = true;
-    }
+    const hit = await bar.evaluate((el) => {
+      const { left, top, width, height } = el.getBoundingClientRect();
+      const target = document.elementFromPoint(
+        left + width / 2,
+        top + height / 2,
+      );
+      return !!target && el.contains(target);
+    });
     expect(
-      rejected,
+      hit,
       "expected the track bar to be non-actionable while the drawer is closed",
-    ).toBe(true);
+    ).toBe(false);
   }
 
   /** Assert a label (by class text) is / isn't listed in the annotate sidebar. */
   async labelListed(labelText: string, listed = true) {
-    await expect
-      .poll(async () => (await this.va.listedLabels()).includes(labelText))
-      .toBe(listed);
+    const row = this.va.labelRow(labelText);
+    if (listed) {
+      expect(await row.first().isVisible()).toBe(true);
+    } else {
+      expect(await row.count()).toBe(0);
+    }
   }
 
   /** Assert the number of label rows currently listed in the annotate sidebar. */
   async listedLabelCount(expected: number) {
-    await expect
-      .poll(async () => (await this.va.listedLabels()).length)
-      .toBe(expected);
+    expect(await this.va.labelRows.count()).toBe(expected);
   }
 
-  /** Assert whether the canvas currently renders any overlay for `field`. */
-  async canvasRendersField(field: string, rendered = true) {
-    await expect
-      .poll(async () => (await this.va.canvasOverlayFields()).includes(field))
-      .toBe(rendered);
+  /** Assert the sidebar lists (or does not list) any label under `path`. */
+  async listsPath(path: string, listed = true) {
+    const rows = this.va.labelRowsFor(path);
+    if (listed) {
+      expect(await rows.first().isVisible()).toBe(true);
+    } else {
+      expect(await rows.count()).toBe(0);
+    }
   }
 }

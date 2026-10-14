@@ -1,14 +1,14 @@
-import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
+import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
 import { ModalSampleRenderer } from "./ModalSampleRenderer";
-import { VideoTimelineSurface } from "./VideoTimelineSurface";
+import { VideoLookerSurface } from "./VideoLookerSurface";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
@@ -37,7 +37,6 @@ type NativeLookerProps = LookerProps & { sample: fos.ModalSample };
 
 const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
-  const theme = useTheme();
 
   useImageModalSelectiveRendering(id, looker);
 
@@ -50,7 +49,7 @@ const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
         width: "100%",
         height: "100%",
         minHeight: 0,
-        background: theme.background.level2,
+        background: getColorCssVar(BackgroundColor.Card),
         position: "relative",
       }}
     />
@@ -98,6 +97,12 @@ const ModalLookerContent = React.memo(
     });
     const isNative = selectedMedia.nativeLookerType !== null;
     const isVideo = selectedMedia.nativeLookerType === "video";
+    // the branch below that mounts the Lighter renderer is the image surface
+    fos.useReportAnnotationSurface(
+      isAnnotate && isNative && !isVideo && !shouldRenderImavid
+        ? "image"
+        : null,
+    );
 
     if (shouldRenderImavid) {
       return (
@@ -113,12 +118,7 @@ const ModalLookerContent = React.memo(
       if (isAnnotate) {
         return <VideoAnnotationSurface sample={sample} />;
       }
-      return (
-        <VideoTimelineSurface
-          sample={sample}
-          videoPath={selectedMedia.selectedMediaPath}
-        />
-      );
+      return <VideoLookerSurface sample={sample} />;
     }
 
     if (isNative) {

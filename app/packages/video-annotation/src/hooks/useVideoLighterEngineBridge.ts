@@ -3,13 +3,18 @@
  */
 
 import {
-  FRAMES_PREFIX,
   useActiveSampleId,
   useAnnotationEngine,
+  useAnnotationEventHandler,
   useLighterEngineBridge,
 } from "@fiftyone/annotation";
+import {
+  useGetKeypointSkeleton,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import { useCallback } from "react";
 import { useDatasetId, useVisibleLabelSchemas } from "../state/accessors";
+import { isFrameScopedPath } from "../state/framePaths";
 import { useCurrentFrameGetter } from "../state/useCurrentFrame";
 import { stashEstablishKey } from "../sync/establishKeyRelay";
 import { useKeyframePromotionOnEdit } from "./useKeyframePromotionOnEdit";
@@ -37,6 +42,8 @@ export const useVideoLighterEngineBridge = (
   pathsOverride?: ReadonlySet<string>,
 ): void => {
   const engine = useAnnotationEngine();
+  // skeleton edges drive keypoint connections; stable across renders
+  const getSkeleton = useGetKeypointSkeleton();
   const sample = useActiveSampleId();
   const dataset = useDatasetId();
 
@@ -57,14 +64,30 @@ export const useVideoLighterEngineBridge = (
   // sample-level temporal detection sharing this scene must stay frame-less so
   // its engine ref matches the sidebar / timeline; stamping a frame would make
   // each surface address a different occurrence and break cross-surface select.
+  // An image dynamic group inverts the rule: each frame is its own sample, so
+  // the frame-scoped paths are the bare ones, not `frames.*`.
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
   const frameOf = useCallback(
-    (path: string) => (path.startsWith(FRAMES_PREFIX) ? getFrame() : undefined),
-    [getFrame],
+    (path: string) =>
+      isFrameScopedPath(path, isImageDynamicGroupVideo)
+        ? getFrame()
+        : undefined,
+    [getFrame, isImageDynamicGroupVideo],
   );
 
   // After a box drag / resize commits, promote the touched frame to a keyframe
   // and re-lerp adjacent segments — folded into the edit's undo unit.
   const onEditCommit = useKeyframePromotionOnEdit();
+
+  // a sidebar geometry edit promotes and re-lerps like a canvas edit
+  useAnnotationEventHandler(
+    "annotation:formGeometryCommitted",
+    useCallback(
+      ({ ref, undoKey }) =>
+        onEditCommit(ref.instanceId, ref.path, undoKey, ref.frame),
+      [onEditCommit],
+    ),
+  );
 
   // Sample-level temporal-detections carry no Lighter adapter, so the loop's
   // kind filter drops them from hydration regardless of scope, but their
@@ -80,5 +103,6 @@ export const useVideoLighterEngineBridge = (
     frameOf,
     onEstablishCommit: stashEstablishKey,
     onEditCommit,
+    getSkeleton,
   });
 };

@@ -9,6 +9,7 @@ import registerPanel from "./Panel/register";
 import {
   availableOperatorsRefreshCount,
   operatorsInitializedAtom,
+  operatorsLoadFailedAtom,
 } from "./state";
 
 let startupOperatorsExecuted = false;
@@ -52,6 +53,7 @@ export function useOperators(datasetLess?: boolean) {
     availableOperatorsRefreshCount,
   );
   const setOperatorsInitialized = useSetRecoilState(operatorsInitializedAtom);
+  const setOperatorsLoadFailed = useSetRecoilState(operatorsLoadFailedAtom);
   const { initialized } = useOperatorPlacementsResolver();
 
   useEffect(() => {
@@ -62,10 +64,12 @@ export function useOperators(datasetLess?: boolean) {
           setAvailableOperatorsRefreshCount((count) => count + 1);
           setState("ready");
           setOperatorsInitialized(true);
+          setOperatorsLoadFailed(false);
         })
         .catch((error) => {
           setState("error");
           setError(error);
+          setOperatorsLoadFailed(true);
         });
     }
   }, [
@@ -73,6 +77,7 @@ export function useOperators(datasetLess?: boolean) {
     datasetName,
     setAvailableOperatorsRefreshCount,
     setOperatorsInitialized,
+    setOperatorsLoadFailed,
   ]);
 
   return {

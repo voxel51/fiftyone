@@ -13,10 +13,27 @@ export enum LabelType {
   Keypoints = "Keypoints",
   Polyline = "Polyline",
   Polylines = "Polylines",
+  Segmentation = "Segmentation",
+  Heatmap = "Heatmap",
   TemporalDetection = "TemporalDetection",
   TemporalDetections = "TemporalDetections",
   Unknown = "Unknown",
 }
+
+/**
+ * Label types that are a SINGLE embedded document per field, rather than a
+ * document carrying a list of elements. A field holds at most one of these, so
+ * the field path is its whole identity — there is no per-element id to address
+ * by, and no list child to persist through.
+ */
+export const SINGLETON_LABEL_TYPES: ReadonlySet<LabelType> = new Set([
+  LabelType.Segmentation,
+  LabelType.Heatmap,
+]);
+
+/** True if the given label type is a single-document label (e.g. Segmentation). */
+export const isSingletonLabelType = (type: LabelType): boolean =>
+  SINGLETON_LABEL_TYPES.has(type);
 
 /**
  * Minimal shape of a fiftyone label document.

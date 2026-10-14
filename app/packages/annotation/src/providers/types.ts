@@ -16,7 +16,7 @@ export interface InferenceRequest {
 }
 
 /**
- * Inference from an already-decoded `ImageBitmap` (e.g. an ImaVid video
+ * Inference from an already-decoded `ImageBitmap` (e.g. a dynamic group video
  * frame) rather than a URL. `cacheKey` stands in for the URL when keying
  * the per-frame encoder-embedding cache — pass a stable per-frame string
  * (e.g. `"<videoKey>#frame=<n>"`).

@@ -1,11 +1,15 @@
 import {
-  FRAMES_PREFIX,
+  isFrameScopedPath,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
 } from "@fiftyone/annotation";
-import { expandPath, field } from "@fiftyone/state";
+import {
+  expandPath,
+  field,
+  useIsImageDynamicGroupVideo,
+} from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
-import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
+import { FLOAT_FIELD, INT_FIELD, KEYPOINT } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
@@ -19,6 +23,7 @@ import {
   evaluateWhen,
   isWhenFulfillable,
 } from "./evaluateWhen";
+import { getKeypointPointKeys } from "./keypointPointAttributes";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import type { TrackEditSplit } from "./trackFanOut";
 import {
@@ -34,6 +39,7 @@ const useSchema = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
   const config = selected?.schema ?? null;
   const data = selected?.data;
+  const labelType = selected?.type ?? null;
   const isLabelReadOnly = config?.read_only;
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
@@ -42,10 +48,21 @@ const useSchema = (readOnly: boolean) => {
     [config],
   );
 
+  // A keypoint's per-point parallel lists (reserved names plus schema
+  // attributes with point scope) are edited node-by-node in the
+  // KeypointDetails inspector, never as label-level values — a second
+  // "confidence" here both duplicates that field and invites corrupting
+  // the list through a free-text input.
+  const pointKeys = useMemo(
+    () => (labelType === KEYPOINT ? getKeypointPointKeys(allAttributes) : null),
+    [labelType, allAttributes],
+  );
+
   const visibleAttributes = useMemo(() => {
     return allAttributes.reduce((map, attr) => {
       if (!attr.name || attr.name === "id" || attr.name === "attributes")
         return map;
+      if (pointKeys?.has(attr.name)) return map;
       if (map.has(attr.name)) return map;
       if (
         evaluateWhen(attr.when, (data ?? {}) as Record<string, unknown>) ||
@@ -55,13 +72,27 @@ const useSchema = (readOnly: boolean) => {
       }
       return map;
     }, new Map<string, AttributeConfig>());
-  }, [allAttributes, data]);
+  }, [allAttributes, data, pointKeys]);
 
   // Key on the winning entry's index, not its name: same-name variants must
   // bust the schema memo when the active one swaps (Toyota model -> Honda).
   const visibleKey = [...visibleAttributes.values()]
     .map((attr) => allAttributes.indexOf(attr))
     .join("\0");
+
+  // Class-lock: when a stage policy narrowed the class options and this
+  // label's current class fell outside them, freeze the class input — a
+  // picker offering only in-scope classes must not let an annotator
+  // stomp an out-of-scope value (e.g. "van" reclassified to "sedan"
+  // because "van" wasn't offered). Computed outside the schema memo so
+  // label edits re-evaluate it.
+  const currentClass = (data as { label?: unknown } | undefined)?.label;
+  const classOutOfScope =
+    (config?.classes?.length ?? 0) > 0 &&
+    !config?.applied_taxonomy &&
+    typeof currentClass === "string" &&
+    currentClass.length > 0 &&
+    !(config?.classes ?? []).includes(currentClass);
 
   // Reruns only when the visible attribute set changes.
   return useMemo(() => {
@@ -80,7 +111,10 @@ const useSchema = (readOnly: boolean) => {
             : undefined,
         values: taxonomy ? [] : config?.classes || [],
         taxonomy,
-        readOnly: effectiveReadOnly,
+        // `label_read_only` = stage-policy attribute lock on the class
+        // input ("Other attributes: View" covers the label too).
+        readOnly:
+          effectiveReadOnly || classOutOfScope || !!config?.label_read_only,
       }),
     };
 
@@ -104,7 +138,7 @@ const useSchema = (readOnly: boolean) => {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleKey, config, effectiveReadOnly]);
+  }, [visibleKey, config, effectiveReadOnly, classOutOfScope]);
 };
 
 const useParseFieldValue = () => {
@@ -144,22 +178,27 @@ const useParseFieldValue = () => {
  * Volatile atoms (config, data, overlay, field) are read via refs so that
  * the returned callback keeps a stable identity across data changes.
  */
-const useHandleSchemaChange = (readOnly: boolean) => {
+export const useHandleSchemaChange = (readOnly: boolean) => {
   const { selected } = useAnnotationContext();
   const config = selected?.schema ?? null;
   const data = selected?.data;
   const overlay = selected?.overlay;
   const field = selected?.field ?? null;
+  const labelType = selected?.type ?? null;
   const editingRef = selected?.ref ?? null;
   const engine = useAnnotationEngine();
   const sample = useActiveAnnotationSampleId();
   const parseFieldValue = useParseFieldValue();
   const [currentLabel, setCurrentLabel] = useAtom(current);
+  // frame-scoped paths are `frames.*` on a real video but bare paths on an
+  // image dynamic group video
+  const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   const configRef = useRef(config);
   const dataRef = useRef(data);
   const overlayRef = useRef(overlay);
   const fieldRef = useRef(field);
+  const labelTypeRef = useRef(labelType);
   const editingRefRef = useRef(editingRef);
   const currentLabelRef = useRef(currentLabel);
   const sampleRef = useRef(sample);
@@ -167,6 +206,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
   dataRef.current = data;
   overlayRef.current = overlay;
   fieldRef.current = field;
+  labelTypeRef.current = labelType;
   editingRefRef.current = editingRef;
   currentLabelRef.current = currentLabel;
   sampleRef.current = sample;
@@ -197,7 +237,7 @@ const useHandleSchemaChange = (readOnly: boolean) => {
       // label is still a draft, so `editingRef` is null (the anchor binds only
       // committed labels) yet `field` is correctly `frames.<field>`.
       const editingRef = editingRefRef.current;
-      const isFrameField = field.startsWith(FRAMES_PREFIX);
+      const isFrameField = isFrameScopedPath(field, isImageDynamicGroupVideo);
       const instanceId =
         editingRef?.instanceId ?? (data as { _id?: string })?._id ?? overlay.id;
       // A frame-field draft has no anchor frame; resolve the playhead occurrence
@@ -282,9 +322,16 @@ const useHandleSchemaChange = (readOnly: boolean) => {
           .map((attr) => attr.name as string),
       );
 
+      // A keypoint's per-point parallel lists follow `points` frame by frame,
+      // so on a video track they stay on the edited frame like geometry does
+      const extraPerFrameKeys =
+        labelTypeRef.current === KEYPOINT
+          ? getKeypointPointKeys(allAttributes)
+          : undefined;
+
       const { trackPartial, dynamicPartial }: TrackEditSplit =
         isFrameField && ref.frame != null
-          ? splitTrackEdit(persistableValue, dynamicKeys)
+          ? splitTrackEdit(persistableValue, dynamicKeys, extraPerFrameKeys)
           : { trackPartial: {}, dynamicPartial: {} };
 
       // the anchor frame's pre-edit value — `updateLabel` has not run yet, so the
@@ -325,7 +372,13 @@ const useHandleSchemaChange = (readOnly: boolean) => {
         } as NonNullable<typeof live>);
       }
     },
-    [engine, parseFieldValue, readOnly, setCurrentLabel],
+    [
+      engine,
+      isImageDynamicGroupVideo,
+      parseFieldValue,
+      readOnly,
+      setCurrentLabel,
+    ],
   );
 };
 
@@ -341,6 +394,23 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const field = selected?.field ?? null;
   const onChange = useHandleSchemaChange(readOnly);
   const onLivePreview = useLivePreview(readOnly);
+
+  // SchemaIO echoes the label document wholesale — geometry (`points`,
+  // `bounding_box`) and per-point parallel lists included. Only fields the
+  // form RENDERS may pass: an echoed stale `points` otherwise stomps
+  // freshly-placed geometry on any class/attribute edit (any commits since
+  // the form's `data` snapshot are silently reverted).
+  const formProperties = schema.properties;
+  const handleFormChange = useCallback(
+    (changes: Record<string, unknown>) => {
+      return onChange(
+        Object.fromEntries(
+          Object.entries(changes).filter(([key]) => key in formProperties),
+        ),
+      );
+    },
+    [formProperties, onChange],
+  );
 
   if (!field) throw new Error("no field");
   if (!overlay) throw new Error("no overlay");
@@ -366,7 +436,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
         }}
         schema={schema}
         data={displayData}
-        onChange={onChange}
+        onChange={handleFormChange}
       />
     </div>
   );

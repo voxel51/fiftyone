@@ -20,6 +20,12 @@
   white-space: pre;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .fallingAsciiBoxInner {
+    animation: none;
+  }
+}
+
 @keyframes episode-ascii-fall {
   0% {
     opacity: 0;

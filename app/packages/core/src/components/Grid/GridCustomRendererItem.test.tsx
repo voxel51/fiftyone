@@ -4,7 +4,7 @@ import {
   getGridCustomRendererFailover,
   modalSelector,
 } from "@fiftyone/state";
-import { registerMcapGridOverlay } from "@fiftyone/multimodal/extensions/timeline";
+import { registerGridOverlay } from "@fiftyone/multimodal/extensions/timeline";
 import React from "react";
 import { RecoilRoot } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,7 +12,7 @@ import { GridCustomRendererItem } from "./GridCustomRendererItem";
 
 // The multimodal guard also mounts the temporal-tag overlay, which reaches
 // for an mcap source these tests do not build
-vi.mock("@fiftyone/multimodal/grid-overlay", () => ({
+vi.mock("../../../../multimodal/src/grid-overlay/EpisodeGridOverlay", () => ({
   EpisodeGridOverlay: () => null,
 }));
 
@@ -70,8 +70,8 @@ describe("GridCustomRendererItem", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("renders registered mcap overlays inside the multimodal guard", async () => {
-    const unregister = registerMcapGridOverlay(() => (
+  it("renders registered overlays inside the multimodal guard", async () => {
+    const unregister = registerGridOverlay(() => (
       <div data-testid="registered-overlay" />
     ));
     const host = document.createElement("div");
@@ -140,8 +140,8 @@ describe("GridCustomRendererItem", () => {
       }, []);
       return <div data-testid="overlay-second" />;
     };
-    const unregisterFirst = registerMcapGridOverlay(First);
-    const unregisterSecond = registerMcapGridOverlay(Second);
+    const unregisterFirst = registerGridOverlay(First);
+    const unregisterSecond = registerGridOverlay(Second);
     const host = document.createElement("div");
     document.body.appendChild(host);
     let looker: GridCustomRendererItem | undefined;
@@ -240,10 +240,13 @@ describe("GridCustomRendererItem", () => {
     expect(hostClickSpy).not.toHaveBeenCalled();
     expect(hostContextMenuSpy).not.toHaveBeenCalled();
 
-    // `ctx.openModal` reaches the modal the same way a click on an ordinary
-    // tile does: by activating the mounted element.
+    // `ctx.openModal` runs the grid's own open path for the tile, without
+    // faking a click on it
+    const open = vi.fn();
+    looker.setOpen(open);
     (ctx.openModal as () => void)();
-    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(hostClickSpy).not.toHaveBeenCalled();
 
     fireEvent.mouseEnter(wrapper);
 

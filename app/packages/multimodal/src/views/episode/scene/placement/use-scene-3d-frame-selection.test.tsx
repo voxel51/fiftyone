@@ -8,6 +8,7 @@ import {
   type Scene3dViewStateStore,
 } from "../camera/scene-3d-view-state";
 import { useScene3dFrameSelection } from "./use-scene-3d-frame-selection";
+import { useScene3dCameraTracking } from "../camera/use-scene-3d-camera-tracking";
 import type { FrameTransformsState } from "../../spatial/frame-transforms/use-frame-transforms";
 import type { StreamPlaybackFrame } from "../../playback/use-stream-values";
 
@@ -39,6 +40,7 @@ describe("useScene3dFrameSelection", () => {
     expect(result.current.frameIds).toEqual(["base_link", "lidar", "map"]);
     expect(result.current.worldFrameId).toBe("map");
     expect(result.current.cameraTargetFrameId).toBe("base_link");
+    expect(result.current.cameraTargetIsEgo).toBe(true);
     expect(result.current.worldFrameSelectionSource).toBe("auto");
   });
 
@@ -81,6 +83,46 @@ describe("useScene3dFrameSelection", () => {
     expect(result.current.worldFrameId).toBe("map");
     // The user's choice degrades silently; the selection-source flag stays.
     expect(result.current.worldFrameSelectionSource).toBe("user");
+  });
+
+  it("adopts a saved user target before startup can use the automatic ego", () => {
+    const frameTransforms = transforms([
+      ["map", "base_link"],
+      ["base_link", "lidar"],
+    ]);
+    const { result } = renderHook(() => {
+      const selection = useScene3dFrameSelection(
+        selectionProps({
+          ...pointCloudObservation("lidar"),
+          frameTransforms,
+          restore: { userCameraTargetFrameId: "lidar", userWorldFrameId: null },
+        }),
+      );
+      const camera = useScene3dCameraTracking({
+        cameraTargetFrameId: selection.cameraTargetFrameId,
+        cameraTargetIsEgo: selection.cameraTargetIsEgo,
+        cameraTargetSettled: selection.cameraTargetSettled,
+        cameraTargetSelectionSource: selection.cameraTargetSelectionSource,
+        frameTransforms,
+        navigationReferenceSettled: selection.navigationReferenceSettled,
+        placementStatus: "transformed",
+        playbackTimeNs: 0n,
+        provisionalFrameIds: [],
+        provisionalPlaybackFrame: null,
+        renderableSourceKeys: ["point-cloud\0/lidar"],
+        selectedStreamsKey: "lidar",
+        sourceKey: "sample",
+        viewStateStore,
+        worldFrameId: selection.worldFrameId,
+      });
+      return { camera, selection };
+    });
+
+    expect(result.current.selection.cameraTargetFrameId).toBe("lidar");
+    expect(result.current.selection.cameraTargetSettled).toBe(true);
+    expect(result.current.selection.cameraTargetIsEgo).toBe(false);
+    expect(result.current.camera.poseCommand).toBeNull();
+    expect(viewStateStore.getSnapshot().cameraView).toBeNull();
   });
 
   it("uses the TF root instead of an early optical frame in sensor-arm graphs", () => {

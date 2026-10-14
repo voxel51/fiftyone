@@ -11,6 +11,7 @@ import {
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import { MoveOverlayCommand } from "../commands/MoveOverlayCommand";
+import { RotateOverlayCommand } from "../commands/RotateOverlayCommand";
 import { PaintStrokeCommand } from "../commands/PaintStrokeCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import { DetectionOverlay } from "../overlay/DetectionOverlay";
@@ -40,11 +41,12 @@ import type {
   Hoverable,
   Point,
   Rect,
+  Rotatable,
   Spatial,
 } from "../types";
 import { generateColorFromId } from "../utils/color";
 import type { ColorMappingContext } from "../utils/colorMapping";
-import { getOverlayColor } from "../utils/colorMapping";
+import { getKeypointPointColors, getOverlayColor } from "../utils/colorMapping";
 import { CoordinateSystem2D } from "./CoordinateSystem2D";
 import {
   OVERLAY_STATUS_ERROR,
@@ -72,6 +74,11 @@ export const TypeGuards = {
     body: BaseOverlay | InteractionHandler,
   ): body is BaseOverlay & Spatial => "bounds" in body,
 
+  isRotatable: (
+    body: BaseOverlay | InteractionHandler,
+  ): body is BaseOverlay & Rotatable =>
+    "getRotation" in body && "setRotation" in body,
+
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
     value !== null &&
@@ -81,6 +88,14 @@ export const TypeGuards = {
     typeof (value as { containsPoint: unknown }).containsPoint === "function" &&
     "markDirty" in value &&
     typeof (value as { markDirty: unknown }).markDirty === "function",
+
+  hasPointColors: (
+    body: BaseOverlay,
+  ): body is BaseOverlay & {
+    setPointColors(colors: (string | null)[] | null): void;
+  } =>
+    "setPointColors" in body &&
+    typeof (body as { setPointColors: unknown }).setPointColors === "function",
 };
 
 /**
@@ -122,12 +137,29 @@ export interface OverlayOrderOptions {
 
 /**
  * Interface for render callbacks that can be registered to run during the render loop.
+ *
+ * SYNCHRONOUS by contract. The frame runs inside Pixi's ticker, ahead of
+ * Pixi's own LOW-priority render in the same pass — a callback that suspended
+ * the frame would push every scene-graph mutation past that render, which is
+ * exactly the phase inversion this loop exists to avoid. Work that must await
+ * belongs off the render path.
  */
 export interface RenderCallback {
   id: string;
-  callback: () => void | Promise<void>;
+  callback: () => void;
   phase: "before" | "after";
 }
+
+/**
+ * Rejects a thenable return.
+ *
+ * `callback: () => void` is not enough on its own: TypeScript lets a
+ * `Promise`-returning function satisfy a `() => void` signature, so an `async`
+ * callback would type-check and then silently reintroduce the phase inversion
+ * this loop exists to prevent. Applied at `registerRenderCallback`, where the
+ * return type is inferable, it fails at the call site instead.
+ */
+type NotPromise<T> = T extends PromiseLike<unknown> ? never : T;
 
 /**
  * 2D scene that manages overlays, rendering, selection, coordinate system, and undo/redo operations.
@@ -148,14 +180,14 @@ export class Scene2D {
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
-  private rotation: number = 0;
-  private interactiveMode: boolean = false;
+  private rotation = 0;
+  private interactiveMode = false;
   private interactiveHandler?: InteractionHandler;
   // When an external authority (the annotation engine) owns undo/redo, Lighter
   // must not also push its own edit commands — the engine captures the same
   // edits as value-based entries, so a self-push double-counts every gesture.
-  private externalUndoAuthority: boolean = false;
-  private isRenderLoopActive: boolean = false;
+  private externalUndoAuthority = false;
+  private isRenderLoopActive = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
@@ -204,6 +236,15 @@ export class Scene2D {
         });
       },
     );
+
+    // A resize is drawn in the ResizeObserver's frame, after this frame's
+    // ticker already ran, so rebuild overlays against the new bounds now.
+    this.registerEventHandler("lighter:resize", () => {
+      this.canonicalMedia?.updateBounds();
+      for (const overlayId of this.overlayOrder) {
+        this.renderOverlay(overlayId);
+      }
+    });
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
@@ -313,6 +354,28 @@ export class Scene2D {
           CommandContextManager.instance()
             .getActiveContext()
             .pushUndoable(moveCommand);
+        }
+      }
+    });
+
+    // Listen for OVERLAY_ROTATE_END events to push undo/redo commands
+    this.registerEventHandler("lighter:overlay-rotate-end", (event) => {
+      if (this.externalUndoAuthority) return;
+
+      const overlay = this.getOverlay(event.overlayId);
+      if (overlay && TypeGuards.isRotatable(overlay)) {
+        const { startRotation, rotation } = event;
+
+        if (Math.abs(startRotation - rotation) > 1e-4) {
+          const rotateCommand = new RotateOverlayCommand(
+            overlay,
+            event.overlayId,
+            startRotation,
+            rotation,
+          );
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(rotateCommand);
         }
       }
     });
@@ -691,6 +754,7 @@ export class Scene2D {
    */
   setCursor(cursor: string): void {
     this.config.canvas.style.cursor = cursor;
+    this.eventBus.dispatch("e2e:lighter:cursor", { cursor });
   }
 
   /**
@@ -1028,7 +1092,7 @@ export class Scene2D {
     }
 
     // Find overlays that contain the mouse point
-    let contained = this.overlayOrder
+    const contained = this.overlayOrder
       .map((id) => this.overlays.get(id))
       .filter((overlay): overlay is BaseOverlay => {
         if (!overlay) return false;
@@ -1084,6 +1148,22 @@ export class Scene2D {
       strokeStyle = generateColorFromId(identifier, 70, 50);
     }
 
+    // Per-point color-by-value: a keypoint field colored by a per-point
+    // attribute overrides individual point fills (edges keep the label
+    // color, matching the classic looker). Stored silently — this runs
+    // inside the render pass, just before the overlay draws.
+    if (TypeGuards.hasPointColors(overlay)) {
+      overlay.setPointColors(
+        this.colorMappingContext
+          ? getKeypointPointColors(
+              overlay.field,
+              overlay.label,
+              this.colorMappingContext,
+            )
+          : null,
+      );
+    }
+
     const baseStyle: DrawStyle = {
       strokeStyle,
       lineWidth: STROKE_WIDTH,
@@ -1109,14 +1189,28 @@ export class Scene2D {
     return finalStyle;
   }
 
+  /**
+   * The tick handler is SYNCHRONOUS, and must stay that way.
+   *
+   * Pixi's `TickerPlugin` registers its own `render` on this same ticker at
+   * `UPDATE_PRIORITY.LOW`, while this handler sits at the default `NORMAL` —
+   * so one ticker pass is meant to run "mutate the scene graph, then present
+   * it". An `async` handler returns at its first `await` and hands the rest of
+   * the frame to the microtask queue, which drains AFTER the ticker's
+   * synchronous phase — i.e. after Pixi has already presented. Every overlay
+   * mutation then lands a phase late, and because overlays paint by disposing
+   * their container and rebuilding it, any present caught between the dispose
+   * and the rebuild shows a hole. Staying synchronous is what keeps the whole
+   * frame — dispose included — inside one pass, invisible to the present.
+   */
   public async startRenderLoop(): Promise<void> {
     if (this.isRenderLoopActive) {
       return;
     }
 
     this.isRenderLoopActive = true;
-    this.config.renderer.addTickHandler(async () => {
-      await this.renderFrame();
+    this.config.renderer.addTickHandler(() => {
+      this.renderFrame();
     });
   }
 
@@ -1133,14 +1227,17 @@ export class Scene2D {
    * @param callback - The callback configuration.
    * @returns A function to unregister the callback.
    */
-  registerRenderCallback(
-    callback: Omit<RenderCallback, "id"> & { id?: string },
+  registerRenderCallback<R>(
+    callback: Omit<RenderCallback, "id" | "callback"> & {
+      id?: string;
+      callback: () => NotPromise<R>;
+    },
   ): () => void {
     const id = callback.id || `render-callback-${Date.now()}-${Math.random()}`;
 
     const renderCallback: RenderCallback = {
       id,
-      callback: callback.callback,
+      callback: callback.callback as () => void,
       phase: callback.phase,
     };
 
@@ -1162,19 +1259,14 @@ export class Scene2D {
    * Executes render callbacks for a specific phase.
    * @param phase - The phase to execute callbacks for.
    */
-  private async executeRenderCallbacks(
-    phase: "before" | "after",
-  ): Promise<void> {
+  private executeRenderCallbacks(phase: "before" | "after"): void {
     const callbacks = Array.from(this.renderCallbacks.values()).filter(
       (callback) => callback.phase === phase,
     );
 
     for (const callback of callbacks) {
       try {
-        const result = callback.callback();
-        if (result instanceof Promise) {
-          await result;
-        }
+        callback.callback();
       } catch (error) {
         console.error(`Error in render callback ${callback.id}:`, error);
         // Continue with other callbacks even if one fails
@@ -1187,7 +1279,7 @@ export class Scene2D {
    * @param overlay - The overlay to add.
    * @param withUndo - Whether to track this operation for undo/redo.
    */
-  addOverlay(overlay: BaseOverlay, withUndo: boolean = false): void {
+  addOverlay(overlay: BaseOverlay, withUndo = false): void {
     if (withUndo) {
       const command = new AddOverlayCommand(
         this,
@@ -1245,11 +1337,7 @@ export class Scene2D {
    * @param withUndo - Whether to track this operation for undo/redo.
    * @param lifecycle - Whether this is a lifecycle event (not user-driven)
    */
-  removeOverlay(
-    id: string,
-    withUndo: boolean = false,
-    lifecycle: boolean = false,
-  ): void {
+  removeOverlay(id: string, withUndo = false, lifecycle = false): void {
     if (withUndo) {
       const overlay = this.overlays.get(id);
       if (overlay) {
@@ -1662,16 +1750,16 @@ export class Scene2D {
   /**
    * Renders a single frame.
    */
-  private async renderFrame(): Promise<void> {
+  private renderFrame(): void {
     // Execute before-render callbacks
-    await this.executeRenderCallbacks("before");
+    this.executeRenderCallbacks("before");
 
     for (const overlayId of this.overlayOrder) {
       this.renderOverlay(overlayId);
     }
 
     // Execute after-render callbacks
-    await this.executeRenderCallbacks("after");
+    this.executeRenderCallbacks("after");
   }
 
   /**
@@ -1761,23 +1849,14 @@ export class Scene2D {
           height: 0,
         };
 
-      const ret = overlay.render(
-        this.config.renderer,
-        this.createOverlayStyle(overlay),
-        {
-          canonicalMediaBounds,
-        },
-      );
+      overlay.render(this.config.renderer, this.createOverlayStyle(overlay), {
+        canonicalMediaBounds,
+      });
 
-      if (ret instanceof Promise) {
-        ret.then(() => {
-          this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-          overlay.markClean();
-        });
-      } else {
-        this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
-        overlay.markClean();
-      }
+      // `render` is synchronous by contract — a rebuild pass opens and closes
+      // within one call — so the overlay is painted by the time this returns.
+      this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
+      overlay.markClean();
     } catch (error) {
       this.handleRenderError(overlayId, error);
     }

@@ -11,6 +11,7 @@ import {
   Text,
   TextVariant,
 } from "@voxel51/voodo";
+import type { KeyboardEvent } from "react";
 
 interface ComponentTypeButtonProps {
   icon: IconName;
@@ -31,9 +32,25 @@ const ComponentTypeButton = ({
 }: ComponentTypeButtonProps) => {
   const theme = useTheme();
 
+  // Clickable is a plain span: give it the keyboard behavior of a button.
+  const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (disabled) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div style={{ flex: 1, opacity: disabled ? 0.5 : 1 }}>
-      <Clickable onClick={disabled ? undefined : onClick}>
+      <Clickable
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-pressed={isSelected}
+        aria-disabled={disabled || undefined}
+        onClick={disabled ? undefined : onClick}
+        onKeyDown={handleKeyDown}
+      >
         <div
           style={{
             display: "flex",

@@ -3,10 +3,12 @@ import * as fos from "@fiftyone/state";
 import { debounce, isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
-import { RESOLVE_PLACEMENTS_TTL } from "./constants";
+import { QueueItemStatus, RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
+  getInvocationRequestQueue,
+  type InvocationRequestQueue,
   resolveOperatorURI,
   resolveLocalPlacements,
   type RawContext,
@@ -17,6 +19,7 @@ import {
   operatorPlacementsAtom,
   operatorThrottledContext,
   operatorsInitializedAtom,
+  operatorsLoadFailedAtom,
   useCurrentSample,
 } from "./state";
 
@@ -172,6 +175,31 @@ export function useActivePanelEventsCount(id: string) {
   return { count, increment, decrement };
 }
 
+/**
+ * The number of queued invocation requests not yet finished, including the
+ * operators a panel event triggers after its own result
+ */
+export function useInFlightInvocationsCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const queue = getInvocationRequestQueue();
+    const subscriber = (updated: InvocationRequestQueue) =>
+      setCount(
+        updated.queue.filter(
+          ({ status }) =>
+            status === QueueItemStatus.Pending ||
+            status === QueueItemStatus.Executing,
+        ).length,
+      );
+    queue.subscribe(subscriber);
+    subscriber(queue);
+    return () => queue.unsubscribe(subscriber);
+  }, []);
+
+  return count;
+}
+
 /** Reactively returns the first registered operator URI from a list. */
 export function useFirstExistingUri(uris: string[]) {
   const operators = useRecoilValue(availableOperators);
@@ -188,4 +216,17 @@ export function useFirstExistingUri(uris: string[]) {
  */
 export function useOperatorAvailability(uri: string) {
   return useFirstExistingUri([uri]).exists;
+}
+
+/**
+ * Where the operator registry stands with the server listing. While
+ * `loading`, an operator's absence from {@link useOperatorAvailability} means
+ * nothing yet; `ready` and `error` are both final — after an `error` the
+ * registry will not fill in on its own.
+ */
+export function useOperatorRegistryState(): "loading" | "ready" | "error" {
+  const initialized = useRecoilValue(operatorsInitializedAtom);
+  const failed = useRecoilValue(operatorsLoadFailedAtom);
+  if (initialized) return "ready";
+  return failed ? "error" : "loading";
 }

@@ -8,6 +8,8 @@ FiftyOne Server /video-labels route tests.
 
 import unittest
 
+import numpy as np
+
 import fiftyone as fo
 import fiftyone.core.view as fov
 from fiftyone.server.routes.video_labels import (
@@ -251,6 +253,30 @@ class VideoLabelsAggregationTests(unittest.IsolatedAsyncioTestCase):
         # the bare detection still fragments by its own _id
         self.assertIn(id_bare, by_id)
         self.assertEqual(by_id[id_bare]["segments"], [[1, 1]])
+
+    @drop_async_dataset
+    async def test_index_singleton_fields_are_one_track(self, dataset):
+        mask = np.zeros((2, 2), dtype=np.uint8)
+        video = fo.Sample(filepath="video.mp4")
+        # present on 1-2 and 4, missing on 3
+        for fn in (1, 2, 4):
+            video[fn]["seg"] = fo.Segmentation(mask=mask)
+            video[fn]["heat"] = fo.Heatmap(map=mask.astype(float))
+
+        dataset.add_sample(video)
+
+        view = fov.make_optimized_select_view(
+            dataset.view(), video.id, flatten=True
+        )
+        result = await aggregate_index(view, ["seg", "heat"])
+
+        for field in ("seg", "heat"):
+            instances = result[field]["instances"]
+            self.assertEqual(len(instances), 1)
+            self.assertEqual(
+                instances[0]["instanceId"], "field:frames.%s" % field
+            )
+            self.assertEqual(instances[0]["segments"], [[1, 2], [4, 4]])
 
     @drop_async_dataset
     async def test_index_dynamic_attribute_segments(self, dataset):

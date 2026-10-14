@@ -1,4 +1,6 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { collapseWhitespace } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 
 /**
  * The modal sidebar's main listing view when in 'Annotate' mode
@@ -10,7 +12,10 @@ export class ModalAnnotateSidebarPom {
   readonly annotationSliceSelector: Locator;
   readonly annotationSliceResultsContainer: Locator;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new ModalAnnotateSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
@@ -20,6 +25,41 @@ export class ModalAnnotateSidebarPom {
     this.annotationSliceResultsContainer = page.getByTestId(
       "selector-results-container-annotation-slice",
     );
+  }
+
+  /** Label rows of the field at `path` (e.g. `weather`, `instances`). */
+  labelRowsFor(path: string): Locator {
+    return this.locator.locator(
+      `[data-cy^='annotate-label-'][data-cy-path='${path}']`,
+    );
+  }
+
+  /** The PRIMITIVES row for the field at `path`, carrying `data-cy-read-only`. */
+  primitiveEntry(path: string): Locator {
+    return this.locator.getByTestId(`annotate-primitive-${path}`);
+  }
+
+  /** The formatted value shown on the PRIMITIVES row for `path`. */
+  primitiveValue(path: string): Locator {
+    return this.primitiveEntry(path).getByTestId("annotate-primitive-value");
+  }
+
+  /**
+   * Run `action` and resolve once the sidebar has swapped the label list for
+   * the edit form (`editing`) or back because of it
+   */
+  async afterEditing<T>(action: () => Promise<T>, editing = true): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:editing", action, (e) => {
+      return (e.detail as { editing: boolean }).editing === editing;
+    });
+  }
+
+  /**
+   * Run `action` (the switch to annotate) and resolve once the label list it
+   * mounts has replaced its loading entry with the labels
+   */
+  async afterLabelList<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:label-list-loaded", action);
   }
 
   /**
@@ -36,32 +76,16 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Get the count of active primitive fields in the sidebar
-   *
-   * @returns A promise that resolves to the number of active primitive fields
+   * Run `action` and resolve once the edit it makes has been written and
+   * nothing is left to save: the write is the edit's cause-signal, and the
+   * settled pass after it proves no later edit is still pending.
    */
-  async getActivePrimitiveFieldsCount() {
-    return Number(
-      await this.locator
-        .getByTestId("sidebar-group-PRIMITIVES-field-count")
-        .textContent(),
+  async afterSave<T>(action: () => Promise<T>): Promise<T> {
+    // a pass that writes the edit sends success, then settled in the same pass
+    return this.eventUtils.afterSequence(
+      ["annotation:persistenceSuccess", "annotation:persistenceSettled"],
+      action,
     );
-  }
-
-  /**
-   * Wait until every annotation edit has been persisted (no pending deltas,
-   * no in-flight patch). Autosave is an interval tick, so an edit's patch may
-   * start seconds after its commit — call this before handing off to a fresh
-   * load (or ending a test whose edits a sibling depends on); a navigation
-   * that lands earlier destroys the pending save.
-   */
-  async waitForSavesSettled() {
-    // structural worst case: the edit just missed a tick (3s), its patch
-    // lands, and settlement is confirmed by the following tick (3s) — ~6.5s
-    // plus server round-trips. 10s bounds that chain, it does not pad a race.
-    await expect(
-      this.locator.getByTestId("annotation-save-state"),
-    ).toHaveAttribute("data-settled", "true", { timeout: 10_000 });
   }
 
   /**
@@ -79,34 +103,14 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Select an active primitive field by field name
-   *
-   * @param field The primitive field name to select
-   */
-  async selectActivePrimitiveField(field: string) {
-    await this.locator.getByTestId(`${field}-field`).click();
-  }
-
-  /**
-   * Toggle the active labels section in the sidebar
-   */
-  async toggleActiveLabels() {
-    await this.locator.getByTestId("sidebar-group-Labels-toggle").click();
-  }
-
-  /**
-   * Toggle the active primitive fields section in the sidebar
-   */
-  async toggleActivePrimitiveFields() {
-    await this.locator.getByTestId("sidebar-group-PRIMITIVES-toggle").click();
-  }
-
-  /**
    * Opens the annotation slice selector results menu.
    */
   async openAnnotationSliceResults() {
-    await this.annotationSliceSelector.click();
-    await expect(this.annotationSliceResultsContainer).toBeVisible();
+    await this.eventUtils.after(
+      "e2e:components:selector-results",
+      () => this.annotationSliceSelector.click(),
+      (e) => (e.detail as { cy?: string }).cy === "annotation-slice",
+    );
     return this.annotationSliceResultsContainer;
   }
 
@@ -132,36 +136,14 @@ export class ModalAnnotateSidebarPom {
    * @param slice The slice name to select
    */
   async selectAnnotationSlice(slice: string) {
-    // a non-default (3D) slice can be briefly absent from the selector while
-    // the open group's samples load, and the option list only refreshes when
-    // the popover is reopened. So each retry blurs (closes) then re-clicks
-    // (reopens, re-querying) the selector until the result is clickable. Blur,
-    // not Escape — Escape bubbles to the modal and can close it.
-    await expect(async () => {
-      await this.annotationSliceSelector.blur();
-      await this.annotationSliceSelector.click();
-      await expect(this.annotationSliceResultsContainer).toBeVisible();
-      await this.annotationSliceResultsContainer
-        .getByTestId(`selector-result-${slice}`)
-        .click({ timeout: 3000 });
-    }).toPass({ timeout: 30_000 });
+    // a 3D slice is listed once the group's samples load; the open list
+    // follows, so the result click below waits for it
+    await this.annotationSliceSelector.click();
+    await this.annotationSliceResultsContainer
+      .getByTestId(`selector-result-${slice}`)
+      .click();
 
-    await expect(this.annotationSliceSelector).toHaveValue(slice);
-  }
-
-  /**
-   * Resolves on the next successful PATCH to the per-sample dataset
-   * endpoint. Only for asserting on the response itself (e.g. URL scoping);
-   * to wait for an edit to persist, use {@link waitForSavesSettled} — it
-   * cannot miss a patch that fires early and it verifies nothing is pending.
-   */
-  waitForPatch() {
-    return this.page.waitForResponse(
-      (resp) =>
-        resp.request().method() === "PATCH" &&
-        /\/dataset\/[^/]+\/sample\//.test(resp.url()) &&
-        resp.status() < 400,
-    );
+    expect(await this.annotationSliceSelector.inputValue()).toBe(slice);
   }
 
   /**
@@ -189,15 +171,40 @@ export class ModalAnnotateSidebarPom {
     }
   }
 
-  /** Activate polyline-drawing mode (the Polyline action button). */
+  /**
+   * Toggle polyline-drawing mode (the Polyline action button). Turning it on
+   * resolves once its handler is armed: the handler installs in an effect
+   * after the mode flips, and clicks before that reach nothing.
+   */
   async polylineMode() {
-    await this.page.getByTestId("polyline-mode").click();
+    const button = this.page.getByTestId("polyline-mode");
+    if ((await button.getAttribute("data-cy-active")) === "true") {
+      await button.click();
+      return;
+    }
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => button.click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
   }
 
   /**
-   * Toggle segmentation mode. When inactive this enters segmentation mode
-   * (selecting the Select tool by default). When active it deactivates the
-   * mode.
+   * Turn on keypoint placement (the Keypoint action button). Resolves once
+   * its placement handler is armed: the handler installs in an effect after
+   * the mode flips, and clicks before that reach nothing.
+   */
+  async keypointMode() {
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => this.page.getByTestId("keypoint-mode").click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
+  }
+
+  /**
+   * Toggle segmentation mode: when inactive this enters it (selecting the
+   * Select tool by default), when active it leaves it.
    */
   async segmentationMode() {
     await this.page.getByTestId("segmentation-mode").click();
@@ -243,55 +250,32 @@ class ModalAnnotateSidebarAsserter {
    * @param count The expected number of active labels
    */
   async hasActiveLabelsCount(count: number) {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-field-count",
-      ),
-    ).toHaveText(count.toString());
+    expect(await this.modalAnnotateSidebar.getActiveLabelsCount()).toBe(count);
   }
 
-  /**
-   * Verify that the active labels section is expanded
-   */
-  async verifyActiveLabelsIsExpanded() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "RemoveIcon");
+  /** The field at `path` lists exactly `count` label rows. */
+  async labelRowCount(path: string, count: number) {
+    expect(await this.modalAnnotateSidebar.labelRowsFor(path).count()).toBe(
+      count,
+    );
   }
 
-  /**
-   * Verify that the active labels section is collapsed
-   */
-  async verifyActiveLabelsIsCollapsed() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-toggle",
+  /** The PRIMITIVES row for `path` shows `value`. */
+  async primitiveValue(path: string, value: string) {
+    expect(
+      collapseWhitespace(
+        await this.modalAnnotateSidebar.primitiveValue(path).textContent(),
       ),
-    ).toHaveAttribute("data-testid", "AddIcon");
+    ).toBe(value);
   }
 
-  /**
-   * Verify that the active primitive fields section is expanded
-   */
-  async verifyActivePrimitiveFieldsIsExpanded() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "RemoveIcon");
-  }
-
-  /**
-   * Verify that the active primitive fields section is collapsed
-   */
-  async verifyActivePrimitiveFieldsIsCollapsed() {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-toggle",
-      ),
-    ).toHaveAttribute("data-testid", "AddIcon");
+  /** The PRIMITIVES row for `path` is (not) editable. */
+  async primitiveReadOnly(path: string, readOnly: boolean) {
+    expect(
+      await this.modalAnnotateSidebar
+        .primitiveEntry(path)
+        .getAttribute("data-cy-read-only"),
+    ).toBe(readOnly ? "true" : "false");
   }
 
   /**
@@ -300,24 +284,9 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedCount The expected number of active labels
    */
   async verifyActiveLabelsCount(expectedCount: number) {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-Labels-field-count",
-      ),
-    ).toHaveText(expectedCount.toString());
-  }
-
-  /**
-   * Verify the count of active primitive fields matches the expected count
-   *
-   * @param expectedCount The expected number of active primitive fields
-   */
-  async verifyActivePrimitiveFieldsCount(expectedCount: number) {
-    await expect(
-      this.modalAnnotateSidebar.locator.getByTestId(
-        "sidebar-group-PRIMITIVES-field-count",
-      ),
-    ).toHaveText(expectedCount.toString());
+    expect(await this.modalAnnotateSidebar.getActiveLabelsCount()).toBe(
+      expectedCount,
+    );
   }
 
   /**
@@ -337,9 +306,9 @@ class ModalAnnotateSidebarAsserter {
    * @param expectedSlice The slice name that should be active
    */
   async verifySelectedAnnotationSlice(expectedSlice: string) {
-    await expect(this.modalAnnotateSidebar.annotationSliceSelector).toHaveValue(
-      expectedSlice,
-    );
+    expect(
+      await this.modalAnnotateSidebar.annotationSliceSelector.inputValue(),
+    ).toBe(expectedSlice);
   }
 
   /**
@@ -349,7 +318,7 @@ class ModalAnnotateSidebarAsserter {
    */
   async selectIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("select-action");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -361,7 +330,7 @@ class ModalAnnotateSidebarAsserter {
     const button = this.modalAnnotateSidebar.page.getByTestId(
       "create-classification",
     );
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -371,7 +340,17 @@ class ModalAnnotateSidebarAsserter {
    */
   async detectionModeIsActive(active = true) {
     const button = this.modalAnnotateSidebar.page.getByTestId("detection-mode");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
+  }
+
+  /**
+   * Assert that keypoint mode is active or inactive
+   *
+   * @param active Whether keypoint mode should be active (default true)
+   */
+  async keypointModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("keypoint-mode");
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -382,7 +361,17 @@ class ModalAnnotateSidebarAsserter {
   async segmentationModeIsActive(active = true) {
     const button =
       this.modalAnnotateSidebar.page.getByTestId("segmentation-mode");
-    await expect(button).toHaveAttribute("data-cy-active", active.toString());
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
+  }
+
+  /**
+   * Assert that polyline mode is active or inactive
+   *
+   * @param active Whether polyline mode should be active (default true)
+   */
+  async polylineModeIsActive(active = true) {
+    const button = this.modalAnnotateSidebar.page.getByTestId("polyline-mode");
+    expect(await button.getAttribute("data-cy-active")).toBe(String(active));
   }
 
   /**
@@ -399,6 +388,6 @@ class ModalAnnotateSidebarAsserter {
       name: tool,
       exact: true,
     });
-    await expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(await button.getAttribute("aria-pressed")).toBe("true");
   }
 }

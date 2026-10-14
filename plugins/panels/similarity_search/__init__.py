@@ -18,7 +18,7 @@ from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 
 from .constants import STORE_NAME, RunStatus
-from .run_manager import RunManager
+from .run_manager import RunManager, build_result_view
 from fiftyone.core.brain import BrainMethod
 
 logger = logging.getLogger(__name__)
@@ -131,6 +131,9 @@ class SimilaritySearchPanel(Panel):
 
         ctx.panel.set_data("runs", runs)
         ctx.panel.set_data("brain_keys", brain_keys)
+        ctx.panel.set_data(
+            "unready_brain_keys", self._get_unready_brain_keys(ctx)
+        )
 
         # FE only needs a truthy value for `canFilterByOwner`; displaying
         # the name is nicer than the id when we have one.
@@ -153,6 +156,9 @@ class SimilaritySearchPanel(Panel):
         """Refresh available similarity brain keys."""
         brain_keys = self._get_brain_keys(ctx)
         ctx.panel.set_data("brain_keys", brain_keys)
+        ctx.panel.set_data(
+            "unready_brain_keys", self._get_unready_brain_keys(ctx)
+        )
 
     def list_runs(self, ctx):
         """Refresh the runs list.
@@ -179,7 +185,6 @@ class SimilaritySearchPanel(Panel):
             return
 
         result_view_stages = run_data.get("result_view")
-        patches_field = run_data.get("patches_field")
         result_ids = run_data.get("result_ids", [])
 
         if not result_view_stages and not result_ids:
@@ -187,18 +192,7 @@ class SimilaritySearchPanel(Panel):
             return
 
         try:
-            if result_view_stages:
-                from fiftyone.core.view import DatasetView
-
-                view = DatasetView._build(ctx.dataset, result_view_stages)
-            else:
-                base = ctx.dataset
-                if base.media_type == "group":
-                    base = base.select_group_slices(_allow_mixed=True)
-                if patches_field:
-                    base = base.to_patches(patches_field)
-
-                view = base.select(result_ids, ordered=True)
+            view = build_result_view(ctx, run_data)
 
             ctx.ops.clear_selected_samples()
             ctx.ops.clear_selected_labels()
@@ -335,6 +329,26 @@ class SimilaritySearchPanel(Panel):
         )
 
     # -- Helpers --
+
+    def _get_unready_brain_keys(self, ctx):
+        """Return similarity brain keys that are registered but have no
+        persisted results yet, i.e. runs that are still computing (or
+        were interrupted before saving).
+        """
+        dataset = ctx.dataset
+
+        try:
+            brain_keys = dataset.list_brain_runs(type="similarity")
+            run_docs = BrainMethod._get_run_docs(dataset)
+        except Exception as e:
+            logger.warning("Failed to list unready brain keys: %s", e)
+            return []
+
+        return [
+            key
+            for key in brain_keys
+            if key in run_docs and not run_docs[key].results
+        ]
 
     def _get_brain_keys(self, ctx):
         """Return available similarity brain keys with config metadata.

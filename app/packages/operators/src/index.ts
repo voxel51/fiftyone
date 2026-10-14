@@ -1,5 +1,9 @@
 export { OPERATOR_PROMPT_AREAS, RiskLevel } from "./constants";
-export { useFirstExistingUri, useOperatorAvailability } from "./hooks";
+export {
+  useFirstExistingUri,
+  useOperatorAvailability,
+  useOperatorRegistryState,
+} from "./hooks";
 export { useOperators, useRefreshOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";
 export { default as OperatorCore } from "./OperatorCore";
@@ -33,6 +37,15 @@ export {
   default as usePanelEvent,
   useTriggerPanelEvent,
 } from "./usePanelEvent";
+export {
+  default as usePendingRuns,
+  usePendingRunScreen,
+} from "./usePendingRuns";
+export type {
+  PendingRun,
+  PendingRunWithView,
+  PendingRunsConfig,
+} from "./usePendingRuns";
 export { validate } from "./validation";
 export {
   useViewTargetCounts,

@@ -214,7 +214,10 @@ export function readSidebarPreferenceScopesForTests() {
   return preferencesStore.readSnapshot().scopes;
 }
 
-function normalizeSidebarPreferences(raw: unknown): SidebarPreferences | null {
+/** Sanitizes stored preferences and provides defaults for omitted sections. */
+export function normalizeSidebarPreferences(
+  raw: unknown,
+): SidebarPreferences | null {
   if (!isRecord(raw)) return null;
   return {
     appearance: normalizeAppearance(raw.appearance),

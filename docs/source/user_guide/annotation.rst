@@ -35,7 +35,7 @@ In-App annotation within FiftyOne supports datasets containing the following med
 
 * :ref:`media_type <dataset-media-type>`
 
-  * ``image``
+  * ``image``, including :ref:`ordered dynamic groups played as video <dynamic-group-video-annotation>`
   * ``video``
   * ``3D``
 
@@ -638,6 +638,15 @@ also removes an existing keyframe at the playhead, which triggers a new
 interpolation/propagation between the adjacent keyframes.
 
 
+Frame Fields in the Sidebar
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Primitive ``frames.`` fields, such as a per-frame ``frames.weather`` string,
+appear in the right sidebar with the value of the frame under the playhead and
+update as you scrub. Editing one writes to that frame. ``frames.frame_number``
+is the clip's own clock and is read-only; the
+:ref:`Schema Manager <schema-manager>` lists it as reserved.
+
 Temporal Events
 ~~~~~~~~~~~~~~~
 
@@ -711,6 +720,42 @@ letting you focus on a specific object or event.
 .. image:: https://cdn.voxel51.com/user_guide/annotation/video_track_context_menu.webp
    :alt: Track right-click context menu with Move/Shrink/Delete/Split/Merge
          options
+
+.. _dynamic-group-video-annotation:
+
+Annotating Dynamic Groups as Video
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. customavailablein::
+    :oss_version: 1.23.0
+    :enterprise_version: 2.26.0
+
+An image dataset :ref:`dynamically grouped <app-dynamic-groups>` into ordered
+groups can be annotated as a video. Each frame is one sample of the group, in
+``order_by`` order, so object tracks, keyframes, dynamic attributes and events
+span the group's samples, and every edit is written to the sample it lands on.
+
+The view must be an ordered dynamic group of images with an ``order_by_key``,
+which makes it :ref:`query performant <app-query-performant-stages>`:
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("my-image-dataset")
+    view = dataset.group_by("scene", order_by="timestamp", order_by_key=0.0)
+    session = fo.launch_app(view)
+
+Open a group in the modal and switch to the :ref:`Annotate tab <annotate-tab>`.
+The group opens in the video annotation surface with the same tools as a video
+sample. The timeline clock counts frames from 1 and shows the ``order_by``
+value of the sample under the playhead beside it, for example
+``#3 / #12 (30)``.
+
+The right sidebar shows the fields of the sample under the playhead and
+updates as you scrub. The ``order_by`` field is read-only in this view because
+changing it would reorder the frames; edit it from the ungrouped view. Fields
+are the samples' own fields, so there is no ``frames.`` prefix.
 
 
 ----

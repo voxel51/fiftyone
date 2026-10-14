@@ -48,7 +48,7 @@ function makeExternalCanonicalId(): string {
 /**
  * Minimal CanonicalMedia for tiles whose visible pixels come from a
  * non-Lighter element layered behind the canvas — a `<video>` for the
- * native-video tile, an `<img>` for the ImaVid (image-per-frame) tile.
+ * native-video tile, an `<img>` for the image-per-frame dynamic group tile.
  * Provides coordinate-space bounds (intrinsic media dimensions +
  * container-fitted rendered bounds) so Lighter overlays position
  * correctly, but draws no pixels of its own.
@@ -88,14 +88,11 @@ export class ExternalCanonicalMedia
     this.updateBoundsFromContainer(parent.clientWidth, parent.clientHeight);
 
     this.resizeObserver?.disconnect();
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
-
-      const { width, height } = entry.contentRect;
-      this.updateBoundsFromContainer(width, height);
+    // Re-read the rounded client size rather than the fractional
+    // `contentRect`: `updateBounds` (run on each renderer resize) reads it
+    // too, so whichever runs last yields the same bounds
+    this.resizeObserver = new ResizeObserver(() => {
+      this.updateBoundsFromContainer(parent.clientWidth, parent.clientHeight);
     });
     this.resizeObserver.observe(parent);
 

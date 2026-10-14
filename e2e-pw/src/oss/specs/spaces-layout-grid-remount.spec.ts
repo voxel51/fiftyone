@@ -37,6 +37,7 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test("grid remounts exactly once per spaces layout change", async ({
+  eventUtils,
   fiftyoneLoader,
   grid,
   page,
@@ -46,6 +47,12 @@ test("grid remounts exactly once per spaces layout change", async ({
   // grid mount is always observed — arming after load would race it
   const { mounts, unmounts } = await grid.armLifecycleCounters();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  // the grid mounts once its first page's items settle, which can trail the
+  // drawn tiles; splitting before then tears it down unmounted
+  await eventUtils.untilState(
+    "grid-mount",
+    async () => (await mounts.read()) === 1,
+  );
 
   const now = () => page.evaluate(() => performance.now());
   const assertCycles = async (n: number, context: Record<string, number>) => {
@@ -60,20 +67,23 @@ test("grid remounts exactly once per spaces layout change", async ({
   };
 
   // split: a plain panel open places it side-by-side, splitting the layout
-  const split = await grid.armGridRefresh();
-  const splitAt = await now();
-  await panel.openInSplit("Histograms");
-  await split.received;
-  await expect(panel.getContent("Histograms")).toBeVisible();
-  await expect(grid.getNthTile(0)).toBeVisible();
+  const splitAt = await grid.run(async () => {
+    const at = await now();
+    await panel.openInSplit("Histograms");
+    return at;
+  });
+  // a second teardown would hide the tiles, so the cycle count reads first
   await assertCycles(1, { splitAt });
+  expect(await panel.getContent("Histograms").isVisible()).toBe(true);
+  expect(await grid.getNthTile(0).isVisible()).toBe(true);
 
   // join: closing the split panel collapses the layout back to a single pane
-  const join = await grid.armGridRefresh();
-  const joinAt = await now();
-  await panel.closeTab("Histograms");
-  await join.received;
-  await expect(panel.getContent("Histograms")).toBeHidden();
-  await expect(grid.getNthTile(0)).toBeVisible();
+  const joinAt = await grid.run(async () => {
+    const at = await now();
+    await panel.closeTab("Histograms");
+    return at;
+  });
   await assertCycles(2, { splitAt, joinAt });
+  expect(await panel.getContent("Histograms").isVisible()).toBe(false);
+  expect(await grid.getNthTile(0).isVisible()).toBe(true);
 });

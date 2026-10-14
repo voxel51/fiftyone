@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import { ModalSample, useBrowserStorage } from "@fiftyone/state";
 import { View } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -6,7 +7,12 @@ import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
-import { PANEL_ID_SIDE_BOTTOM, PANEL_ID_SIDE_TOP } from "../constants";
+import {
+  CANVAS_LOADED_EVENT,
+  type Looker3dE2EEvents,
+  PANEL_ID_SIDE_BOTTOM,
+  PANEL_ID_SIDE_TOP,
+} from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import type { Fo3dCameraControls } from "../fo3d/camera-controls";
 import { useFo3dContext } from "../fo3d/context";
@@ -73,6 +79,9 @@ export const MultiPanelView = ({
     if (canvas) {
       canvas.querySelector("canvas")?.setAttribute("canvas-loaded", "true");
     }
+    getEventBus<Looker3dE2EEvents>().dispatch(CANVAS_LOADED_EVENT, {
+      thumbnail: false,
+    });
   }, [isSceneInitialized]);
 
   const setPanelView = useCallback(

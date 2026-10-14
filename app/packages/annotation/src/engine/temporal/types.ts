@@ -15,6 +15,9 @@ export type PresenceEvent = {
 
 export type PresenceListener = (events: readonly PresenceEvent[]) => void;
 
+/** The playhead moved onto another frame; presence may or may not have changed. */
+export type FrameListener = (frame: number) => void;
+
 /** Derived temporal presence over the pool. Presence ≡ pool when non-temporal. */
 export interface TemporalView {
   /**
@@ -30,10 +33,16 @@ export interface TemporalView {
   /** Refs present at the current time (frame stamped). */
   getPresent(): readonly LabelRef[];
 
+  /** The frame under the playhead; `undefined` for the non-temporal pool view. */
+  frame(): number | undefined;
+
   /** Pool refs absent at the playhead are still real — this is a time query. */
   isPresent(ref: LabelRef): boolean;
 
   subscribePresence(listener: PresenceListener): () => void;
+
+  /** Fires when the frame under the playhead changes; never for the pool view. */
+  subscribeFrame(listener: FrameListener): () => void;
 
   /**
    * Release any external subscriptions (clock, change stream). Called when a

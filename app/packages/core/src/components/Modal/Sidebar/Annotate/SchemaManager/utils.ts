@@ -6,6 +6,7 @@ import { is3d } from "@fiftyone/utilities";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
+  type ClassesComponent,
   CLASSES_COMPONENT_THRESHOLD,
   componentNeedsRange,
   componentNeedsValues,
@@ -16,6 +17,9 @@ import {
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
+  FRAME_LEVEL_LABEL_TYPES,
+  FRAME_PREFIX_AUTO_ERROR,
+  FRAME_PREFIX_SAMPLE_ERROR,
 } from "./constants";
 
 // =============================================================================
@@ -83,6 +87,10 @@ export interface AttributeConfig {
   // Attribute value may vary frame-to-frame within a track; drives sub-track
   // rows and excludes the attribute from whole-track propagation.
   dynamic?: boolean;
+  // Keypoint fields only: "point" scopes the attribute to individual points
+  // (stored as a list parallel to `points`, with `type` the ELEMENT type,
+  // edited from the per-node inspector). Absent or "field" = label-level.
+  scope?: "field" | "point";
   when?: AttributeCondition;
   _source?: string;
   taxonomy?: string;
@@ -125,6 +133,7 @@ export interface AttributeFormData {
   listDefault: (string | number)[]; // For list types
   read_only: boolean;
   dynamic: boolean;
+  scope: "field" | "point";
   when?: AttributeCondition;
   _source?: string;
   valuesMode: ValuesMode;
@@ -310,6 +319,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   listDefault: [],
   read_only: false,
   dynamic: false,
+  scope: "field",
   valuesMode: VALUES_MODE.simple,
 });
 
@@ -346,6 +356,7 @@ export const toFormData = (config: AttributeConfig): AttributeFormData => {
     listDefault,
     read_only: config.read_only || false,
     dynamic: config.dynamic || false,
+    scope: config.scope === "point" ? "point" : "field",
     when: config.when,
     _source: config._source,
     valuesMode: config.taxonomy ? VALUES_MODE.taxonomy : VALUES_MODE.simple,
@@ -398,6 +409,9 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     }
   }
 
+  // Omitted for field scope: absent means label-level, keeping schemas clean
+  const scope = data.scope === "point" ? ("point" as const) : undefined;
+
   if (data.valuesMode === VALUES_MODE.taxonomy) {
     return {
       name: data.name.trim(),
@@ -406,6 +420,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
       range,
       read_only: data.read_only || undefined,
       dynamic: data.dynamic || undefined,
+      scope,
       taxonomy: data.taxonomy,
     };
   }
@@ -416,9 +431,12 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     component: data.component || undefined,
     values: values?.length ? values : undefined,
     range,
-    default: defaultValue,
+    // No defaults for point scope: label-creation defaults apply scalar
+    // values, and a per-point list has no meaningful scalar default
+    default: scope ? undefined : defaultValue,
     read_only: data.read_only || undefined,
     dynamic: data.dynamic || undefined,
+    scope,
   };
 };
 
@@ -662,28 +680,34 @@ export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
 // Component Reconciliation
 // =============================================================================
 
+/** Class-count default for a label field's classes input type. */
+export const defaultClassesComponent = (classes: string[]): ClassesComponent =>
+  classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio";
+
 /**
- * Auto-adjust the component type to match the current classes.
- * - Classes present + component is "text" → switch to "radio" or "dropdown"
- * - Classes removed + component is "radio"/"dropdown" → switch to "text"
+ * Auto-adjust the component type to match the current choices: `classes`
+ * for label fields, `values` for primitive fields.
+ * - Choices present + component is "text" (or unset) → "radio" or "dropdown"
+ *   by choice count
+ * - Choices present + explicit "radio"/"dropdown" → preserved as chosen
+ * - Choices removed + component is "radio"/"dropdown" → switch to "text"
  */
 export const reconcileComponent = (
   config: SchemaConfigType,
 ): SchemaConfigType => {
-  const { classes, component } = config;
-  const hasClasses = classes && classes.length > 0;
+  const { classes, values, component } = config;
+  const choices = classes?.length ? classes : values;
 
-  if (hasClasses) {
-    if (component === "text") {
+  if (choices && choices.length > 0) {
+    if (!component || component === "text") {
       return {
         ...config,
-        component:
-          classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio",
+        component: defaultClassesComponent(choices.map(String)),
       };
     }
   } else {
-    // Strip empty classes key and reset component to text
-    const { classes: _, ...rest } = config;
+    // Strip empty choice keys and reset component to text
+    const { classes: _classes, values: _values, ...rest } = config;
     if (component === "radio" || component === "dropdown") {
       return { ...rest, component: "text" };
     }
@@ -703,17 +727,42 @@ export const reconcileComponent = (
  * Frame-level fields on video are per-image, so they support the full spatial
  * label set; sample-level video fields are limited to clip-level label types.
  */
-export const getLabelTypeOptions = (
-  mediaType: string | null | undefined,
-  isFrameField = false,
-) => {
+export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
   if (mediaType && is3d(mediaType)) {
     return LABEL_TYPE_OPTIONS_3D;
   }
   if (mediaType === "video") {
-    return isFrameField ? LABEL_TYPE_OPTIONS : LABEL_TYPE_OPTIONS_VIDEO;
+    return LABEL_TYPE_OPTIONS_VIDEO;
   }
   return LABEL_TYPE_OPTIONS;
+};
+
+/** Whether a label type is stored as a frame field on video. */
+export const isFrameLevelLabelType = (labelType: string | null | undefined) =>
+  FRAME_LEVEL_LABEL_TYPES.has(String(labelType ?? "").toLowerCase());
+
+/**
+ * Where a new video LABEL field lives, decided by its type: "frame"
+ * (the form adds the "frames." prefix) or "sample". Undefined for
+ * primitives and non-video media, where the typed name is used as-is.
+ */
+export type NewFieldScope = "frame" | "sample";
+
+/**
+ * Whether a field supports user-added (dynamic) attributes. Video
+ * sample-level label types (Classification / TemporalDetections) do
+ * not — only their built-in attributes are available.
+ */
+export const supportsDynamicAttributes = (
+  mediaType: string | null | undefined,
+  field: string,
+  labelType: string | null | undefined,
+) => {
+  if (mediaType !== "video" || field.startsWith("frames.")) {
+    return true;
+  }
+  const t = String(labelType ?? "").toLowerCase();
+  return t !== "classification" && !t.startsWith("temporaldetection");
 };
 
 // =============================================================================
@@ -727,23 +776,36 @@ export const validateFieldName = (
   fieldName: string,
   existingFields: Record<string, unknown> | null,
   mediaType?: string | null,
+  scope?: NewFieldScope,
 ): string | null => {
   const trimmed = fieldName.trim();
   if (!trimmed) return null;
-  if (existingFields && trimmed in existingFields) {
+
+  // Video label fields: the scope is decided by the label type, so a
+  // typed "frames." is never right — either the form adds it or the
+  // type can't live on frames.
+  if (scope && trimmed.startsWith("frames.")) {
+    return scope === "frame"
+      ? FRAME_PREFIX_AUTO_ERROR
+      : FRAME_PREFIX_SAMPLE_ERROR;
+  }
+  const effective = scope === "frame" ? `frames.${trimmed}` : trimmed;
+  if (existingFields && effective in existingFields) {
     return "Field name already exists";
   }
 
   // Frame fields only exist on video, where a single "frames." prefix targets
-  // the frame schema (e.g. "frames.detections"). The "." stays disallowed
-  // everywhere else, and deeper paths are rejected.
+  // the frame schema (e.g. "frames.detections") — typed by hand for
+  // primitives. The "." stays disallowed everywhere else, and deeper paths
+  // are rejected.
   const isVideo = mediaType === "video";
-  const pattern = isVideo
-    ? /^(frames\.)?[a-zA-Z_][a-zA-Z0-9_]*$/
-    : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+  const pattern =
+    isVideo && !scope
+      ? /^(frames\.)?[a-zA-Z_][a-zA-Z0-9_]*$/
+      : /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
   if (!pattern.test(trimmed)) {
-    return isVideo
+    return isVideo && !scope
       ? "Invalid field name (use letters, numbers, underscores; prefix with frames. for a frame field)"
       : "Invalid field name (use letters, numbers, underscores)";
   }

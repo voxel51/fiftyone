@@ -65,6 +65,8 @@ export type {
   InteractionHandler,
   OverlayEvent,
 } from "./interaction/InteractionManager";
+export { GuidedKeypointHandler } from "./interaction/GuidedKeypointHandler";
+export type { GuidedKeypointCallbacks } from "./interaction/GuidedKeypointHandler";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export {
   InteractiveKeypointHandler,
@@ -95,6 +97,7 @@ export { MergeDetectionsCommand } from "./commands/MergeDetectionsCommand";
 export { MoveKeypointPointCommand } from "./commands/MoveKeypointPointCommand";
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export { RemoveKeypointPointCommand } from "./commands/RemoveKeypointPointCommand";
+export { RotateOverlayCommand } from "./commands/RotateOverlayCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
 export type { MergeDetectionsCommandDeps } from "./commands/MergeDetectionsCommand";
 

@@ -1,8 +1,9 @@
+import { getEventBus } from "@fiftyone/events";
 import { useAtomValue } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
-import { DetectionOverlay, useLighter } from "@fiftyone/lighter";
+import { DetectionOverlay, KeypointOverlay } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem } from "@mui/material";
 import {
@@ -41,8 +42,7 @@ import { useAnnotationContext } from "./useAnnotationContext";
 
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import useColor from "./useColor";
-import useExit from "./useExit";
-import { useDetectionMode } from "./useDetectionMode";
+import { useDeactivateAllModes } from "../useDeactivateAllModes";
 import { useSegmentationMode } from "./useSegmentationMode";
 import {
   AnnotationSaveIndicator,
@@ -166,7 +166,16 @@ const LabelHamburgerMenu = () => {
         )}
         {showDelete && (
           <MenuItem
-            onClick={deleteCommand.callback}
+            onClick={() => {
+              // A sub-selected vertex makes the delete command defer to the
+              // canvas vertex-removal keydown — which a menu click never
+              // produces. The menu means the LABEL: drop the sub-selection
+              // first (synchronous) so the command falls through to it.
+              if (overlay instanceof KeypointOverlay) {
+                overlay.selectPoint(null);
+              }
+              deleteCommand.callback();
+            }}
             data-cy="label-menu-delete"
           >
             <Stack
@@ -189,17 +198,26 @@ const LabelHamburgerMenu = () => {
   );
 };
 
+/** e2e specs wait on the edit form's header naming the label it edits */
+type EditHeaderE2EEvents = {
+  "e2e:annotate:edit-header": { type: string | null };
+};
+
 const Header = () => {
   const annotationContext = useAnnotationContext();
   const { selected } = annotationContext;
   const type = selected?.type ?? null;
+
+  useEffect(() => {
+    getEventBus<EditHeaderE2EEvents>().dispatch("e2e:annotate:edit-header", {
+      type,
+    });
+  }, [type]);
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(selected?.overlay ?? undefined);
 
   const { exitAnnotationMode } = useAnnotationController();
-  const onExit = useExit();
-  const { scene } = useLighter();
-  const { deactivateDetectionMode } = useDetectionMode();
+  const deactivateAll = useDeactivateAllModes();
   const currentFieldIsReadOnly = selected?.isFieldReadOnly ?? false;
 
   // In patches view with single label, clicking back should go to explore mode
@@ -207,20 +225,18 @@ const Header = () => {
   const labelCount = useAtomValue(labels).length;
   const shouldExitToExplore = isPatches && labelCount === 1;
 
+  // Back mirrors the toolbar's Select tool: close the open edit AND leave
+  // every creation mode (2D + 3D), so the toolbar lands on Select no matter
+  // which mode opened the form. Each deactivator finalizes its own edit
+  // (exit interactive mode + `useExit`), so nothing else needs to run here.
+  // Deactivating only detection mode, as this did before, left segmentation
+  // and polyline armed after backing out of their edits.
   const handleExit = useCallback(() => {
     if (shouldExitToExplore) {
       exitAnnotationMode();
     }
-    deactivateDetectionMode();
-    scene?.exitInteractiveMode();
-    onExit();
-  }, [
-    shouldExitToExplore,
-    exitAnnotationMode,
-    onExit,
-    deactivateDetectionMode,
-    scene,
-  ]);
+    deactivateAll();
+  }, [shouldExitToExplore, exitAnnotationMode, deactivateAll]);
 
   return (
     <Row>
@@ -229,7 +245,9 @@ const Header = () => {
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
-        <div style={{ marginRight: "0.75rem" }}>Edit {type}</div>
+        <div style={{ marginRight: "0.75rem" }} data-cy="annotate-edit-title">
+          Edit {type}
+        </div>
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>

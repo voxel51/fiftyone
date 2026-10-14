@@ -44,10 +44,10 @@ export const NonNestedDynamicGroup = () => {
     <RootContainer>
       <ElementsContainer>
         <>
-          {isCarouselVisible && viewMode === "carousel" && (
+          {!isAnnotateMode && isCarouselVisible && viewMode === "carousel" && (
             <DynamicGroupCarousel />
           )}
-          {isBigLookerVisible && (
+          {(isBigLookerVisible || isAnnotateMode) && (
             <GroupSuspense>
               {!is3d(parent) ? <Sample2D /> : <Sample3d />}
             </GroupSuspense>

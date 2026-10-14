@@ -1,25 +1,19 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * AI-assisted segmentation (SAM2) round-trip: enter segmentation mode, pick
- * the AI tool, place a positive point, let the mocked SAM2 worker return a
- * deterministic mask, wait for auto-save to persist it, reload the page,
- * then query the persisted sample from Python to verify a Detection with a
- * non-empty mask was saved.
- *
- * Pairs with the pen-tool round-trip spec to cover the second main
- * segmentation-creation path. Together they guard the lighter → delta-
- * supplier → patchSample chain for both manual and AI-assisted flows.
- *
- * The real SAM2 worker is replaced via the `window.__FO_TEST_SAM2_WORKER_FACTORY`
- * seam on `BrowserAnnotationProvider`, so no ONNX weights are downloaded
- * and no model inference runs.
+ * AI-assisted segmentation (SAM2) round-trip: pick the AI tool, place a
+ * positive point, let the mocked worker return a deterministic mask, await its
+ * autosave, and verify from a fresh browser context that the persisted
+ * detection renders a non-empty mask. The mock is served in place of the
+ * worker script, so no weights download and no inference runs.
  */
 
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
-import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import type { LabelSchema } from "src/shared/dataset-factory";
+import { EventUtils } from "src/shared/event-utils";
+import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 
 const datasetName = getUniqueDatasetNameWithPrefix(
   "smoke-annotate-segmentation-ai",
@@ -35,14 +29,14 @@ const test = base.extend<{
 
 // Minimal Detections schema — the mock worker creates the mask at runtime;
 // the schema only needs to declare the field type and available classes.
-const schema: Record<string, unknown> = {
+const schema: LabelSchema = {
   type: "detections",
   classes: ["cat"],
   attributes: [],
   component: "dropdown",
 };
 
-test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await datasetFactory.createDataset({
     datasetName,
@@ -50,46 +44,33 @@ test.beforeAll(async ({ annotateSDK, datasetFactory, foWebServer }) => {
     schema: {
       instances: "Detections",
     },
+    labelSchemas: {
+      instances: schema,
+    },
   });
-
-  await annotateSDK.updateLabelSchema(datasetName, "instances", schema);
-  await annotateSDK.addFieldToActiveLabelSchema(datasetName, "instances");
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  // Install the mock worker BEFORE the page mounts BrowserAnnotationProvider.
-  // The factory wraps the worker source in a Blob URL so it runs in a real
-  // Worker context — same shape as the production worker.
-  await page.addInitScript((workerSrc: string) => {
-    (
-      window as unknown as {
-        __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker;
-      }
-    ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-      const blob = new Blob([workerSrc], { type: "text/javascript" });
-      return new Worker(URL.createObjectURL(blob));
-    };
-  }, SAM2_MOCK_WORKER_SRC);
+const sampleId = "000000000000000000000000";
 
+test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  await installSam2MockWorker(page);
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+    searchParams: new URLSearchParams({ id: sampleId }),
   });
 });
 
 test.describe.serial("segmentation AI (SAM2) round-trip", () => {
   test("placing a positive point persists a Detection with a mask", async ({
-    annotateSDK,
     fiftyoneLoader,
     modal,
-    page,
+    openFreshPage,
   }) => {
     // ── 1. Enter annotate → segmentation → AI ───────────────────────────────
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
@@ -98,32 +79,37 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
     await modal.sidebar.annotate.assert.toolIsActive("AI");
 
     // ── 2. Place a positive point — inference auto-fires on context change ──
-    await modal.sampleCanvas.click(0.5, 0.5);
-
-    // ── 3. Wait for the inferred detection to persist ───────────────────────
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so wait on the persisted state itself
-    await annotateSDK.waitForDetectionCount(datasetName, "instances");
+    // the label exists, so wait on the save that carries it
+    // ── 3. Wait for the inferred detection to persist ───────────────────────
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.click(0.5, 0.5),
+    );
 
     // The inferred detection is left selected; the create toolbar is hidden
     // while editing, so exit via the edit form rather than the toolbar.
     await modal.sidebar.edit.exitToList();
 
-    // ── 4. Reload and verify the Detection survived ─────────────────────────
-    await page.reload();
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id: "000000000000000000000000" }),
+    // ── 4. A fresh browser context must show the persisted Detection ────────
+    const freshPage = await openFreshPage();
+    await installSam2MockWorker(freshPage);
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+      searchParams: new URLSearchParams({ id: sampleId }),
+      modalSample: "loaded",
     });
-
-    const state = await annotateSDK.getDetectionsState(
-      datasetName,
-      "instances",
+    const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
+    await fresh.afterLighterReady(() =>
+      fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      ),
     );
+    const rows = fresh.sidebar.annotate.labelRowsFor("instances");
+    expect(await rows.count()).toBe(1);
 
-    expect(state.present).toBe(true);
-    expect(state.count).toBeGreaterThanOrEqual(1);
-    // Mock worker's 8x8 all-foreground mask → 64 binary pixels after
-    // normalizeMask. Loose lower bound catches "field saved but mask empty".
-    expect(state.maskPixels).toBeGreaterThan(0);
+    // the mock worker answers with an 8x8 all-foreground mask at box
+    // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
+    await rows.click();
+    await fresh.sidebar.edit.assert.hasMaskPreview();
+    await fresh.sampleCanvas.assert.hasMediaScreenshot("seg-ai-persisted.png");
   });
 });

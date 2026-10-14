@@ -24,14 +24,15 @@ import {
 
 /** Resolves the row color for a per-frame object track. */
 export type ObjectTrackColorResolver = (
-  label: PerInstanceLabel,
+  label: PerInstanceLabel | null,
   path: string,
 ) => string;
 
 /**
  * Build the per-instance object tracks from the server distribution index
  * merged with the engine's edited-frame overlay — no whole-clip walk.
- * `resolved` flips true once the index settles, gating the pin bootstrap.
+ * `resolved` flips true once the index settles — at once when there is no
+ * frame field to index — and gates the pin bootstrap.
  */
 export function useFrameDerivedTracks(
   resolveColor: ObjectTrackColorResolver,
@@ -41,7 +42,8 @@ export function useFrameDerivedTracks(
    *
    * Both gates below derive from the annotation schemas by default, and
    * neither is populated in Explore unless the Schema Manager happens to have
-   * activated them: `useFrameLabelFields` knows only Detections and Polylines,
+   * activated them: `useFrameLabelFields` knows only the types the editor
+   * can create (Detections, Polylines, Keypoints),
    * and `useVisibleLabelSchemas` is annotation-active ∩ explore-active, which
    * is empty when the first half is. That left Explore showing no frame-label
    * tracks at all. When this is supplied it IS the visible set — the sidebar's
@@ -145,7 +147,7 @@ export function useFrameDerivedTracks(
 
   const tracks = useEngineSelector(engine, selectTracks, tracksEqual);
 
-  return { tracks, resolved: loaded };
+  return { tracks, resolved: loaded || allFields.length === 0 };
 }
 
 const EMPTY_TRACKS: Track[] = [];

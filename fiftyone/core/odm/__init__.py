@@ -58,6 +58,10 @@ from .database import (
     import_collection,
     insert_documents,
     bulk_write,
+    InsertAdmitter,
+    InsertRefusedError,
+    register_insert_admitter,
+    unregister_insert_admitter,
 )
 from .dataset import (
     ActiveFields,

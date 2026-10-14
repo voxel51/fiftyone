@@ -1,3 +1,4 @@
+export * from "./modalStatusBar";
 export * from "./useAnnotationContextManager";
 export * from "./useEngine";
 export * from "./useGroupAnnotationSample";

@@ -230,15 +230,14 @@ You can also store your credentials in your
 :ref:`annotation config <annotation-config>` located at
 `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {
             "cvat": {
-                ...
-                "username": ...,
-                "password": ...,
-                "email": ...  # if applicable
+                "username": "<username>",
+                "password": "<password>",
+                "email": "<email>"
             }
         }
     }
@@ -300,13 +299,12 @@ you can configure the URL of your server in any of the following ways:
     :ref:`annotation config <annotation-config>` at
     `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {
             "cvat": {
-                "url": "http://localhost:8080",
-                ...
+                "url": "http://localhost:8080"
             }
         }
     }
@@ -326,15 +324,13 @@ requests, you can provide them in either of the following ways:
     :ref:`annotation config <annotation-config>` at
     `~/.fiftyone/annotation_config.json`:
 
-.. code-block:: text
+.. code-block:: json
 
     {
         "backends": {
             "cvat": {
-                ...
                 "headers": {
-                    "<name>": "<value>",
-                    ...
+                    "<name>": "<value>"
                 }
             }
         }
@@ -1892,6 +1888,70 @@ enter the appropriate scalar in the `value` attribute of the tag.
 .. image:: /images/integrations/cvat_scalar.png
    :alt: cvat-scalar
    :align: center
+
+.. _cvat-rotated-bounding-boxes:
+
+Rotated bounding boxes
+----------------------
+
+.. customavailablein::
+    :oss_version: 1.23.0
+    :enterprise_version: 2.26.0
+
+FiftyOne stores the rotation of a 2D |Detection| as a scalar ``rotation``
+attribute, in radians, measured clockwise about the center of its
+``bounding_box``. CVAT represents the same boxes as rectangles with a
+``rotation`` in degrees, and the integration converts between the two
+automatically: rotated boxes that you upload appear rotated in CVAT, and boxes
+that you rotate in CVAT are stored in radians when you load the annotations
+back into FiftyOne.
+
+.. code-block:: python
+    :linenos:
+
+    import math
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+
+    sample = dataset.first()
+    sample["rotated"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="object",
+                bounding_box=[0.3, 0.3, 0.4, 0.2],
+                rotation=math.radians(30),  # radians, clockwise
+            )
+        ]
+    )
+    sample.save()
+
+    anno_key = "cvat_rotated_boxes"
+
+    dataset.annotate(anno_key, label_field="rotated", launch_editor=True)
+
+    # Rotate the box in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+    print(dataset.first().rotated.detections[0].rotation)  # radians
+
+.. note::
+
+    Prior to FiftyOne 1.23 (FiftyOne Enterprise 2.26), the CVAT integration
+    stored rotations loaded from CVAT verbatim, in **degrees**. If you have
+    rotated boxes that were loaded from CVAT with an earlier version, convert
+    them to radians once using
+    :func:`convert_rotations_to_radians() <fiftyone.utils.cvat.convert_rotations_to_radians>`:
+
+    .. code-block:: python
+
+        import fiftyone.utils.cvat as fouc
+
+        fouc.convert_rotations_to_radians(dataset, "ground_truth")
 
 .. _cvat-alternate-media:
 

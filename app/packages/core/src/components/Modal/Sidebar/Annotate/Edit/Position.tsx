@@ -5,23 +5,25 @@ import {
   type LabelRef,
   useActiveAnnotationSampleId,
   useAnnotationEngine,
+  useAnnotationEventBus,
   useEngineSelector,
   useSignalValue,
 } from "@fiftyone/annotation";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import type { LabelData } from "@fiftyone/utilities";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { setPathUserUnchanged } from "../../../../../plugins/SchemaIO/hooks";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { useAnnotationContext } from "./useAnnotationContext";
 
-const createInput = (name: string, readOnly?: boolean) => {
+const createInput = (name: string, readOnly?: boolean, label = name) => {
   return {
     [name]: {
       type: "number",
       view: {
         name: "View",
-        label: name,
+        label,
         component: "FieldView",
         readOnly,
       },
@@ -45,7 +47,22 @@ const createStack = () => {
 interface Coordinates {
   position: { x?: number; y?: number };
   dimensions: { width?: number; height?: number };
+  // radians, matching the stored `rotation` attribute
+  rotation: { rotation?: number };
 }
+
+/** Whether the inputs already show this geometry. */
+const sameGeometry = (shown: number[] | null, committed: number[]) =>
+  shown !== null && committed.every((value, i) => value === shown[i]);
+
+/** The input paths this form owns, released when the engine commits elsewhere. */
+const EDITED_PATHS = [
+  "position.x",
+  "position.y",
+  "dimensions.width",
+  "dimensions.height",
+  "rotation.rotation",
+];
 
 export interface PositionProps {
   readOnly?: boolean;
@@ -55,11 +72,17 @@ export default function Position({ readOnly = false }: PositionProps) {
   const [state, setState] = useState<Coordinates>({
     position: {},
     dimensions: {},
+    rotation: {},
   });
+
+  // The geometry the inputs are currently displaying, as
+  // [x, y, width, height, rotation].
+  const shown = useRef<number[] | null>(null);
 
   const { selected } = useAnnotationContext();
   const overlay = selected?.overlay;
   const engine = useAnnotationEngine();
+  const eventBus = useAnnotationEventBus();
   const sample = useActiveAnnotationSampleId();
   const dataset = useCurrentDatasetId() ?? "";
 
@@ -85,17 +108,38 @@ export default function Position({ readOnly = false }: PositionProps) {
     ref ? (e.getLabel(ref)?.bounding_box as number[] | undefined) : undefined,
   );
 
+  // scalar 2D rotation in radians; a 3D `[x, y, z]` list reads as undefined
+  const committedRotation = useEngineSelector(engine, (e) => {
+    const rotation = ref ? e.getLabel(ref)?.rotation : undefined;
+    return typeof rotation === "number" ? rotation : undefined;
+  });
+
   useEffect(() => {
     if (!committedBounds || committedBounds.length !== 4) {
       return;
     }
 
     const [x, y, width, height] = committedBounds;
+    const rotation = committedRotation ?? 0;
+    const committed = [x, y, width, height, rotation];
+
+    // The inputs are uncontrolled: `useKey` stops remounting a path once the
+    // user has typed in it, so a drag, an undo or a playhead move would leave
+    // the typed number on screen. Release those paths whenever the engine
+    // holds geometry the inputs are not already showing.
+    if (!sameGeometry(shown.current, committed)) {
+      for (const path of EDITED_PATHS) {
+        setPathUserUnchanged(path);
+      }
+    }
+
+    shown.current = committed;
     setState({
       position: { x, y },
       dimensions: { width, height },
+      rotation: { rotation },
     });
-  }, [committedBounds]);
+  }, [committedBounds, committedRotation]);
 
   // LIVE geometry from the engine — the 2D scene publishes mid-drag relative
   // bounds; we render them directly, never touching Lighter. Render-only: the
@@ -118,7 +162,12 @@ export default function Position({ readOnly = false }: PositionProps) {
     }
 
     const { x, y, width, height } = live.bounds;
-    setState({ position: { x, y }, dimensions: { width, height } });
+    const rotation = live.rotation;
+    setState((prev) => ({
+      position: { x, y },
+      dimensions: { width, height },
+      rotation: typeof rotation === "number" ? { rotation } : prev.rotation,
+    }));
   }, [live]);
 
   const schema: SchemaType = useMemo(
@@ -142,6 +191,13 @@ export default function Position({ readOnly = false }: PositionProps) {
           properties: {
             ...createInput("width", readOnly),
             ...createInput("height", readOnly),
+          },
+        },
+        rotation: {
+          type: "object",
+          view: createStack(),
+          properties: {
+            ...createInput("rotation", readOnly, "rotation (radians)"),
           },
         },
       },
@@ -196,22 +252,63 @@ export default function Position({ readOnly = false }: PositionProps) {
             return;
           }
 
+          const rotation = input.rotation?.rotation;
+
           // immediate display of the typed value
-          setState({
+          setState((prev) => ({
             position: { x: merged.x, y: merged.y },
             dimensions: { width: merged.width, height: merged.height },
-          });
+            rotation:
+              typeof rotation === "number" ? { rotation } : prev.rotation,
+          }));
 
           // commit through the engine: it persists (autosave diffs the engine)
-          // and the Lighter bridge read-half re-homes the overlay. A bare
-          // updateLabel is one implicit transaction, so the engine bridge pushes
-          // the single value-based undo entry — don't also push our own (that
-          // double-counts the edit on the shared command stack).
+          // and the Lighter bridge read-half re-homes the overlay. The engine
+          // pushes the undo entry; a video surface folds its keyframe promotion
+          // into the same `undoKey`.
           const next = [merged.x, merged.y, merged.width, merged.height];
 
-          engine.updateLabel(ref, {
-            bounding_box: next,
-          } as Partial<LabelData>);
+          // write `rotation` only when it carries signal — a nonzero value, or
+          // zeroing out a stored scalar. Never stamp 0 onto boxes that were
+          // never rotated, and never replace a 3D `[x, y, z]` rotation list
+          // with a scalar.
+          const storedRotation = engine.getLabel(ref)?.rotation;
+          const rotationData =
+            !Array.isArray(storedRotation) &&
+            typeof rotation === "number" &&
+            (rotation !== 0 || typeof storedRotation === "number")
+              ? { rotation }
+              : {};
+
+          shown.current = [...next, rotation ?? state.rotation.rotation ?? 0];
+
+          // re-entering the stored value is no edit, so it must not promote
+          const storedLabel = engine.getLabel(ref);
+          const unchanged =
+            Array.isArray(storedLabel?.bounding_box) &&
+            storedLabel.bounding_box.length === next.length &&
+            storedLabel.bounding_box.every(
+              (v: number, i: number) => v === next[i],
+            ) &&
+            (!("rotation" in rotationData) ||
+              rotationData.rotation === storedRotation);
+          if (unchanged) {
+            return;
+          }
+
+          const undoKey = engine.mintGestureId();
+          engine.transaction(
+            () =>
+              engine.updateLabel(ref, {
+                bounding_box: next,
+                ...rotationData,
+              } as Partial<LabelData>),
+            { undoKey },
+          );
+          eventBus.dispatch("annotation:formGeometryCommitted", {
+            ref,
+            undoKey,
+          });
         }}
       />
     </div>

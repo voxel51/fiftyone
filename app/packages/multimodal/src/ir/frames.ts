@@ -43,8 +43,31 @@ interface BaseEncodedVideoVisualization {
   readonly decodeTimestampNs?: bigint;
   readonly format: string;
   readonly keyframe?: boolean;
+  /**
+   * Payloads a decoder takes, in decode order, immediately before this unit's
+   * own. On a unit marked `keyframe` whose own payload is a delta, they run
+   * from the stream keyframe at or before the timeline start, which makes the
+   * unit a random access point on this timeline. On any other unit they are
+   * helpers outside the timeline that later pictures reference.
+   */
+  readonly preroll?: readonly EncodedVideoPrerollUnit[];
   readonly timestampNs?: bigint;
 }
+
+/** One payload decoded ahead of the unit that carries it. */
+export interface EncodedVideoPrerollUnit {
+  readonly bytes: Uint8Array;
+  readonly keyframe: boolean;
+  /**
+   * Presentation time of a payload that is also a unit of its own on the
+   * timeline: its picture is kept when decoded here. Absent for a payload
+   * outside the timeline, whose picture is discarded.
+   */
+  readonly timestampNs?: bigint;
+}
+
+/** Codec families the encoded-video contract names. */
+export type EncodedVideoCodec = "av1" | "h264" | "h265" | "unknown" | "vp9";
 
 /**
  * Encoded H.264 access unit decoded from one message.
@@ -57,12 +80,40 @@ export interface EncodedH264VideoVisualization extends BaseEncodedVideoVisualiza
     readonly pps?: Uint8Array;
     readonly sps?: Uint8Array;
   };
+  readonly hevc?: never;
+  readonly undecodable?: never;
 }
 
 /** AV1 temporal unit carried directly from an ISO BMFF sample. */
 export interface EncodedAv1VideoVisualization extends BaseEncodedVideoVisualization {
   readonly codec: "av1";
   readonly h264?: never;
+  readonly hevc?: never;
+  readonly undecodable?: never;
+}
+
+/** Annex B HEVC access unit with the parameter sets a decoder needs in band. */
+export interface EncodedHevcVideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: "h265";
+  readonly h264?: never;
+  readonly hevc: {
+    readonly codecString?: string;
+    /** VPS/SPS/PPS from the container's `hvcC`, Annex B framed. */
+    readonly parameterSets?: Uint8Array;
+  };
+  readonly undecodable?: never;
+}
+
+/**
+ * An access unit no decoder in this client can take. It carries no decoder
+ * payload; `format` names the codec so a renderer reports which one rather
+ * than waiting for frames that will never decode.
+ */
+export interface UndecodableVideoVisualization extends BaseEncodedVideoVisualization {
+  readonly codec: EncodedVideoCodec;
+  readonly h264?: never;
+  readonly hevc?: never;
+  readonly undecodable: true;
 }
 
 /**
@@ -73,10 +124,8 @@ export interface EncodedAv1VideoVisualization extends BaseEncodedVideoVisualizat
 export type EncodedVideoVisualization =
   | EncodedH264VideoVisualization
   | EncodedAv1VideoVisualization
-  | (BaseEncodedVideoVisualization & {
-      readonly codec: "h265" | "vp9";
-      readonly h264?: never;
-    });
+  | EncodedHevcVideoVisualization
+  | UndecodableVideoVisualization;
 
 /**
  * Raw image pixels normalized by a decoder. Ordinary color images carry

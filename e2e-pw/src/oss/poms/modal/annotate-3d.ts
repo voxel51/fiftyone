@@ -1,60 +1,36 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { ModalPom } from ".";
 
+const POSITION_SHOWN = "e2e:annotate:position3d-shown";
+type PositionShown = { labelId: string; x: string; y: string; z: string };
+
 /**
- * The 3D annotation surface: the `looker3d` viewer in ANNOTATE mode plus its
- * floating annotation toolbar (cuboid create, transform gizmo, delete,
- * annotation plane, polyline segments). Composes with the shared modal POMs
- * (`modal.sidebar.annotate` / `modal.sidebar.edit` / `modal.looker3dControls`)
- * — only the 3D-specific toolbar + canvas affordances live here.
- *
- * The annotation toolbar is the shared Voodo `ActionToolbar`, whose buttons
- * expose their action `id` as `data-cy` and active state as `data-cy-active`
- * (e.g. `create-cuboid`, `translate`, `rotate`, `scale`, `contextual-delete`,
- * `toggle-annotation-plane`, `new-segment`). The whole toolbar is gated on an
- * active 3D annotation mode (`MediaTypeFo3d`): it mounts only once a
- * cuboid/polyline is selected (selection arms the mode) or a draw mode is
- * entered — NOT on bare entry into annotate mode. The transform group is only
- * mounted while a cuboid/polyline is selected; the cuboid group only while
- * cuboid-draw mode is active.
- *
- * Sidebar label rows are the engine-presence-derived rows shared with the 2D
- * and video surfaces: `[data-cy^=annotate-label-]` carrying `data-cy-label` /
- * `data-cy-path`.
+ * The 3D annotation surface: the `looker3d` viewer in annotate mode plus its
+ * floating annotation toolbar, composing with the shared modal POMs. Toolbar
+ * buttons expose their action `id` as `data-cy` and active state as
+ * `data-cy-active`; the toolbar mounts only once a label is selected or a draw
+ * mode is entered, never on bare entry into annotate mode.
  */
 export class ModalAnnotate3dPom {
   readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: ModalAnnotate3dAsserter;
   readonly container: Locator;
-  readonly canvas: Locator;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
     this.assert = new ModalAnnotate3dAsserter(this);
     this.container = page.getByTestId("looker3d");
-    this.canvas = this.container.locator("canvas").first();
   }
 
   /**
-   * Wait until the 3D scene is interactable: the looker3d container is mounted
-   * and all scene assets have finished loading. Call this before any toolbar /
-   * canvas interaction.
+   * Run `action` (the switch to annotate, or an annotation slice pick) and
+   * resolve once the 3D scene it (re)mounts is interactable: all assets
+   * loaded and the camera settled. Toolbar and canvas interaction goes after.
    */
-  async waitForSurface() {
-    await expect(this.container).toBeVisible();
-    await this.modal.looker3dControls.waitForAllAssetsLoaded();
-  }
-
-  /** Switch the modal into ANNOTATE mode (the explore/annotate toggle). */
-  async enterAnnotateMode() {
-    await this.page.getByTestId("annotate").click();
-  }
-
-  /** Switch the modal back into EXPLORE mode. */
-  async enterExploreMode() {
-    await this.page.getByTestId("explore").click();
+  async afterSurface<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.afterSceneReady(action);
   }
 
   /**
@@ -99,10 +75,10 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * A floating annotation-toolbar button by its action id. The toolbar renders
-   * in the modal portal, so it's targeted off `page`. Groups mount/unmount with
-   * context (transform group needs a selection, cuboid group needs draw mode),
-   * so callers must establish that state before clicking.
+   * A floating annotation-toolbar button by its action id, targeted off `page`
+   * because the toolbar renders in the modal portal. Groups mount with context
+   * (transform needs a selection, cuboid needs draw mode), so establish that
+   * state before clicking.
    */
   toolbarButton(id: ToolbarActionId): Locator {
     return this.page.locator(`[data-cy="${id}"]`);
@@ -113,24 +89,9 @@ export class ModalAnnotate3dPom {
     await this.toolbarButton("create-cuboid").click();
   }
 
-  /** Select a transform gizmo mode for the currently-selected label. */
-  async setTransformMode(mode: "translate" | "rotate" | "scale") {
-    await this.toolbarButton(mode).click();
-  }
-
   /** Delete the currently-selected label via the toolbar Delete button. */
   async deleteSelected() {
     await this.toolbarButton("contextual-delete").click();
-  }
-
-  /** Deselect / exit the edit form via the toolbar (Esc-equivalent). */
-  async deselect() {
-    await this.toolbarButton("exit-edit-mode").click();
-  }
-
-  /** Toggle the annotation plane helper. */
-  async toggleAnnotationPlane() {
-    await this.toolbarButton("toggle-annotation-plane").click();
   }
 
   /**
@@ -145,14 +106,55 @@ export class ModalAnnotate3dPom {
       .getByTestId(`position3d-${axis}`);
   }
 
+  /** Select a listed cuboid; resolves once the position inputs show it */
+  async selectCuboid(labelText: string): Promise<void> {
+    await this.modal.eventUtils.after(
+      POSITION_SHOWN,
+      () => this.selectLabel(labelText),
+      (e) => (e.detail as PositionShown).x !== "",
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the position inputs show values that
+   * differ from the last ones they showed
+   */
+  async afterPositionChanged<T>(action: () => Promise<T>): Promise<T> {
+    const key = (p: PositionShown) => `${p.labelId} ${p.x} ${p.y} ${p.z}`;
+    const before = (
+      (await this.modal.eventUtils.recorded(POSITION_SHOWN)) as PositionShown[]
+    ).at(-1);
+    return this.modal.eventUtils.after(POSITION_SHOWN, action, (e) => {
+      const position = e.detail as PositionShown;
+      return position.x !== "" && (!before || key(position) !== key(before));
+    });
+  }
+
   /** Set a Position3d geometry value (commits an undoable engine write). */
   async setGeometry(axis: GeometryAxis, value: string) {
     await this.geometryField(axis).fill(value);
   }
 
-  /** Read a Position3d geometry input's current value. */
-  async getGeometry(axis: GeometryAxis): Promise<string> {
-    return this.geometryField(axis).inputValue();
+  /**
+   * Run `action` (a label selection) and resolve once the selected polyline
+   * the 3D viewer commits has `count` vertices
+   */
+  async afterSelectedVertices<T>(count: number, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:selected-vertices",
+      action,
+      (e) => (e.detail as { count: number }).count === count,
+    );
+  }
+
+  /**
+   * Vertex count of the selected 3D polyline, read off the looker3d
+   * container; select through {@link afterSelectedVertices} first
+   */
+  async selectedVertexCount(): Promise<number> {
+    return Number(
+      await this.container.getAttribute("data-cy-selected-vertex-count"),
+    );
   }
 
   /**
@@ -187,95 +189,30 @@ export class ModalAnnotate3dPom {
   }
 
   /**
-   * The engine instanceId of a listed label (strips the `annotate-label-`
-   * prefix from its `data-cy`).
+   * Run `action` (a cuboid selection) and resolve once the annotation toolbar
+   * shows the transform group it arms
    */
-  async labelRowId(labelText: string): Promise<string> {
-    const cy = await this.labelRow(labelText).first().getAttribute("data-cy");
-    return (cy ?? "").replace(/^annotate-label-/, "");
+  async afterTransformShown<T>(action: () => Promise<T>): Promise<T> {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:annotation-toolbar",
+      action,
+      (e) => {
+        const detail = e.detail as { visible: boolean; transformMode: string };
+        return detail.visible && detail.transformMode !== "";
+      },
+    );
   }
 
   /**
-   * Draw a cuboid with the three-click gesture (center → orientation → width)
-   * at container-fractional coordinates. Each click is an explicit
-   * move→down→up so the looker-3d empty-canvas pointer handler raycasts a plane
-   * point per click.
-   *
-   * Clicks raycast onto the annotation plane (the world XY plane at z=0 by
-   * default), so pair this with a top view (`looker3dControls.setTopView()`) to
-   * make the gesture land deterministically. The resulting geometry is still
-   * camera-dependent, so assert that a cuboid was created + persisted rather
-   * than exact location/dimensions.
+   * Run `action` (a click on the 3D canvas while drawing a polyline) and
+   * resolve once the draft has `count` vertices
    */
-  async drawCuboid(points: Array<[number, number]>) {
-    if (points.length !== 3) {
-      throw new Error("a cuboid draw is exactly three clicks");
-    }
-
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("3D canvas has no bounding box");
-    }
-
-    for (const [fx, fy] of points) {
-      const x = box.x + box.width * fx;
-      const y = box.y + box.height * fy;
-      await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-    }
-  }
-
-  /**
-   * Draw a polyline by placing a vertex at each container-fractional point with
-   * a single click, then committing with a double-click at the last point.
-   *
-   * The looker-3d segment renderer detects a commit via a sub-200ms
-   * double-click (it drops the duplicate vertex the double-click would add and
-   * commits the rest), so each placement click is spaced beyond that window to
-   * register as a distinct vertex, and the final commit is a deliberate rapid
-   * double-click. Pass at least two points and keep the last point clear of the
-   * first (a click within the snap tolerance of the first vertex closes the
-   * loop instead of committing).
-   *
-   * Like {@link drawCuboid}, clicks raycast onto the annotation plane (world XY
-   * at z=0), so pair this with a top view; assert that a polyline was created +
-   * persisted rather than its exact vertices (camera-dependent world coords).
-   */
-  async drawPolyline(points: Array<[number, number]>) {
-    if (points.length < 2) {
-      throw new Error("a polyline draw needs at least two clicks");
-    }
-
-    const box = await this.canvas.boundingBox();
-    if (!box) {
-      throw new Error("3D canvas has no bounding box");
-    }
-
-    const toScreen = ([fx, fy]: [number, number]): [number, number] => [
-      box.x + box.width * fx,
-      box.y + box.height * fy,
-    ];
-
-    // place each vertex with a single click, spaced beyond the ~200ms
-    // double-click window so none reads as a commit
-    for (const point of points) {
-      const [x, y] = toScreen(point);
-      await this.page.mouse.move(x, y);
-      await this.page.mouse.down();
-      await this.page.mouse.up();
-      // the double-click window is itself a timeout; spacing is the semantics
-      // eslint-disable-next-line playwright/no-wait-for-timeout
-      await this.page.waitForTimeout(250);
-    }
-
-    // commit with a rapid double-click at the last vertex
-    const [lx, ly] = toScreen(points[points.length - 1]);
-    await this.page.mouse.move(lx, ly);
-    await this.page.mouse.down();
-    await this.page.mouse.up();
-    await this.page.mouse.down();
-    await this.page.mouse.up();
+  async afterDraftVertices<T>(count: number, action: () => Promise<T>) {
+    return this.modal.eventUtils.after(
+      "e2e:looker3d:draft-vertices",
+      action,
+      (e) => (e.detail as { count: number }).count === count,
+    );
   }
 }
 
@@ -288,33 +225,36 @@ class ModalAnnotate3dAsserter {
    * annotate mode (the cuboid/polyline/transform groups mount on demand).
    */
   async toolbarVisible(visible = true) {
-    const plane = this.pom.toolbarButton("toggle-annotation-plane");
-    return visible
-      ? await expect(plane).toBeVisible()
-      : await expect(plane).toBeHidden();
+    expect(
+      await this.pom.toolbarButton("toggle-annotation-plane").isVisible(),
+    ).toBe(visible);
   }
 
   /** Assert cuboid-draw mode is active (Create Cuboid button highlighted). */
   async createCuboidActive(active = true) {
-    await expect(this.pom.toolbarButton("create-cuboid")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("create-cuboid")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert polyline annotation mode is active (the sidebar 3D Polylines button). */
   async polylineModeActive(active = true) {
-    await expect(
-      this.pom.page.locator('[data-cy="polyline-mode-3d"]'),
-    ).toHaveAttribute("data-cy-active", String(active));
+    expect(
+      await this.pom.page
+        .locator('[data-cy="polyline-mode-3d"]')
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /** Assert the New Segment polyline action is active (segmentation armed). */
   async newSegmentActive(active = true) {
-    await expect(this.pom.toolbarButton("new-segment")).toHaveAttribute(
-      "data-cy-active",
-      String(active),
-    );
+    expect(
+      await this.pom
+        .toolbarButton("new-segment")
+        .getAttribute("data-cy-active"),
+    ).toBe(String(active));
   }
 
   /**
@@ -322,27 +262,37 @@ class ModalAnnotate3dAsserter {
    * gizmo mode is active.
    */
   async transformModeActive(mode: "translate" | "rotate" | "scale") {
-    await expect(this.pom.toolbarButton(mode)).toHaveAttribute(
-      "data-cy-active",
-      "true",
-    );
+    expect(
+      await this.pom.toolbarButton(mode).getAttribute("data-cy-active"),
+    ).toBe("true");
   }
 
   /** Assert a label (by class text) is / isn't listed in the sidebar. */
   async labelListed(labelText: string, listed = true) {
     const row = this.pom.labelRow(labelText);
-    return listed
-      ? await expect(row).toBeVisible()
-      : await expect(row).toHaveCount(0);
+    if (listed) {
+      expect(await row.isVisible()).toBe(true);
+    } else {
+      expect(await row.count()).toBe(0);
+    }
   }
 
   /** Assert the number of label rows currently listed. */
   async labelCount(expected: number) {
-    await expect(this.pom.labelRows).toHaveCount(expected);
+    expect(await this.pom.labelRows.count()).toBe(expected);
   }
 }
 
-type GeometryAxis = "x" | "y" | "z" | "lx" | "ly" | "lz" | "rx" | "ry" | "rz";
+export type GeometryAxis =
+  | "x"
+  | "y"
+  | "z"
+  | "lx"
+  | "ly"
+  | "lz"
+  | "rx"
+  | "ry"
+  | "rz";
 
 type ToolbarActionId =
   | "create-cuboid"

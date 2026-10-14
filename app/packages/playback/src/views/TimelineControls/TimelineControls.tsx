@@ -141,8 +141,10 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
   const handleClick = onToggle
     ? (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
+        // [data-toggle-exempt] marks control regions whose internals are not
+        // semantically interactive; clicks there belong to the control
         const interactive = target.closest(
-          'button, [role="button"], a, input, select, textarea',
+          'button, [role="button"], [role="slider"], a, input, select, textarea, [data-toggle-exempt]',
         );
         if (interactive && interactive !== e.currentTarget) return;
         onToggle();
@@ -202,7 +204,6 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
       <SpeedControl />
       <PlayheadTime />
       <LoopBounds />
-      <BufferingIndicator />
       {readouts}
 
       {(extraControls || extraActions) && (
@@ -216,6 +217,9 @@ const TimelineControls: React.FC<TimelineControlsProps> = ({
           {extraActions}
         </>
       )}
+
+      {/* Last: it comes and goes with every stall, shifting anything after it. */}
+      <BufferingIndicator />
       {(trailingActions || onToggle) && (
         <div className={styles.trailing}>
           {trailingActions ? (

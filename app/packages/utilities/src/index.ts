@@ -15,6 +15,7 @@ export * from "./order";
 export * from "./paths";
 export * from "./permission";
 export * from "./Resource";
+export * from "./rotated-box";
 export * from "./sample";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
@@ -341,11 +342,6 @@ export const VALID_LIST_LABEL_FIELDS = [
   POLYLINES_FIELD,
 ];
 
-export const DISABLED_LABEL_FIELDS_VISIBILITY = [
-  ...VALID_NON_LIST_LABEL_TYPES,
-  ...VALID_LIST_LABEL_FIELDS,
-];
-
 export const VALID_PRIMITIVE_TYPES = [
   BOOLEAN_FIELD,
   DATE_FIELD,
@@ -414,78 +410,6 @@ export const CLIPS_FRAME_FIELDS = withPath(LABELS_PATH, [
   "Polylines",
 ]);
 
-export const DISABLED_PATHS = ["id", "filepath", "tags", "metadata"];
-
-const BASE_DISABLED_PATHS = ["id", "tags", "label", "confidence"];
-
-export const DETECTION_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "bounding_box",
-  "mask",
-  "index",
-];
-
-export const POLYLINE_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "points",
-  "closed",
-  "filled",
-  "index",
-];
-
-export const CLASSIFICATION_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "logits",
-];
-
-export const REGRESSION_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "value",
-  "confidence",
-];
-
-export const KEYPOINT_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "points",
-  "index",
-];
-
-export const SEGMENTATION_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "mask",
-  "mask_path",
-];
-
-export const HEATMAP_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "map",
-  "map_path",
-  "range",
-];
-
-export const TEMPORAL_DETECTION_DISABLED_SUB_PATHS = [
-  ...BASE_DISABLED_PATHS,
-  "support",
-];
-
-export const GEOLOCATION_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "point",
-  "line",
-  "polygon",
-];
-
-export const GEOLOCATIONS_DISABLED_SUB_PATHS = [
-  "id",
-  "tags",
-  "point",
-  "line",
-  "polygons",
-];
 export const BUILT_IN_PANEL_PRIORITY_CONST = 51000;
 
 export function withPath(path: string, types: string): string;
@@ -608,6 +532,11 @@ export const formatDateTime = (
 
   const options = buildDateTimeOpts(timeZone);
 
+  // show the precision the value carries: milliseconds when it has them
+  if (timeStamp % MS) {
+    options.fractionalSecondDigits = 3;
+  }
+
   if (!(timeStamp % S)) {
     delete options.second;
   }
@@ -620,9 +549,13 @@ export const formatDateTime = (
     delete options.hour;
   }
 
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
+  return (
+    new Intl.DateTimeFormat("en-ZA", options)
+      .format(timeStamp)
+      .replaceAll("/", "-")
+      // the locale writes the fraction with a comma
+      .replace(/,(\d{3})$/, ".$1")
+  );
 };
 
 export const formatLongDateTime = (

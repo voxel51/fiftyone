@@ -1,13 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Per-frame detection drawing on the video-annotation surface: drawing a box in
- * detection mode adds a track to the timeline, the freshly-drawn box opens its
- * edit form, assigning a class commits it through the engine, and the frame
- * label survives a true round-trip (fresh browser context). Foundational
- * coverage for video on the annotation engine.
+ * Per-frame detection drawing on the video surface: a box drawn in detection
+ * mode adds a timeline track, opens its edit form, commits on class assignment,
+ * and survives a fresh browser context. Foundational coverage for video on the
+ * annotation engine.
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -17,7 +16,6 @@ const datasetName = getUniqueDatasetNameWithPrefix("annotate-video-draw");
 
 /** Fixed ObjectId addressing the first sample (so we can deep-link the modal). */
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -25,18 +23,60 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory, videoAnnotateSDK }) => {
+test.beforeAll(async ({ foWebServer, datasetFactory }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
   // clean slate (no pre-seeded tracks): drawing is the only object track.
-  await videoAnnotateSDK.seed({ datasetName, videoPaths: [clip] });
+  await datasetFactory.createDataset({
+    mediaType: "video",
+    datasetName,
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      events: "TemporalDetections",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      events: {
+        type: "temporaldetections",
+        component: "dropdown",
+        classes: ["approach", "pass", "depart"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+        ],
+      },
+    },
+    // three events split the clip into thirds
+    withSampleData: ({ numFrames }, { label }) => {
+      const a = Math.max(1, Math.floor(numFrames / 3));
+      const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+      return {
+        events: label.temporalDetections([
+          label.temporalDetection({ label: "approach", support: [1, a] }),
+          label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+          label.temporalDetection({
+            label: "depart",
+            support: [b + 1, numFrames],
+          }),
+        ]),
+      };
+    },
+    // present-but-empty on every frame, so the first draw's patch can append
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
+  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -52,31 +92,26 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 test.describe.serial("video per-frame detection drawing", () => {
   test("drawing a box adds a timeline track, opens its editor, and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -88,26 +123,24 @@ test.describe.serial("video per-frame detection drawing", () => {
 
     // draw a box in detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.55, 0.55);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.78, 0.78);
-    await modal.sampleCanvas.up();
+    await modal.videoAnnotate.afterTracksChange(async () => {
+      await modal.sampleCanvas.move(0.55, 0.55);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.78, 0.78);
+      await modal.sampleCanvas.up();
+    });
 
     // the draw creates exactly one object track on the timeline
     await modal.videoAnnotate.assert.objectTrackCount(1);
 
     // the freshly-drawn box opens its edit form; assigning a class commits it
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the frame label survives a true round-trip
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.assert.objectTrackCount(1);
     });
   });

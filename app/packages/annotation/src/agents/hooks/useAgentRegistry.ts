@@ -2,6 +2,7 @@ import { AgentDescriptor, AgentRegistry } from "../registry";
 import { atom, useAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { AnnotationAgent, InferenceResultProxy } from "../types";
+import { KeypointPropagationBrowserAgent } from "../KeypointPropagationBrowserAgent";
 import { PolylinePropagationBrowserAgent } from "../PolylinePropagationBrowserAgent";
 import { PropagationBrowserAgent } from "../PropagationBrowserAgent";
 import { SAM2BrowserAnnotationAgent } from "../SAM2BrowserAnnotationAgent";
@@ -29,6 +30,16 @@ const registryAtom = atom<RegistryMap>({
     id: "propagate-linear-polyline",
     label: "Linear interpolation (polyline)",
     agent: new PolylinePropagationBrowserAgent(),
+    // like the other propagation agents: dispatched by label type, never a
+    // user-pickable annotation model
+    unlisted: true,
+  },
+  // keypoint tracks lerp per skeleton node, preserving [NaN, NaN] holes
+  "propagate-linear-keypoint": {
+    id: "propagate-linear-keypoint",
+    label: "Linear interpolation (keypoint)",
+    agent: new KeypointPropagationBrowserAgent(),
+    unlisted: true,
   },
   "propagate-sam2": {
     id: "propagate-sam2",

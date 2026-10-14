@@ -2,7 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { rollbackViewBar } from "@fiftyone/core";
 import { setView, subscribe, type setViewMutation } from "@fiftyone/relay";
 import {
   type State,
@@ -11,6 +10,7 @@ import {
   stateSubscription,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
+import { rollbackViewBar } from "@fiftyone/view-bar";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
@@ -68,6 +68,9 @@ const onSetView: RegisteredSetter =
         sessionRef.current.selectedLabels = [];
         sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
+        // The silent schema-policy exclusion (`$extendedView`) must
+        // survive a view change; only Field Visibility resets.
+        const { schemaExclusion } = router.get().state;
         router.history.push(
           resolveURL({
             currentPathname: router.history.location.pathname,
@@ -76,6 +79,7 @@ const onSetView: RegisteredSetter =
           }),
           {
             view,
+            schemaExclusion,
           },
         );
       },

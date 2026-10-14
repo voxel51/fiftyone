@@ -824,6 +824,68 @@ describe("TimelineTrack", () => {
       expect(newEnd).toBeCloseTo(7);
     });
 
+    it("stops a resize-end drag at the timeline's end", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        duration: 10,
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const endHandle = container.querySelector(
+        `.${styles.resizeHandleEnd}`,
+      ) as HTMLElement;
+      // +6s would put endSec at 12, past the 10s timeline.
+      dragOnElement(endHandle, 600, 1200);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(4);
+      expect(newEnd).toBeCloseTo(10);
+    });
+
+    it("stops a resize-start drag at the timeline's start", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        duration: 10,
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const startHandle = container.querySelector(
+        `.${styles.resizeHandleStart}`,
+      ) as HTMLElement;
+      dragOnElement(startHandle, 400, -200);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(0);
+      expect(newEnd).toBeCloseTo(6);
+    });
+
+    it("keeps a moved interval on the timeline, preserving its width", () => {
+      const onEventEdit = vi.fn();
+      const { container } = renderTrack({
+        duration: 10,
+        track: {
+          start: 0,
+          end: 10,
+          events: [baseInterval],
+          onEventEdit,
+        },
+      });
+      const bar = container.querySelector(
+        `.${styles.intervalBar}`,
+      ) as HTMLElement;
+      // +7s would carry [4, 6] to [11, 13]; it slides back to [8, 10].
+      dragOnElement(bar, 500, 1200);
+      const [, newStart, newEnd] = onEventEdit.mock.calls[0];
+      expect(newStart).toBeCloseTo(8);
+      expect(newEnd).toBeCloseTo(10);
+    });
+
     it("snaps drag results to snapStepSec when provided", () => {
       const onEventEdit = vi.fn();
       const { container } = renderTrack({

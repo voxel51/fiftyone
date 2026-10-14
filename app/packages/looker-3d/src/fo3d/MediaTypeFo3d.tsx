@@ -13,6 +13,7 @@ import { MultiPanelView } from "../annotation/MultiPanelView";
 import { SinglePanelView } from "../annotation/SinglePanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
+import { LookerErrorShown } from "../ErrorBoundary";
 import {
   useFo3d,
   useFo3dCameraControlsConfig,
@@ -25,7 +26,10 @@ import {
   useTrackStatus,
 } from "../hooks";
 import type { Looker3dSettings } from "../settings";
-import { useCurrent3dAnnotationMode } from "../state/accessors";
+import {
+  useCurrent3dAnnotationMode,
+  useSetFo3dSceneReady,
+} from "../state/accessors";
 import {
   FO3D_CAMERA_LIFECYCLE,
   FO3D_CAMERA_LIFECYCLE_ACTION,
@@ -113,6 +117,7 @@ const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
       dataCy="looker3d"
       wrapperStyle={{ textAlign: "center", maxWidth: 420 }}
     >
+      <LookerErrorShown />
       <div data-cy="looker-error-info">{message}</div>
     </Loading>
   );
@@ -175,6 +180,21 @@ export const MediaTypeFo3dComponent = () => {
     rootAssetCount,
     isThreeJsLoading: threeJsLoadingStatus.isLoading,
   });
+
+  // e2e draws wait on this before clicking; the top view frames the scene
+  // bounds, so those must be resolved too. A scene swap resets it.
+  const setSceneReady = useSetFo3dSceneReady();
+  useEffect(() => {
+    setSceneReady(
+      isSceneReady && !threeJsLoadingStatus.isLoading && isBoundsResolved,
+    );
+    return () => setSceneReady(false);
+  }, [
+    isSceneReady,
+    threeJsLoadingStatus.isLoading,
+    isBoundsResolved,
+    setSceneReady,
+  ]);
 
   const { upVector, effectiveSceneBoundingBox, contextValue } =
     useFo3dSceneContextState({

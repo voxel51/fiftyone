@@ -62,3 +62,38 @@ _VIEW_TARGET_VALUES = tuple(
     for name, value in vars(ViewTarget).items()
     if not name.startswith("_") and isinstance(value, str)
 )
+
+_MEDIA_SCOPE_SEPARATOR = "|media:"
+
+
+def scope_view_target(target, media_type):
+    """Returns the view target value that scopes ``target`` of a grouped
+    dataset to every group slice of ``media_type``.
+
+    Args:
+        target: a :class:`ViewTarget` value
+        media_type: a group slice media type
+
+    Returns:
+        a view target value
+    """
+    return f"{target}{_MEDIA_SCOPE_SEPARATOR}{media_type}"
+
+
+def split_view_target(value):
+    """Splits a view target value into its :class:`ViewTarget` and the group
+    slice media type it is scoped to.
+
+    Args:
+        value: a view target value, as returned by :func:`scope_view_target`
+            or a :class:`ViewTarget` value
+
+    Returns:
+        a ``(target, media_type)`` tuple, where ``media_type`` is ``None`` if
+        the value is not scoped
+    """
+    if value and _MEDIA_SCOPE_SEPARATOR in value:
+        target, media_type = value.split(_MEDIA_SCOPE_SEPARATOR, 1)
+        return target, media_type
+
+    return value, None

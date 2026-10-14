@@ -1,3 +1,4 @@
+import { getEventBus, LocalEventTarget } from "@fiftyone/events";
 import { buildThumbnailSelectionDetail } from "@fiftyone/looker/src/selection";
 import {
   type SampleRendererGridClickBehavior,
@@ -6,13 +7,17 @@ import {
 } from "@fiftyone/plugins";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useMcapGridOverlays } from "@fiftyone/multimodal/extensions/timeline";
-import { EpisodeGridOverlay } from "@fiftyone/multimodal/grid-overlay";
 import { MEDIA_TYPE_MULTIMODAL } from "@fiftyone/utilities";
 import { Checkbox } from "@mui/material";
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import GridTagBubbles from "./GridTagBubbles";
+import { TileLanes } from "./TileLanes";
+
+/** e2e specs wait on a custom-rendered tile committing */
+type GridCustomRendererE2EEvents = {
+  "e2e:grid:custom-renderer-mounted": undefined;
+};
 
 type GridCustomRendererItemConfig = {
   pluginName: string;
@@ -174,6 +179,12 @@ const GridCustomRendererWrapper = ({
 }: GridCustomRendererWrapperProps) => {
   const [hovering, setHovering] = React.useState(false);
   const showSelectionControl = hovering || selected;
+
+  React.useEffect(() => {
+    getEventBus<GridCustomRendererE2EEvents>().dispatch(
+      "e2e:grid:custom-renderer-mounted",
+    );
+  }, []);
   const passThroughGridActivation = clickBehavior === "passthrough";
 
   return (
@@ -205,40 +216,6 @@ const GridCustomRendererWrapper = ({
         />
       )}
     </div>
-  );
-};
-
-// Keyed by the overlay's own reference (stable per registration), not its
-// position in the registry's array — an earlier overlay unregistering must
-// not shift a later one's key and force it to remount.
-const overlayIds = new WeakMap<
-  React.ComponentType<SampleRendererProps>,
-  number
->();
-let nextOverlayId = 0;
-function overlayKey(overlay: React.ComponentType<SampleRendererProps>): number {
-  let id = overlayIds.get(overlay);
-  if (id === undefined) {
-    id = nextOverlayId++;
-    overlayIds.set(overlay, id);
-  }
-  return id;
-}
-
-/** Edition-registered grid-tile overlays (rendered inside the multimodal
- * guard); nothing renders before anything registers. */
-const McapGridOverlays = ({
-  ctx,
-}: {
-  readonly ctx: SampleRendererRenderContext;
-}) => {
-  const overlays = useMcapGridOverlays();
-  return (
-    <>
-      {overlays.map((Overlay) => (
-        <Overlay key={overlayKey(Overlay)} ctx={ctx} />
-      ))}
-    </>
   );
 };
 
@@ -277,7 +254,7 @@ const GridCustomRenderer = ({
 export class GridCustomRendererItem {
   public loaded = false;
 
-  private readonly eventTarget = new EventTarget();
+  private readonly eventTarget = new LocalEventTarget();
   private readonly hostElement = document.createElement("div");
   private mountedElement: HTMLElement | null = null;
   private pluginRoot: Root | null = null;
@@ -287,6 +264,7 @@ export class GridCustomRendererItem {
   private inSelectionMode = false;
   private retainedSizeBytes?: number;
   private dimensions?: GridItemDimensions;
+  private open?: () => void;
 
   constructor(private readonly config: GridCustomRendererItemConfig) {
     // Assigned rather than spread into a new context so the identity stays
@@ -309,13 +287,13 @@ export class GridCustomRendererItem {
   removeEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    options?: boolean | EventListenerOptions,
+    _options?: boolean | EventListenerOptions,
   ) {
-    this.eventTarget.removeEventListener(eventType, handler, options);
+    this.eventTarget.removeEventListener(eventType, handler);
   }
 
   private dispatchEvent(eventType: string, detail?: unknown) {
-    this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
+    this.eventTarget.dispatch(eventType, detail);
   }
 
   private handleRetainedBytesChange = (retainedBytes: number) => {
@@ -373,10 +351,7 @@ export class GridCustomRendererItem {
             <div style={FOOTER_STYLES}>
               <GridTagBubbles sample={sample} />
               {ctx.media?.mediaType === MEDIA_TYPE_MULTIMODAL ? (
-                <>
-                  <EpisodeGridOverlay ctx={ctx} />
-                  <McapGridOverlays ctx={ctx} />
-                </>
+                <TileLanes ctx={ctx} />
               ) : null}
             </div>
           </GridCustomRendererWrapper>
@@ -418,20 +393,25 @@ export class GridCustomRendererItem {
   };
 
   /**
+   * Sets how the grid opens this item's tile, as a click on it does. The
+   * grid hands it over each time the tile is shown.
+   */
+  setOpen(open: (() => void) | undefined) {
+    this.open = open;
+  }
+
+  /**
    * Opens this sample's modal, handed to the renderer as `ctx.openModal`.
    *
-   * Reuses the grid's own activation path — a click on the mounted element —
-   * rather than reaching for the modal directly, so a renderer-owned button
-   * lands the user in exactly the same place a click on an ordinary tile does.
+   * Runs the grid's own activation path, so a renderer-owned button lands the
+   * user in exactly the same place a click on an ordinary tile does.
    */
   private openModal = () => {
     if (!this.mountedElement || this.destroyed) {
       return;
     }
 
-    this.mountedElement.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, cancelable: true }),
-    );
+    this.open?.();
   };
 
   private switchToFallback(error: Error) {

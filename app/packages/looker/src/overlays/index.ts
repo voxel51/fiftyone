@@ -60,7 +60,7 @@ export const POINTS_FROM_FO = {
   Keypoint: (label) => getKeypointPoints(label ? [label] : []),
   Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
   Polyline: (label) => getPolylinePoints(label ? [label] : []),
-  Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
+  Polylines: (label) => getPolylinePoints(label?.polylines ?? []),
   Segmentation: (label) => getSegmentationPoints(label ? [label] : []),
 };
 

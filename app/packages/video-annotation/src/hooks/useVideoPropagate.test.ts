@@ -45,6 +45,7 @@ const RIGHT = { ...LEFT, _id: "right" };
 
 vi.mock("@fiftyone/annotation", () => ({
   AgentTaskType: { PROPAGATE: "propagate" },
+  useModalStatusBar: () => ({ setContent: vi.fn() }),
   useActiveSampleId: () => "sample-1",
   useSampleDescriptor: () => ({ id: "sample-1" }),
   useAgentRegistry: () => ({
@@ -69,17 +70,13 @@ vi.mock("../streams/frameLabelsStream", () => ({
   }),
 }));
 
-vi.mock("../streams/imaVidImageStreamHandle", () => ({
-  useImaVidImageStream: () => ({}),
+vi.mock("../streams/dynamicGroupImageStreamHandle", () => ({
+  useDynamicGroupImageStream: () => ({}),
 }));
 
 vi.mock("../propagation/useApplyPropagationResult", () => ({
   useApplyPropagationResult: () => applyPropagation,
   useApplyPropagatedDetection: () => vi.fn(),
-}));
-
-vi.mock("../state/videoAnnotationStatus", () => ({
-  useVideoAnnotationStatus: () => ({ begin: vi.fn(), end: vi.fn() }),
 }));
 
 vi.mock("../components/PropagationStatusItem", () => ({
@@ -91,7 +88,12 @@ import { useVideoPropagate } from "./useVideoPropagate";
 const propagateOnce = async () => {
   const { result } = renderHook(() => useVideoPropagate());
   // (instanceId, fromFrame, toFrame, method)
-  return result.current("instance-1", 10, 20, "linear");
+  return result.current({
+    instanceId: "instance-1",
+    fromFrame: 10,
+    toFrame: 20,
+    mode: "linear",
+  });
 };
 
 describe("useVideoPropagate — linear agent dispatch", () => {
@@ -160,7 +162,14 @@ describe("useVideoPropagate — linear agent dispatch", () => {
     labelTypeRef.current = "Polylines";
 
     const { result } = renderHook(() => useVideoPropagate());
-    expect(await result.current("instance-1", 10, 20, "sam2")).toBe(false);
+    expect(
+      await result.current({
+        instanceId: "instance-1",
+        fromFrame: 10,
+        toFrame: 20,
+        mode: "sam2",
+      }),
+    ).toBe(false);
     expect(inferPolyline).not.toHaveBeenCalled();
     expect(inferBox).not.toHaveBeenCalled();
   });

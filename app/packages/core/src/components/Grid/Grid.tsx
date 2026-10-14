@@ -21,16 +21,19 @@ import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
+import TileDecoratorPortals from "./TileDecoratorPortals";
 import useResize from "./useResize";
 import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
+import { useGroupMatchTileDecorator } from "./GroupMatchPills";
 
 const MAX_INSTANCES = 200;
 const MAX_ROWS = 200;
 
 function Grid() {
+  useGroupMatchTileDecorator();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
@@ -114,6 +117,7 @@ function Grid() {
     <div className={styles.gridContainer}>
       <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
       <div id={pixels} className={styles.fallingPixels} />
+      <TileDecoratorPortals />
     </div>
   );
 }

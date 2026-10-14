@@ -10,50 +10,15 @@ describe("temporalTagColor", () => {
     (<unknown>color.temporalTagColor)
   );
 
-  it("uses a configured color for a value, else the hashed fallback", () => {
+  // Temporal tags used to be pinned to value coloring whatever the app was set
+  // to, which left them disagreeing with every other interval source sharing
+  // the same lane. They now resolve exactly as the temporal-tags path does.
+  it("resolves through the temporal-tags path's value color", () => {
     setMockAtoms({
-      __colorScheme_selector: {
-        temporalTags: {
-          valueColors: [{ value: "pedestrian", color: "#3b82f6" }],
-        },
-      },
-      // colorMap is a selector returning the fallback generator; the recoil
-      // mock invokes this to produce the generator function.
-      colorMap: () => (value: string) => `fallback:${value}`,
+      valueColor: (path: string) => (value: string) => `${path}:${value}`,
     });
 
-    const colorFor = resolver();
-    expect(colorFor("pedestrian")).toBe("#3b82f6");
-    expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
-  });
-
-  it("falls back for every value when nothing is configured", () => {
-    setMockAtoms({
-      __colorScheme_selector: { temporalTags: {} },
-      colorMap: () => (value: string) => `fallback:${value}`,
-    });
-
-    const colorFor = resolver();
-    expect(colorFor("pedestrian")).toBe("fallback:pedestrian");
-    expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
-  });
-
-  it("ignores color-by-field mode — always resolves by value", () => {
-    setMockAtoms({
-      // fieldColor set + colorBy "field" must NOT force one uniform color.
-      __colorScheme_selector: {
-        colorBy: "field",
-        temporalTags: {
-          fieldColor: "#000000",
-          valueColors: [{ value: "pedestrian", color: "#3b82f6" }],
-        },
-      },
-      colorMap: () => (value: string) => `fallback:${value}`,
-    });
-
-    const colorFor = resolver();
-    expect(colorFor("pedestrian")).toBe("#3b82f6");
-    expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
+    expect(resolver()("pedestrian")).toBe("_temporal_tags:pedestrian");
   });
 });
 
@@ -184,5 +149,35 @@ describe("valueColor", () => {
     expect(resolver("ground_truth.detections.label")()("cat")).toBe(
       "field:ground_truth.detections.label",
     );
+  });
+
+  // Temporal tags are not sample fields, so their per-value colors sit beside
+  // `fields` on the scheme rather than in it — the same shape label tags use.
+  it("resolves a temporal tag's configured color when coloring by value", () => {
+    setScheme({
+      colorBy: "value",
+      fields: [],
+      temporalTags: {
+        valueColors: [{ value: "pedestrian", color: "#3b82f6" }],
+      },
+    });
+
+    const colorFor = resolver("_temporal_tags")();
+    expect(colorFor("pedestrian")).toBe("#3b82f6");
+    expect(colorFor("hard_brake")).toBe("fallback:hard_brake");
+  });
+
+  it("gives every temporal tag the field color when coloring by field", () => {
+    setScheme({
+      colorBy: "field",
+      fields: [],
+      temporalTags: {
+        valueColors: [{ value: "pedestrian", color: "#3b82f6" }],
+      },
+    });
+
+    const colorFor = resolver("_temporal_tags")();
+    expect(colorFor("pedestrian")).toBe("field:_temporal_tags");
+    expect(colorFor("hard_brake")).toBe("field:_temporal_tags");
   });
 });

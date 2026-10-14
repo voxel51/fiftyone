@@ -17,12 +17,14 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.utils import datetime_to_timestamp
+from fiftyone.core.utils import datetime_to_timestamp, run_sync_task
 import fiftyone.core.view as fov
 
 from fiftyone.server.constants import LIST_LIMIT
+from fiftyone.server.data import Info
 from fiftyone.server.exceptions import AggregationQueryTimeout
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.hooks as fosh
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
@@ -118,6 +120,7 @@ AggregateResult = t.Union[
 
 async def aggregate_resolver(
     form: AggregationForm,
+    info: Info = None,
 ) -> t.List[
     t.Annotated[
         t.Union[
@@ -138,6 +141,7 @@ async def aggregate_resolver(
     if not form.paths:
         return []
 
+    await fosh.on_graphql_request(info, form.dataset)
     view = await _load_view(form, form.slices)
 
     slice_view = None
@@ -161,31 +165,43 @@ async def aggregate_resolver(
             ]
         )
 
-    aggregations, deserializers = zip(
-        *[
-            _resolve_path_aggregation(
-                path, view, form.query_performance, form.hint
-            )
-            for path in form.paths
-        ]
-    )
-    counts = [len(a) for a in aggregations]
-    flattened = [item for sublist in aggregations for item in sublist]
-
-    maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
-    try:
-        result = await view._async_aggregate(flattened, maxTimeMS=maxTimeMS)
-    except ExecutionTimeout:
-        return [
-            AggregationQueryTimeout(path=path, query_time=form.max_query_time)
-            for path in form.paths
-        ]
+    # Temporal tags are not sample fields, so there is nothing to aggregate
+    # over for them; they are counted separately on the same view
+    paths = [path for path in form.paths if path != fosv.TEMPORAL_TAGS]
 
     results = []
-    offset = 0
-    for length, deserialize in zip(counts, deserializers):
-        results.append(deserialize(result[offset : length + offset]))
-        offset += length
+    if paths:
+        aggregations, deserializers = zip(
+            *[
+                _resolve_path_aggregation(
+                    path, view, form.query_performance, form.hint
+                )
+                for path in paths
+            ]
+        )
+        counts = [len(a) for a in aggregations]
+        flattened = [item for sublist in aggregations for item in sublist]
+
+        maxTimeMS = form.max_query_time * 1000 if form.max_query_time else None
+        try:
+            result = await view._async_aggregate(
+                flattened, maxTimeMS=maxTimeMS
+            )
+        except ExecutionTimeout:
+            return [
+                AggregationQueryTimeout(
+                    path=path, query_time=form.max_query_time
+                )
+                for path in form.paths
+            ]
+
+        offset = 0
+        for length, deserialize in zip(counts, deserializers):
+            results.append(deserialize(result[offset : length + offset]))
+            offset += length
+
+    if len(paths) != len(form.paths):
+        results.append(await run_sync_task(_temporal_tags_aggregation, view))
 
     if slice_view:
         for result in results:
@@ -214,6 +230,23 @@ RESULT_MAPPING = {
     fof.ObjectIdField: StringAggregation,
     fof.StringField: StringAggregation,
 }
+
+
+def _temporal_tags_aggregation(
+    view: foc.SampleCollection,
+) -> StringAggregation:
+    counts = fosv.count_temporal_tags(view)
+    total = sum(counts.values())
+
+    return StringAggregation(
+        path=fosv.TEMPORAL_TAGS,
+        count=total,
+        exists=total,
+        values=[
+            StringAggregationValue(value=value, count=count)
+            for value, count in sorted(counts.items())
+        ],
+    )
 
 
 async def _load_view(form: AggregationForm, slices: t.List[str]):

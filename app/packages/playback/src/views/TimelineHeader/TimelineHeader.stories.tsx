@@ -19,7 +19,7 @@ function Wrapper() {
         ref={containerRef}
         style={{
           width: 800,
-          background: "var(--color-content-bg-card-1)",
+          background: "var(--color-content-bg-card)",
         }}
       >
         <TimelineHeader labelWidth={120} zoomRef={containerRef} />

@@ -183,6 +183,7 @@ export function useHoverInfo(
         filename: info.filepath
           ? (info.filepath.split(/[\\/]/).pop() ?? null)
           : null,
+        bounds: info.bounds,
       });
     };
 

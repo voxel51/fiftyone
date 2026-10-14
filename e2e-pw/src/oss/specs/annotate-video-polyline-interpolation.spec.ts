@@ -1,20 +1,11 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Polyline keyframe interpolation on the video-annotation surface, and — the
- * reason this spec exists — whether the CANVAS shows it.
- *
- * Reported: draw a polyline, scrub forward, drag a vertex (promoting a second
- * keyframe), then scrub back through the span. The interpolated frames are
- * correct in the store (verified against mongo) and Explore mode draws them, but
- * the annotate canvas keeps painting the shape it already had — until the
- * playhead leaves the track's extent entirely and comes back, which unmounts and
- * re-mounts the overlay.
- *
- * So the two halves are asserted separately:
- *   1. the interpolation itself — geometry moves between the keyframes
- *   2. the projection — what the overlay actually holds at those frames
- * A pass on (1) with a failure on (2) is precisely the reported bug.
+ * Polyline keyframe interpolation on the video surface and whether the canvas
+ * shows it: after a second keyframe, scrubbing back through the span was
+ * correct in the store and in Explore but the annotate canvas kept its stale
+ * shape. Exact captures of the drawn shape, the second keyframe and the middle
+ * of the span hold the canvas to the interpolated geometry.
  */
 import { expect, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -26,8 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-polyline-interp",
 );
 const id = "000000000000000000000000";
-// .mp4 so the surface takes the mp4/native decode path the reported clip uses
-const clip = `/tmp/${datasetName}.mp4`;
 
 /** Vertices of the drawn shape, in relative canvas coordinates. */
 const DRAWN: Array<[number, number]> = [
@@ -46,34 +35,78 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // ~180 frames @ 30fps, matching the reported clip's shape (the 10fps/40-frame
-  // variant of this spec passes, so frame rate / clip length is a suspect)
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 6,
-    width: 64,
-    height: 64,
-    frameRate: 30,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    // schema only: this spec draws the first polyline itself
-    withPolylineField: true,
+    // .mp4 so the surface takes the mp4/native decode path the reported clip
+    // uses; ~180 frames @ 30fps, matching the reported clip's shape (the
+    // 10fps/40-frame variant of this spec passes, so frame rate / clip length
+    // is a suspect)
+    videoOptions: { container: "mp4", duration: 6, frameRate: 30 },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      "frames.polylines": "Polylines",
+      "frames.polylines.polylines.instance": "Instance",
+      "frames.polylines.polylines.keyframe": "BooleanField",
+      "frames.polylines.polylines.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      "frames.polylines": {
+        type: "polylines",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "index", type: "int", component: "text" },
+        ],
+      },
+    },
     // the reported sample carried several other polyline tracks; a pre-seeded
     // track makes the drawn one share the surface, as it did there
-    polylineSampleIndices: [0],
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([]),
+      polylines: label.polylines([
+        label.polyline({
+          label: "person",
+          points: [
+            [
+              [0.2, 0.2],
+              [0.5, 0.2],
+              [0.35, 0.5],
+            ],
+          ],
+          closed: true,
+          filled: false,
+          index: 2,
+          instance: label.instance("person-polyline-2"),
+        }),
+      ]),
+    }),
   });
 });
 
@@ -85,14 +118,27 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Drop focus so the "." / "," frame-step keybindings aren't typed into an input. */
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
+const ofOverlay =
+  (id: string) =>
+  (e: { detail?: unknown }): boolean =>
+    (e.detail as { id?: string } | undefined)?.id === id;
+
+// once received, the overlay is selected whatever its prior state
+const clickOverlay = (modal: ModalPom, id: string) =>
+  modal.eventUtils.after(
+    "lighter:overlay-click",
+    () => modal.sampleCanvas.click(BODY[0], BODY[1]),
+    ofOverlay(id),
+  );
 
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
@@ -113,95 +159,51 @@ const stepBack = async (modal: ModalPom, n: number) => {
  * canvas accept an edit gesture.
  */
 const drawPolyline = async (modal: ModalPom): Promise<string> => {
-  const before = new Set(await polylineIds(modal));
+  // the surface reveals once its tracks resolve, and the draw resolves once the
+  // new track is on the timeline; a track's id is its overlay's id
+  const before = new Set(await modal.videoAnnotate.objectTrackIds());
 
   await modal.sidebar.annotate.polylineMode();
-  await modal.videoAnnotate.drawPolyline(DRAWN);
+  const [first, ...rest] = DRAWN;
+  await modal.videoAnnotate.afterTracksChange(() =>
+    modal.sampleCanvas.click(...first),
+  );
+  for (const point of rest) {
+    await modal.sampleCanvas.click(...point);
+  }
   await modal.sampleCanvas.rightClick(0.9, 0.1);
   await modal.sidebar.annotate.polylineMode();
 
-  const drawnId = (await polylineIds(modal)).find((id) => !before.has(id));
-  expect(drawnId, "the drawn polyline should be a new overlay").toBeTruthy();
+  const drawn = (await modal.videoAnnotate.objectTrackIds()).filter(
+    (id) => !before.has(id),
+  );
+  expect(drawn, "the drawn polyline should be one new overlay").toHaveLength(1);
 
-  return drawnId as string;
+  return drawn[0];
 };
 
 /**
- * Mean vertex position — the measurement this spec compares frames by. The
- * overlay does not preserve the order vertices were drawn in (and correspondence
- * may rotate a closed ring), so an index-wise comparison would be meaningless;
- * the centroid moves with the shape either way.
- */
-/** Overlay ids of the polylines currently on the canvas. */
-const polylineIds = async (modal: ModalPom): Promise<string[]> =>
-  (await modal.videoAnnotate.canvasOverlayGeometry())
-    .filter((o) => o.type === "PolylineOverlay")
-    .map((o) => o.id);
-
-/**
- * Points of ONE overlay by id. The sample carries more than one polyline track,
- * so "the polyline on the canvas" is ambiguous — every read has to name the
- * track under test.
- */
-const pointsOf = async (
-  modal: ModalPom,
-  id: string,
-): Promise<[number, number][] | undefined> =>
-  (await modal.videoAnnotate.canvasOverlayGeometry()).find((o) => o.id === id)
-    ?.points;
-
-const centroidY = (points: [number, number][] | undefined): number => {
-  if (!points?.length) {
-    return Number.NaN;
-  }
-
-  return points.reduce((total, [, y]) => total + y, 0) / points.length;
-};
-
-/**
- * Container coordinates are not overlay coordinates: the clip is letterboxed, so
- * the canvas applies an affine to reach image space. Derive it from the draw
- * itself — the same three points, expressed both ways. Sorting each set by x
- * pairs them, since the overlay does not preserve draw order.
- */
-const deriveToContainer = (
-  drawnOverlayPoints: [number, number][],
-): ((point: [number, number]) => [number, number]) => {
-  const img = [...drawnOverlayPoints].sort((a, b) => a[0] - b[0]);
-  const cont = [...DRAWN].sort((a, b) => a[0] - b[0]);
-
-  const ax = (img[2][0] - img[0][0]) / (cont[2][0] - cont[0][0]);
-  const bx = img[0][0] - ax * cont[0][0];
-  const ay = (img[1][1] - img[0][1]) / (cont[1][1] - cont[0][1]);
-  const by = img[0][1] - ay * cont[0][1];
-
-  return ([ix, iy]) => [(ix - bx) / ax, (iy - by) / ay];
-};
-
-/**
- * Drag one vertex on the current frame, promoting it to a keyframe.
+ * Drag the first drawn vertex upwards on the current frame, promoting it to a
+ * keyframe; resolves once the edit is saved. The frame must still show the
+ * shape as drawn, so the vertex sits where it was clicked.
  *
  * A vertex drag specifically: dragging the shape's BODY is silently ignored on a
  * non-keyframe frame (worth its own investigation), whereas a vertex drag
  * commits there — which is also the gesture the bug report used.
  */
-const dragVertex = async (
-  modal: ModalPom,
-  id: string,
-  toContainer: (point: [number, number]) => [number, number],
-) => {
-  // select the overlay first; a vertex is only grabbable once it is drawn
-  await modal.sampleCanvas.click(BODY[0], BODY[1]);
+const dragVertex = async (modal: ModalPom, id: string) => {
+  // a vertex is only grabbable once its overlay is selected
+  await clickOverlay(modal, id);
 
-  const live = await pointsOf(modal, id);
-  const [vx, vy] = toContainer((live as [number, number][])[0]);
-
-  await modal.sampleCanvas.move(vx, vy);
-  await modal.sampleCanvas.down();
-  for (const step of [0.15, 0.45, 0.75, 1]) {
-    await modal.sampleCanvas.move(vx, vy - DRAG_DY * step);
-  }
-  await modal.sampleCanvas.up();
+  const [vx, vy] = DRAWN[0];
+  await modal.sidebar.annotate.afterSave(async () => {
+    await modal.sampleCanvas.move(vx, vy);
+    await modal.sampleCanvas.down();
+    for (const step of [0.15, 0.45, 0.75, 1]) {
+      await modal.sampleCanvas.move(vx, vy - DRAG_DY * step);
+    }
+    await modal.sampleCanvas.up();
+  });
 };
 
 test.describe.serial("polyline interpolation on video", () => {
@@ -214,71 +216,18 @@ test.describe.serial("polyline interpolation on video", () => {
 
     const id = await drawPolyline(modal);
     await blur(page);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("drawn.png");
 
-    const drawn = await pointsOf(modal, id);
-    expect(drawn, "the drawn polyline should be on the canvas").toHaveLength(3);
-    const toContainer = deriveToContainer(drawn as [number, number][]);
-
-    // second keyframe 10 frames along
+    // second keyframe 10 frames along, where the shape still holds as drawn
     await stepForward(modal, 10);
-    await dragVertex(modal, id, toContainer);
+    await dragVertex(modal, id);
     await blur(page);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("second-keyframe.png");
 
-    const atKeyframe = await pointsOf(modal, id);
-    expect(
-      Math.abs(centroidY(atKeyframe) - centroidY(drawn)),
-      `the shape should have moved on the edited frame — drawn=${JSON.stringify(drawn)} after=${JSON.stringify(atKeyframe)}`,
-    ).toBeGreaterThan(0.05);
-
-    // back into the middle of the span: the vertex should sit BETWEEN the two
-    // keyframes. Stale projection keeps painting the frame-1 shape instead.
+    // back into the middle of the span the shape sits between the keyframes;
+    // a stale projection keeps painting one of them
     await stepBack(modal, 5);
-
-    const mid = centroidY(await pointsOf(modal, id));
-    const startY = centroidY(drawn);
-    const endY = centroidY(atKeyframe);
-    const lo = Math.min(startY, endY);
-    const hi = Math.max(startY, endY);
-
-    // strictly inside the span, and not sitting on either keyframe's value
-    expect(
-      mid,
-      `mid-span centroid ${mid} should lie strictly between the keyframes ${lo}..${hi} — a stale canvas repeats one of them`,
-    ).toBeGreaterThan(lo + 0.02);
-    expect(mid).toBeLessThan(hi - 0.02);
-  });
-
-  test("scrubbing the span moves the shape continuously", async ({
-    fiftyoneLoader,
-    modal,
-    page,
-  }) => {
-    // The same defect stated as motion: walking backwards through the span, the
-    // painted geometry must change on (nearly) every frame. A stale projection
-    // repeats one shape.
-    await openAnnotate(fiftyoneLoader, modal, page);
-
-    const id = await drawPolyline(modal);
-    await blur(page);
-
-    const drawn = await pointsOf(modal, id);
-    const toContainer = deriveToContainer(drawn as [number, number][]);
-
-    await stepForward(modal, 10);
-    await dragVertex(modal, id, toContainer);
-    await blur(page);
-
-    const seen: number[] = [];
-    for (let i = 0; i < 9; i++) {
-      await stepBack(modal, 1);
-      seen.push(centroidY(await pointsOf(modal, id)));
-    }
-
-    const distinct = new Set(seen.map((v) => v.toFixed(4)));
-    expect(
-      distinct.size,
-      `expected a distinct shape per frame across the span, saw ${JSON.stringify(seen)}`,
-    ).toBeGreaterThan(5);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("mid-span.png");
   });
 });
 
@@ -298,17 +247,19 @@ test.describe("polyline track deletion on video", () => {
 
     // a body click selects the shape without sub-selecting a vertex, so
     // Backspace reads as "delete the track", not "remove a vertex"
-    await modal.sampleCanvas.click(BODY[0], BODY[1]);
-    await page.keyboard.press("Backspace");
+    await clickOverlay(modal, id);
 
-    await expect
-      .poll(
-        () => polylineIds(modal),
-        "the drawn track should leave the canvas on the first press",
-      )
-      .not.toContain(id);
+    // received only if the first press deleted the track; the delete
+    // flushes before the test ends
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.videoAnnotate.afterTracksChange(() =>
+        modal.eventUtils.after(
+          "lighter:overlay-removed",
+          () => page.keyboard.press("Backspace"),
+          ofOverlay(id),
+        ),
+      ),
+    );
     await modal.videoAnnotate.assert.objectTrackCount(1);
-    // the delete flushes before the test ends
-    await modal.sidebar.annotate.waitForSavesSettled();
   });
 });

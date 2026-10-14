@@ -166,3 +166,50 @@ export function resolveTrackExtentEdit(
 
   return { op: "shift", frames: inclusiveRange(origFirst, origLast), delta };
 }
+
+export interface ResolveTemporalDetectionSupportInput {
+  mode: TrackDragMode;
+  /** Post-drag bounds in seconds (already snapped to frames by the track). */
+  newStartSec: number;
+  newEndSec: number;
+  fps: number;
+  /** 1-indexed inclusive clip length; the support may not reach past it. */
+  totalFrames: number;
+}
+
+/**
+ * Translate a temporal detection's interval drag into its new 1-indexed
+ * inclusive `[first, last]` support, kept within `[1, totalFrames]`. A
+ * `move` that overruns either edge slides back so the span keeps its width;
+ * a resize past an edge stops at that edge. Returns `null` for degenerate
+ * input (non-positive fps or clip length).
+ */
+export function resolveTemporalDetectionSupport(
+  input: ResolveTemporalDetectionSupportInput,
+): [number, number] | null {
+  const { mode, fps } = input;
+  if (!Number.isFinite(fps) || fps <= 0) {
+    return null;
+  }
+
+  const totalFrames = Math.round(input.totalFrames);
+  if (!Number.isFinite(totalFrames) || totalFrames < 1) {
+    return null;
+  }
+
+  let first = firstFrameOf(input.newStartSec, fps);
+  let last = Math.max(first, lastFrameOf(input.newEndSec, fps));
+
+  if (mode === "move") {
+    // Rigid shift: a span wider than the clip can't fit, so it pins to the
+    // start and is trimmed to the clip like a resize would be.
+    const width = Math.min(last - first, totalFrames - 1);
+    first = Math.min(Math.max(first, 1), totalFrames - width);
+    last = first + width;
+    return [first, last];
+  }
+
+  first = Math.min(Math.max(first, 1), totalFrames);
+  last = Math.min(Math.max(last, first), totalFrames);
+  return [first, last];
+}

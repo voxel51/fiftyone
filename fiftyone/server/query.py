@@ -37,6 +37,7 @@ import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
+import fiftyone.server.hooks as fosh
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
@@ -47,17 +48,17 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
+from fiftyone.server.expressions import (
+    view_expression_ast_version,
+    view_expression_field_kinds,
+    view_expression_operators,
+)
 from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
 
-ID = gql.scalar(
-    t.NewType("ID", str),
-    serialize=lambda v: str(v),
-    parse_value=lambda v: ObjectId(v),
-)
 DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
 DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
@@ -151,8 +152,18 @@ class BrainRunConfig(RunConfig):
 
 
 @gql.type
+class BrainRunResultsMeta:
+    """The facts in a brain run's ``results_meta`` that the App reads. Only
+    the keys declared here are sent."""
+
+    #: The group slices a similarity index holds samples from.
+    group_slices: t.Optional[t.List[str]]
+
+
+@gql.type
 class BrainRun(Run):
     config: t.Optional[BrainRunConfig]
+    results_meta: t.Optional[BrainRunResultsMeta]
     #: Whether the run's results have been saved.
     ready: t.Optional[bool]
     #: Why this run cannot be used, when that is knowable WITHOUT loading its
@@ -194,6 +205,23 @@ def _brain_run_error(run: dict) -> t.Optional[str]:
         return "run document has no config"
 
     return _run_cls_error(cls_path)
+
+
+def _brain_run_results_meta(run: dict) -> t.Optional[dict]:
+    """The declared :class:`BrainRunResultsMeta` keys of a run's
+    ``results_meta``, dropping values of the wrong type so that one malformed
+    run cannot fail the dataset query."""
+    meta = run.get("results_meta")
+    if not isinstance(meta, dict):
+        return None
+
+    group_slices = meta.get("group_slices")
+    if not isinstance(group_slices, list) or not all(
+        isinstance(name, str) for name in group_slices
+    ):
+        group_slices = None
+
+    return {"group_slices": group_slices}
 
 
 @gql.type
@@ -376,6 +404,7 @@ class Dataset:
                     **run,
                     "ready": run.get("results") is not None,
                     "error": _brain_run_error(run),
+                    "results_meta": _brain_run_results_meta(run),
                 }
                 if isinstance(run, dict)
                 else run
@@ -403,6 +432,7 @@ class Dataset:
         saved_view_slug: t.Optional[str] = gql.UNSET,
         view: t.Optional[BSONArray] = None,
     ) -> t.Optional["Dataset"]:
+        await fosh.on_graphql_request(info, name)
         return await serialize_dataset(
             dataset_name=name,
             serialized_view=view,
@@ -514,10 +544,12 @@ class Query(fosa.AggregateQuery):
         hint: t.Optional[str] = None,
         max_query_time: t.Optional[int] = None,
         dynamic_group: t.Optional[BSON] = None,
+        info: Info = None,
     ) -> t.Annotated[
         t.Union[Connection[SampleItem, str], QueryTimeout],
         gql.union("PaginateSamplesResponse"),
     ]:
+        await fosh.on_graphql_request(info, dataset)
         try:
             return await paginate_samples(
                 dataset,
@@ -544,7 +576,9 @@ class Query(fosa.AggregateQuery):
         view: BSONArray,
         filter: SampleFilter,
         filters: t.Optional[JSON] = None,
+        info: Info = None,
     ) -> t.Optional[SampleItem]:
+        await fosh.on_graphql_request(info, dataset)
         samples = await paginate_samples(
             dataset,
             view,
@@ -627,6 +661,10 @@ class Query(fosa.AggregateQuery):
                 field_schema=[],
                 frame_field_schema=[],
             )
+
+    view_expression_operators = gql.field(view_expression_operators)
+    view_expression_field_kinds = gql.field(view_expression_field_kinds)
+    view_expression_ast_version = gql.field(view_expression_ast_version)
 
 
 def _flatten_fields(
@@ -712,6 +750,9 @@ async def serialize_dataset(
             data.media_type = view.media_type
 
             collection = view
+
+        # the field lists reflect what the request's views can return
+        collection = fosh.get().transform_view(collection)
 
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)

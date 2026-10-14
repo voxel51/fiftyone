@@ -98,6 +98,80 @@ def _make_patches_run():
     return dataset, points
 
 
+def _make_grouped_run():
+    """A grouped dataset whose run covers only its non-default slice.
+
+    Mirrors ``quickstart-groups``: an image default slice and a point cloud
+    slice. Each group's two samples carry opposite ``cluster`` values, so a
+    point matched against its default-slice sibling gets the wrong answer.
+    """
+    dataset = fo.Dataset()
+    dataset.add_group_field("group", default="CAM_FRONT")
+
+    samples = []
+    for i in range(6):
+        group = fo.Group()
+        for slice_name, ext, cluster in (
+            ("CAM_FRONT", "png", f"c{i % 2}"),
+            ("LIDAR_TOP", "pcd", f"c{(i + 1) % 2}"),
+        ):
+            samples.append(
+                fo.Sample(
+                    filepath=f"/tmp/{slice_name}{i}.{ext}",
+                    group=group.element(slice_name),
+                    cluster=cluster,
+                    ground_truth=fo.Detections(
+                        detections=[fo.Detection(label=cluster)]
+                    ),
+                )
+            )
+
+    dataset.add_samples(samples)
+    lidar = dataset.select_group_slices("LIDAR_TOP")
+    points = np.random.default_rng(51).normal(size=(len(lidar), 2))
+    fob.compute_visualization(lidar, points=points, brain_key="viz_lidar")
+    return dataset, lidar
+
+
+def _make_color_by_runs():
+    """A samples run ("viz") and a patches run ("viz_patches") over every
+    kind of color-by path: scalars, scalar lists, label lists, lists inside
+    label lists, and samples missing labels.
+    """
+    dataset = fo.Dataset()
+    dataset.add_samples(
+        [
+            fo.Sample(
+                filepath=f"/tmp/img{i}.png",
+                cluster=f"c{i % 2}",
+                score=float(i),
+                count=i,
+                flag=i % 2 == 0,
+                letters=["a", "b"][: 1 + i % 2],
+                gt=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label=f"d{j}", confidence=0.5, tags=[f"t{j}"]
+                        )
+                        for j in range(i % 3)
+                    ]
+                ),
+            )
+            for i in range(6)
+        ]
+    )
+    fob.compute_visualization(
+        dataset, points=np.zeros((len(dataset), 2)), brain_key="viz"
+    )
+    fob.compute_visualization(
+        dataset,
+        patches_field="gt",
+        points=np.zeros((dataset.count("gt.detections"), 2)),
+        brain_key="viz_patches",
+    )
+    return dataset
+
+
 class ServerEmbeddingsV2Tests(unittest.TestCase):
     @drop_datasets
     def test_run_info(self):
@@ -158,6 +232,15 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         )
         broken_doc.save()
 
+        orphan_doc = RunDocument(
+            dataset_id=viz_doc.dataset_id,
+            key="orphan",
+            version=viz_doc.version,
+            timestamp=viz_doc.timestamp,
+            config=viz_doc.config,
+        )
+        orphan_doc.save()
+
         dataset._doc.brain_methods["pending"] = pending_doc
         dataset._doc.brain_methods["broken"] = broken_doc
         dataset._doc.save()
@@ -173,6 +256,7 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertFalse(statuses["pending"]["ready"])
         self.assertIsNone(statuses["pending"]["error"])
         self.assertIn("not importable", statuses["broken"]["error"])
+        self.assertNotIn("orphan", statuses)
 
     def test_dataset_query_reports_run_readiness(self):
         # A run doc exists as soon as a computation registers, but its
@@ -409,6 +493,190 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         self.assertEqual(set(run_ids[match]), set(selection))
 
     @drop_datasets
+    def test_color_grouped_non_default_slice(self):
+        # A grouped dataset's values cover only its default slice. A run
+        # on another slice must still resolve every point's value
+        dataset, lidar = _make_grouped_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_lidar"}
+
+        _, n, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(None, {**base, "field": "cluster"})
+        )
+        self.assertEqual(n, len(lidar))
+        self.assertEqual(sum(c["count"] for c in meta["classes"]), n)
+
+        indices = np.frombuffer(column, dtype="<u2")
+        labels = [meta["classes"][i]["label"] for i in indices]
+        self.assertEqual(labels, lidar.values("cluster"))
+
+    @drop_datasets
+    def test_color_grouped_non_default_slice_patches(self):
+        dataset, lidar = _make_grouped_run()
+        points = np.zeros((lidar.count("ground_truth.detections"), 2))
+        fob.compute_visualization(
+            lidar,
+            patches_field="ground_truth",
+            points=points,
+            brain_key="viz_lidar_patches",
+        )
+        base = {"datasetName": dataset.name, "brainKey": "viz_lidar_patches"}
+
+        _, _, column, meta = _parse_color(
+            v2.EmbeddingsV2Color._post_sync(
+                None, {**base, "field": "ground_truth.detections.label"}
+            )
+        )
+        indices = np.frombuffer(column, dtype="<u2")
+        labels = [meta["classes"][i]["label"] for i in indices]
+        self.assertEqual(
+            labels,
+            lidar.values("ground_truth.detections.label", unwind=True),
+        )
+
+    @drop_datasets
+    def test_masks_grouped_non_default_slice(self):
+        # Filters on a grouped view match its default slice only. Each
+        # point must be matched against its own sample, not its sibling,
+        # which carries the opposite cluster
+        dataset, lidar = _make_grouped_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_lidar"}
+        filters = {
+            "cluster": {
+                "values": ["c0"],
+                "exclude": False,
+                "isMatching": False,
+            }
+        }
+        expected = np.array(lidar.values("cluster")) == "c0"
+
+        # The App sends no slices
+        _, _, n, flags, payload = _parse(
+            v2.EmbeddingsV2Masks._post_sync(None, {**base, "filters": filters})
+        )
+        self.assertEqual(flags, v2.FLAG_ALL_VISIBLE)
+        visible, match = _unpack_masks(payload, n)
+        self.assertTrue(visible.all())
+        np.testing.assert_array_equal(match, expected)
+
+        # View stages that already flatten the slice give the same answer
+        _, _, n, _, payload = _parse(
+            v2.EmbeddingsV2Masks._post_sync(
+                None,
+                {**base, "view": lidar._serialize(), "filters": filters},
+            )
+        )
+        _, match = _unpack_masks(payload, n)
+        np.testing.assert_array_equal(match, expected)
+
+    @drop_datasets
+    def test_color_by_choices_samples_run(self):
+        # Label-list paths are offered: the color column keeps each
+        # point's first value. A list inside a label list is not, and
+        # neither are ids, dates, or embedded documents
+        dataset = _make_color_by_runs()
+        fields = v2.EmbeddingsV2ColorByChoices._post_sync(
+            None, {"datasetName": dataset.name, "brainKey": "viz"}
+        )["fields"]
+
+        for path in (
+            "filepath",
+            "tags",
+            "cluster",
+            "score",
+            "count",
+            "flag",
+            "letters",
+            "gt.detections.label",
+            "gt.detections.confidence",
+        ):
+            self.assertIn(path, fields)
+
+        for path in (
+            "id",
+            "created_at",
+            "metadata",
+            "gt",
+            "gt.detections",
+            "gt.detections.id",
+            "gt.detections.tags",
+            "gt.detections.bounding_box",
+        ):
+            self.assertNotIn(path, fields)
+
+    @drop_datasets
+    def test_color_by_choices_patches_run(self):
+        # A patches run's points are labels: only paths within the label
+        # are offered, and the label list itself doesn't count as a list
+        dataset = _make_color_by_runs()
+        fields = v2.EmbeddingsV2ColorByChoices._post_sync(
+            None, {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        )["fields"]
+
+        self.assertIn("gt.detections.label", fields)
+        self.assertIn("gt.detections.tags", fields)
+        self.assertNotIn("gt.detections.id", fields)
+        self.assertNotIn("cluster", fields)
+        self.assertTrue(all(f.startswith("gt.detections.") for f in fields))
+
+    @drop_datasets
+    def test_color_by_choices_grouped_run(self):
+        dataset, _ = _make_grouped_run()
+        fields = v2.EmbeddingsV2ColorByChoices._post_sync(
+            None, {"datasetName": dataset.name, "brainKey": "viz_lidar"}
+        )["fields"]
+
+        for path in ("group.name", "cluster", "ground_truth.detections.label"):
+            self.assertIn(path, fields)
+
+        self.assertNotIn("group.id", fields)
+
+    @drop_datasets
+    def test_color_by_choices_all_resolve(self):
+        # The route's contract: every offered path colors every point.
+        # Covers samples, patches, and non-default group slice runs
+        dataset = _make_color_by_runs()
+        grouped, _ = _make_grouped_run()
+        runs = (
+            (dataset, "viz"),
+            (dataset, "viz_patches"),
+            (grouped, "viz_lidar"),
+        )
+
+        for run_dataset, brain_key in runs:
+            base = {"datasetName": run_dataset.name, "brainKey": brain_key}
+            n = len(run_dataset.load_brain_results(brain_key).points)
+            fields = v2.EmbeddingsV2ColorByChoices._post_sync(None, base)[
+                "fields"
+            ]
+            self.assertTrue(fields)
+
+            for field in fields:
+                with self.subTest(brain_key=brain_key, field=field):
+                    _, count, _, meta = _parse_color(
+                        v2.EmbeddingsV2Color._post_sync(
+                            None, {**base, "field": field}
+                        )
+                    )
+                    self.assertEqual(count, n)
+                    self.assertIn(meta["style"], ("categorical", "continuous"))
+
+    @drop_datasets
+    def test_color_by_choices_skips_results(self):
+        # The menu needs only the run's config, never its results blob
+        dataset = _make_color_by_runs()
+
+        with mock.patch.object(
+            fo.Dataset,
+            "load_brain_results",
+            side_effect=AssertionError("results blob was loaded"),
+        ):
+            fields = v2.EmbeddingsV2ColorByChoices._post_sync(
+                None, {"datasetName": dataset.name, "brainKey": "viz"}
+            )["fields"]
+
+        self.assertIn("cluster", fields)
+
+    @drop_datasets
     def test_lasso_polygon(self):
         dataset, points = _make_samples_run()
         base = {"datasetName": dataset.name, "brainKey": "viz"}
@@ -492,6 +760,83 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
             v2.EmbeddingsV2SampleInfo._post_sync(
                 None, {**base, "index": len(points)}
             )
+
+    @drop_datasets
+    def test_sample_info_sample_run_has_no_bounds(self):
+        dataset, _ = _make_samples_run()
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(
+            None, {"datasetName": dataset.name, "brainKey": "viz", "index": 0}
+        )
+        self.assertIsNone(res["bounds"])
+
+    @drop_datasets
+    def test_sample_info_patch_bounds(self):
+        dataset, _ = _make_patches_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        results = dataset.load_brain_results("viz_patches")
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(None, {**base, "index": 3})
+
+        # The point is a label, and its box is the one the grid crops to
+        self.assertEqual(res["id"], str(results.label_ids[3]))
+        self.assertEqual(res["bounds"], [0.1, 0.1, 0.2, 0.2])
+
+    @drop_datasets
+    def test_sample_info_patch_bounds_deleted_label(self):
+        # A run outlives edits to the field it was computed on: the hover
+        # falls back to the whole sample rather than failing
+        dataset, _ = _make_patches_run()
+        base = {"datasetName": dataset.name, "brainKey": "viz_patches"}
+        results = dataset.load_brain_results("viz_patches")
+
+        sample = dataset[str(results.sample_ids[0])]
+        sample.ground_truth.detections = [
+            d
+            for d in sample.ground_truth.detections
+            if str(d.id) != str(results.label_ids[0])
+        ]
+        sample.save()
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(None, {**base, "index": 0})
+        self.assertIsNone(res["bounds"])
+        self.assertIsNotNone(res["media"])
+
+    @drop_datasets
+    def test_sample_info_polyline_bounds(self):
+        # Polylines and keypoints have no bounding_box: the containing box
+        # of their points is what the grid crops to
+        dataset = fo.Dataset()
+        polyline = fo.Polyline(
+            label="p", points=[[(0.2, 0.3), (0.6, 0.3), (0.6, 0.9)]]
+        )
+        dataset.add_sample(
+            fo.Sample(
+                filepath="/tmp/img0.png",
+                shapes=fo.Polylines(polylines=[polyline]),
+            )
+        )
+        fob.compute_visualization(
+            dataset,
+            patches_field="shapes",
+            points=np.zeros((1, 2)),
+            brain_key="viz_shapes",
+        )
+
+        res = v2.EmbeddingsV2SampleInfo._post_sync(
+            None,
+            {
+                "datasetName": dataset.name,
+                "brainKey": "viz_shapes",
+                "index": 0,
+            },
+        )
+
+        x, y, w, h = res["bounds"]
+        self.assertAlmostEqual(x, 0.2)
+        self.assertAlmostEqual(y, 0.3)
+        self.assertAlmostEqual(w, 0.4)
+        self.assertAlmostEqual(h, 0.6)
 
     @drop_datasets
     def test_sample_info_deleted_sample(self):

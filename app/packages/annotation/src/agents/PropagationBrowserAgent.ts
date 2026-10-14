@@ -1,3 +1,4 @@
+import { lerpRotation } from "@fiftyone/utilities";
 import type { SyntheticBox, SyntheticKeyframe } from "@fiftyone/utilities";
 import type {
   AnnotationAgent,
@@ -100,6 +101,14 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
       const right: Bbox = rightKeyframe.bounding_box;
       const span: number = context.toFrame - context.fromFrame;
 
+      // oriented boxes: shortest-arc lerp of the scalar rotation; a keyframe
+      // without one interpolates against 0 (an unrotated box)
+      const hasRotation =
+        leftKeyframe.rotation !== undefined ||
+        rightKeyframe.rotation !== undefined;
+      const leftRotation = leftKeyframe.rotation ?? 0;
+      const rightRotation = rightKeyframe.rotation ?? 0;
+
       const perFrame: PropagationInferenceResult["perFrame"] = [];
       range(context.fromFrame + 1, context.toFrame).forEach((n) => {
         const t: number = (n - context.fromFrame) / span;
@@ -107,6 +116,9 @@ export class PropagationBrowserAgent implements AnnotationAgent<PropagationInfer
           _id: generateObjectIdHex(),
           _cls: "Detection",
           bounding_box: lerpBbox(left, right, t),
+          ...(hasRotation
+            ? { rotation: lerpRotation(leftRotation, rightRotation, t) }
+            : {}),
           label: leftKeyframe.label,
           index: leftKeyframe.index,
           instance: { _cls: "Instance", _id: context.instanceId },

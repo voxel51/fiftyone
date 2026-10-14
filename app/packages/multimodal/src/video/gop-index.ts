@@ -70,6 +70,16 @@ export class VideoGopIndex {
     return Boolean(left && right && left.epoch === right.epoch);
   }
 
+  /**
+   * Whether both sides are indexed and their configurations differ. Distinct
+   * from `!sameEpoch`, which also holds when one side is not yet observed.
+   */
+  knownDifferentEpoch(leftTimeNs: bigint, rightTimeNs: bigint): boolean {
+    const left = this.keyframeAtOrBefore(leftTimeNs);
+    const right = this.keyframeAtOrBefore(rightTimeNs);
+    return Boolean(left && right && left.epoch !== right.epoch);
+  }
+
   deepestKnownKeyframeFreeStart(timeNs: bigint): bigint | null {
     let start: bigint | null = null;
     for (const range of this.negativeCoverage) {
@@ -252,7 +262,7 @@ export function uniqueSortedAccessUnits(
 
 function videoConfigSignature(unit: EncodedVideoAccessUnit): string {
   if (unit.frame.codec !== "h264") return unit.frame.format;
-  const { codecString = "", pps, sps } = unit.frame.h264;
+  const { codecString = "", pps, sps } = unit.frame.h264 ?? {};
   return `${codecString}:${encodeBytes(sps)}:${encodeBytes(pps)}`;
 }
 

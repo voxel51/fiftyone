@@ -1,4 +1,9 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { collapseWhitespace } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
+
+/** A keypoint checklist row's status. */
+export type KeypointNodeStatus = "placed" | "target" | "skipped" | "pending";
 
 /**
  * The modal sidebar's edit form when in 'Annotate' mode. Applies to primitives
@@ -9,7 +14,10 @@ export class ModalAnnotateEditPom {
   readonly locator: Locator;
   readonly assert: ModalAnnotateEditAsserter;
 
-  constructor(page: Page) {
+  constructor(
+    page: Page,
+    private readonly eventUtils: EventUtils,
+  ) {
     this.page = page;
     this.assert = new ModalAnnotateEditAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
@@ -55,15 +63,6 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Add an (empty) mask to the currently-edited detection via the label menu.
-   * The MUI menu renders in a document-level portal, so target it off `page`.
-   */
-  async addMask() {
-    await this.openLabelMenu();
-    await this.page.getByTestId("label-menu-add-mask").click();
-  }
-
-  /**
    * Remove the mask from the currently-edited detection via the label menu.
    */
   async removeMask() {
@@ -106,24 +105,40 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Get the error message text for a specific field
-   *
-   * @param path The field path
-   * @returns A promise that resolves to the error text content
+   * Run `action` (selecting a masked label) and resolve once the mask preview
+   * it opens has drawn the mask; the preview mounts blank
    */
-  async getFieldErrors(path: string) {
-    const id = convertPathToId(path);
-    return this.locator.getByTestId(`${id}_errors`).textContent();
+  async afterMaskPreview<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:mask-preview-drawn", action);
   }
 
   /**
-   * Get a field label
-   *
-   * @param path The field path
-   * @returns A promise that resolves to the label text content
+   * Covered fraction of the rendered mask preview: opaque pixels over the area
+   * the mask is drawn into (its own size fit to the preview), so it compares
+   * across mask resolutions. Draw it first with {@link afterMaskPreview}.
    */
-  async getFieldLabel(path: string) {
-    return (await this.getFieldContainer(path)).locator("label").textContent();
+  async maskPreviewCoverage(): Promise<number> {
+    const canvas = this.page
+      .getByTestId("annotate-mask-preview")
+      .locator("canvas[data-mask-width]");
+    return canvas.evaluate((canvas: HTMLCanvasElement) => {
+      const width = Number(canvas.dataset.maskWidth);
+      const height = Number(canvas.dataset.maskHeight);
+      const context = canvas.getContext("2d");
+      if (!context || !width || !height) {
+        return 0;
+      }
+      const scale = Math.min(canvas.width / width, canvas.height / height);
+      const area = Math.round(width * scale) * Math.round(height * scale);
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let opaque = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] > 0) {
+          opaque++;
+        }
+      }
+      return opaque / area;
+    });
   }
 
   /**
@@ -162,10 +177,9 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Select a choice from a SmartForm select field, e.g. the label class. The
-   * SmartForm widget renders a voodo `Select` (a Headless UI combobox): click the
-   * combobox trigger, then the option. The options list mounts in a document-level
-   * portal, so the option is targeted off `page`, not the field container.
+   * Select a choice from a SmartForm select field (a voodo `Select` combobox):
+   * click the trigger, then the option, which mounts in a document-level portal
+   * and is targeted off `page`.
    *
    * @param path The field path (e.g. "label")
    * @param choice The visible choice label to select (e.g. "dog")
@@ -177,10 +191,9 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * The field-move dropdown (the label's destination field). It's a MUI
-   * `Select` rendered through SchemaIO's `DropdownView`, scoped by the
-   * `annotate-field-select` wrapper so it doesn't collide with the class
-   * combobox. Its visible text is the current field name.
+   * The field-move dropdown (the label's destination field): a MUI `Select`
+   * scoped by the `annotate-field-select` wrapper so it doesn't collide with
+   * the class combobox. Its visible text is the current field name.
    */
   get fieldSelect() {
     return this.locator
@@ -205,6 +218,79 @@ export class ModalAnnotateEditPom {
   async moveFieldTo(field: string) {
     await this.fieldSelect.click();
     await this.page.getByRole("option", { name: field, exact: true }).click();
+  }
+
+  /**
+   * A row of the keypoint node checklist (`KeypointDetails`), by skeleton node
+   * index. Carries `data-cy-status` (placed | target | skipped | pending) and
+   * `data-cy-selected`.
+   */
+  keypointNodeRow(index: number) {
+    return this.locator.getByTestId(`keypoint-node-${index}`);
+  }
+
+  /** The "N of M placed" summary line above the keypoint node checklist. */
+  get keypointPlacedSummary() {
+    return this.locator.getByTestId("keypoint-placed-summary");
+  }
+
+  /** A node row's Place button (offered while the row is not an armed target). */
+  keypointPlaceButton(index: number) {
+    return this.locator.getByTestId(`keypoint-place-node-${index}`);
+  }
+
+  /** The target row's Skip button (offered while placement is armed). */
+  get keypointSkipButton() {
+    return this.locator.getByTestId("keypoint-skip-node");
+  }
+
+  /**
+   * Click a node row's Place button, which arms placement and force-targets
+   * the node. Resolves once the placement handler is armed.
+   */
+  async placeKeypointNode(index: number) {
+    await this.eventUtils.after(
+      "lighter:scene-interactive-mode-changed",
+      () => this.keypointPlaceButton(index).click(),
+      (e) => (e.detail as { interactiveMode: boolean }).interactiveMode,
+    );
+  }
+
+  /**
+   * Run `action` and resolve once the keypoint checklist has rendered the
+   * state it causes: new node statuses, placement arming or disarming, or a
+   * node selection (the node inspector renders with it)
+   */
+  async afterKeypointChecklist<T>(action: () => Promise<T>): Promise<T> {
+    return this.eventUtils.after("e2e:annotate:keypoint-checklist", action);
+  }
+
+  /** Every checklist row's status, in skeleton node order. */
+  async keypointNodeStatuses(): Promise<(string | null)[]> {
+    const rows = await this.locator
+      .getByTestId("keypoint-node-list")
+      .locator("[data-cy-status]")
+      .all();
+    return Promise.all(rows.map((row) => row.getAttribute("data-cy-status")));
+  }
+
+  /** Click the target row's Skip button (guided placement passes the node). */
+  async skipKeypointNode() {
+    await this.keypointSkipButton.click();
+  }
+
+  /**
+   * The inspector's toggle for a point-scoped bool attribute.
+   *
+   * @param attribute The attribute name (e.g. "occluded")
+   */
+  keypointPointAttributeToggle(attribute: string) {
+    return this.locator.getByTestId(`keypoint-${attribute}-toggle`);
+  }
+
+  /** The edit form's title ("Edit Keypoint", "Edit Detection", …). */
+  get title() {
+    return this.locator.getByTestId("annotate-edit-title");
   }
 
   /**
@@ -238,25 +324,93 @@ class ModalAnnotateEditAsserter {
   constructor(private readonly modalAnnotateEdit: ModalAnnotateEditPom) {}
 
   /**
-   * Verify a field's label
-   *
-   * @param path The field path
-   * @param expectedLabel The expected label value
+   * Verify the edit form is open (a label or primitive is being edited)
    */
-  async verifyFieldLabel(path: string, expectedLabel: string) {
-    const actualLabel = await this.modalAnnotateEdit.getFieldLabel(path);
-    expect(actualLabel).toBe(expectedLabel);
+  async isOpen() {
+    expect(await this.modalAnnotateEdit.backButton.isVisible()).toBe(true);
   }
 
   /**
-   * Verify a field's errors
+   * Verify the edit form is closed (the sidebar shows the label list)
+   */
+  async isClosed() {
+    expect(await this.modalAnnotateEdit.backButton.isVisible()).toBe(false);
+  }
+
+  /**
+   * Verify which label type the edit form is editing.
+   *
+   * @param type The label type as titled (e.g. "Keypoint")
+   */
+  async editsLabelType(type: string) {
+    expect(
+      collapseWhitespace(await this.modalAnnotateEdit.title.textContent()),
+    ).toBe(`Edit ${type}`);
+  }
+
+  /**
+   * Verify the keypoint checklist, one status per skeleton node in node
+   * order. Read after the checklist event of the step it checks.
+   *
+   * @param statuses The expected status of every node
+   */
+  async keypointNodeStatuses(statuses: KeypointNodeStatus[]) {
+    expect(await this.modalAnnotateEdit.keypointNodeStatuses()).toEqual(
+      statuses,
+    );
+  }
+
+  /**
+   * Verify the "N of M placed" summary above the keypoint checklist.
+   *
+   * @param text The full summary text (e.g. "3 of 4 placed · 1 skipped")
+   */
+  async keypointPlacedSummary(text: string) {
+    expect(
+      collapseWhitespace(
+        await this.modalAnnotateEdit.keypointPlacedSummary.textContent(),
+      ),
+    ).toBe(text);
+  }
+
+  /**
+   * Verify a point-scoped bool attribute's toggle in the node inspector.
+   *
+   * @param attribute The attribute name
+   * @param checked Whether the toggle should read on
+   */
+  async keypointPointAttributeChecked(attribute: string, checked: boolean) {
+    expect(
+      await this.modalAnnotateEdit
+        .keypointPointAttributeToggle(attribute)
+        .isChecked(),
+    ).toBe(checked);
+  }
+
+  /**
+   * Verify a field's value. The form commits to the engine and re-renders on
+   * the input event that edits it, so one read after the action suffices.
    *
    * @param path The field path
-   * @param expectedErrors The expected error message
+   * @param expectedValue The expected field value
    */
-  async verifyFieldErrors(path: string, expectedErrors: string) {
-    const actualErrors = await this.modalAnnotateEdit.getFieldErrors(path);
-    expect(actualErrors).toBe(expectedErrors);
+  async verifyFieldValue(path: string, expectedValue: string) {
+    const value = await this.modalAnnotateEdit.getFieldValue(path);
+    expect(value).toBe(expectedValue);
+  }
+
+  /**
+   * Verify the field the edited label belongs to, as the field dropdown shows
+   * it.
+   *
+   * @param field The expected field path
+   */
+  async currentField(field: string) {
+    expect(
+      collapseWhitespace(
+        await this.modalAnnotateEdit.fieldSelect.textContent(),
+      ),
+    ).toBe(field);
   }
 
   /**
@@ -265,9 +419,10 @@ class ModalAnnotateEditAsserter {
    * @param path The field path
    * @param expectedValue The expected field value
    */
-  async verifyFieldValue(path: string, expectedValue: string) {
-    const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
-    expect(actualValue).toBe(expectedValue);
+  async hasFieldValue(path: string, expectedValue: string) {
+    expect(await this.modalAnnotateEdit.getFieldValue(path)).toBe(
+      expectedValue,
+    );
   }
 
   /**
@@ -282,18 +437,13 @@ class ModalAnnotateEditAsserter {
     const preview = this.modalAnnotateEdit.page.getByTestId(
       "annotate-mask-preview",
     );
-    if (visible) {
-      await expect(preview).toBeVisible();
-    } else {
-      await expect(preview).toBeHidden();
-    }
+    expect(await preview.isVisible()).toBe(visible);
   }
 
   /**
-   * Assert whether the edited detection currently has a mask. Read off the label
-   * menu, which shows "Remove mask" for a masked detection and "Add mask" for a
-   * maskless one (`Edit/Header.tsx` `isMaskDetection`). Opens then closes the
-   * menu (Escape) so it leaves no state behind.
+   * Assert whether the edited detection has a mask, read off the label menu
+   * ("Remove mask" for a masked detection, "Add mask" otherwise). Opens then
+   * closes the menu with Escape so it leaves no state behind.
    *
    * @param hasMask Whether the detection is expected to have a mask
    */
@@ -303,13 +453,8 @@ class ModalAnnotateEditAsserter {
       "label-menu-remove-mask",
     );
     const add = this.modalAnnotateEdit.page.getByTestId("label-menu-add-mask");
-    if (hasMask) {
-      await expect(remove).toBeVisible();
-      await expect(add).toBeHidden();
-    } else {
-      await expect(add).toBeVisible();
-      await expect(remove).toBeHidden();
-    }
+    expect(await remove.isVisible()).toBe(hasMask);
+    expect(await add.isVisible()).toBe(!hasMask);
     await this.modalAnnotateEdit.page.keyboard.press("Escape");
   }
 
@@ -320,10 +465,9 @@ class ModalAnnotateEditAsserter {
    * @param active Whether segmentation mode is expected to be active
    */
   async inSegmentationMode(active = true) {
-    const brush = this.modalAnnotateEdit.segmentationBrushTool;
-    return active
-      ? await expect(brush).toBeVisible()
-      : await expect(brush).toBeHidden();
+    expect(await this.modalAnnotateEdit.segmentationBrushTool.isVisible()).toBe(
+      active,
+    );
   }
 
   /**
@@ -332,10 +476,9 @@ class ModalAnnotateEditAsserter {
    * @param enabled Whether the redo button is enabled or not
    */
   async redoIsEnabled(enabled = true) {
-    const redoButton = this.modalAnnotateEdit.redoButton;
-    return enabled
-      ? await expect(redoButton).not.toHaveClass(/disabled/)
-      : await expect(redoButton).toHaveClass(/disabled/);
+    expect(
+      await this.modalAnnotateEdit.redoButton.getAttribute("aria-disabled"),
+    ).toBe(String(!enabled));
   }
 
   /**
@@ -344,10 +487,9 @@ class ModalAnnotateEditAsserter {
    * @param enabled Whether the undo button is enabled or not
    */
   async undoIsEnabled(enabled = true) {
-    const undoButton = this.modalAnnotateEdit.undoButton;
-    return enabled
-      ? await expect(undoButton).not.toHaveClass(/disabled/)
-      : await expect(undoButton).toHaveClass(/disabled/);
+    expect(
+      await this.modalAnnotateEdit.undoButton.getAttribute("aria-disabled"),
+    ).toBe(String(!enabled));
   }
 }
 

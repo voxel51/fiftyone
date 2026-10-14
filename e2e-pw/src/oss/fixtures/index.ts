@@ -1,16 +1,12 @@
-import { test as base } from "@playwright/test";
+import { test as base, type BrowserContext, type Page } from "@playwright/test";
 import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { reserveWorkerPort } from "src/shared/network-utils/port";
-import { SAM2_MOCK_WORKER_SRC } from "src/shared/sam2-mock-worker";
+import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
-import { AggregationWatcher } from "./aggregation-watcher";
-import { Annotate3dSDK } from "./annotate-3d-sdk";
-import { AnnotateSDK } from "./annotate-sdk";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
-import { VideoAnnotateSDK } from "./video-annotate-sdk";
 
 // note: this difference between "with" and "without" is only for type safety
 
@@ -21,15 +17,18 @@ export type CustomFixturesWithoutPage = {
   datasetFactory: typeof DatasetFactory;
   mediaFactory: typeof MediaFactory;
   foWebServer: FoWebServer;
-  annotateSDK: AnnotateSDK;
-  annotate3dSDK: Annotate3dSDK;
-  videoAnnotateSDK: VideoAnnotateSDK;
 };
 
 // these fixtures have access to the {page} fixture
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
-  aggregationWatcher: AggregationWatcher;
+  /**
+   * Opens a page in a fresh browser context, for checking what persisted
+   * through a true server round-trip. Every page the test opened before it
+   * closes first: an App open alongside would share the server's session and
+   * sync its state into the check.
+   */
+  openFreshPage: () => Promise<Page>;
   /**
    * Installs a deterministic mock SAM2 worker via `page.addInitScript` so
    * the page's `BrowserAnnotationProvider` constructs the mock instead of
@@ -75,24 +74,6 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
     },
     { scope: "worker" },
   ],
-  annotateSDK: [
-    async ({}, use) => {
-      await use(new AnnotateSDK());
-    },
-    { scope: "worker" },
-  ],
-  annotate3dSDK: [
-    async ({}, use) => {
-      await use(new Annotate3dSDK());
-    },
-    { scope: "worker" },
-  ],
-  videoAnnotateSDK: [
-    async ({}, use) => {
-      await use(new VideoAnnotateSDK());
-    },
-    { scope: "worker" },
-  ],
 });
 
 export const test = customFixtures.extend<CustomFixturesWithPage>({
@@ -107,23 +88,49 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     });
     await use(page);
   },
-  eventUtils: async ({ page }, use) => {
-    await use(new EventUtils(page));
-  },
-  aggregationWatcher: async ({ page }, use) => {
-    await use(new AggregationWatcher(page));
+  eventUtils: [
+    async ({ page }, use, testInfo) => {
+      const eventUtils = new EventUtils(page);
+      await eventUtils.recordLoads();
+      // each document shows the global loading screen at most once
+      const loadingScreens = await eventUtils.countPerDocument(
+        "e2e:app:global-loading-screen",
+      );
+      await use(eventUtils);
+      if (Math.max(0, ...loadingScreens()) > 1) {
+        throw new Error(
+          "the top-level Suspense boundary re-activated after the page loaded",
+        );
+      }
+      // a missing event fails as a bare timeout; say which events were expected
+      if (testInfo.status !== testInfo.expectedStatus) {
+        const report = await eventUtils.describePending();
+        if (report) {
+          console.log(`pending events:\n${report}`);
+          await testInfo.attach("pending events", {
+            body: report,
+            contentType: "text/plain",
+          });
+        }
+      }
+    },
+    { auto: true },
+  ],
+  openFreshPage: async ({ browser, page }, use) => {
+    const pages: Page[] = [page];
+    const contexts: BrowserContext[] = [];
+    await use(async () => {
+      for (const open of pages) await open.close();
+      const context = await browser.newContext();
+      contexts.push(context);
+      const fresh = await context.newPage();
+      pages.push(fresh);
+      return fresh;
+    });
+    for (const context of contexts) await context.close();
   },
   mockSam2Worker: async ({ page }, use) => {
-    // Must install BEFORE the page mounts BrowserAnnotationProvider. See
-    // `app/.../BrowserAnnotationProvider.ts` for the seam contract.
-    await page.addInitScript((workerSrc: string) => {
-      (
-        window as unknown as { __FO_TEST_SAM2_WORKER_FACTORY?: () => Worker }
-      ).__FO_TEST_SAM2_WORKER_FACTORY = () => {
-        const blob = new Blob([workerSrc], { type: "text/javascript" });
-        return new Worker(URL.createObjectURL(blob));
-      };
-    }, SAM2_MOCK_WORKER_SRC);
+    await installSam2MockWorker(page);
     await use();
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {
@@ -133,13 +140,17 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
         return;
       }
 
+      // 127.0.0.1, not localhost: the servers bind IPv4, and on hosts where
+      // localhost resolves to ::1 first (macOS) the browser can fail the
+      // IPv6 attempt without falling back. The startup health check already
+      // probes 127.0.0.1 — navigation should match it.
       await use(
-        `http://localhost:${process.env.FIFTYONE_DEFAULT_APP_PORT ?? 5193}`,
+        `http://127.0.0.1:${process.env.FIFTYONE_DEFAULT_APP_PORT ?? 5193}`,
       );
       return;
     }
 
-    await use(`http://localhost:${fiftyoneServerPort}`);
+    await use(`http://127.0.0.1:${fiftyoneServerPort}`);
   },
 });
 

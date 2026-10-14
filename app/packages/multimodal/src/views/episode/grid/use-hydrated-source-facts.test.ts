@@ -29,10 +29,15 @@ const SCOPE: SourceFactsScope = {
   mediaField: null,
 };
 
+const EPISODE_ID = "episode-a";
+// Deliberately unlike the episode: siblings of a reference-backed recording
+// share one object, so an assertion keyed on either would pass on the other
+// if the fixture made them the same string.
 const SOURCE: ByteSourceDescriptor = {
-  sourceId: "episode-a",
+  sourceId: "shared-recording",
   url: "https://app.example/media?filepath=%2Fdata%2Frun.mcap",
 };
+const POSTER_RANGE = { endNs: 19_833_333_333n, startNs: 0n };
 
 const PERSISTED_RANGE = { endNs: 2_000n, startNs: 1_000n };
 
@@ -65,6 +70,20 @@ describe("useHydratedSourceFacts", () => {
     resetSourceFactsPersistenceForTests();
   });
 
+  it("publishes the extent a cached poster carries, opening no session", async () => {
+    renderHook(() =>
+      useHydratedSourceFacts({
+        ...cachedTile(),
+        cachedPoster: { ...poster(), timeRange: POSTER_RANGE },
+        sourceFactsScope: undefined,
+      }),
+    );
+
+    await vi.waitFor(() =>
+      expect(getEpisodeTimeRange(EPISODE_ID)).toEqual(POSTER_RANGE),
+    );
+  });
+
   it("publishes the recording range for a tile served from the poster cache", async () => {
     renderHook(() => useHydratedSourceFacts(cachedTile()));
 
@@ -77,7 +96,7 @@ describe("useHydratedSourceFacts", () => {
     renderHook(() => useHydratedSourceFacts(cachedTile()));
 
     await vi.waitFor(() =>
-      expect(getEpisodeTimeRange(SOURCE.sourceId)).toEqual(PERSISTED_RANGE),
+      expect(getEpisodeTimeRange(EPISODE_ID)).toEqual(PERSISTED_RANGE),
     );
   });
 
@@ -116,6 +135,7 @@ describe("useHydratedSourceFacts", () => {
 function cachedTile() {
   return {
     cachedPoster: poster(),
+    episodeId: EPISODE_ID,
     previewSessionDemand: false,
     source: SOURCE,
     sourceFactsScope: SCOPE,

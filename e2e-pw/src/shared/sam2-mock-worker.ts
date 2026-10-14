@@ -1,26 +1,14 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
- *
- * Mock SAM2 inference worker for e2e specs. Returns a deterministic
- * all-foreground mask + bbox so AI-assisted segmentation tests don't have
- * to download model weights or run ONNX.
- *
- * Installed via the `window.__FO_TEST_SAM2_WORKER_FACTORY` seam on
- * `BrowserAnnotationProvider`. The source string is wrapped in a Blob URL
- * by the test setup so it runs in a real Worker context — `self.onmessage`
- * and `self.postMessage` work as in the production `worker.ts`.
- *
- * The protocol mirrors `app/packages/annotation/src/providers/worker.ts`:
- *   - emit `{ type: "ready" }` once on startup
- *   - `init` → no response
- *   - `loadModel` → `{ id, type, success: true, result: undefined }`
- *   - `embedAndDecode` → `{ id, type, success: true, result }` where result
- *     is `{ mask: Float32Array, maskWidth, maskHeight, bbox: {x,y,w,h} }`
- *
- * The mask is 8x8 all-ones (foreground) so the agent's `normalizeMask`
- * (thresholded at >0.5) yields 64 foreground pixels, which after the
- * agent's encode + the server-side save round-trip, the spec can verify
- * with `annotateSDK.getDetectionsState(...).maskPixels > 0`.
+ */
+
+import type { BrowserContext, Page } from "@playwright/test";
+
+/**
+ * Mock SAM2 inference worker for e2e specs, served as the worker script. It
+ * speaks the production `worker.ts` protocol and answers every decode with a
+ * deterministic 8x8 all-foreground mask + bbox, so no weights download and the
+ * saved detection renders a non-empty mask.
  */
 export const SAM2_MOCK_WORKER_SRC = `
   self.onmessage = (e) => {
@@ -50,3 +38,23 @@ export const SAM2_MOCK_WORKER_SRC = `
   };
   self.postMessage({ type: "ready" });
 `;
+
+/**
+ * The SAM2 worker script `BrowserAnnotationProvider` loads: the hashed
+ * `assets/worker-*.js` chunk of a build, or the source module under the dev
+ * server
+ */
+const SAM2_WORKER_URL =
+  /\/(assets\/worker-[\w-]+\.js|annotation\/src\/providers\/worker\.ts)(\?|$)/;
+
+/**
+ * Serves the mock in place of the SAM2 worker script for every page in
+ * `target`; install before the page mounts `BrowserAnnotationProvider`.
+ */
+export const installSam2MockWorker = (target: Page | BrowserContext) =>
+  target.route(SAM2_WORKER_URL, async (route) => {
+    // keep the real response's headers: the page is cross-origin isolated, and
+    // a worker script without them is refused without an error
+    const response = await route.fetch();
+    await route.fulfill({ response, body: SAM2_MOCK_WORKER_SRC });
+  });

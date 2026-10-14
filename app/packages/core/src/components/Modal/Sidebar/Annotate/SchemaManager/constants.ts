@@ -21,16 +21,24 @@ export const TAB_JSON = "json" as const;
 export const TAB_IDS = [TAB_GUI, TAB_JSON] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
-// System read-only fields that cannot be edited or scanned
+// System read-only fields that cannot be edited or scanned; a video frame's
+// number is its clock
 const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
   "_sample_id",
   "created_at",
+  "frames.frame_number",
   "id",
   "last_modified_at",
   "sample_id",
 ] as const;
 
 export const SYSTEM_READ_ONLY_FIELD_NAME = "system";
+
+// Copy for the (disabled) hide affordance. Only custom schemas can hide
+// fields; the dataset default always shows everything.
+export const DEFAULT_CANNOT_HIDE =
+  "Fields can't be hidden in the default schema — create a custom schema to hide fields";
+export const REQUIRED_CANNOT_HIDE = "Required field — cannot be hidden";
 
 export type SystemReadOnlyField =
   (typeof SYSTEM_READ_ONLY_FIELDS_ARRAY)[number];
@@ -52,6 +60,7 @@ export const LABEL_TYPE_OPTIONS = [
   { id: "detections", data: { label: "Detections" } },
   { id: "classification", data: { label: "Classification" } },
   { id: "polylines", data: { label: "Polylines" } },
+  { id: "keypoints", data: { label: "Keypoints" } },
 ];
 
 // Label type options for 3D datasets
@@ -61,14 +70,33 @@ export const LABEL_TYPE_OPTIONS_3D = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
-// Label type options for sample-level fields on video datasets. Spatial labels
-// (detections/polylines) are frame-level only on video, so a sample-level field
-// is limited to the clip-level label types. Frame fields (a "frames." prefix)
-// use LABEL_TYPE_OPTIONS instead — see getLabelTypeOptions.
+// Label type options on video datasets: every label type at once. Where
+// a field lives is decided by its type, not by the name — spatial labels
+// (detections / polylines / keypoints) are frame fields and the form
+// adds the "frames." prefix itself; classification and temporal
+// detections are sample-level. Frame-level classification is not
+// supported, so there is no such option.
 export const LABEL_TYPE_OPTIONS_VIDEO = [
+  { id: "detections", data: { label: "Detections" } },
+  { id: "polylines", data: { label: "Polylines" } },
+  { id: "keypoints", data: { label: "Keypoints" } },
   { id: "classification", data: { label: "Classification" } },
   { id: "temporaldetections", data: { label: "Temporal Detections" } },
 ];
+
+/** Label types stored as frame fields on video ("frames." prefix). */
+export const FRAME_LEVEL_LABEL_TYPES = new Set([
+  "detections",
+  "polylines",
+  "keypoints",
+]);
+
+export const FRAME_PREFIX_TOOLTIP =
+  "Detection, Polyline, and Keypoint labels are stored as frame fields";
+export const FRAME_PREFIX_AUTO_ERROR =
+  "Invalid field name, the frames. prefix is automatically added for this label type";
+export const FRAME_PREFIX_SAMPLE_ERROR =
+  "Invalid field name, the frames. prefix is not allowed for this label type which must be stored at the sample level";
 
 // =============================================================================
 // New Field Category Constants
@@ -119,6 +147,16 @@ export const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
   { name: "index", type: "int", component: "text" },
 ];
 
+// Keypoint's `confidence` is a list parallel to `points`, one value per
+// point, so it is point-scoped and declares its element type. The base
+// label-level `confidence` would not validate against the list field.
+export const DEFAULT_KEYPOINT_ATTRIBUTES: AttributeConfig[] = [
+  { name: "id", type: "id", component: "text", read_only: true },
+  { name: "tags", type: "list<str>", component: "text" },
+  { name: "confidence", type: "float", component: "text", scope: "point" },
+  { name: "index", type: "int", component: "text" },
+];
+
 // Get default attributes for a label type based on media type
 export const getDefaultAttributesForType = (
   labelType: string,
@@ -131,6 +169,8 @@ export const getDefaultAttributesForType = (
         : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "keypoints":
+      return DEFAULT_KEYPOINT_ATTRIBUTES;
     case "temporaldetections":
       // `support` is edited via the timeline drag handles, not as a
       // primitive sidebar component. Keep it off the schema's editable
@@ -171,10 +211,13 @@ export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
 // Component options by type
 // Source: https://github.com/voxel51/fiftyone/blob/1b31fce1b7f24af051ffa278a33c5b02dcc2c8e8/fiftyone/core/annotation/constants.py
 
-export const COMPONENT_OPTIONS: Record<
-  string,
-  Array<{ id: string; label: string; icon: IconName }>
-> = {
+export interface ComponentOption {
+  id: string;
+  label: string;
+  icon: IconName;
+}
+
+export const COMPONENT_OPTIONS: Record<string, ComponentOption[]> = {
   // STR_COMPONENTS = {dropdown, radio, text}
   str: [
     { id: "text", label: "Text", icon: IconName.Text },
@@ -242,6 +285,10 @@ export const BOOL_DEFAULT_OPTIONS = [
 
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
+
+// Element types a point-scoped keypoint attribute may declare (its storage is
+// a list of the element type, parallel to `points`)
+export const POINT_SCOPE_TYPES = ["bool", "float", "int", "str"];
 
 // Primitive field types - full Python class names from @fiftyone/utilities
 // Used to check if a field is a primitive type (not a label type like Detection)
@@ -344,6 +391,22 @@ export const componentNeedsValues = (component: string): boolean =>
  * Mirrors CHECKBOXES_OR_RADIO_THRESHOLD in annotation/constants.py
  */
 export const CLASSES_COMPONENT_THRESHOLD = 5;
+
+/**
+ * Input types a label field's classes can be rendered with. `text` is not
+ * offered because classes are values and need a values-backed component.
+ */
+export const CLASSES_COMPONENTS = ["radio", "dropdown"] as const;
+
+export type ClassesComponent = (typeof CLASSES_COMPONENTS)[number];
+
+export const isClassesComponent = (value: unknown): value is ClassesComponent =>
+  (CLASSES_COMPONENTS as readonly unknown[]).includes(value);
+
+export const CLASSES_COMPONENT_OPTIONS = COMPONENT_OPTIONS.str.filter(
+  (option): option is ComponentOption & { id: ClassesComponent } =>
+    isClassesComponent(option.id),
+);
 
 /**
  * Get default component for a type

@@ -5,8 +5,13 @@ import type {
   EncodedH264VideoVisualization,
 } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
+import { withPreroll } from "./preroll.test-fixtures";
 import type { EncodedVideoAccessUnit, H264AccessUnit } from "./types";
-import { VideoDecoderFailureError, VideoIntentCancelledError } from "./types";
+import {
+  VideoCodecUnsupportedError,
+  VideoDecoderFailureError,
+  VideoIntentCancelledError,
+} from "./types";
 import {
   MAX_VIDEO_DECODE_IN_FLIGHT,
   VIDEO_DECODE_PROGRESS_TIMEOUT_MS,
@@ -364,15 +369,19 @@ describe("WebCodecsVideoDecoder", () => {
     const harness = fakeWebCodecs({ supported: false });
     const actor = new WebCodecsVideoDecoder(harness.environment);
 
-    await expect(
-      actor.decode([unit(0, true, "avc1.640028")], {
-        signal: new AbortController().signal,
-        targetTimeNs: 0n,
-      }),
-    ).rejects.toMatchObject({
-      message: "H.264 codec 'avc1.640028' is unsupported",
-      name: "VideoDecoderFailureError",
+    const refusal = actor.decode([unit(0, true, "avc1.640028")], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
     });
+
+    await expect(refusal).rejects.toMatchObject({
+      message: "H.264 codec 'avc1.640028' is unsupported",
+      name: "VideoCodecUnsupportedError",
+    });
+    // Terminal, so playback latches it instead of seeking into it again, while
+    // still satisfying every existing decoder-failure handler
+    await expect(refusal).rejects.toBeInstanceOf(VideoCodecUnsupportedError);
+    await expect(refusal).rejects.toBeInstanceOf(VideoDecoderFailureError);
     actor.close();
   });
 
@@ -429,6 +438,68 @@ describe("WebCodecsVideoDecoder", () => {
     expect(harness.instances[0].close).toHaveBeenCalledOnce();
     actor.close();
   });
+
+  it("counts a discarded preroll picture as decoder progress", async () => {
+    vi.useFakeTimers();
+    const harness = fakeWebCodecs({ deferOutputs: true });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const accessUnit = withPreroll(
+      av1Unit(0),
+      [
+        { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
+        { bytes: av1Unit(0).frame.bytes, keyframe: false },
+        { bytes: av1Unit(0).frame.bytes, keyframe: false },
+      ],
+      { keyframe: true },
+    );
+    const decode = actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    // Each gap is inside the timeout; together they are three times it
+    for (let output = 0; output < 4; output += 1) {
+      await vi.advanceTimersByTimeAsync(
+        VIDEO_DECODE_PROGRESS_TIMEOUT_MS * 0.75,
+      );
+      harness.releaseOutputs(1);
+    }
+
+    const frame = await decode;
+    expect(frame.timestamp).toBe(
+      (
+        harness.instances[0].decode.mock.calls[3][0] as {
+          readonly timestamp: number;
+        }
+      ).timestamp,
+    );
+    frame.close();
+    actor.close();
+  });
+
+  it("keeps a decoder whose output arrives after its transaction ended", async () => {
+    vi.useFakeTimers();
+    const harness = fakeWebCodecs({ deferOutputs: true });
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const first = actor.decode([av1Unit(0, true), av1Unit(1)], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    harness.releaseOutputs(1);
+    (await first).close();
+
+    harness.releaseOutputs(1);
+    await vi.advanceTimersByTimeAsync(VIDEO_DECODE_PROGRESS_TIMEOUT_MS + 1);
+
+    const second = await actor.decode([av1Unit(1)], {
+      signal: new AbortController().signal,
+      targetTimeNs: 1n,
+    });
+    expect(harness.instances).toHaveLength(1);
+    second.close();
+    actor.close();
+  });
 });
 
 describe("WebCodecsVideoDecoder AV1", () => {
@@ -457,6 +528,132 @@ describe("WebCodecsVideoDecoder AV1", () => {
     output.close();
     actor.close();
   });
+
+  it("decodes a unit's preroll before it and presents only the unit", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    const streamKeyframe = av1Unit(-2, true).frame.bytes;
+    const leadingDelta = av1Unit(-1).frame.bytes;
+    const opening = av1Unit(0);
+    const accessUnit = withPreroll(
+      opening,
+      [
+        { bytes: streamKeyframe, keyframe: true },
+        { bytes: leadingDelta, keyframe: false },
+      ],
+      { keyframe: true },
+    );
+
+    const output = await actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 0n,
+    });
+
+    const chunks = harness.instances[0].decode.mock.calls.map(
+      ([chunk]) =>
+        chunk as {
+          readonly data: Uint8Array;
+          readonly timestamp: number;
+          readonly type: string;
+        },
+    );
+    expect(chunks.map((chunk) => chunk.type)).toEqual([
+      "key",
+      "delta",
+      "delta",
+    ]);
+    expect(chunks.map((chunk) => chunk.data)).toEqual([
+      streamKeyframe,
+      leadingDelta,
+      opening.frame.bytes,
+    ]);
+    expect(output.timestamp).toBe(chunks[2].timestamp);
+    expect(
+      harness.frames
+        .filter(({ frame }) => frame !== output)
+        .every(({ closed }) => closed()),
+    ).toBe(true);
+    output.close();
+    actor.close();
+  });
+  it("keeps a picture its preroll decodes and serves it without resubmitting", async () => {
+    const harness = fakeWebCodecs();
+    const actor = new WebCodecsVideoDecoder(harness.environment);
+    // Presented after the opening but decoded before it, as a P-frame ahead
+    // of the B-frame that opens a reordered episode
+    const early: EncodedVideoAccessUnit = {
+      frame: { ...av1Unit(200_000).frame, decodeTimestampNs: 100_000n },
+      timeNs: 200_000n,
+    };
+    const accessUnit = withPreroll(
+      av1Unit(100_000),
+      [
+        { bytes: av1Unit(0, true).frame.bytes, keyframe: true },
+        { bytes: early.frame.bytes, keyframe: false, timestampNs: 200_000n },
+      ],
+      { decodeTimestampNs: 300_000n, keyframe: true },
+    );
+
+    const first = await actor.decode([accessUnit], {
+      signal: new AbortController().signal,
+      targetTimeNs: 100_000n,
+    });
+    const second = await actor.decode([early], {
+      signal: new AbortController().signal,
+      targetTimeNs: 200_000n,
+    });
+
+    const chunks = harness.instances[0].decode.mock.calls.map(
+      ([chunk]) => chunk as { readonly timestamp: number },
+    );
+    expect(chunks).toHaveLength(3);
+    expect(second.timestamp).toBe(chunks[1].timestamp);
+    expect(first.timestamp).toBe(chunks[2].timestamp);
+    first.close();
+    second.close();
+    actor.close();
+  });
+});
+
+describe("WebCodecsVideoDecoder H.264 parameter sets", () => {
+  const SPS = Uint8Array.of(0x67, 0x4d, 0, 0x1f);
+  const PPS = Uint8Array.of(0x68, 0xce);
+  const START_CODE = Uint8Array.of(0, 0, 0, 1);
+  const inlined = (slice: Uint8Array) =>
+    Uint8Array.from([...START_CODE, ...SPS, ...START_CODE, ...PPS, ...slice]);
+
+  it.each([
+    {
+      name: "a keyframe",
+      slice: Uint8Array.of(0, 0, 1, 0x65),
+      targetTimeNs: 0n,
+      units: [unit(0, true)],
+    },
+    {
+      name: "a delta frame",
+      slice: Uint8Array.of(0, 0, 1, 0x41),
+      targetTimeNs: 1n,
+      units: [unit(0, true), unit(1)],
+    },
+  ])(
+    "inlines the container's parameter sets ahead of $name whose bytes carry none",
+    async ({ slice, targetTimeNs, units }) => {
+      const harness = fakeWebCodecs();
+      const actor = new WebCodecsVideoDecoder(harness.environment);
+
+      const output = await actor.decode(units, {
+        signal: new AbortController().signal,
+        targetTimeNs,
+      });
+
+      const submitted = harness.instances[0].decode.mock.calls.at(-1)?.[0] as {
+        readonly data: Uint8Array;
+      };
+      expect(submitted.data).toEqual(inlined(slice));
+      output.close();
+      actor.close();
+    },
+  );
 });
 
 function fakeWebCodecs(

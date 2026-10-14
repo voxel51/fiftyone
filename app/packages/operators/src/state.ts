@@ -1,7 +1,8 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import { Markdown } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
-import { debounce } from "lodash";
+import { debounce, omit } from "lodash";
 import React, {
   useCallback,
   useEffect,
@@ -23,6 +24,7 @@ import {
 import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
+  RESOLVE_LOOP_WINDOW_MS,
   RESOLVE_TYPE_TTL,
 } from "./constants";
 import {
@@ -235,24 +237,36 @@ const useExecutionContext = (operatorName, hooks = {}) => {
 function useExecutionOptions(operatorURI, ctx, isRemote) {
   const [isLoading, setIsLoading] = useState(true);
   const [executionOptions, setExecutionOptions] = useState(null);
+  // Requests overlap, and only the newest may apply its answer. Numbered when
+  // asked for, not when run: each context builds a new debounce with its own
+  // timer, so an older call can run after a newer one
+  const latestFetch = useRef(0);
 
-  const fetch = useMemo(
-    () =>
-      debounce(async (ctxOverride = null) => {
-        if (!isRemote) {
-          setExecutionOptions({ allowImmediateExecution: true });
-          return;
-        }
-        if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+  const fetch = useMemo(() => {
+    const debounced = debounce(async (request: number, ctxOverride = null) => {
+      const superseded = () => request !== latestFetch.current;
+      if (superseded()) return;
+      if (!isRemote) {
+        setExecutionOptions({ allowImmediateExecution: true });
+        return;
+      }
+      if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+      try {
         const options = await resolveExecutionOptions(
           operatorURI,
           ctxOverride || ctx,
         );
+        if (superseded()) return;
         setExecutionOptions(options);
-        setIsLoading(false);
-      }),
-    [operatorURI, ctx, isRemote],
-  );
+      } catch (error) {
+        if (superseded()) return;
+        console.error("Failed to resolve execution options", error);
+      }
+      setIsLoading(false);
+    });
+    return (ctxOverride = null) =>
+      debounced(++latestFetch.current, ctxOverride);
+  }, [operatorURI, ctx, isRemote]);
 
   useEffect(() => {
     fetch();
@@ -502,21 +516,40 @@ export const useOperatorPrompt = () => {
     return inputFields?.view;
   }, [inputFields]);
   const params = ctx.params;
+  // A field declaring `resolve_on_change: false` is a plain value the form
+  // never needs the server to react to, so it is left out of the key that
+  // re-resolves a dynamic operator
+  const inertPaths = useMemo(
+    () => collectInertPaths(resolvedIO.input?.type),
+    [resolvedIO.input],
+  );
   const serializedParams = useMemo(() => {
-    return JSON.stringify(params);
-  }, [params]);
+    return JSON.stringify(omit(params, inertPaths));
+  }, [params, inertPaths]);
+  // Compared against `serializedParams` to tell a settled form from one
+  // still resolving, so it must drop the same inert paths
   const serializedResolvedParams = useMemo(() => {
-    return JSON.stringify(resolvedParams);
-  }, [resolvedParams]);
+    return JSON.stringify(
+      resolvedParams ? omit(resolvedParams, inertPaths) : resolvedParams,
+    );
+  }, [resolvedParams, inertPaths]);
   const liteValuesRef = useRef({});
   const promptId = promptingOperator.id;
+  // The debounce does not wait for a resolve to finish, so resolves overlap;
+  // an older one answering last would settle the form on params it no longer
+  // holds, leaving it validating until the next edit. Numbered when asked for,
+  // not when run: a debounce replaced by a change to its deps still runs its
+  // trailing call later, with params older than its replacement's
+  const latestResolve = useRef(0);
 
   // the debounced resolver must keep its identity across renders so the
   // debounce window survives; deps are intentionally narrow
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const resolveInput = useCallback(
     debounce(
-      async (ctx) => {
+      async (ctx, request: number) => {
+        const superseded = () => request !== latestResolve.current;
+        if (superseded()) return;
         try {
           const liteValues = liteValuesRef.current;
           const optimizedCtx = optimizeCtx(ctx, liteValues);
@@ -525,6 +558,7 @@ export const useOperatorPrompt = () => {
           }
           const resolved =
             cachedResolvedInput || (await operator.resolveInput(optimizedCtx));
+          if (superseded()) return;
 
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -534,6 +568,7 @@ export const useOperatorPrompt = () => {
             setInputFields(null);
           }
         } catch (e) {
+          if (superseded()) return;
           resolveTypeError.current = e;
           setInputFields(null);
         }
@@ -546,7 +581,7 @@ export const useOperatorPrompt = () => {
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
-    resolveInput(ctx);
+    resolveInput(ctx, ++latestResolve.current);
   }, [ctx, hooks, resolveInput]);
 
   const validate = useCallback(
@@ -582,13 +617,50 @@ export const useOperatorPrompt = () => {
     [],
   );
 
+  const recentParams = useRef<{ key: string; at: number }[]>([]);
   useEffect(() => {
     if (executor.isExecuting || executor.hasExecuted) return;
+    // A form whose answer flips its own inputs back and forth requests
+    // forever. Four alternating resolves inside the window is that loop; a
+    // person toggling a field is far slower
+    const recent = recentParams.current;
+    const now = Date.now();
+    if (
+      recent.length >= 3 &&
+      recent[recent.length - 1].key === recent[recent.length - 3].key &&
+      serializedParams === recent[recent.length - 2].key &&
+      now - recent[recent.length - 3].at < RESOLVE_LOOP_WINDOW_MS
+    ) {
+      console.warn(
+        `[operators] ${operatorName} keeps resolving to alternating inputs; ` +
+          "not resolving again until the inputs change",
+      );
+      return;
+    }
+    recentParams.current = [
+      ...recent.slice(-3),
+      { key: serializedParams, at: now },
+    ];
     resolveInputFields();
     // re-resolve inputs only when params change; keying on the resolver would
     // re-fire every render because hooks is rebuilt each time
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serializedParams, executor.isExecuting]);
+  // Validation only runs inside a resolve, and a change to an inert field
+  // never resolves, so its errors are checked here against the last resolved
+  // inputs
+  const serializedAllParams = useMemo(() => JSON.stringify(params), [params]);
+  useEffect(() => {
+    if (
+      inertPaths.length === 0 ||
+      !resolvedIO.input ||
+      serializedParams !== serializedResolvedParams
+    ) {
+      return;
+    }
+    validateThrottled(ctx, resolvedIO.input);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serializedAllParams]);
   const resolveOutputFields = useCallback(async () => {
     ctx.hooks = hooks;
     const result = new OperatorResult(operator, executor.result, null, null);
@@ -756,7 +828,15 @@ export const useOperatorPrompt = () => {
   };
 };
 
-const operatorIOState = atom({
+const operatorIOState = atom<{
+  visible: boolean;
+  schema?: unknown;
+  data?: unknown;
+  isInput?: boolean;
+  isOutput?: boolean;
+  hideButtons?: boolean;
+  validationErrors?: unknown;
+}>({
   key: "operatorIOState",
   default: { visible: false },
 });
@@ -824,6 +904,12 @@ export const availableOperatorsRefreshCount = atom({
 
 export const operatorsInitializedAtom = atom({
   key: "operatorsInitializedAtom",
+  default: false,
+});
+
+/** The server listing failed, so the registry will not fill in on its own. */
+export const operatorsLoadFailedAtom = atom({
+  key: "operatorsLoadFailedAtom",
   default: false,
 });
 
@@ -1087,6 +1173,11 @@ export enum OperatorLoadResult {
   NOT_FOUND = "NOT_FOUND",
 }
 
+/** e2e specs wait on an operator run a click or prompt starts */
+type OperatorExecutorE2EEvents = {
+  "e2e:operators:executed": { operator: string; failed: boolean };
+};
+
 /**
  * @param uri - The URI of the operator to execute.
  * @param handlers - The optional handlers for the operator.
@@ -1204,6 +1295,7 @@ export function useOperatorExecutor(
       ctx.state = state;
       ctx.delegationTarget = delegationTarget;
       ctx.requestDelegation = requestDelegation;
+      let failed = true;
       try {
         ctx.hooks = hooks;
         ctx.state = state;
@@ -1214,6 +1306,7 @@ export function useOperatorExecutor(
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
+        failed = Boolean(result.error);
         if (result.error && !options?.skipErrorNotification) {
           handlers.onError?.(result, { ctx });
           notify({
@@ -1244,6 +1337,10 @@ export function useOperatorExecutor(
       }
       setHasExecuted(true);
       setIsExecuting(false);
+      getEventBus<OperatorExecutorE2EEvents>().dispatch(
+        "e2e:operators:executed",
+        { operator: uri, failed },
+      );
     },
     [currentSample, context, loadResult],
   );
@@ -1388,3 +1485,28 @@ export const useViewTargetGroupConstraints = () => {
     slice,
   };
 };
+
+/** Param paths whose field is marked `resolve_on_change: false`, nested
+ * objects included, as `omit` paths. */
+function collectInertPaths(
+  type: unknown,
+  prefix = "",
+  out: string[] = [],
+): string[] {
+  const properties = (type as { properties?: unknown } | null)?.properties;
+  if (!(properties instanceof Map)) return out;
+  for (const [name, property] of properties) {
+    const path = prefix ? `${prefix}.${name}` : name;
+    // The resolved schema keeps each view as raw JSON, so the flag sits on
+    // the view itself; a constructed View keeps it under `options`
+    const view = property?.view;
+    if (
+      view?.resolve_on_change === false ||
+      view?.options?.resolve_on_change === false
+    ) {
+      out.push(path);
+    }
+    collectInertPaths(property?.type, path, out);
+  }
+  return out;
+}

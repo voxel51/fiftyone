@@ -12,13 +12,30 @@ import {
   sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { StrictField, setContains3d } from "@fiftyone/utilities";
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import {
+  MEDIA_TYPE_GROUP,
+  MEDIA_TYPE_MULTIMODAL,
+  MEDIA_TYPE_VIDEO,
+  StrictField,
+  setContains3d,
+} from "@fiftyone/utilities";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { ModalSample } from "..";
 import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
-import { groupMediaTypesSet } from "./groups";
+import {
+  currentSlice,
+  groupMediaTypesMap,
+  groupMediaTypesSet,
+  isTemporalTagSlice,
+} from "./groups";
 import type { SelectionType } from "./types";
 import {
   DEFAULT_LABEL_SELECTION_STYLE,
@@ -272,6 +289,27 @@ export function clearExtendedSelectionMirror(): void {
   currentOverrideStage = null;
 }
 
+/** Sets what `read` hands back to a published override stage, so the stage
+ * survives the next update. */
+export function writeExtendedSelectionMirror(overrideStage: unknown): void {
+  currentSelection = { selection: null };
+  currentOverrideStage = overrideStage;
+}
+
+/**
+ * Whether a dataset fragment update comes from a different dataset than the
+ * one before it. `datasetId` is the dataset's own id. `id` is minted per
+ * fetch whenever a view argument is sent, so it changes on every hard reload
+ * (a layout write, a refresh) and cannot tell a reload from a dataset switch.
+ */
+export function isDatasetChange(
+  data: { datasetId: string },
+  previous: { datasetId: string } | null,
+): boolean {
+  if (!previous) return false;
+  return data.datasetId !== previous.datasetId;
+}
+
 export const extendedSelection = graphQLSyncFragmentAtom<
   datasetFragment$key,
   {
@@ -288,7 +326,7 @@ export const extendedSelection = graphQLSyncFragmentAtom<
     keys: ["dataset"],
     default: { selection: null },
     read: (data, previous) => {
-      if (previous && data.id !== previous?.id) {
+      if (isDatasetChange(data, previous)) {
         currentSelection = { selection: null };
       }
 
@@ -317,7 +355,7 @@ export const extendedSelectionOverrideStage = graphQLSyncFragmentAtom<
     keys: ["dataset"],
     default: null,
     read: (data, previous) => {
-      if (previous && data.id !== previous?.id) {
+      if (isDatasetChange(data, previous)) {
         currentOverrideStage = null;
       }
 
@@ -389,6 +427,29 @@ export const lookerPanels = atom({
     json: { isOpen: false },
     help: { isOpen: false },
   },
+});
+
+/**
+ * Whether the samples in view can carry temporal tags: they need a playhead to
+ * place an interval on. Multimodal episodes and videos qualify; in a grouped
+ * dataset, only a video slice does. Keyed by `modal`, since the modal can show
+ * a different slice than the grid.
+ */
+export const supportsTemporalTags = selectorFamily<boolean, boolean>({
+  key: "supportsTemporalTags",
+  get:
+    (modal) =>
+    ({ get }) => {
+      const type = get(mediaType);
+      if (type === MEDIA_TYPE_GROUP) {
+        return isTemporalTagSlice(
+          get(groupMediaTypesMap),
+          get(currentSlice(modal)),
+        );
+      }
+
+      return type === MEDIA_TYPE_MULTIMODAL || type === MEDIA_TYPE_VIDEO;
+    },
 });
 
 export const only3d = selector<boolean>({

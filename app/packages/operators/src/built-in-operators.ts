@@ -153,7 +153,7 @@ class ViewFromJSON extends Operator {
   }
 }
 
-class OpenPanel extends Operator {
+export class OpenPanel extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -253,6 +253,14 @@ class OpenPanel extends Operator {
     const newNode = new SpaceNode();
     await initializePanel(newNode.id, scope, state, data);
     newNode.type = name;
+    const sideSpace =
+      layout && spaces.root.layout === getLayout(layout)
+        ? spaces.root.lastChild()
+        : undefined;
+    if (sideSpace?.isPanelContainer()) {
+      spaces.addNodeAfter(sideSpace, newNode, isActive);
+      return;
+    }
     spaces.addNodeAfter(targetSpace, newNode, isActive);
     if (layout) {
       spaces.splitLayout(targetSpace, getLayout(layout), newNode);

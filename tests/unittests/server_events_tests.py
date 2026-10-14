@@ -6,7 +6,10 @@ FiftyOne Server events tests.
 |
 """
 
+import asyncio
+import inspect
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.state as fos
@@ -16,7 +19,9 @@ import fiftyone.core.session.events as fose
 import fiftyone.server.events.dispatch as fosd
 import fiftyone.server.events.listener as fosl
 import fiftyone.server.events.initialize as fosi
+import fiftyone.server.events.polling as fosp
 import fiftyone.server.events.state as foss
+import fiftyone.server.routes.events as fosre
 
 from decorators import drop_datasets
 
@@ -105,4 +110,321 @@ class TestListenerDisconnect(unittest.IsolatedAsyncioTestCase):
         foss.increment_app_count()
         self.assertIsInstance(
             await fosl.disconnect(True, set()), fose.CloseSession
+        )
+
+
+_APP_EVENTS = [
+    fose.AppCountUpdate.get_event_name(),
+    fose.DeactivateNotebookCell.get_event_name(),
+]
+
+
+def _payload(subscription, initializer=None):
+    return fose.ListenPayload(
+        events=_APP_EVENTS,
+        initializer=initializer or fose.AppInitializer(),
+        subscription=subscription,
+    )
+
+
+def _read_counts(subscription):
+    counts = []
+    for listener in foss.get_listeners()[fose.AppCountUpdate.get_event_name()]:
+        if listener.subscription == subscription:
+            while not listener.queue.empty():
+                counts.append(listener.queue.get_nowait()[1].count)
+
+    return counts
+
+
+class _Connection:
+    """An event stream connection, opened and closed like a request."""
+
+    def __init__(self, subscription, initializer=None):
+        self.checked = asyncio.Event()
+        self.closed = False
+        self._events = fosl.add_event_listener(
+            self, _payload(subscription, initializer=initializer)
+        )
+
+    async def is_disconnected(self):
+        self.checked.set()
+        return self.closed
+
+    async def open(self):
+        # an App's stream starts with its initial state
+        await self._events.__anext__()
+
+    async def stream(self):
+        async for _ in self._events:
+            pass
+
+    async def close(self):
+        self.closed = True
+        await self.stream()
+
+    async def abandon(self):
+        # the server closes the stream where it waits, as when the tab goes
+        # away while an event is still being sent
+        await self._events.aclose()
+
+
+class TestAppCount(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        foss.set_state(fos.StateDescription())
+        self._reset()
+
+    async def asyncTearDown(self):
+        if fosp._polling_sweep is not None:
+            fosp._polling_sweep.cancel()
+
+        self._reset()
+
+    def _reset(self):
+        foss._app_connections.clear()
+        foss.get_listeners().clear()
+        foss.get_requests().clear()
+        fosp._polling_listener = None
+        fosp._polling_leases.clear()
+        fosp._polling_sweep = None
+
+    def test_reconnect_counts_once(self):
+        foss.increment_app_count("a")
+        foss.increment_app_count("b")
+
+        # "b" reconnects before its previous connection is seen to close
+        foss.increment_app_count("b")
+        self.assertEqual(foss.get_app_count(), 2)
+
+        foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 2)
+
+        foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 1)
+
+        foss.decrement_app_count("b")
+        self.assertEqual(foss.get_app_count(), 1)
+
+    async def test_connect_and_disconnect_dispatch_count(self):
+        a = _Connection("a")
+        await a.open()
+        self.assertEqual(_read_counts("a"), [1])
+
+        b = _Connection("b")
+        await b.open()
+        self.assertEqual(_read_counts("a"), [2])
+        self.assertEqual(_read_counts("b"), [2])
+
+        await b.close()
+        self.assertEqual(_read_counts("a"), [1])
+        self.assertEqual(_read_counts("b"), [])
+
+    async def test_reconnect_dispatches_unchanged_count(self):
+        await _Connection("a").open()
+        stale = _Connection("b")
+        await stale.open()
+        _read_counts("a")
+
+        # both of "b"'s connections hear the count, though it has not
+        # changed
+        await _Connection("b").open()
+        self.assertEqual(_read_counts("a"), [2])
+        self.assertEqual(_read_counts("b"), [2, 2])
+
+        await stale.close()
+        self.assertEqual(_read_counts("a"), [2])
+
+    async def test_unread_count_is_replaced(self):
+        await _Connection("a").open()
+        b = _Connection("b")
+        await b.open()
+        await b.close()
+
+        # queues are last-in first-out, so a stale count must not linger
+        # behind the latest one
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_stream_closed_at_a_yield_stops_counting(self):
+        await _Connection("a").open()
+        b = _Connection("b")
+        await b.open()
+        _read_counts("a")
+
+        await b.abandon()
+        self.assertEqual(foss.get_app_count(), 1)
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_response_cancelled_mid_send_stops_counting(self):
+        await self._check_response_cleanup("cancel")
+
+    async def test_response_disconnected_mid_send_stops_counting(self):
+        await self._check_response_cleanup("disconnect")
+
+    async def test_response_send_failure_stops_counting(self):
+        await self._check_response_cleanup("error")
+
+    async def _check_response_cleanup(self, ending):
+        a = _Connection("a")
+        await a.open()
+        sending = asyncio.Event()
+        finish = asyncio.Event()
+
+        async def receive():
+            if ending == "disconnect":
+                await finish.wait()
+                return {"type": "http.disconnect"}
+
+            await asyncio.Future()
+
+        async def send(message):
+            if message["type"] == "http.response.body":
+                sending.set()
+                if ending == "error":
+                    await finish.wait()
+                    raise OSError("send failed")
+
+                await asyncio.Future()
+
+        response = await inspect.unwrap(fosre.Events.post)(
+            None,
+            mock.Mock(),
+            {
+                "initializer": {},
+                "events": _APP_EVENTS,
+                "subscription": "b",
+            },
+        )
+        streaming = asyncio.create_task(
+            response({"type": "http"}, receive, send)
+        )
+        try:
+            await asyncio.wait_for(sending.wait(), timeout=5)
+            self.assertEqual(foss.get_app_count(), 2)
+            self.assertEqual(_read_counts("a"), [2])
+
+            if ending == "cancel":
+                streaming.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await streaming
+            else:
+                finish.set()
+                result = await asyncio.wait_for(
+                    asyncio.gather(streaming, return_exceptions=True),
+                    timeout=5,
+                )
+                if ending == "error":
+                    # Older sse-starlette versions wrap send errors in an
+                    # exception group; newer ones propagate the error itself.
+                    self.assertIsInstance(result[0], Exception)
+                else:
+                    self.assertIsNone(result[0])
+
+            # Keep the response alive: cleanup must not depend on GC.
+            self.assertEqual(foss.get_app_count(), 1)
+            self.assertEqual(_read_counts("a"), [1])
+            self.assertEqual(_read_counts("b"), [])
+        finally:
+            streaming.cancel()
+            await asyncio.gather(streaming, return_exceptions=True)
+            await response.body_iterator.aclose()
+            await a.abandon()
+
+    async def test_session_clients_are_not_counted(self):
+        await _Connection("a").open()
+        session = _Connection("session", initializer=fos.StateDescription())
+        streaming = asyncio.create_task(session.stream())
+        await session.checked.wait()
+
+        self.assertEqual(foss.get_app_count(), 1)
+
+        session.closed = True
+        await streaming
+
+    async def test_connecting_app_keeps_the_session_open(self):
+        await _Connection("a").open()
+
+        ready = asyncio.Event()
+        initialize = fosl.initialize_listener
+
+        async def slow_initialize(payload):
+            await ready.wait()
+            return await initialize(payload)
+
+        with mock.patch.object(fosl, "initialize_listener", slow_initialize):
+            opening = asyncio.create_task(_Connection("b").open())
+            await asyncio.sleep(0)
+
+            # "a" leaves while "b" is still loading
+            closed = await fosl.disconnect(True, foss.get_requests()["a"], "a")
+            self.assertIsNone(closed)
+
+            ready.set()
+            await opening
+
+        self.assertEqual(_read_counts("b"), [1])
+
+    async def test_failed_initialization_is_not_counted(self):
+        await _Connection("a").open()
+        _read_counts("a")
+
+        async def failing_initialize(_):
+            raise RuntimeError("initialization failed")
+
+        with mock.patch.object(
+            fosl, "initialize_listener", failing_initialize
+        ):
+            with self.assertRaises(RuntimeError):
+                await _Connection("b").open()
+
+        self.assertEqual(foss.get_app_count(), 1)
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_polling_app_counts_while_it_polls(self):
+        await _Connection("a").open()
+        _read_counts("a")
+
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+        self.assertEqual(_read_counts("a"), [2])
+
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+        self.assertEqual(_read_counts("a"), [])
+
+        renewed = fosp._polling_leases["p"]
+        fosp._expire_polling_leases(renewed + fosp._POLLING_LEASE_SECONDS)
+        self.assertEqual(foss.get_app_count(), 2)
+
+        # "p" stops polling
+        fosp._expire_polling_leases(renewed + fosp._POLLING_LEASE_SECONDS + 1)
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_deactivated_polling_app_stops_counting(self):
+        await _Connection("a").open()
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+        _read_counts("a")
+
+        await fosd.dispatch_event(None, fose.DeactivateNotebookCell())
+        await fosp.dispatch_polling_event_listener(None, _payload("p"))
+
+        self.assertEqual(_read_counts("a"), [1])
+        self.assertNotIn("p", fosp._polling_leases)
+
+        # a reactivated cell polls again under the same subscription
+        response = await fosp.dispatch_polling_event_listener(
+            None, _payload("p")
+        )
+        self.assertEqual(
+            response["events"][0]["event"], fose.StateUpdate.get_event_name()
+        )
+        self.assertEqual(_read_counts("a"), [2])
+        self.assertEqual(
+            len(
+                [
+                    listener
+                    for listener in foss.get_listeners()[
+                        fose.AppCountUpdate.get_event_name()
+                    ]
+                    if listener.subscription == "p"
+                ]
+            ),
+            1,
         )

@@ -68,6 +68,10 @@ async function loadConfig() {
     },
     optimizeDeps: {
       exclude: ["onnxruntime-web"],
+      // Reachable only through the lazily imported LeRobot adapter, so the
+      // scanner would otherwise find it mid-session and invalidate a bundle
+      // the page has already loaded ("Outdated Optimize Dep")
+      include: ["hyparquet-compressors"],
       rolldownOptions: {
         plugins: [foxgloveWasmOptimizeAsUrl()],
       },

@@ -69,6 +69,12 @@ main
   box-shadow: none !important
   outline: none !important
 
+// The HubSpot cookie banner focuses itself when it appears, so the global
+// :focus-visible reset above strips its drop shadow until focus moves elsewhere.
+// Restore the shadow HubSpot applies (matches voxel51.com).
+#hs-banner-parent #hs-eu-cookie-confirmation:focus-visible
+  box-shadow: rgba(0, 0, 0, 0.28) 0 8px 28px !important
+
 .bd-main .bd-content .bd-article-container
   margin-top: 8px
 

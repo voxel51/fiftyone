@@ -1,22 +1,12 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Schema-manager activation gates EVERY annotate surface for a video dataset:
- * deactivating a label field must hide it on the canvas overlays, the timeline
- * tracks, AND the sidebar rows — not just one of them.
- *
- * This guards a fixed bug where only the sidebar consulted the active set: the
- * canvas overlays (engine Lighter bridge) and timeline tracks rendered straight
- * from presence, so a deactivated field stayed painted. The fix gates all three
- * on the sidebar's visible set (annotation-active ∩ explore-active). Covered for
- * both a per-frame field (`frames.detections`, via the engine bridge `paths`
- * scope + the frame-derived tracks) and a sample-level TemporalDetections field
- * (`events`, via the TD overlay sync + the TD track derivation).
- *
- * Seeded (per test, for isolation) with a tracked frame detection on sample 0
- * (one `vehicle` instance on every frame) plus the demo `events` TDs
- * (approach [1,6] / pass [7,13] / depart [14,20] over a 20-frame clip). At the
- * initial frame both fields render everywhere.
+ * Schema-manager activation gates every annotate surface for a video dataset:
+ * deactivating a field must hide it on the canvas overlays, the timeline tracks
+ * and the sidebar rows, for both a per-frame field (`frames.detections`) and a
+ * sample-level TemporalDetections field (`events`). Re-seeded per test with a
+ * tracked `vehicle` on every frame plus the demo events over a 20-frame clip,
+ * so both fields render everywhere at frame 1.
  */
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
@@ -29,7 +19,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-schema-active",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const FRAME_FIELD = "frames.detections";
 const TD_FIELD = "events";
@@ -46,32 +35,78 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20-frame clip so the events thirds land on approach [1,6] / pass [7,13] /
-  // depart [14,20]; the playhead opens on frame 1 (approach in support).
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  // a tracked `vehicle` frame detection on every frame + the three demo TDs;
-  // both schemas active. Re-seeded per test so activation edits don't leak
-  // across the serial dataset.
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // a tracked `vehicle` frame detection on every frame + the three demo TDs
+  // over the 20-frame clip (approach [1,6] / pass [7,13] / depart [14,20]; the
+  // playhead opens on frame 1, approach in support); both schemas active.
+  // Re-seeded per test so activation edits don't leak across the serial
+  // dataset.
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    trackedSampleIndices: [0],
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      events: "TemporalDetections",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+      events: {
+        type: "temporaldetections",
+        component: "dropdown",
+        classes: ["approach", "pass", "depart"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+        ],
+      },
+    },
+    // three events split the clip into thirds
+    withSampleData: ({ numFrames }, { label }) => {
+      const a = Math.max(1, Math.floor(numFrames / 3));
+      const b = Math.max(a + 1, Math.floor((2 * numFrames) / 3));
+      return {
+        events: label.temporalDetections([
+          label.temporalDetection({ label: "approach", support: [1, a] }),
+          label.temporalDetection({ label: "pass", support: [a + 1, b] }),
+          label.temporalDetection({
+            label: "depart",
+            support: [b + 1, numFrames],
+          }),
+        ]),
+      };
+    },
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+        }),
+      ]),
+    }),
   });
 });
 
@@ -83,20 +118,36 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Both fields painted on every surface — the seeded starting point. */
 const assertBothFieldsRendered = async (modal: ModalPom) => {
   const va = modal.videoAnnotate;
-  await va.assert.canvasRendersField(FRAME_FIELD, true);
-  await va.assert.canvasRendersField(TD_FIELD, true);
+  await modal.sampleCanvas.assert.hasMediaScreenshot("both-fields.png");
   await va.assert.objectTrackCount(1);
   await va.assert.temporalTrackCount(3);
   await va.assert.labelListed("vehicle", true);
   await va.assert.labelListed("approach", true);
+};
+
+/**
+ * Hide `field` through a fresh custom schema and view the sample through
+ * it: the dataset default shows every field, so gating is exercised via a
+ * schema that hides the field, applied as the sidebar's schema lens.
+ */
+const hideThroughSchema = async (
+  schemaManager: SchemaManagerPom,
+  schemaName: string,
+  field: string,
+) => {
+  await schemaManager.open();
+  await schemaManager.createSchema(schemaName);
+  await schemaManager.deactivateField(field);
+  await schemaManager.close();
+  await schemaManager.applyLens(schemaName);
 };
 
 test.describe.serial("video annotation schema activation gating", () => {
@@ -111,16 +162,14 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    await schemaManager.open();
-    await schemaManager.deactivateField(FRAME_FIELD);
-    await schemaManager.close();
+    await va.afterTracksChange(() =>
+      hideThroughSchema(schemaManager, "no-frame-field", FRAME_FIELD),
+    );
 
     // the frame field is gone everywhere; the TD field is untouched
-    await va.assert.canvasRendersField(FRAME_FIELD, false);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("frame-field-off.png");
     await va.assert.objectTrackCount(0);
     await va.assert.labelListed("vehicle", false);
-
-    await va.assert.canvasRendersField(TD_FIELD, true);
     await va.assert.temporalTrackCount(3);
     await va.assert.labelListed("approach", true);
   });
@@ -136,16 +185,14 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    await schemaManager.open();
-    await schemaManager.deactivateField(TD_FIELD);
-    await schemaManager.close();
+    await va.afterTracksChange(() =>
+      hideThroughSchema(schemaManager, "no-td-field", TD_FIELD),
+    );
 
     // the TD field is gone everywhere; the frame field is untouched
-    await va.assert.canvasRendersField(TD_FIELD, false);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("td-field-off.png");
     await va.assert.temporalTrackCount(0);
     await va.assert.labelListed("approach", false);
-
-    await va.assert.canvasRendersField(FRAME_FIELD, true);
     await va.assert.objectTrackCount(1);
     await va.assert.labelListed("vehicle", true);
   });
@@ -161,19 +208,22 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    // deactivate, confirm it's gone from the canvas, then reactivate
-    await schemaManager.open();
-    await schemaManager.deactivateField(FRAME_FIELD);
-    await schemaManager.close();
-    await va.assert.canvasRendersField(FRAME_FIELD, false);
+    // hide, confirm it's gone from the canvas, then show it again
+    await va.afterTracksChange(() =>
+      hideThroughSchema(schemaManager, "toggle-frame-field", FRAME_FIELD),
+    );
+    await modal.sampleCanvas.assert.hasMediaScreenshot("frame-field-off.png");
     await va.assert.objectTrackCount(0);
 
-    await schemaManager.open();
-    await schemaManager.activateField(FRAME_FIELD);
-    await schemaManager.close();
+    // the manager opens on the schema in use; closing it re-applies the lens
+    await va.afterTracksChange(async () => {
+      await schemaManager.open();
+      await schemaManager.activateField(FRAME_FIELD);
+      await schemaManager.close();
+    });
 
     // the bridge re-creates and rehydrates: overlays, tracks, and rows return
-    await va.assert.canvasRendersField(FRAME_FIELD, true);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("both-fields.png");
     await va.assert.objectTrackCount(1);
     await va.assert.labelListed("vehicle", true);
   });

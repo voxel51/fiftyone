@@ -21,6 +21,11 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { PendingRunCard, RunScreen } from "@fiftyone/components";
+import {
+  usePendingRunScreen,
+  type PendingRunWithView,
+} from "@fiftyone/operators";
 import { useEffect, useState } from "react";
 import { LandingCTA } from "./LandingCTA";
 import "./panel.css";
@@ -61,6 +66,7 @@ const lastUpdated = (timestamp: string | null): string | null => {
 
 export default function RunsList({
   runs,
+  pendingRuns = [],
   actionError = null,
   showUpsell = true,
   onCreate,
@@ -68,6 +74,8 @@ export default function RunsList({
   onDelete,
 }: {
   runs: VisualizationRun[] | null;
+  /** Delegated runs not yet registered as runs, shown above them */
+  pendingRuns?: PendingRunWithView[];
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
@@ -149,6 +157,33 @@ export default function RunsList({
     );
   };
 
+  const isSettled = (key: string | null) =>
+    Boolean(runs?.some((r) => r.brainKey === key && (r.ready || r.error)));
+  const delegated = pendingRuns.filter((p) => !isSettled(p.brain_key));
+  const inProgress: PendingRunWithView[] = (runs ?? [])
+    .filter(
+      (r) =>
+        !r.ready &&
+        !r.error &&
+        !delegated.some((p) => p.brain_key === r.brainKey),
+    )
+    .map((r) => ({
+      id: `registered:${r.brainKey}`,
+      operator: "",
+      run_state: "in_progress",
+      label: null,
+      brain_key: r.brainKey,
+    }));
+  const unregistered = [...delegated, ...inProgress];
+  const settledRuns = runs?.filter((r) => r.ready || r.error) ?? [];
+
+  const { open: openPending, screen: pendingScreen } = usePendingRunScreen(
+    unregistered,
+    "Your embeddings are being computed. You can leave this panel; the run will be listed here when it finishes.",
+  );
+
+  if (pendingScreen) return <RunScreen {...pendingScreen} />;
+
   if (!runs) {
     return (
       <div className="emb-runs-page">
@@ -186,12 +221,12 @@ export default function RunsList({
         )}
         {actionError && (
           <div className="emb-runs-action-error">
-            <Text variant={TextVariant.Md} color={TextColor.Destructive}>
+            <Text variant={TextVariant.Md} color={TextColor.Failure}>
               {actionError}
             </Text>
           </div>
         )}
-        {runs.length === 0 ? (
+        {settledRuns.length === 0 && unregistered.length === 0 ? (
           showUpsell ? (
             // Builds that can't compute in-app show the enterprise
             // landing instead of a dead-end empty state (FOEPD-4369)
@@ -222,7 +257,16 @@ export default function RunsList({
           )
         ) : (
           <div className="emb-runs-stack">
-            {runs.map((run) => (
+            {unregistered.map((pending) => (
+              <PendingRunCard
+                key={pending.id}
+                title={pending.brain_key ?? pending.label ?? pending.operator}
+                runState={pending.run_state}
+                onOpen={() => openPending(pending.id)}
+                onViewRun={pending.onView}
+              />
+            ))}
+            {settledRuns.map((run) => (
               <RunCard
                 key={run.brainKey}
                 icon={IconName.Embeddings}
@@ -233,7 +277,7 @@ export default function RunsList({
                   run.error
                     ? // Structurally unusable (see BrainRun.error): opening
                       // it could only fail, but Delete stays available
-                      { label: "Error", color: TextColor.Destructive }
+                      { label: "Error", color: TextColor.Failure }
                     : run.ready
                       ? // Icon-tier success: the soft sage the design
                         // reference uses, not the saturated text green
@@ -273,7 +317,7 @@ export default function RunsList({
           sx={{
             zIndex: 9999,
             "& .MuiPaper-root": {
-              backgroundColor: `var(${getColorCssVar(BackgroundColor.Muted)})`,
+              backgroundColor: `${getColorCssVar(BackgroundColor.Muted)}`,
               // Kill MUI's elevation overlay so the grey matches exactly.
               backgroundImage: "none",
             },
@@ -285,7 +329,7 @@ export default function RunsList({
               setMenu(null);
             }}
             sx={{
-              color: `var(${getColorCssVar(TextColor.Destructive)})`,
+              color: `${getColorCssVar(TextColor.Failure)}`,
               "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
                 color: "inherit",
               },

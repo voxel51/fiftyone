@@ -1,115 +1,91 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { escapeRegExp } from "src/oss/utils";
 import { ModalPom } from ".";
 
 export class ModalImaAsVideoControlsPom {
-  readonly page: Page;
-  readonly assert: ModalImaAsVideoControlsAsserter;
   readonly controls: Locator;
   readonly lookerControls: Locator;
-  readonly optionsPanel: Locator;
   readonly playPauseButton: Locator;
+  readonly status: Locator;
   readonly settingsButton: Locator;
-  readonly speedButton: Locator;
-  readonly time: Locator;
-  readonly timelineId: string;
 
   private readonly modal: ModalPom;
 
   constructor(page: Page, modal: ModalPom) {
-    this.page = page;
     this.modal = modal;
-    this.assert = new ModalImaAsVideoControlsAsserter(this);
 
     this.controls = this.modal.locator.getByTestId("imavid-timeline-controls");
     this.lookerControls = this.modal.locator.getByTestId("looker-controls");
-    this.optionsPanel = this.controls.getByTestId("looker-options-panel");
     this.playPauseButton = this.controls.getByTestId("imavid-playhead");
+    this.status = this.controls.getByTestId("imavid-status-indicator");
     this.settingsButton = this.lookerControls.getByTestId(
       "looker-controls-settings",
     );
-    this.speedButton = this.controls.getByTestId("imavid-speed");
-    this.time = this.modal.locator.getByTestId("imavid-status-indicator");
   }
 
-  private async getTimelineIdForLocator(imaVidLocator: Locator) {
-    const timelineId = await imaVidLocator.getAttribute("data-timeline-name");
-    if (!timelineId) {
-      throw new Error("Could not find timeline id for an imaVid locator");
-    }
-    return timelineId;
-  }
-
-  private async waitUntilBufferingIsFinished() {
-    await this.page.waitForFunction(
-      () =>
-        document
-          .querySelector("[data-cy=imavid-playhead]")
-          ?.getAttribute("data-playhead-state") !== "buffering",
+  // only the paused and playing states render an icon with a click handler,
+  // and buffering ends on its own
+  private async waitUntilClickable() {
+    const clickable = (state: string | null) =>
+      state === "paused" || state === "playing";
+    await this.modal.eventUtils.untilState(
+      "e2e:playback:playhead-state",
+      async () =>
+        clickable(
+          await this.playPauseButton.getAttribute("data-playhead-state"),
+        ),
+      (e) => clickable((e.detail as { state: string }).state),
     );
   }
 
   public async togglePlay() {
-    await this.waitUntilBufferingIsFinished();
+    await this.waitUntilClickable();
 
-    let currentPlayHeadStatus = await this.playPauseButton.getAttribute(
+    // a short clip can play through and pause again before a DOM read, so
+    // wait on the event the icon's handler dispatches
+    const state = await this.playPauseButton.getAttribute(
       "data-playhead-state",
     );
-
-    const original = currentPlayHeadStatus;
-
-    // keep pressing space until play head status changes
-    while (currentPlayHeadStatus === original) {
-      await this.playPauseButton.click();
-      currentPlayHeadStatus = await this.playPauseButton.getAttribute(
-        "data-playhead-state",
-      );
-    }
-  }
-
-  async getCurrentFrameStatus() {
-    return this.time.first().textContent();
-  }
-
-  async hoverLookerControls() {
-    await this.controls.first().hover();
-  }
-
-  async waitUntilFrameTextIs(frameText: string, matchBeginning = false) {
-    await this.page.waitForFunction(
-      ({ frameText_, matchBeginning_ }) => {
-        const frameTextDom = document.querySelector(
-          `[data-cy=imavid-status-indicator]`,
-        )?.textContent;
-        if (matchBeginning_) {
-          return frameTextDom?.startsWith(frameText_);
-        }
-        return frameTextDom === frameText_;
-      },
-      { frameText_: frameText, matchBeginning_: matchBeginning },
+    await this.modal.eventUtils.after(
+      state === "paused" ? "timeline:play" : "timeline:pause",
+      () => this.playPauseButton.click(),
     );
   }
 
+  /**
+   * Run `action` and resolve once the status readout shows `frameText` (or,
+   * with `matchBeginning`, text starting with it) because of it
+   */
+  async afterFrameText<T>(
+    frameText: string,
+    action: () => Promise<T>,
+    matchBeginning = false,
+  ): Promise<T> {
+    const pattern = new RegExp(
+      `^${escapeRegExp(frameText)}${matchBeginning ? "" : "$"}`,
+    );
+    return this.modal.eventUtils.after(
+      "e2e:playback:status-shown",
+      action,
+      (e) => pattern.test((e.detail as { text: string }).text),
+    );
+  }
+
+  /**
+   * Play until the status shows `frameText`, then pause; resolves with the
+   * frame the pause lands on, which a draw in flight can carry past it
+   */
   async playUntilFrames(frameText: string, matchBeginning = false) {
-    await this.togglePlay();
-    await this.waitUntilFrameTextIs(frameText, matchBeginning);
-    await this.togglePlay();
-
-    // sometimes there's a drift, in which case correct it
-    let currentTime = await this.getCurrentFrameStatus();
-    const maxCorrectionAttempts = 10;
-
-    let correctionAttempts = 0;
-    if (currentTime !== frameText) {
-      // keep pressing "<" until we reach the desired frame
-      while (
-        currentTime !== frameText &&
-        correctionAttempts < maxCorrectionAttempts
-      ) {
-        await this.page.keyboard.press(",");
-        currentTime = await this.getCurrentFrameStatus();
-        correctionAttempts++;
-      }
-    }
+    await this.afterFrameText(
+      frameText,
+      () => this.togglePlay(),
+      matchBeginning,
+    );
+    await this.modal.eventUtils.after("e2e:playback:paused", () =>
+      this.togglePlay(),
+    );
+    // the status shows `<frame> / <total>`
+    return Number((await this.status.textContent())?.split(" / ")[0]);
   }
 
   async toggleSettings() {
@@ -122,60 +98,17 @@ export class ModalImaAsVideoControlsPom {
     );
     const loopInput = loopLabel.getByTestId("looker-checkbox-input-Loop video");
 
-    const loopInputChecked = await loopInput.isEnabled();
-
-    if (isLooping !== loopInputChecked) {
-      await loopLabel.click();
-    }
-  }
-
-  async setSpeedTo(config: "low" | "middle" | "high") {
-    await this.speedButton.hover();
-    const speedSliderInputRange = this.speedButton
-      .first()
-      .locator("input[type=range]");
-    const sliderBoundingBox = await speedSliderInputRange.boundingBox();
-
-    if (!sliderBoundingBox) {
-      throw new Error("Could not find speed slider bounding box");
+    if (isLooping === (await loopInput.isChecked())) {
+      return;
     }
 
-    const sliderWidth = sliderBoundingBox.width;
-
-    switch (config) {
-      case "low":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.15,
-          sliderBoundingBox.y,
-        );
-        break;
-      case "middle":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.5,
-          sliderBoundingBox.y,
-        );
-        break;
-      case "high":
-        await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.95,
-          sliderBoundingBox.y,
-        );
-        break;
-    }
-    await this.controls.hover({ force: true });
-  }
-}
-
-class ModalImaAsVideoControlsAsserter {
-  constructor(private readonly videoControlsPom: ModalImaAsVideoControlsPom) {}
-
-  async isCurrentTimeEqualTo(time: string) {
-    const currentTime = await this.videoControlsPom.getCurrentFrameStatus();
-    expect(currentTime).toBe(time);
-  }
-
-  async isTimeTextEqualTo(text: string) {
-    const time = await this.videoControlsPom.time.textContent();
-    expect(time).toContain(text);
+    // the timeline loops by its own config, which the toggle updates on a
+    // later render; the timeline's creation reports its initial loop too
+    await this.modal.eventUtils.after(
+      "e2e:playback:looping",
+      () => loopLabel.click(),
+      (e) => (e.detail as { loop: boolean }).loop === isLooping,
+    );
+    expect(await loopInput.isChecked()).toBe(isLooping);
   }
 }

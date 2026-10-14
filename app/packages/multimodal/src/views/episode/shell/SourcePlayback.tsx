@@ -1,4 +1,8 @@
 import { humanReadableBytes } from "@fiftyone/utilities";
+import { FramePresentationProvider } from "../../../visualization/webgpu/FramePresentation";
+import { DestinationVisitProvider } from "../loading/destination-visit";
+import { EpisodeModalLoading } from "../loading/EpisodeModalLoading";
+import { ModalLoadingOverlay } from "../loading/ModalLoadingOverlay";
 import type { TilingLayoutMetrics } from "@fiftyone/tiling";
 import {
   usePlaybackStore,
@@ -31,10 +35,7 @@ import type { SourceFactsScope } from "../../../runtime/source-facts";
 import { EpisodePlaybackStoreProvider } from "../../../runtime/react/playback-store-context";
 import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
 import { createScheduledSourceReadBudgetAccount } from "../../../runtime/scheduled-read-budget-account";
-import {
-  sourceBootstrapKey,
-  type SourceBootstrap,
-} from "../../../runtime/source-bootstrap-cache";
+import type { SourceBootstrap } from "../../../runtime/source-bootstrap-cache";
 import { releaseRetainedImageTextures } from "../../../visualization/media-2d/image-texture-cache";
 import {
   releaseGpuImageAnnotationResources,
@@ -70,6 +71,7 @@ import { StateActionProvider } from "../state-action/state-action-context";
 import { SceneUpdateHistoryProvider } from "../scene/entities/scene-update-history-context";
 import { SelectionHotkeys } from "../interaction/selection/selected-object";
 import AddTileMenu from "./AddTileMenu";
+import EpisodeLayoutMenuActions from "./EpisodeLayoutMenuActions";
 import { tileTypesFor, getTileDefinition } from "./tile-catalog";
 import RightSidebarWithTrays from "./RightSidebarWithTrays";
 import styles from "./ModalRenderer.module.css";
@@ -85,6 +87,10 @@ import {
   collectPlaybackDeviceCapabilities,
 } from "../layout/playback-layout";
 import {
+  PortableLayoutHost,
+  usePortableLayoutControls,
+} from "../layout/PortableLayoutHost";
+import {
   ModalLayoutPersistence,
   useModalLayout,
 } from "../layout/use-modal-layout";
@@ -95,11 +101,15 @@ import {
   SourcePosterProvider,
   type SourcePosterValue,
 } from "../image/source-poster-context";
-import { useEpisodeHeaderActions } from "../../../extensions/episode-actions";
+import {
+  useEpisodeHeaderActions,
+  type EpisodeHeaderActionId,
+} from "../../../extensions/episode-actions";
 import {
   VisibleStreamsProvider,
   useVisibleStreamIds,
 } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 const EMPTY_MANUAL_TILE_TITLES: Record<string, string> = {};
 export const TRANSITION_STATUS_DELAY_MS = 200;
@@ -148,6 +158,7 @@ export interface SourcePlaybackProps {
     readonly datasetId: string;
     readonly sampleId: string;
   };
+  readonly destinationSampleId?: string | null;
   readonly headerActions?: React.ReactNode;
   /** Capture time to open the recording at, ahead of the first-data tick.
    * Set to an embeddings match so opening a matched tile lands on it. */
@@ -160,7 +171,7 @@ export interface SourcePlaybackProps {
   readonly onTagCreate?: TemporalTagTimelineProps["onTagCreate"];
   readonly onTagUpdate?: TemporalTagTimelineProps["onTagUpdate"];
   readonly onTagDelete?: NonNullable<
-    TemporalTagTimelineProps["eventMenuItems"]
+    TemporalTagTimelineProps["tagEventMenuItems"]
   >[number]["onSelect"];
   /** Reports timeline drawer visibility to registered runtime contributions. */
   readonly onTimelineDrawerOpenChange?: (open: boolean) => void;
@@ -176,11 +187,55 @@ export interface SourcePlaybackProps {
  * feed it a byte source; it owns inventory loading, episode providers, tiling,
  * layout persistence, and the playback chrome around the discovered streams.
  */
-export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => (
-  <VisibleStreamsProvider>
-    <SourcePlaybackContent {...props} />
-  </VisibleStreamsProvider>
-);
+export const SourcePlayback: React.FC<SourcePlaybackProps> = (props) => {
+  const destinationId =
+    props.destinationSampleId ??
+    props.episodeContext?.sampleId ??
+    props.session?.manifest?.episodeId;
+  return (
+    <VisibleStreamsProvider>
+      <PortableLayoutHost
+        scopeKey={layoutScopeFor(props.layoutScopeKey, props.source)}
+        mediaField={props.cameraPreferenceField}
+      >
+        <FramePresentationProvider
+          sourceKey={presentationSourceKey(props.source, destinationId)}
+          presentationKey={destinationId}
+        >
+          <DestinationVisitProvider
+            visitKey={JSON.stringify([
+              destinationId ?? props.source?.sourceId ?? null,
+              props.cameraPreferenceField ?? null,
+            ])}
+          >
+            <SourcePlaybackContent {...props} />
+          </DestinationVisitProvider>
+        </FramePresentationProvider>
+      </PortableLayoutHost>
+    </VisibleStreamsProvider>
+  );
+};
+
+// Pixel resources belong to an episode, while physical byte caches remain shared.
+function presentationSourceKey(
+  source: ByteSourceDescriptor | null,
+  episodeId?: string,
+): string {
+  return source
+    ? JSON.stringify([
+        episodeSourceAccessKey(source),
+        episodeId ?? source.sourceId,
+      ])
+    : "";
+}
+
+// Capture, restore, and local persistence must resolve the same scope.
+function layoutScopeFor(
+  override: string | undefined,
+  source: ByteSourceDescriptor | null,
+): string | undefined {
+  return override ?? (source ? `episode-source:${source.sourceId}` : undefined);
+}
 
 const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   cameraPreferenceField,
@@ -190,6 +245,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   timelineRulerOverlay,
   fileName,
   episodeContext,
+  destinationSampleId,
   headerActions,
   initialSeekTimeNs,
   layoutScopeKey,
@@ -259,18 +315,24 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       sourceAvailable: source !== null,
     });
   const sourceKey = useMemo(
-    () => (source ? sourceBootstrapKey(source) : ""),
-    [source],
-  );
-  const sourceAccessKey = useMemo(
-    () => (source ? episodeSourceAccessKey(source) : ""),
-    [source],
+    () =>
+      presentationSourceKey(
+        source,
+        episodeContext?.sampleId ?? session?.manifest?.episodeId,
+      ),
+    [source, episodeContext?.sampleId, session?.manifest?.episodeId],
   );
   const sourceReadBudgetAccount = useMemo(() => {
     const account = session?.boundedRead?.openAccount();
     return account ? createScheduledSourceReadBudgetAccount(account) : null;
   }, [session]);
-  const bootstrap = useSourceBootstrap(source);
+  const byteBootstrap = useSourceBootstrap(source);
+  // A reference-backed episode's poster asset may serve several episodes.
+  // Its physical bootstrap cannot authenticate an episode-specific poster.
+  const bootstrap =
+    !episodeContext || source?.sourceId === episodeContext.sampleId
+      ? byteBootstrap
+      : null;
   const poster: PosterImage | undefined =
     bootstrap?.poster?.kind === "image" ? bootstrap.poster : undefined;
   const posterStreamId = bootstrap?.posterStreamId ?? null;
@@ -279,11 +341,11 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       poster
         ? {
             frame: poster.image,
-            sourceKey: sourceAccessKey,
+            sourceKey,
             streamId: posterStreamId,
           }
         : null,
-    [poster, posterStreamId, sourceAccessKey],
+    [poster, posterStreamId, sourceKey],
   );
   const [presentedSourceKey, setPresentedSourceKey] = useState("");
   const handlePlayheadDataReady = useCallback(
@@ -453,9 +515,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     [shellInventory, shellSources],
   );
   const playbackSource = readyInventory && !navigationPending ? source : null;
-  const effectiveLayoutScopeKey =
-    layoutScopeKey ??
-    (source ? `episode-source:${source.sourceId}` : undefined);
+  const effectiveLayoutScopeKey = layoutScopeFor(layoutScopeKey, source);
   // Pins are a user choice, so they outlive the modal that made them
   const pinPersistKey = effectiveLayoutScopeKey
     ? `episode-pins:${effectiveLayoutScopeKey}`
@@ -463,6 +523,21 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
   const cameraViewStateScopeKey =
     cameraScopeKey(effectiveLayoutScopeKey, cameraPreferenceField) ??
     effectiveLayoutScopeKey;
+  const layoutActionScope = JSON.stringify([
+    episodeContext?.datasetId,
+    episodeContext?.sampleId,
+    cameraViewStateScopeKey,
+    source?.sourceId,
+  ]);
+  const [layoutAction, setLayoutAction] = useState<{
+    id: EpisodeHeaderActionId;
+    scope: string;
+  } | null>(null);
+  const activeLayoutAction =
+    layoutAction?.scope === layoutActionScope ? layoutAction.id : null;
+  // This effect clears the dialog selection so returning to a previous
+  // dataset or media field does not reopen its closed dialog.
+  useEffect(() => setLayoutAction(null), [layoutActionScope]);
   const sizeLabel = sourceSizeLabel(source?.sizeBytes);
   const headerCaption = useMemo(
     () => (sizeLabel ? <HeaderCaption sizeLabel={sizeLabel} /> : null),
@@ -476,6 +551,8 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     resetTiles,
     defaultLeftOpen,
     onLeftOpenChange,
+    defaultTimelineTracksOpen,
+    onTimelineTracksOpenChange,
     defaultLeftSidebarWidth,
     onLeftSidebarWidthChange,
     sceneUpAxis,
@@ -496,6 +573,13 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     resolveTile: getTileDefinition,
     sources: shellSources,
   });
+  const handleTimelineDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      onTimelineTracksOpenChange(open);
+      onTimelineDrawerOpenChange?.(open);
+    },
+    [onTimelineDrawerOpenChange, onTimelineTracksOpenChange],
+  );
 
   if (!source) {
     return <PlaybackState text="No episode source selected" />;
@@ -509,12 +593,21 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
     );
   }
   if (status !== "ready" && !shellInventory) {
+    if (episodeContext) {
+      return (
+        <EpisodeModalLoading
+          datasetId={episodeContext.datasetId}
+          mediaField={cameraPreferenceField ?? "filepath"}
+          sampleId={destinationSampleId ?? episodeContext.sampleId}
+        />
+      );
+    }
     return (
       <PreparingPlayback
         fileName={fileName}
         poster={poster}
         posterStream={bootstrap?.posterStreamId}
-        sourceKey={sourceAccessKey}
+        sourceKey={sourceKey}
       />
     );
   }
@@ -546,6 +639,13 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
       data-episode-playback-shell=""
       data-episode-source-transitioning={transitioning || undefined}
     >
+      <ShownSignal event="e2e:multimodal:episode-shell" detail={{ fileName }} />
+      {transitioning ? null : (
+        <ShownSignal
+          event="e2e:multimodal:episode-ready"
+          detail={{ fileName }}
+        />
+      )}
       <PlaybackSessionStateProviders
         cameraViewStateScopeKey={cameraViewStateScopeKey}
         sources={shellSources}
@@ -553,7 +653,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
         transformTopologyCapability={
           readyInventory ? (session?.transformTopology ?? null) : null
         }
-        transformTopologySourceKey={playbackSource ? sourceAccessKey : null}
+        transformTopologySourceKey={playbackSource ? sourceKey : null}
         viewportScopeKey={effectiveLayoutScopeKey}
       >
         <FrameTransformsProvider>
@@ -566,15 +666,14 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                       <LogConsoleProvider
                         budgetAccount={sourceReadBudgetAccount}
                         session={readyInventory ? session : null}
-                        sourceKey={playbackSource ? sourceAccessKey : null}
+                        sourceKey={playbackSource ? sourceKey : null}
                       >
                         <DataStreamProvider
-                          expectedSourceKey={
-                            playbackSource ? sourceAccessKey : null
-                          }
+                          expectedOwner={session}
+                          expectedSourceKey={playbackSource ? sourceKey : null}
                         >
                           <SourceVideoPlaybackProvider
-                            sourceKey={playbackSource ? sourceAccessKey : null}
+                            sourceKey={playbackSource ? sourceKey : null}
                           >
                             <SourceResourceBoundary />
                             <Scene3dViewSettingsProvider
@@ -614,6 +713,12 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                             {headerActions}
                                             <EpisodeHeaderActions
                                               context={episodeContext}
+                                              activeLayoutAction={
+                                                activeLayoutAction
+                                              }
+                                              onCloseLayoutAction={() =>
+                                                setLayoutAction(null)
+                                              }
                                               rawRecords={session.rawRecords}
                                               recordingFacts={
                                                 session.manifest.recordingFacts
@@ -639,9 +744,23 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     />
                                   }
                                   addTileMenu={
-                                    <AddTileMenu
-                                      tileTypes={availableTileTypes}
-                                    />
+                                    <>
+                                      <AddTileMenu
+                                        tileTypes={availableTileTypes}
+                                      />
+                                      {episodeContext &&
+                                        session?.manifest &&
+                                        source && (
+                                          <EpisodeLayoutMenuActions
+                                            onSelect={(id) =>
+                                              setLayoutAction({
+                                                id,
+                                                scope: layoutActionScope,
+                                              })
+                                            }
+                                          />
+                                        )}
+                                    </>
                                   }
                                   timelineReadouts={<TimestampReadout />}
                                   sceneSources={shellSources}
@@ -697,6 +816,18 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                         error={status === "error"}
                                         text={transitionMessage}
                                       />
+                                    ) : episodeContext ? (
+                                      <ModalLoadingOverlay
+                                        identity={{
+                                          datasetId: episodeContext.datasetId,
+                                          mediaField:
+                                            cameraPreferenceField ?? "filepath",
+                                          sampleId:
+                                            destinationSampleId ??
+                                            episodeContext.sampleId,
+                                        }}
+                                        pending={transitioning}
+                                      />
                                     ) : null
                                   }
                                   rightSidebar={
@@ -714,6 +845,9 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   sharedImageWebGpuViews
                                   defaultRightOpen={false}
                                   defaultLeftOpen={defaultLeftOpen}
+                                  defaultTimelineTracksOpen={
+                                    defaultTimelineTracksOpen
+                                  }
                                   onLeftOpenChange={onLeftOpenChange}
                                   leftSidebarWidth={defaultLeftSidebarWidth}
                                   onLeftSidebarWidthChange={
@@ -723,7 +857,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   onTagCreate={onTagCreate}
                                   onTagUpdate={onTagUpdate}
                                   onTimelineDrawerOpenChange={
-                                    onTimelineDrawerOpenChange
+                                    handleTimelineDrawerOpenChange
                                   }
                                   timelineDrawerMaxSize={timelineDrawerMaxSize}
                                 >
@@ -736,6 +870,7 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                     }
                                     session={readyInventory ? session : null}
                                     source={playbackSource}
+                                    presentationSourceKey={sourceKey}
                                     timelineSamplingRateHz={
                                       timelineSamplingRateHz
                                     }
@@ -750,6 +885,9 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
                                   </ExtensionRuntimeBoundary>
                                   <ModalLayoutPersistence
                                     datasetId={effectiveLayoutScopeKey}
+                                    cameraPreferenceField={
+                                      cameraPreferenceField
+                                    }
                                   />
                                 </PlaybackShell>
                               </ImageAspectRatioProvider>
@@ -770,6 +908,8 @@ const SourcePlaybackContent: React.FC<SourcePlaybackProps> = ({
 };
 
 function EpisodeHeaderActions({
+  activeLayoutAction,
+  onCloseLayoutAction,
   context,
   rawRecords,
   recordingFacts,
@@ -778,6 +918,8 @@ function EpisodeHeaderActions({
   timeRange,
   transformTopology,
 }: {
+  readonly activeLayoutAction: EpisodeHeaderActionId | null;
+  readonly onCloseLayoutAction: () => void;
   readonly context: NonNullable<SourcePlaybackProps["episodeContext"]>;
   readonly rawRecords: EpisodeSession["rawRecords"];
   readonly recordingFacts: EpisodeSession["manifest"]["recordingFacts"];
@@ -789,13 +931,23 @@ function EpisodeHeaderActions({
   >["transformTopology"];
 }) {
   const actions = useEpisodeHeaderActions();
+  const layouts = usePortableLayoutControls();
   const visibleStreamIds = useVisibleStreamIds();
   return (
     <>
-      {actions.map(({ Component, id }) => (
+      {actions.map(({ Component, id, layoutMenuLabel }) => (
         <Component
           datasetId={context.datasetId}
-          key={`${context.datasetId}:${context.sampleId}:${id}`}
+          layouts={layouts}
+          layoutMenu={
+            layoutMenuLabel
+              ? {
+                  open: activeLayoutAction === id,
+                  onClose: onCloseLayoutAction,
+                }
+              : undefined
+          }
+          key={`${context.datasetId}:${context.sampleId}:${layouts?.scopeKey}:${id}`}
           rawRecords={rawRecords}
           recordingFacts={recordingFacts}
           sampleId={context.sampleId}
@@ -942,6 +1094,9 @@ function PlaybackState({
 }) {
   return (
     <div className={styles.state} data-testid="episode-modal-state">
+      {text ? (
+        <ShownSignal event="e2e:multimodal:episode-state" detail={{ text }} />
+      ) : null}
       {children}
       {text ? (
         <span className={clsx(styles.stateText, error && styles.stateError)}>

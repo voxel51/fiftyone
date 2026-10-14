@@ -4,7 +4,7 @@ import { ColorSchemeInput, ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { Link } from "@mui/material";
 import colorString from "color-string";
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
@@ -38,7 +38,6 @@ const validateTagColors = (tags: ColorSchemeInput["labelTags"]) => ({
 const JSONViewer: React.FC = () => {
   const theme = useTheme();
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const ref = useRef<HTMLDivElement>(null);
 
   const setting = useMemo(() => {
     return {
@@ -64,14 +63,6 @@ const JSONViewer: React.FC = () => {
 
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
-    // dispatch a custom event for e2e test to capture
-    if (ref?.current) {
-      ref.current.dispatchEvent(
-        new CustomEvent("json-viewer-update", {
-          bubbles: true,
-        }),
-      );
-    }
   };
 
   const onApply = () => {
@@ -152,14 +143,7 @@ const JSONViewer: React.FC = () => {
 
   useLayoutEffect(() => {
     setData(setting);
-    if (ref?.current) {
-      ref?.current.dispatchEvent(
-        new CustomEvent("json-viewer-update", {
-          bubbles: true,
-        }),
-      );
-    }
-  }, [setting, ref]);
+  }, [setting]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
 
@@ -167,7 +151,6 @@ const JSONViewer: React.FC = () => {
     <div
       data-cy="color-scheme-editor"
       style={{ width: "100%", height: "100%", overflow: "hidden" }}
-      ref={ref}
     >
       <SectionWrapper>
         <p style={{ margin: 0, lineHeight: "1.3rem" }}>

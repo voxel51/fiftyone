@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 
 import eta.core.utils as etau
 import strawberry as gql
+from strawberry.schema.config import StrawberryConfig
 from starlette.applications import Starlette
 from starlette.datastructures import Headers
 from starlette.middleware import Middleware
@@ -38,12 +39,12 @@ from fiftyone.operators.store.notification_service import (
     default_notification_service,
     is_notification_service_disabled,
 )
-from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
+from fiftyone.server.scalars import SCALAR_MAP
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,14 @@ class Static(StaticFiles):
         return response
 
 
+def _app_static(directory):
+    return Static(
+        directory=directory,
+        html=True,
+        follow_symlink=fo.app_config.follow_static_symlinks,
+    )
+
+
 class HeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -113,7 +122,7 @@ schema = gql.Schema(
     mutation=Mutation,
     query=Query,
     extensions=[EndSession],
-    scalar_overrides=SCALAR_OVERRIDES,
+    config=StrawberryConfig(scalar_map=SCALAR_MAP),
 )
 
 mtypes = (  # ensure mimetypes for Windows
@@ -155,6 +164,10 @@ if _allowed_origins:
                 "accept-ranges",
                 "content-range",
                 "content-length",
+                # ETag carries the annotation version token and is not
+                # CORS-safelisted; without this a cross-origin app reads
+                # null and every follow-up save fails its version check
+                "etag",
             ],
         )
     )
@@ -224,11 +237,7 @@ app = Starlette(
         ),
         Mount(
             "/",
-            app=Static(
-                directory=os.path.join(os.path.dirname(__file__), "static"),
-                html=True,
-                follow_symlink=True,
-            ),
+            app=_app_static(os.path.join(os.path.dirname(__file__), "static")),
             name="static",
         ),
     ],

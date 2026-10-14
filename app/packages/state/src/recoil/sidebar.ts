@@ -77,7 +77,6 @@ import { isFieldVisibilityActive } from "./schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
-  isMultimodalDataset,
   isVideoDataset,
   stateSubscription,
 } from "./selectors";
@@ -541,10 +540,9 @@ export const sidebarGroups = selectorFamily<
       }
 
       const tagGroupIndex = groupNames.indexOf("tags");
-      // Temporal tags are a multimodal-only concept for now, so only surface
-      // the filter for `multimodal` datasets (e.g. not `quickstart`). We may
-      // extend this to videos later.
-      groups[tagGroupIndex].paths = get(isMultimodalDataset)
+      // Temporal tags need a playhead to hang an interval on, so the filter is
+      // only offered where one exists (e.g. not `quickstart`).
+      groups[tagGroupIndex].paths = get(atoms.supportsTemporalTags(modal))
         ? ["_label_tags", "_temporal_tags", "tags"]
         : ["_label_tags", "tags"];
 
@@ -911,7 +909,7 @@ export const collapsedPaths = selector<Set<string>>({
     paths = [
       ...paths,
       ...get(fieldPaths({ ftype: LIST_FIELD })).filter((path) =>
-        UNSUPPORTED_FILTER_TYPES.includes(get(field(path)).subfield),
+        UNSUPPORTED_FILTER_TYPES.includes(get(field(path))?.subfield),
       ),
     ];
 
@@ -979,13 +977,26 @@ export const sidebarGroup = selectorFamily<
   },
 });
 
-export const sidebarPaths = selector({
-  key: "sidebarPaths",
-  get: ({ get }) => {
-    const groups = get(sidebarGroupsDefinition(false));
-    return groups.flatMap(({ paths }) => paths);
-  },
-});
+export const sidebarPaths = (() => {
+  // groups also hold each group's expanded state; returning the same array
+  // when only that changes keeps the grid's looker options unchanged
+  let current: string[] = [];
+  return selector({
+    key: "sidebarPaths",
+    get: ({ get }) => {
+      const paths = get(sidebarGroupsDefinition(false)).flatMap(
+        ({ paths }) => paths,
+      );
+      if (
+        paths.length !== current.length ||
+        paths.some((path, i) => path !== current[i])
+      ) {
+        current = paths;
+      }
+      return current;
+    },
+  });
+})();
 
 export const sidebarGroupNames = selectorFamily<string[], boolean>({
   key: "sidebarGroupNames",

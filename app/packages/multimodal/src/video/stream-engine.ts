@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import {
   VIDEO_INTENT_PRIORITY_WEIGHT,
+  VideoCodecUnsupportedError,
   VideoDependencyWaitError,
   VideoIntentCancelledError,
 } from "./types";
@@ -62,6 +63,7 @@ export class VideoStreamEngine {
   private processing = false;
   private requestedPriority: VideoPlaybackIntent["priority"] | null = null;
   private requestedTargetTimeNs: bigint | null = null;
+  private codecFaulted = false;
   private snapshot: VideoStreamSnapshot = INITIAL_SNAPSHOT;
 
   constructor(
@@ -86,6 +88,11 @@ export class VideoStreamEngine {
 
   request(intent: VideoPlaybackIntent): void {
     if (this.closed) return;
+    // A codec this client cannot decode is fatal for every target on this
+    // stream, so the standing fault answers instead of a reread. Playback
+    // sweeps the playhead, so a fault remembered per target would clear on
+    // the next frame and spin the main thread with no I/O to yield on.
+    if (this.codecFaulted) return;
     this.cache.put(intent);
     this.gopIndex.observe(intent);
     if (
@@ -152,6 +159,7 @@ export class VideoStreamEngine {
     if (this.closed) return;
     this.closed = true;
     this.latestIntent = null;
+    this.codecFaulted = false;
     this.activeController?.abort();
     this.activeController = null;
     this.activeIntent = null;
@@ -291,11 +299,15 @@ export class VideoStreamEngine {
           });
           units = await this.readForwardChain(cursorTimeNs, intent, signal);
           this.observeForwardCadence(cursorTimeNs, units);
-          const knownSameEpoch = this.gopIndex.sameEpoch(
+          // Contiguity is established here, so a keyframe in the chain is
+          // forward progress, not a discontinuity. Only a *known* epoch
+          // change earns a reset; treating "not yet indexed" as one tore the
+          // decoder down on every refill of a keyframe-dense stream.
+          const epochChanged = this.gopIndex.knownDifferentEpoch(
             cursorTimeNs,
             intent.timeNs,
           );
-          if (!knownSameEpoch && units.some((unit) => unit.frame.keyframe)) {
+          if (epochChanged && units.some((unit) => unit.frame.keyframe)) {
             this.decoder.resetForDiscontinuity();
             units = runwayStartingAtLastKeyframe(units, intent.timeNs);
           }
@@ -462,7 +474,7 @@ export class VideoStreamEngine {
     if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
       throw new VideoDependencyWaitError("Waiting for the video seek target");
     }
-    if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
+    if (decodeChunkCount(units) > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
       throw new VideoDependencyWaitError(
         "Video dependency chain exceeds the bounded decode budget",
       );
@@ -510,13 +522,16 @@ export class VideoStreamEngine {
         runwayEndTimeNs,
         signal,
       );
-      const units = uniqueDecodeSortedAccessUnits([intent, ...read]);
+      const carried = prerollPresentedTimes(intent);
+      const units = uniqueDecodeSortedAccessUnits([intent, ...read]).filter(
+        (unit) => !carried.has(unit.timeNs),
+      );
       if (!units[0]?.frame.keyframe || units[0].timeNs !== intent.timeNs) {
         throw new VideoDependencyWaitError(
           "Waiting for the video runway keyframe",
         );
       }
-      if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
+      if (decodeChunkCount(units) > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
         throw new VideoDependencyWaitError(
           "Video dependency chain exceeds the bounded decode budget",
         );
@@ -589,12 +604,13 @@ export class VideoStreamEngine {
       );
     }
     const keyframe = this.cache.get(keyframeTimeNs);
+    const carried = prerollPresentedTimes(keyframe);
     const targetDecodeTimeNs = intent.frame.decodeTimestampNs;
     const keyframeDecodeTimeNs = keyframe?.frame.decodeTimestampNs;
     const runwayDecodeEndTimeNs = maxDecodeTimeNs(
       this.cache.range(keyframeTimeNs, runwayEndTimeNs),
     );
-    const units =
+    const units = (
       targetDecodeTimeNs !== undefined &&
       keyframeDecodeTimeNs !== undefined &&
       runwayDecodeEndTimeNs !== null
@@ -608,16 +624,20 @@ export class VideoStreamEngine {
         : uniqueSortedAccessUnits([
             ...this.cache.range(keyframeTimeNs, intent.timeNs),
             intent,
-          ]);
+          ])
+    ).filter((unit) => !carried.has(unit.timeNs));
     if (!units[0]?.frame.keyframe || units[0].timeNs !== keyframeTimeNs) {
       throw new VideoDependencyWaitError(
         "Waiting for the video runway keyframe",
       );
     }
-    if (!units.some((unit) => unit.timeNs === intent.timeNs)) {
+    if (
+      !carried.has(intent.timeNs) &&
+      !units.some((unit) => unit.timeNs === intent.timeNs)
+    ) {
       throw new VideoDependencyWaitError("Waiting for the video runway target");
     }
-    if (units.length > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
+    if (decodeChunkCount(units) > MAX_VIDEO_DEPENDENCY_ACCESS_UNITS) {
       throw new VideoDependencyWaitError(
         "Video dependency chain exceeds the bounded decode budget",
       );
@@ -681,6 +701,9 @@ export class VideoStreamEngine {
       });
       return;
     }
+    // Only an unroutable codec is fatal for every target on this stream; the
+    // timeouts and submission faults its base class covers stay seek-recoverable
+    if (error instanceof VideoCodecUnsupportedError) this.codecFaulted = true;
     this.publish({
       diagnostic: {
         code: "decode",
@@ -702,7 +725,23 @@ export class VideoStreamEngine {
   }
 
   private publish(update: Partial<VideoStreamSnapshot>): void {
-    this.snapshot = { ...this.snapshot, ...update };
+    const next = { ...this.snapshot, ...update };
+    // Consumers re-request on every emit, so emitting a snapshot identical to
+    // the standing one closes a loop: publish, re-request, same failure,
+    // publish. Nothing in that cycle waits on I/O, and each pass caches
+    // another intent, which is the runaway CPU and memory both.
+    if (
+      next.phase === this.snapshot.phase &&
+      next.targetTimeNs === this.snapshot.targetTimeNs &&
+      next.diagnostic?.code === this.snapshot.diagnostic?.code &&
+      next.diagnostic?.message === this.snapshot.diagnostic?.message &&
+      next.presentation === this.snapshot.presentation &&
+      next.presentedTimeNs === this.snapshot.presentedTimeNs
+    ) {
+      this.snapshot = next;
+      return;
+    }
+    this.snapshot = next;
     this.emit();
   }
 
@@ -732,6 +771,28 @@ function runwayStartingAtLastKeyframe(
     throw new VideoDependencyWaitError("Waiting for the video seek target");
   }
   return reordered ? uniqueDecodeSortedAccessUnits(runway) : runway;
+}
+
+/** Chunks a decoder takes for these units, each one's preroll included. */
+function decodeChunkCount(units: readonly EncodedVideoAccessUnit[]): number {
+  return units.reduce(
+    (count, unit) => count + 1 + (unit.frame.preroll?.length ?? 0),
+    0,
+  );
+}
+
+/**
+ * Times a unit's preroll presents. Decoding the unit delivers those pictures,
+ * so their own units, which decode before it, never join its runway.
+ */
+function prerollPresentedTimes(
+  unit: EncodedVideoAccessUnit | undefined,
+): ReadonlySet<bigint> {
+  const times = new Set<bigint>();
+  for (const entry of unit?.frame.preroll ?? []) {
+    if (entry.timestampNs !== undefined) times.add(entry.timestampNs);
+  }
+  return times;
 }
 
 function strongerIntent(

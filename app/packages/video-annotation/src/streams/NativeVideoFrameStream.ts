@@ -24,7 +24,7 @@ export interface NativeVideoFrameStreamOptions extends FrameBitmapStreamOptions 
  * Frame stream backed by on-demand WebCodecs decode of the source video (no
  * `to_frames` preprocessing). A `videoDecodeWorker` demuxes with mp4box and
  * decodes frames with a `VideoDecoder`, transferring `ImageBitmap`s back
- * zero-copy — the same shape {@link FrameBitmapStream} feeds the ImaVid tile,
+ * zero-copy — the same shape {@link FrameBitmapStream} feeds the dynamic group tile,
  * so playback stays single-clock lock-step.
  *
  * All chunking / cache / readiness machinery is inherited; this subclass only

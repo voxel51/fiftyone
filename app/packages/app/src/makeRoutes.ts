@@ -61,11 +61,23 @@ const makeRoutes = () => {
 
         const view = state?.view || [];
 
+        const extendedView = [...view];
+        if (state.fieldVisibility) {
+          extendedView.push(state.fieldVisibility);
+        }
+        if (state.schemaExclusion?.length) {
+          extendedView.push({
+            _cls: "fiftyone.core.stages.ExcludeFields",
+            kwargs: {
+              field_names: state.schemaExclusion,
+              _allow_missing: true,
+            },
+          });
+        }
+
         return {
           ...variables,
-          extendedView: state.fieldVisibility
-            ? [...view, state.fieldVisibility]
-            : view,
+          extendedView,
         };
       },
     },

@@ -592,6 +592,16 @@ class TestGroupSliceOverrideTargetView(unittest.TestCase):
         self.assertEqual(target.media_type, "point-cloud")
 
 
+# The targets a flat-requiring form offers on the grouped dataset below
+SCOPED_VALUES = [
+    "DATASET|media:image",
+    "DATASET|media:point-cloud",
+    "CURRENT_VIEW",
+    "CURRENT_VIEW|media:image",
+    "CURRENT_VIEW|media:point-cloud",
+]
+
+
 class TestGroupSliceScopeDescriptions(unittest.TestCase):
     """Group slice scopes surfaced by ``view_target`` properties."""
 
@@ -654,55 +664,47 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
             prop.options.available_values(), ["DATASET", "CURRENT_VIEW"]
         )
 
-    def test_grouped_datasets_offer_the_active_slice(self):
+    def test_grouped_datasets_offer_the_active_slice_and_each_media_type(self):
         ctx = self._ctx(group_slice="left")
         prop, descriptions = self._descriptions(ctx, require_flat=True)
 
         # the current view is the active slice, so it is offered without a
-        # view applied, and the whole grouped dataset is not selectable
-        self.assertListEqual(
-            prop.options.values(), ["DATASET", "CURRENT_VIEW"]
-        )
-        self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
+        # view applied; the whole grouped dataset is not flat, so it is offered
+        # one media type at a time, as is the current view
+        self.assertListEqual(prop.options.values(), SCOPED_VALUES)
+        self.assertListEqual(prop.options.available_values(), SCOPED_VALUES)
         self.assertEqual(prop.default, "CURRENT_VIEW")
         self.assertIsInstance(prop.view, types.RadioGroup)
+        # each choice is titled by the samples it covers and described by the
+        # names of their slices
         self.assertListEqual(
-            descriptions,
+            [c.label for c in prop.options.choices_view.choices],
             [
-                GROUPED_TARGET_ERROR_MESSAGE,
-                "Samples matching filters in the current slice (left)",
+                "All image slices",
+                "All point cloud slices",
+                "Samples matching filters in the current slice",
+                "Samples matching filters in all image slices",
+                "Samples matching filters in all point cloud slices",
             ],
         )
-
-    def test_unavailable_targets_are_disabled_choices(self):
-        ctx = self._ctx(group_slice="left")
-        prop, _ = self._descriptions(ctx, require_flat=True)
-
-        self.assertEqual(
-            prop.options.unavailable, {"DATASET": GROUPED_TARGET_ERROR_MESSAGE}
-        )
-        self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
-        choices = {c.value: c for c in prop.options.choices_view.choices}
-        self.assertEqual(
-            choices["DATASET"].description, GROUPED_TARGET_ERROR_MESSAGE
+        self.assertListEqual(
+            descriptions,
+            ["left, right", "lidar", "left", "left, right", "lidar"],
         )
 
     def test_no_active_slice_still_offers_the_default_slice(self):
         # the active slice is resolved from the dataset when the caller does
-        # not send one, so only the whole grouped dataset stays unavailable
+        # not send one
         ctx = self._ctx()
         prop, descriptions = self._descriptions(ctx, require_flat=True)
 
-        self.assertListEqual(prop.options.available_values(), ["CURRENT_VIEW"])
-        self.assertEqual(
-            prop.options.unavailable, {"DATASET": GROUPED_TARGET_ERROR_MESSAGE}
-        )
+        self.assertListEqual(prop.options.available_values(), SCOPED_VALUES)
+        self.assertEqual(prop.options.unavailable, {})
         self.assertEqual(prop.default, "CURRENT_VIEW")
         self.assertFalse(prop.invalid)
         self.assertEqual(
-            descriptions[-1],
-            "Samples matching filters in the current slice "
-            f"({self.dataset.default_group_slice})",
+            descriptions[SCOPED_VALUES.index("CURRENT_VIEW")],
+            self.dataset.default_group_slice,
         )
 
     def test_view_targets_describe_the_active_slice(self):
@@ -717,12 +719,9 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         )
         _, descriptions = self._descriptions(ctx, require_flat=True)
 
-        self.assertListEqual(
-            descriptions,
-            [
-                GROUPED_TARGET_ERROR_MESSAGE,
-                "Samples matching filters in the current slice (left)",
-            ],
+        self.assertEqual(
+            descriptions[SCOPED_VALUES.index("CURRENT_VIEW")],
+            "left",
         )
 
     def test_named_slices_override(self):
@@ -733,6 +732,43 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         target = ctx.flatten_group_slices(ctx.dataset, slices="lidar")
         self.assertEqual(target.media_type, "point-cloud")
         self.assertEqual(len(target), 1)
+
+    def test_a_media_scope_resolves_every_slice_of_that_type(self):
+        ctx = self._ctx(group_slice="left")
+        ctx.params["view_target"] = "DATASET|media:image"
+
+        target = ctx.target_view(require_flat=True)
+        self.assertEqual(target.media_type, "image")
+        self.assertListEqual(
+            sorted(target.values("group.name")), ["left", "right"]
+        )
+
+    def test_only_dataset_and_current_view_can_be_scoped(self):
+        ctx = self._ctx(group_slice="left", selected=["sample_id_one"])
+        ctx.params["view_target"] = "SELECTED_SAMPLES|media:image"
+
+        with self.assertRaises(ValueError):
+            ctx.target_view(require_flat=True)
+
+    def test_a_scoped_current_view_keeps_its_filters(self):
+        # no sample carries the tag, so only a view that kept its filter
+        # comes back empty; the unfiltered scope holds both image slices
+        ctx = self._ctx(
+            group_slice="left",
+            view=[
+                {
+                    "_cls": "fiftyone.core.stages.MatchTags",
+                    "kwargs": [
+                        ["tags", ["keep"]],
+                        ["bool", True],
+                        ["all", False],
+                    ],
+                }
+            ],
+        )
+        ctx.params["view_target"] = "CURRENT_VIEW|media:image"
+
+        self.assertEqual(len(ctx.target_view(require_flat=True)), 0)
 
     def test_no_scope_for_views_that_select_slices(self):
         stage = fo.SelectGroupSlices("left")
@@ -752,12 +788,11 @@ class TestGroupSliceScopeDescriptions(unittest.TestCase):
         prop, descriptions = self._descriptions(ctx, require_flat=True)
 
         self.assertListEqual(
-            prop.options.values(),
-            ["DATASET", "CURRENT_VIEW", "SELECTED_SAMPLES"],
+            prop.options.values(), SCOPED_VALUES + ["SELECTED_SAMPLES"]
         )
         self.assertListEqual(
             prop.options.available_values(),
-            ["CURRENT_VIEW", "SELECTED_SAMPLES"],
+            SCOPED_VALUES + ["SELECTED_SAMPLES"],
         )
         self.assertEqual(
             descriptions[-1],

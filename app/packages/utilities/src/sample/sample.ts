@@ -718,7 +718,8 @@ export class Sample {
       }
     }
     for (const path of this.transientDeletes) {
-      if (getNestedField(this.sourceData, path) === undefined) {
+      // the server clears a removed field to null, which is nothing to delete
+      if (getNestedField(this.sourceData, path) == null) {
         this.transientDeletes.delete(path);
       }
     }

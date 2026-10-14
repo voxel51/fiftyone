@@ -1,23 +1,13 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Dynamic-attribute propagation on the video-annotation surface. An attribute
- * declared `dynamic` in the `frames.detections` schema carries per-frame
- * meaning, so a sidebar edit does NOT fan across the whole track (that is the
- * static-attribute behaviour, guarded by `track-edit`). Instead it forward-fills
- * from the edited frame:
- *
- *  - editing at frame F sets `[F, end]`, leaving frames before F untouched;
- *  - a later edit creates a change boundary, and a subsequent edit before it
- *    fills only up to that boundary (sample-and-hold), preserving the later
- *    segment;
- *  - the whole forward-fill is a single engine transaction — one undo step.
- *
- * The dataset is re-seeded per test (one tracked `vehicle` instance with a
- * dynamic `turn_signal` attribute = "off" on every frame) so a persisting edit
- * can't leak into the next test.
+ * Dynamic-attribute propagation on the video surface: an attribute declared
+ * `dynamic` forward-fills from the edited frame instead of fanning across the
+ * track, a later edit creates a boundary that an earlier edit fills up to
+ * (sample-and-hold), and the fill is one undo step. Re-seeded per test with one
+ * tracked `vehicle` carrying `turn_signal` = "off" on every frame.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -27,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-dynamic-attr",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -35,17 +24,8 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 20 frames @ 10fps — long enough to fill several frames forward.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 2,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
@@ -60,22 +40,14 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Drop focus so the "." / "," frame-step keybindings aren't typed into an input. */
 const blur = (page: Page) =>
   page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-
-/** Await the autosave round-trip for the edited sample. */
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
 
 const ATTR = "turn_signal";
 
@@ -95,23 +67,62 @@ const stepFrames = async (modal: ModalPom, page: Page, delta: number) => {
 
 /** Assert the selected track's `turn_signal` value at the current frame. */
 const assertSignal = async (modal: ModalPom, expected: string) =>
-  expect.poll(() => modal.sidebar.edit.getFieldValue(ATTR)).toBe(expected);
+  modal.sidebar.edit.assert.verifyFieldValue(ATTR, expected);
 
 /** Commit a `turn_signal` choice at the current frame and await the save. */
-const setSignal = async (modal: ModalPom, page: Page, choice: string) => {
-  const saved = savedResponse(page);
-  await modal.sidebar.edit.selectFieldChoice(ATTR, choice);
-  await saved;
+const setSignal = async (modal: ModalPom, choice: string) => {
+  await modal.sidebar.annotate.afterSave(() =>
+    modal.sidebar.edit.selectFieldChoice(ATTR, choice),
+  );
 };
 
 // re-seed per test: one tracked instance carrying turn_signal="off" everywhere.
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+// 20 frames @ 10fps — long enough to fill several frames forward.
+test.beforeEach(async ({ datasetFactory }) => {
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
-    trackedSampleIndices: [0],
-    dynamicAttribute: { name: ATTR, values: ["off", "left", "right"] },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+      [`frames.detections.detections.${ATTR}`]: "StringField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+          {
+            name: ATTR,
+            type: "str",
+            component: "dropdown",
+            values: ["off", "left", "right"],
+            dynamic: true,
+          },
+        ],
+      },
+    },
+    // one tracked vehicle on every frame, turn_signal "off" throughout
+    withFrameData: (_, { label }) => ({
+      detections: label.detections([
+        label.detection({
+          label: "vehicle",
+          bounding_box: [0.3, 0.3, 0.2, 0.2],
+          index: 1,
+          instance: label.instance("vehicle-1"),
+          [ATTR]: "off",
+        }),
+      ]),
+    }),
   });
 });
 
@@ -129,7 +140,7 @@ test.describe.serial("video annotation dynamic attribute", () => {
 
     // edit at frame 4 -> "left"
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
     await assertSignal(modal, "left");
 
     // earlier frame is untouched (forward-fill only)
@@ -158,15 +169,15 @@ test.describe.serial("video annotation dynamic attribute", () => {
 
     // frame 4 -> "left" (left runs 4..end)
     await stepFrames(modal, page, 3);
-    await setSignal(modal, page, "left");
+    await setSignal(modal, "left");
 
     // frame 8 -> "right" (a change boundary: left 4..7, right 8..end)
     await stepFrames(modal, page, 4);
-    await setSignal(modal, page, "right");
+    await setSignal(modal, "right");
 
     // frame 6 -> "off": fills forward only up to the frame-8 boundary
     await stepFrames(modal, page, -2);
-    await setSignal(modal, page, "off");
+    await setSignal(modal, "off");
     await assertSignal(modal, "off");
 
     // frame 7 took the new value...

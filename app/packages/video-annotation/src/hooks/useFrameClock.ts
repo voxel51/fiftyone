@@ -1,6 +1,11 @@
 import type { Clock } from "@fiftyone/annotation";
+import { getEventBus } from "@fiftyone/events";
 import { useEffect, useMemo, useRef } from "react";
 import { useCurrentFrame } from "../state/useCurrentFrame";
+
+type FrameClockEventGroup = {
+  "e2e:video-annotation:frame-applied": { frame: number };
+};
 
 /**
  * Adapts the surface's playback position to the annotation engine's
@@ -25,6 +30,12 @@ export const useFrameClock = (): Clock => {
     for (const listener of listeners) {
       listener(frame);
     }
+
+    // listeners apply synchronously, so the scene now shows `frame`
+    getEventBus<FrameClockEventGroup>().dispatch(
+      "e2e:video-annotation:frame-applied",
+      { frame },
+    );
   }, [frame, listeners]);
 
   return useMemo<Clock>(

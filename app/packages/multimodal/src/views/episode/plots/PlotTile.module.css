@@ -1,6 +1,6 @@
 /* Plot tile body: chart surface matches sibling visualization panels. */
 .body {
-  background: var(--plot-surface, #050b12);
+  background: var(--color-content-bg-popover);
   height: 100%;
   position: relative;
   width: 100%;

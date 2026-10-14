@@ -3,6 +3,7 @@
  */
 
 import registerEvent from "./registerEvent";
+import useAppCountUpdate from "./useAppCountUpdate";
 import useDeactivateNotebookCell from "./useDeactivateNotebookCell";
 import useRefresh from "./useRefresh";
 import useSelectLabels from "./useSelectLabels";
@@ -16,6 +17,7 @@ import useSetSampleSelectionStyle from "./useSetSampleSelectionStyle";
 import useSetSpaces from "./useSetSpaces";
 import useStateUpdate from "./useStateUpdate";
 
+registerEvent("appCountUpdate", useAppCountUpdate);
 registerEvent("deactivateNotebookCell", useDeactivateNotebookCell);
 registerEvent("refresh", useRefresh);
 registerEvent("selectLabels", useSelectLabels);

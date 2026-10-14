@@ -1,4 +1,9 @@
-import { useSampleInstance, useSampleSelector } from "@fiftyone/annotation";
+import {
+  useActiveSampleId,
+  useAnnotationEngine,
+  useSampleInstance,
+  useSampleSelector,
+} from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
@@ -7,6 +12,11 @@ import {
 import { isNullish, Primitive, Sample } from "@fiftyone/utilities";
 import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useFramePrimitiveValue,
+  useIsFramePrimitive,
+  usePlayheadFrame,
+} from "../useFramePrimitive";
 import PrimitiveRenderer from "./PrimitiveRenderer";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import {
@@ -27,7 +37,43 @@ export default function PrimitiveEdit({
   const { type } = currentLabelSchema;
 
   const sample = useSampleInstance();
-  const value = useSampleSelector((s) => s.getResolved<Primitive>(path));
+  const sampleId = useActiveSampleId();
+  const engine = useAnnotationEngine();
+
+  // in a dynamic group played as video each frame is its own member sample, so
+  // a frame-scoped primitive reads and writes at the playhead, not the anchor
+  const isFramePrimitive = useIsFramePrimitive(path);
+  const frame = usePlayheadFrame();
+  const framePrimitive = useFramePrimitiveValue(path);
+  const samplePrimitive = useSampleSelector((s) =>
+    s.getResolved<Primitive>(path),
+  );
+  const value = isFramePrimitive ? framePrimitive : samplePrimitive;
+
+  const writeField = useCallback(
+    (next: unknown) => {
+      if (!isFramePrimitive) {
+        sample.setField(path, next);
+        return;
+      }
+
+      if (frame !== undefined) {
+        engine.setFrameValue({ sample: sampleId, path, frame }, next);
+      }
+    },
+    [engine, frame, isFramePrimitive, path, sample, sampleId],
+  );
+
+  const clearField = useCallback(() => {
+    if (!isFramePrimitive) {
+      sample.deleteField(path);
+      return;
+    }
+
+    if (frame !== undefined) {
+      engine.deleteFrameValue({ sample: sampleId, path, frame });
+    }
+  }, [engine, frame, isFramePrimitive, path, sample, sampleId]);
 
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
@@ -61,9 +107,9 @@ export default function PrimitiveEdit({
               !isAddOperation &&
               (isNullish(serializedValue) || serializedValue === "")
             ) {
-              sample.deleteField(path);
+              clearField();
             } else {
-              sample.setField(path, serializedValue);
+              writeField(serializedValue);
             }
           } catch (err) {
             console.warn("unparseable value", newValue);
@@ -78,13 +124,13 @@ export default function PrimitiveEdit({
           }
 
           if (isAddOperation && !hasOldValue) {
-            sample.deleteField(path);
+            clearField();
           } else {
-            sample.setField(path, oldValueSerialized);
+            writeField(oldValueSerialized);
           }
         },
       );
-    }, [path, sample, type, value]),
+    }, [clearField, path, sample, type, value, writeField]),
     () => true,
   );
 

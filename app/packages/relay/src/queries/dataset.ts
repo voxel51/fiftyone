@@ -91,7 +91,7 @@ export default graphql`
     }
     ...savedViewsFragment
     ...configFragment
+    ...expressionCatalogFragment
     ...stageDefinitionsFragment
-    ...viewSchemaFragment
   }
 `;

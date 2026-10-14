@@ -680,6 +680,9 @@ const polling =
 const MAX_REOPEN_ATTEMPTS = 10;
 let eventSourceFetchErrorCount = 0;
 
+/** Whether {@link getEventSource} polls rather than holding a stream open. */
+export const isEventSourcePolling = () => polling;
+
 export const getEventSource = (
   path: string,
   events: {

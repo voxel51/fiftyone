@@ -69,6 +69,8 @@ import {
   type PlaybackDeviceCapabilities,
   type PlaybackLayoutTile,
 } from "./playback-layout";
+import { usePortableLayoutCapture } from "./PortableLayoutHost";
+import { serializePortableLayout } from "./portable-layout";
 import MissingTile from "../tiles/MissingTile";
 import {
   defaultTimelineSamplingRateHz,
@@ -80,13 +82,16 @@ export interface ModalLayout {
   /** User-authored titles to seed into the TilingProvider. */
   initialManualTileTitles: Record<string, string>;
   /** `undefined` lets the TilingProvider auto-lay-out `initialTiles`. */
-  initialLayout: MosaicNode<string> | undefined;
+  initialLayout: MosaicNode<string> | null | undefined;
   /** Tile id that should initially render expanded to fullscreen. */
   initialExpandedTileId: string | null;
   /** Resolver-default tile entries restored by Reset Layout. */
   resetTiles: Record<string, TilingTile>;
   defaultLeftOpen: boolean;
   onLeftOpenChange: (open: boolean) => void;
+  /** Persisted open state for the bottom Tracks drawer. */
+  defaultTimelineTracksOpen: boolean;
+  onTimelineTracksOpenChange: (open: boolean) => void;
   /** Persisted sidebar width; `undefined` keeps the shell's default. */
   defaultLeftSidebarWidth: number | undefined;
   onLeftSidebarWidthChange: (px: number) => void;
@@ -333,18 +338,24 @@ export function useModalLayout({
     [datasetId],
   );
 
+  const onTimelineTracksOpenChange = useCallback(
+    (open: boolean) => {
+      writeModalLayout({ timelineTracksOpen: open }, datasetId);
+    },
+    [datasetId],
+  );
+
   const onSceneUpAxisChange = useCallback(
     (axis: Scene3dUpAxis) => {
       setSceneUpAxis(axis);
-      if (datasetId && cameraPreferenceField?.trim()) {
+      if (datasetId) {
         writeCameraPreferences(
           { sceneUpAxis: axis },
           datasetId,
           cameraPreferenceField,
         );
       } else {
-        // Preserve the dataset-scoped fallback when the caller cannot
-        // identify a media field yet.
+        // Preserve the legacy fallback when no source scope is available.
         writeModalLayout({ sceneUpAxis: axis }, datasetId);
       }
     },
@@ -397,13 +408,17 @@ export function useModalLayout({
   );
 
   return {
-    initialTiles: restored?.tiles ?? boundDefaultTiles,
+    initialTiles:
+      persisted?.layout === null ? {} : (restored?.tiles ?? boundDefaultTiles),
     initialManualTileTitles: restored?.manualTileTitles ?? {},
-    initialLayout: restored?.layout ?? resolved.layout,
+    initialLayout:
+      persisted?.layout === null ? null : (restored?.layout ?? resolved.layout),
     initialExpandedTileId,
     resetTiles: defaultTiles,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
     onLeftOpenChange,
+    defaultTimelineTracksOpen: persisted?.timelineTracksOpen ?? false,
+    onTimelineTracksOpenChange,
     defaultLeftSidebarWidth: persisted?.sidebarWidthPx,
     onLeftSidebarWidthChange,
     sceneUpAxis,
@@ -594,6 +609,7 @@ function resolveInitialImageBindings(
 }
 
 export interface ModalLayoutPersistenceProps {
+  cameraPreferenceField?: string;
   /** Persistence scope — same `datasetId` given to `useModalLayout`. */
   datasetId?: string;
 }
@@ -609,6 +625,7 @@ export interface ModalLayoutPersistenceProps {
  */
 export function ModalLayoutPersistence({
   datasetId,
+  cameraPreferenceField,
 }: ModalLayoutPersistenceProps): React.ReactElement | null {
   const { expandedTileId, layout, manualTileTitles, tiles } = useTiling();
   const layoutRef = useRef(layout);
@@ -620,6 +637,32 @@ export function ModalLayoutPersistence({
   const datasetIdRef = useRef(datasetId);
   datasetIdRef.current = datasetId;
   const store = useStore();
+  const capture = useCallback(
+    () =>
+      serializePortableLayout(
+        {
+          ...readModalLayout(datasetId),
+          layout: layoutRef.current,
+          tileTitles: { ...manualTileTitlesRef.current },
+          plotSeries: compactPlotSeries(store.get(plotTileSeriesAtom)),
+          rawStreams: store.get(rawTileStreamAtom),
+          logSettings: compactLogSettings(store.get(logTileSettingsAtom)),
+          mapSettings: compactMapSettings(store.get(mapTileSettingsAtom)),
+          scene3dSettings: compactScene3dSettings(
+            store.get(scene3dTilePlaybackSettingsAtom),
+          ),
+          extensionSettings: sanitizeExtensionSettings(
+            store.get(episodeTileExtensionSettingsAtom),
+          ),
+        },
+        readCameraPreferences(datasetId, cameraPreferenceField) ?? {},
+        readSidebarPreferences(
+          cameraScopeKey(datasetId, cameraPreferenceField),
+        ),
+      ),
+    [cameraPreferenceField, datasetId, store],
+  );
+  usePortableLayoutCapture(capture);
 
   // Restore persisted plot series into the shell-scoped atom for the
   // plot tiles that survived layout restore, then mirror atom changes

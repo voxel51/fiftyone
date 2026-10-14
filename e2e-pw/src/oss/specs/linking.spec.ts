@@ -1,6 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { groupIndexToId, indexToId } from "src/shared/utils";
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -11,46 +12,30 @@ const test = base.extend<{ modal: ModalPom }>({
 const datasetName = getUniqueDatasetNameWithPrefix("linking");
 const groupDatasetName = getUniqueDatasetNameWithPrefix("group-linking");
 
-const id = "000000000000000000000000";
+const id = indexToId(0);
+const groupId = groupIndexToId(0);
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.executePythonCode(`
-    from bson import ObjectId
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    sample = fo.Sample(_id=ObjectId("${id}"), filepath="sample.png")
-    dataset._sample_collection.insert_many(
-        [dataset._make_dict(sample, include_id=True)]
-    )
-
-
-    group_dataset = fo.Dataset("${groupDatasetName}")
-    group_dataset.persistent = True
-
-    group = fo.Group(id="${id}")
-    group_sample = fo.Sample(
-        filepath="group_sample.png", group=group.element("only")
-    )
-    group_dataset.add_sample(group_sample)`);
+  await datasetFactory.createDataset({ datasetName });
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName: groupDatasetName,
+    numGroups: 1,
+    slices: [{ name: "only", mediaType: "image" }],
+  });
 });
 
 test.describe.serial("modal linking", () => {
   test(`sample linking`, async ({ page, fiftyoneLoader, modal }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
+      modalSample: "loaded-or-error",
     });
-
-    await modal.waitForSampleLoadDomAttribute(true);
 
     await modal.assert.isOpen();
     await modal.sidebar.assert.verifySidebarEntryText("id", id);
@@ -58,12 +43,11 @@ test.describe.serial("modal linking", () => {
 
   test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
-      searchParams: new URLSearchParams({ groupId: id }),
+      searchParams: new URLSearchParams({ groupId }),
+      modalSample: "loaded-or-error",
     });
 
-    await modal.waitForSampleLoadDomAttribute(true);
-
     await modal.assert.isOpen();
-    await modal.sidebar.assert.verifySidebarEntryText("group.id", id);
+    await modal.sidebar.assert.verifySidebarEntryText("group.id", groupId);
   });
 });

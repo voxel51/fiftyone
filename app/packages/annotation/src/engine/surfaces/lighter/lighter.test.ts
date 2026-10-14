@@ -2,7 +2,12 @@ import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
 import { decodeMaskPath } from "@fiftyone/lighter";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { detectionAdapter, polylineAdapter } from "./adapters";
+import {
+  detectionAdapter,
+  keypointAdapter,
+  makeKeypointAdapter,
+  polylineAdapter,
+} from "./adapters";
 import { lighterAdapters } from "./adapters";
 import type { LighterBridgeDeps } from "./lighterBridge";
 import { createLighterBridge } from "./lighterBridge";
@@ -55,6 +60,12 @@ const makeScene = () => {
   const overlays = new Map<string, Shim>();
   const deselectOverlay = vi.fn();
   const selectOverlay = vi.fn();
+  // signature mirrors Scene2D.removeOverlay so the `lifecycle` flag is observable
+  const removeOverlay = vi.fn(
+    (id: string, _withUndo?: boolean, _lifecycle?: boolean) => {
+      overlays.delete(id);
+    },
+  );
 
   const scene = {
     getOverlay: (id: string) => overlays.get(id),
@@ -62,9 +73,7 @@ const makeScene = () => {
     addOverlay: (overlay: Shim) => {
       overlays.set(overlay.id, overlay);
     },
-    removeOverlay: (id: string) => {
-      overlays.delete(id);
-    },
+    removeOverlay,
     deselectOverlay,
     selectOverlay,
   } as unknown as Scene2D;
@@ -81,7 +90,14 @@ const makeScene = () => {
     ),
   } as unknown as OverlayFactory;
 
-  return { scene, overlays, overlayFactory, deselectOverlay, selectOverlay };
+  return {
+    scene,
+    overlays,
+    overlayFactory,
+    deselectOverlay,
+    selectOverlay,
+    removeOverlay,
+  };
 };
 
 describe("lighter adapters", () => {
@@ -177,6 +193,44 @@ describe("lighter adapters", () => {
     ).toMatchObject({ mask: null, mask_path: null });
   });
 
+  it("keypoint buildHandle carries the field's skeleton edges as connections", () => {
+    const edges = [
+      [9, 6, 3, 4, 5, 7, 12],
+      [0, 4, 8],
+    ];
+    const getSkeleton = vi.fn(() => ({ labels: ["head"], edges }));
+
+    const descriptor = makeKeypointAdapter({ getSkeleton }).buildHandle(
+      ref("frames.keypoints", "k1"),
+      { _id: "k1", label: "person", points: [] },
+    );
+
+    expect(getSkeleton).toHaveBeenCalledWith("frames.keypoints");
+    expect(descriptor.factoryKey).toBe("keypoint");
+    expect(descriptor.options.id).toBe("k1");
+    expect(descriptor.options.connections).toEqual(edges);
+    // a skeleton is a figure, never a closed polygon
+    expect(descriptor.options.closed).toBe(false);
+  });
+
+  it("keypoint buildHandle falls back to unconnected points without a skeleton", () => {
+    // no resolver at all — the dependency-free map
+    expect(
+      keypointAdapter.buildHandle(ref("keypoints", "k1"), {
+        _id: "k1",
+        points: [],
+      }).options.connections,
+    ).toEqual([]);
+
+    // a resolver that finds nothing for this field
+    expect(
+      makeKeypointAdapter({ getSkeleton: () => null }).buildHandle(
+        ref("keypoints", "k1"),
+        { _id: "k1", points: [] },
+      ).options.connections,
+    ).toEqual([]);
+  });
+
   it("polyline toLabel reads nested points and flags", () => {
     const overlay = makeOverlay(
       "p1",
@@ -224,7 +278,7 @@ describe("lighter bridge", () => {
   });
 
   it("clear removes only bridge-managed overlays", () => {
-    const { scene, overlays, overlayFactory } = makeScene();
+    const { scene, overlays, overlayFactory, removeOverlay } = makeScene();
     // surface-owned transients the bridge never touched: the media image
     // plane and an uncommitted draft sharing the scene
     overlays.set("image", makeOverlay("image", "", {}));
@@ -255,6 +309,10 @@ describe("lighter bridge", () => {
     expect(overlays.has("d2")).toBe(false);
     expect(overlays.has("image")).toBe(true);
     expect(overlays.has("draft")).toBe(true);
+    // flagged `lifecycle`: teardown eviction, so the sidebar's overlay-removed
+    // handler doesn't read it as a delete
+    expect(removeOverlay).toHaveBeenCalledWith("d1", false, true);
+    expect(removeOverlay).toHaveBeenCalledWith("d2", false, true);
   });
 
   it("drives the full engine read-half over a scene", () => {
@@ -313,7 +371,8 @@ describe("lighter bridge", () => {
     engine.updateLabel(ref("ground_truth", "d1"), {
       bounding_box: [0.1, 0.2, 0.3, 0.4],
     });
-    const { scene, overlays, overlayFactory, deselectOverlay } = makeScene();
+    const { scene, overlays, overlayFactory, deselectOverlay, removeOverlay } =
+      makeScene();
     const bridge = createLighterBridge({
       scene,
       overlayFactory,
@@ -329,6 +388,9 @@ describe("lighter bridge", () => {
     expect(deselectOverlay).toHaveBeenCalledWith("d1", {
       ignoreSideEffects: true,
     });
+    // flagged `lifecycle`: a re-home unmounts then remounts the same id, so the
+    // sidebar's overlay-removed handler doesn't read it as a delete
+    expect(removeOverlay).toHaveBeenCalledWith("d1", false, true);
   });
 
   it("content scope: only labels meeting the 2D requirements mount", () => {
@@ -556,5 +618,63 @@ describe("lighter bridge gated mounts (deferred mask_path decode)", () => {
     });
 
     unregister();
+  });
+});
+
+describe("detectionAdapter.toLabel rotation", () => {
+  const makeOverlay = (
+    label: Record<string, unknown>,
+    rotation: number,
+  ): BaseOverlay =>
+    ({
+      id: "d1",
+      field: "ground_truth",
+      label,
+      relativeBounds: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+      hasMask: () => false,
+      getPendingMask: () => undefined,
+      getRotation: () => rotation,
+    }) as unknown as BaseOverlay;
+
+  it("persists the overlay's nonzero rotation", () => {
+    const overlay = makeOverlay({ _id: "d1", label: "cat" }, 1.25);
+
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({ rotation: 1.25 });
+  });
+
+  it("writes 0 over a stale stored scalar when rotated back square", () => {
+    const overlay = makeOverlay({ _id: "d1", label: "cat", rotation: 1.25 }, 0);
+
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({ rotation: 0 });
+  });
+
+  it("never stamps rotation onto a box that was never rotated", () => {
+    const overlay = makeOverlay({ _id: "d1", label: "cat" }, 0);
+
+    expect(detectionAdapter.toLabel(overlay)).not.toHaveProperty("rotation");
+  });
+
+  it("leaves a 3D [x, y, z] rotation list untouched", () => {
+    const overlay = makeOverlay(
+      { _id: "d1", label: "cat", rotation: [0, -1.56, 0] },
+      // the overlay reports 0 for a list-valued rotation
+      0,
+    );
+
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({
+      rotation: [0, -1.56, 0],
+    });
+  });
+
+  it("preserves a stored scalar on masked overlays (render-suppressed 0)", () => {
+    const overlay = {
+      ...makeOverlay({ _id: "d1", label: "cat", rotation: 1.25 }, 0),
+      hasMask: () => true,
+    } as unknown as BaseOverlay;
+
+    // getRotation() reports 0 for masks; the stored value must survive
+    expect(detectionAdapter.toLabel(overlay)).toMatchObject({
+      rotation: 1.25,
+    });
   });
 });

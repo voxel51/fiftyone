@@ -20,6 +20,7 @@
     },
     "ignoreDeps": [
         "pymongo",
+        "motor",
         "mongoengine",
         "fiftyone-brain",
         "fiftyone-db",
@@ -30,6 +31,12 @@
             "matchManagers": ["pip_requirements", "pip_setup"],
             "groupName": "stable-python-packages",
             "addLabels": ["python"]
+        },
+        {
+            "matchManagers": ["pip_setup"],
+            "matchDepNames": ["strawberry-graphql"],
+            "groupName": null,
+            "separateMultipleMinor": true
         },
         {
             "matchManagers": ["github-actions"],

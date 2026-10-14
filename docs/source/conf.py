@@ -13,6 +13,8 @@ import os
 import re
 import sys
 
+from pygments.lexers.special import TextLexer
+
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("../extensions"))
 
@@ -27,7 +29,7 @@ from custom_directives import (
     CustomUseCaseCardDirective,
 )
 from fiftyone.internal.docs import is_hidden_from_docs
-from llms_txt import get_meta_description
+from llms_txt import get_meta_description  # pylint: disable=import-error
 from redirects import (
     generate_api_redirects,
     generate_redirects,
@@ -139,6 +141,10 @@ nbsphinx_requirejs_path = ""
 # Don't execute notbooks during the build process
 nbsphinx_execute = "never"
 
+# Copy only the commands from blocks that show prompts, not their output
+copybutton_prompt_text = r"\$ |>>> |> "
+copybutton_prompt_is_regexp = True
+
 # Adds helpful external links to the built HTML
 ref = "main"
 nbsphinx_prolog = """
@@ -168,6 +174,12 @@ nbsphinx_prolog = """
     ref,
     ref,
 )
+
+# Don't add copy buttons to ``.. code-block:: text`` blocks, which we use
+# to show the output of code snippets rather than copyable code. Sphinx
+# wraps these blocks in a ``div.highlight-text`` parent, which we exclude
+# from the default ``div.highlight pre`` selector
+copybutton_selector = ":not(.highlight-text) > div.highlight pre"
 
 # Path to the redirects file, relative to `source/`
 redirects_file = "redirects"
@@ -219,6 +231,8 @@ remove_from_toctrees = [
 ]
 
 html_favicon = "_static/favicon/favicon.ico"
+
+html_title = "FiftyOne Docs"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -362,3 +376,7 @@ def setup(app):
     app.add_directive("customanimatedcta", CustomAnimatedCTADirective)
     app.add_directive("customusecasecard", CustomUseCaseCardDirective)
     app.add_directive("customavailablein", CustomAvailableInDirective)
+
+    # Plain text that readers paste into an agent, so unlike ``text`` blocks
+    # it keeps its copy button
+    app.add_lexer("prompt", TextLexer)

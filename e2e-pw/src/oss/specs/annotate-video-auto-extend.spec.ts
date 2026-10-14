@@ -1,21 +1,13 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  *
- * Drawing a fresh per-frame detection box on the video-annotation surface:
- *
- *  - auto-extend (guards `9dbd95a6b2`): a freshly-drawn box becomes a short
- *    track, copied forward ~30 frames as non-keyframe filler (clamped at the
- *    clip end). Bracketed semantically via engine presence — a frame inside the
- *    extent lists the label, a frame past it does not.
- *  - fresh-draw form-sync (guards finding A / fcc91e013a / 94c366c562): the
- *    moment the draw is released to the engine the edit form's field reads the
- *    schema field `detections` (NOT the raw engine path `frames.detections`),
- *    and the form keeps following the playhead with no deselect/reselect.
- *
- * Clean slate, re-seeded per test (no pre-existing tracks) so the draw is the
- * only object track. The clip is 40 frames so the 30-frame extent isn't clamped.
+ * Drawing a fresh per-frame box on the video surface: it auto-extends ~30
+ * frames as non-keyframe filler (a frame inside the extent lists the label, one
+ * past it does not), and the edit form immediately reads the schema field
+ * `detections` and keeps following the playhead. Re-seeded clean per test on a
+ * 40-frame clip so the extent isn't clamped.
  */
-import { expect, test as base } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import type { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
@@ -25,7 +17,6 @@ const datasetName = getUniqueDatasetNameWithPrefix(
   "annotate-video-auto-extend",
 );
 const id = "000000000000000000000000";
-const clip = `/tmp/${datasetName}.webm`;
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -33,28 +24,43 @@ const test = base.extend<{ modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ foWebServer }) => {
   await foWebServer.startWebServer();
-  // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
-  await mediaFactory.createVideo({
-    outputPath: clip,
-    duration: 4,
-    width: 64,
-    height: 64,
-    frameRate: 10,
-    color: "#3050a0",
-  });
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeEach(async ({ videoAnnotateSDK }) => {
-  await videoAnnotateSDK.seed({
+test.beforeEach(async ({ datasetFactory }) => {
+  // 40 frames @ 10fps — the 30-frame auto-extend stays clear of the clip end.
+  await datasetFactory.createDataset({
+    mediaType: "video",
     datasetName,
-    videoPaths: [clip],
-    withEvents: false,
+    videoOptions: { duration: 4 },
+    sampleFrames: true,
+    schema: {
+      "frames.detections": "Detections",
+      "frames.detections.detections.instance": "Instance",
+      "frames.detections.detections.keyframe": "BooleanField",
+      "frames.detections.detections.propagation": "DictField",
+    },
+    labelSchemas: {
+      "frames.detections": {
+        type: "detections",
+        component: "dropdown",
+        classes: ["vehicle", "person", "road sign"],
+        attributes: [
+          { name: "id", type: "id", component: "text", read_only: true },
+          { name: "tags", type: "list<str>", component: "text" },
+          { name: "confidence", type: "float", component: "text" },
+          { name: "index", type: "int", component: "text" },
+          { name: "mask_path", type: "str", component: "text" },
+        ],
+      },
+    },
+    // present-but-empty on every frame, so the first draw's patch can append
+    withFrameData: (_, { label }) => ({ detections: label.detections([]) }),
   });
 });
 
@@ -66,18 +72,20 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Draw a detection box across the given relative corners (annotate mode). */
 const drawBox = async (modal: ModalPom) => {
   await modal.sidebar.annotate.detectionMode("Detections");
-  await modal.sampleCanvas.move(0.55, 0.55, "crosshair");
-  await modal.sampleCanvas.down();
-  await modal.sampleCanvas.move(0.78, 0.78);
-  await modal.sampleCanvas.up();
+  await modal.videoAnnotate.afterTracksChange(async () => {
+    await modal.sampleCanvas.move(0.55, 0.55);
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.78, 0.78);
+    await modal.sampleCanvas.up();
+  });
 };
 
 const stepForward = async (modal: ModalPom, n: number) => {
@@ -105,13 +113,9 @@ test.describe.serial("video annotation fresh draw", () => {
 
     // commit the fresh draw (a class) so it — and the auto-extended filler —
     // enter engine presence; an uncommitted draft isn't listed in the sidebar
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
-    await saved;
     await modal.sidebar.edit.exitToList();
     await blur(page);
 
@@ -140,28 +144,20 @@ test.describe.serial("video annotation fresh draw", () => {
     // the form reads the schema field immediately (no deselect/reselect). The
     // schema exposes the frame field at its real path, so that field is
     // `frames.detections` — one namespace across schema, form, and engine.
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.currentField("frames.detections");
 
     // committing a class keeps the form bound; the field stays `detections`
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the form follows the playhead without a manual reselect: still open, still
     // bound to the schema field on the next frame
     await blur(page);
     await va.stepForward();
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await expect
-      .poll(() => modal.sidebar.edit.getCurrentField())
-      .toBe("frames.detections");
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.edit.assert.currentField("frames.detections");
   });
 
   test("undo removes a freshly-drawn box (engine undo on video)", async ({
@@ -180,11 +176,11 @@ test.describe.serial("video annotation fresh draw", () => {
     // auto-extend filler coalesces into the draw's undo unit, so a SINGLE undo
     // removes the whole freshly-drawn track (box + filler).
     await modal.sidebar.edit.assert.undoIsEnabled();
-    await modal.sidebar.edit.undo();
+    await va.afterTracksChange(() => modal.sidebar.edit.undo());
     await va.assert.objectTrackCount(0);
 
     // redo re-creates the whole track in one step
-    await modal.sidebar.edit.redo();
+    await va.afterTracksChange(() => modal.sidebar.edit.redo());
     await va.assert.objectTrackCount(1);
   });
 });

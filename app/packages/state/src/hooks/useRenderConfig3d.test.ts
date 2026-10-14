@@ -79,11 +79,15 @@ vi.mock("recoil", async () => {
           set: (node: { key: string }, value: unknown) => void;
         }) => (...args: unknown[]) => unknown,
       ) =>
-      (...args: unknown[]) =>
-        callback({
+      (...args: unknown[]) => {
+        // A Recoil snapshot never observes writes made through `set`
+        const values = { ...stateStore.values };
+        const loadables = { ...stateStore.loadables };
+
+        return callback({
           snapshot: {
             getPromise: async (node: { key: string }) => {
-              const loadable = stateStore.loadables[node.key];
+              const loadable = loadables[node.key];
 
               if (loadable) {
                 if (loadable.state === "hasValue") {
@@ -93,11 +97,12 @@ vi.mock("recoil", async () => {
                 throw loadable.contents;
               }
 
-              return getValue(node);
+              return values[node.key];
             },
           },
           set: setValue,
-        })(...args),
+        })(...args);
+      },
   };
 });
 
@@ -285,6 +290,75 @@ describe("useRenderConfig3d split hooks", () => {
     expect(stateStore.values.pinned3DSampleSlice).toBe("lidar");
   });
 
+  it("keeps the pinned slice when pinning is turned on", async () => {
+    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
+    const lidarSample = buildModalSample("lidar-id", "/tmp/lidar.pcd");
+
+    setState({
+      pinned3DSampleSlice: "lidar",
+      is3dPinned: false,
+      active3dSlices: ["lidar", "scene"],
+      all3dSlices: ["scene", "lidar"],
+      activeFo3dSlice: "scene",
+      activeNonFo3d3dSlices: ["lidar"],
+      active3dSlicesToSampleMap: { scene: sceneSample, lidar: lidarSample },
+      all3dSlicesToSampleMap: { scene: sceneSample, lidar: lidarSample },
+    });
+
+    const { result } = renderHook(() => useRenderConfig3dHooks());
+
+    await result.current.actions.setPinned(true);
+
+    expect(stateStore.values.pinned3DSampleSlice).toBe("lidar");
+    expect(stateStore.values.active3dSlices).toEqual(["lidar", "scene"]);
+    expect(stateStore.values.is3dPinned).toBe(true);
+  });
+
+  it("pins a 3d slice when the 3d viewer becomes the only viewer", async () => {
+    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
+
+    setState({
+      pinned3DSampleSlice: null,
+      is3dPinned: false,
+      active3dSlices: [],
+      all3dSlices: ["scene"],
+      groupMediaIsMain2DViewerVisibleSetting: false,
+      active3dSlicesToSampleMap: {},
+      all3dSlicesToSampleMap: { scene: sceneSample },
+    });
+
+    const { result } = renderHook(() => useRenderConfig3dHooks());
+
+    await result.current.actions.setVisible(true);
+
+    expect(stateStore.values.pinned3DSampleSlice).toBe("scene");
+    expect(stateStore.values.is3dPinned).toBe(true);
+  });
+
+  it("pins a 3d slice when the main viewer is hidden under a visible 3d viewer", async () => {
+    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
+
+    setState({
+      pinned3DSampleSlice: null,
+      is3dPinned: false,
+      active3dSlices: [],
+      all3dSlices: ["scene"],
+      groupMedia3dVisibleSetting: true,
+      active3dSlicesToSampleMap: {},
+      all3dSlicesToSampleMap: { scene: sceneSample },
+    });
+
+    const { result } = renderHook(() => useRenderConfig3dHooks());
+
+    await result.current.actions.setMainViewerVisible(false);
+
+    expect(stateStore.values.groupMediaIsMain2DViewerVisibleSetting).toBe(
+      false,
+    );
+    expect(stateStore.values.pinned3DSampleSlice).toBe("scene");
+    expect(stateStore.values.is3dPinned).toBe(true);
+  });
+
   it("reconciles the pinned slice when it is no longer available", async () => {
     const lidarSample = buildModalSample("lidar-id", "/tmp/lidar.pcd");
 
@@ -306,6 +380,46 @@ describe("useRenderConfig3d split hooks", () => {
 
     expect(stateStore.values.active3dSlices).toEqual(["lidar"]);
     expect(stateStore.values.pinned3DSampleSlice).toBe("lidar");
+  });
+
+  it("pins a 3d slice on reconcile when the 3d viewer is the only viewer", async () => {
+    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
+
+    setState({
+      pinned3DSampleSlice: null,
+      is3dPinned: false,
+      active3dSlices: [],
+      all3dSlices: ["scene"],
+      groupMediaIsMain2DViewerVisibleSetting: false,
+      active3dSlicesToSampleMap: {},
+      all3dSlicesToSampleMap: { scene: sceneSample },
+    });
+
+    const { result } = renderHook(() => useRenderConfig3dHooks());
+
+    await result.current.actions.reconcileAvailableSlices();
+
+    expect(stateStore.values.pinned3DSampleSlice).toBe("scene");
+    expect(stateStore.values.is3dPinned).toBe(true);
+  });
+
+  it("leaves the pin alone on reconcile while the main viewer is visible", async () => {
+    const sceneSample = buildModalSample("scene-id", "/tmp/scene.fo3d");
+
+    setState({
+      pinned3DSampleSlice: null,
+      is3dPinned: false,
+      active3dSlices: [],
+      all3dSlices: ["scene"],
+      active3dSlicesToSampleMap: {},
+      all3dSlicesToSampleMap: { scene: sceneSample },
+    });
+
+    const { result } = renderHook(() => useRenderConfig3dHooks());
+
+    await result.current.actions.reconcileAvailableSlices();
+
+    expect(stateStore.values.is3dPinned).toBe(false);
   });
 
   it("focuses non-3d slices by hiding the 3d viewer and clearing the pin", async () => {

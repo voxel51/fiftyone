@@ -5,12 +5,18 @@ import {
   type Primitive,
 } from "@fiftyone/utilities";
 import { animated } from "@react-spring/web";
+import { Anchor, Text, Tooltip } from "@voxel51/voodo";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useActivePrimitive from "./Edit/useActivePrimitive";
 import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
 import { useSampleSelector } from "@fiftyone/annotation";
+import {
+  useFramePrimitiveReadOnlyReason,
+  useFramePrimitiveValue,
+  useIsFramePrimitive,
+} from "./useFramePrimitive";
 
 const Container = animated(styled.div<{ $isReadOnly?: boolean }>`
   display: flex;
@@ -67,10 +73,15 @@ const UrlLink = ({ url }: UrlLinkProps) => {
 
 const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const field = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const value = useSampleSelector((s) => s.getResolved<Primitive>(path));
+  const isFramePrimitive = useIsFramePrimitive(path);
+  const sampleValue = useSampleSelector((s) => s.getResolved<Primitive>(path));
+  const frameValue = useFramePrimitiveValue(path);
+  const value = isFramePrimitive ? frameValue : sampleValue;
   const timeZone = useRecoilValue(fos.timeZone);
   const [, setActivePrimitive] = useActivePrimitive();
-  const { isReadOnly } = useReadOnly(path);
+  const { isReadOnly: schemaReadOnly } = useReadOnly(path);
+  const readOnlyReason = useFramePrimitiveReadOnlyReason(path);
+  const isReadOnly = schemaReadOnly || readOnlyReason !== null;
 
   const formatted = useMemo(() => {
     if (value === undefined || value === null) return null;
@@ -92,17 +103,31 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
     setActivePrimitive(path);
   };
 
-  return (
+  const entry = (
     <Container
       $isReadOnly={isReadOnly}
+      data-cy={`annotate-primitive-${path}`}
+      data-cy-read-only={isReadOnly ? "true" : "false"}
       onClick={!isReadOnly ? handleClick : undefined}
       style={{ cursor: isReadOnly ? "default" : "pointer" }}
     >
       <Header>
         <div>{path}</div>
-        <FormattedValue>{formatted}</FormattedValue>
+        <FormattedValue data-cy="annotate-primitive-value">
+          {formatted}
+        </FormattedValue>
       </Header>
     </Container>
+  );
+
+  if (readOnlyReason === null) {
+    return entry;
+  }
+
+  return (
+    <Tooltip anchor={Anchor.Top} content={<Text>{readOnlyReason}</Text>} portal>
+      {entry}
+    </Tooltip>
   );
 };
 

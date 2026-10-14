@@ -1,0 +1,30 @@
+name: CI scripts
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/ci-scripts.yml"
+      - ".github/workflows/community-prs.yml"
+      - ".github/workflows/enterprise-sync.yml"
+      - ".github/workflows/sync-enterprise-pr.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/scripts
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn test

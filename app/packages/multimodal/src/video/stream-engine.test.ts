@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { EncodedH264VideoVisualization } from "../ir";
 import { VISUALIZATION_KIND } from "../ir";
 import { VideoPlaybackManager } from "./playback-manager";
+import { withPreroll } from "./preroll.test-fixtures";
 import { SharedVideoPresentation } from "./presentation";
 import {
   MAX_VIDEO_DEPENDENCY_ACCESS_UNITS,
@@ -15,7 +16,11 @@ import type {
   VideoDecoderActor,
   VideoEngineDependencies,
 } from "./types";
-import { VideoIntentCancelledError } from "./types";
+import {
+  VideoCodecUnsupportedError,
+  VideoDecoderFailureError,
+  VideoIntentCancelledError,
+} from "./types";
 
 describe("VideoPlaybackManager and VideoStreamEngine", () => {
   it("shares one authoritative decoder across duplicate 2D/3D consumers", async () => {
@@ -721,6 +726,44 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     lease.release();
   });
 
+  it("seeks to a picture a keyframe's preroll decodes through that keyframe", async () => {
+    const harness = createHarness();
+    // A reordered episode opening on B-frame 0 ms: P-frame 100 ms is on the
+    // timeline but decodes before it, inside its preroll
+    const early = accessUnit(100_000_000, false, "avc1.4D001F", 0);
+    const carrier = withPreroll(
+      accessUnit(0, true, "avc1.4D001F", 200_000_000),
+      [
+        { bytes: Uint8Array.of(0, 0, 1, 0x65), keyframe: true },
+        {
+          bytes: early.frame.bytes,
+          keyframe: false,
+          timestampNs: early.timeNs,
+        },
+      ],
+    );
+    const successor = accessUnit(
+      200_000_000,
+      false,
+      "avc1.4D001F",
+      300_000_000,
+    );
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([carrier, early, successor]));
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...early, priority: "visible" });
+    await presented(lease, early.timeNs);
+
+    const [decode] = harness.decoders[0].decodeCalls;
+    expect(decode.target).toBe(early.timeNs);
+    expect(decode.units.map((unit) => unit.timeNs)).toEqual([
+      carrier.timeNs,
+      successor.timeNs,
+    ]);
+    lease.release();
+  });
+
   it.each([601, 1_024])(
     "consumes a complete %i-frame long GOP with its keyframe and target",
     async (target) => {
@@ -760,6 +803,32 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
           message: "Video dependency chain exceeds the bounded decode budget",
         },
         phase: "waiting-for-keyframe",
+      }),
+    );
+    expect(harness.decoders[0].decodeCalls).toHaveLength(0);
+    lease.release();
+  });
+
+  it("counts preroll chunks against the bounded decode budget", async () => {
+    const harness = createHarness();
+    const carrier = withPreroll(
+      accessUnit(0, true),
+      Array.from({ length: MAX_VIDEO_DEPENDENCY_ACCESS_UNITS }, (_, index) => ({
+        bytes: Uint8Array.of(0, 0, 1, index === 0 ? 0x65 : 0x41),
+        keyframe: index === 0,
+      })),
+    );
+    const target = accessUnit(1);
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([carrier, target]));
+    const lease = manager.acquire("/camera");
+    lease.request({ ...target, priority: "visible" });
+
+    await vi.waitFor(() =>
+      expect(lease.getSnapshot()).toMatchObject({
+        diagnostic: {
+          message: "Video dependency chain exceeds the bounded decode budget",
+        },
       }),
     );
     expect(harness.decoders[0].decodeCalls).toHaveLength(0);
@@ -889,6 +958,54 @@ describe("VideoPlaybackManager and VideoStreamEngine", () => {
     expect(harness.decoders[0].decodeCalls[0].units[0].frame.keyframe).toBe(
       true,
     );
+    lease.release();
+  });
+
+  it("keeps seeking after a transient decoder failure", async () => {
+    // The fault latch exists to stop a refused codec being retried forever; a
+    // timeout or submission fault is not that, and latching it strands the
+    // stream for the life of the lease with no way back.
+    const harness = createHarness({
+      beforeDecode: async (_id, targetTimeNs) => {
+        if (targetTimeNs === 1n) {
+          throw new VideoDecoderFailureError(
+            "Timed out waiting for H.264 decoder progress",
+          );
+        }
+      },
+    });
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([accessUnit(1, true), accessUnit(2, true)]));
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...accessUnit(1, true), priority: "playing" });
+    await vi.waitFor(() => expect(lease.getSnapshot().phase).toBe("faulted"));
+
+    lease.request({ ...accessUnit(2, true), priority: "playing" });
+    await presented(lease, 2n);
+    lease.release();
+  });
+
+  it("stops retrying a codec the client cannot decode", async () => {
+    const harness = createHarness({
+      beforeDecode: async () => {
+        throw new VideoCodecUnsupportedError(
+          "HEVC video ('hev1.2.4.L120.b0') cannot be decoded in this browser.",
+        );
+      },
+    });
+    const manager = new VideoPlaybackManager("source", harness.dependencies);
+    manager.setReader(rangeReader([accessUnit(1, true), accessUnit(2, true)]));
+    const lease = manager.acquire("/camera");
+
+    lease.request({ ...accessUnit(1, true), priority: "playing" });
+    await vi.waitFor(() => expect(lease.getSnapshot().phase).toBe("faulted"));
+    const attempts = harness.decoders[0].decodeCalls.length;
+
+    // Playback sweeps the playhead, so each retry is a new target
+    lease.request({ ...accessUnit(2, true), priority: "playing" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(harness.decoders[0].decodeCalls.length).toBe(attempts);
     lease.release();
   });
 
@@ -1062,7 +1179,7 @@ class FakeDecoderActor implements VideoDecoderActor {
       const firstFrame = units[0]?.frame;
       this.configuredCodec =
         (firstFrame?.codec === "h264"
-          ? firstFrame.h264.codecString
+          ? firstFrame.h264?.codecString
           : undefined) ?? "avc1.4D001F";
       const output = fakeVideoFrame();
       this.outputs.push(output);

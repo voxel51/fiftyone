@@ -71,7 +71,7 @@ const ListDefaultInput = ({
         path="listDefault"
       />
       {error && (
-        <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
+        <Text variant={TextVariant.Sm} color={TextColor.Failure}>
           {error}
         </Text>
       )}

@@ -45,6 +45,26 @@ interface TouchedFields {
   range: boolean;
 }
 
+type RangeInputs = { min: string; max: string };
+
+const rangeInputs = (
+  range: [number, number] | undefined,
+): RangeInputs | null =>
+  range ? { min: String(range[0]), max: String(range[1]) } : null;
+
+/** The range the inputs hold, or undefined while either is incomplete. */
+const parseRangeInputs = (
+  inputs: RangeInputs | null,
+): [number, number] | undefined => {
+  if (!inputs || inputs.min === "" || inputs.max === "") return undefined;
+  const min = parseFloat(inputs.min);
+  const max = parseFloat(inputs.max);
+  return isNaN(min) || isNaN(max) ? undefined : [min, max];
+};
+
+const rangeKey = (range: [number, number] | undefined) =>
+  range ? `${range[0]},${range[1]}` : "";
+
 const PrimitiveFieldContent = ({
   field,
   fieldType,
@@ -70,10 +90,21 @@ const PrimitiveFieldContent = ({
 
   // Local state for range input (to allow typing partial values)
   const [range, setRange] = useState<{ min: string; max: string } | null>(
-    config?.range
-      ? { min: String(config.range[0]), max: String(config.range[1]) }
-      : null,
+    rangeInputs(config?.range),
   );
+
+  // A range set from outside (a scan, a discard) replaces the inputs. The
+  // inputs' own edits are written back to the config too, so only replace
+  // them when the config's range differs from what they hold: otherwise a
+  // value would be rewritten as it is typed (e.g. "0.50" to "0.5").
+  const configRangeKey = rangeKey(config?.range);
+  const [syncedRangeKey, setSyncedRangeKey] = useState(configRangeKey);
+  if (configRangeKey !== syncedRangeKey) {
+    setSyncedRangeKey(configRangeKey);
+    if (rangeKey(parseRangeInputs(range)) !== configRangeKey) {
+      setRange(rangeInputs(config?.range));
+    }
+  }
 
   // Derived state
   const isNumericType = NUMERIC_TYPES.includes(schemaType);

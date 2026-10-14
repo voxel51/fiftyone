@@ -3,7 +3,7 @@ import { compareBigInt } from "../../../ir";
 import { DEFAULT_MAX_PREDECESSOR_CHUNK_PROBES } from "./latest-before";
 import {
   channelIdsForTopics,
-  readChunkIndexedMessageTimes,
+  readChunkIndexedTimeBounds,
 } from "./message-index";
 import type {
   McapIndexedReaderLike,
@@ -17,6 +17,12 @@ import { positiveIntegerOption } from "./validation";
  * handful of supported topics, not the whole inventory of a large file.
  */
 const MAX_TOPIC_TIME_BOUNDS_TOPICS = 128;
+
+type ChannelBounds = ReadonlyMap<number, McapTopicIndexedTimeBounds | null>;
+interface IndexProbe {
+  readonly channelIds: ReadonlySet<number>;
+  readonly chunkIndex: McapTypes.TypedMcapRecords["ChunkIndex"];
+}
 
 /**
  * Resolves each topic's first and last indexed message log time using
@@ -46,29 +52,80 @@ export async function readTopicIndexedTimeBoundsForReader(
     name: "maxChunkProbesPerTopic",
     value: args.maxChunkProbesPerTopic,
   });
-  const results = new Map<string, McapTopicIndexedTimeBounds | null>();
+  const results = new Map<string, McapTopicIndexedTimeBounds | null>(
+    args.topics.map((topic) => [topic, null]),
+  );
 
-  for (const topic of args.topics) {
-    results.set(
-      topic,
-      await topicTimeBounds({ maxChunkProbes, readable, reader, topic }),
-    );
+  let walks = args.topics.map((topic) => {
+    const iterator = topicTimeBounds({ maxChunkProbes, reader, topic });
+    return { topic, iterator, step: iterator.next() };
+  });
+  // Only extrema survive each read, scoped to this lookup. First/last walks
+  // can revisit a (chunk, channel) without fetching or parsing it twice.
+  const cache = new Map<
+    bigint,
+    Map<number, McapTopicIndexedTimeBounds | null>
+  >();
+  while (walks.length > 0) {
+    const batches = new Map<
+      bigint,
+      {
+        chunkIndex: IndexProbe["chunkIndex"];
+        channelIds: Set<number>;
+        walks: typeof walks;
+      }
+    >();
+    for (const walk of walks) {
+      if (walk.step.done) {
+        results.set(walk.topic, walk.step.value);
+        continue;
+      }
+      const { chunkIndex, channelIds } = walk.step.value;
+      let batch = batches.get(chunkIndex.chunkStartOffset);
+      if (!batch) {
+        batch = { chunkIndex, channelIds: new Set(), walks: [] };
+        batches.set(chunkIndex.chunkStartOffset, batch);
+      }
+      for (const id of channelIds) batch.channelIds.add(id);
+      batch.walks.push(walk);
+    }
+    walks = [];
+    for (const [offset, batch] of batches) {
+      const bounds =
+        cache.get(offset) ??
+        new Map<number, McapTopicIndexedTimeBounds | null>();
+      cache.set(offset, bounds);
+      const missing = new Set(
+        [...batch.channelIds].filter((id) => !bounds.has(id)),
+      );
+      if (missing.size > 0) {
+        const loaded = await readChunkIndexedTimeBounds({
+          channelIds: missing,
+          chunkIndex: batch.chunkIndex,
+          readable,
+          reader,
+        });
+        for (const [id, bound] of loaded) bounds.set(id, bound);
+      }
+      for (const walk of batch.walks) {
+        walk.step = walk.iterator.next(bounds);
+        walks.push(walk);
+      }
+    }
   }
 
   return results;
 }
 
-async function topicTimeBounds({
+function* topicTimeBounds({
   maxChunkProbes,
-  readable,
   reader,
   topic,
 }: {
   readonly maxChunkProbes: number;
-  readonly readable: McapTypes.IReadable;
   readonly reader: McapIndexedReaderLike;
   readonly topic: string;
-}): Promise<McapTopicIndexedTimeBounds | null> {
+}): Generator<IndexProbe, McapTopicIndexedTimeBounds | null, ChannelBounds> {
   const channelIds = channelIdsForTopics(reader.channelsById, [topic]);
   if (channelIds.size === 0) {
     return null;
@@ -83,22 +140,18 @@ async function topicTimeBounds({
     return null;
   }
 
-  const firstLogTimeNs = await directionalBound({
+  const firstLogTimeNs = yield* directionalBound({
     channelIds,
     maxChunkProbes,
     memberChunks,
     direction: "first",
-    readable,
-    reader,
     topic,
   });
-  const lastLogTimeNs = await directionalBound({
+  const lastLogTimeNs = yield* directionalBound({
     channelIds,
     maxChunkProbes,
     memberChunks,
     direction: "last",
-    readable,
-    reader,
     topic,
   });
   if (firstLogTimeNs === undefined || lastLogTimeNs === undefined) {
@@ -108,23 +161,19 @@ async function topicTimeBounds({
   return { firstLogTimeNs, lastLogTimeNs };
 }
 
-async function directionalBound({
+function* directionalBound({
   channelIds,
   direction,
   maxChunkProbes,
   memberChunks,
-  readable,
-  reader,
   topic,
 }: {
   readonly channelIds: ReadonlySet<number>;
   readonly direction: "first" | "last";
   readonly maxChunkProbes: number;
   readonly memberChunks: readonly McapTypes.TypedMcapRecords["ChunkIndex"][];
-  readonly readable: McapTypes.IReadable;
-  readonly reader: McapIndexedReaderLike;
   readonly topic: string;
-}): Promise<bigint | undefined> {
+}): Generator<IndexProbe, bigint | undefined, ChannelBounds> {
   const ordered = [...memberChunks].sort((left, right) =>
     direction === "first"
       ? compareBigInt(left.messageStartTime, right.messageStartTime)
@@ -153,27 +202,21 @@ async function directionalBound({
     }
     probes += 1;
 
-    const entries = await readChunkIndexedMessageTimes({
-      channelIds,
-      chunkIndex,
-      endTimeNs: undefined,
-      readable,
-      reader,
-      startTimeNs: undefined,
-    });
-    if (entries.length === 0) {
-      continue;
-    }
-
-    const candidate =
-      direction === "first"
-        ? entries[0].logTimeNs
-        : entries[entries.length - 1].logTimeNs;
-    if (
-      best === undefined ||
-      (direction === "first" ? candidate < best : candidate > best)
-    ) {
-      best = candidate;
+    // Suspend at the next necessary chunk so other topics at this frontier
+    // can share the existing bounded index-read coalescer. No speculative
+    // channels or media chunks are added to the walk.
+    const bounds = yield { channelIds, chunkIndex };
+    for (const channelId of channelIds) {
+      const bound = bounds.get(channelId);
+      if (!bound) continue;
+      const candidate =
+        direction === "first" ? bound.firstLogTimeNs : bound.lastLogTimeNs;
+      if (
+        best === undefined ||
+        (direction === "first" ? candidate < best : candidate > best)
+      ) {
+        best = candidate;
+      }
     }
   }
 

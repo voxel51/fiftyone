@@ -39,12 +39,14 @@ export const useFo3dSceneBounds = ({
     hasSeenBoundsComputingRef.current = true;
   }
 
+  // an earlier box (say, from before a slice was added) is not resolved until
+  // the scene's current assets have been measured: the render that makes the
+  // scene measurable comes before the measuring starts
   const isBoundsResolved =
-    sceneBoundingBox !== null ||
     rootAssetCount === 0 ||
     (isReadyToComputeBounds &&
-      !isComputingSceneBoundingBox &&
-      hasSeenBoundsComputingRef.current);
+      hasSeenBoundsComputingRef.current &&
+      !isComputingSceneBoundingBox);
 
   return {
     sceneBoundingBox,

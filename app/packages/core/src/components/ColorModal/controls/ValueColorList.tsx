@@ -6,7 +6,7 @@ import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import colorString from "color-string";
-import { cloneDeep } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilValue } from "recoil";
@@ -114,7 +114,12 @@ const ValueColorList: React.FC<ValueColorProp> = ({
     setInput(values ?? []);
   }, [activePath]);
 
+  // a commit's echo from the server repeats the values already shown;
+  // resetting to it would drop an edit typed since
+  const shownValues = useRef(values);
   useEffect(() => {
+    if (isEqual(values, shownValues.current)) return;
+    shownValues.current = values;
     setInput(values);
   }, [values]);
 

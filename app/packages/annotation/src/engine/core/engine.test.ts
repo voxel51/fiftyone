@@ -7,6 +7,8 @@ import {
   makeStore,
   ref,
 } from "../testing/fixtures";
+import { AnnotationEngine } from "./engine";
+import { FrameStore } from "../store/frameStore";
 import { isWholeSampleReset } from "../store/types";
 import type {
   PresenceEvent,
@@ -19,6 +21,8 @@ const makeFakeTemporal = () => {
   const view: TemporalView = {
     isTemporal: true,
     getPresent: () => [],
+    frame: () => 1,
+    subscribeFrame: () => () => undefined,
     isPresent: () => true,
     subscribePresence: (l) => {
       listeners.add(l);
@@ -271,6 +275,24 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     expect(engine.getLabel(created)?.label).toBe("bird");
   });
 
+  it("a record: false transaction writes and dispatches but adds no undo unit", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const nav = createUndoNavigator(engine);
+    const changes = vi.fn();
+    engine.subscribeChanges(changes);
+
+    engine.transaction(
+      () => engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" }),
+      { record: false },
+    );
+
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("dog");
+    expect(changes).toHaveBeenCalled();
+    expect(nav.canUndo()).toBe(false);
+  });
+
   it("one transaction = one undo unit, inverses applied in reverse order", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },
@@ -464,6 +486,24 @@ describe("engine persistence aggregation", () => {
   });
 });
 
+describe("engine persistence adapters", () => {
+  it("routes by sample id, unregisters cleanly, rejects duplicates", () => {
+    const { engine } = makeEngine("s1");
+    const adapter = async () => true;
+
+    const unregister = engine.registerPersistenceAdapter("s1", adapter);
+    expect(engine.getPersistenceAdapter("s1")).toBe(adapter);
+    expect(engine.getPersistenceAdapter("s2")).toBeUndefined();
+
+    expect(() =>
+      engine.registerPersistenceAdapter("s1", async () => false),
+    ).toThrow(/registered/);
+
+    unregister();
+    expect(engine.getPersistenceAdapter("s1")).toBeUndefined();
+  });
+});
+
 describe("engine display channel", () => {
   it("notifies once per transaction with a single version bump", () => {
     const { engine } = makeEngine();
@@ -560,5 +600,45 @@ describe("store unregistration sweep", () => {
 
     expect(changes).not.toHaveBeenCalled();
     expect(interaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("engine sample readiness", () => {
+  it("is not ready before a store registers, ready after, not ready again on unregister", () => {
+    const { engine, unregister } = makeEngine("s1");
+
+    expect(engine.isSampleReady("s1")).toBe(true);
+    expect(engine.isSampleReady("s2")).toBe(false);
+
+    unregister();
+    expect(engine.isSampleReady("s1")).toBe(false);
+  });
+
+  it("notifies display subscribers on register and unregister", () => {
+    const engine = new AnnotationEngine();
+    const display = vi.fn();
+    engine.subscribe(display);
+
+    const { store } = makeStore("s1");
+    const unregister = engine.registerStore(store);
+    expect(display).toHaveBeenCalledTimes(1);
+
+    unregister();
+    expect(display).toHaveBeenCalledTimes(2);
+  });
+
+  it("reflects a store's isLoading and recomputes when the flag flips", () => {
+    const engine = new AnnotationEngine();
+    const frames = new FrameStore("s1", { labelTypes: {}, loading: true });
+    engine.registerStore(frames);
+
+    expect(engine.isSampleReady("s1")).toBe(false);
+
+    const display = vi.fn();
+    engine.subscribe(display);
+    frames.setLoading(false);
+
+    expect(engine.isSampleReady("s1")).toBe(true);
+    expect(display).toHaveBeenCalledTimes(1);
   });
 });

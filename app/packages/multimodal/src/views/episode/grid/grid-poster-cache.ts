@@ -2,7 +2,7 @@ import { LRUCache } from "lru-cache";
 
 import type { MultimodalGridFit } from "@fiftyone/state";
 import type { GridPosterProviderMetadata } from "../../../extensions/grid-posters";
-import type { ByteSourceDescriptor } from "../../../ir";
+import type { ByteSourceDescriptor, TimeWindow } from "../../../ir";
 import type { PointCloudCameraPose } from "../../../visualization/scene-3d";
 
 const MIB = 1024 * 1024;
@@ -30,6 +30,11 @@ export interface GridPosterCacheEntry {
   readonly streamId: string | null;
   readonly streamSourceName: string | null;
   readonly streamSourceNames: readonly string[];
+  /** The episode's extent, as the read that produced this poster measured
+   * it. A reference-backed episode persists no source facts, so without
+   * this a tile answered from cache knows how long it is only after a read
+   * it does not need to make. */
+  readonly timeRange?: TimeWindow;
   readonly width: number;
 }
 
@@ -70,6 +75,8 @@ export interface GridPosterCache {
   peek(key: GridPosterCacheKey): GridPosterCacheEntry | null;
   put(key: GridPosterCacheKey, entry: GridPosterCacheEntry): boolean;
   stats(): GridPosterCacheStats;
+  /** Notifies after an entry is stored, for consumers that read on demand. */
+  subscribe(listener: () => void): () => void;
   /** Promotes an entry without changing hit/miss diagnostics. */
   touch(key: GridPosterCacheKey): GridPosterCacheEntry | null;
 }
@@ -85,6 +92,9 @@ export interface GridPosterCacheOptions {
 
 export interface GridPosterKeyParts {
   readonly datasetId: string;
+  /** The episode this tile shows. Episodes of one recording share their
+   * bytes, so this is what separates their posters. */
+  readonly episodeId: string | undefined;
   readonly imageFit: MultimodalGridFit;
   readonly mediaField: string | null | undefined;
   readonly mediaPath?: string | null | undefined;
@@ -106,6 +116,7 @@ export function createGridPosterCache(
     1,
   );
   const counters: MutableStats = emptyCounters();
+  const listeners = new Set<() => void>();
   const cache = new LRUCache<GridPosterCacheKey, GridPosterCacheEntry>({
     dispose: (_value, _key, reason) => {
       if (reason === "evict") counters.evictions += 1;
@@ -138,6 +149,7 @@ export function createGridPosterCache(
       cache.set(key, immutableEntry);
       counters.puts += 1;
       if (replacing) counters.replacements += 1;
+      for (const listener of listeners) listener();
       return true;
     },
     stats() {
@@ -145,6 +157,12 @@ export function createGridPosterCache(
         ...counters,
         entryCount: cache.size,
         retainedBytes: cache.calculatedSize,
+      };
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
       };
     },
     touch(key) {
@@ -159,6 +177,7 @@ export function createGridPosterCache(
 
 function gridPreviewIdentityParts({
   datasetId,
+  episodeId,
   mediaField,
   mediaPath,
   posterSourceName,
@@ -171,6 +190,7 @@ function gridPreviewIdentityParts({
     CACHE_SCHEMA_VERSION,
     datasetId,
     mediaField ?? null,
+    episodeId ?? null,
     source.sourceId,
     stableMediaFilename(mediaPath ?? source.url),
     source.sizeBytes ?? null,

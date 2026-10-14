@@ -102,8 +102,8 @@ const DatasetPageQueryNode = graphql`
     ...NavFragment
     ...savedViewsFragment
     ...configFragment
+    ...expressionCatalogFragment
     ...stageDefinitionsFragment
-    ...viewSchemaFragment
   }
 `;
 

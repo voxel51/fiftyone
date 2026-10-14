@@ -6,6 +6,12 @@ import {
   isHoveringParticularLabelWithInstanceConfig,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
+import {
+  getRotatedBoxCorners,
+  getRotatedBoxNorthwestCorner,
+  getRotation2d,
+  isPointInRotatedBox,
+} from "@fiftyone/utilities";
 import { INFO_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -21,6 +27,7 @@ import {
   getInstanceStrokeStyles,
   getLabelAttributesText,
   resolveLabelSelectionVisuals,
+  sizeInImagePixels,
   t,
 } from "./util";
 
@@ -76,10 +83,13 @@ export interface DetectionLabel extends RegularLabel {
   mask_path?: string;
   bounding_box?: BoundingBox;
 
+  // 2D boxes: radians, in pixel space around the box center, positive is
+  // clockwise on screen. 3D boxes: [x, y, z] rotation around the center
+  rotation?: number | [number, number, number];
+
   // valid for 3D bounding boxes
   dimensions?: [number, number, number];
   location?: [number, number, number];
-  rotation?: [number, number, number];
   quaternion?: [number, number, number, number];
   convexHull?: Coordinates[];
 }
@@ -91,6 +101,32 @@ export default class DetectionOverlay<
 
   containsPoint(state: Readonly<State>): CONTAINS {
     if ((this.label.mask || this.label.mask_path) && !this.label.mask?.data) {
+      return CONTAINS.NONE;
+    }
+
+    // a 3D detection has no 2D box to hit-test
+    if (!this.label.bounding_box) {
+      return CONTAINS.NONE;
+    }
+
+    const rotation = this.getRotation();
+    if (rotation) {
+      if (
+        isPointInRotatedBox(
+          state.pixelCoordinates,
+          this.label.bounding_box,
+          rotation,
+          state.dimensions,
+          sizeInImagePixels(state, state.strokeWidth),
+        )
+      ) {
+        return CONTAINS.CONTENT;
+      }
+
+      if (this.isInHeader(state)) {
+        return CONTAINS.BORDER;
+      }
+
       return CONTAINS.NONE;
     }
 
@@ -135,6 +171,17 @@ export default class DetectionOverlay<
         labelSelectionColor: labelVisuals?.color,
       });
 
+    if (this.label.convexHull) {
+      // only fill 3d when 'convexHull' is defined
+      this.fillRectFor3d(ctx, state, strokeColor);
+    }
+
+    // `bounding_box` is optional; without one there is no 2D placement for
+    // the mask, header, or box
+    if (!this.label.bounding_box) {
+      return;
+    }
+
     if (
       this.label.mask?.bitmap?.width &&
       this.label._renderStatus === RENDER_STATUS_PAINTED
@@ -142,27 +189,56 @@ export default class DetectionOverlay<
       this.drawMask(ctx, state);
     }
 
-    !state.config.thumbnail && this.drawLabelText(ctx, state);
-
-    if (this.label.convexHull) {
-      // only fill 3d when 'convexHull' is defined
-      this.fillRectFor3d(ctx, state, strokeColor);
-    } else {
+    // a hidden box still outlines while its instance is hovered
+    if (
+      !this.label.convexHull &&
+      (!this.isBoxHidden(state) || doesInstanceMatch)
+    ) {
       this.strokeRect(ctx, state, strokeColor);
     }
 
+    // ...and gets its dashed outline while selected
     if (overlayStrokeColor && overlayDash) {
       this.strokeRect(ctx, state, overlayStrokeColor, overlayDash);
     }
+
+    // drawn last so the header paints over the box lines, matching the
+    // annotate-mode (lighter) header
+    !state.config.thumbnail && this.drawLabelText(ctx, state);
   }
 
   getMouseDistance(state: Readonly<State>): number {
+    if (!this.label.bounding_box) {
+      return Infinity;
+    }
+
     const [px, py] = state.pixelCoordinates;
-    const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     if (this.isInHeader(state)) {
       return 0;
     }
+
+    const rotation = this.getRotation();
+    if (rotation) {
+      const [w, h] = state.dimensions;
+      const corners = getRotatedBoxCorners(
+        this.label.bounding_box,
+        rotation,
+        state.dimensions,
+      ).map(([x, y]): Coordinates => [x * w, y * h]);
+
+      return Math.min(
+        ...corners.map((corner, i) =>
+          distanceFromLineSegment(
+            [px, py],
+            corner,
+            corners[(i + 1) % corners.length],
+          ),
+        ),
+      );
+    }
+
+    const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     const distances = [
       distanceFromLineSegment([px, py], [bx, by], [bx + bw, by]),
@@ -194,19 +270,16 @@ export default class DetectionOverlay<
       return;
     }
 
-    const color = this.getColor(state);
-
-    const [tlx, tly, _, __] = this.label.bounding_box;
-    ctx.beginPath();
-    ctx.fillStyle = color;
-    let [ox, oy] = t(state, tlx, tly);
-    [ox, oy] = [ox - state.strokeWidth / 2, oy];
-    ctx.moveTo(ox, oy);
     const { width } = ctx.measureText(labelText);
     const height = state.fontSize;
     const bpad = state.textPad * 3 + state.strokeWidth;
+    const [ox, oy] = this.getLabelOrigin(state, width + bpad, height + bpad);
     const btrx = ox + width + bpad;
     const btry = oy - height - bpad;
+
+    ctx.beginPath();
+    ctx.fillStyle = this.getColor(state);
+    ctx.moveTo(ox, oy);
     ctx.lineTo(btrx, oy);
     ctx.lineTo(btrx, btry);
     ctx.lineTo(ox, btry);
@@ -216,13 +289,47 @@ export default class DetectionOverlay<
     const pad = state.textPad + state.strokeWidth;
     ctx.fillText(labelText, ox + pad, oy - pad);
 
-    const rHeight = (height + bpad) / state.canvasBBox[3];
+    const [ctlx, ctly, cw, ch] = state.canvasBBox;
     this.labelBoundingBox = [
-      tlx - state.strokeWidth / state.canvasBBox[2],
-      tly - rHeight,
-      (width + bpad + state.strokeWidth / 2) / state.canvasBBox[2],
-      rHeight + state.strokeWidth / state.canvasBBox[3],
+      (ox - state.strokeWidth / 2 - ctlx) / cw,
+      (btry - ctly) / ch,
+      (width + bpad + state.strokeWidth / 2) / cw,
+      (height + bpad + state.strokeWidth) / ch,
     ];
+  }
+
+  /**
+   * The canvas-space bottom-left corner of a label header of the given size;
+   * the header is drawn upward from there.
+   *
+   * The header stays upright. With the box drawn, it is anchored to the box's
+   * northwest-most corner, so a rotated box's label stays on its geometry —
+   * matches the annotate-mode (lighter) header. With the box hidden, it
+   * centers on the box, which rotation leaves in place.
+   */
+  private getLabelOrigin(
+    state: Readonly<State>,
+    headerWidth: number,
+    headerHeight: number,
+  ): [number, number] {
+    if (this.isBoxHidden(state)) {
+      const [tlx, tly, w, h] = this.label.bounding_box;
+      const [cx, cy] = t(state, tlx + w / 2, tly + h / 2);
+      return [cx - headerWidth / 2, cy + headerHeight / 2];
+    }
+
+    const [nwx, nwy] = getRotatedBoxNorthwestCorner(
+      this.label.bounding_box,
+      this.getRotation(),
+      state.dimensions,
+    );
+    const [x, y] = t(state, nwx, nwy);
+    return [x - state.strokeWidth / 2, y];
+  }
+
+  /** Whether the box outline is toggled off for this label's field. */
+  private isBoxHidden(state: Readonly<State>): boolean {
+    return state.options.hiddenBoundingBoxes?.includes(this.field) ?? false;
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
@@ -282,6 +389,19 @@ export default class DetectionOverlay<
     return text;
   }
 
+  /**
+   * The 2D scalar rotation to render with, in radians. `0` for unrotated,
+   * 3D, and masked detections (instance masks are stored relative to the
+   * axis-aligned box, so rotation is ignored when a mask is present).
+   */
+  private getRotation(): number {
+    if (this.label.mask || this.label.mask_path) {
+      return 0;
+    }
+
+    return getRotation2d(this.label.rotation);
+  }
+
   private isInHeader(state: Readonly<State>) {
     if (!this.labelBoundingBox) {
       return false;
@@ -334,15 +454,29 @@ export default class DetectionOverlay<
     color: string,
     dash?: number,
   ) {
+    const rotation = this.getRotation();
     const [tlx, tly, w, h] = this.label.bounding_box;
+    const corners: Coordinates[] = rotation
+      ? getRotatedBoxCorners(
+          this.label.bounding_box,
+          rotation,
+          state.dimensions,
+        )
+      : [
+          [tlx, tly],
+          [tlx + w, tly],
+          [tlx + w, tly + h],
+          [tlx, tly + h],
+        ];
+
     ctx.beginPath();
     ctx.lineWidth = state.strokeWidth;
     ctx.strokeStyle = color;
     ctx.setLineDash(dash ? [dash] : []);
-    ctx.moveTo(...t(state, tlx, tly));
-    ctx.lineTo(...t(state, tlx + w, tly));
-    ctx.lineTo(...t(state, tlx + w, tly + h));
-    ctx.lineTo(...t(state, tlx, tly + h));
+    ctx.moveTo(...t(state, corners[0][0], corners[0][1]));
+    for (let i = 1; i < corners.length; i++) {
+      ctx.lineTo(...t(state, corners[i][0], corners[i][1]));
+    }
     ctx.closePath();
     ctx.stroke();
   }
@@ -364,6 +498,10 @@ export default class DetectionOverlay<
 export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
   let points: Coordinates[] = [];
   labels.forEach((label) => {
+    if (!label.bounding_box) {
+      return;
+    }
+
     const [tlx, tly, w, h] = label.bounding_box;
     points = [
       ...points,

@@ -1,4 +1,4 @@
-import { Locator, Page, expect } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 
 export type GridPanelName =
   | "Samples"
@@ -9,15 +9,11 @@ export type GridPanelName =
 export class GridPanelPom {
   readonly page: Page;
   readonly locator: Locator;
-  readonly assert: GridPanelAsserter;
-  readonly selectionCount: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.assert = new GridPanelAsserter(this);
 
     this.locator = this.page.getByTestId("panel-container");
-    this.selectionCount = this.page.getByTestId("selection-count-container");
   }
 
   get errorBoundary() {
@@ -69,13 +65,5 @@ export class GridPanelPom {
 
   async bringPanelToForeground(panelName: GridPanelName) {
     await this.getTab(panelName).click();
-  }
-}
-
-class GridPanelAsserter {
-  constructor(private readonly panelPom: GridPanelPom) {}
-
-  async hasError() {
-    await expect(this.panelPom.errorBoundary).toBeVisible();
   }
 }

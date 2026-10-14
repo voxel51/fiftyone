@@ -32,6 +32,8 @@ import {
   fieldTypes,
   labelSchemaData,
   labelSchemasData,
+  managerSchemaDoc,
+  managerSchemaDocId,
   removeFromActiveSchemas,
   schemaManagerDisplayedAtom,
 } from "../state";
@@ -67,13 +69,6 @@ export const useCurrentField = () => {
  */
 export const useCurrentFieldValue = () => {
   return useAtomValue(currentField);
-};
-
-/**
- * Hook to set the current field
- */
-export const useSetCurrentField = () => {
-  return useSetAtom(currentField);
 };
 
 // =============================================================================
@@ -287,13 +282,6 @@ export const useIsPrimitiveField = () => {
  */
 export const useFieldSchemaData = (field: string) => {
   return useAtomValue(labelSchemaData(field));
-};
-
-/**
- * Hook to check if a field is read-only
- */
-export const useFieldIsReadOnly = (field: string) => {
-  return useAtomValue(fieldIsReadOnly(field));
 };
 
 /**
@@ -699,11 +687,19 @@ export const useIsLargeDataset = () => {
  */
 export const useSchemaManagerCleanup = () => {
   const setCurrentFieldAtom = useSetAtom(currentField);
+  const setManagerDocId = useSetAtom(managerSchemaDocId);
+  const setManagerDoc = useSetAtom(managerSchemaDoc);
 
   useEffect(() => {
     return () => {
       // Reset field editing state
       setCurrentFieldAtom(null);
+      // Leave doc-editing mode: while set, the manager doc's content
+      // overlays the schema envelope (see effectiveLabelSchemasData) —
+      // it must never outlive the Schema Manager modal, or the Annotate
+      // sidebar behind it would render the doc instead of the dataset.
+      setManagerDocId(null);
+      setManagerDoc(null);
     };
   }, []);
 };

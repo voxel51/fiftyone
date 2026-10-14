@@ -63,9 +63,9 @@ export function useColorColumn(
       setChoices(currentSource.choices);
       return undefined;
     }
-    if (!datasetName || !run) return undefined;
+    if (!datasetName || !brainKey || !run) return undefined;
     let stale = false;
-    fetchColorByChoices(datasetName, run.patchesField)
+    fetchColorByChoices(datasetName, brainKey)
       .then((fields) => !stale && setChoices(fields))
       .catch(() => !stale && setChoices([]));
     return () => {
@@ -74,7 +74,7 @@ export function useColorColumn(
     // Through the ref and the semantic key, never the source's identity: an
     // extension recreates its source every render, and setChoices under an
     // identity dependency re-rendered into an infinite loop
-  }, [datasetName, run, hasSource, sourceRevision]);
+  }, [datasetName, brainKey, run, hasSource, sourceRevision]);
 
   useEffect(() => {
     setValues(null);

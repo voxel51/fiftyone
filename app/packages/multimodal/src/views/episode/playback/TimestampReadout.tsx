@@ -14,6 +14,7 @@ import React, { useState } from "react";
 import { useDataStream } from "./data-stream-context";
 import styles from "./TimestampReadout.module.css";
 import { useCopyFeedback } from "../../../visualization/panel-ui/use-copy-feedback";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 const NS_PER_SECOND = 1_000_000_000n;
 const NS_PER_MILLISECOND = 1_000_000n;
@@ -279,6 +280,10 @@ const TimestampReadout: React.FC = () => {
       className={styles.readout}
       style={{ fontFamily: MONO_FONT }}
     >
+      <ShownSignal
+        event="e2e:multimodal:utc-time"
+        detail={{ text: wallClockDateTime }}
+      />
       <button
         type="button"
         className={styles.copyButton}

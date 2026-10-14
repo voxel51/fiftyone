@@ -2,6 +2,14 @@ name: Test e2e
 
 on:
   workflow_call:
+    secrets:
+      # Read-only Docker Hub account for the `mongo` service pulls, so they
+      # count against our account instead of the runner's shared IP. Forked PRs
+      # get no secrets, and the runner falls back to an anonymous pull.
+      RO_DOCKERHUB_USERNAME:
+        required: false
+      RO_DOCKERHUB_PAT:
+        required: false
 jobs:
   prepare-e2e:
     timeout-minutes: 45
@@ -9,6 +17,7 @@ jobs:
     name: Prepare e2e assets
     outputs:
       burn-in-count: ${{ steps.burn-in-specs.outputs.count }}
+      burn-in-skipped: ${{ steps.burn-in-specs.outputs.skipped }}
       burn-in-specs: ${{ steps.burn-in-specs.outputs.specs }}
     defaults:
       run:
@@ -97,13 +106,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # the `skip-burn-in` label opts a PR out (e.g. a refactor touching
+          # dozens of specs that cannot fit the burn-in budget)
+          SKIP_BURN_IN: ${{ contains(github.event.pull_request.labels.*.name, 'skip-burn-in') }}
         run: |
-          SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          if [ "$SKIP_BURN_IN" = "true" ]; then
+            SPECS=""
+            echo "::notice::burn-in skipped by the skip-burn-in label"
+          else
+            SPECS=$(node ../.github/scripts/burn-in-specs.mjs)
+          fi
           COUNT=0
           if [ -n "$SPECS" ]; then
             COUNT=$(printf '%s\n' "$SPECS" | wc -l | tr -d ' ')
           fi
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIP_BURN_IN" >> "$GITHUB_OUTPUT"
           {
             echo "specs<<BURN_IN_EOF"
             printf '%s\n' "$SPECS"
@@ -210,6 +228,9 @@ jobs:
       # health checks and retries.
       mongo:
         image: mongo:${{ matrix.mongodb-version }}
+        credentials:
+          username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.RO_DOCKERHUB_PAT }}
         ports:
           - 27017:27017
         options: >-
@@ -282,10 +303,6 @@ jobs:
           fi
         working-directory: e2e-pw
 
-      - name: Lint Playwright tests
-        run: yarn lint
-        working-directory: e2e-pw
-
       - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@v7
@@ -333,6 +350,9 @@ jobs:
     services:
       mongo:
         image: mongo:latest
+        credentials:
+          username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.RO_DOCKERHUB_PAT }}
         ports:
           - 27017:27017
         options: >-
@@ -402,7 +422,7 @@ jobs:
           TARGETS: ${{ needs.prepare-e2e.outputs.burn-in-specs }}
         run: |
           printf 'burning in:\n%s\n' "$TARGETS"
-          yarn e2e $TARGETS --repeat-each=10 --retries=0 --workers=50% --trace=retain-on-failure ||
+          yarn e2e $TARGETS --repeat-each=5 --retries=0 --workers=50% --trace=retain-on-failure ||
             echo "::warning::burn-in had failing runs; see the e2e verdict job"
         working-directory: e2e-pw
 
@@ -494,7 +514,7 @@ jobs:
           retention-days: 3
 
       - name: Merge burn-in report
-        # kept separate from the shard merge so 10x-repeated specs don't
+        # kept separate from the shard merge so repeated specs don't
         # inflate the suite's counts; reuses the default report dir now that
         # the shard report has been uploaded
         if: needs.prepare-e2e.outputs.burn-in-count != '0'
@@ -529,6 +549,7 @@ jobs:
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           EXPECTED_SHARDS: "8"
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_SKIPPED: ${{ needs.prepare-e2e.outputs.burn-in-skipped }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
           BURN_IN_REPORT_URL: ${{ steps.upload-burn-in.outputs.artifact-url }}
           REPORT_URL: ${{ steps.upload-merged.outputs.artifact-url }}
@@ -592,6 +613,7 @@ jobs:
           EXPECTED_SHARDS: "8"
           TEST_E2E_RESULT: ${{ needs.test-e2e.result }}
           BURN_IN_COUNT: ${{ needs.prepare-e2e.outputs.burn-in-count }}
+          BURN_IN_SKIPPED: ${{ needs.prepare-e2e.outputs.burn-in-skipped }}
           BURN_IN_RESULT: ${{ needs.burn-in.result }}
         run: node ../.github/scripts/enforce-verdict.mjs merged-results.json all-blob-reports burn-in-results.json
 

@@ -19,8 +19,15 @@ interface Warmupable {
  *
  * Pass the stream from a construct-once ref (stable identity) so the effect
  * runs once per registration.
+ *
+ * `time` may be a getter (also of stable identity) for a position that moves
+ * while the warmup is in flight, such as the playhead: it is read once to
+ * pick the chunk and again to seek when the warmup lands.
  */
-export function useWarmupThenSeek(stream: Warmupable | null, time = 0): void {
+export function useWarmupThenSeek(
+  stream: Warmupable | null,
+  time: number | (() => number) = 0,
+): void {
   const { seek } = usePlayback();
 
   useEffect(() => {
@@ -28,10 +35,11 @@ export function useWarmupThenSeek(stream: Warmupable | null, time = 0): void {
       return undefined;
     }
 
+    const read = typeof time === "function" ? time : () => time;
     let cancelled = false;
-    void stream.warmup(time).then(() => {
+    void stream.warmup(read()).then(() => {
       if (!cancelled) {
-        seek(time);
+        seek(read());
       }
     });
 

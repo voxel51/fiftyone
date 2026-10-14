@@ -45,6 +45,7 @@ import {
 } from "./colors";
 import { backgroundClickAction } from "./backgroundClick";
 import { gridFilterPath } from "./filterPath";
+import { foreignSelectionIds } from "./foreignSelection";
 import { legendCounts } from "./legendCounts";
 import {
   legendLabels,
@@ -202,6 +203,15 @@ export function useRunPlotData(
     fos.extendedSelectionOverrideStage,
   );
   const resetExtended = fos.useResetExtendedSelection();
+  // Other panels' selections (the Map panel's lasso, set_extended_selection)
+  // emphasize the plot the way they narrow the grid — unless this panel's
+  // own stage is live, which the grid shows instead (see foreignSelection.ts)
+  const extendedSelection = useRecoilValue(fos.extendedSelection);
+  const ownStage = useRecoilValue(fos.extendedSelectionOverrideStage);
+  const foreignSelection = useMemo(
+    () => foreignSelectionIds(extendedSelection, ownStage),
+    [extendedSelection, ownStage],
+  );
 
   // ONE commit per selection. Written as separate setters, each write
   // invalidated the App's view on its own and fired a full sidebar
@@ -235,15 +245,17 @@ export function useRunPlotData(
     fos.selectedSamples,
   );
 
-  // Panel state (local: plot-only state must not reload the page query)
-  // survives the remounts that view changes cause. Values normalize to
-  // null: partials are undefined until first set
+  // Shared panel state under the documented `colorByField` key, so saved
+  // workspaces and the session carry the choice (see EmbeddingsV2Panel).
+  // Like any layout change, a write refetches the page query. Values
+  // normalize to null: partials are undefined until first set, and
+  // SDK-written state arrives unchecked
   const [colorFieldState, setColorField] = usePanelStatePartial<string | null>(
-    "colorField",
+    "colorByField",
     null,
-    true,
   );
-  const colorField = colorFieldState ?? null;
+  const colorField =
+    typeof colorFieldState === "string" ? colorFieldState : null;
   const brainKey = run.brainKey;
 
   // The color-by endpoint speaks root-dataset paths, but the grid
@@ -615,6 +627,9 @@ export function useRunPlotData(
     resetExtended,
     selectedSamples,
     setSelectedSamples,
+    foreignSelection,
+    serverIds: !source.ownsGeometry,
+    isPatchesView,
     decorateSelection: features.decorateSelection,
     resolveLassoStage: features.resolveLassoStage,
     publishSelection,

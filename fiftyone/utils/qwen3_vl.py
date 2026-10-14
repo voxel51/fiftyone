@@ -59,14 +59,18 @@ def merge_prepared_inputs(inputs_list, pad_token_id):
         if set(inputs.keys()) != keys:
             return None
 
-    pad_keys = {"input_ids", "attention_mask"}
+    # mm_token_type_ids (text 0, image 1, video 2) is returned by newer
+    # processors and required by the model for its multimodal positions;
+    # padded positions are dropped through attention_mask before it is read
+    pad_keys = {"input_ids", "attention_mask", "mm_token_type_ids"}
+    required_keys = {"input_ids", "attention_mask"}
     cat_keys = {
         "pixel_values_videos",
         "video_grid_thw",
         "pixel_values",
         "image_grid_thw",
     }
-    if not pad_keys <= keys:
+    if not required_keys <= keys:
         return None
 
     max_len = max(int(i["input_ids"].shape[-1]) for i in inputs_list)
@@ -400,8 +404,9 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         normalize_embeddings (True): whether to L2 normalize embeddings
         video_fps (2.0): frame sampling rate for video inputs; Qwen3-VL's
             default is 2.0 FPS. Lower values = fewer frames = faster
-        max_video_frames (128): maximum frames to sample from a video;
-            prevents OOM on long videos. Matches qwen-vl-utils MAX_FRAMES.
+        max_video_frames (768): maximum frames to sample from a video;
+            prevents OOM on long videos. Matches the Qwen3-VL video
+            processor's own ``max_frames``.
         mode (None): the media type mode, "image" or "video"; if None,
             defaults to the dataset's media type at inference time
         text_only (False): whether to load ONLY the language tower, for a
@@ -430,7 +435,7 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
                 f"video_fps must be positive, got {self.video_fps}"
             )
         self.max_video_frames = self.parse_int(
-            d, "max_video_frames", default=128
+            d, "max_video_frames", default=768
         )
         if self.max_video_frames <= 0:
             raise ValueError(
@@ -688,16 +693,46 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             )
             inputs = inputs.to(self._model.device)
 
-            with torch.no_grad():
-                outputs = self._model(
-                    **inputs,
-                    output_hidden_states=True,
-                    return_dict=True,
-                )
-
-            embeddings.append(self._postprocess_embedding(outputs))
+            embeddings.append(
+                self._postprocess_embedding(self._hidden_forward(inputs))
+            )
 
         return np.vstack(embeddings)
+
+    @property
+    def _logits_kept(self):
+        """How many positions the LM head is asked for, or ``None`` when this
+        transformers cannot be told.
+
+        An embedding reads one position's hidden state and never a logit,
+        but the head runs over a 152k vocabulary at every position by
+        default — the largest allocation in the forward, 12GB of it on a
+        batch that otherwise fits.
+        """
+        kept = self.__dict__.get("_logits_kept_cached")
+        if kept is None:
+            import inspect
+
+            kept = self.__dict__["_logits_kept_cached"] = (
+                1
+                if "logits_to_keep"
+                in inspect.signature(self._model.forward).parameters
+                else 0
+            )
+
+        return kept or None
+
+    def _hidden_forward(self, inputs):
+        """The forward every embedding path runs: hidden states, no logits."""
+        kept = self._logits_kept
+        extra = {} if kept is None else {"logits_to_keep": kept}
+        with torch.no_grad():
+            return self._model(
+                **inputs,
+                output_hidden_states=True,
+                return_dict=True,
+                **extra,
+            )
 
     @staticmethod
     def _final_hidden(outputs):
@@ -889,14 +924,9 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             for k, v in inputs.items()
         }
 
-        with torch.no_grad():
-            outputs = self._model(
-                **inputs,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-
-        return self._postprocess_embedding(outputs).squeeze(0)
+        return self._postprocess_embedding(
+            self._hidden_forward(inputs)
+        ).squeeze(0)
 
     def embed_prepared_all(self, inputs_list):
         """Forwards several :meth:`prepare_frames` clips as ONE batch and
@@ -933,14 +963,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             k: v.to(self._model.device) if hasattr(v, "to") else v
             for k, v in merged.items()
         }
-        with torch.no_grad():
-            outputs = self._model(
-                **merged,
-                output_hidden_states=True,
-                return_dict=True,
-            )
-
-        return self._postprocess_embedding(outputs)
+        return self._postprocess_embedding(self._hidden_forward(merged))
 
     def embed_prompt(self, prompt):
         """Generates an embedding for the given text prompt.
@@ -997,13 +1020,14 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             inputs = inputs.to(self._model.device)
 
             # A text tower returns its final hidden state as a matter of
-            # course, so the stack is asked for only where it is the only way
-            # to reach it
-            extra = (
-                {} if self.config.text_only else {"output_hidden_states": True}
-            )
-            with torch.no_grad():
-                outputs = self._model(**inputs, return_dict=True, **extra)
+            # course and runs no LM head, so it is forwarded as loaded. The
+            # full model carries the head, so it takes the same forward every
+            # other embedding path does.
+            if self.config.text_only:
+                with torch.no_grad():
+                    outputs = self._model(**inputs, return_dict=True)
+            else:
+                outputs = self._hidden_forward(inputs)
 
             embeddings.append(self._postprocess_embedding(outputs))
 
@@ -1071,7 +1095,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         return self.embed_prepared(self._prepare_frame_list(frames, fps))
 
     @staticmethod
-    def _video_metadata(num_frames, fps):
+    def _video_metadata(num_frames, fps, ts_us=None):
         """The clip's metadata, in whichever form this transformers version
         takes it — the processor builds its per-frame timestamps from this,
         and without it assumes 24fps regardless of the clip's real rate.
@@ -1081,8 +1105,13 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         compute timestamps and crash on a metadata object that leaves it
         None; older ``VideoMetadata`` classes reject the field, so it is
         retried without.
+
+        With ``ts_us``, the frames' capture instants in microseconds, each
+        frame's index is its offset from the first and the rate is one per
+        microsecond, so every timestamp the processor computes is that
+        frame's real capture time rather than its position over ``fps``.
         """
-        fields = {
+        average = {
             "fps": float(fps),
             "total_num_frames": int(num_frames),
             "duration": float(num_frames) / float(fps),
@@ -1090,22 +1119,135 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
         try:
             from transformers.video_utils import VideoMetadata
         except ImportError:
-            return fields
+            return average
+
+        if ts_us is None:
+            indices, fields = list(range(int(num_frames))), average
+        else:
+            indices = [int(t) - int(ts_us[0]) for t in ts_us]
+            span = indices[-1] + 1
+            fields = {
+                "fps": 1e6,
+                "total_num_frames": span,
+                "duration": span / 1e6,
+            }
 
         try:
-            return VideoMetadata(
-                frames_indices=list(range(int(num_frames))), **fields
-            )
+            return VideoMetadata(frames_indices=indices, **fields)
         except TypeError:
             pass
 
+        # Without frames_indices the processor spaces frames by the rate
+        # alone, so the one-per-microsecond rate would put every frame at 0
         try:
-            return VideoMetadata(**fields)
+            return VideoMetadata(**average)
         except TypeError:
-            return fields
+            return average
+
+    def prepare_video_tensor(self, frames, fps=None, ts_us=None):
+        """The CPU-free half of embedding a video segment: runs the
+        processor over frames that are ALREADY a ``(T, 3, H, W)`` uint8
+        tensor, on whatever device they sit on, returning model inputs on
+        that same device.
+
+        The frames given ARE the selection: the processor is called with
+        ``do_sample_frames=False``, so every frame is embedded and never
+        resampled toward the checkpoint's own rate. The one bound applied
+        here is ``config.max_video_frames``, which a segment past it is
+        thinned evenly across its whole length to meet, so the same
+        setting means the same thing on this path as on :meth:`embed` and
+        :meth:`prepare_frames`. It is FiftyOne's own knob and the
+        checkpoint's ``max_frames`` is a separate one; they merely share a
+        default of 768.
+
+        Args:
+            frames: a ``(T, 3, H, W)`` uint8 ``torch.Tensor``, RGB, in
+                capture order. Another dtype is rejected rather than
+                converted: only the caller knows whether its values run 0-1
+                or 0-255, and the two convert to different pictures
+            fps (None): the segment's capture rate. ``None`` or
+                non-positive reports ``config.video_fps``
+            ts_us (None): each frame's capture instant in microseconds, in
+                the same order. Given, the model is told each frame's real
+                time rather than its position over ``fps``
+
+        Returns:
+            an opaque inputs object for :meth:`embed_prepared`
+        """
+        self._require_vision()
+        if not isinstance(frames, torch.Tensor):
+            raise TypeError(
+                "prepare_video_tensor takes a torch.Tensor; got %s"
+                % type(frames).__name__
+            )
+
+        if frames.ndim != 4 or frames.shape[1] != 3 or not frames.shape[0]:
+            raise ValueError(
+                "expected a non-empty (T, 3, H, W) tensor; got %s"
+                % (tuple(frames.shape),)
+            )
+
+        if frames.dtype != torch.uint8:
+            raise ValueError("expected a uint8 tensor; got %s" % frames.dtype)
+
+        if ts_us is not None and len(ts_us) != frames.shape[0]:
+            raise ValueError(
+                "expected one capture instant per frame; got %d for %d "
+                "frames" % (len(ts_us), frames.shape[0])
+            )
+
+        capture_fps = (
+            fps if fps is not None and fps > 0 else self.config.video_fps
+        )
+
+        n_frames = int(frames.shape[0])
+        cap = self.config.max_video_frames
+        if n_frames > cap:
+            indices = np.linspace(0, n_frames - 1, cap).round().astype(int)
+            frames = frames[torch.as_tensor(indices, device=frames.device)]
+            if ts_us is not None:
+                ts_us = [ts_us[i] for i in indices]
+
+            # The kept frames span the whole segment, so the rate they stand
+            # for is their count over it. The processor reads the segment's
+            # duration off this rate; left at the capture rate it would take
+            # the thinned segment for a shorter one and sample it down again
+            capture_fps = capture_fps * cap / n_frames
+            if not self._warned_frame_cap:
+                self._warned_frame_cap = True
+                logger.warning(
+                    "Segment has %d frames; thinning to max_video_frames="
+                    "%d. Raise it to embed the segment at full rate.",
+                    n_frames,
+                    cap,
+                )
+
+        text = self._video_prompt()
+        return self._run_processor(
+            text,
+            None,
+            [frames],
+            int(frames.shape[0]),
+            capture_fps,
+            ts_us=ts_us,
+        )
+
+    def _video_prompt(self):
+        """The chat-templated prompt carrying one video placeholder."""
+        return self._processor.apply_chat_template(
+            [
+                {
+                    "role": "user",
+                    "content": [{"type": "video", "video": "clip"}],
+                }
+            ],
+            tokenize=False,
+            add_generation_prompt=False,
+        )
 
     def _prepare_frame_list(self, frames, fps):
-        """Runs the processor over one clip, returning host-side inputs.
+        """Runs the processor over one clip of separate frames, returning
+        host-side inputs.
 
         Args:
             frames: a list of prepared frames (e.g. PIL images), in order
@@ -1135,16 +1277,28 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin, fom.PromptMixin):
             tokenize=False,
             add_generation_prompt=False,
         )
-        # These frames are already the intended selection, so the processor
-        # must not resample them toward ITS default rate — and it should
-        # build its frame timestamps from the clip's REAL rate rather than
-        # the 24fps it assumes when no metadata rides along. Tried richest
-        # first: older processors take neither kwarg and never resample.
+        return self._run_processor(
+            text, image_inputs, video_inputs, len(frames), fps
+        )
+
+    def _run_processor(
+        self, text, image_inputs, video_inputs, n_frames, fps, ts_us=None
+    ):
+        """One processor call, in whichever convention this transformers
+        version takes.
+
+        The frames are always the intended selection, so the processor is
+        told ``do_sample_frames=False`` and must never resample them toward
+        its default rate. The metadata carries the real rate, or with
+        ``ts_us`` each frame's real capture time, which the processor
+        otherwise assumes to be 24fps apart. Tried richest first: older
+        processors take neither kwarg and never resample.
+        """
+        metadata = {
+            "video_metadata": [self._video_metadata(n_frames, fps, ts_us)]
+        }
         attempts = [
-            {
-                "do_sample_frames": False,
-                "video_metadata": [self._video_metadata(len(frames), fps)],
-            },
+            {"do_sample_frames": False, **metadata},
             {"do_sample_frames": False},
         ]
         # The convention is a fact about the processor VERSION, so a failed

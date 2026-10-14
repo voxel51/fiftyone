@@ -34,7 +34,12 @@ export const useSetEditingToNewCuboid = () => {
   }, [resetCurrentEditing, clear]);
 
   return useCallback(
-    (labelId: string, transformData: CuboidTransformData, labelClass = "") => {
+    (
+      labelId: string,
+      transformData: CuboidTransformData,
+      labelClass = "",
+      attributes: Record<string, unknown> = {},
+    ) => {
       if (!transformData.location || !transformData.dimensions) return;
 
       // If what we already have in sidebar is same as the new label, don't do anything
@@ -54,6 +59,7 @@ export const useSetEditingToNewCuboid = () => {
       // sampleId) rides on the AnnotationLabel wrapper, never inside `data`,
       // so a draft's first save cannot leak it into the sample.
       const defaultCuboidLabelData = {
+        ...attributes,
         _id: labelId,
         _cls: "Detection" as const,
         location: transformData.location,

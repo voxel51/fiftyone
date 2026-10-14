@@ -1,17 +1,18 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
+import { getEventBus } from "@fiftyone/events";
 import {
   ImageOptions,
   ImageOverlay,
-  UNDEFINED_LIGHTER_SCENE_ID,
   lighterInitErrorAtom,
   overlayFactory,
-  useLighterEventHandler,
   useLighterSetupWithPixi,
+  useViewportInitReveal,
 } from "@fiftyone/lighter";
 import type { ModalSample } from "@fiftyone/state";
 import { getSampleSrc, useModalLookerOptions } from "@fiftyone/state";
+import { Size, Spinner } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import React, {
   lazy,
@@ -32,6 +33,11 @@ import useViewport from "./useViewport";
 
 const GpuErrorAnimation = lazy(() => import("./GpuErrorAnimation"));
 
+/** e2e specs wait on the renderer a mode switch or quick edit reveals */
+type LighterSampleRendererE2EEvents = {
+  "e2e:modal:lighter-revealed": { sampleId: string };
+};
+
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
   className?: string;
@@ -40,7 +46,8 @@ export interface LighterSampleRendererProps {
 }
 
 /**
- * Lighter unit sample renderer with PixiJS renderer.
+ * Lighter unit sample renderer with PixiJS renderer, behind an opaque loading
+ * cover until the scene's initial viewport settles.
  */
 export const LighterSampleRenderer = ({
   className = "",
@@ -63,6 +70,14 @@ export const LighterSampleRenderer = ({
   const onReveal = useCallback(() => setIsRevealed(true), []);
 
   useEffect(() => {
+    if (!isRevealed) return;
+    getEventBus<LighterSampleRendererE2EEvents>().dispatch(
+      "e2e:modal:lighter-revealed",
+      { sampleId: sampleRef.current?.sample?._id ?? "" },
+    );
+  }, [isRevealed]);
+
+  useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
     const sample = sampleRef.current;
     setSceneId(
@@ -78,45 +93,61 @@ export const LighterSampleRenderer = ({
 
   if (initError) {
     return (
-      <div className={styles.errorPanel} role="alert" aria-live="assertive">
-        <Suspense fallback={null}>
-          <GpuErrorAnimation />
-        </Suspense>
-        <p className={styles.errorTitle}>WebGL context could not be created</p>
-        <p className={styles.errorMessage}>
-          This is usually caused by an incompatible GPU driver or a browser flag
-          blocking hardware acceleration.
-        </p>
+      <div className={styles.root}>
+        <div className={styles.content}>
+          <div className={styles.errorPanel} role="alert" aria-live="assertive">
+            <Suspense fallback={null}>
+              <GpuErrorAnimation />
+            </Suspense>
+            <p className={styles.errorTitle}>
+              WebGL context could not be created
+            </p>
+            <p className={styles.errorMessage}>
+              This is usually caused by an incompatible GPU driver or a browser
+              flag blocking hardware acceleration.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      onMouseEnter={() => setIsCanvasHovered(true)}
-      onMouseLeave={() => setIsCanvasHovered(false)}
-      className={`lighter-sample-renderer ${className}`}
-      data-cy="lighter-sample-renderer"
-      id="lighter-sample-renderer-container"
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        visibility: isRevealed ? "visible" : "hidden",
-      }}
-    >
-      {containerRef.current && sceneId && (
-        <LighterSetupImpl
-          containerRef={containerRef}
-          sceneId={sceneId}
-          sampleRef={sampleRef}
-          onReveal={onReveal}
-        />
-      )}
-      {isCanvasHovered && <LighterToolbar />}
+    <div className={styles.root}>
+      <div className={styles.content}>
+        <div
+          ref={containerRef}
+          onMouseEnter={() => setIsCanvasHovered(true)}
+          onMouseLeave={() => setIsCanvasHovered(false)}
+          className={`lighter-sample-renderer ${className}`}
+          data-cy="lighter-sample-renderer"
+          data-lighter-surface
+          id="lighter-sample-renderer-container"
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+            visibility: isRevealed ? "visible" : "hidden",
+          }}
+        >
+          {containerRef.current && sceneId && (
+            <LighterSetupImpl
+              containerRef={containerRef}
+              sceneId={sceneId}
+              sampleRef={sampleRef}
+              onReveal={onReveal}
+            />
+          )}
+          {isCanvasHovered && <LighterToolbar />}
+        </div>
+        {!isRevealed && (
+          <div className={styles.cover}>
+            <Spinner size={Size.Lg} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -176,10 +207,12 @@ const LighterSetupImpl = (props: {
     scene.setCanonicalMedia(mediaOverlay);
   }, [scene, sceneId]);
 
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID,
-  );
-  useEventHandler("lighter:viewport-init-complete", onReveal, { once: true });
+  const revealed = useViewportInitReveal(scene);
+  useEffect(() => {
+    if (revealed) {
+      onReveal();
+    }
+  }, [revealed, onReveal]);
 
   useViewport(sampleId);
 

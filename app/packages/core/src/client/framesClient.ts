@@ -28,6 +28,8 @@ export type GetFramesRequest = {
   frameCount: number;
   /** Group slice name, when the dataset is grouped. */
   slice?: string | null;
+  /** Dynamic-group value; the group's ordered samples are served as frames. */
+  dynamicGroup?: string | null;
   /** Optional extended view stages. */
   extended?: unknown;
   /**
@@ -36,6 +38,8 @@ export type GetFramesRequest = {
    * document when a caller needs just a few fields (e.g. `["filepath"]`).
    */
   fields?: string[];
+  /** The media field frame media is read from (default `filepath`). */
+  mediaField?: string;
 };
 
 /**
@@ -83,7 +87,7 @@ const doFetch = <A, R>(
  *
  * This is a thin wrapper around `POST /frames` — the same endpoint
  * powers per-frame label loading (`VideoFrameLabelsStream`) and ImaVid
- * per-frame image loading (`ImaVidImageStream`). Two parallel calls
+ * per-frame image loading (`DynamicGroupImageStream`). Two parallel calls
  * against the same chunk are fine; HTTP/2 multiplexes and the server
  * doesn't keep state between them. Coalescing them into a single
  * request is on the fast-follow list.

@@ -13,8 +13,8 @@ from strawberry.schema.config import StrawberryConfig
 
 import fiftyone as fo
 
-from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.query import Dataset
+from fiftyone.server.scalars import SCALAR_MAP
 
 from decorators import drop_async_dataset
 from utils.graphql import execute
@@ -27,8 +27,7 @@ class DatasetQuery(Dataset):
 
 schema = gql.Schema(
     query=DatasetQuery,
-    scalar_overrides=SCALAR_OVERRIDES,
-    config=StrawberryConfig(auto_camel_case=False),
+    config=StrawberryConfig(auto_camel_case=False, scalar_map=SCALAR_MAP),
 )
 
 

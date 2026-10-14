@@ -44,6 +44,7 @@ vi.mock("@fiftyone/annotation", () => ({
 
 vi.mock("@fiftyone/state", () => ({
   useStableSceneSample3d: () => ({ sample: { _id: "scene-sample" } }),
+  useStableInteraction3dSample: () => ({ sample: { _id: "scene-sample" } }),
 }));
 
 vi.mock("@fiftyone/utilities", () => ({
@@ -88,6 +89,7 @@ vi.mock("./store/operations", () => ({
 }));
 
 vi.mock("./store/labelResolution", () => ({
+  getDefaultAttributes: () => ({ vehicle_type: "sedan" }),
   getDefaultLabel: () => "vehicle",
   recordLastCreatedLabel: mocks.recordLastCreatedLabel,
 }));
@@ -229,6 +231,7 @@ describe("CreateCuboidRenderer", () => {
       expect.any(Object),
       "ground_truth",
       "vehicle",
+      { vehicle_type: "sedan" },
     );
     expect(mocks.recordLastCreatedLabel).toHaveBeenCalledWith(
       "ground_truth",
@@ -271,11 +274,13 @@ describe("CreateCuboidRenderer", () => {
       }),
       "ground_truth",
       "vehicle",
+      { vehicle_type: "sedan" },
     );
     expect(mocks.setEditingToNewCuboid).toHaveBeenCalledWith(
       "new-cuboid-id",
       expect.objectContaining({ location: [-9.5, 0.5, 0] }),
       "vehicle",
+      { vehicle_type: "sedan" },
     );
   });
 });

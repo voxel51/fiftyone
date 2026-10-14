@@ -79,6 +79,7 @@ export const ModalSampleRenderer = React.memo(
     transitioning = false,
   }: ModalSampleRendererProps) => {
     const dataset = fos.useCurrentDataset();
+    const destinationSampleId = fos.useNullableModalSampleId();
     const schema = fos.useModalSampleSchema();
     const { isDisabled: isDatasetRendererDisabled } =
       fos.useGridCustomRendererFailover(dataset?.name);
@@ -109,6 +110,7 @@ export const ModalSampleRenderer = React.memo(
         "modal",
       ),
       transitioning,
+      destinationSampleId,
     };
     const matchedRenderer = getMatchingSampleRenderer(sampleRenderers, ctx);
     const canonicalRenderer = matchedRenderer

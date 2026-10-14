@@ -1,5 +1,6 @@
 import {
   SCENE_SOURCE_METADATA,
+  STREAM_METADATA,
   type SceneSource,
   type StreamDescriptor,
 } from "../ir";
@@ -44,11 +45,19 @@ export function sceneSourcesFromStreamDescriptors(
 function normalizedSceneMetadata(
   metadata: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> | undefined {
-  const calibrationStreamId =
-    metadata[SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID];
-  return calibrationStreamId
-    ? { [SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID]: calibrationStreamId }
-    : undefined;
+  // Decode status and its schema name travel with the source so a tile can
+  // report a codec refusal. Without them the tile only knows it has no frames,
+  // which it renders as a timestamp gap - unreadable as a permanent refusal.
+  const carried: Record<string, string> = {};
+  for (const key of [
+    SCENE_SOURCE_METADATA.CALIBRATION_STREAM_ID,
+    STREAM_METADATA.DECODE_STATUS,
+    STREAM_METADATA.SCHEMA_NAME,
+  ]) {
+    const value = metadata[key];
+    if (value) carried[key] = value;
+  }
+  return Object.keys(carried).length > 0 ? carried : undefined;
 }
 
 function sourceLabel(sourceName: string): string {

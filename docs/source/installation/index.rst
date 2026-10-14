@@ -45,7 +45,7 @@ This will install FiftyOne and all of its dependencies. Once this has
 completed, you can verify that FiftyOne is installed in your virtual
 environment by importing the `fiftyone` package:
 
-.. code-block:: text
+.. code-block:: console
 
     $ python
     >>>

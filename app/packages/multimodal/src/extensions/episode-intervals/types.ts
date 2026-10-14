@@ -1,5 +1,7 @@
-import type { SampleRendererProps } from "@fiftyone/plugins";
 import type React from "react";
+import type { IntervalTileContext } from "../host/tile-context";
+
+export type { IntervalTileContext };
 
 /**
  * One interval an episode-interval source contributes for a single sample.
@@ -65,7 +67,7 @@ export interface EpisodeIntervalContribution {
 
 /** Props every source component receives. */
 export interface EpisodeIntervalSourceProps {
-  readonly ctx: SampleRendererProps["ctx"];
+  readonly ctx: IntervalTileContext;
   readonly children: (
     contribution: EpisodeIntervalContribution,
   ) => React.ReactNode;

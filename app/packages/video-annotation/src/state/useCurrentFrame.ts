@@ -2,39 +2,35 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { frameAt, usePlayhead } from "@fiftyone/playback";
+import { frameAt, useCurrentTime } from "@fiftyone/playback";
 import { useModalSample } from "@fiftyone/state";
 import { useCallback, useRef } from "react";
-import { resolveFrameCount } from "../utils/frameCount";
-import { getModalSampleFrameRate } from "../utils/modalSample";
+import { useAnnotatePrerequisites } from "../hooks/useAnnotatePrerequisites";
+import { useModalSampleFrameRate } from "./accessors";
 
 /**
- * The single source of "current frame" for the engine integration on the video
- * surface.
- *
- * The surface drives playback through `PlaybackProvider` / `usePlaybackEngine`
- * (visible position = `usePlayhead()` seconds), NOT the legacy `useTimeline`
- * timeline-state machinery (which is never created here, so its frame number
- * stays frozen). Everything that needs the live frame — the engine clock,
- * the canvas bridge's `frameOf`, timeline select/hover frame-stamping — must
- * read it from here, converting the playhead seconds to a 1-indexed frame via
- * the shared `frameAt`.
- *
- * Clamped to the sample's real frame range: the engine allows the playhead to
- * rest at exactly `duration` (seek/step clamp inclusively), where an unclamped
- * conversion yields a nonexistent frame N+1 — no labels resolve there while
- * the renderer still shows the last frame.
+ * The single source of the current frame for the video surface's engine
+ * integration, converting the committed playback time to a 1-indexed frame via
+ * the shared `frameAt`. Clamped to the clip's real frame range, since the
+ * playhead may rest at exactly `duration`, where an unclamped conversion
+ * yields a nonexistent frame N+1.
  */
 export const useCurrentFrame = (): number => {
   const sample = useModalSample();
-  const playhead = usePlayhead();
-  const fps = getModalSampleFrameRate(sample);
+  // the committed time, not the requested playhead: during a scrub the
+  // request runs ahead while the picture holds the last ready frame, and
+  // overlays and gesture frame-stamping must hold with it
+  const time = useCurrentTime();
+  const fps = useModalSampleFrameRate(sample);
+  // undefined while the surface is blocked on metadata: the conversion then
+  // runs unclamped, as there is no known last frame to clamp to
+  const { frameCount } = useAnnotatePrerequisites(sample);
 
   if (!fps || !Number.isFinite(fps) || fps <= 0) {
     return -1;
   }
 
-  return frameAt(playhead, fps, resolveFrameCount(sample, fps) ?? undefined);
+  return frameAt(time, fps, frameCount);
 };
 
 /**

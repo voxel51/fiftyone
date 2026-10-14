@@ -118,6 +118,12 @@ export namespace State {
     /** Why the run cannot be used, when knowable from the run doc alone
      * (e.g. its config class no longer imports); null when usable. */
     error: string | null;
+    /** The declared facts of the run's `results_meta`; null for a run that
+     * recorded none. */
+    resultsMeta: {
+      /** The group slices a similarity index holds samples from. */
+      groupSlices: readonly string[] | null;
+    } | null;
     config: {
       embeddingsField: string | null;
       method: string;
@@ -231,6 +237,12 @@ export namespace State {
     _cls: string;
     kwargs: [string, unknown][];
     _uuid?: string;
+    /**
+     * The syntax an expression parameter was written in, keyed by parameter
+     * name. `kwargs` carries the lowered MongoDB the pipeline runs, which
+     * cannot be turned back into `F(...)`; this is what can.
+     */
+    _expr_asts?: Record<string, unknown>;
   }
 
   export interface SelectedLabelData {

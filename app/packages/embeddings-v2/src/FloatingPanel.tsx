@@ -27,10 +27,10 @@ import "./panel.css";
 import { useDraggable } from "./useDraggable";
 
 const TOKEN_VARS = {
-  "--emb-card-bg": `var(${getColorCssVar(BackgroundColor.Card2)})`,
-  "--emb-card-elevated": `var(${getColorCssVar(BackgroundColor.CardElevated)})`,
-  "--emb-border-subtle": `var(${getColorCssVar(BorderColor.Subtle)})`,
-  "--emb-icon-muted": `var(${getColorCssVar(IconColor.Muted)})`,
+  "--emb-card-bg": `${getColorCssVar(BackgroundColor.CardNested)}`,
+  "--emb-card-elevated": `${getColorCssVar(BackgroundColor.CardElevated)}`,
+  "--emb-border-subtle": `${getColorCssVar(BorderColor.Subtle)}`,
+  "--emb-icon-muted": `${getColorCssVar(IconColor.Muted)}`,
 } as CSSProperties;
 
 /** Panel width 13rem + the 0.75rem inset the overlays use */
