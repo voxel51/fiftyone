@@ -2193,9 +2193,12 @@ def _tag_anchors(dataset, tag, cache):
     sample_id = str(tag.sample_id)
     key = ("tag-sample", sample_id)
     if key not in cache:
-        cache[key] = dataset.select_fields(["media_reference", "metadata"])[
-            sample_id
+        fields = [
+            name
+            for name in ("media_reference", "metadata")
+            if dataset.has_sample_field(name)
         ]
+        cache[key] = dataset.select_fields(fields)[sample_id]
     return set(_sample_streams(cache[key], dataset, cache))
 
 
