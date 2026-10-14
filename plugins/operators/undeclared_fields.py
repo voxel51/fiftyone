@@ -21,6 +21,9 @@ _EQUIVALENT_TYPES = {"long": "int"}
 # Ints and doubles mixed in one field fit a float field
 _NUMERIC_TYPES = {"int", "double"}
 
+# The largest integer that a float holds exactly
+_MAX_EXACT_INT = 2**53
+
 
 def find_undeclared_fields(dataset):
     """Finds the values stored on the dataset's samples and frames under
@@ -99,9 +102,12 @@ def declare_undeclared_fields(dataset, fields):
     """Adds the given undeclared fields to the dataset's schema, with the
     type of their stored values.
 
-    A field whose values have more than one type cannot be declared, and is
-    skipped, except ints mixed with floats, which are declared as a float
-    field. So is a field whose name cannot be a field name.
+    The field must hold every stored value, so a field whose values have
+    more than one type is skipped, except ints mixed with floats, which are
+    declared as a float field when the ints fit one exactly. So is a field
+    whose values are documents of different kinds, or whose name cannot be a
+    field name. A list field whose elements have different types is declared
+    as an untyped list.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -149,22 +155,17 @@ def declare_undeclared_fields(dataset, fields):
                 skipped[path] = "it stores only null values"
                 continue
 
-            numeric = value_types == _NUMERIC_TYPES
-            if len(value_types) > 1 and not numeric:
+            if len(value_types) > 1 and value_types != _NUMERIC_TYPES:
                 skipped[path] = "its values have different types (%s)" % (
                     ", ".join(sorted(value_types))
                 )
                 continue
 
             try:
-                if numeric:
-                    kwargs = {"ftype": fof.FloatField}
-                else:
-                    doc = coll.find_one(
-                        {name: {"$exists": True, "$ne": None}}, {name: 1}
-                    )
-                    value = foou.deserialize_value(doc[name])
-                    kwargs = foou.get_implied_field_kwargs(value)
+                kwargs, reason = _field_kwargs(coll, name, value_types)
+                if reason:
+                    skipped[path] = reason
+                    continue
 
                 add_field(name, **kwargs)
             except Exception as e:
@@ -174,6 +175,103 @@ def declare_undeclared_fields(dataset, fields):
             declared.append(path)
 
     return declared, skipped
+
+
+def _field_kwargs(coll, name, value_types):
+    """The keyword arguments of a field that holds every value stored under
+    ``name``, or why no field does.
+
+    Every stored value is checked, not just one: ints mixed with floats must
+    fit a float exactly, documents must be of one kind, and the elements of
+    lists must share a type (a list whose elements do not is declared
+    untyped).
+    """
+    if value_types == _NUMERIC_TYPES:
+        if _max_abs_int(coll, name) > _MAX_EXACT_INT:
+            return None, (
+                "its values mix floats with integers too large to store "
+                "as floats"
+            )
+        return {"ftype": fof.FloatField}, None
+
+    if value_types == {"object"}:
+        kinds = _document_kinds(coll, name)
+        if len(kinds) > 1:
+            return None, "its values are different kinds of documents (%s)" % (
+                ", ".join(sorted(k or "dict" for k in kinds))
+            )
+
+    query = {name: {"$exists": True, "$ne": None}}
+    if value_types == {"array"}:
+        element_types, kinds = _element_types(coll, name)
+        if element_types == _NUMERIC_TYPES:
+            if _max_abs_int(coll, name, unwind=True) > _MAX_EXACT_INT:
+                return {"ftype": fof.ListField}, None
+            return {"ftype": fof.ListField, "subfield": fof.FloatField}, None
+
+        if len(element_types) != 1 or len(kinds) > 1:
+            # Elements of different types, or no elements at all
+            return {"ftype": fof.ListField}, None
+
+        query = {name: {"$type": "array", "$ne": []}}
+
+    doc = coll.find_one(query, {name: 1})
+    kwargs = foou.get_implied_field_kwargs(foou.deserialize_value(doc[name]))
+
+    if kwargs.get("ftype") is fof.ObjectIdField:
+        # Field creation stores an ObjectId field under `_<name>` by default,
+        # but these values are stored under `name`
+        kwargs["db_field"] = name
+
+    return kwargs, None
+
+
+def _document_kinds(coll, name):
+    pipeline = [
+        {"$match": {name: {"$type": "object"}}},
+        {"$group": {"_id": "$%s._cls" % name}},
+    ]
+    return {d["_id"] for d in coll.aggregate(pipeline, allowDiskUse=True)}
+
+
+def _element_types(coll, name):
+    pipeline = [
+        {"$match": {name: {"$type": "array"}}},
+        {"$unwind": "$" + name},
+        {
+            "$group": {
+                "_id": {
+                    "type": {"$type": "$" + name},
+                    "kind": "$%s._cls" % name,
+                }
+            }
+        },
+    ]
+    element_types = set()
+    kinds = set()
+    for d in coll.aggregate(pipeline, allowDiskUse=True):
+        element_type = _EQUIVALENT_TYPES.get(
+            d["_id"]["type"], d["_id"]["type"]
+        )
+        element_types.add(element_type)
+        if element_type == "object":
+            kinds.add(d["_id"].get("kind"))
+
+    element_types.discard("null")
+    return element_types, kinds
+
+
+def _max_abs_int(coll, name, unwind=False):
+    pipeline = [{"$match": {name: {"$exists": True}}}]
+    if unwind:
+        pipeline.append({"$unwind": "$" + name})
+
+    pipeline += [
+        {"$match": {name: {"$type": ["int", "long"]}}},
+        {"$group": {"_id": None, "max": {"$max": {"$abs": "$" + name}}}},
+    ]
+    results = list(coll.aggregate(pipeline, allowDiskUse=True))
+    return results[0]["max"] if results else 0
 
 
 def _declared_names(schema):

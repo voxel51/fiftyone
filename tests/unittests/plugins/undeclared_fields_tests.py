@@ -200,6 +200,64 @@ class UndeclaredFieldsTests(unittest.TestCase):
         self.assertEqual(declared, ["eval_tp"])
         self.assertIn("not a valid field name", skipped["_private"])
 
+    @drop_datasets
+    def test_declare_skips_ints_too_large_for_a_float(self):
+        dataset = _dataset()
+        ids = dataset.values("id")
+        _store(dataset, ids[0], big=2**53 + 1)
+        _store(dataset, ids[1], big=0.5)
+
+        declared, skipped = declare_undeclared_fields(dataset, ["big"])
+
+        self.assertEqual(declared, [])
+        self.assertIn("too large", skipped["big"])
+
+    @drop_datasets
+    def test_declare_checks_every_stored_list(self):
+        dataset = _dataset()
+        ids = dataset.values("id")
+        _store(dataset, ids[0], tags2=[1, 2])
+        _store(dataset, ids[1], tags2=["text"])
+        _store(dataset, ids[2], scores=[1, 0.5])
+
+        declared, _ = declare_undeclared_fields(dataset, ["tags2", "scores"])
+
+        self.assertEqual(sorted(declared), ["scores", "tags2"])
+        # elements of different types: an untyped list
+        field = dataset.get_field("tags2")
+        self.assertIsInstance(field, fof.ListField)
+        self.assertIsNone(field.field)
+        self.assertIsInstance(
+            dataset.get_field("scores").field, fof.FloatField
+        )
+        self.assertEqual(_load(dataset, ids[1])["tags2"], ["text"])
+
+    @drop_datasets
+    def test_declare_skips_documents_of_different_kinds(self):
+        dataset = _dataset()
+        ids = dataset.values("id")
+        _store(dataset, ids[0], pred=fo.Classification(label="a").to_dict())
+        _store(dataset, ids[1], pred=fo.Detections().to_dict())
+
+        declared, skipped = declare_undeclared_fields(dataset, ["pred"])
+
+        self.assertEqual(declared, [])
+        self.assertIn("different kinds of documents", skipped["pred"])
+
+    @drop_datasets
+    def test_declare_keeps_object_ids_under_their_key(self):
+        dataset = _dataset()
+        sample_id = dataset.values("id")[0]
+        ref = ObjectId()
+        _store(dataset, sample_id, reference=ref)
+
+        declared, _ = declare_undeclared_fields(dataset, ["reference"])
+
+        self.assertEqual(declared, ["reference"])
+        self.assertEqual(dataset.get_field("reference").db_field, "reference")
+        self.assertEqual(find_undeclared_fields(dataset), {})
+        self.assertEqual(_load(dataset, sample_id)["reference"], str(ref))
+
 
 def _context(dataset, **params):
     return ExecutionContext(
