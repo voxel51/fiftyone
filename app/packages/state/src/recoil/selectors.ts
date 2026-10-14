@@ -571,9 +571,7 @@ const withSimilarityOrSort = (
   const rest: object = { ...exclusion };
 
   if (similarity) {
-    rest["fiftyone.core.stages.SortBySimilarity"] = similarity
-      ? similarity
-      : undefined;
+    rest["fiftyone.core.stages.SortBySimilarity"] = similarity;
   } else if (sorted && sort) {
     rest["fiftyone.core.stages.SortBy"] = {
       field_or_expr: sort.field,
