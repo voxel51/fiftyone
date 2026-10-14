@@ -30,6 +30,7 @@ import {
 } from "../constants";
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
+import { cropToContent } from "../elements/common/actions";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay, RegularLabel } from "../overlays/base";
 import processOverlays from "../processOverlays";
@@ -349,6 +350,15 @@ export abstract class AbstractLooker<
     }
 
     this.eventTarget.dispatch(eventType, detail);
+  }
+
+  /**
+   * Frames the visible labels, as the "Crop to content" control and its `z`
+   * shortcut do. For hosts that hide the looker's controls and put their own
+   * button in their place.
+   */
+  cropToContent(): void {
+    cropToContent.action(this.updater, this.dispatchEvent.bind(this));
   }
 
   protected dispatchImpliedEvents(
