@@ -138,7 +138,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: fiftyone/server/static
-          key: app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
+          # its own key: this build hides the shared session banner (see
+          # "Build app"), and build.yml caches the same tree without that
+          key: e2e-app-static-${{ runner.os }}-${{ steps.app-tree-hash.outputs.hash }}
 
       - name: Cache Node Modules
         id: app-node-cache
@@ -156,6 +158,10 @@ jobs:
 
       - name: Build app
         if: steps.app-static-cache.outputs.cache-hit != 'true'
+        env:
+          # the banner takes height from the page, resizing what specs
+          # screenshot whenever the server briefly counts a closed tab
+          VITE_HIDE_SHARED_SESSION_BANNER: "true"
         run: make app
 
       - name: Bundle built app static assets
