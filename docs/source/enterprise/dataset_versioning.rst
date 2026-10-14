@@ -359,7 +359,7 @@ button. For the above Snapshot, it would look like this:
 
 .. code-block:: text
 
-    https://<your-enterprise-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot
+    https://<your-enterprise-url>/dataset/roadscene-vehicle-detection/samples?snapshot=new+snapshot
 
 One other difference from the normal page is the Snapshot banner which gives
 information about the Snapshot being viewed, and other quick-click operations.
