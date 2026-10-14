@@ -131,6 +131,34 @@ describe("modal thumbnail ownership", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a reused poster URL when evicting the least recent destination", async () => {
+    const { registerModalThumbnailPoster, useModalThumbnail } =
+      await import("./modal-thumbnail");
+    const posters = posterCache();
+    for (let i = 0; i < 17; i++) {
+      posters.put(`poster-${i}`);
+      registerModalThumbnailPoster(
+        identity(String(i)),
+        `poster-${i}`,
+        posters.cache,
+      );
+    }
+    const { result, rerender } = renderHook((id) => useModalThumbnail(id), {
+      initialProps: identity("0"),
+    });
+    const first = result.current;
+    for (let i = 1; i < 16; i++) rerender(identity(String(i)));
+    rerender(identity("0"));
+    expect(result.current).toBe(first);
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(16);
+
+    rerender(identity("16"));
+    expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:1");
+    rerender(identity("0"));
+    expect(result.current).toBe(first);
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(17);
+  });
+
   it("owns a canvas snapshot until its encoded poster arrives", async () => {
     const {
       captureModalThumbnail,

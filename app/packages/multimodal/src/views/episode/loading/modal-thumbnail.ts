@@ -157,7 +157,11 @@ function posterThumbnail(
   poster: EncodedPoster,
 ): Extract<Thumbnail, { kind: "image" }> {
   const current = posterUrls.get(posterKey);
-  if (current?.poster === poster) return current.thumbnail;
+  if (current?.poster === poster) {
+    posterUrls.delete(posterKey);
+    posterUrls.set(posterKey, current);
+    return current.thumbnail;
+  }
   if (current) URL.revokeObjectURL(current.thumbnail.url);
   posterUrls.delete(posterKey);
   const thumbnail = {
