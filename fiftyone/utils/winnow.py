@@ -7,6 +7,7 @@ for the FiftyOne Model Zoo.
 |
 """
 
+import copy
 import json
 import logging
 import math
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_winnow():
+    """Ensures the packages that load the release are installed."""
     # transformers implements Gemma 4 12B, and gguf reads the release's
     # weights, which it publishes in llama.cpp's format
     fou.ensure_package("transformers>=5.17")
@@ -187,6 +189,17 @@ def _validate_questions(questions):
                     "'false'" % question_id
                 )
 
+        # The prompt renders these as JSON, so a value json cannot write is
+        # rejected here, before any download
+        try:
+            _render(question.get("instructions") or question_id)
+            _release_options(question)
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                "question %r has instructions or criteria that are not text "
+                "or a JSON value" % question_id
+            ) from e
+
 
 def _option_order(question):
     """The options of a question in the order the caller gave them."""
@@ -208,6 +221,7 @@ def _render(value):
 
 
 def _describe(value):
+    """Text as given, and any other value rendered as JSON."""
     return value if isinstance(value, str) else _render(value)
 
 
@@ -377,10 +391,11 @@ def _llama_size(width, height):
     f32 = np.float32
 
     def cells(x, rounding):
+        """``x`` pixels rounded to whole cells by ``rounding``, in pixels."""
         return int(rounding(float(f32(x) / f32(_CELL)))) * _CELL
 
     def nearest(x):
-        # std::round rounds halves away from zero
+        """Rounds halves away from zero, as ``std::round`` does."""
         return math.floor(x + 0.5)
 
     min_pixels = _MIN_IMAGE_TOKENS * _CELL**2
@@ -413,7 +428,7 @@ def _resize(img):
     h = min(math.ceil(float(f32(img.height) * scale)), size[1])
     canvas = Image.new("RGB", size)
     canvas.paste(
-        img.resize((w, h), Image.BICUBIC),
+        img.resize((w, h), Image.Resampling.BICUBIC),
         ((size[0] - w) // 2, (size[1] - h) // 2),
     )
     return canvas
@@ -436,15 +451,20 @@ class WinnowGetItem(fout.GetItem):
     """
 
     def __init__(self, processor, prefix, field_mapping=None, **kwargs):
+        """Keeps the processor and the prompt prefix images are encoded
+        into."""
         self.processor = processor
         self.prefix = prefix
         super().__init__(field_mapping=field_mapping, **kwargs)
 
     @property
     def required_keys(self):
+        """The sample's ``filepath``, which locates its image."""
         return ["filepath"]
 
     def __call__(self, d):
+        """Encodes the image at the sample's ``filepath``; see
+        :meth:`encode`."""
         return self.encode(d["filepath"])
 
     def encode(self, img):
@@ -490,10 +510,21 @@ class _WinnowCollate(object):
     """
 
     def __init__(self, suffixes, pad_token_id):
+        """Keeps the question suffixes and the padding token."""
         self.suffixes = suffixes
         self.pad_token_id = pad_token_id
 
     def __call__(self, items):
+        """Builds one batch from images the data loader's workers encoded.
+
+        Args:
+            items: a list of :meth:`WinnowGetItem.encode` outputs
+
+        Returns:
+            a dict of padded tensors with one row per image and question,
+            each image's rows in the schema's order, where ``row_image``
+            maps each row to its image
+        """
         rows = []
         types = []
         for item in items:
@@ -555,6 +586,7 @@ class WinnowOutputProcessor(fout.OutputProcessor):
     """
 
     def __init__(self, classes=None, store_logits=False, **kwargs):
+        """Keeps whether classifications store their logits."""
         self.store_logits = store_logits
 
     def __call__(
@@ -609,6 +641,8 @@ class WinnowOutputProcessor(fout.OutputProcessor):
         return results
 
     def _to_label(self, question, logits, confidence_thresh):
+        """The label of one answer from its options' logits, in the order
+        the options were given."""
         probabilities = np.exp(logits - logits.max())
         probabilities /= probabilities.sum()
 
@@ -664,6 +698,8 @@ class WinnowModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """
 
     def __init__(self, d):
+        """Parses the config, rejecting a state that is not text or a JSON
+        value."""
         d = self.init(d)
         super().__init__(d)
 
@@ -684,6 +720,11 @@ class WinnowModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.state = self.parse_raw(d, "state", default=DEFAULT_STATE)
         if self.state is None:
             raise ValueError("The state must be text or a JSON value")
+
+        try:
+            _render(self.state)
+        except (TypeError, ValueError) as e:
+            raise ValueError("The state must be text or a JSON value") from e
 
         if self.output_processor is None and self.output_processor_cls is None:
             self.output_processor_cls = WinnowOutputProcessor
@@ -779,7 +820,12 @@ class WinnowModel(fout.TorchImageModel):
     """
 
     def __init__(self, config):
-        self._questions = config.get_questions()
+        """Validates the question schema, then loads the release.
+
+        The model keeps its own copy of the schema, which both the prompt
+        and the decoding of its answers read.
+        """
+        self._questions = copy.deepcopy(config.get_questions())
         self._processor = None
         self._prefix = None
         self._suffixes = None
@@ -788,37 +834,53 @@ class WinnowModel(fout.TorchImageModel):
 
     @property
     def has_logits(self):
+        """True; classifications can store their per-option logits."""
         return True
 
     @property
     def questions(self):
-        """The question schema answered for each image."""
-        return self._questions
+        """A copy of the question schema answered for each image."""
+        return copy.deepcopy(self._questions)
 
     @property
     def ragged_batches(self):
-        # Rows of different lengths are padded together by collate_fn
+        """False; :attr:`collate_fn` pads rows of different lengths."""
         return False
 
     @property
     def has_collate_fn(self):
+        """True; the model pads its own batches."""
         return True
 
     @property
     def collate_fn(self):
+        """The function that continues each image's prompt prefix with every
+        question and pads the rows."""
         return _WinnowCollate(
             self._suffixes, self._processor.tokenizer.pad_token_id
         )
 
     def build_get_item(self, field_mapping=None):
+        """Builds the :class:`WinnowGetItem` that encodes each image into
+        this model's prompt prefix.
+
+        Args:
+            field_mapping (None): a dict mapping the GetItem's required keys
+                to field names of the dataset
+
+        Returns:
+            a :class:`WinnowGetItem`
+        """
         return WinnowGetItem(
             self._processor, self._prefix, field_mapping=field_mapping
         )
 
     def _download_model(self, config):
-        pass
+        """The release downloads in :meth:`_load_model`."""
 
     def _load_model(self, config):
+        """Downloads the release at its revision, loads its GGUF weights into
+        transformers' Gemma 4 and builds the prompt."""
         path = hfh.snapshot_download(
             config.name_or_path,
             revision=config.revision,
@@ -871,6 +933,8 @@ class WinnowModel(fout.TorchImageModel):
         )
 
     def _predict_all(self, imgs):
+        """Answers every question for a list of images, or for a batch the
+        data loader already padded."""
         if self._preprocess:
             # Images given directly rather than through a data loader are
             # encoded and padded here
@@ -891,6 +955,8 @@ class WinnowModel(fout.TorchImageModel):
         )
 
     def _forward_pass(self, batch):
+        """The softcapped logits of the answer labels at each row's last
+        token."""
         model = self._model
         row_image = batch["row_image"]
         with torch.inference_mode():
