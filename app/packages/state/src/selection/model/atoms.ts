@@ -347,44 +347,53 @@ export const renderedCaptureIdsAtom = atomFamily((domainId: string) =>
 );
 
 /**
- * A bare capture of a parent another bucket already describes takes that
- * bucket's display metadata. The details loader only refetches when the set
- * of captured parents changes, and a second copy does not change it.
+ * Fill a capture's missing preview and group slice from existing buckets.
+ * The details loader only refetches when the set of captured parents changes,
+ * and a second copy does not change it.
  */
 function withKnownMetadata(
   get: Getter,
   domainId: string,
   group: EpisodeSelection,
 ): EpisodeSelection {
-  if (group.filepath || group.node) return group;
+  if ((group.filepath || group.node) && group.groupSlice !== undefined)
+    return group;
+  let capture = group;
   for (const bucket of get(bucketsAtom(selectionDomainDataset(domainId)))) {
     const known = get(
       selectionAtom(selectionCaptureKey(domainId, bucket.id)),
     ).get(group.episodeId);
-    if (!known || (!known.filepath && !known.node)) continue;
+    if (!known) continue;
+    if (capture.groupSlice === undefined && known.groupSlice !== undefined) {
+      capture = { ...capture, groupSlice: known.groupSlice };
+    }
+    if (capture.filepath || capture.node) {
+      if (capture.groupSlice !== undefined) return capture;
+      continue;
+    }
+    if (!known.filepath && !known.node) continue;
     const {
       filepath,
       previewStart,
       unavailable,
       groupId,
-      groupSlice,
       node,
       aspectRatio,
       crop,
     } = known;
-    return {
-      ...group,
+    capture = {
+      ...capture,
       ...(filepath !== undefined && { filepath }),
       ...(previewStart !== undefined && { previewStart }),
       ...(unavailable !== undefined && { unavailable }),
       ...(groupId !== undefined && { groupId }),
-      ...(groupSlice !== undefined && { groupSlice }),
       ...(node !== undefined && { node }),
       ...(aspectRatio !== undefined && { aspectRatio }),
       ...(crop !== undefined && { crop }),
     };
+    if (capture.groupSlice !== undefined) return capture;
   }
-  return group;
+  return capture;
 }
 
 /** Commands that touch captures in one bucket or across every bucket. */
