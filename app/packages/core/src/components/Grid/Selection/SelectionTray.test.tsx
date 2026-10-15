@@ -5,6 +5,7 @@ import {
 } from "@fiftyone/multimodal/extensions/grid-selection";
 import {
   countSelection,
+  subsetRequest,
   type EpisodeSelection,
   type SelectionBucket,
   type SelectionCounts,
@@ -81,7 +82,7 @@ const mocks = vi.hoisted(() => {
     unavailableGroups: [] as EpisodeSelection[],
     loading: false,
     error: null as string | null,
-    request: { view: [] },
+    request: { view: [], slice: undefined as string | undefined },
     activate: vi.fn(),
     capture: vi.fn(),
     remove: vi.fn(),
@@ -95,7 +96,8 @@ const mocks = vi.hoisted(() => {
   return {
     similarityKeys: [] as string[] | null,
     similarity: vi.fn(),
-    searchSimilar: vi.fn(),
+    modalSampleId: null as string | null,
+    searchSimilar: vi.fn(async () => undefined),
     openSimilarityPanel: vi.fn(),
     setExpandedSample: vi.fn(async () => undefined),
     setModalState: vi.fn(async () => undefined),
@@ -170,12 +172,18 @@ vi.mock("./SubsetJobs", () => ({
   default: () => null,
   SubsetJobStatus: () => null,
 }));
-vi.mock("@fiftyone/state", () => ({
+vi.mock("@fiftyone/state", async () => ({
+  useOutsideClick: (await import("@fiftyone/state/src/hooks/hooks-utils"))
+    .useOutsideClick,
+  resolveMediaFieldLooker: (
+    await import("@fiftyone/state/src/hooks/media-field-lookers")
+  ).resolveMediaFieldLooker,
   useSelectedMediaFieldGrid: () => "filepath",
   useLookerOptions: () => ({ mediaFallback: false }),
   getNormalizedUrls: () => ({}),
   useSetGroupSlice: () => vi.fn(),
   useGroupSlices: () => ["left", "right"],
+  useGroupField: () => "group",
   useSelectionSubsetDisabledReason: () => null,
   useLoadedSavedViewName: () => null,
   useSavedViewTransientState: () => ({ fieldVisibility: null }),
@@ -183,7 +191,7 @@ vi.mock("@fiftyone/state", () => ({
   useClearGridViewConstraints: () => vi.fn(),
   useSetExpandedSample: () => mocks.setExpandedSample,
   useSetModalState: () => mocks.setModalState,
-  useNullableModalSampleId: () => null,
+  useNullableModalSampleId: () => mocks.modalSampleId,
   useRefresh: () => vi.fn(),
   useSelectionTagDisabledReason: () => null,
   useSetView: () => vi.fn(),
@@ -241,10 +249,13 @@ vi.mock("@fiftyone/state/src/selection", async () => {
 
 beforeEach(() => {
   mocks.similarityKeys = [];
+  mocks.modalSampleId = null;
   mocks.selection.buckets = [{ id: "primary" }];
   mocks.selection.active = "primary";
   mocks.state.captures = null;
   mocks.selection.selected = new Map();
+  mocks.selection.request.slice = undefined;
+  mocks.selection.mediaType = "video";
   mocks.selection.candidates = new Map();
   mocks.selection.counts = null;
   mocks.selection.loading = false;
@@ -259,6 +270,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  setHoveredTile(null);
   vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
@@ -292,6 +304,36 @@ function useThreeSections(active = "primary") {
 }
 
 describe("SelectionTray", () => {
+  it("saves a selected group slice after browsing away from it", async () => {
+    mocks.selection.mediaType = "group";
+    mocks.selection.request.slice = "right";
+    mocks.selection.selected.set("left-sample", {
+      episodeId: "left-sample",
+      members: [{ episodeId: "left-sample", kind: "episode" }],
+      node: {
+        id: "left-sample",
+        sample: { _id: "left-sample", group: { name: "left" } },
+      },
+    });
+    render(<SelectionTray />);
+    fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New subset" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "New subset name" }), {
+      target: { value: "Captured left" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
+    await waitFor(() =>
+      expect(subsetRequest).toHaveBeenCalledWith(
+        "dataset",
+        "",
+        expect.objectContaining({
+          name: "Captured left",
+          preferredGroupSlice: "left",
+        }),
+      ),
+    );
+  });
+
   it("lets the host suppress the assistant promotion while placements load", () => {
     const view = render(<SelectionTray />);
     expect(screen.getByRole("button", { name: "Ask agent" })).toBeTruthy();
@@ -643,12 +685,16 @@ describe("SelectionTray", () => {
     expect(mocks.openSimilarityPanel).not.toHaveBeenCalled();
   });
 
-  it("opens similarity search for the grid when nothing is selected", () => {
+  it("disables similarity search when nothing is selected", () => {
     mocks.similarityKeys = ["similarity"];
     mocks.selection.counts = countSelection([fullEpisode]);
     render(<SelectionTray />);
-    fireEvent.click(screen.getByRole("button", { name: "Find similar" }));
-    expect(mocks.openSimilarityPanel).toHaveBeenCalledOnce();
+    const button = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Find similar",
+    });
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(mocks.openSimilarityPanel).not.toHaveBeenCalled();
     expect(mocks.searchSimilar).not.toHaveBeenCalled();
   });
 
@@ -802,6 +848,69 @@ describe("SelectionTray", () => {
     expect(mocks.selection.toggle).toHaveBeenLastCalledWith("full", "b3");
   });
 
+  it.each(["button", "checkbox"])(
+    "sorts a hovered tile while a %s has focus and stops bubbling keys",
+    (kind) => {
+      useThreeSections();
+      render(
+        <>
+          <input
+            type={kind}
+            aria-label="Grid control"
+            onKeyDown={(event) => event.stopPropagation()}
+          />
+          <SelectionTray />
+        </>,
+      );
+      const control = screen.getByLabelText("Grid control");
+      control.focus();
+      act(() => setHoveredTile("tile"));
+      for (const [key, bucket] of [
+        ["1", "primary"],
+        ["2", "b2"],
+        ["3", "b3"],
+      ]) {
+        expect(fireEvent.keyDown(control, { key })).toBe(false);
+        expect(mocks.selection.toggle).toHaveBeenLastCalledWith("tile", bucket);
+      }
+      expect(mocks.selection.toggle).toHaveBeenCalledTimes(3);
+      expect(document.activeElement).toBe(control);
+      fireEvent.keyDown(control, { key: "3", repeat: true });
+      fireEvent.keyDown(control, { key: "3", isComposing: true });
+      expect(mocks.selection.toggle).toHaveBeenCalledTimes(3);
+    },
+  );
+
+  it("leaves hovered samples alone while typing or a modal is open", () => {
+    useThreeSections();
+    const view = render(
+      <>
+        <textarea aria-label="Notes" />
+        <SelectionTray />
+      </>,
+    );
+    act(() => setHoveredTile("tile"));
+    const notes = screen.getByRole("textbox", { name: "Notes" });
+    notes.focus();
+    expect(fireEvent.keyDown(notes, { key: "1" })).toBe(true);
+    expect(mocks.selection.toggle).not.toHaveBeenCalled();
+
+    mocks.modalSampleId = "modal";
+    view.rerender(<SelectionTray />);
+    fireEvent.keyDown(document.body, { key: "2" });
+    expect(mocks.selection.toggle).not.toHaveBeenCalled();
+
+    mocks.modalSampleId = null;
+    view.rerender(
+      <>
+        <div role="dialog" />
+        <SelectionTray />
+      </>,
+    );
+    fireEvent.keyDown(document.body, { key: "3" });
+    expect(mocks.selection.toggle).not.toHaveBeenCalled();
+  });
+
   it("moves a card dropped on another section, or copies it with Alt", () => {
     useThreeSections();
     render(<SelectionTray />);
@@ -941,5 +1050,26 @@ describe("SelectionTray", () => {
     expect(mocks.layout.update).toHaveBeenLastCalledWith("b3", {
       icon: undefined,
     });
+  });
+
+  it("saves a section rename on an outside click and still honors cancel", () => {
+    useThreeSections();
+    render(<SelectionTray />);
+    fireEvent.doubleClick(screen.getByText("Section 3"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Section name" }), {
+      target: { value: " Keep " },
+    });
+    fireEvent.mouseDown(screen.getByText("Section 1"));
+    expect(mocks.layout.update).toHaveBeenCalledWith("b3", { name: "Keep" });
+    expect(screen.queryByRole("textbox", { name: "Section name" })).toBeNull();
+    mocks.layout.update.mockClear();
+    fireEvent.doubleClick(screen.getByText("Section 3"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Section name" }), {
+      target: { value: "Discard" },
+    });
+    const cancel = screen.getByRole("button", { name: "Cancel rename" });
+    fireEvent.mouseDown(cancel);
+    fireEvent.click(cancel);
+    expect(mocks.layout.update).not.toHaveBeenCalled();
   });
 });

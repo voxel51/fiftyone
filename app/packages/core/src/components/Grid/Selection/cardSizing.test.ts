@@ -13,8 +13,8 @@ describe("selection card sizing", () => {
       false,
     );
     expect(height).toBe(300);
-    expect(cardWidth(16 / 9, height)).toBe(530);
-    expect(cardWidth(9 / 16, height)).toBe(168);
+    expect((cardWidth(16 / 9, height) - 2) / (height - 2)).toBeCloseTo(16 / 9);
+    expect((cardWidth(9 / 16, height) - 2) / (height - 2)).toBeCloseTo(9 / 16);
   });
 
   it("uses multiple rows and fills their height when all cards fit", () => {
@@ -37,14 +37,14 @@ describe("selection card sizing", () => {
 
   it("limits growth by bucket width to preserve the media shape", () => {
     expect(fitCardHeight([square], 200, 300, true)).toBe(200);
-    expect(fitCardHeight([square], 200, 300, false)).toBe(202);
+    expect(fitCardHeight([square], 200, 300, false)).toBe(200);
     expect(fitCardHeight([square], 80, 300, false)).toBe(CARD_HEIGHT);
   });
 
   it("includes a fold's fixed width in the row packing", () => {
     expect(
       fitCardHeight([square, { fold: true }, square], 500, 200, false),
-    ).toBe(191);
+    ).toBe(189);
   });
 
   it("handles unknown ratios, empty and collapsed areas", () => {
@@ -53,4 +53,11 @@ describe("selection card sizing", () => {
     expect(fitCardHeight([square], 1000, 0, false)).toBe(CARD_HEIGHT);
     expect(fitCardHeight([square], 0, 300, false)).toBe(CARD_HEIGHT);
   });
+
+  it.each([0.1, 9 / 16, 1, 16 / 9, 10])(
+    "never clamps known aspect ratio %s at the minimum card height",
+    (ratio) => {
+      expect((cardWidth(ratio) - 2) / (CARD_HEIGHT - 2)).toBeCloseTo(ratio);
+    },
+  );
 });

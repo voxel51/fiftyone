@@ -14,7 +14,6 @@ import {
   Text,
 } from "@voxel51/voodo";
 import { plural, selectionPills, type SelectionKind } from "./format";
-import SelectionTooltip from "./SelectionTooltip";
 import styles from "./SelectionTray.module.css";
 
 interface Props {
@@ -75,7 +74,6 @@ export default function SelectionSummary({
               kind: "episode" as const,
               count: total,
               noun: "total selected",
-              detail: `${total.toLocaleString()} picked across sections`,
             },
           ]
         : []
@@ -86,7 +84,6 @@ export default function SelectionSummary({
                 kind: "episode" as const,
                 count: counts.groups,
                 noun: `${counts.groups === 1 ? "group" : "groups"} · ${selectionScopeLabel({ ...counts, groups: undefined }, unit)} selected`,
-                detail: selectionScopeLabel(counts, unit),
               },
             ]
           : selectionPills(counts, unit).map((pill) => ({
@@ -135,59 +132,48 @@ export default function SelectionSummary({
   ) : null;
   const scope = pills.length
     ? pills.map((pill, index) => (
-        <SelectionTooltip
+        <Pill
           key={pill.kind}
-          wrapperClassName={styles.tipWrap}
-          content={
-            <Text variant="body-tertiary">
-              {total !== undefined
-                ? `${pill.detail}. Actions apply to the focused sections, or every section when none is focused.`
-                : `Actions apply only to the ${pill.detail} selected, including any outside the current results.`}
-            </Text>
-          }
+          size="sm"
+          backgroundColor={BackgroundColor.CardElevated}
+          color="text-secondary"
+          className={styles.countPill}
+          data-kind={pill.kind}
         >
-          <Pill
-            size="sm"
-            backgroundColor={BackgroundColor.CardElevated}
-            color="text-secondary"
-            className={styles.countPill}
-            data-kind={pill.kind}
-          >
-            <span className={styles.countPillBody}>
-              <Text
-                variant="body-tertiary"
-                color="text-primary"
-                className={`${styles.summaryLabel} ${styles.countPillCount}`}
-              >
-                {pill.count.toLocaleString()}
-              </Text>
-              <Text
-                variant="body-tertiary"
-                color="text-secondary"
-                className={styles.summaryLabel}
-              >
-                {pill.noun}
-              </Text>
-              {onClear && (
-                <Button
-                  size="xs"
-                  variant="icon"
-                  leadingIcon={CloseIcon}
-                  className={styles.countPillClear}
-                  aria-label={
-                    pills.length > 1
-                      ? `Clear selected ${pill.noun.replace(/ selected$/, "")}`
-                      : "Clear selection"
-                  }
-                  data-tray-clear={index === 0 ? "" : undefined}
-                  onClick={() =>
-                    onClear(pills.length > 1 ? pill.kind : undefined)
-                  }
-                />
-              )}
-            </span>
-          </Pill>
-        </SelectionTooltip>
+          <span className={styles.countPillBody}>
+            <Text
+              variant="body-tertiary"
+              color="text-primary"
+              className={`${styles.summaryLabel} ${styles.countPillCount}`}
+            >
+              {pill.count.toLocaleString()}
+            </Text>
+            <Text
+              variant="body-tertiary"
+              color="text-secondary"
+              className={styles.summaryLabel}
+            >
+              {pill.noun}
+            </Text>
+            {onClear && (
+              <Button
+                size="xs"
+                variant="icon"
+                leadingIcon={CloseIcon}
+                className={styles.countPillClear}
+                aria-label={
+                  pills.length > 1
+                    ? `Clear selected ${pill.noun.replace(/ selected$/, "")}`
+                    : "Clear selection"
+                }
+                data-tray-clear={index === 0 ? "" : undefined}
+                onClick={() =>
+                  onClear(pills.length > 1 ? pill.kind : undefined)
+                }
+              />
+            )}
+          </span>
+        </Pill>
       ))
     : sentence;
   // Qualifiers trail a sentence with a dot; after pills the gap is enough,

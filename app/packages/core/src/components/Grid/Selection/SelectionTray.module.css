@@ -257,16 +257,6 @@
   max-width: min(500px, calc(100vw - 16px));
   white-space: normal;
   overflow-wrap: anywhere;
-  translate: var(--tray-tooltip-offset, 0px) 0;
-}
-
-/* VOODO renders its arrow last. Counter the panel's shift over the trigger. */
-.tooltip > :last-child {
-  left: clamp(
-    8px,
-    calc(50% - var(--tray-tooltip-offset, 0px)),
-    calc(100% - 8px)
-  );
 }
 
 .inlineAlert {
@@ -423,11 +413,6 @@
   height: 100%;
   object-fit: contain;
   transition: opacity var(--tray-duration-fast) var(--tray-easing);
-}
-
-.imageFrame {
-  width: 100%;
-  height: 100%;
 }
 
 .crop {
@@ -1030,31 +1015,6 @@
 }
 
 /* Count pill and its Clear control stay on one line when the bar wraps */
-/* Hover affordance that the card body opens the viewer */
-.openHint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--tray-duration-fast) var(--tray-easing);
-}
-
-.openHint > span {
-  display: inline-flex;
-  padding: 6px;
-  border-radius: 999px;
-  background: var(--tray-overlay);
-  color: var(--tray-text-on-color);
-}
-
-.open:hover .openHint,
-.open:focus-visible .openHint {
-  opacity: 1;
-}
-
 /* Read-only result unit when there is nothing to switch to */
 /* The samples tab's scope trigger sits inline with the panel icon. */
 .scopeTrigger {

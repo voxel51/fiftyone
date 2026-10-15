@@ -127,6 +127,38 @@ afterEach(() => {
 });
 
 describe("useSpotlightPager", () => {
+  it("reuses cached video metadata for an eager tray preview without another fetch", async () => {
+    const { result, fetch, responses } = setup();
+    const pending = result.current.page(1);
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    const data = payload([]);
+    responses[0]({
+      data: {
+        samples: {
+          ...data.samples,
+          edges: [
+            {
+              ...data.samples.edges[0],
+              node: {
+                ...data.samples.edges[0].node,
+                __typename: "VideoSample",
+                frameRate: 30,
+                aspectRatio: 16 / 9,
+              },
+            },
+          ],
+        },
+      },
+    });
+    const page = await pending;
+    expect(result.current.getPreview("sample-21")).toBe(page.items[0].data);
+    expect(result.current.getPreview("sample-21")).toMatchObject({
+      frameRate: 30,
+      aspectRatio: 16 / 9,
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it("keeps ordinary query timeouts out of the grid error boundary", async () => {
     const { result, fetch, responses } = setup();
     const pending = result.current.page(1);

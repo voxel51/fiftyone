@@ -430,6 +430,9 @@ const dispatchPresentedFrame = (
   });
 
 export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
+  private isDestroyed = false;
+  private cancelPosterDraws = new Set<() => void>();
+
   private canvas: HTMLCanvasElement;
   private frameNumber: number;
   private loop = false;
@@ -447,6 +450,20 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private waitingToRelease = false;
 
   imageSource: HTMLCanvasElement | HTMLVideoElement;
+
+  boot(
+    params: Parameters<BaseElement<VideoState, HTMLVideoElement>["boot"]>[0],
+  ) {
+    params.abortController.signal.addEventListener(
+      "abort",
+      () => {
+        this.isDestroyed = true;
+        for (const cancel of this.cancelPosterDraws) cancel();
+      },
+      { once: true },
+    );
+    super.boot(params);
+  }
 
   getEvents(): Events<VideoState> {
     return {
@@ -575,21 +592,23 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   createHTMLElement() {
     this.element = null;
-    this.update(({ config: { thumbnail, src, frameRate, support } }) => {
-      this.src = src;
-      this.posterFrame = support ? support[0] : 1;
-      if (thumbnail) {
-        this.canvas = document.createElement("canvas");
-        this.canvas.style.imageRendering = "pixelated";
-        this.drawPoster(src, frameRate, support, null, true);
-      } else {
-        this.element = document.createElement("video");
-        this.element.preload = "metadata";
-        this.element.src = src;
-      }
+    this.update(
+      ({ config: { thumbnail, src, frameRate, support, posterSeconds } }) => {
+        this.src = src;
+        this.posterFrame = support ? support[0] : 1;
+        if (thumbnail) {
+          this.canvas = document.createElement("canvas");
+          this.canvas.style.imageRendering = "pixelated";
+          this.drawPoster(src, frameRate, support, posterSeconds ?? null, true);
+        } else {
+          this.element = document.createElement("video");
+          this.element.preload = "metadata";
+          this.element.src = src;
+        }
 
-      return {};
-    });
+        return {};
+      },
+    );
 
     this.requestCallback = (callback: (time: number) => void) => {
       requestAnimationFrame(() => {
@@ -679,18 +698,31 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   ) {
     const draw = initial ? this.posterDraw : ++this.posterDraw;
     acquireThumbnailer().then(([video, release]) => {
+      if (this.isDestroyed || (!initial && draw !== this.posterDraw)) {
+        release();
+        return;
+      }
       const watchesFrames = "requestVideoFrameCallback" in video;
       let frameCallback: number | null = null;
       let presented: number | null = null;
       let seekDone = false;
       let target = 0;
+      let finished = false;
 
-      const finish = () => {
+      const cancel = () => finish(true);
+      const finish = (cancelled = false) => {
+        if (finished) return;
+        finished = true;
+        this.cancelPosterDraws.delete(cancel);
         video.removeEventListener("error", error);
         video.removeEventListener("loadedmetadata", load);
         video.removeEventListener("seeked", seeked);
         frameCallback !== null && video.cancelVideoFrameCallback(frameCallback);
         frameCallback = null;
+        if (cancelled) {
+          video.removeAttribute("src");
+          video.load();
+        }
         release();
       };
 
@@ -711,9 +743,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(video, 0, 0);
         const duration = video.duration;
-        if (!initial) {
-          this.posterSeconds = seconds === null ? null : video.currentTime;
-        }
+        this.posterSeconds = seconds === null ? null : video.currentTime;
         this.update(
           initial
             ? { hasPoster: true, duration, loaded: true }
@@ -771,6 +801,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.update({ dimensions: [video.videoWidth, video.videoHeight] });
       };
 
+      this.cancelPosterDraws.add(cancel);
       watchesFrames && watchFrames();
       video.addEventListener("error", error);
       video.addEventListener("loadedmetadata", load);

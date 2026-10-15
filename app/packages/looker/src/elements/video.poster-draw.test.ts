@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { VideoLooker } from "../lookers/video";
 import { presentsSeekTarget } from "./util";
 import { VideoElement } from "./video";
+import type { VideoState } from "../state";
 
 const FPS = 5;
 
@@ -22,6 +23,8 @@ const fakeVideo = () => {
     videoWidth: 100,
     videoHeight: 100,
     src: "",
+    removeAttribute: vi.fn(),
+    load: vi.fn(),
     requestVideoFrameCallback: (callback: VideoFrameRequestCallback) => {
       frameCallback = callback;
       return 1;
@@ -44,7 +47,10 @@ const fakeVideo = () => {
   };
 };
 
-const drawPoster = async (seconds: number | null) => {
+const drawPoster = async (
+  seconds: number | null,
+  abortBeforeAcquire = false,
+) => {
   const media = fakeVideo();
   const release = vi.fn();
   vi.mocked(acquireThumbnailer).mockResolvedValue([
@@ -53,22 +59,44 @@ const drawPoster = async (seconds: number | null) => {
   ]);
   const drawImage = vi.fn();
   const updates: Record<string, unknown>[] = [];
-  const element = {
+  const controller = new AbortController();
+  const element = new VideoElement();
+  const state = {
+    config: {
+      thumbnail: true,
+      src: "clip.webm",
+      frameRate: FPS,
+      posterSeconds: seconds ?? undefined,
+    },
+  } as VideoState;
+  element.boot({
+    abortController: controller,
+    config: state.config,
+    dispatchEvent: vi.fn(),
+    update: (change) => {
+      const next = typeof change === "function" ? change(state) : change;
+      Object.assign(state, next);
+      updates.push(next);
+    },
+  });
+  Object.assign(element, {
     canvas: { width: 0, height: 0, getContext: () => ({ drawImage }) },
-    posterDraw: 0,
-    posterSeconds: null,
-    update: (change: Record<string, unknown>) => updates.push(change),
+  });
+  if (abortBeforeAcquire) {
+    controller.abort();
+    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce());
+  } else {
+    await vi.waitFor(() => expect(media.video.src).toBe("clip.webm"));
+    media.video.dispatchEvent(new Event("loadedmetadata"));
+  }
+
+  return {
+    ...media,
+    drawImage,
+    release,
+    updates,
+    destroy: () => controller.abort(),
   };
-
-  (
-    VideoElement.prototype as unknown as {
-      drawPoster: (...args: unknown[]) => void;
-    }
-  ).drawPoster.call(element, "clip.webm", FPS, undefined, seconds, true);
-  await vi.waitFor(() => expect(media.video.src).toBe("clip.webm"));
-  media.video.dispatchEvent(new Event("loadedmetadata"));
-
-  return { ...media, drawImage, release, updates };
 };
 
 const loadedPoster = {
@@ -100,6 +128,25 @@ describe("presentsSeekTarget", () => {
 });
 
 describe("VideoElement poster draw", () => {
+  it("cancels a pending seek and returns the thumbnailer when destroyed", async () => {
+    const { destroy, drawImage, present, release, seek, video } =
+      await drawPoster(1.5);
+    destroy();
+    expect(release).toHaveBeenCalledOnce();
+    expect(video.removeAttribute).toHaveBeenCalledWith("src");
+    expect(video.load).toHaveBeenCalledOnce();
+    seek(1.5);
+    present(1.4);
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("does not start loading when destroyed while waiting for a thumbnailer", async () => {
+    const { drawImage, video } = await drawPoster(1.5, true);
+    expect(video.src).toBe("");
+    expect(drawImage).not.toHaveBeenCalled();
+  });
+
   it("waits for the seeked frame when the seek completes before any frame presents", async () => {
     const { drawImage, present, release, seek, updates } =
       await drawPoster(null);
@@ -139,7 +186,9 @@ describe("VideoElement poster draw", () => {
   });
 
   it("does not draw the frame from before the seek", async () => {
-    const { drawImage, present, seek, updates } = await drawPoster(1.5);
+    const { drawImage, present, seek, updates, video } = await drawPoster(1.5);
+
+    expect(video.currentTime).toBe(1.5);
 
     present(0);
     seek(1.5);

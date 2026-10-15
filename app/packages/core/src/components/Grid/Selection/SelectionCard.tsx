@@ -13,7 +13,6 @@ import {
   CloseIcon,
   FolderOffIcon,
   ImageIcon,
-  OpenInNewIcon,
   Pill,
   PlayArrowIcon,
   SemanticColor,
@@ -40,8 +39,9 @@ import {
   plural,
   segmentsOf,
 } from "./format";
+import LookerPreview from "./LookerPreview";
 import MismatchPopover from "./MismatchPopover";
-import { useSelectionCardHeight } from "./SelectionCards";
+import { useSelectionCardSize } from "./SelectionCards";
 import SelectionTooltip from "./SelectionTooltip";
 import { startSectionDrag } from "./sectionDrag";
 import styles from "./SelectionTray.module.css";
@@ -49,7 +49,6 @@ import { CARD_HEIGHT, cardWidth, MULTIMODAL_CARD_HEIGHT } from "./theme";
 
 // The plugin renderer graph is heavy; only multimodal cards pay for it.
 const RendererPreview = lazy(() => import("./RendererPreview"));
-const LookerPreview = lazy(() => import("./LookerPreview"));
 const SelectionTileLanes = lazy(() => import("./SelectionTileLanes"));
 
 type Selection = ReturnType<typeof useGridSelection>;
@@ -70,7 +69,7 @@ interface Props extends Pick<Selection, "capture" | "remove"> {
   dragFrom?: string;
 }
 
-/** Defers video and renderer previews; images use native lazy loading. */
+/** Mounts previews only while the card is near the viewport. */
 function useNearViewport(ref: RefObject<Element>) {
   const [near, setNear] = useState(false);
   // This effect observes the card so large selections only load visible media.
@@ -82,10 +81,7 @@ function useNearViewport(ref: RefObject<Element>) {
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setNear(true);
-          observer.disconnect();
-        }
+        setNear(entries.at(-1)?.isIntersecting ?? false);
       },
       { rootMargin: "240px" },
     );
@@ -170,12 +166,19 @@ export default function SelectionCard({
   } | null>(null);
   const missed = missedFor !== null && missedFor.candidate === candidate;
   // Media that arrives without a known ratio reports its own once loaded.
-  const [measured, setMeasured] = useState<number | null>(null);
+  const [measured, setMeasured] = useState<{
+    src: string | undefined;
+    aspectRatio: number;
+  }>();
   const [videoMetadata, setVideoMetadata] = useState<{
     src: string;
     duration: number;
   }>();
-  const sourceAspect = group.aspectRatio ?? group.node?.aspectRatio ?? measured;
+  const sourceAspect = [
+    measured?.src === src ? measured?.aspectRatio : undefined,
+    group.aspectRatio,
+    group.node?.aspectRatio,
+  ].find((ratio) => ratio !== undefined && Number.isFinite(ratio) && ratio > 0);
   const crop = group.crop;
   const aspect = crop
     ? (sourceAspect ?? 1) * (crop[2] / crop[3])
@@ -185,15 +188,25 @@ export default function SelectionCard({
     mediaType === "3d" ||
     mediaType === "point-cloud" ||
     isDirect3dSamplePath(group.filepath);
-  const height =
-    useSelectionCardHeight() ??
-    (multimodal ? MULTIMODAL_CARD_HEIGHT : CARD_HEIGHT);
+  const size = useSelectionCardSize();
+  const preferredHeight =
+    size?.height ?? (multimodal ? MULTIMODAL_CARD_HEIGHT : CARD_HEIGHT);
+  const naturalWidth = multimodal
+    ? preferredHeight
+    : cardWidth(aspect, preferredHeight);
+  const width = Math.min(naturalWidth, size?.width ?? naturalWidth);
+  // Narrow buckets shrink both dimensions instead of squeezing the card's
+  // width around letterboxed media at the original height.
+  const height = multimodal
+    ? width
+    : aspect && width < naturalWidth
+      ? Math.max(0, width - 2) / aspect + 2
+      : preferredHeight;
   const previewHeight = height - 2;
-  const width = multimodal ? height : cardWidth(aspect, height);
   const temporal = unit.temporal;
   const kind = src && src !== failedSrc ? preview?.nativeLookerType : null;
-  const rendered = (multimodal || threeD) && Boolean(group.node);
-  const hasPreview = rendered || Boolean(kind);
+  const hasPreview =
+    Boolean(group.node) && (multimodal || threeD || Boolean(kind));
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
   const title = titleProp ?? episodeTitle(group, unit);
@@ -255,7 +268,11 @@ export default function SelectionCard({
             <span className={styles.placeholder}>
               <FolderOffIcon size="lg" color="text-muted" />
             </span>
-          ) : near && rendered && group.node ? (
+          ) : near &&
+            previewHeight > 0 &&
+            width > 2 &&
+            hasPreview &&
+            group.node ? (
             <Suspense
               fallback={
                 <span className={styles.placeholder}>
@@ -275,80 +292,24 @@ export default function SelectionCard({
               ) : (
                 <LookerPreview
                   node={group.node}
-                  width={width}
+                  width={width - 2}
                   height={previewHeight}
+                  crop={kind === "image" ? crop : undefined}
+                  sourceAspect={sourceAspect ?? undefined}
+                  previewStart={group.previewStart}
+                  onError={() => setFailedSrc(src)}
+                  onMetadata={({ aspectRatio, duration }) => {
+                    setMeasured({ src, aspectRatio });
+                    if (src && duration !== undefined) {
+                      setVideoMetadata({ src, duration });
+                    }
+                  }}
                 />
               )}
             </Suspense>
-          ) : near && kind === "video" && src ? (
-            <video
-              className={styles.media}
-              src={src}
-              muted
-              playsInline
-              preload="metadata"
-              onError={() => setFailedSrc(src)}
-              onLoadedMetadata={(event) => {
-                const { videoWidth, videoHeight } = event.currentTarget;
-                if (videoWidth && videoHeight)
-                  setMeasured(videoWidth / videoHeight);
-                setVideoMetadata({
-                  src,
-                  duration: event.currentTarget.duration,
-                });
-                event.currentTarget.currentTime = group.previewStart ?? 0;
-              }}
-            />
-          ) : kind === "image" && src ? (
-            <div
-              className={crop ? styles.crop : styles.imageFrame}
-              style={
-                crop
-                  ? {
-                      width: previewHeight * (aspect ?? 1),
-                      maxWidth: "100%",
-                      aspectRatio: aspect ?? undefined,
-                    }
-                  : undefined
-              }
-            >
-              <img
-                className={styles.media}
-                style={
-                  crop
-                    ? {
-                        position: "absolute",
-                        width: `${100 / crop[2]}%`,
-                        height: `${100 / crop[3]}%`,
-                        left: `${(-100 * crop[0]) / crop[2]}%`,
-                        top: `${(-100 * crop[1]) / crop[3]}%`,
-                        maxWidth: "none",
-                      }
-                    : undefined
-                }
-                src={src}
-                alt=""
-                // The card drags, not its thumbnail
-                draggable={false}
-                loading="lazy"
-                onError={() => setFailedSrc(src)}
-                onLoad={(event) => {
-                  const { naturalWidth, naturalHeight } = event.currentTarget;
-                  if (naturalWidth && naturalHeight)
-                    setMeasured(naturalWidth / naturalHeight);
-                }}
-              />
-            </div>
           ) : (
             <span className={styles.placeholder}>
               <PlaceholderIcon size="lg" color="text-muted" />
-            </span>
-          )}
-          {!unavailable && hasPreview && (
-            <span className={styles.openHint} aria-hidden="true">
-              <span>
-                <OpenInNewIcon size="sm" />
-              </span>
             </span>
           )}
         </button>

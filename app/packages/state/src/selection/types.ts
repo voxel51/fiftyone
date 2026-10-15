@@ -58,6 +58,9 @@ export interface GridSampleNode {
     readonly url: string | null;
   }[];
   readonly aspectRatio?: number | null;
+  readonly frameRate?: number;
+  /** Availability responses retain the server's snake_case field name. */
+  readonly frame_rate?: number;
 }
 
 /** The tray has exactly one exclusive scope per episode. */
@@ -80,6 +83,8 @@ export interface EpisodeSelection {
   };
   /** The group this sample belongs to, in a grouped dataset. */
   readonly groupId?: string;
+  /** The captured slice, retained across reloads without its renderer node. */
+  readonly groupSlice?: string;
   /** Width over height of the media, when metadata knows it. */
   readonly aspectRatio?: number;
   /** Patch bounds in normalized source-image coordinates: x, y, width, height. */

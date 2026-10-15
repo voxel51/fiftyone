@@ -85,6 +85,7 @@ it("captures loaded media immediately and keeps it through background validation
   const captured = result.current.selected.get(node.id);
   expect(captured?.node).toBe(node);
   expect(captured?.filepath).toBe("/image.jpg");
+  expect(captured?.aspectRatio).toBe(2);
   expect(result.current.pendingCaptures).toBe(false);
   expect(captured?.members).toEqual([{ episodeId: node.id, kind: "episode" }]);
 

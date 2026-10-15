@@ -41,7 +41,7 @@ export enum KnownCommands {
 const NON_TEXT_INPUT_TYPES = new Set(["button", "checkbox", "reset", "submit"]);
 
 /** True when the element consumes general keystrokes for editing/navigation. */
-function isTextEditingTarget(el: Element | null): boolean {
+export function isTextEditingTarget(el: Element | null): boolean {
   if (!el) {
     return false;
   }

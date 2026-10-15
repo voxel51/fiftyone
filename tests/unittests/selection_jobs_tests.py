@@ -119,7 +119,9 @@ class SelectionJobsTests(unittest.TestCase):
 
         with patch.object(fosub, "_BATCH_SIZE", 3), patch.object(
             fosub, "_insert_batch", cancel_after_write
-        ), patch.object(jobs.time, "monotonic", side_effect=count()):
+        ), patch.object(
+            jobs, "time", SimpleNamespace(monotonic=count().__next__)
+        ):
             stopped = self.finish(job)
         self.assertEqual(stopped["state"], "canceled")
         self.assertEqual(stopped["progress"]["added"], 3)
@@ -190,7 +192,9 @@ class SelectionJobsTests(unittest.TestCase):
 
         with patch.object(foss, "SNAPSHOT_CHUNK", 3), patch.object(
             Collection, "insert_one", cancel_after_chunk
-        ), patch.object(jobs.time, "monotonic", side_effect=count()):
+        ), patch.object(
+            jobs, "time", SimpleNamespace(monotonic=count().__next__)
+        ):
             stopped = self.finish(job)
         self.assertEqual(stopped["state"], "canceled")
         self.assertEqual(
