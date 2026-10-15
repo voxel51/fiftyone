@@ -33,7 +33,10 @@ const test = base.extend<{
           ],
         },
       }),
-      savedViews: { patches: "dataset.to_patches('predictions')" },
+      savedViews: {
+        patches: "dataset.to_patches('predictions')",
+        samples: "dataset.view()",
+      },
     });
     try {
       await use(datasetName);
@@ -143,3 +146,35 @@ for (const entry of ["menu", "direct link"] as const) {
     await tray.assert.pills(["1 patch selected"]);
   });
 }
+
+test("direct saved-query history keeps sample and patch captures separate", async ({
+  eventUtils,
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  page,
+  tray,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ view: "samples" }),
+  });
+  const savedQueries = new SavedQueriesPom(page, eventUtils);
+  await savedQueries.open();
+  await grid.afterTagsRenderedNamed(["0.png"], () =>
+    grid.afterEntryCounts(() => savedQueries.load("patches")),
+  );
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
+  await tray.afterSettled(
+    () => grid.afterEntryCounts(() => grid.run(() => page.goBack())),
+    { cards: 0 },
+  );
+  await grid.assert.isEntryCountTextEqualTo("2 samples");
+  await tray.assert.targetsAllResults();
+  await tray.afterSettled(() => grid.toggleSelectNthSample(1), { cards: 1 });
+  await tray.afterSettled(
+    () => grid.afterEntryCounts(() => grid.run(() => page.goForward())),
+    { cards: 1 },
+  );
+  await grid.assert.isEntryCountTextEqualTo("4 patches");
+  await tray.assert.pills(["1 patch selected"]);
+});
