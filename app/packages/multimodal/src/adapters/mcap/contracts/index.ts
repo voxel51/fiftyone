@@ -271,17 +271,17 @@ export interface McapEnumerateNumericFieldsRequest {
 }
 
 /**
- * One numeric leaf field of a topic's message schema, addressed by a
- * dotted path (e.g. `twist.linear.x`). Numeric segments address array
+ * One plottable scalar leaf field of a topic's message schema, addressed by
+ * a dotted path (e.g. `twist.linear.x`). Numeric segments address array
  * elements (e.g. `position.0`).
  */
 export interface McapNumericFieldDescriptor {
   readonly path: string;
 
   /**
-   * Schema-level value type ("double", "int64", "bool", "enum", …).
-   * Informational: 64-bit integer types lose precision beyond 2^53
-   * when projected to chart values.
+   * Schema-level value type ("double", "int64", "bool", "enum", "string",
+   * …). "string" fields plot as discrete states. 64-bit integer types lose
+   * precision beyond 2^53 when projected to chart values.
    */
   readonly valueType: string;
 }

@@ -1,6 +1,9 @@
 import type { StreamId } from "./manifest";
 
-/** One scalar numeric leaf addressable by a plot or inspector. */
+/**
+ * One scalar leaf addressable by a plot or inspector. A "string" value type
+ * plots as discrete states; every other type plots as a numeric line.
+ */
 export interface NumericFieldDescriptor {
   readonly path: string;
   readonly valueType: string;
