@@ -1118,6 +1118,69 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     expect(client.readNumericSeries).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps one stable label encoding for a text series across reads", async () => {
+    const labelsByRead = [
+      ["dry", "wet"],
+      ["wet", "ice"],
+    ];
+    const source = createSource();
+    const client = createClient({
+      readNumericSeries: vi.fn(
+        async (
+          request: Parameters<NumericSeriesCapability["readNumericSeries"]>[0],
+        ) => {
+          const read = vi.mocked(client.readNumericSeries).mock.calls.length;
+          const startSec = Number(request.window.startNs) / 1e9;
+          return {
+            baseTimeNs: 0n,
+            fields: request.fields.map((path) => ({
+              labels: labelsByRead[read - 1],
+              path,
+              timesSec: Float64Array.from([startSec, startSec + 1]),
+              values: Float64Array.from([0, 1]),
+            })),
+            sampleCount: 2,
+            streamId: request.stream,
+            truncated: false,
+          };
+        },
+      ),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/vehicle", "road");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    const key = numericSeriesKey("/vehicle", "road");
+    expect(context.current?.seriesByKey.get(key)?.labels).toEqual([
+      "dry",
+      "wet",
+    ]);
+
+    await act(async () => {
+      store.set(playheadAtom, 1_800);
+      await flushMicrotasks();
+    });
+
+    const state = context.current?.seriesByKey.get(key);
+    expect(client.readNumericSeries).toHaveBeenCalledTimes(2);
+    expect(state?.labels).toEqual(["dry", "wet", "ice"]);
+    // The second read's local codes (wet=0, ice=1) map onto the shared table.
+    expect([...(state?.values ?? [])]).toEqual([1, 2]);
+  });
+
   it("publishes only the current viewport after disjoint fills", async () => {
     const source = createSource();
     const client = createClient({

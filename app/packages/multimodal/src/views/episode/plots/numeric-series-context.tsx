@@ -62,6 +62,7 @@ import {
 } from "../../../utils/numeric-series-buckets";
 import { useDataStream } from "../playback/data-stream-context";
 import { shouldDeferIdleWorkForStore } from "../playback/network-health";
+import { createTextSeriesState } from "./text-series-state";
 
 /**
  * Fetch horizon centered on the playhead. Playback's 4s lookahead keeps
@@ -134,6 +135,11 @@ export interface NumericSeriesState {
   /** Source ranges proven readable or empty, excluding unavailable units. */
   readonly coverage?: readonly NsRange[];
   readonly coverageSeconds?: number;
+  /**
+   * Present for a text field: finite values index these labels. The table
+   * is append-only for the source, so codes are stable across updates.
+   */
+  readonly labels?: readonly string[];
   readonly timesSec?: Float64Array;
   readonly targetSeconds?: number;
   readonly values?: Float64Array;
@@ -390,6 +396,7 @@ export function NumericSeriesBridge({
       publicationEpoch.set(key, state);
     };
     const truncatedKeys = new Set<string>();
+    const textSeries = createTextSeriesState();
     const failures = createDemandFailureBackoff<string>();
     const cacheForOrigin = (timeOriginNs: bigint) => {
       if (tileCache && tileOriginNs !== timeOriginNs) {
@@ -426,6 +433,7 @@ export function NumericSeriesBridge({
       readonly bucketDurationNs: bigint;
       readonly fields: readonly {
         readonly bucketIndexes?: BigInt64Array;
+        readonly labels?: readonly string[];
         readonly path: string;
         readonly timesSec: Float64Array;
         readonly values: Float64Array;
@@ -437,6 +445,7 @@ export function NumericSeriesBridge({
       const cache = cacheForOrigin(baseTimeNs);
       for (const field of fields) {
         const key = numericSeriesKey(stream, field.path);
+        const values = textSeries.encode(key, field);
         failures.clear(key);
         if (truncated) {
           truncatedKeys.add(key);
@@ -445,11 +454,11 @@ export function NumericSeriesBridge({
           const missingRanges = cache.assembleVisible({
             bucketDurationNs,
             range,
-            seriesKey: key,
+            seriesKey: textSeries.tileKey(key),
           }).unreadRanges;
           for (const missingRange of missingRanges) {
             const sliced = sliceNumericFieldToRange(
-              field,
+              { ...field, values },
               baseTimeNs,
               missingRange,
             );
@@ -460,7 +469,7 @@ export function NumericSeriesBridge({
                 : {}),
               coverageRanges: [missingRange],
               range: missingRange,
-              seriesKey: key,
+              seriesKey: textSeries.tileKey(key),
               timesSec: sliced.timesSec,
               unavailableRanges: [],
               values: sliced.values,
@@ -484,14 +493,14 @@ export function NumericSeriesBridge({
             const missingRanges = cache.assembleVisible({
               bucketDurationNs,
               range,
-              seriesKey: key,
+              seriesKey: textSeries.tileKey(key),
             }).unreadRanges;
             for (const missingRange of missingRanges) {
               cache.put({
                 bucketDurationNs,
                 coverageRanges: [],
                 range: missingRange,
-                seriesKey: key,
+                seriesKey: textSeries.tileKey(key),
                 timesSec: new Float64Array(),
                 unavailableRanges: [missingRange],
                 values: new Float64Array(),
@@ -516,14 +525,14 @@ export function NumericSeriesBridge({
             const missingRanges = cache.assembleVisible({
               bucketDurationNs,
               range,
-              seriesKey: key,
+              seriesKey: textSeries.tileKey(key),
             }).unreadRanges;
             for (const missingRange of missingRanges) {
               cache.put({
                 bucketDurationNs,
                 coverageRanges: [missingRange],
                 range: missingRange,
-                seriesKey: key,
+                seriesKey: textSeries.tileKey(key),
                 timesSec: new Float64Array(),
                 unavailableRanges: [],
                 values: new Float64Array(),
@@ -548,7 +557,7 @@ export function NumericSeriesBridge({
           const assembled = cache.assembleVisible({
             bucketDurationNs,
             range: horizon,
-            seriesKey: key,
+            seriesKey: textSeries.tileKey(key),
           });
           const prefix = completeNumericSeriesPrefix(
             horizon,
@@ -571,7 +580,7 @@ export function NumericSeriesBridge({
           const visible = cache.assembleVisible({
             bucketDurationNs,
             range: prefix,
-            seriesKey: key,
+            seriesKey: textSeries.tileKey(key),
           });
           const flat = flattenSeriesSegments(
             visible.parts.map((part) => ({
@@ -590,12 +599,14 @@ export function NumericSeriesBridge({
             bucketDurationNs,
             flat.bucketIndexes,
           );
+          const labels = textSeries.labels(key);
           setPublished(key, {
             coverage: visible.coverageRanges,
             coverageSeconds: coveredNumericSeriesSeconds(
               visible.coverageRanges,
               horizon,
             ),
+            ...(labels ? { labels } : {}),
             status: "ready",
             targetSeconds,
             timesSec: aggregated.timesSec,
@@ -621,7 +632,7 @@ export function NumericSeriesBridge({
         cache.setPinnedDemand(pinId, {
           bucketDurationNs,
           range: horizon,
-          seriesKey: key,
+          seriesKey: textSeries.tileKey(key),
         });
       }
       for (const pinId of pinnedCacheKeys) {
@@ -868,7 +879,7 @@ export function NumericSeriesBridge({
             const ranges = cache.assembleVisible({
               bucketDurationNs,
               range: window,
-              seriesKey: key,
+              seriesKey: textSeries.tileKey(key),
             }).unreadRanges;
             if (ranges.length === 0) {
               continue;
@@ -956,7 +967,9 @@ export function NumericSeriesBridge({
                 ...(result.unavailableByStream?.get(selection.stream) ?? []),
               ];
               return selection.fields.some((field) => {
-                const seriesKey = numericSeriesKey(selection.stream, field);
+                const seriesKey = textSeries.tileKey(
+                  numericSeriesKey(selection.stream, field),
+                );
                 return reported.some(
                   (range) =>
                     cache.assembleVisible({
