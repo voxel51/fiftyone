@@ -374,7 +374,7 @@ export interface McapReadNumericSeriesRequest {
 /**
  * Packed series for one requested field path. Parallel arrays; times
  * are seconds relative to the result's `baseTimeNs`. `NaN` values mark
- * messages where the field was missing or non-numeric so charts can
+ * messages where the field was missing or unplottable so charts can
  * render gaps.
  */
 export interface McapNumericSeriesField {
@@ -382,6 +382,12 @@ export interface McapNumericSeriesField {
   readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when decimation was applied. */
   readonly bucketGapMask?: Uint8Array;
+
+  /**
+   * Present when the field holds text: each finite value is an index into
+   * these labels, local to this result.
+   */
+  readonly labels?: readonly string[];
   readonly path: string;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;

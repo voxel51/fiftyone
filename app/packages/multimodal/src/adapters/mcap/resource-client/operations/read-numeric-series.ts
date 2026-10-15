@@ -21,6 +21,10 @@ import type {
 import type { ReadWorkUsage } from "../../../../ports";
 import { nsDeltaToSeconds } from "../../../../utils/nanoseconds";
 import {
+  createSeriesLabelTable,
+  type SeriesLabelTable,
+} from "../../../../utils/numeric-series-labels";
+import {
   aggregateAlignedNumericSeries,
   numericSeriesBucketIndex,
 } from "../../../../utils/numeric-series-buckets";
@@ -44,6 +48,8 @@ const MAX_SCAN_MESSAGES = 500_000;
 
 interface NumericSeriesAccumulator {
   readonly fieldPaths: readonly string[];
+  /** Per-field label table, created when a field first yields text. */
+  readonly labelTables: (SeriesLabelTable | undefined)[];
   readonly pathSegments: readonly (readonly string[])[];
   readonly timesNs: bigint[];
   readonly topic: string;
@@ -56,13 +62,14 @@ interface NumericSeriesAccumulator {
  * segments index arrays, so `position.0` selects the first array element.
  * Numbers must be finite; booleans map to 0/1; 64-bit values
  * (protobufjs Long, bigint) coerce through `Number` and lose precision
- * beyond 2^53 — acceptable for plotting. Returns undefined for
- * Missing, non-numeric, or whole-array paths return undefined.
+ * beyond 2^53 — acceptable for plotting. Text is returned as-is for the
+ * caller to categorize. Missing, non-scalar, or whole-array paths return
+ * undefined.
  */
-export function projectNumericField(
+export function projectSeriesValue(
   record: Record<string, unknown>,
   pathSegments: readonly string[],
-): number | undefined {
+): number | string | undefined {
   let current: unknown = record;
   for (const segment of pathSegments) {
     if (current === null || typeof current !== "object") {
@@ -81,6 +88,9 @@ export function projectNumericField(
 
   if (typeof current === "number") {
     return Number.isFinite(current) ? current : undefined;
+  }
+  if (typeof current === "string") {
+    return current;
   }
   if (typeof current === "boolean") {
     return current ? 1 : 0;
@@ -395,6 +405,7 @@ function createNumericSeriesAccumulator(
 ): NumericSeriesAccumulator {
   return {
     fieldPaths,
+    labelTables: fieldPaths.map(() => undefined),
     messageCount: 0,
     pathSegments: fieldPaths.map((path) => path.split(".")),
     timesNs: [],
@@ -420,10 +431,48 @@ function pushNumericSeriesMessage(
   }
   for (let field = 0; field < accumulator.pathSegments.length; field += 1) {
     const value = record
-      ? projectNumericField(record, accumulator.pathSegments[field])
+      ? projectSeriesValue(record, accumulator.pathSegments[field])
       : undefined;
-    accumulator.valuesByField[field].push(value ?? Number.NaN);
+    accumulator.valuesByField[field].push(
+      encodeSeriesValue(accumulator, field, value),
+    );
   }
+}
+
+/**
+ * Packs one projected value. A field becomes categorical the first time it
+ * yields text; from then on every value, including earlier and later
+ * numbers from loosely typed (e.g. JSON) payloads, is coded as its text so
+ * one series never mixes codes with raw numbers.
+ */
+function encodeSeriesValue(
+  accumulator: NumericSeriesAccumulator,
+  field: number,
+  value: number | string | undefined,
+): number {
+  if (value === undefined) return Number.NaN;
+  const labels = accumulator.labelTables[field];
+  if (typeof value === "number") {
+    return labels ? labels.code(String(value)) : value;
+  }
+  if (labels) return labels.code(value);
+  const table = createSeriesLabelTable();
+  const values = accumulator.valuesByField[field];
+  for (let index = 0; index < values.length; index += 1) {
+    if (!Number.isNaN(values[index])) {
+      values[index] = table.code(String(values[index]));
+    }
+  }
+  accumulator.labelTables[field] = table;
+  return table.code(value);
+}
+
+function seriesLabels(
+  accumulator: NumericSeriesAccumulator,
+  field: number,
+): { readonly labels?: readonly string[] } {
+  const table = accumulator.labelTables[field];
+  return table ? { labels: [...table.labels] } : {};
 }
 
 function finalizeNumericSeries(
@@ -443,6 +492,7 @@ function finalizeNumericSeries(
       );
       return {
         bucketGapMask: decimated.bucketGapMask,
+        ...seriesLabels(accumulator, index),
         path,
         timesSec: decimated.times,
         values: decimated.values,
@@ -475,6 +525,7 @@ function finalizeAlignedNumericSeries(
       );
       return {
         bucketIndexes: aggregated.bucketIndexes,
+        ...seriesLabels(accumulator, index),
         path,
         timesSec: aggregated.timesSec,
         values: aggregated.values,

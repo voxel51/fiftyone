@@ -30,6 +30,12 @@ export interface NumericSeriesField {
   readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when supplied by the adapter. */
   readonly bucketGapMask?: Uint8Array;
+
+  /**
+   * Present when the field holds text: each finite value is an index into
+   * these labels, local to this result. NaN still marks a gap.
+   */
+  readonly labels?: readonly string[];
   readonly path: string;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;
