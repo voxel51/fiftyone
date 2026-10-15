@@ -15,6 +15,7 @@ import numpy as np
 
 import fiftyone as fo
 import fiftyone.brain as fob
+import fiftyone.core.subsets as fosub
 from fiftyone.core.odm.runs import RunDocument
 
 from fiftyone.server.routes import embeddings_v2 as v2
@@ -491,6 +492,32 @@ class ServerEmbeddingsV2Tests(unittest.TestCase):
         run_ids = np.array([str(_id) for _id in results.sample_ids])
         self.assertEqual(set(run_ids[visible]), view_ids)
         self.assertEqual(set(run_ids[match]), set(selection))
+
+    @drop_datasets
+    def test_masks_follow_subset_membership(self):
+        dataset, points = _make_samples_run(4)
+        ids = dataset.values("id")
+        subset = fosub.save_subset(dataset, "map and plot", samples=ids[:2])
+        request = {
+            "datasetName": dataset.name,
+            "brainKey": "viz",
+            "filters": {"_selection_scope": {"subsetId": subset["id"]}},
+        }
+        results = dataset.load_brain_results("viz")
+        run_ids = np.array([str(value) for value in results.sample_ids])
+
+        def matched():
+            _, _, _, _, payload = _parse(
+                v2.EmbeddingsV2Masks._post_sync(None, request)
+            )
+            _, match = _unpack_masks(payload, len(points))
+            return set(run_ids[match])
+
+        self.assertEqual(matched(), set(ids[:2]))
+        fosub.add_members(dataset, subset["id"], samples=[ids[2]])
+        self.assertEqual(matched(), set(ids[:3]))
+        request["filters"] = {}
+        self.assertEqual(matched(), set(ids))
 
     @drop_datasets
     def test_color_grouped_non_default_slice(self):

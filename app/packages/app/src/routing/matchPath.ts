@@ -28,6 +28,8 @@ export type LocationState<T extends OperationType = OperationType> = {
   modalSelector?: ModalSelector;
   savedViewSlug?: string;
   view?: State.Stage[];
+  /** The saved query stages have resolved, including an empty stage list. */
+  viewResolved?: boolean;
   workspace?: SpaceNodeJSON;
 } & VariablesOf<T>;
 

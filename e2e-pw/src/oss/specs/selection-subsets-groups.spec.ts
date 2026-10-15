@@ -62,6 +62,7 @@ test("selected group slices exclude unchosen siblings", async ({
   await tray.createSubset("Left only", "Selected samples");
   await grid.afterGridRefreshed(() => tray.openCreatedSubset());
   await grid.assert.isTileCountEqualTo(1);
+  await tray.clear();
   await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
   await tray.assert.cardsHaveNames(["left-0.png"]);
 
@@ -86,6 +87,7 @@ test("all group slices include the selected group's sibling", async ({
   await grid.assert.isTileCountEqualTo(1);
   await grid.afterGridRefreshed(() => grid.selectSlice("right"));
   await grid.assert.isTileCountEqualTo(1);
+  await tray.clear();
   await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
   await tray.assert.cardsHaveNames(["right-0.png"]);
 });

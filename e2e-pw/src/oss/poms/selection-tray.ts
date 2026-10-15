@@ -123,6 +123,17 @@ export class SelectionTrayPom {
       ).toBe(1);
   }
 
+  /** Clear one kind in a mixed selection, retaining the other cards. */
+  async clearKind(kind: string, cards: number, outside = 0) {
+    await this.afterSettled(
+      () =>
+        this.locator
+          .getByRole("button", { name: `Clear selected ${kind}`, exact: true })
+          .click(),
+      { cards, outside },
+    );
+  }
+
   async clear() {
     await this.afterSettled(
       () =>
@@ -498,7 +509,7 @@ class SelectionTrayAsserter {
   async outsideResults(count: number) {
     expect(
       await this.tray.locator
-        .getByText(`${count} ${plural(count)} not in current results`, {
+        .getByText(`${count} ${plural(count)} not in view`, {
           exact: true,
         })
         .count(),

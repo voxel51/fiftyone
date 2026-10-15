@@ -54,6 +54,31 @@ const selectTiles = async (
     });
 };
 
+test("view stages: selected samples outside a new view stay in the tray", async ({
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  tray,
+  viewBar,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(viewBar.page, datasetName);
+  await selectTiles(grid, tray, [0, 2]);
+  const selected = await tray.getSelectedSampleNames();
+  const editor = await viewBar.addStage("Limit");
+  await editor.fill("limit", "1");
+  await tray.afterSettled(() => grid.run(() => editor.commit("limit")), {
+    cards: 2,
+    outside: 1,
+  });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.outsideResults(1);
+  await tray.afterSettled(() => grid.run(() => viewBar.removeStage(0)), {
+    cards: 2,
+  });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.selectedSamples(2);
+});
+
 for (const { name, param, value, count } of [
   { name: "Take", param: "size", value: "10", count: 2 },
   { name: "Limit", param: "limit", value: "1", count: 1 },
@@ -111,7 +136,7 @@ for (const { name, param, value, count } of [
         : tray.openCreatedSubset(),
     );
     await tray.assert.subsetScope("Stage selection", count);
-    await selectTiles(grid, tray, count === 2 ? [0, 1] : [0]);
+    await tray.assert.selectedSamples(count);
     await tray.assert.cardsHaveNames(selected);
 
     const freshPage = await openFreshPage();
@@ -149,7 +174,7 @@ test("view stages: Take selections can be added to an existing subset", async ({
     grid.afterEntryCounts(() => tray.openCreatedSubset()),
   );
   await tray.assert.subsetScope("Existing", 2);
-  await selectTiles(grid, tray, [0, 1]);
+  await tray.assert.selectedSamples(2);
   await tray.assert.cardsHaveNames(selected);
 });
 
@@ -300,6 +325,8 @@ test("a saved subset can gain and lose members and be deleted", async ({
   await tray.createSubset("Review set (v2)");
   await grid.afterEntryCounts(() => tray.openCreatedSubset());
   await tray.assert.subsetScope("Review set (v2)", 2);
+  await tray.assert.cardsHaveNames(["0.png", "2.png"]);
+  await tray.clear();
 
   await selectTiles(grid, tray, [0]);
   await grid.afterEntryCounts(() => tray.removeSelectedFromSubset());
@@ -307,25 +334,21 @@ test("a saved subset can gain and lose members and be deleted", async ({
   await selectTiles(grid, tray, [0]);
   await tray.assert.cardsHaveNames(["2.png"]);
 
-  await tray.afterSettled(
-    () => grid.afterEntryCounts(() => tray.chooseAllSamples()),
-    { cards: 0 },
-  );
+  await grid.afterEntryCounts(() => tray.chooseAllSamples());
   await grid.assert.isEntryCountTextEqualTo("8 samples");
-  await tray.assert.targetsAllResults();
+  await tray.assert.cardsHaveNames(["2.png"]);
+  await tray.clear();
   await selectTiles(grid, tray, [4]);
   await tray.addToSubset("Review set (v2)");
   await grid.afterEntryCounts(() => tray.openCreatedSubset());
   await tray.assert.subsetScope("Review set (v2)", 2);
+  await tray.clear();
   await selectTiles(grid, tray, [0, 1]);
   await tray.assert.cardsHaveNames(["2.png", "4.png"]);
 
-  await tray.afterSettled(
-    () => grid.afterEntryCounts(() => tray.deleteSubset("Review set (v2)")),
-    { cards: 0 },
-  );
+  await grid.afterEntryCounts(() => tray.deleteSubset("Review set (v2)"));
   await grid.assert.isEntryCountTextEqualTo("8 samples");
-  await tray.assert.targetsAllResults();
+  await tray.assert.cardsHaveNames(["2.png", "4.png"]);
   await tray.openScope();
   await tray.assert.listsNoSubsets();
 });

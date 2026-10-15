@@ -207,7 +207,7 @@ export default function SelectionCard({
   const status = unavailable
     ? "unavailable"
     : outside
-      ? "not in current results"
+      ? "not in view"
       : mismatch
         ? "current matches differ"
         : null;
@@ -365,7 +365,7 @@ export default function SelectionCard({
               content={
                 <Text variant="body-tertiary">
                   {outside || missed
-                    ? "Not in current results"
+                    ? "Not in view"
                     : locating
                       ? "Cancel showing in grid"
                       : (locateError ?? "Show in grid")}
@@ -381,9 +381,7 @@ export default function SelectionCard({
                     ? `Cancel showing ${title} in grid`
                     : `Show ${title} in grid`
                 }
-                title={
-                  outside || missed ? "Not in current results" : locateError
-                }
+                title={outside || missed ? "Not in view" : locateError}
                 leadingIcon={locating ? undefined : CenterFocusWeakIcon}
                 aria-busy={locating || undefined}
                 disabled={unavailable || outside || missed}
@@ -464,7 +462,7 @@ export default function SelectionCard({
                   backgroundColor={BackgroundColor.CardElevated}
                   color="text-secondary"
                 >
-                  Not in results
+                  Not in view
                 </Pill>
               )}
             </div>

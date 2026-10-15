@@ -23,7 +23,8 @@ import {
   gridSortByStore,
   gridSortDescendingStore,
 } from "../recoil/grid";
-import { useClearGridViewConstraints } from "./dataset";
+import { useClearGridViewConstraints, useScopedGridFilters } from "./dataset";
+import { useSetSelectionScopeBoundary } from "../recoil/selectionScope";
 
 afterEach(cleanup);
 
@@ -80,4 +81,37 @@ describe("opening a fresh grid scope", () => {
     expect(result.current.sortField).toBeNull();
     expect(result.current.sortDescending).toBe(false);
   });
+});
+
+it("refreshes constrained panels on membership edits without reloading all samples", () => {
+  const { result } = renderHook(
+    () => ({
+      scoped: useScopedGridFilters(),
+      publish: useSetSelectionScopeBoundary(),
+    }),
+    { wrapper: RecoilRoot },
+  );
+  act(() =>
+    result.current.publish({ domainId: "dataset", boundary: {}, revision: 1 }),
+  );
+  expect(result.current.scoped.revision).toBe(0);
+  act(() =>
+    result.current.publish({
+      domainId: "dataset",
+      boundary: { subsetId: "saved" },
+      revision: 2,
+    }),
+  );
+  expect(result.current.scoped.revision).toBe(2);
+  expect(result.current.scoped.filters).toEqual({
+    _selection_scope: { subsetId: "saved" },
+  });
+  act(() =>
+    result.current.publish({
+      domainId: "dataset",
+      boundary: { provider: { kind: "temporal-tags", values: ["turning"] } },
+      revision: 3,
+    }),
+  );
+  expect(result.current.scoped.revision).toBe(3);
 });

@@ -9,7 +9,6 @@ import {
   useInvalidateSelectionScope,
   useOpenSelectionBoundary,
   useResetSelectionBoundaries,
-  useSelectionBucketCommands,
   useSelectionScopeRevision,
   viewConversion,
   type SavedSubset,
@@ -24,13 +23,12 @@ import { SubsetPagesContext } from "./subsetPages";
 
 /**
  * Opens a saved subset (or the entire dataset) as the browsing boundary. A
- * fresh scope starts without captures or query constraints. Only the subset's
- * saved entity conversion carries into its new browsing view.
+ * fresh scope starts without query constraints and keeps captured choices.
+ * Only the subset's saved entity conversion carries into its new browsing view.
  */
 export function useOpenSubset(datasetId: string) {
   const { domainId } = useGridSelectionDataset();
   const [, setBoundary] = useGridSelectionBoundary();
-  const { clearAll: clear } = useSelectionBucketCommands(domainId);
   const clearViewConstraints = fos.useClearGridViewConstraints();
   const invalidate = useInvalidateSelectionScope(datasetId);
   const openBoundary = useOpenSelectionBoundary();
@@ -64,7 +62,6 @@ export function useOpenSubset(datasetId: string) {
       if (preferredGroupSlice && groupSlices.includes(preferredGroupSlice))
         setGroupSlice(preferredGroupSlice);
       clearViewConstraints();
-      clear();
       const targetDomain = selectionDomainId(
         datasetId,
         viewConversion(nextView)?.key ?? null,
@@ -80,7 +77,6 @@ export function useOpenSubset(datasetId: string) {
     [
       invalidate,
       clearViewConstraints,
-      clear,
       setBoundary,
       datasetId,
       domainId,

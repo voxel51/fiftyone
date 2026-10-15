@@ -40,7 +40,6 @@ import SubsetBrowser from "./SubsetBrowser";
 import { trayTheme } from "./theme";
 import { useDeleteSubset } from "./useDeleteSubset";
 import { subsetRows, useOpenSubset, useSavedSubset } from "./useSubsetScope";
-import { useSubsetScopeUrl } from "./useSubsetScopeUrl";
 
 /** e2e specs wait on the tab naming the scope it switched to */
 type ScopeTabE2EEvents = {
@@ -50,11 +49,9 @@ type ScopeTabE2EEvents = {
 /**
  * The samples panel's tab names what the grid is browsing: every sample, or
  * one saved subset. Its panel switches scope, creates empty subsets, and
- * edits or deletes saved subsets. Switching scope starts a fresh, empty
- * selection.
+ * edits or deletes saved subsets. Captures survive browsing-scope changes.
  */
 export default function SamplesScopeTab() {
-  useSubsetScopeUrl();
   const permission = fos.useSelectionSubsetDisabledReason();
   const selection = useGridSelection();
   const { datasetId, unit, enabled } = selection;

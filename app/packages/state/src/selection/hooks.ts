@@ -102,12 +102,11 @@ export function useSelectionBoundary(datasetId: string) {
   ] as const;
 }
 
-/** Prepares an empty selection in a domain before switching the grid to it. */
+/** Sets a domain's browsing boundary without changing its captured choices. */
 export function useOpenSelectionBoundary() {
   const store = useStore();
   return useCallback(
     (domainId: string, boundary: SelectionBoundary) => {
-      store.set(bucketCommandAtom(domainId), { type: "clear-all" });
       store.set(boundaryAtom(domainId), boundary);
     },
     [store],

@@ -690,8 +690,8 @@ export function reconcileSelection(
 }
 
 /**
- * Mount once in the grid. Publishes the tray's browsing boundary to the
- * legacy session so view-scoped queries (entry counts, sidebar counts)
+ * Mount once on the dataset page, outside its panels. Publishes the browsing
+ * boundary so view-scoped queries (entry counts, sidebar counts)
  * describe the same scope the grid pages do. Every domain's boundary is
  * mirrored too, as it is set, so counts for a view the grid is still
  * switching to are already scoped.
@@ -716,7 +716,7 @@ export function useSyncSelectionScope() {
   useEffect(() => {
     setScope(enabled ? { domainId, boundary, revision } : null);
   }, [domainId, enabled, boundary, revision, setScope]);
-  // This effect withdraws the boundary when the grid unmounts.
+  // This effect withdraws the boundary when the dataset page unmounts.
   useEffect(() => () => setScope(null), [setScope]);
 }
 

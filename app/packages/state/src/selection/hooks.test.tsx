@@ -10,6 +10,7 @@ import {
   useRefreshSelectionMetadata,
   useRemoveSelectionBucket,
   useSelectionBoundary,
+  useOpenSelectionBoundary,
   useSelectionBucketActions,
   useSelectionBucketCaptures,
   useSelectionBucketCommands,
@@ -84,6 +85,7 @@ describe("dataset-isolated captures", () => {
         selected: useEpisodeSelection(dataset),
         actions: useEpisodeSelectionActions(dataset),
         boundary: useSelectionBoundary(dataset),
+        open: useOpenSelectionBoundary(),
       }),
       { initialProps: { dataset: "a" }, wrapper },
     );
@@ -94,7 +96,7 @@ describe("dataset-isolated captures", () => {
       }),
     );
     act(() =>
-      result.current.boundary[1]({
+      result.current.open("a", {
         subsetId: "different",
         provider: { kind: "temporal-tags", values: ["review"] },
       }),

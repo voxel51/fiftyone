@@ -208,7 +208,7 @@ export default function SelectionSummary({
         )}
         {explicit && outside > 0 && (
           <Text variant="caption" color="text-secondary">
-            {plural(outside, unit.one, unit.many)} not in current results
+            {plural(outside, unit.one, unit.many)} not in view
           </Text>
         )}
         {counts.unavailable > 0 && (

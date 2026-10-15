@@ -363,8 +363,8 @@ describe("SelectionTray", () => {
       "1episode selected",
       "2segments selected",
     ]);
-    expect(screen.getByText("1 episode not in current results")).toBeTruthy();
-    expect(screen.getByText("Not in results")).toBeTruthy();
+    expect(screen.getByText("1 episode not in view")).toBeTruthy();
+    expect(screen.getByText("Not in view")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
   });
 
@@ -442,8 +442,8 @@ describe("SelectionTray", () => {
     mocks.selection.selected = new Map([["full", fullEpisode]]);
     mocks.selection.candidates = new Map();
     render(<SelectionTray />);
-    expect(screen.queryByText(/not in current results/)).toBeNull();
-    expect(screen.queryByText("Not in results")).toBeNull();
+    expect(screen.queryByText(/not in view/)).toBeNull();
+    expect(screen.queryByText("Not in view")).toBeNull();
   });
 
   it("collapses the strip without touching the selection, and clears separately", () => {
