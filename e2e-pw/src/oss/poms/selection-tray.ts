@@ -124,13 +124,13 @@ export class SelectionTrayPom {
   }
 
   /** Clear one kind in a mixed selection, retaining the other cards. */
-  async clearKind(kind: string, cards: number) {
+  async clearKind(kind: string, cards: number, outside = 0) {
     await this.afterSettled(
       () =>
         this.locator
           .getByRole("button", { name: `Clear selected ${kind}`, exact: true })
           .click(),
-      { cards },
+      { cards, outside },
     );
   }
 
