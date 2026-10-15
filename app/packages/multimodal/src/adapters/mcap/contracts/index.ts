@@ -418,6 +418,13 @@ export interface McapNumericSeriesResult {
 /** Numeric field projection requested for one MCAP topic in a shared slice. */
 export interface McapNumericSeriesSelection {
   readonly fieldPaths: readonly string[];
+
+  /**
+   * On a slice's first page, also project the topic's newest message before
+   * `startTimeNs`, so a state published only on change is known at the
+   * window start. That sample precedes the window in the result.
+   */
+  readonly includePrior?: boolean;
   readonly topic: string;
 }
 

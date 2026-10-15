@@ -750,6 +750,96 @@ describe("readMcapNumericSeriesSlice", () => {
     expect(result.usage.messagesDecoded).toBe(2);
   });
 
+  it("projects the newest message before a first page for held states", async () => {
+    const channel = createChannel({
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/drive",
+    });
+    const prior = createMessage(
+      new TextEncoder().encode(JSON.stringify({ mode: "SPORT" })),
+      { logTime: 5_000_000_000n },
+    );
+    const inWindow = createMessage(
+      new TextEncoder().encode(JSON.stringify({ mode: "DRIVE" })),
+      { logTime: 40_000_000_000n },
+    );
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        [
+          "/drive",
+          [
+            {
+              channelId: 1,
+              chunkStartOffset: 0n,
+              logTimeNs: 5_000_000_000n,
+              messageOffset: 0n,
+              topic: "/drive",
+            },
+          ],
+        ],
+      ]);
+    });
+    const readIndexedMessages = vi.fn(async () => [prior]);
+    const reader = {
+      ...createReader({
+        channel,
+        messages: [],
+        schema: createSchema(new Uint8Array(), { id: 0 }),
+      }),
+      readBoundedMessages: vi.fn(async () => ({
+        coverageByTopic: new Map([
+          ["/drive", [{ endNs: 60_000_000_000n, startNs: 30_000_000_000n }]],
+        ]),
+        messages: [inWindow],
+        stopReason: "source-exhausted" as const,
+        usage: createUsage({ chunksOpened: 1, messagesDecoded: 1 }),
+      })),
+      readIndexedMessages,
+      readLatestIndexedMessageTimes,
+    };
+    const request = {
+      absoluteBudget: budget,
+      absoluteMaxChunks: 4,
+      bucketDurationNs: 1_000_000_000n,
+      budget,
+      endTimeNs: 60_000_000_000n,
+      maxChunks: 2,
+      selections: [
+        { fieldPaths: ["mode"], includePrior: true, topic: "/drive" },
+      ],
+      source: createSource(),
+      startTimeNs: 30_000_000_000n,
+    };
+
+    const result = await readMcapNumericSeriesSlice({
+      reader,
+      request,
+      timeline,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limitPerTopic: 1,
+        timeNs: 29_999_999_999n,
+        topics: ["/drive"],
+      }),
+    );
+    const [field] = result.series[0].fields;
+    expect(field.labels).toEqual(["SPORT", "DRIVE"]);
+    expect([...field.values]).toEqual([0, 1]);
+    expect(field.timesSec[0]).toBeLessThan(30);
+
+    // Continuation pages resume inside the window; their prior is known.
+    readLatestIndexedMessageTimes.mockClear();
+    await readMcapNumericSeriesSlice({
+      reader,
+      request: { ...request, continuation: {} as McapReadContinuation },
+      timeline,
+    });
+    expect(readLatestIndexedMessageTimes).not.toHaveBeenCalled();
+  });
+
   it("escalates exactly one indivisible group after a zero-progress grant", async () => {
     const continuation = {
       endTimeNs: 2_000_000_000n,

@@ -561,6 +561,74 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     expect(state?.status).toBe("ready");
   });
 
+  it("holds a sparse text state from before the window", async () => {
+    const source = createSource();
+    const client = createClient({
+      enumerateNumericFields: vi.fn(async () => [
+        {
+          availability: "ready" as const,
+          encoding: "json",
+          fields: [{ path: "mode", valueType: "string" }],
+          sourceName: "/drive",
+          streamId: "/drive",
+        },
+      ]),
+      readNumericSeriesSlice: vi.fn(
+        async (request: NumericSeriesSliceRequest) => ({
+          ...sliceResult(request, { stopReason: "source-exhausted" }),
+          // The topic published "SPORT" before the window and nothing inside
+          // it: only the prior sample comes back.
+          series: [
+            {
+              baseTimeNs: 0n,
+              fields: [
+                {
+                  labels: ["SPORT"],
+                  path: "mode",
+                  timesSec: Float64Array.from([5]),
+                  values: Float64Array.from([0]),
+                },
+              ],
+              sampleCount: 1,
+              streamId: "/drive",
+              truncated: false,
+            },
+          ],
+        }),
+      ),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await enumerateFields(context);
+    await act(async () => {
+      context.current?.subscribeSeries("/drive", "mode");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+
+    const request = sliceRequestOf(client, 0);
+    expect(request.selections).toEqual([
+      { fields: ["mode"], includePrior: true, stream: "/drive" },
+    ]);
+    expect(request.window.startNs).toBeGreaterThan(5_000_000_000n);
+    const state = context.current?.seriesByKey.get(
+      numericSeriesKey("/drive", "mode"),
+    );
+    expect(state?.labels).toEqual(["SPORT"]);
+    expect([...(state?.timesSec ?? [])]).toEqual([5]);
+    expect([...(state?.values ?? [])]).toEqual([0]);
+  });
+
   it("publishes the first page before continuing the horizon", async () => {
     const source = createSource();
     const continuation = {} as ReadContinuation;

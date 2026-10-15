@@ -1,6 +1,8 @@
-import type {
-  McapIndexedReaderLike,
-  McapReadContinuation,
+import type { McapTypes } from "@mcap/core";
+import {
+  materializeIndexedEntries,
+  type McapIndexedReaderLike,
+  type McapReadContinuation,
 } from "../../reader/index";
 import {
   consumeMcapBoundedGrant,
@@ -330,6 +332,14 @@ export async function readMcapNumericSeriesSlice({
     startTimeNs: startTime,
     topics: request.selections.map((selection) => selection.topic),
   };
+  // Runs beside the grant; best effort, since a missing prior only leaves
+  // the window's leading held state unknown.
+  const priorRead = readPriorMessages({
+    reader,
+    request,
+    signal,
+    timeline,
+  }).catch(() => []);
   const first = await reader.readBoundedMessages(boundedRequest);
   let bounded = first;
   let usage = first.usage;
@@ -356,6 +366,17 @@ export async function readMcapNumericSeriesSlice({
   }
 
   const baseTimeNs = mcapTimelineRangeFromReader(reader, timeline).startTimeNs;
+  for (const message of await priorRead) {
+    const selected = selectionsByChannelId.get(message.channelId);
+    if (selected) {
+      pushNumericSeriesMessage(
+        selected.accumulator,
+        message.data,
+        timeline.messageTimeNs(message),
+        selected.decodeRecord,
+      );
+    }
+  }
   await consumeMcapBoundedGrant({
     items: bounded.messages,
     onItem: (message) => {
@@ -397,6 +418,51 @@ export async function readMcapNumericSeriesSlice({
     stopReason: bounded.stopReason,
     usage,
   };
+}
+
+/**
+ * Reads the newest message before a slice's first page for each selection
+ * that asked for it: a state published only on change has no sample inside
+ * a window it holds through. Bounded to one index-footer probe and one
+ * message per topic; readers or timelines without indexed predecessor
+ * lookup return none.
+ */
+async function readPriorMessages({
+  reader,
+  request,
+  signal,
+  timeline,
+}: {
+  readonly reader: McapIndexedReaderLike;
+  readonly request: McapReadNumericSeriesSliceRequest;
+  readonly signal?: AbortSignal;
+  readonly timeline: McapTimelineStrategy;
+}): Promise<readonly McapTypes.TypedMcapRecords["Message"][]> {
+  const topics = request.selections
+    .filter((selection) => selection.includePrior)
+    .map((selection) => selection.topic);
+  if (
+    topics.length === 0 ||
+    request.continuation !== undefined ||
+    !reader.readLatestIndexedMessageTimes ||
+    !timeline.indexedMessageTimesRequest
+  ) {
+    return [];
+  }
+  const timeNs = timeline.indexedMessageTimesRequest({
+    endTimeNs: request.startTimeNs - 1n,
+  }).endTimeNs;
+  if (timeNs === undefined) return [];
+  const latestByTopic = await reader.readLatestIndexedMessageTimes({
+    limitPerTopic: 1,
+    signal,
+    timeNs,
+    topics,
+  });
+  const entries = topics.flatMap((topic) => latestByTopic.get(topic) ?? []);
+  return entries.length > 0
+    ? materializeIndexedEntries(reader, entries, signal)
+    : [];
 }
 
 function createNumericSeriesAccumulator(

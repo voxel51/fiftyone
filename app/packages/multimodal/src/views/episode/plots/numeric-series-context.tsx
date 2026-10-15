@@ -56,6 +56,7 @@ import type {
   ReadWorkBudget,
 } from "../../../ports";
 import { errorMessage } from "../../../utils/errors";
+import { nsDeltaToSeconds } from "../../../utils/nanoseconds";
 import {
   aggregateAlignedNumericSeries,
   ALIGNED_NUMERIC_BUCKET_MAX_POINTS,
@@ -425,12 +426,15 @@ export function NumericSeriesBridge({
       baseTimeNs,
       bucketDurationNs,
       fields,
+      priorAtNs,
       ranges,
       stream,
       truncated,
     }: {
       readonly baseTimeNs: bigint;
       readonly bucketDurationNs: bigint;
+      /** Window start a slice's first page resolved held-state priors for. */
+      readonly priorAtNs?: bigint;
       readonly fields: readonly {
         readonly bucketIndexes?: BigInt64Array;
         readonly labels?: readonly string[];
@@ -445,7 +449,7 @@ export function NumericSeriesBridge({
       const cache = cacheForOrigin(baseTimeNs);
       for (const field of fields) {
         const key = numericSeriesKey(stream, field.path);
-        const values = textSeries.encode(key, field);
+        const values = textSeries.encode(key, field, baseTimeNs, priorAtNs);
         failures.clear(key);
         if (truncated) {
           truncatedKeys.add(key);
@@ -592,12 +596,17 @@ export function NumericSeriesBridge({
             })),
             visible.unavailableRanges,
           );
-          const aggregated = aggregateAlignedNumericSeries(
-            flat.timesSec,
-            flat.values,
-            tileOriginNs,
-            bucketDurationNs,
-            flat.bucketIndexes,
+          const aggregated = textSeries.withPrior(
+            key,
+            aggregateAlignedNumericSeries(
+              flat.timesSec,
+              flat.values,
+              tileOriginNs,
+              bucketDurationNs,
+              flat.bucketIndexes,
+            ),
+            horizon.startNs,
+            nsDeltaToSeconds(horizon.startNs - tileOriginNs),
           );
           const labels = textSeries.labels(key);
           setPublished(key, {
@@ -665,6 +674,7 @@ export function NumericSeriesBridge({
               includeDataFallback: false,
               sampleTimeNs,
             });
+            textSeries.noteCatalog(streams);
             publish({ status: "ready", streams });
             if (
               isCancelled() ||
@@ -677,9 +687,10 @@ export function NumericSeriesBridge({
                 includeDataFallback: true,
                 sampleTimeNs,
               })
-              .then((augmented) =>
-                publish({ status: "ready", streams: augmented }),
-              )
+              .then((augmented) => {
+                textSeries.noteCatalog(augmented);
+                publish({ status: "ready", streams: augmented });
+              })
               .catch(() => {
                 // Keep the schema catalog when optional augmentation fails.
               });
@@ -925,6 +936,11 @@ export function NumericSeriesBridge({
             range,
             selections: [...fieldsByStream].map(([stream, fields]) => ({
               fields: [...fields],
+              ...([...fields].some((field) =>
+                textSeries.isText(numericSeriesKey(stream, field)),
+              )
+                ? { includePrior: true }
+                : {}),
               stream,
             })),
           };
@@ -1003,6 +1019,9 @@ export function NumericSeriesBridge({
                 baseTimeNs: series.baseTimeNs,
                 bucketDurationNs: sliceJob.bucketDurationNs,
                 fields: series.fields,
+                ...(sliceJob.continuation === undefined
+                  ? { priorAtNs: sliceJob.range.startNs }
+                  : {}),
                 ranges: result.coverageByStream.get(series.streamId) ?? [],
                 stream: series.streamId,
                 truncated:
