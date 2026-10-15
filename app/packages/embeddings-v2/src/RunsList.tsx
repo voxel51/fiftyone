@@ -176,6 +176,7 @@ export default function RunsList({
     }));
   const unregistered = [...delegated, ...inProgress];
   const settledRuns = runs?.filter((r) => r.ready || r.error) ?? [];
+  const total = settledRuns.length + unregistered.length;
 
   const { open: openPending, screen: pendingScreen } = usePendingRunScreen(
     unregistered,
@@ -196,10 +197,11 @@ export default function RunsList({
 
   return (
     <div className="emb-runs-page" data-cy="embeddings-runs-page">
-      {runs.length > 0 && (
+      {total > 0 && (
         <div className="emb-runs-header">
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-            {runs.length} visualization{runs.length === 1 ? "" : "s"}
+            {total} visualization
+            {total === 1 ? "" : "s"}
           </Text>
           {onCreate && (
             <Button
