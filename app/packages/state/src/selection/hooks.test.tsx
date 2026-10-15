@@ -138,6 +138,11 @@ describe("session persistence", () => {
       result.current.actions.capture({
         episodeId: "second",
         members: [{ episodeId: "second", kind: "episode" }],
+        node: {
+          id: "second",
+          sample: { _id: "second", cameras: { _cls: "Group", name: "left" } },
+          urls: [{ field: "filepath", url: "https://media.example/signed" }],
+        },
       }),
     );
     expect(
@@ -147,6 +152,14 @@ describe("session persistence", () => {
         .map((entry: { episodeId: string }) => entry.episodeId)
         .sort(),
     ).toEqual(["persisted", "second"]);
+    const saved: EpisodeSelection[] = JSON.parse(
+      sessionStorage.getItem("fiftyone:grid-selection:seeded") ?? "[]",
+    );
+    expect(saved.find((capture) => capture.episodeId === "second")).toEqual({
+      episodeId: "second",
+      members: [{ episodeId: "second", kind: "episode" }],
+      groupSlice: "left",
+    });
     act(() => result.current.actions.clear());
     expect(sessionStorage.getItem("fiftyone:grid-selection:seeded")).toBeNull();
   });

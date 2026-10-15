@@ -87,15 +87,30 @@ function readCaptures(datasetId: string): Captures {
   }
 }
 
+function persistedCapture({ node, ...capture }: EpisodeSelection) {
+  // A dataset has one Group field, whose name may be customized. Keep its
+  // slice even though renderer nodes and signed URLs are not persisted.
+  for (const field of Object.values(node?.sample ?? {})) {
+    if (
+      field &&
+      typeof field === "object" &&
+      "_cls" in field &&
+      field._cls === "Group" &&
+      "name" in field &&
+      typeof field.name === "string"
+    )
+      return { ...capture, groupSlice: field.name };
+  }
+  return capture;
+}
+
 function writeCaptures(datasetId: string, value: Captures) {
   try {
     const key = STORAGE_PREFIX + datasetId;
     if (value.size)
       storage()?.setItem(
         key,
-        JSON.stringify(
-          [...value.values()].map(({ node: _node, ...capture }) => capture),
-        ),
+        JSON.stringify([...value.values()].map(persistedCapture)),
       );
     else storage()?.removeItem(key);
   } catch {
@@ -352,6 +367,7 @@ function withKnownMetadata(
       previewStart,
       unavailable,
       groupId,
+      groupSlice,
       node,
       aspectRatio,
       crop,
@@ -362,6 +378,7 @@ function withKnownMetadata(
       ...(previewStart !== undefined && { previewStart }),
       ...(unavailable !== undefined && { unavailable }),
       ...(groupId !== undefined && { groupId }),
+      ...(groupSlice !== undefined && { groupSlice }),
       ...(node !== undefined && { node }),
       ...(aspectRatio !== undefined && { aspectRatio }),
       ...(crop !== undefined && { crop }),

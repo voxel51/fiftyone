@@ -8,7 +8,11 @@ import AgentPromotion from "./AgentPromotion";
 import { SelectionAssistantFallbackContext } from "./SelectionAssistantFallbackContext";
 import OperatorPlacements from "@fiftyone/operators/src/OperatorPlacements";
 import { Places } from "@fiftyone/operators/src/types";
-import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
+import {
+  isTextEditingTarget,
+  KnownContexts,
+  useUndoRedo,
+} from "@fiftyone/commands";
 import * as fos from "@fiftyone/state";
 import {
   FOLD_STEP,
@@ -50,6 +54,7 @@ import {
 } from "react";
 import { getHoveredTile } from "../gridTileRegistry";
 import BucketColumn from "./BucketColumn";
+import { capturedGroupSlice } from "./capturedGroupSlice";
 import FoldCard from "./FoldCard";
 import { SplitIcon } from "./muiIcons";
 import {
@@ -234,11 +239,8 @@ function keysInert(event: globalThis.KeyboardEvent) {
   return (
     event.metaKey ||
     event.altKey ||
-    Boolean(
-      target &&
-      (target.isContentEditable ||
-        /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)),
-    ) ||
+    event.isComposing ||
+    isTextEditingTarget(target) ||
     Boolean(document.querySelector("[role=dialog]"))
   );
 }
@@ -265,6 +267,7 @@ export default function SelectionTray({
 }) {
   useRegisterSelectionActions();
   const selection = useGridSelection(getPreview);
+  const groupField = fos.useGroupField();
   const [boundary] = useGridSelectionBoundary();
   const invalidate = useInvalidateSelectionScope(selection.datasetId);
   const layout = useSelectionBucketActions(selection.datasetId);
@@ -382,19 +385,22 @@ export default function SelectionTray({
         }
         return;
       }
-      if (!/^[1-9]$/.test(event.key)) return;
+      if (event.repeat || !/^[1-9]$/.test(event.key)) return;
       const sampleId = hoveredCard.current ?? getHoveredTile();
       if (!sampleId) return;
       const position = Number(event.key);
       const bucketId = sectionAt(position - 1);
       if (!bucketId) return;
       event.preventDefault();
+      event.stopPropagation();
       // New sections show themselves
       if (position > sectionCount) setCollapsed(false);
       void toggle(sampleId, bucketId);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    // A focused grid control may stop bubbling; hover sorting owns these keys
+    // before a media viewer or control can handle them.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [modalOpen, sectionAt, sectionCount, showStrip, toggle]);
 
   const context: GridSelectionActionContext = {
@@ -412,7 +418,7 @@ export default function SelectionTray({
     view: selection.request.view,
     preferredGroupSlice: selection.conversion
       ? undefined
-      : selection.request.slice,
+      : capturedGroupSlice(captured, groupField, selection.request.slice),
     bucket:
       explicit && (multi || first.name)
         ? { id: active, name: titleAt(active) }

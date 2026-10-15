@@ -14,6 +14,7 @@ import {
   type SelectionBucketIcon,
   type SelectionUnit,
 } from "@fiftyone/state/src/selection";
+import { useOutsideClick } from "@fiftyone/state";
 import {
   BackgroundColor,
   Button,
@@ -31,7 +32,7 @@ import {
   Text,
   TextColor,
 } from "@voxel51/voodo";
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import FoldCard from "./FoldCard";
 import { isSectionDrag, readSectionDrag } from "./sectionDrag";
 import SectionShape, { SECTION_SHAPES } from "./SectionShape";
@@ -141,7 +142,7 @@ function ShapePicker({
   );
 }
 
-/** Renames a section in place; Enter saves and Escape cancels. */
+/** Renames a section in place; Enter or clicking outside saves, Escape cancels. */
 function RenameField({
   initial,
   onSave,
@@ -153,8 +154,10 @@ function RenameField({
 }) {
   const [draft, setDraft] = useState(initial);
   const name = draft.trim();
+  const container = useRef<HTMLSpanElement>(null);
+  useOutsideClick(container, () => (name ? onSave(name) : onCancel()));
   return (
-    <span className={styles.renameField} onClick={stop}>
+    <span ref={container} className={styles.renameField} onClick={stop}>
       <Input
         size="sm"
         aria-label="Section name"
