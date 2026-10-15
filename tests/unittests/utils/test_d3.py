@@ -690,6 +690,14 @@ class TestD3Model:
         expected = _softmax([2.5 * h, -2.5 * h])
         assert label.confidence == pytest.approx(expected[0], abs=1e-5)
 
+    def test_filter_classes_keep_only_their_labels(self, runtime):
+        model = _model({"questions": {"a": NOUL}, "filter_classes": ["true"]})
+
+        labels = model.predict_all([_image(shade=230), _image(shade=20)])
+
+        assert labels[0].label == "true"
+        assert labels[1] is None
+
 
 class TestD3ApplyModel:
     """Test that apply_model loads, pads and labels samples in batches"""
@@ -805,6 +813,19 @@ class TestD3OutputProcessor:
 
         assert sample.d3_sure.label == "true"
         assert not sample.has_field("d3_unsure")
+
+    def test_classes_drop_other_labels(self):
+        label = self._process({"q": NOUL}, [[0.0, 2.0]], classes=["false"])[0]
+
+        assert label is None
+
+    def test_classes_omit_dropped_answers_from_a_dict(self):
+        questions = {"yes": NOUL, "no": NOUL, "sharp": SCORE}
+        rows = [[0.0, 2.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+
+        labels = self._process(questions, rows, classes=["true"])[0]
+
+        assert set(labels) == {"yes", "sharp"}
 
     def test_bfloat16_output_is_read(self):
         processor = D3OutputProcessor()

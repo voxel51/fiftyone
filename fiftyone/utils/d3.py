@@ -409,7 +409,8 @@ class D3OutputProcessor(fout.OutputProcessor):
             frame_size: unused
             confidence_thresh (None): an optional confidence below which a
                 classification is omitted
-            classes (None): unused
+            classes (None): an optional iterable of options; a
+                classification whose label is not among them is omitted
             questions (None): the question schema, a dict mapping question
                 ID to question
             **kwargs: unused
@@ -423,7 +424,9 @@ class D3OutputProcessor(fout.OutputProcessor):
         for start in range(0, len(values), len(questions)):
             rows = values[start : start + len(questions)]
             labels = {
-                question_id: self._to_label(question, row, confidence_thresh)
+                question_id: self._to_label(
+                    question, row, confidence_thresh, classes
+                )
                 for row, (question_id, question) in zip(
                     rows, questions.items()
                 )
@@ -432,15 +435,15 @@ class D3OutputProcessor(fout.OutputProcessor):
             if len(labels) == 1:
                 results.append(next(iter(labels.values())))
             else:
-                # An answer the threshold dropped is left out, since a new
-                # field cannot take its type from None
+                # An answer the threshold or the classes dropped is left out,
+                # since a new field cannot take its type from None
                 results.append(
                     {k: v for k, v in labels.items() if v is not None}
                 )
 
         return results
 
-    def _to_label(self, question, row, confidence_thresh):
+    def _to_label(self, question, row, confidence_thresh, classes=None):
         """The label of one answer from its row of answer-code logits."""
         # The question's options take the first codes, in the release's
         # order; report them in the caller's
@@ -461,6 +464,9 @@ class D3OutputProcessor(fout.OutputProcessor):
             return fol.Regression(value=value, confidence=confidence)
 
         if confidence_thresh is not None and confidence < confidence_thresh:
+            return None
+
+        if classes is not None and options[best] not in classes:
             return None
 
         label = fol.Classification(label=options[best], confidence=confidence)
