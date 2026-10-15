@@ -44,7 +44,7 @@ import { type Entry, useRouterContext } from "./routing";
 import useEventSource from "./useEventSource";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useSetters from "./useSetters";
-import { changesSampleIdentity } from "./useSetters/selectionIdentity";
+import { changesHistorySampleIdentity } from "./useSetters/selectionIdentity";
 import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
@@ -154,19 +154,9 @@ const dispatchSideEffect = ({
 
   // A directly loaded saved query may have no stages in history yet. Let
   // the tray reconcile its resolved domain rather than treat it as samples.
-  const currentViewKnown =
-    !currentEntry.state.savedViewSlug ||
-    Boolean(currentEntry.state.view?.length);
-  const nextViewKnown =
-    !nextEntry.state.savedViewSlug || Boolean(nextEntry.state.view?.length);
   if (
     currentDataset !== nextDataset ||
-    (currentViewKnown &&
-      nextViewKnown &&
-      changesSampleIdentity(
-        currentEntry.state.view ?? [],
-        nextEntry.state.view ?? [],
-      ))
+    changesHistorySampleIdentity(currentEntry.state, nextEntry.state)
   ) {
     session.selectedSamples = new Map();
     session.sampleSelectionStyle = fos.DEFAULT_SELECTION_STYLE;

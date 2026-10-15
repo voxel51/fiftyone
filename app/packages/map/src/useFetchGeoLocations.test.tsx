@@ -52,3 +52,47 @@ it("keeps the current subset on late responses and reloads edited membership", a
     }),
   );
 });
+
+it("refetches a failed scope but caches a successful empty response", async () => {
+  fetch.mockReset().mockRejectedValueOnce(new Error("network unavailable"));
+  const report = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  const dataset = { name: "geo-retry" } as fos.State.Dataset;
+  const view: fos.State.Stage[] = [];
+  const extended = {} as typeof fos.extendedStages;
+  const filters = {};
+  const mount = () =>
+    renderHook(
+      () => {
+        const status = useFetchGeoLocations({
+          dataset,
+          view,
+          extended,
+          filters,
+          path: "location",
+          revision: 0,
+        });
+        return { ...status, points: useRecoilValue(sampleLocationMapAtom) };
+      },
+      { wrapper: RecoilRoot },
+    );
+  try {
+    const first = mount();
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(first.result.current.points).toEqual({});
+    first.unmount();
+
+    fetch.mockResolvedValue({});
+    const retry = mount();
+    await waitFor(() => expect(retry.result.current.loading).toBe(false));
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(retry.result.current.points).toEqual({});
+    retry.unmount();
+
+    const cached = mount();
+    expect(cached.result.current.loading).toBe(false);
+    expect(cached.result.current.points).toEqual({});
+    expect(fetch).toHaveBeenCalledTimes(2);
+  } finally {
+    report.mockRestore();
+  }
+});

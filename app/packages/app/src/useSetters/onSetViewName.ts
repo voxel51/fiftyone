@@ -59,6 +59,7 @@ const onSetViewName: RegisteredSetter =
           }),
           {
             view: nextView ?? [],
+            viewResolved: true,
             schemaExclusion,
           },
         );

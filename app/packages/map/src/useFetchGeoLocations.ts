@@ -30,13 +30,13 @@ const fetchGeoLocations = async (params: {
   extended: typeof fos.extendedStages;
   dataset: string;
   path: string;
-}): Promise<SampleLocationMap> => {
+}): Promise<SampleLocationMap | null> => {
   try {
     const response = await getFetchFunction()("POST", "/geo", params);
     return response as SampleLocationMap;
   } catch (error) {
     console.error(error);
-    return {};
+    return null;
   }
 };
 
@@ -89,16 +89,25 @@ const useFetchGeoLocations = ({
       dataset: dataset.name,
       path,
     }).then((res) => {
-      geoLocationsCache.set(key, res);
+      if (res) geoLocationsCache.set(key, res);
       if (active) {
-        setSampleLocationMap(res);
+        setSampleLocationMap(res ?? {});
         setLoading(false);
       }
     });
     return () => {
       active = false;
     };
-  }, [key, dataset, filters, view, path, extended, revision]);
+  }, [
+    key,
+    dataset,
+    filters,
+    view,
+    path,
+    extended,
+    revision,
+    setSampleLocationMap,
+  ]);
 
   return {
     loading,

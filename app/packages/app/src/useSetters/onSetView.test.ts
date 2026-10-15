@@ -84,7 +84,7 @@ describe("view changes that land during a refresh", () => {
   it("keep the schema exclusion when a saved query loads", () => {
     expect(run(onSetViewName, "kept")).toHaveBeenCalledWith(
       "/datasets/dataset",
-      { view: [], schemaExclusion: ["secret"] },
+      { view: [], viewResolved: true, schemaExclusion: ["secret"] },
     );
   });
 });
@@ -150,7 +150,7 @@ it("records the resolved conversion when loading a saved query", () => {
   const session = { selectedSamples };
   expect(run(onSetViewName, "patches", session)).toHaveBeenCalledWith(
     "/datasets/dataset",
-    { view: stages, schemaExclusion: ["secret"] },
+    { view: stages, viewResolved: true, schemaExclusion: ["secret"] },
   );
   expect(session.selectedSamples).toBe(selectedSamples);
 });
