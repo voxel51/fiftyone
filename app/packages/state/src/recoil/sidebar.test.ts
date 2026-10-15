@@ -819,3 +819,31 @@ describe("sidebarPaths", () => {
     expect(paths()).not.toBe(first);
   });
 });
+
+describe("withMissingSidebarPaths", () => {
+  const modal = [
+    { name: "metadata", paths: ["metadata.width"], expanded: true },
+    { name: "labels", paths: ["gt"], expanded: false },
+  ];
+
+  it("adds the paths the modal lacks, keeping its own groups", () => {
+    const grid = [
+      { name: "labels", paths: ["cls", "gt"], expanded: true },
+      { name: "primitives", paths: ["id"], expanded: true },
+      { name: "metadata", paths: ["metadata.width"], expanded: false },
+    ];
+
+    expect(sidebar.withMissingSidebarPaths(modal, grid)).toStrictEqual([
+      { name: "metadata", paths: ["metadata.width"], expanded: true },
+      { name: "labels", paths: ["gt", "cls"], expanded: false },
+      { name: "primitives", paths: ["id"], expanded: true },
+    ]);
+    expect(modal[1].paths).toStrictEqual(["gt"]);
+  });
+
+  it("returns the modal groups themselves when nothing is missing", () => {
+    const grid = [{ name: "labels", paths: ["gt"], expanded: true }];
+
+    expect(sidebar.withMissingSidebarPaths(modal, grid)).toBe(modal);
+  });
+});

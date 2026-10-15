@@ -69,7 +69,10 @@ vi.mock("../recoil/dynamicGroups", () => ({
   shouldRenderImaVidLooker: () => "imavid",
   isDynamicGroup: "dynamic-group",
 }));
-vi.mock("../recoil/schema", () => ({ fieldSchema: () => "schema" }));
+vi.mock("../recoil/schema", () => ({
+  fieldSchema: () => "schema",
+  lookerFieldSchema: () => "schema",
+}));
 vi.mock("../recoil/selectors", () => ({
   datasetName: "dataset",
   dynamicGroupsTargetFrameRate: "frame-rate",
