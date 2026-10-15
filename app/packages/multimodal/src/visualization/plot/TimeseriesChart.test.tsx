@@ -50,6 +50,7 @@ interface MockOptions {
 }
 
 interface MockChart {
+  readonly cursor: { idx: number | null };
   readonly ctx: {
     font: string;
     readonly measureText: (value: string) => { readonly width: number };
@@ -83,6 +84,7 @@ vi.mock("uplot", () => ({
       restore: vi.fn(),
       save: vi.fn(),
     };
+    cursor: { idx: number | null } = { idx: null };
     options: MockOptions;
     over = document.createElement("div");
     root = document.createElement("div");
@@ -704,6 +706,113 @@ describe("TimeseriesChart interactions", () => {
     runHooks(chart.options.hooks?.setSelect, chart);
     publishPlayhead?.(100);
     expect(chart.scales.x).toEqual({ min: 45, max: 105 });
+    unmount();
+  });
+});
+
+describe("TimeseriesChart state lanes", () => {
+  const MIXED_DATA = [
+    [0, 10, 20],
+    [1, 3, 2],
+    [0, undefined, 1],
+  ] as AlignedData;
+
+  interface StateLaneOptions {
+    readonly axes: readonly {
+      readonly filter: (chart: MockChart, splits: number[]) => unknown[];
+      readonly size: (chart: MockChart, values: string[]) => number;
+    }[];
+    readonly scales: Record<string, unknown>;
+    readonly series: readonly {
+      readonly scale?: string;
+      readonly value?: (
+        chart: MockChart,
+        value: number | null,
+        seriesIndex: number,
+        dataIndex: number | null,
+      ) => string;
+    }[];
+  }
+
+  function renderMixedChart() {
+    return render(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={MIXED_DATA}
+        durationSec={20}
+        series={[
+          { color: "#f00", label: "speed" },
+          { color: "#0f0", kind: "states", label: "/vehicle.road" },
+        ]}
+        stateLabels={[undefined, ["dry", "wet"]]}
+      />,
+    );
+  }
+
+  it("fits lines alone and reserves the lane band below them", () => {
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(200);
+    const { unmount } = renderMixedChart();
+    const chart = lastChart();
+
+    // Lines span [1, 3] padded by 5%; one 20px lane plus gaps reserves 28px
+    // of the 200px plot, so the line range extends below by 28/172.
+    expect(chart.scales.y.max).toBeCloseTo(3.1, 6);
+    expect(chart.scales.y.min).toBeCloseTo(0.9 - (2.2 * 28) / 172, 6);
+    const options = chart.options as unknown as StateLaneOptions;
+    expect(options.axes[1].filter(chart, [0, 1, 2, 3])).toEqual([
+      null,
+      1,
+      2,
+      3,
+    ]);
+    unmount();
+  });
+
+  it("draws state series through the lane hook and labels held values", () => {
+    const { unmount } = renderMixedChart();
+    const chart = lastChart();
+    const options = chart.options as unknown as StateLaneOptions;
+    const stateSeries = options.series[2];
+
+    expect(stateSeries.scale).toBe("state");
+    expect(stateSeries.value?.(chart, null, 2, 1)).toBe("dry");
+    expect(stateSeries.value?.(chart, 1, 2, 2)).toBe("wet");
+    expect(stateSeries.value?.(chart, null, 2, null)).toBe("--");
+    // uPlot snaps the series to its next sample (index 2, "wet"), but the
+    // cursor itself sits at index 1, where "dry" is still held.
+    chart.cursor.idx = 1;
+    expect(stateSeries.value?.(chart, 1, 2, 2)).toBe("dry");
+    // The gutter fits the lane name as well as numeric tick labels.
+    expect(options.axes[1].size(chart, ["1"])).toBe(
+      Math.ceil("/vehicle.road".length * 7 + 16),
+    );
+    unmount();
+  });
+
+  it("frames a lanes-only chart without numeric ticks", () => {
+    const { unmount } = render(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={
+          [
+            [0, 10],
+            [0, 1],
+          ] as AlignedData
+        }
+        durationSec={20}
+        series={[{ color: "#0f0", kind: "states", label: "mode" }]}
+        stateLabels={[["auto", "manual"]]}
+      />,
+    );
+    const chart = lastChart();
+    const options = chart.options as unknown as StateLaneOptions;
+
+    expect(options.scales.y).toEqual({ auto: false, range: [0, 1] });
+    expect(options.axes[1].filter(chart, [0, 0.5, 1])).toEqual([
+      null,
+      null,
+      null,
+    ]);
     unmount();
   });
 });

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  PLOT_SERIES_PALETTE,
-  addPlotSeriesToTile,
-  nextPlotSeriesColor,
-} from "./plot-tile-state";
+import { PLOT_SERIES_PALETTE } from "../../../visualization/plot/series-palette";
+import { addPlotSeriesToTile, nextPlotSeriesColor } from "./plot-tile-state";
 
 describe("nextPlotSeriesColor", () => {
   it("assigns the first palette slot to the first series", () => {
