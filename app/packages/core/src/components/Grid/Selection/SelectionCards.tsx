@@ -10,10 +10,14 @@ import {
 import { fitCardHeight, type TrayItem } from "./cardSizing";
 import { CARD_HEIGHT, MULTIMODAL_CARD_HEIGHT } from "./theme";
 
-const CardHeightContext = createContext<number | null>(null);
+const CardSizeContext = createContext<{
+  height: number;
+  width: number | null;
+} | null>(null);
 
-export function useSelectionCardHeight() {
-  return useContext(CardHeightContext);
+/** Preferred card height and the width available before a card must shrink. */
+export function useSelectionCardSize() {
+  return useContext(CardSizeContext);
 }
 
 /** Fits the visible cards, including folds, in either the tray or a bucket. */
@@ -29,9 +33,10 @@ export default function SelectionCards({
   multimodal?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState(
-    multimodal ? MULTIMODAL_CARD_HEIGHT : CARD_HEIGHT,
-  );
+  const [size, setSize] = useState<{ height: number; width: number | null }>({
+    height: multimodal ? MULTIMODAL_CARD_HEIGHT : CARD_HEIGHT,
+    width: null,
+  });
 
   // Observe the card area's content box and the visible cards' source ratios.
   // Ratios can arrive after images load; reading direct children preserves
@@ -55,7 +60,13 @@ export default function SelectionCards({
         const ratio = child.getAttribute("data-tray-aspect-ratio");
         return ratio === null ? [] : [{ aspectRatio: Number(ratio) || null }];
       });
-      setHeight(fitCardHeight(items, width, availableHeight, multimodal));
+      const height = fitCardHeight(items, width, availableHeight, multimodal);
+      const availableWidth = width > 0 ? width : null;
+      setSize((current) =>
+        current.height === height && current.width === availableWidth
+          ? current
+          : { height, width: availableWidth },
+      );
     };
     const resize = new ResizeObserver(([entry]) => {
       width = entry.contentRect.width;
@@ -90,11 +101,11 @@ export default function SelectionCards({
       role="group"
       className={className}
       aria-label={label}
-      style={{ "--tray-card-h": `${height}px` } as CSSProperties}
+      style={{ "--tray-card-h": `${size.height}px` } as CSSProperties}
     >
-      <CardHeightContext.Provider value={height}>
+      <CardSizeContext.Provider value={size}>
         {children}
-      </CardHeightContext.Provider>
+      </CardSizeContext.Provider>
     </div>
   );
 }

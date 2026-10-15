@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+import type LookerPreview from "./LookerPreview";
 import type { EpisodeSelection } from "@fiftyone/state/src/selection";
 import {
   act,
@@ -38,11 +40,23 @@ vi.mock("./RendererPreview", () => ({
     <div data-grid-tile="" data-node-id={node.id} />
   ),
 }));
+const previewMock = vi.hoisted(() => vi.fn());
 vi.mock("./LookerPreview", () => ({
-  default: ({ node }: { node: { id: string } }) => (
-    <div data-testid="3d-preview" data-node-id={node.id} />
-  ),
+  default: (props: ComponentProps<typeof LookerPreview>) => {
+    previewMock(props);
+    return <div data-testid="looker-preview" data-node-id={props.node.id} />;
+  },
 }));
+
+async function previewProps(): Promise<ComponentProps<typeof LookerPreview>> {
+  await screen.findByTestId("looker-preview");
+  return previewMock.mock.lastCall![0];
+}
+
+async function loadPreview(aspectRatio = 2, duration = 12) {
+  const props = await previewProps();
+  act(() => props.onMetadata?.({ aspectRatio, duration }));
+}
 vi.mock("./SelectionTileLanes", () => ({
   default: ({ node }: { node: { id: string } }) => (
     <div data-testid="tile-lanes" data-node-id={node.id} />
@@ -138,6 +152,7 @@ function observeCardArea() {
 }
 
 beforeEach(() => {
+  previewMock.mockClear();
   mediaOptions.field = "filepath";
   mediaOptions.fallback = false;
   handlers.open.mockClear();
@@ -146,40 +161,136 @@ beforeEach(() => {
 });
 
 describe("SelectionCard", () => {
-  it("renders a loaded image at its grid ratio before viewport observation or media load", () => {
-    vi.stubGlobal(
-      "IntersectionObserver",
-      class {
-        observe = vi.fn();
-        disconnect = vi.fn();
-      },
-    );
-    const group: EpisodeSelection = {
-      episodeId: "image",
-      members: [{ episodeId: "image", kind: "episode" }],
-      node: {
-        id: "image",
-        sample: { _id: "image", filepath: "/image.jpg", _media_type: "image" },
-        urls: [{ field: "filepath", url: "/image.jpg" }],
-        aspectRatio: 2,
-      },
-    };
-    render(
-      <SelectionCard
-        group={group}
-        mediaType="image"
-        unit={{ one: "sample", many: "samples", temporal: false }}
-        {...handlers}
+  it.each(["image", "video"])(
+    "sizes %s before mounting its renderer near the viewport",
+    (mediaType) => {
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          observe = vi.fn();
+          disconnect = vi.fn();
+        },
+      );
+      const group: EpisodeSelection = {
+        episodeId: "image",
+        members: [{ episodeId: "image", kind: "episode" }],
+        node: {
+          id: "image",
+          sample: {
+            _id: "image",
+            filepath: mediaType === "image" ? "/image.jpg" : "/video.mp4",
+            _media_type: mediaType,
+          },
+          urls: [
+            {
+              field: "filepath",
+              url: mediaType === "image" ? "/image.jpg" : "/video.mp4",
+            },
+          ],
+          aspectRatio: 2,
+        },
+      };
+      render(
+        <SelectionCard
+          group={group}
+          mediaType={mediaType}
+          unit={{ one: "sample", many: "samples", temporal: false }}
+          {...handlers}
+        />,
+      );
+      const card = screen.getByRole("article");
+      expect(card.style.width).toBe("214px");
+      expect(card.dataset.trayAspectRatio).toBe("2");
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+    },
+  );
+
+  it("does not carry measured dimensions to a different media source", async () => {
+    const { rerender } = render(<Card group={full} />);
+    await loadPreview(2);
+    expect(screen.getByRole("article").dataset.trayAspectRatio).toBe("2");
+    rerender(
+      <Card
+        group={{ ...full, filepath: "/portrait.mp4", aspectRatio: 9 / 16 }}
       />,
     );
-    const card = screen.getByRole("article");
-    expect(card.style.width).toBe("212px");
-    const image = card.querySelector("img");
-    expect(image?.getAttribute("src")).toBe("media:///image.jpg");
-    expect(image?.getAttribute("loading")).toBe("lazy");
-    fireEvent.load(image!);
-    expect(card.style.width).toBe("212px");
+    expect(screen.getByRole("article").dataset.trayAspectRatio).toBe(
+      String(9 / 16),
+    );
+    expect((await previewProps()).sourceAspect).toBe(9 / 16);
   });
+
+  it("fits a portrait card to its media and shrinks proportionally in a narrow bucket", async () => {
+    const resize = observeCardArea();
+    render(
+      <SelectionCards className="cards" label="Selected portraits">
+        <Card group={{ ...full, aspectRatio: 3 / 4 }} />
+      </SelectionCards>,
+    );
+    resize(200, 108);
+    const card = screen.getByRole("article");
+    expect(parseFloat(card.style.width)).toBeCloseTo(81.5);
+    expect(card.style.height).toBe("108px");
+    let preview = await previewProps();
+    expect(preview.width / preview.height!).toBeCloseTo(3 / 4);
+    resize(60, 108);
+    expect(card.style.width).toBe("60px");
+    expect(
+      (parseFloat(card.style.width) - 2) / (parseFloat(card.style.height) - 2),
+    ).toBeCloseTo(3 / 4);
+    preview = await previewProps();
+    expect(preview.width / preview.height!).toBeCloseTo(3 / 4);
+    resize(60, 32);
+    expect(card.style.width).toBe("24.5px");
+    expect(card.style.height).toBe("32px");
+    resize(60, 2);
+    expect(screen.queryByTestId("looker-preview")).toBeNull();
+  });
+
+  it.each(["image", "video"])(
+    "unmounts an offscreen %s preview and restores it on return",
+    async (mediaType) => {
+      let intersect: (visible: boolean) => void = () => undefined;
+      const disconnect = vi.fn();
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          constructor(callback: IntersectionObserverCallback) {
+            intersect = (visible) =>
+              callback(
+                [{ isIntersecting: visible } as IntersectionObserverEntry],
+                this as unknown as IntersectionObserver,
+              );
+          }
+          observe = vi.fn();
+          disconnect = disconnect;
+        },
+      );
+      const { unmount } = render(
+        <Card
+          group={{
+            ...full,
+            filepath: mediaType === "image" ? "/image.jpg" : full.filepath,
+            previewStart: 2.5,
+          }}
+        />,
+      );
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+      act(() => intersect(true));
+      const first = await screen.findByTestId("looker-preview");
+      await loadPreview();
+      const width = screen.getByRole("article").style.width;
+      act(() => intersect(false));
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+      expect(screen.getByRole("article").style.width).toBe(width);
+      expect(disconnect).not.toHaveBeenCalled();
+      act(() => intersect(true));
+      expect(await screen.findByTestId("looker-preview")).not.toBe(first);
+      expect((await previewProps()).previewStart).toBe(2.5);
+      unmount();
+      expect(disconnect).toHaveBeenCalledOnce();
+    },
+  );
 
   it("fills a resized tray and refits when cards are added or removed", async () => {
     const resize = observeCardArea();
@@ -197,7 +308,7 @@ describe("SelectionCard", () => {
     const view = render(cards(1));
     resize(500, 300);
     expect(screen.getByRole("article").style.height).toBe("300px");
-    expect(screen.getByRole("article").style.width).toBe("298px");
+    expect(screen.getByRole("article").style.width).toBe("300px");
     view.rerender(cards(4));
     await waitFor(() =>
       expect(screen.getAllByRole("article")[0].style.height).toBe("146px"),
@@ -225,18 +336,12 @@ describe("SelectionCard", () => {
     );
     resize(400, 300);
     const card = screen.getByRole("article");
-    const image = card.querySelector("img")!;
     expect(card.style.height).toBe("300px");
-    Object.defineProperties(image, {
-      naturalWidth: { value: 6400 },
-      naturalHeight: { value: 800 },
-    });
-    fireEvent.load(image);
-    await waitFor(() => expect(card.style.height).toBe("134px"));
-    expect(card.style.width).toBe("398px");
-    expect(image.parentElement?.style.width).toBe("528px");
-    expect(image.parentElement?.style.maxWidth).toBe("100%");
-    expect(image.parentElement?.style.aspectRatio).toBe("4");
+    await loadPreview(8);
+    await waitFor(() => expect(card.style.height).toBe("101.5px"));
+    expect(card.style.width).toBe("400px");
+    expect((await previewProps()).sourceAspect).toBe(8);
+    expect((await previewProps()).crop).toEqual([0.1, 0.2, 0.2, 0.4]);
   });
 
   it("grows multimodal previews as squares and refits a narrow bucket", async () => {
@@ -263,11 +368,11 @@ describe("SelectionCard", () => {
   });
 
   it.each([
-    ["image", "gs://bucket/image.jpg", "img"],
-    ["video", "s3://bucket/video.mp4", "video"],
+    ["image", "gs://bucket/image.jpg"],
+    ["video", "s3://bucket/video.mp4"],
   ])(
     "waits for resolved %s media and recovers when its URL changes",
-    (mediaType, filepath, tag) => {
+    async (mediaType, filepath) => {
       const group = { ...full, filepath, previewStart: 2.5 };
       const props = {
         mediaType,
@@ -295,24 +400,21 @@ describe("SelectionCard", () => {
         },
       });
       view.rerender(<SelectionCard group={resolved("first")} {...props} />);
-      const media = screen.getByRole("article").querySelector(tag)!;
-      expect(media.getAttribute("src")).toBe(
+      const preview = await previewProps();
+      expect(preview.node.urls?.[0].url).toBe(
         "https://media.example/asset?signature=first",
       );
-      if (tag === "video") {
-        fireEvent.loadedMetadata(media);
-        expect((media as HTMLVideoElement).currentTime).toBe(2.5);
-      }
-      fireEvent.error(media);
-      expect(screen.getByRole("article").querySelector(tag)).toBeNull();
+      expect(preview.previewStart).toBe(2.5);
+      act(() => preview.onError?.());
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
       view.rerender(<SelectionCard group={resolved("renewed")} {...props} />);
-      expect(
-        screen.getByRole("article").querySelector(tag)?.getAttribute("src"),
-      ).toBe("https://media.example/asset?signature=renewed");
+      expect((await previewProps()).node.urls?.[0].url).toBe(
+        "https://media.example/asset?signature=renewed",
+      );
     },
   );
 
-  it("uses the selected thumbnail field and the grid's missing-media fallback", () => {
+  it("uses the selected thumbnail field and the grid's missing-media fallback", async () => {
     const group = {
       ...full,
       node: {
@@ -337,18 +439,13 @@ describe("SelectionCard", () => {
     };
     mediaOptions.field = "poster";
     const view = render(<Card group={group} />);
-    expect(screen.getByRole("article").querySelector("video")).toBeNull();
-    expect(
-      screen.getByRole("article").querySelector("img")?.getAttribute("src"),
-    ).toBe("https://media.example/poster.jpg?signature=image");
+    expect((await previewProps()).node).toBe(group.node);
     mediaOptions.field = "missing";
     view.rerender(<Card group={group} />);
-    expect(screen.getByRole("article").querySelector("img,video")).toBeNull();
+    expect(screen.queryByTestId("looker-preview")).toBeNull();
     mediaOptions.fallback = true;
     view.rerender(<Card group={group} />);
-    expect(
-      screen.getByRole("article").querySelector("video")?.getAttribute("src"),
-    ).toBe("https://media.example/clip.mp4?signature=video");
+    expect(await screen.findByTestId("looker-preview")).toBeTruthy();
   });
 
   it.each([
@@ -377,7 +474,7 @@ describe("SelectionCard", () => {
           {...handlers}
         />,
       );
-      expect((await screen.findByTestId("3d-preview")).dataset.nodeId).toBe(
+      expect((await screen.findByTestId("looker-preview")).dataset.nodeId).toBe(
         "episode",
       );
       fireEvent.click(screen.getByRole("button", { name: /^Open / }));
@@ -387,7 +484,7 @@ describe("SelectionCard", () => {
     },
   );
 
-  it("shows distinct crops for patches that share the same source image", () => {
+  it("shows distinct crops for patches that share the same source image", async () => {
     const patches: EpisodeSelection[] = [
       {
         ...full,
@@ -412,52 +509,36 @@ describe("SelectionCard", () => {
       </>,
     );
     const cards = screen.getAllByRole("article");
-    const images = cards.map((card) => card.querySelector("img")!);
-    expect(images.map((image) => image.getAttribute("src"))).toEqual([
-      "media:///birds.jpg",
-      "media:///birds.jpg",
-    ]);
-    expect(
-      images.map((image) => [
-        image.style.left,
-        image.style.top,
-        image.style.width,
-        image.style.height,
-      ]),
-    ).toEqual([
-      ["-50%", "-50%", "500%", "250%"],
-      ["-125%", "-50%", "250%", "500%"],
-    ]);
-    expect(cards.map((card) => card.style.width)).toEqual(["106px", "320px"]);
-    expect(
-      images.map((image) => image.parentElement?.style.aspectRatio),
-    ).toEqual(["1", "4"]);
+    await screen.findAllByTestId("looker-preview");
+    for (const patch of patches) {
+      expect(previewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          crop: patch.crop,
+          sourceAspect: 2,
+          node: expect.objectContaining({ id: patch.episodeId }),
+        }),
+      );
+    }
+    expect(cards.map((card) => card.style.width)).toEqual(["108px", "426px"]);
   });
 
-  it("sizes a patch from the loaded image when metadata is missing", () => {
+  it("sizes a patch from the Looker when metadata is missing", async () => {
     render(
       <Card
         group={{ ...full, filepath: "/birds.jpg", crop: [0.1, 0.2, 0.2, 0.4] }}
       />,
     );
     const card = screen.getByRole("article");
-    const image = card.querySelector("img")!;
-    Object.defineProperties(image, {
-      naturalWidth: { value: 1600 },
-      naturalHeight: { value: 800 },
-    });
-    fireEvent.load(image);
-    expect(image.parentElement?.style.aspectRatio).toBe("1");
-    expect(card.style.width).toBe("106px");
+    await loadPreview();
+    expect((await previewProps()).sourceAspect).toBe(2);
+    expect(card.style.width).toBe("108px");
   });
 
-  it("keeps ordinary image previews uncropped", () => {
+  it("keeps ordinary image previews uncropped", async () => {
     render(
       <Card group={{ ...full, filepath: "/birds.jpg", aspectRatio: 2 }} />,
     );
-    const image = screen.getByRole("article").querySelector("img")!;
-    expect(image.getAttribute("style")).toBeNull();
-    expect(image.parentElement?.getAttribute("style")).toBeNull();
+    expect((await previewProps()).crop).toBeUndefined();
   });
 
   it("shows the grouped segment scope and opens the episode from its body", async () => {
@@ -543,25 +624,26 @@ describe("SelectionCard", () => {
     expect(screen.queryByText("Not in view")).toBeNull();
   });
 
-  it("sizes minimum-height cards from the media aspect ratio", () => {
+  it("sizes minimum-height cards from the media aspect ratio", async () => {
     const wide = render(
       <Card group={{ ...full, aspectRatio: 16 / 9 }} candidate={full} />,
     );
-    expect(screen.getByRole("article").style.width).toBe("188px");
+    expect(parseFloat(screen.getByRole("article").style.width)).toBeCloseTo(
+      106 * (16 / 9) + 2,
+    );
     wide.unmount();
     const tall = render(
       <Card group={{ ...full, aspectRatio: 9 / 16 }} candidate={full} />,
     );
-    expect(screen.getByRole("article").style.width).toBe("106px");
+    expect(parseFloat(screen.getByRole("article").style.width)).toBeCloseTo(
+      106 * (9 / 16) + 2,
+    );
     tall.unmount();
     render(<Card group={full} candidate={full} />);
     const article = screen.getByRole("article");
     expect(article.style.width).toBe("208px");
-    const image = article.querySelector("video, img") as HTMLVideoElement;
-    Object.defineProperty(image, "videoWidth", { value: 1600 });
-    Object.defineProperty(image, "videoHeight", { value: 800 });
-    fireEvent.loadedMetadata(image);
-    expect(article.style.width).toBe("212px");
+    await loadPreview();
+    expect(article.style.width).toBe("214px");
   });
 
   it("points the grid at its tile while hovered or focused", () => {

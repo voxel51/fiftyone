@@ -360,7 +360,11 @@ export function useGridSelection(
             bucketId: into,
             group: {
               ...wholeParent(id),
-              ...(node && { node, filepath: node.sample.filepath }),
+              ...(node && {
+                node,
+                filepath: node.sample.filepath,
+                aspectRatio: node.aspectRatio,
+              }),
             },
           });
         }
