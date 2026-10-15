@@ -472,10 +472,15 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       if (viewportFrame !== undefined) cancelAnimationFrame(viewportFrame);
       viewportFrame = requestAnimationFrame(() => {
         viewportFrame = undefined;
+        const pixelWidth = Math.max(chart.over.clientWidth, host.clientWidth);
+        // A chart measured before layout (e.g. mid sample switch) has no
+        // width yet. Its demand would ask for a single bucket across the
+        // whole window; the resize observer publishes the real width.
+        if (pixelWidth <= 0) return;
         onViewportChangeRef.current?.({
           endSec: chart.scales.x.max ?? xMax,
           mode: hasInteractiveScaleRef.current ? "pinned" : "follow",
-          pixelWidth: Math.max(chart.over.clientWidth, host.clientWidth, 1),
+          pixelWidth,
           startSec: chart.scales.x.min ?? 0,
         });
       });

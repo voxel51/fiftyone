@@ -423,6 +423,7 @@ describe("TimeseriesChart interactions", () => {
     vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
       frames.delete(id);
     });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(480);
     const onViewportChange = vi.fn();
     const { unmount } = render(
       <TimeseriesChart
@@ -453,9 +454,33 @@ describe("TimeseriesChart interactions", () => {
     expect(onViewportChange).toHaveBeenCalledWith({
       endSec: 10,
       mode: "pinned",
-      pixelWidth: 1,
+      pixelWidth: 480,
       startSec: 5,
     });
+    unmount();
+  });
+
+  it("does not publish a viewport before the plot has a width", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const onViewportChange = vi.fn();
+    const { unmount } = render(
+      <TimeseriesChart
+        {...FOLLOW_POLICY_PROPS}
+        data={DATA}
+        durationSec={20}
+        onViewportChange={onViewportChange}
+        series={[{ color: "#f00", label: "speed" }]}
+      />,
+    );
+    const chart = lastChart();
+    runHooks(chart.options.hooks?.setScale, chart, "x");
+
+    for (const callback of frames) callback(0);
+    expect(onViewportChange).not.toHaveBeenCalled();
     unmount();
   });
 
