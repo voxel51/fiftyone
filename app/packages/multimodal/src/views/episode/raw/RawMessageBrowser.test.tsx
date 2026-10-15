@@ -130,7 +130,7 @@ function renderBrowser(onExit = vi.fn()) {
               }
             }
             markerOwnerId="browser-owner"
-            onAddNumericFieldToPlot={vi.fn()}
+            onAddFieldToPlot={vi.fn()}
             onExit={() => {
               onExit();
               setShowBrowser(false);
@@ -331,7 +331,7 @@ describe("RawMessageBrowser", () => {
               }
             }
             markerOwnerId="browser-owner"
-            onAddNumericFieldToPlot={vi.fn()}
+            onAddFieldToPlot={vi.fn()}
             onExit={vi.fn()}
             renderMeta={() => null}
             streamKey="/state"

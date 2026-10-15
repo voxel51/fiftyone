@@ -222,7 +222,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
         <RawMessageBrowser
           anchor={browseAnchor}
           markerOwnerId={`raw-message-browser:${tileId ?? "unknown"}`}
-          onAddNumericFieldToPlot={handleAddFieldToPlot}
+          onAddFieldToPlot={handleAddFieldToPlot}
           onExit={() => setBrowseAnchor(null)}
           renderMeta={(record, options) => (
             <MetaRow
@@ -279,7 +279,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
               </div>
             ) : null}
             <RecordBody
-              onAddNumericFieldToPlot={handleAddFieldToPlot}
+              onAddFieldToPlot={handleAddFieldToPlot}
               result={result}
             />
           </div>
@@ -479,17 +479,17 @@ function MetaRow({
 }
 
 function RecordBody({
-  onAddNumericFieldToPlot,
+  onAddFieldToPlot,
   result,
 }: {
-  readonly onAddNumericFieldToPlot: (path: string) => void;
+  readonly onAddFieldToPlot: (path: string) => void;
   readonly result: RawRecordResult;
 }) {
   if (result.status === "ok" && result.root) {
     return (
       <div className={rawStyles.scroll}>
         <StructuredMessageTree
-          onAddNumericFieldToPlot={onAddNumericFieldToPlot}
+          onAddFieldToPlot={onAddFieldToPlot}
           root={result.root}
         />
       </div>
