@@ -12,3 +12,11 @@
   height: 10px;
   width: 10px;
 }
+
+/* Trailing field-row metadata: the text-field marker and series swatch. */
+.fieldMeta {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
