@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_d1():
-    # The release's code builds on transformers' LFM2-VL classes
+    """Requires the transformers whose LFM2-VL classes the release's code
+    builds on."""
     fou.ensure_package("transformers>=5.14")
 
 
@@ -183,6 +184,8 @@ class D1GetItem(fout.GetItem):
         field_mapping=None,
         **kwargs,
     ):
+        """Keeps the processor, the prompt prefix images are encoded into and
+        the pixel cap."""
         self.processor = processor
         self.prefix = prefix
         self.max_pixels = max_pixels
@@ -190,9 +193,12 @@ class D1GetItem(fout.GetItem):
 
     @property
     def required_keys(self):
+        """The sample's ``filepath``, which locates its image."""
         return ["filepath"]
 
     def __call__(self, d):
+        """Encodes the image at the sample's ``filepath``; see
+        :meth:`encode`."""
         return self.encode(d["filepath"])
 
     def encode(self, img):
@@ -236,10 +242,22 @@ class _D1Collate(object):
     """
 
     def __init__(self, suffixes, pad_token_id):
+        """Keeps the question suffixes and the padding token."""
         self.suffixes = suffixes
         self.pad_token_id = pad_token_id
 
     def __call__(self, items):
+        """Builds one batch from images the data loader's workers encoded.
+
+        Args:
+            items: a list of :meth:`D1GetItem.encode` outputs
+
+        Returns:
+            a dict with one padded row of ``input_ids`` per image and
+            question, each image's rows in the schema's order, the
+            ``last_index`` of each row, every image's tiles padded to the
+            most patches, and the number of ``tiles`` of each image
+        """
         rows = [
             item["input_ids"].tolist() + suffix
             for item in items
@@ -293,6 +311,7 @@ class D1OutputProcessor(fout.OutputProcessor):
     """
 
     def __init__(self, classes=None, store_logits=False, **kwargs):
+        """Keeps whether classifications store their logits."""
         self.store_logits = store_logits
 
     def __call__(
@@ -353,6 +372,9 @@ class D1OutputProcessor(fout.OutputProcessor):
         return results
 
     def _to_label(self, question, logits, confidence_thresh):
+        """The label of one answer from its options' logits, in the order
+        the options were given, or None for a classification below the
+        threshold."""
         probabilities = np.exp(logits - logits.max())
         probabilities /= probabilities.sum()
 
@@ -408,6 +430,8 @@ class D1ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """
 
     def __init__(self, d):
+        """Parses the config, giving the default release its pinned revision
+        when none is set."""
         d = self.init(d)
         super().__init__(d)
 
@@ -514,6 +538,7 @@ class D1Model(fout.TorchImageModel):
     """
 
     def __init__(self, config):
+        """Validates the question schema, then loads the release."""
         self._questions = config.get_questions()
         self._processor = None
         self._prefix = None
@@ -525,6 +550,7 @@ class D1Model(fout.TorchImageModel):
 
     @property
     def has_logits(self):
+        """True; classifications can store their per-option logits."""
         return True
 
     @property
@@ -534,20 +560,33 @@ class D1Model(fout.TorchImageModel):
 
     @property
     def ragged_batches(self):
-        # Rows of different lengths are padded together by collate_fn
+        """False; :attr:`collate_fn` pads rows of different lengths."""
         return False
 
     @property
     def has_collate_fn(self):
+        """True; the model pads its own batches."""
         return True
 
     @property
     def collate_fn(self):
+        """The function that continues each image's prompt prefix with every
+        question and pads the rows."""
         return _D1Collate(
             self._suffixes, self._processor.tokenizer.pad_token_id
         )
 
     def build_get_item(self, field_mapping=None):
+        """Builds the :class:`D1GetItem` that encodes each image into this
+        model's prompt prefix.
+
+        Args:
+            field_mapping (None): a dict mapping the GetItem's required keys
+                to field names of the dataset
+
+        Returns:
+            a :class:`D1GetItem`
+        """
         return D1GetItem(
             self._processor,
             self._prefix,
@@ -556,9 +595,11 @@ class D1Model(fout.TorchImageModel):
         )
 
     def _download_model(self, config):
-        pass
+        """The release downloads in :meth:`_load_model`."""
 
     def _load_model(self, config):
+        """Loads the release at its revision with its own code, in bfloat16
+        on a GPU and float32 on the CPU, and builds the prompt."""
         dtype = torch.float32 if self._device.type == "cpu" else torch.bfloat16
         model = transformers.AutoModel.from_pretrained(
             config.name_or_path,
@@ -615,6 +656,8 @@ class D1Model(fout.TorchImageModel):
         }
 
     def _predict_all(self, imgs):
+        """Answers every question for a list of images, or for a batch the
+        data loader already padded."""
         if self._preprocess:
             # Images given directly rather than through a data loader are
             # encoded and padded here
@@ -639,6 +682,8 @@ class D1Model(fout.TorchImageModel):
         )
 
     def _forward_pass(self, batch):
+        """The log-probabilities of the answer tokens at each row's last
+        token."""
         model = self._model
         with torch.inference_mode():
             tiles = model.model.get_image_features(

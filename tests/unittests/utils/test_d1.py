@@ -53,19 +53,24 @@ DIGIT_TOKENS = [30, 31, 32]
 
 
 def _softmax(values):
+    """The softmax of ``values`` in float64"""
     values = np.asarray(values, dtype=np.float64)
     odds = np.exp(values - values.max())
     return odds / odds.sum()
 
 
 def _image(w=24, h=16, shade=80):
+    """A uniform grey RGB image of the given size and shade"""
     return PILImage.new("RGB", (w, h), color=(shade, shade, shade))
 
 
 class _FakeTokenizer(object):
+    """Encodes text as one token per character"""
+
     pad_token_id = PAD
 
     def encode(self, text, add_special_tokens=False):
+        """One token per character, clear of the image and answer tokens"""
         return [40 + ord(c) % 80 for c in text]
 
 
@@ -75,9 +80,12 @@ class _FakeProcessor(object):
     brightness and three padding patches"""
 
     def __init__(self):
+        """Holds the stand-in tokenizer"""
         self.tokenizer = _FakeTokenizer()
 
     def __call__(self, text, images, return_tensors, add_special_tokens):
+        """Encodes one prefix and one image as the release's processor
+        does"""
         img = images[0][0]
         brightness = float(np.asarray(img).mean()) / 255
         patches = img.size[0]
@@ -95,6 +103,8 @@ class _FakeProcessor(object):
 
 
 class _FakeEngine(object):
+    """Stands in for the release's engine and its prompt settings"""
+
     bos = "<s>"
     lead = ""
     state_style = "json_only"
@@ -102,13 +112,16 @@ class _FakeEngine(object):
     option_style = "desc"
 
     def __init__(self, processor):
+        """Holds the processor and its tokenizer"""
         self.processor = processor
         self.tokenizer = processor.tokenizer
 
     def _load_processor(self):
+        """The stand-in processor"""
         return self.processor
 
     def _image_markup(self, n):
+        """One image placeholder per image"""
         return "<image>" * n
 
 
@@ -116,6 +129,8 @@ class _FakeLanguageModel(object):
     """Gives every position of a row the brightness its image slot holds"""
 
     def __call__(self, inputs_embeds):
+        """Spreads each row's largest embedding, its image slot's
+        brightness, over the row"""
         brightness = inputs_embeds.amax(dim=1, keepdim=True)
         return SimpleNamespace(
             last_hidden_state=brightness.expand_as(inputs_embeds)
@@ -123,13 +138,17 @@ class _FakeLanguageModel(object):
 
 
 class _FakeBackbone(object):
+    """Stands in for the release's vision tower and language model"""
+
     def __init__(self):
+        """Records the number of tiles in each vision call"""
         self.language_model = _FakeLanguageModel()
         self.tile_batches = []
 
     def get_image_features(
         self, pixel_values, spatial_shapes, pixel_attention_mask
     ):
+        """One feature per tile, the mean of its unmasked patches"""
         self.tile_batches.append(len(pixel_values))
         features = [
             values[mask.bool()].mean().reshape(1, 1)
@@ -138,6 +157,7 @@ class _FakeBackbone(object):
         return SimpleNamespace(pooler_output=features)
 
     def get_placeholder_mask(self, input_ids, inputs_embeds, image_features):
+        """The positions of the image token"""
         return (input_ids == IMAGE_TOKEN).unsqueeze(-1)
 
 
@@ -146,20 +166,27 @@ class _FakeNetwork(object):
     option and the top level; dark ones the opposite"""
 
     def __init__(self):
+        """Builds the stand-in engine and backbone and records the row count
+        of each readout"""
         self.engine = _FakeEngine(_FakeProcessor())
         self.model = _FakeBackbone()
         self.rows = []
 
     def to(self, device):
+        """Stays where it is"""
         return self
 
     def eval(self):
+        """Has no training mode"""
         return self
 
     def get_input_embeddings(self):
+        """Embeds every token as zero, which the image features overwrite"""
         return lambda input_ids: torch.zeros((*input_ids.shape, 1))
 
     def lm_head(self, hidden):
+        """Logits that favour yes, the first option and the top level as
+        the row's brightness rises"""
         b = hidden[:, 0]
         self.rows.append(len(b))
         logits = torch.full((len(b), VOCAB), -30.0)
@@ -175,14 +202,19 @@ class _FakeNetwork(object):
 
 
 def _fake_prompt():
+    """Stands in for the release's ``prompt`` module"""
+
     def prefix_text(tokenizer, state, bos, style, system, images):
+        """The image placeholders, then the state as JSON"""
         body = "" if state is None else json.dumps(state) + "\nQUESTION:\n"
         return bos + "<user>" + images + body
 
     def suffix_text(tokenizer, question, lead, option_style):
+        """The question's instructions"""
         return question.instructions + "?" + lead
 
     def readout_ids(tokenizer, question):
+        """The answer tokens of each option of the question"""
         if question.type == "noul":
             return [[YES], [NO]]
         if question.type == "choice":
@@ -218,6 +250,7 @@ def network(monkeypatch):
 
 
 def _model(d):
+    """A :class:`D1Model` on the CPU with the config ``d``"""
     return D1Model(D1ModelConfig(dict(d, device="cpu")))
 
 
@@ -225,6 +258,8 @@ class TestD1ModelConfig:
     """Test config parsing and the question schema it yields"""
 
     def test_defaults(self):
+        """The default release loads at its pinned revision, with raw inputs
+        and the d1 output processor"""
         config = D1ModelConfig({"classes": ["cat", "dog"]})
 
         assert config.name_or_path == "LiquidAI/d1-3B"
@@ -234,6 +269,7 @@ class TestD1ModelConfig:
         assert config.output_processor_cls is D1OutputProcessor
 
     def test_other_repositories_have_no_default_revision(self):
+        """Another repository or a local path gets no pinned revision"""
         config = D1ModelConfig(
             {"classes": ["cat", "dog"], "name_or_path": "/models/d1-local"}
         )
@@ -241,11 +277,14 @@ class TestD1ModelConfig:
         assert config.revision is None
 
     def test_an_explicit_revision_is_kept(self):
+        """A revision that is set replaces the pinned one"""
         config = D1ModelConfig({"classes": ["cat", "dog"], "revision": "main"})
 
         assert config.revision == "main"
 
     def test_classes_become_one_choice_question(self):
+        """``classes`` become the options of one choice question asked with
+        the default instructions"""
         config = D1ModelConfig({"classes": ["outdoor", "indoor"]})
 
         assert config.get_questions() == {
@@ -257,28 +296,34 @@ class TestD1ModelConfig:
         }
 
     def test_prompt_is_the_choice_instructions(self):
+        """``prompt`` becomes the instructions of the question built from
+        ``classes``"""
         config = D1ModelConfig({"classes": ["a", "b"], "prompt": "Pick one."})
 
         question = config.get_questions()[DEFAULT_QUESTION_ID]
         assert question["instructions"] == "Pick one."
 
     def test_questions_are_returned_as_given(self):
+        """A valid schema is returned unchanged"""
         questions = {"has_person": NOUL, "animal": CHOICE, "sharp": SCORE}
         config = D1ModelConfig({"questions": questions})
 
         assert config.get_questions() == questions
 
     def test_json_state_is_kept(self):
+        """A JSON state is kept as given"""
         state = {"task": "Inspect the shelf.", "store": 12}
         config = D1ModelConfig({"classes": ["a", "b"], "state": state})
 
         assert config.state == state
 
     def test_neither_questions_nor_classes_is_rejected(self):
+        """A config without questions or classes has nothing to ask"""
         with pytest.raises(ValueError, match="questions"):
             D1ModelConfig({}).get_questions()
 
     def test_both_questions_and_classes_is_rejected(self):
+        """Questions and classes together are rejected"""
         config = D1ModelConfig(
             {"questions": {"q": NOUL}, "classes": ["a", "b"]}
         )
@@ -288,17 +333,20 @@ class TestD1ModelConfig:
 
     @pytest.mark.parametrize("classes", [["only"], ["a", "a"], []])
     def test_degenerate_classes_are_rejected(self, classes):
+        """Fewer than two distinct classes leave nothing to choose"""
         with pytest.raises(ValueError, match="distinct"):
             D1ModelConfig({"classes": classes}).get_questions()
 
     @pytest.mark.parametrize("question_id", ["has person", "1st", "a-b", ""])
     def test_question_id_must_be_a_field_name(self, question_id):
+        """A question ID names a field, so it must be a valid field name"""
         config = D1ModelConfig({"questions": {question_id: NOUL}})
 
         with pytest.raises(ValueError, match="field name"):
             config.get_questions()
 
     def test_unknown_type_is_rejected(self):
+        """Only noul, choice and score questions are answered"""
         config = D1ModelConfig(
             {"questions": {"q": {"type": "open", "instructions": "Why?"}}}
         )
@@ -308,6 +356,7 @@ class TestD1ModelConfig:
 
     @pytest.mark.parametrize("criteria", [None, {}, ["a", "b"]])
     def test_choice_needs_an_option_mapping(self, criteria):
+        """A choice question needs a non-empty dict of options"""
         question = {"type": "choice", "criteria": criteria}
         config = D1ModelConfig({"questions": {"q": question}})
 
@@ -318,6 +367,7 @@ class TestD1ModelConfig:
         "criteria", [None, ["only"], {"a": 1}, [str(i) for i in range(11)]]
     )
     def test_score_needs_two_to_ten_levels(self, criteria):
+        """A score question needs a list of 2 to 10 levels"""
         question = {"type": "score", "criteria": criteria}
         config = D1ModelConfig({"questions": {"q": question}})
 
@@ -325,12 +375,14 @@ class TestD1ModelConfig:
             config.get_questions()
 
     def test_ten_score_levels_are_accepted(self):
+        """Ten levels, one per digit, are accepted"""
         question = {"type": "score", "criteria": [str(i) for i in range(10)]}
         config = D1ModelConfig({"questions": {"q": question}})
 
         assert config.get_questions() == {"q": question}
 
     def test_noul_criteria_with_other_options_is_rejected(self):
+        """A noul question's criteria may describe only true and false"""
         question = {"type": "noul", "criteria": {"maybe": "Unsure"}}
         config = D1ModelConfig({"questions": {"q": question}})
 
@@ -341,6 +393,7 @@ class TestD1ModelConfig:
         """The schema is checked before any download is attempted"""
 
         def fail(*args, **kwargs):
+            """Fails the test when a download is attempted"""
             raise AssertionError("download attempted")
 
         monkeypatch.setattr(
@@ -357,17 +410,21 @@ class TestD1GetItem:
     """Test loading and encoding one image, as a data loader worker does"""
 
     def _get_item(self, **kwargs):
+        """A get item with the stand-in processor and a fixed prefix"""
         return D1GetItem(_FakeProcessor(), "<s><user><image>", **kwargs)
 
     def test_requires_the_filepath(self):
+        """The image is located by the sample's filepath"""
         assert self._get_item().required_keys == ["filepath"]
 
     def test_filepath_can_come_from_another_field(self):
+        """The filepath can be read from another field"""
         get_item = self._get_item(field_mapping={"filepath": "frame_path"})
 
         assert get_item.field_mapping == {"filepath": "frame_path"}
 
     def test_encodes_the_prefix_and_the_image(self, tmp_path):
+        """A sample's image is encoded after the prompt prefix"""
         path = str(tmp_path / "image.png")
         _image(24, 16).save(path)
 
@@ -378,18 +435,22 @@ class TestD1GetItem:
         assert item["spatial_shapes"].tolist() == [[1, 24]]
 
     def test_padding_patches_are_cut(self):
+        """The processor's padding patches are cut from each tile"""
         item = self._get_item().encode(_image(24, 16))
 
         assert item["pixel_values"].shape[:2] == (1, 24)
         assert item["pixel_attention_mask"].tolist() == [[1] * 24]
 
     def test_large_images_are_downscaled(self):
+        """An image over ``max_pixels`` is downscaled before the
+        processor"""
         item = self._get_item(max_pixels=100).encode(_image(40, 10))
 
         # 400 pixels scale by a half on each side to 20 x 5
         assert item["spatial_shapes"].tolist() == [[1, 20]]
 
     def test_grayscale_files_load_as_rgb(self, tmp_path):
+        """A grayscale file is read as RGB"""
         path = str(tmp_path / "gray.png")
         PILImage.new("L", (8, 6), color=90).save(path)
 
@@ -398,6 +459,7 @@ class TestD1GetItem:
         assert item["pixel_values"][0, 0, 0] == pytest.approx(90 / 255)
 
     def test_encodes_arrays_and_tensors(self):
+        """Channel-last arrays and channel-first tensors are encoded"""
         get_item = self._get_item()
 
         from_array = get_item.encode(np.zeros((16, 24, 3), dtype=np.uint8))
@@ -423,6 +485,8 @@ class TestD1Collate:
     """Test pairing image prefixes with questions and padding the rows"""
 
     def test_every_image_continues_with_every_question(self, network):
+        """Each image's prefix continues with each question's suffix, padded
+        on the right, and each row records its last index"""
         model = _model({"questions": {"a": NOUL, "b": SCORE}})
         items = [
             model.build_get_item().encode(_image(24, 16)),
@@ -445,6 +509,8 @@ class TestD1Collate:
             assert last == len(ids) - 1
 
     def test_tiles_are_padded_to_the_most_patches(self, network):
+        """Every image's tiles are padded to the most patches in the
+        batch"""
         model = _model({"questions": {"a": NOUL}})
         items = [
             model.build_get_item().encode(_image(24, 16)),
@@ -473,6 +539,7 @@ class TestD1Model:
     release"""
 
     def test_batches_are_padded_rather_than_ragged(self, network):
+        """The model pads its own batches and can store logits"""
         model = _model({"classes": ["a", "b"]})
 
         assert model.ragged_batches is False
@@ -480,6 +547,8 @@ class TestD1Model:
         assert model.has_logits is True
 
     def test_prompt_is_built_from_the_config(self, network):
+        """The prefix carries the configured state, and images are capped
+        at the release's pixel count"""
         model = _model(
             {"questions": {"a": NOUL}, "state": {"task": "Inspect."}}
         )
@@ -492,6 +561,7 @@ class TestD1Model:
         assert get_item.max_pixels == 4096
 
     def test_missing_instructions_use_the_question_id(self, network):
+        """A question without instructions is asked by its ID"""
         model = _model({"questions": {"has_dog": {"type": "noul"}}})
 
         suffix = model.collate_fn.suffixes[0]
@@ -499,6 +569,7 @@ class TestD1Model:
         assert suffix == _FakeTokenizer().encode("has_dog?")
 
     def test_images_run_as_one_batch(self, network):
+        """A list of images runs as one vision call and one readout"""
         model = _model({"questions": {"a": NOUL, "b": CHOICE}})
 
         labels = model.predict_all(
@@ -527,6 +598,7 @@ class TestD1Model:
         assert [label.label for label in labels] == ["true", "false"]
 
     def test_predict_takes_a_tensor(self, network):
+        """``predict`` takes a channel-first tensor"""
         model = _model({"questions": {"a": NOUL}})
 
         label = model.predict(torch.full((3, 16, 24), 230, dtype=torch.uint8))
@@ -534,6 +606,7 @@ class TestD1Model:
         assert label.label == "true"
 
     def test_image_features_repeat_for_each_question(self, network):
+        """Each image's features fill the image slot of each of its rows"""
         model = _model({"questions": {"a": NOUL, "b": NOUL, "c": NOUL}})
         encode = model.build_get_item().encode
         batch = model.collate_fn(
@@ -549,6 +622,7 @@ class TestD1Model:
         assert answers == [True, True, True, False, False, False]
 
     def test_stored_logits_follow_the_callers_order(self, network):
+        """Stored logits list the options in the order they were given"""
         model = _model({"questions": {"animal": CHOICE}})
         model.store_logits = True
 
@@ -566,6 +640,8 @@ class TestD1ApplyModel:
 
     @drop_datasets
     def test_samples_are_labelled_in_batches(self, network, tmp_path):
+        """``apply_model`` labels every sample, with its logits, in padded
+        batches"""
         model = _model({"classes": ["bright", "dark"]})
 
         dataset = fo.Dataset()
@@ -601,6 +677,7 @@ class TestD1OutputProcessor:
     """Test the mapping from answer-token log-probabilities to labels"""
 
     def _process(self, questions, rows, columns, processor=None, **kwargs):
+        """Runs an output processor over the given rows"""
         processor = processor or D1OutputProcessor()
         return processor(
             torch.tensor(rows, dtype=torch.float32),
@@ -611,6 +688,8 @@ class TestD1OutputProcessor:
         )
 
     def test_choice_becomes_a_classification(self):
+        """A choice answer becomes a classification of its most probable
+        option"""
         label = self._process(
             {"q": CHOICE}, [[2.0, 0.0, -1.0]], {"q": [[0], [1], [2]]}
         )[0]
@@ -621,6 +700,7 @@ class TestD1OutputProcessor:
         assert label.logits is None
 
     def test_an_option_scores_its_best_token(self):
+        """An option with several tokens scores its best one"""
         label = self._process(
             {"q": NOUL},
             [[0.5, 3.0, 1.0]],
@@ -632,6 +712,7 @@ class TestD1OutputProcessor:
         assert np.allclose(label.logits, [3.0, 1.0])
 
     def test_score_becomes_the_expected_level(self):
+        """A score answer becomes a regression on the expected level"""
         label = self._process(
             {"q": SCORE}, [[0.0, 1.0, 2.0]], {"q": [[0], [1], [2]]}
         )[0]
@@ -644,6 +725,7 @@ class TestD1OutputProcessor:
         assert label.confidence == pytest.approx(probabilities.max())
 
     def test_each_image_reads_its_own_rows(self):
+        """Each image's labels come from its own rows"""
         questions = {"a": NOUL, "b": NOUL}
         rows = [[2.0, 0.0], [0.0, 2.0], [0.0, 2.0], [2.0, 0.0]]
 
@@ -657,6 +739,7 @@ class TestD1OutputProcessor:
         ]
 
     def test_confidence_threshold_drops_classifications(self):
+        """A classification below the threshold is dropped"""
         label = self._process(
             {"q": NOUL},
             [[0.1, 0.0]],
@@ -667,6 +750,8 @@ class TestD1OutputProcessor:
         assert label is None
 
     def test_threshold_omits_dropped_answers_from_a_dict(self):
+        """A dropped answer is left out of a dict of labels, and a score is
+        kept"""
         questions = {"sure": NOUL, "unsure": NOUL, "sharp": SCORE}
         rows = [[5.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.0, 0.0]]
         columns = {
@@ -682,6 +767,7 @@ class TestD1OutputProcessor:
         assert set(labels) == {"sure", "sharp"}
 
     def test_threshold_dict_saves_to_new_fields(self):
+        """A dict without a dropped answer saves to new fields"""
         questions = {"sure": NOUL, "unsure": NOUL}
         labels = self._process(
             questions,
@@ -697,6 +783,7 @@ class TestD1OutputProcessor:
         assert not sample.has_field("d1_unsure")
 
     def test_bfloat16_output_is_read(self):
+        """bfloat16 output is read"""
         processor = D1OutputProcessor()
 
         label = processor(
@@ -713,23 +800,27 @@ class TestD1PrepareImage:
     """Test image normalization to PIL, which needs no model"""
 
     def test_channel_first_tensor_is_transposed(self):
+        """A channel-first tensor is transposed to channel-last"""
         img = torch.zeros(3, 40, 60, dtype=torch.uint8)
 
         assert fou_d1._prepare_image(img).size == (60, 40)
 
     def test_unit_float_array_is_scaled(self):
+        """A float array in 0-1 is scaled to 0-255"""
         img = np.full((8, 8, 3), 0.5, dtype=np.float32)
         out = np.asarray(fou_d1._prepare_image(img))
 
         assert out.max() == 127
 
     def test_path_is_loaded(self, tmp_path):
+        """An image path is loaded"""
         path = str(tmp_path / "image.png")
         _image(12, 9).save(path)
 
         assert fou_d1._prepare_image(path).size == (12, 9)
 
     def test_small_images_are_not_resized(self):
+        """An image within the pixel cap is returned as it is"""
         img = _image(12, 9)
 
         assert fou_d1._cap_pixels(img, 1000) is img
