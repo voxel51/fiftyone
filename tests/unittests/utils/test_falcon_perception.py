@@ -26,6 +26,7 @@ from decorators import drop_datasets
 
 
 def _image(w=40, h=30, shade=80):
+    """A uniform grey RGB image of the given size and shade"""
     return PILImage.new("RGB", (w, h), color=(shade, shade, shade))
 
 
@@ -36,6 +37,7 @@ def _rle(rect, size):
 
 
 def _decode(rle):
+    """Decodes a stand-in RLE into the mask of its rectangle"""
     h, w = rle["size"]
     x0, y0, x1, y1 = (int(v) for v in rle["counts"].decode("utf-8").split())
     mask = np.zeros((h, w), dtype=np.uint8)
@@ -49,12 +51,16 @@ class _FakeRelease(object):
     "nothing" finds an instance whose mask is empty"""
 
     def __init__(self):
+        """Records the images, queries and settings of each call"""
         self.calls = []
 
     def eval(self):
+        """Has no training mode"""
         return self
 
     def generate(self, images, queries, **kwargs):
+        """One instance per image and query, with the release's box and
+        RLE mask"""
         self.calls.append(
             ([img.size for img in images], list(queries), kwargs)
         )
@@ -88,6 +94,7 @@ def release(monkeypatch):
     release.loads = []
 
     def from_pretrained(*args, **kwargs):
+        """Records the load's arguments and returns the stand-in"""
         release.loads.append((args, kwargs))
         return release
 
@@ -105,6 +112,7 @@ def release(monkeypatch):
 
 
 def _model(d):
+    """A :class:`FalconPerceptionModel` on the CPU with the config ``d``"""
     return FalconPerceptionModel(
         FalconPerceptionModelConfig(dict(d, device="cpu"))
     )
@@ -114,6 +122,8 @@ class TestFalconPerceptionModelConfig:
     """Test config parsing and validation"""
 
     def test_defaults(self):
+        """The default release loads at its pinned revision in bfloat16,
+        with the release's decoding defaults and raw inputs"""
         config = FalconPerceptionModelConfig({"classes": ["car"]})
 
         assert config.name_or_path == "tiiuae/Falcon-Perception"
@@ -128,6 +138,7 @@ class TestFalconPerceptionModelConfig:
         assert config.raw_inputs is True
 
     def test_other_repositories_have_no_default_revision(self):
+        """Another repository or a local path gets no pinned revision"""
         config = FalconPerceptionModelConfig(
             {"classes": ["car"], "name_or_path": "/models/falcon-local"}
         )
@@ -135,6 +146,7 @@ class TestFalconPerceptionModelConfig:
         assert config.revision is None
 
     def test_an_explicit_revision_is_kept(self):
+        """A revision that is set replaces the pinned one"""
         config = FalconPerceptionModelConfig(
             {"classes": ["car"], "revision": "main"}
         )
@@ -154,6 +166,8 @@ class TestFalconPerceptionModelConfig:
         ],
     )
     def test_invalid_settings_are_rejected(self, d):
+        """Sizes and counts below one, inverted dimensions, a threshold not
+        strictly between 0 and 1 and an unknown dtype are rejected"""
         with pytest.raises(ValueError):
             FalconPerceptionModelConfig(dict(d, classes=["car"]))
 
@@ -161,6 +175,7 @@ class TestFalconPerceptionModelConfig:
         """The queries are checked before any download is attempted"""
 
         def fail(*args, **kwargs):
+            """Fails the test when a download is attempted"""
             raise AssertionError("download attempted")
 
         monkeypatch.setattr(
@@ -180,6 +195,8 @@ class TestFalconPerceptionModel:
     stand-in release"""
 
     def test_release_loads_with_its_own_code(self, release):
+        """The release loads with its own code at the pinned revision, in
+        bfloat16 on the configured device"""
         _model({"classes": ["car"]})
 
         ((args, kwargs),) = release.loads
@@ -192,12 +209,15 @@ class TestFalconPerceptionModel:
         }
 
     def test_the_release_can_load_in_float32(self, release):
+        """``dtype="float32"`` loads the release in its own precision"""
         _model({"classes": ["car"], "dtype": "float32"})
 
         ((_, kwargs),) = release.loads
         assert kwargs["dtype"] is torch.float32
 
     def test_each_query_labels_its_instances(self, release):
+        """Each query labels its instances, with their masks' bounding
+        rectangles and masks and no confidence"""
         model = _model({"classes": ["left side", "top"]})
 
         detections = model.predict(_image(40, 30))
@@ -211,6 +231,7 @@ class TestFalconPerceptionModel:
         assert left.confidence is None
 
     def test_decoding_settings_reach_the_release(self, release):
+        """The decoding settings are passed to the release's ``generate``"""
         model = _model(
             {
                 "classes": ["car"],
@@ -232,6 +253,8 @@ class TestFalconPerceptionModel:
         }
 
     def test_queries_are_decoded_in_passes(self, release):
+        """A batch's image and query pairs are decoded at most
+        ``queries_per_pass`` at a time"""
         model = _model({"classes": ["a", "b", "c"], "queries_per_pass": 4})
 
         labels = model.predict_all([_image(40, 30), _image(60, 20)])
@@ -244,6 +267,7 @@ class TestFalconPerceptionModel:
         ]
 
     def test_filter_classes_limit_the_queries(self, release):
+        """``filter_classes`` limits the queries that are run"""
         model = _model({"classes": ["a", "b", "c"], "filter_classes": ["b"]})
 
         detections = model.predict(_image())
@@ -253,6 +277,7 @@ class TestFalconPerceptionModel:
         assert [d.label for d in detections.detections] == ["b"]
 
     def test_an_empty_mask_keeps_the_predicted_box(self, release):
+        """An instance whose mask is empty keeps the release's box"""
         model = _model({"classes": ["nothing"]})
 
         detection = model.predict(_image()).detections[0]
@@ -261,6 +286,8 @@ class TestFalconPerceptionModel:
         assert detection.bounding_box == pytest.approx([0, 0, 1, 0.5])
 
     def test_arrays_and_tensors_become_images(self, release):
+        """Channel-last arrays and channel-first tensors reach the release
+        as images"""
         model = _model({"classes": ["top"]})
 
         model.predict(np.zeros((30, 40, 3), dtype=np.uint8))
@@ -277,6 +304,8 @@ class TestFalconPerceptionApplyModel:
 
     @drop_datasets
     def test_samples_are_labelled_in_batches(self, release, tmp_path):
+        """``apply_model`` passes images of different sizes to the release
+        in batches of ``batch_size``"""
         model = _model({"classes": ["top"]})
 
         dataset = fo.Dataset()
@@ -302,11 +331,14 @@ class TestFalconPerceptionHelpers:
     """Test image normalization and box fallbacks, which need no model"""
 
     def test_channel_first_tensor_is_transposed(self):
+        """A channel-first tensor is transposed to channel-last"""
         img = torch.zeros(3, 40, 60, dtype=torch.uint8)
 
         assert fou_fp._prepare_image(img).size == (60, 40)
 
     def test_a_box_past_the_border_is_clipped(self, monkeypatch):
+        """A fallback box that crosses the image's border is clipped to
+        it"""
         monkeypatch.setattr(
             fou_fp, "mask_utils", SimpleNamespace(decode=_decode)
         )
