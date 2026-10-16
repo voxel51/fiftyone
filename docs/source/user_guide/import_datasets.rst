@@ -4735,9 +4735,10 @@ By default it is assumed that a ``filepath`` column exists and contains the
 media paths, but you can customize this via the optional ``media_field``
 parameter.
 
-By default all columns are loaded as string fields, but you can provide the
-optional ``fields`` parameter to select a subset of columns to load or provide
-custom parsing functions for each field, as demonstrated below.
+By default all columns are loaded as string fields, except a ``tags`` column,
+which is parsed as a comma-separated list of tags. You can provide the optional
+``fields`` parameter to select a subset of columns to load or provide custom
+parsing functions for each field, as demonstrated below.
 
 .. note::
 
