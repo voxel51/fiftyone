@@ -6,33 +6,27 @@ export const CARD_WIDTH = 208;
 export const CARD_PREVIEW_HEIGHT = 106;
 /** A card is its media plus two 1px borders; nothing is captioned. */
 export const CARD_HEIGHT = CARD_PREVIEW_HEIGHT + 2;
-/** Narrow previews retain enough width for the card controls. */
+/** Fold cards retain enough width for their controls. */
 export const CARD_MIN_WIDTH = 106;
-export const CARD_MAX_WIDTH = 320;
 /** Multimodal previews are square. */
 export const MULTIMODAL_CARD_WIDTH = 144;
 export const MULTIMODAL_CARD_HEIGHT = MULTIMODAL_CARD_WIDTH;
 
 /**
  * The card width that shows the whole media at the requested height.
- * Unknown or degenerate ratios fall back to the default width, where the
- * preview letterboxes instead.
+ * Known ratios are never clamped. Include the borders so the media itself
+ * fills the card exactly; only unknown ratios use the default proportions.
  */
 export function cardWidth(
   aspectRatio: number | null | undefined,
   height = CARD_HEIGHT,
 ) {
-  const previewHeight = height - 2;
+  const previewHeight = Math.max(0, height - 2);
   const ratio =
     aspectRatio && Number.isFinite(aspectRatio) && aspectRatio > 0
       ? aspectRatio
-      : CARD_WIDTH / CARD_PREVIEW_HEIGHT;
-  return Math.round(
-    Math.min(
-      (CARD_MAX_WIDTH / CARD_PREVIEW_HEIGHT) * previewHeight,
-      Math.max(CARD_MIN_WIDTH, previewHeight * ratio),
-    ),
-  );
+      : (CARD_WIDTH - 2) / CARD_PREVIEW_HEIGHT;
+  return previewHeight * ratio + 2;
 }
 export const STRIP_GAP = 8;
 export const STRIP_PADDING_TOP = 14;

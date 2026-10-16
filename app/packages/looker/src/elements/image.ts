@@ -15,6 +15,23 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private retryCount = 0;
   private timeoutId: number | null = null;
 
+  boot(
+    params: Parameters<BaseElement<ImageState, HTMLImageElement>["boot"]>[0],
+  ) {
+    super.boot(params);
+    params.abortController.signal.addEventListener(
+      "abort",
+      () => {
+        if (this.timeoutId !== null) {
+          window.clearTimeout(this.timeoutId);
+          this.timeoutId = null;
+        }
+        this.element.removeAttribute("src");
+      },
+      { once: true },
+    );
+  }
+
   getEvents(): Events<ImageState> {
     return {
       load: ({ update }) => {

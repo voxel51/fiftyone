@@ -37,7 +37,7 @@ function AvailableSimilaritySelection({
   surface,
 }: GridSelectionActionProps) {
   const [searching, setSearching] = useState(false);
-  const { handleSearch, handleOpenPanel } = useSimilarityPopover({
+  const { handleSearch, resolvedBrainKey } = useSimilarityPopover({
     modal: false,
     isImageSearch: true,
     close: noop,
@@ -53,10 +53,13 @@ function AvailableSimilaritySelection({
       label="Find similar"
       icon={SearchIcon}
       surface={surface}
-      disabledReason={disabledReason}
+      disabledReason={
+        disabledReason ??
+        (!resolvedBrainKey ? "No similarity index is available" : null)
+      }
       busy={searching}
       busyLabel="Finding similar…"
-      onClick={context.source === "explicit" ? handleSearch : handleOpenPanel}
+      onClick={handleSearch}
     />
   );
 }
@@ -88,14 +91,14 @@ function AvailableSimilaritySettings({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Search captured samples, or open search setup for the current grid. */
+/** Search captured samples with an available similarity index. */
 export const similaritySelectionAction: GridSelectionAction = {
   id: "fiftyone:find-similar",
   order: 15,
   label: "Find similar",
   placement: "primary",
   supports: () => true,
-  scope: "explicit-or-results",
+  scope: "explicit",
   memberKinds: ["episode"],
   unavailable: (context) => {
     if (context.counts.unavailable)

@@ -138,6 +138,11 @@ describe("session persistence", () => {
       result.current.actions.capture({
         episodeId: "second",
         members: [{ episodeId: "second", kind: "episode" }],
+        node: {
+          id: "second",
+          sample: { _id: "second", cameras: { _cls: "Group", name: "left" } },
+          urls: [{ field: "filepath", url: "https://media.example/signed" }],
+        },
       }),
     );
     expect(
@@ -147,6 +152,14 @@ describe("session persistence", () => {
         .map((entry: { episodeId: string }) => entry.episodeId)
         .sort(),
     ).toEqual(["persisted", "second"]);
+    const saved: EpisodeSelection[] = JSON.parse(
+      sessionStorage.getItem("fiftyone:grid-selection:seeded") ?? "[]",
+    );
+    expect(saved.find((capture) => capture.episodeId === "second")).toEqual({
+      episodeId: "second",
+      members: [{ episodeId: "second", kind: "episode" }],
+      groupSlice: "left",
+    });
     act(() => result.current.actions.clear());
     expect(sessionStorage.getItem("fiftyone:grid-selection:seeded")).toBeNull();
   });
@@ -488,6 +501,77 @@ describe("selection buckets", () => {
       result.current.captures.get(second)?.get("b")?.filepath,
     ).toBeUndefined();
   });
+
+  it.each([{}, { filepath: "/a.png" }])(
+    "copies a persisted slice into another bucket without replacing supplied metadata: %j",
+    (metadata) => {
+      sessionStorage.setItem(
+        "fiftyone:grid-selection:inherit-slice",
+        JSON.stringify([{ ...whole("a"), groupSlice: "left" }]),
+      );
+      const { result } = harness("inherit-slice");
+      act(() => result.current.layout.add());
+      act(() => result.current.second.capture({ ...whole("a"), ...metadata }));
+      const second = result.current.buckets[1].id;
+      expect(result.current.captures.get(second)?.get("a")).toEqual({
+        ...whole("a"),
+        ...metadata,
+        groupSlice: "left",
+      });
+      act(() =>
+        result.current.second.capture({
+          ...whole("a"),
+          ...metadata,
+          groupSlice: "right",
+        }),
+      );
+      expect(result.current.captures.get(second)?.get("a")?.groupSlice).toBe(
+        "right",
+      );
+    },
+  );
+
+  it("preserves an explicit slice when inheriting a known preview", () => {
+    sessionStorage.setItem(
+      "fiftyone:grid-selection:explicit-slice",
+      JSON.stringify([
+        { ...whole("a"), filepath: "/a.png", groupSlice: "left" },
+      ]),
+    );
+    const { result } = harness("explicit-slice");
+    act(() => result.current.layout.add());
+    act(() =>
+      result.current.second.capture({ ...whole("a"), groupSlice: "right" }),
+    );
+    expect(
+      result.current.captures.get(result.current.buckets[1].id)?.get("a"),
+    ).toMatchObject({ filepath: "/a.png", groupSlice: "right" });
+  });
+
+  it.each([true, false])(
+    "inherits a slice and preview from different sections, slice first: %s",
+    (sliceFirst) => {
+      const { result } = harness("combined-metadata");
+      act(() => result.current.layout.add());
+      act(() => result.current.layout.add());
+      act(() =>
+        result.current.primary.capture({
+          ...whole("a"),
+          ...(sliceFirst ? { groupSlice: "left" } : { filepath: "/a.png" }),
+        }),
+      );
+      act(() =>
+        result.current.second.capture({
+          ...whole("a"),
+          ...(sliceFirst ? { filepath: "/a.png" } : { groupSlice: "left" }),
+        }),
+      );
+      act(() => result.current.third.capture(whole("a")));
+      expect(
+        result.current.captures.get(result.current.buckets[2].id)?.get("a"),
+      ).toMatchObject({ filepath: "/a.png", groupSlice: "left" });
+    },
+  );
 
   it("refreshes metadata in every bucket that holds the parent", () => {
     const { result } = harness("metadata");

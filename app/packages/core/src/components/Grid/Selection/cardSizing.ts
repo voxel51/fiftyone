@@ -33,8 +33,8 @@ export function fitCardHeight(
           : multimodal
             ? cardHeight
             : cardWidth(item.aspectRatio, cardHeight);
-      // Minimum-size cards may need to letterbox in a narrow bucket. Larger
-      // cards must fit its width so growing the tray preserves their shape.
+      // Cards at the minimum height shrink proportionally in narrow buckets.
+      // Larger cards must fit its width before growing with the tray.
       if (naturalWidth > width && cardHeight > minimum) return false;
       const itemWidth = Math.min(width, naturalWidth);
       if (rowWidth > 0 && rowWidth + STRIP_GAP + itemWidth > width) {

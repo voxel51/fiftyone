@@ -268,6 +268,8 @@ export interface VideoConfig extends BaseConfig {
   enableTimeline: boolean;
   frameRate: number;
   support?: [number, number];
+  /** Initial thumbnail time in seconds; omitted to use the clip's start. */
+  posterSeconds?: number;
 }
 
 export interface ImaVidConfig extends BaseConfig {
