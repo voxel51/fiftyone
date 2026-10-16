@@ -25,6 +25,8 @@ import {
   PROBE,
   PROBE_FILE,
   probePatches,
+  RUN_WORKSPACE,
+  runWorkspace,
   twoPatchesEach,
 } from "./embeddings-data";
 
@@ -70,20 +72,30 @@ test.afterAll(async ({ foWebServer }) => {
 });
 
 test.describe("on two clusters of patches", () => {
-  test.beforeEach(async ({ datasetName, fiftyoneLoader, page }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  test.use({
+    seed: { ...patchClusters, workspaces: { [RUN_WORKSPACE]: runWorkspace } },
   });
 
-  test("the run card says it embeds patches", async ({ embeddings }) => {
+  test("the run card says it embeds patches", async ({
+    datasetName,
+    embeddings,
+    fiftyoneLoader,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await embeddings.open();
 
     await embeddings.assert.runCardShows(BRAIN_KEY, ["ground_truth patches"]);
   });
 
   test("a lasso scopes the grid to the samples owning the patches", async ({
+    datasetName,
     embeddings,
+    fiftyoneLoader,
     grid,
+    page,
   }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await embeddings.openInSplit();
     await embeddings.openRun(BRAIN_KEY, PATCH_TOTAL);
     await embeddings.setMode("select");
@@ -95,9 +107,19 @@ test.describe("on two clusters of patches", () => {
     await grid.assert.isEntryCountTextEqualTo(`${PATCH_A} samples`);
   });
 
-  test("a legend click hides one class's patches", async ({ embeddings }) => {
-    await embeddings.openInSplit();
-    await embeddings.openRun(BRAIN_KEY, PATCH_TOTAL);
+  test("a legend click hides one class's patches", async ({
+    datasetName,
+    embeddings,
+    fiftyoneLoader,
+    page,
+  }) => {
+    // The workspace opens the run with its split sizes set: a split opened by
+    // hand saves its sizes a moment later, and that save's page reload can
+    // close the color-by menu under the click
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ workspace: RUN_WORKSPACE }),
+    });
+    await embeddings.untilDrawn({ points: PATCH_TOTAL });
     await embeddings.colorBy(LABEL_PATH);
     await embeddings.afterDrawn({ visible: PATCH_A }, () =>
       embeddings.toggleLegend("dog"),
@@ -111,7 +133,9 @@ test.describe("on two clusters of patches", () => {
 });
 
 test.describe("across samples and patches", () => {
-  test.use({ seed: twoPatchesEach });
+  test.use({
+    seed: { ...twoPatchesEach, workspaces: { [RUN_WORKSPACE]: runWorkspace } },
+  });
 
   test("selecting a patch in a patches grid lights its sample's point", async ({
     datasetName,
@@ -183,9 +207,12 @@ test.describe("across samples and patches", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await embeddings.openInSplit();
-    await embeddings.openRun(BRAIN_KEY, PAIR_SAMPLES);
+    // The workspace opens the run with its split sizes set (see "a legend
+    // click hides one class's patches")
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ workspace: RUN_WORKSPACE }),
+    });
+    await embeddings.untilDrawn({ points: PAIR_SAMPLES });
 
     await embeddings.colorBy("ground_truth.detections.label");
 
