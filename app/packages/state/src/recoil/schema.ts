@@ -630,7 +630,11 @@ export const labelPath = selectorFamily<string, string>({
     },
 });
 
-export const _activeFields = (() => {
+/**
+ * The stored active-field choice. `null` is the default: every field the
+ * current schema shows. Unfiltered; `activeFields` resolves it.
+ */
+export const activeFieldsChoice = (() => {
   let data: { activeFields: string[]; datasetId: string };
   try {
     data = JSON.parse(sessionStorage.getItem("activeFields"));
@@ -663,7 +667,7 @@ export const _activeFields = (() => {
       },
     },
     {
-      key: "_activeFields",
+      key: "activeFieldsChoice",
       effects: ({ modal }) => [
         ({ onSet }) => {
           onSet((newValue) => {
@@ -695,7 +699,7 @@ export const activeFields = selectorFamily<
       // lens hides them in the client while the field lists still have them
       const excluded = get(activeSchemaExclusions) ?? [];
       const paths = filterPaths(
-        get(_activeFields({ modal })) || get(defaultActiveFields),
+        get(activeFieldsChoice({ modal })) || get(defaultActiveFields),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields)),
       ).filter(
         (path) =>
@@ -716,7 +720,7 @@ export const activeFields = selectorFamily<
       if (expanded) {
         throw new Error("expanded is not supported");
       }
-      set(_activeFields({ modal }), value);
+      set(activeFieldsChoice({ modal }), value);
     },
 });
 
