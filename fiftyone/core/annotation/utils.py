@@ -440,7 +440,10 @@ def declare_label_schema_attributes(sample_collection, label_schemas):
             if pick is None:
                 attr_type = attr[foac.TYPE]
                 ftype = foac.TYPE_TO_FIELD[attr_type]
-                if attr_type in (
+                # A point-scoped keypoint attribute's type is its ELEMENT
+                # type: its values are lists parallel to `points`
+                is_point_scoped = attr.get(foac.SCOPE) == foac.POINT_SCOPE
+                if is_point_scoped or attr_type in (
                     foac.FLOAT_LIST,
                     foac.INT_LIST,
                     foac.STR_LIST,
