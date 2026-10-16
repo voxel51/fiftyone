@@ -13599,11 +13599,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers>=5.17"
-                ],
+                "packages": ["torch", "torchvision", "transformers>=5.17"],
                 "cpu": {
                     "support": true
                 },
@@ -13637,11 +13633,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers>=5.17"
-                ],
+                "packages": ["torch", "torchvision", "transformers>=5.17"],
                 "cpu": {
                     "support": true
                 },
