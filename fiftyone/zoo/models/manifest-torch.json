@@ -12714,6 +12714,38 @@
             "date_added": "2026-07-21 00:00:00"
         },
         {
+            "base_name": "pp-doclayout-v3-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "PP-DocLayoutV3 document layout detector that finds 21 kinds of page region, such as titles, paragraphs, tables, formulas, charts and seals, and lists them in reading order",
+            "source": "https://huggingface.co/PaddlePaddle/PP-DocLayoutV3_safetensors",
+            "author": "PaddlePaddle Authors",
+            "license": "Apache 2.0",
+            "size_bytes": 133289670,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "PaddlePaddle/PP-DocLayoutV3_safetensors",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    },
+                    "confidence_thresh": 0.5
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=5.1"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "ocr", "torch", "transformers", "official"],
+            "training_data": [],
+            "date_added": "2026-10-15 00:00:00"
+        },
+        {
             "base_name": "point-transformer-v3-nuscenes-torch",
             "base_filename": "ptv3-nuscenes-semseg-pt-v3m1-0-base.pth",
             "version": null,
