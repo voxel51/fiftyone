@@ -282,6 +282,23 @@ describe("RunsList", () => {
     expect(screen.getByText("viz_new scheduled")).toBeTruthy();
   });
 
+  it("keeps New visualization available while only a run is pending", () => {
+    const onCreate = vi.fn();
+    render(
+      <RunsList
+        runs={[]}
+        pendingRuns={[pending("viz_new")]}
+        showUpsell={false}
+        onCreate={onCreate}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("New visualization"));
+    expect(onCreate).toHaveBeenCalled();
+  });
+
   it("opens a pending run's screen on click and returns on back", () => {
     render(
       <RunsList
