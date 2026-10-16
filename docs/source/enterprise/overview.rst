@@ -1,16 +1,16 @@
 .. _enterprise-overview:
 
-FiftyOne Enterprise Overview
-============================
+Voxel51 Overview
+================
 
 .. default-role:: code
 
 .. meta::
-    :description: FiftyOne Enterprise adds collaboration, roles and permissions, auto-labeling, dataset versioning, and billion-scale data access on top of FiftyOne Open Source.
+    :description: Voxel51 adds collaboration, roles and permissions, auto-labeling, dataset versioning, and billion-scale data access on top of FiftyOne Open Source.
 
-.. title:: FiftyOne Enterprise vs Open Source
+.. title:: Voxel51 vs Open Source
 
-FiftyOne Enterprise is the commercial edition of FiftyOne, the open source
+Voxel51 is the commercial edition of FiftyOne, the open source
 multimodal data platform for physical AI. It adds the collaboration, governance,
 automation, and scale that teams need to curate, evaluate, and ship production AI
 systems, while remaining fully compatible with your existing open source
@@ -18,10 +18,10 @@ workflows.
 
 .. note::
 
-    `Learn more <https://voxel51.com/fiftyone/why-upgrade>`_ about FiftyOne Enterprise and
+    `Learn more <https://voxel51.com/fiftyone/why-upgrade>`_ about Voxel51 and
     `contact us <https://voxel51.com/talk-to-sales>`_ to try it!
 
-A few of the capabilities that FiftyOne Enterprise adds on top of the open
+A few of the capabilities that Voxel51 adds on top of the open
 source project:
 
 .. grid:: 1 2 3 3
@@ -81,7 +81,7 @@ source project:
 Open Source vs Enterprise
 _________________________
 
-Here's how FiftyOne Enterprise compares to FiftyOne Open Source. Follow the
+Here's how Voxel51 compares to FiftyOne Open Source. Follow the
 links in each row for details.
 
 .. raw:: html
@@ -115,7 +115,7 @@ links in each row for details.
     <tr>
     <th class="head stub" style="width:38%"></th>
     <th class="head" style="width:31%"><p>FiftyOne Open Source</p></th>
-    <th class="head" style="width:31%"><p>FiftyOne Enterprise</p></th>
+    <th class="head" style="width:31%"><p>Voxel51</p></th>
     </tr>
     </thead>
     <tbody>
@@ -306,7 +306,7 @@ links in each row for details.
 Backwards compatibility
 _______________________
 
-FiftyOne Enterprise is fully backwards compatible with FiftyOne Open Source. This
+Voxel51 is fully backwards compatible with FiftyOne Open Source. This
 means that all of your pre-existing FiftyOne Open Source workflows should be
 usable without modification.
 
@@ -341,13 +341,13 @@ would with FiftyOne Open Source:
 Security considerations
 _______________________
 
-FiftyOne Enterprise is strictly a software offering that runs entirely within
+Voxel51 is strictly a software offering that runs entirely within
 your own infrastructure — on-premises, in your virtual private cloud, or in a
 fully air-gapped environment with no outbound internet access. All hardware and
 data are owned and managed by your organization.
 
 Because the platform is self-hosted, Voxel51 has no access to your data,
-datasets, or deployment. FiftyOne Enterprise integrates with your organization's
+datasets, or deployment. Voxel51 integrates with your organization's
 existing security infrastructure: users authenticate through your identity
 provider using OIDC, OAuth2, or SAML — see
 :ref:`Pluggable Authentication <pluggable-auth>` for the supported
@@ -355,5 +355,5 @@ authentication modes — and all database access is brokered by the central
 authentication service.
 
 When deployed with :ref:`internal authentication mode <pluggable-auth>`, no
-outside network access is required to operate FiftyOne Enterprise, making it
+outside network access is required to operate Voxel51, making it
 suitable for air-gapped and other high-security environments.

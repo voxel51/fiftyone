@@ -26,8 +26,14 @@ import {
   meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
-import { RecoilState, selector, selectorFamily } from "recoil";
+import {
+  type GetRecoilValue,
+  RecoilState,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { computeActiveFields } from "../activeFields";
+import { EVENTS_FIELD } from "../event-facets/identity";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
@@ -35,6 +41,7 @@ import { labelPathsSetExpanded } from "./labels";
 import {
   activeSchemaAttrExclusions,
   activeSchemaExclusions,
+  taskFieldExclusions,
 } from "./schemaSettings.atoms";
 
 import { activeFieldsConfig } from "./selectors";
@@ -58,7 +65,8 @@ export const filterPaths = (
 ): string[] => {
   return paths
     ? paths.filter((path) => {
-        if (path === "_label_tags" || path === "_temporal_tags") return true;
+        if (["_label_tags", "_temporal_tags", EVENTS_FIELD].includes(path))
+          return true;
 
         const keys = path.split(".");
         let fields = schema;
@@ -96,44 +104,67 @@ export const buildSchema = (
   return schema;
 };
 
+const spaceSchema = (
+  get: GetRecoilValue,
+  space: State.SPACE,
+  excluded: string[] | null,
+): Schema => {
+  const dataset = get(datasetAtom);
+
+  if (!dataset) {
+    return {};
+  }
+
+  const schema = (
+    space === State.SPACE.FRAME
+      ? get(atoms.frameFields)
+      : get(atoms.sampleFields)
+  ).reduce(schemaReduce, {});
+
+  if (excluded?.length) {
+    for (const path of excluded) {
+      if (space === State.SPACE.FRAME) {
+        if (path.startsWith("frames.")) {
+          deleteSchemaPath(schema, path.slice("frames.".length));
+        }
+      } else if (!path.startsWith("frames.")) {
+        deleteSchemaPath(schema, path);
+      }
+    }
+  }
+
+  return schema;
+};
+
 export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   key: "fieldSchema",
   get:
     ({ space }) =>
-    ({ get }) => {
-      const dataset = get(datasetAtom);
-
-      if (!dataset) {
-        return {};
-      }
-
-      const schema = (
-        space === State.SPACE.FRAME
-          ? get(atoms.frameFields)
-          : get(atoms.sampleFields)
-      ).reduce(schemaReduce, {});
-
-      // Workflow task schema policy: fields hidden by the active
-      // stage's overlay drop out of the client schema entirely, so the
-      // sidebar, filters, and looker never surface them. Server-side,
-      // the same paths ride `extendedStages` as an ExcludeFields (see
-      // `fieldExclusionStage`), so grid payloads are stripped too.
-      const excluded = get(activeSchemaExclusions);
-      if (excluded?.length) {
-        for (const path of excluded) {
-          if (space === State.SPACE.FRAME) {
-            if (path.startsWith("frames.")) {
-              deleteSchemaPath(schema, path.slice("frames.".length));
-            }
-          } else if (!path.startsWith("frames.")) {
-            deleteSchemaPath(schema, path);
-          }
-        }
-      }
-
-      return schema;
-    },
+    ({ get }) =>
+      // Schema policy: fields hidden by the active task or the Explore
+      // lens drop out of the client schema entirely, so the sidebar and
+      // filters never surface them. Server-side, the task's ride
+      // `extendedStages` as an ExcludeFields (see `fieldExclusionStage`),
+      // so grid payloads are stripped of them too.
+      spaceSchema(get, space, get(activeSchemaExclusions)),
 });
+
+/**
+ * The schema lookers build their overlays from: `fieldSchema` keeping the
+ * fields the Explore lens hides. A looker reads its schema when it is
+ * created, so with the lens's fields left out, a lens switch could never
+ * draw them on the tiles already loaded; the active paths keep them hidden
+ * while the lens is on.
+ */
+export const lookerFieldSchema = selectorFamily<Schema, { space: State.SPACE }>(
+  {
+    key: "lookerFieldSchema",
+    get:
+      ({ space }) =>
+      ({ get }) =>
+        spaceSchema(get, space, get(taskFieldExclusions)),
+  },
+);
 
 /**
  * Removes a (possibly nested, dotted) path from a reduced schema, so a
@@ -156,6 +187,7 @@ export const pathIsShown = selectorFamily<boolean, string>({
   get:
     (path) =>
     ({ get }) => {
+      if (path === EVENTS_FIELD) return true;
       if (
         path.startsWith("tags.") ||
         path.startsWith("_label_tags.") ||
@@ -659,9 +691,17 @@ export const activeFields = selectorFamily<
   get:
     ({ expanded, modal }) =>
     ({ get }) => {
+      // The schema policy's hidden fields are left out too: the Explore
+      // lens hides them in the client while the field lists still have them
+      const excluded = get(activeSchemaExclusions) ?? [];
       const paths = filterPaths(
         get(_activeFields({ modal })) || get(defaultActiveFields),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields)),
+      ).filter(
+        (path) =>
+          !excluded.some(
+            (hidden) => path === hidden || path.startsWith(`${hidden}.`),
+          ),
       );
 
       if (expanded) {

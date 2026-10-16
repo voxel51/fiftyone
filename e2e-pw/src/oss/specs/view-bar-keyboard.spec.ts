@@ -46,7 +46,7 @@ test.describe("view bar keyboard", () => {
   test("a stage can be added, filled and applied without the mouse", async ({
     viewBar,
     grid,
-    baseURL,
+    fiftyoneServerPort,
   }) => {
     const editor = await viewBar.addStage("Limit");
     await editor.assert.paramIsFocused("limit");
@@ -59,7 +59,7 @@ test.describe("view bar keyboard", () => {
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 
-    const stages = await getSessionView(baseURL, datasetName);
+    const stages = await getSessionView(fiftyoneServerPort, datasetName);
     expect(clsOf(stages[0])).toBe("Limit");
     expect(kwargsOf(stages[0])).toEqual({ limit: 3 });
   });
@@ -73,7 +73,7 @@ test.describe("view bar keyboard", () => {
     viewBar,
     grid,
     page,
-    baseURL,
+    fiftyoneServerPort,
   }) => {
     // Opening the stages row lands the keyboard in the pinned typeahead —
     // an empty row's slot IS the selector. Everything after this is keys.
@@ -94,7 +94,7 @@ test.describe("view bar keyboard", () => {
     await grid.afterEntryCounts(() => grid.run(() => limit.finish()));
 
     await grid.assert.isEntryCountTextEqualTo("3 samples");
-    const stages = await getSessionView(baseURL, datasetName);
+    const stages = await getSessionView(fiftyoneServerPort, datasetName);
     expect(stages).toHaveLength(2);
     expect(clsOf(stages[0])).toBe("Skip");
     expect(kwargsOf(stages[0])).toEqual({ skip: 2 });

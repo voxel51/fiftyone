@@ -8967,6 +8967,14 @@ class ToClips(ViewStage):
         return self._config
 
     def load_view(self, sample_collection, saved_view=False, reload=False):
+        subset_id = (self._config or {}).get("_subset_id")
+        if subset_id is not None:
+            from fiftyone.core.subsets import load_materialized_view
+
+            return load_materialized_view(
+                sample_collection, subset_id, self, reload=reload
+            )
+
         state = {
             "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
@@ -9364,6 +9372,14 @@ class ToFrames(ViewStage):
         return self._config
 
     def load_view(self, sample_collection, saved_view=False, reload=False):
+        subset_id = (self._config or {}).get("_subset_id")
+        if subset_id is not None:
+            from fiftyone.core.subsets import load_materialized_view
+
+            return load_materialized_view(
+                sample_collection, subset_id, self, reload=reload
+            )
+
         state = {
             "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),

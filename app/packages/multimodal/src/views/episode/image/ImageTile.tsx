@@ -42,6 +42,10 @@ import type { PanelNotice } from "../../../visualization/panel-ui/PanelNotices";
 import { useImagePanZoom } from "../../../visualization/media-2d/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/GpuPointCloudProjectionPicker";
 import { useDataStream } from "../playback/data-stream-context";
+import {
+  useFramePresentation,
+  useFrameUnavailable,
+} from "../../../visualization/webgpu/FramePresentation";
 import { usePublishImageAspectRatio } from "./image-aspect-ratios";
 import { groupImageLabelSources } from "./image-label-source-groups";
 import { useImageProjection } from "../settings/modal/state";
@@ -74,9 +78,11 @@ import styles from "../tiles/Tile.module.css";
 import {
   TileEmptyState,
   TileStatusBadge,
+  useTileEmptyStateFinal,
   useTileStreamWarningNotices,
 } from "../tiles/TileStreamState";
 import type { EpisodeTileProps } from "../tiles/tile-types";
+import { usePanelUnavailable } from "../tiles/use-panel-unavailable";
 import {
   useStreamContentFrame,
   usePlaybackStreamValue,
@@ -950,6 +956,26 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sourceKey,
     ],
   );
+  const onFrameRendered = useFramePresentation(
+    sourceKey,
+    requestedImageContentTimeNs !== null &&
+      committedImageContentTimeNs === requestedImageContentTimeNs,
+  );
+  const panel = usePanelUnavailable(`${sourceKey}\n${stream}`);
+  const sharedVideoRejected =
+    frame?.kind === "encoded-video" &&
+    !isSharedEncodedVideoVisualization(frame);
+  const emptyStateFinal = useTileEmptyStateFinal(stream ? [stream] : []);
+  // A pane that cannot produce a frame settles the destination: a refused
+  // codec or video, a failed decode or canvas, or a final empty state.
+  useFrameUnavailable(
+    sourceKey,
+    tileId,
+    Boolean(refusedCodec) ||
+      sharedVideoRejected ||
+      panel.unavailable ||
+      (!(frame && playbackFrame) && emptyStateFinal),
+  );
   const sceneChildren = useMemo(
     () => (
       <>
@@ -960,12 +986,14 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
             projectedStreamCount: renderedProjectionLayers.length,
           }}
           event="e2e:multimodal:image-frame-rendered"
+          onRendered={onFrameRendered}
         />
         {panelSceneChildren}
       </>
     ),
     [
       committedImageContentTimeNs,
+      onFrameRendered,
       panelSceneChildren,
       pointCloudProjection.pointSize,
       renderedProjectionLayers.length,
@@ -1007,6 +1035,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                   notices={imageNotices}
                   onImageLoaded={handleImageLoaded}
                   onResetView={imagePanZoom.resetView}
+                  onUnavailableChange={panel.onUnavailableChange}
                   priority={isPlaying ? "playing" : "visible"}
                   sceneChildren={sceneChildren}
                   stream={stream}
@@ -1030,6 +1059,7 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 notices={imageNotices}
                 onImageLoaded={handleImageLoaded}
                 onResetView={imagePanZoom.resetView}
+                onUnavailableChange={panel.onUnavailableChange}
                 sceneChildren={sceneChildren}
                 textureMesh={
                   rectifiedViewActive ? rectifiedDisplay?.textureMesh : null

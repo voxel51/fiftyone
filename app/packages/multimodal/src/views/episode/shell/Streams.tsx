@@ -38,6 +38,7 @@ export interface StreamsProps {
   availableTileTypes: readonly TileType[];
   /** Capture time to open the recording at, ahead of the first-data tick. */
   initialSeekTimeNs?: bigint | null;
+  initialSeekPending?: boolean;
   /** Shared format-neutral episode session owned by the modal renderer. */
   session: EpisodeSession | null;
   /** Called after every blocking stream covers the current playhead. */
@@ -46,6 +47,8 @@ export interface StreamsProps {
   budgetAccount?: SourceReadBudgetAccount | null;
   /** Byte source currently feeding the playback shell. */
   source: ByteSourceDescriptor | null;
+  /** Rendering identity distinct from the underlying physical byte cache. */
+  presentationSourceKey?: string;
   /** Episode-wide synchronized-read presentation cadence. */
   timelineSamplingRateHz: number;
 }
@@ -60,9 +63,11 @@ export function Streams({
   availableTileTypes,
   budgetAccount,
   initialSeekTimeNs,
+  initialSeekPending,
   onPlayheadDataReady,
   session,
   source,
+  presentationSourceKey,
   timelineSamplingRateHz,
 }: StreamsProps) {
   const sources = useSceneInventory();
@@ -81,8 +86,9 @@ export function Streams({
     [session],
   );
   const sourceKey = useMemo(
-    () => (source ? episodeSourceAccessKey(source) : null),
-    [source],
+    () =>
+      source ? (presentationSourceKey ?? episodeSourceAccessKey(source)) : null,
+    [source, presentationSourceKey],
   );
 
   const streamPolicies = useMemo(
@@ -200,10 +206,12 @@ export function Streams({
     endBoundedStreams,
     firstUsefulSettlementStreams,
     initialSeekTimeNs,
+    initialSeekPending,
     onPlayheadDataReady,
     settlementPriorityStreams,
     session,
     source,
+    presentationSourceKey,
     allStreams,
     staleWarningStreams,
     streamNames,
@@ -214,7 +222,7 @@ export function Streams({
 
   return (
     <>
-      <FrameTransformsBridge capability={transformRead} source={source} />
+      <FrameTransformsBridge capability={transformRead} sourceKey={sourceKey} />
       <PoseTrajectoriesStartupGate
         budgetAccount={budgetAccount}
         poseStreams={poseStreams}
@@ -244,10 +252,10 @@ export function Streams({
 
 function FrameTransformsBridge({
   capability,
-  source,
+  sourceKey,
 }: {
   readonly capability: TransformReadAcceleration | null;
-  readonly source: ByteSourceDescriptor | null;
+  readonly sourceKey: string | null;
 }) {
   const setFrameTransforms = useSetFrameTransformsContext();
   const dataStream = useDataStream();
@@ -273,7 +281,7 @@ function FrameTransformsBridge({
     policy: {
       boundaryClampNs: FRAME_TRANSFORM_BOUNDARY_CLAMP_NS,
     },
-    sourceKey: source ? episodeSourceAccessKey(source) : null,
+    sourceKey,
     timeNs,
   });
 

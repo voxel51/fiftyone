@@ -9,6 +9,11 @@ const seek = vi.fn();
 
 vi.mock("@fiftyone/playback", () => ({
   usePlayback: () => ({ seek }),
+  usePlaybackStore: () => ({}),
+  useSeekEvent: () => null,
+  getPlayhead: () => 0,
+  getIsPlaying: () => false,
+  getIsPlayPending: () => false,
 }));
 
 import { useWarmupThenSeek } from "./useWarmupThenSeek";

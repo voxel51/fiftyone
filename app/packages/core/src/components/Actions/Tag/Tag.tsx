@@ -1,5 +1,4 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { getEventBus } from "@fiftyone/events";
 import {
   LoadingDots,
   PopoutSectionTitle,
@@ -12,7 +11,7 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
 import type { MutableRefObject } from "react";
-import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
+import React, { Suspense, useLayoutEffect, useState } from "react";
 import type { RecoilState, RecoilValue } from "recoil";
 import {
   useRecoilCallback,
@@ -73,11 +72,6 @@ interface SectionProps {
   labels: boolean;
 }
 
-/** e2e specs read the tag input once its count has rendered */
-type TagE2EEvents = {
-  "e2e:tagger:count-shown": { labels: boolean; count: number };
-};
-
 const Section = ({
   countAndPlaceholder,
   submit,
@@ -100,15 +94,6 @@ const Section = ({
   useLayoutEffect(() => {
     setChanges({});
   }, [taggingAtom]);
-
-  useEffect(() => {
-    if (!tagging && typeof count === "number") {
-      getEventBus<TagE2EEvents>().dispatch("e2e:tagger:count-shown", {
-        labels,
-        count,
-      });
-    }
-  }, [count, labels, tagging]);
 
   useLayoutEffect(() => {
     tagging && setLocalTagging(true);
@@ -499,7 +484,9 @@ type TaggerProps = {
 };
 
 const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
-  const [labels, setLabels] = useState(modal);
+  const patches = fos.useIsPatchesView();
+  const [labelChoice, setLabels] = useState(modal);
+  const labels = patches || labelChoice;
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
@@ -527,13 +514,15 @@ const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
       anchorRef={anchorRef}
     >
       <SwitcherDiv>
-        <SwitchDiv
-          data-cy="tagger-switch-sample"
-          style={sampleProps}
-          onClick={() => labels && setLabels(false)}
-        >
-          {modal ? elementNames.singular : elementNames.plural}
-        </SwitchDiv>
+        {!patches && (
+          <SwitchDiv
+            data-cy="tagger-switch-sample"
+            style={sampleProps}
+            onClick={() => labels && setLabels(false)}
+          >
+            {modal ? elementNames.singular : elementNames.plural}
+          </SwitchDiv>
+        )}
         <SwitchDiv
           data-cy="tagger-switch-label"
           style={labelProps}

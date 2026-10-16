@@ -62,6 +62,7 @@ export const processState = (
     groupSlice,
     modalSelector,
     view,
+    viewResolved: !env().VITE_NO_STATE,
     workspace,
   };
 };

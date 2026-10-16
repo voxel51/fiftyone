@@ -6,6 +6,24 @@ import { setMockAtoms, TestSelectorFamily } from "../../../../__mocks__/recoil";
 import * as aggregations from "./aggregations";
 import { State } from "./types";
 
+describe("selection scope in aggregation filters", () => {
+  it("adds the browsing boundary only when it constrains results", () => {
+    expect(aggregations.constrainsScope(null)).toBe(false);
+    expect(aggregations.constrainsScope({})).toBe(false);
+    expect(aggregations.constrainsScope({ subsetId: "subset" })).toBe(true);
+    expect(aggregations.withSelectionScope(null, null)).toBeNull();
+    expect(aggregations.withSelectionScope({ a: 1 }, {})).toEqual({ a: 1 });
+    expect(
+      aggregations.withSelectionScope(null, { subsetId: "subset" }),
+    ).toEqual({ _selection_scope: { subsetId: "subset" } });
+    const provider = { kind: "events" as const, field: "events", values: [] };
+    expect(aggregations.withSelectionScope({ a: 1 }, { provider })).toEqual({
+      a: 1,
+      _selection_scope: { provider },
+    });
+  });
+});
+
 describe("test aggregation path accumulation", () => {
   it("resolves grouped modal label paths", () => {
     const testModalSampleAggregationPaths = <
@@ -166,11 +184,110 @@ describe("temporal tag aggregations", () => {
       hiddenLabelsArray: [],
       queryPerformance: false,
       refresher: 3,
+      selectionScopeBoundary: null,
+      selectionScopeRevision: 0,
       temporalTagsRevision: 2,
       _view__setter: [],
     });
 
     expect(index(["_temporal_tags"])).toBe(5);
     expect(index(["tags"])).toBe(3);
+  });
+});
+
+describe("selection scope revisions", () => {
+  it("counts the grid again when the open subset's members change", () => {
+    const query = aggregations.aggregationQuery as unknown as (params: {
+      extended: boolean;
+      modal: boolean;
+      paths: string[];
+      root?: boolean;
+    }) => { variables: () => { form: { index: number } } };
+    setMockAtoms({
+      activeIndex: null,
+      config: {},
+      currentSlices: () => null,
+      _datasetName__setter: "dataset",
+      extendedStagesNoSort: {},
+      groupSlice: null,
+      groupStatistics: () => "slice",
+      hiddenLabelsArray: [],
+      queryPerformance: false,
+      refresher: 3,
+      selectionScopeBoundary: { subsetId: "subset" },
+      selectionScopeRevision: 4,
+      _view__setter: [],
+    });
+
+    const index = (root: boolean) =>
+      query({
+        extended: false,
+        modal: false,
+        paths: ["tags"],
+        root,
+      }).variables().form.index;
+    expect(index(false)).toBe(7);
+    // dataset-wide counts ignore the scope, so its edits leave them cached
+    expect(index(true)).toBe(3);
+  });
+});
+
+describe("event facet query scope", () => {
+  const query = aggregations.aggregationQuery as unknown as (params: {
+    extended: boolean;
+    modal: boolean;
+    paths: string[];
+    eventSearch?: string;
+    eventOffset?: number;
+  }) => {
+    variables: () => {
+      form: { filters: object; eventSearch?: string; eventOffset: number };
+    };
+  };
+
+  it("scopes by other filters while keeping all event choices available", () => {
+    const filters = {
+      _events: { values: ['["p","a"]'] },
+      tags: { values: ["train"] },
+    };
+    setMockAtoms({
+      activeIndex: null,
+      config: {},
+      currentSlices: () => null,
+      _datasetName__setter: "dataset",
+      extendedStagesNoSort: {},
+      filters,
+      groupSlice: null,
+      groupStatistics: () => "slice",
+      hiddenLabelsArray: [],
+      queryPerformance: false,
+      refresher: 0,
+      selectionScopeBoundary: null,
+      selectionScopeRevision: 0,
+      _view__setter: [],
+    });
+    const form = query({
+      extended: true,
+      modal: false,
+      paths: ["_events"],
+      eventSearch: "brake",
+      eventOffset: 200,
+    }).variables().form;
+    expect(form.filters).toEqual({ tags: { values: ["train"] } });
+    expect(form.eventSearch).toBe("brake");
+    expect(form.eventOffset).toBe(200);
+    expect(
+      query({ extended: true, modal: false, paths: [""] }).variables().form
+        .filters,
+    ).toEqual(filters);
+    setMockAtoms({
+      __modalFilters_selector: filters,
+      groupId: null,
+      sidebarSampleId: "ep",
+    });
+    expect(
+      query({ extended: true, modal: true, paths: ["tags"] }).variables().form
+        .filters,
+    ).toEqual({ tags: { values: ["train"] } });
   });
 });

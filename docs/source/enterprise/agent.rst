@@ -9,7 +9,7 @@ FiftyOne Agent
     :enterprise_version: 2.25.0
 
 The FiftyOne Agent is an AI-powered assistant built into the
-:ref:`FiftyOne Enterprise App <enterprise-app>`. It lets you work with your
+:ref:`Voxel51 App <enterprise-app>`. It lets you work with your
 datasets using natural language. You can import data, run model inference,
 find duplicates, evaluate predictions, and more, all from a conversational
 interface.
@@ -26,7 +26,7 @@ _____
 1. Contact your Customer Success representative to enable the FiftyOne Agent
    for your deployment.
 
-2. Open any dataset in the FiftyOne Enterprise App. You will see a new Agent
+2. Open any dataset in the Voxel51 App. You will see a new Agent
    button in the upper-right corner of the App.
 
 .. image:: https://cdn.voxel51.com/voxel-agent/enterprise/location_agent.webp
@@ -35,8 +35,8 @@ _____
 
 .. note::
 
-    The FiftyOne Agent now ships as a built-in feature of the FiftyOne
-    Enterprise App rather than a separately installed plugin. If you
+    The FiftyOne Agent now ships as a built-in feature of the Voxel51
+    App rather than a separately installed plugin. If you
     installed an earlier standalone version of the Agent plugin, you can
     remove it once your deployment is upgraded. The built-in version
     replaces it entirely.
@@ -96,8 +96,8 @@ at the top of the Connections list.
 
 .. note::
 
-    API keys are automatically stored securely using FiftyOne
-    Enterprise's :ref:`Secrets <enterprise-secrets>` infrastructure. No
+    API keys are automatically stored securely using Voxel51's
+    :ref:`Secrets <enterprise-secrets>` infrastructure. No
     manual secret configuration is required.
 
 .. _enterprise-agent-permissions:

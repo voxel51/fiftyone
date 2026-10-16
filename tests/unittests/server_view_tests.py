@@ -1171,6 +1171,91 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second_samples.edges[0].node.id, second._id)
 
 
+class SavedViewTests(unittest.IsolatedAsyncioTestCase):
+    def _make_dataset(self):
+        dataset = fod.Dataset()
+        dataset.add_sample(fos.Sample(filepath="image.jpg", label="cat"))
+        dataset.save_view(
+            "Only labels",
+            dataset.select_fields("label"),
+            description="kept",
+            color="#ff0000",
+        )
+        return dataset
+
+    @drop_datasets
+    async def test_load_saved_view_by_slug(self):
+        dataset = self._make_dataset()
+
+        view = fosv.load_saved_view_by_slug(dataset, "only-labels")
+        self.assertEqual(view.name, "Only labels")
+        self.assertIsNone(fosv.load_saved_view_by_slug(dataset, "missing"))
+        self.assertIsNone(fosv.load_saved_view_by_slug(dataset, None))
+
+    @drop_datasets
+    async def test_failing_saved_view_raises_and_is_retained(self):
+        dataset = self._make_dataset()
+        view_doc = dataset._get_saved_view_doc("only-labels", slug=True)
+        stages = list(view_doc.view_stages)
+        dataset.delete_sample_field("label")
+
+        with self.assertRaisesRegex(
+            ValueError, "Saved query 'Only labels' could not be loaded"
+        ):
+            fosv.load_saved_view_by_slug(dataset, "only-labels")
+
+        # The failing definition and its metadata are left untouched
+        dataset.reload()
+        view_doc = dataset._get_saved_view_doc("only-labels", slug=True)
+        self.assertEqual(view_doc.view_stages, stages)
+        self.assertEqual(view_doc.description, "kept")
+        self.assertEqual(view_doc.color, "#ff0000")
+
+    @drop_datasets
+    async def test_serialize_dataset_never_substitutes_dataset(self):
+        from fiftyone.server.query import serialize_dataset
+
+        dataset = self._make_dataset()
+
+        data = await serialize_dataset(dataset.name, [], "only-labels")
+        self.assertEqual(data.view_name, "Only labels")
+
+        # An unknown slug, such as an old link, opens the unsaved view
+        data = await serialize_dataset(dataset.name, [], "missing")
+        self.assertIsNone(data.view_name)
+
+        dataset.delete_sample_field("label")
+        with self.assertRaisesRegex(ValueError, "could not be loaded"):
+            await serialize_dataset(dataset.name, [], "only-labels")
+
+    @drop_datasets
+    async def test_saving_a_selection_keeps_every_stage(self):
+        from fiftyone.server.mutation import StateForm, _build_result_view
+
+        dataset = fod.Dataset()
+        dataset.add_samples(
+            [fos.Sample(filepath="%d.jpg" % i, index=i) for i in range(6)]
+        )
+        view = dataset.match(fo.ViewField("index") > 1).sort_by(
+            "index", reverse=True
+        )
+        picked = view.take(2, seed=51).values("id")
+
+        saved = _build_result_view(
+            view, StateForm(sample_ids=picked), keep_stages=True
+        )
+
+        self.assertEqual(
+            [type(stage).__name__ for stage in saved._stages],
+            ["Match", "SortBy", "Select"],
+        )
+        self.assertEqual(
+            saved.values("index"),
+            [i for i in view.values("index") if i in saved.values("index")],
+        )
+        self.assertEqual(_build_result_view(view, None)._stages, view._stages)
+
+
 class ServerDocTests(unittest.TestCase):
     def test_dataset_doc(self):
         doc = Dataset.modifier({"_id": "id"})

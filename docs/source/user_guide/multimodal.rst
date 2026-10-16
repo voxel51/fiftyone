@@ -23,7 +23,7 @@ lets you visualize, play back, tag, and query all of them in lockstep.
 .. note::
 
     Multimodal visualization is available to all FiftyOne users. With
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can additionally
+    :ref:`Voxel51 <fiftyone-enterprise>` you can additionally
     :ref:`index your MCAP data <multimodal-indexing>` (currently in beta)
     into columnar tables that power scalable search, filtering, and event
     mining across your entire fleet of recordings, and compute
@@ -161,7 +161,7 @@ from one of its streams, and you can use the stream selector to choose which
 stream is used for grid previews. Camera streams are preferred by default,
 and your stream selection persists across episodes.
 
-In :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, grids over indexed MCAP
+In :ref:`Voxel51 <fiftyone-enterprise>`, grids over indexed MCAP
 datasets load instantly from
 :ref:`automatic thumbnails <multimodal-auto-thumbnails>` generated during
 indexing.
@@ -452,7 +452,7 @@ organized into sections that only appear when they have content:
 .. note::
 
     Event, label, and embedding window tracks are only available in
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`; event tracks
+    :ref:`Voxel51 <fiftyone-enterprise>`; event tracks
     additionally require :ref:`MCAP indexing <multimodal-indexing>` and
     embedding window tracks require
     :ref:`segment embeddings <multimodal-segment-embeddings>`.
@@ -822,7 +822,7 @@ _______________________________
 .. note::
 
     MCAP indexing is only available in
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`. It is currently in
+    :ref:`Voxel51 <fiftyone-enterprise>`. It is currently in
     **beta** and is disabled by default; contact your deployment
     administrator or Voxel51 support to enable the feature for your
     deployment.
@@ -832,7 +832,7 @@ queries. Questions like *"find every episode where a pedestrian was visible
 while the vehicle was moving faster than 5 m/s"* would otherwise require
 scanning and decoding every file in your fleet.
 
-FiftyOne Enterprise solves this by **indexing** your MCAP data: a projection
+Voxel51 solves this by **indexing** your MCAP data: a projection
 pipeline reads each recording once, decodes the channels you declare, and
 writes the results to columnar **Parquet** tables (managed via `Apache
 Iceberg <https://iceberg.apache.org>`_) called **projections**. These tables
@@ -1195,7 +1195,7 @@ Automatic thumbnails
 
 By default, :ref:`grid previews <multimodal-grid-previews>` are rendered
 live in your browser by reading and decoding each episode's source data. In
-FiftyOne Enterprise, indexing additionally generates **thumbnails** for your
+Voxel51, indexing additionally generates **thumbnails** for your
 episodes automatically: while each recording is being indexed, FiftyOne
 samples one representative visual from every previewable stream — camera
 images, compressed video (decoded server-side, so it isn't limited to
@@ -1234,7 +1234,7 @@ _______________________________
 .. note::
 
     Segment embeddings are only available in
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` for multimodal (MCAP)
+    :ref:`Voxel51 <fiftyone-enterprise>` for multimodal (MCAP)
     datasets. By default they are stored alongside your dataset's
     :ref:`MCAP indexing <multimodal-indexing>` tables, but you can also
     provide your own storage location. The feature is currently in **beta**;

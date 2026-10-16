@@ -3,7 +3,8 @@ import { animated, SpringValue } from "@react-spring/web";
 import styled from "styled-components";
 import Draggable from "./Draggable";
 
-const Container = animated(styled.div`
+/** The shared card frame for sidebar field and facet entries. */
+export const EntryContainer = animated(styled.div`
   display: flex;
   justify-content: space-between;
   position: relative;
@@ -56,7 +57,7 @@ const RegularEntry = React.forwardRef(
     const headerRef = useRef();
 
     return (
-      <Container
+      <EntryContainer
         ref={ref}
         onClick={onClick}
         style={{
@@ -88,7 +89,7 @@ const RegularEntry = React.forwardRef(
           </Header>
           {children}
         </Draggable>
-      </Container>
+      </EntryContainer>
     );
   },
 );

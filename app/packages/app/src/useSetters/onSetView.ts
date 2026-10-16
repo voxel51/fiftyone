@@ -5,6 +5,7 @@
 import { setView, subscribe, type setViewMutation } from "@fiftyone/relay";
 import {
   type State,
+  view as currentView,
   datasetName,
   resetExtendedSelectionTransaction,
   resetFiltersTransaction,
@@ -16,14 +17,15 @@ import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
 import { resolveURL } from "../utils";
+import { changesSampleIdentity } from "./selectionIdentity";
 import type { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
   ({ environment, handleError, router, sessionRef }) =>
   ({ get, set }, value: State.Stage[]) => {
     set(pendingEntry, true);
-    // A new view replaces the base the selection was made against, so it goes
-    // with the checkmarks `onCompleted` drops below. Sidebar filters never
+    // A new view replaces the base of a lasso constraint. Captured tray
+    // choices remain independent of that constraint. Sidebar filters never
     // reach this setter, so a lasso still composes with them. The filters go
     // too: a page reload keeps them (a layout write reloads it), so the view
     // change is what clears them.
@@ -41,6 +43,7 @@ const onSetView: RegisteredSetter =
       }
     });
 
+    const previousView = get(currentView);
     let view = value;
     if (view instanceof DefaultValue) {
       view = [];
@@ -70,15 +73,20 @@ const onSetView: RegisteredSetter =
         }
 
         sessionRef.current.selectedLabels = [];
-        sessionRef.current.selectedSamples = new Map();
+        // The selection tray marks samples that leave the results, so a view
+        // change keeps the sample selection unless the view changes what a
+        // sample is.
+        if (changesSampleIdentity(previousView, view))
+          sessionRef.current.selectedSamples = new Map();
         sessionRef.current.fieldVisibilityStage = undefined;
         // The silent schema-policy exclusion (`$extendedView`) must
-        // survive a view change; only Field Visibility resets.
-        const { schemaExclusion } = router.get().state;
+        // survive a view change; only Field Visibility resets. It is read
+        // from the location, since a refresh may still be loading the entry.
+        const { schemaExclusion } = router.location.state ?? {};
         router.history.push(
           resolveURL({
             currentPathname: router.history.location.pathname,
-            currentSearch: router.history.location.search,
+            currentSearch: router.location.search,
             nextDataset: dataset,
           }),
           {

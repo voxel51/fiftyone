@@ -1,6 +1,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { subscribe } from "@fiftyone/relay";
 import { isModalActive, useCurrentDatasetId } from "@fiftyone/state";
+import { useSyncSelectionScope } from "@fiftyone/state/src/selection";
 import { clearFetchCache } from "@fiftyone/utilities/src/fetch";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
@@ -8,6 +9,7 @@ import styled from "styled-components";
 import ColorModal from "./ColorModal/ColorModal";
 import { activeColorEntry } from "./ColorModal/state";
 import EventTracker from "./EventTracker";
+import { useSubsetScopeUrl } from "./Grid/Selection/useSubsetScopeUrl";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
 
@@ -32,6 +34,8 @@ const ModalWrapper = () => {
 };
 
 function Dataset() {
+  useSubsetScopeUrl();
+  useSyncSelectionScope();
   const isCustomizeColorModalActive = useRecoilValue(activeColorEntry);
   const trackEvent = useTrackEvent();
 

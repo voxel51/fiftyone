@@ -35,9 +35,9 @@ import type {
 /**
  * Creates a FiftyOne dataset whose media kind is chosen by `mediaType`
  * (default `"image"`); every kind inserts fixed-id documents directly and
- * applies `schema`, `labelSchemas`, `appConfig` and `savedViews`. See the
- * per-media creators below for the media each kind generates. Resolves with
- * the inserted samples' ids and filepaths, in insertion order.
+ * applies `schema`, `labelSchemas`, `appConfig`, `savedViews` and `subsets`.
+ * See the per-media creators below for the media each kind generates.
+ * Resolves with the inserted samples' ids and filepaths, in insertion order.
  *
  * @example
  * await DatasetFactory.createDataset({
@@ -89,6 +89,8 @@ const buildWith = async (
     savedViews,
     skeletons,
     staticTransforms,
+    subsets,
+    temporalTags,
   } = options;
   const fieldValues = await mediaFieldValues(
     datasetName,
@@ -115,6 +117,8 @@ const buildWith = async (
     savedViews,
     skeletons,
     staticTransforms,
+    subsets,
+    temporalTags,
   });
   return build_.samples.map(({ id, filepath }) => ({ id, filepath }));
 };
@@ -130,6 +134,7 @@ const createImageDataset = async (options: ImageDatasetOptions) => {
     datasetName,
     imageOptions,
     numSamples = 1,
+    imagePoolSize = numSamples,
     numbered = false,
     schema = {},
     visualizations = [],
@@ -143,16 +148,27 @@ const createImageDataset = async (options: ImageDatasetOptions) => {
     );
   }
 
-  if (numSamples < 1 || numSamples > 100) {
-    throw new Error(`'numSamples' must be >0 and <=100, but got ${numSamples}`);
+  if (numSamples < 1) {
+    throw new Error(`'numSamples' must be >0, but got ${numSamples}`);
   }
+  if (
+    !Number.isInteger(imagePoolSize) ||
+    imagePoolSize < 1 ||
+    imagePoolSize > Math.min(numSamples, 100)
+  )
+    throw new Error(
+      "'imagePoolSize' must be an integer from 1 to min(numSamples, 100)",
+    );
 
-  const media = await generateMedia(datasetName, indices(numSamples), (index) =>
-    imageMedia({
-      watermarkString: numbered ? index.toString() : undefined,
-      fillColor: "white",
-      ...resolve(imageOptions, index),
-    }),
+  const media = await generateMedia(
+    datasetName,
+    indices(numSamples).map((index) => String(Number(index) % imagePoolSize)),
+    (index) =>
+      imageMedia({
+        watermarkString: numbered ? index.toString() : undefined,
+        fillColor: "white",
+        ...resolve(imageOptions, index),
+      }),
   );
 
   return buildWith(options, {

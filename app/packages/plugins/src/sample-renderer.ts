@@ -72,6 +72,8 @@ export type SampleRendererRenderContext<TSample = SampleRendererSampleLike> =
      * source-backed content from the retained sample.
      */
     transitioning?: boolean;
+    /** Selected modal sample, including while `sample` retains its predecessor. */
+    destinationSampleId?: string | null;
     /**
      * Opens this sample's modal. Present on the grid surface only.
      *
@@ -160,6 +162,19 @@ export type ModalConfig = {
    * (or key its own internal subtrees).
    */
   persistAcrossSamples?: boolean;
+  /**
+   * Lightweight UI that must not read or wait for the modal sample query.
+   * It may render for any sample in an activated dataset before its
+   * sample-level supports predicate can be evaluated.
+   */
+  loadingComponent?: React.FunctionComponent<SampleRendererLoadingProps>;
+};
+
+/** Identity available before the modal sample record or renderer has loaded. */
+export type SampleRendererLoadingProps = {
+  datasetId: string;
+  mediaField: string;
+  sampleId: string | null;
 };
 
 /**

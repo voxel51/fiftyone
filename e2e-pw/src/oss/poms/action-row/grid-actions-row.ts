@@ -39,10 +39,6 @@ export class GridActionsRowPom {
     return this.openAction("action-clips-patches");
   }
 
-  async toggleTagSamplesOrLabels() {
-    return this.openAction("action-tag-sample-labels");
-  }
-
   async toggleColorSettings() {
     return this.openAction("action-color-settings");
   }

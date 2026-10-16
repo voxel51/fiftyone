@@ -3,7 +3,12 @@ vi.mock("recoil");
 vi.mock("recoil-relay");
 
 import { DICT_FIELD, Field, STRING_FIELD } from "@fiftyone/utilities";
-import { TestSelector, setMockAtoms } from "../../../../__mocks__/recoil";
+import {
+  mockValues,
+  TestSelector,
+  TestSelectorFamily,
+  setMockAtoms,
+} from "../../../../__mocks__/recoil";
 import * as sidebar from "./sidebar";
 
 const mockFields = {
@@ -191,6 +196,44 @@ const mockFields = {
 };
 
 describe("test sidebar groups resolution", () => {
+  it("preserves local expansion choices when dataset config refreshes", () => {
+    const current = [
+      { name: "events", paths: ["filepath"], expanded: true },
+      { name: "signals", paths: ["uniqueness"], expanded: false },
+      { name: "labels", paths: ["ground_truth", "predictions"] },
+    ];
+    const config = [
+      { name: "events", paths: ["filepath"], expanded: false },
+      { name: "signals", paths: ["uniqueness"], expanded: true },
+      {
+        name: "labels",
+        paths: ["ground_truth", "predictions"],
+        expanded: true,
+      },
+    ];
+    const refreshed = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      current,
+      config,
+    );
+
+    expect(refreshed.find(({ name }) => name === "events")?.expanded).toBe(
+      true,
+    );
+    expect(refreshed.find(({ name }) => name === "signals")?.expanded).toBe(
+      false,
+    );
+    expect(refreshed.find(({ name }) => name === "labels")?.expanded).toBe(
+      true,
+    );
+    expect(
+      sidebar
+        .resolveGroups(mockFields.sampleFields, [], [], config)
+        .find(({ name }) => name === "events")?.expanded,
+    ).toBe(false);
+  });
+
   it("resolves with sample fields", () => {
     const test = sidebar.resolveGroups(mockFields.sampleFields, [], [], []);
 
@@ -612,6 +655,130 @@ describe("collapsedPaths resolution", () => {
   });
 });
 
+describe("flat Events sidebar", () => {
+  const groups = sidebar.sidebarGroups({
+    modal: false,
+    loading: false,
+  }) as unknown as TestSelectorFamily<typeof sidebar.sidebarGroups>;
+  const setup = (filters = {}, search = "", multimodal = true) => {
+    setMockAtoms({
+      sidebarGroupsDefinition: () => [
+        { name: "tags", paths: [] },
+        { name: "events", paths: ["events.a", "events.b"], expanded: true },
+        { name: "signals", paths: ["signals.speed"] },
+      ],
+      textFilter: () => search,
+      isMultimodalDataset: multimodal,
+      field: () => ({
+        ftype: "fiftyone.core.fields.DynamicEmbeddedDocumentField",
+      }),
+      pathIsShown: () => true,
+      filters,
+      supportsTemporalTags: () => false,
+      isVideoDataset: false,
+      isLargeVideo: false,
+    });
+  };
+
+  it("combines projection rows and leaves other grains alone", () => {
+    setup();
+    expect(groups().find((group) => group.name === "events")?.paths).toEqual([
+      "_events",
+    ]);
+    expect(groups().find((group) => group.name === "signals")?.paths).toEqual([
+      "signals.speed",
+    ]);
+  });
+
+  it("keeps legacy filters visible so they can be cleared", () => {
+    setup({ "events.a.id": { values: ["brake"] } });
+    expect(groups().find((group) => group.name === "events")?.paths).toEqual([
+      "_events",
+      "events.a",
+    ]);
+  });
+
+  it("respects sidebar field search", () => {
+    setup({}, "speed");
+    expect(groups().find((group) => group.name === "events")?.paths).toEqual(
+      [],
+    );
+  });
+
+  it("preserves ordinary datasets' event fields", () => {
+    setup({}, "", false);
+    expect(groups().find((group) => group.name === "events")?.paths).toEqual([
+      "events.a",
+      "events.b",
+    ]);
+  });
+
+  it("exposes physical projection paths to Color settings", () => {
+    setup();
+    const physical = sidebar.sidebarGroups({
+      modal: false,
+      loading: false,
+      flatEvents: false,
+    }) as unknown as TestSelectorFamily<typeof sidebar.sidebarGroups>;
+    expect(physical().find((group) => group.name === "events")?.paths).toEqual([
+      "events.a",
+      "events.b",
+    ]);
+  });
+
+  it("keeps physical paths through expand/collapse without persisting the facet", () => {
+    setup();
+    const writable = sidebar.sidebarGroups({
+      modal: false,
+      loading: false,
+      persist: false,
+    }) as unknown as TestSelectorFamily<typeof sidebar.sidebarGroups>;
+    writable.set(groups().map((group) => ({ ...group, expanded: false })));
+    const saved = mockValues[sidebar.sidebarGroupsDefinition(false).key];
+    expect(saved).toEqual([
+      { name: "tags", paths: [], expanded: false },
+      { name: "events", paths: ["events.a", "events.b"], expanded: false },
+      { name: "signals", paths: ["signals.speed"], expanded: false },
+    ]);
+    setMockAtoms({ sidebarGroupsDefinition: () => saved });
+    expect(groups().find((group) => group.name === "events")?.paths).toEqual([
+      "_events",
+    ]);
+    setMockAtoms({ filters: { "events.b.id": { values: ["a"] } } });
+    expect(groups().find((group) => group.name === "events")?.paths).toEqual([
+      "_events",
+      "events.b",
+    ]);
+    writable.set(groups());
+    expect(
+      mockValues[sidebar.sidebarGroupsDefinition(false).key].find(
+        (group: { name: string }) => group.name === "events",
+      ).paths,
+    ).toEqual(["events.a", "events.b"]);
+  });
+
+  it("preserves hidden event placement in custom groups", () => {
+    setup();
+    setMockAtoms({
+      sidebarGroupsDefinition: () => [
+        { name: "tags", paths: [] },
+        { name: "custom", paths: ["events.a", "signals.speed"] },
+      ],
+    });
+    const writable = sidebar.sidebarGroups({
+      modal: false,
+      loading: false,
+      persist: false,
+    }) as unknown as TestSelectorFamily<typeof sidebar.sidebarGroups>;
+    writable.set(groups());
+    expect(
+      mockValues[sidebar.sidebarGroupsDefinition(false).key].find(
+        (group: { name: string }) => group.name === "custom",
+      ).paths,
+    ).toEqual(["events.a", "signals.speed"]);
+  });
+});
+
 describe("sidebarPaths", () => {
   const paths = <TestSelector<typeof sidebar.sidebarPaths>>(
     (<unknown>sidebar.sidebarPaths)
@@ -650,5 +817,33 @@ describe("sidebarPaths", () => {
     });
     expect(paths()).toStrictEqual(["ground_truth", "predictions"]);
     expect(paths()).not.toBe(first);
+  });
+});
+
+describe("withMissingSidebarPaths", () => {
+  const modal = [
+    { name: "metadata", paths: ["metadata.width"], expanded: true },
+    { name: "labels", paths: ["gt"], expanded: false },
+  ];
+
+  it("adds the paths the modal lacks, keeping its own groups", () => {
+    const grid = [
+      { name: "labels", paths: ["cls", "gt"], expanded: true },
+      { name: "primitives", paths: ["id"], expanded: true },
+      { name: "metadata", paths: ["metadata.width"], expanded: false },
+    ];
+
+    expect(sidebar.withMissingSidebarPaths(modal, grid)).toStrictEqual([
+      { name: "metadata", paths: ["metadata.width"], expanded: true },
+      { name: "labels", paths: ["gt", "cls"], expanded: false },
+      { name: "primitives", paths: ["id"], expanded: true },
+    ]);
+    expect(modal[1].paths).toStrictEqual(["gt"]);
+  });
+
+  it("returns the modal groups themselves when nothing is missing", () => {
+    const grid = [{ name: "labels", paths: ["gt"], expanded: true }];
+
+    expect(sidebar.withMissingSidebarPaths(modal, grid)).toBe(modal);
   });
 });

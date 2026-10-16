@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { useBrowserStorage } from "@fiftyone/state";
 import { BrainKeyConfig, QueryType, ViewTarget } from "../types";
 import { INIT_RUN_OPERATOR_URI, K_MAX, K_MIN } from "../constants";
 import { canSubmitSearch, buildExecutionParams, UploadedImage } from "../utils";
@@ -32,18 +31,13 @@ export const useSearchSubmission = (input: UseSearchSubmissionInput) => {
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
   const [submitting, setSubmitting] = useState(false);
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
-  const [lastUsedBrainKeys, setLastUsedBrainKeys] = useBrowserStorage<
-    Record<string, string>
-  >("lastUsedBrainKeys", {});
+  const [, setBrainKey] = fos.useSimilaritySearchIndexPreference(datasetId);
 
   const handleOptionSelected = useCallback(() => {
     setSubmitting(true);
 
-    setLastUsedBrainKeys({
-      ...(lastUsedBrainKeys || {}),
-      [datasetId]: input.brainKey,
-    });
-  }, [lastUsedBrainKeys, setLastUsedBrainKeys, datasetId, input.brainKey]);
+    setBrainKey(input.brainKey);
+  }, [setBrainKey, input.brainKey]);
 
   const executionParams = useMemo(
     () =>

@@ -1,0 +1,824 @@
+import type { ComponentProps } from "react";
+import type LookerPreview from "./LookerPreview";
+import type { EpisodeSelection } from "@fiftyone/state/src/selection";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  registerTile,
+  setHoveredTile,
+  unregisterTile,
+} from "../gridTileRegistry";
+import SelectionCard from "./SelectionCard";
+import SelectionCards from "./SelectionCards";
+
+const mediaOptions = vi.hoisted(() => ({
+  field: "filepath",
+  fallback: false,
+}));
+vi.mock("@fiftyone/state", async () => {
+  const { resolveMediaFieldLooker } =
+    await import("@fiftyone/state/src/hooks/media-field-lookers");
+  const { getNormalizedUrls } = await import("@fiftyone/state/src/utils");
+  return {
+    getSampleSrc: (path: string) =>
+      path.startsWith("https://") ? path : `media://${path}`,
+    useSelectedMediaFieldGrid: () => mediaOptions.field,
+    useLookerOptions: () => ({ mediaFallback: mediaOptions.fallback }),
+    resolveMediaFieldLooker,
+    getNormalizedUrls,
+  };
+});
+vi.mock("./RendererPreview", () => ({
+  default: ({ node }: { node: { id: string } }) => (
+    <div data-grid-tile="" data-node-id={node.id} />
+  ),
+}));
+const previewMock = vi.hoisted(() => vi.fn());
+vi.mock("./LookerPreview", () => ({
+  default: (props: ComponentProps<typeof LookerPreview>) => {
+    previewMock(props);
+    return <div data-testid="looker-preview" data-node-id={props.node.id} />;
+  },
+}));
+
+async function previewProps(): Promise<ComponentProps<typeof LookerPreview>> {
+  await screen.findByTestId("looker-preview");
+  return previewMock.mock.lastCall![0];
+}
+
+async function loadPreview(aspectRatio = 2, duration = 12) {
+  const props = await previewProps();
+  act(() => props.onMetadata?.({ aspectRatio, duration }));
+}
+vi.mock("./SelectionTileLanes", () => ({
+  default: ({ node }: { node: { id: string } }) => (
+    <div data-testid="tile-lanes" data-node-id={node.id} />
+  ),
+}));
+
+function segment(start: string, end: string) {
+  return {
+    episodeId: "episode",
+    kind: "segment" as const,
+    range: {
+      start,
+      end,
+      timebase: "sequence",
+      streams: ["filepath"],
+      provenance: [],
+    },
+  };
+}
+const full: EpisodeSelection = {
+  episodeId: "episode",
+  filepath: "/videos/drive.mp4",
+  members: [{ episodeId: "episode", kind: "episode" }],
+};
+const captured: EpisodeSelection = {
+  ...full,
+  members: [segment("10", "30"), segment("60", "75")],
+};
+const current: EpisodeSelection = {
+  ...full,
+  members: [segment("0", "20"), segment("34", "50")],
+};
+
+const handlers = {
+  open: vi.fn(async () => undefined),
+  capture: vi.fn(),
+  remove: vi.fn(),
+};
+
+function Card(props: {
+  group: EpisodeSelection;
+  candidate?: EpisodeSelection | null;
+  locate?: (episodeId: string, signal?: AbortSignal) => Promise<boolean>;
+}) {
+  return (
+    <SelectionCard
+      group={{
+        ...props.group,
+        node: props.group.node ?? {
+          id: props.group.episodeId,
+          sample: {
+            _id: props.group.episodeId,
+            filepath: props.group.filepath,
+            _media_type: props.group.filepath?.endsWith(".mp4")
+              ? "video"
+              : "image",
+          },
+          urls: [{ field: "filepath", url: props.group.filepath ?? null }],
+        },
+      }}
+      candidate={props.candidate}
+      locate={props.locate}
+      mediaType="video"
+      unit={{ one: "episode", many: "episodes", temporal: true }}
+      {...handlers}
+    />
+  );
+}
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** ResizeObserver content boxes, since jsdom does not lay out the card area. */
+function observeCardArea() {
+  let resize: ((width: number, height: number) => void) | undefined;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        resize = (width, height) =>
+          callback(
+            [{ contentRect: { width, height } } as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          );
+      }
+      observe = vi.fn();
+      disconnect = vi.fn();
+    },
+  );
+  return (width: number, height: number) => act(() => resize?.(width, height));
+}
+
+beforeEach(() => {
+  previewMock.mockClear();
+  mediaOptions.field = "filepath";
+  mediaOptions.fallback = false;
+  handlers.open.mockClear();
+  handlers.capture.mockClear();
+  handlers.remove.mockClear();
+});
+
+describe("SelectionCard", () => {
+  it.each(["image", "video"])(
+    "sizes %s before mounting its renderer near the viewport",
+    (mediaType) => {
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          observe = vi.fn();
+          disconnect = vi.fn();
+        },
+      );
+      const group: EpisodeSelection = {
+        episodeId: "image",
+        members: [{ episodeId: "image", kind: "episode" }],
+        node: {
+          id: "image",
+          sample: {
+            _id: "image",
+            filepath: mediaType === "image" ? "/image.jpg" : "/video.mp4",
+            _media_type: mediaType,
+          },
+          urls: [
+            {
+              field: "filepath",
+              url: mediaType === "image" ? "/image.jpg" : "/video.mp4",
+            },
+          ],
+          aspectRatio: 2,
+        },
+      };
+      render(
+        <SelectionCard
+          group={group}
+          mediaType={mediaType}
+          unit={{ one: "sample", many: "samples", temporal: false }}
+          {...handlers}
+        />,
+      );
+      const card = screen.getByRole("article");
+      expect(card.style.width).toBe("214px");
+      expect(card.dataset.trayAspectRatio).toBe("2");
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+    },
+  );
+
+  it("does not carry measured dimensions to a different media source", async () => {
+    const { rerender } = render(<Card group={full} />);
+    await loadPreview(2);
+    expect(screen.getByRole("article").dataset.trayAspectRatio).toBe("2");
+    rerender(
+      <Card
+        group={{ ...full, filepath: "/portrait.mp4", aspectRatio: 9 / 16 }}
+      />,
+    );
+    expect(screen.getByRole("article").dataset.trayAspectRatio).toBe(
+      String(9 / 16),
+    );
+    expect((await previewProps()).sourceAspect).toBe(9 / 16);
+  });
+
+  it("fits a portrait card to its media and shrinks proportionally in a narrow bucket", async () => {
+    const resize = observeCardArea();
+    render(
+      <SelectionCards className="cards" label="Selected portraits">
+        <Card group={{ ...full, aspectRatio: 3 / 4 }} />
+      </SelectionCards>,
+    );
+    resize(200, 108);
+    const card = screen.getByRole("article");
+    expect(parseFloat(card.style.width)).toBeCloseTo(81.5);
+    expect(card.style.height).toBe("108px");
+    let preview = await previewProps();
+    expect(preview.width / preview.height!).toBeCloseTo(3 / 4);
+    resize(60, 108);
+    expect(card.style.width).toBe("60px");
+    expect(
+      (parseFloat(card.style.width) - 2) / (parseFloat(card.style.height) - 2),
+    ).toBeCloseTo(3 / 4);
+    preview = await previewProps();
+    expect(preview.width / preview.height!).toBeCloseTo(3 / 4);
+    resize(60, 32);
+    expect(card.style.width).toBe("24.5px");
+    expect(card.style.height).toBe("32px");
+    resize(60, 2);
+    expect(screen.queryByTestId("looker-preview")).toBeNull();
+  });
+
+  it.each(["image", "video"])(
+    "unmounts an offscreen %s preview and restores it on return",
+    async (mediaType) => {
+      let intersect: (visible: boolean) => void = () => undefined;
+      const disconnect = vi.fn();
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          constructor(callback: IntersectionObserverCallback) {
+            intersect = (visible) =>
+              callback(
+                [{ isIntersecting: visible } as IntersectionObserverEntry],
+                this as unknown as IntersectionObserver,
+              );
+          }
+          observe = vi.fn();
+          disconnect = disconnect;
+        },
+      );
+      const { unmount } = render(
+        <Card
+          group={{
+            ...full,
+            filepath: mediaType === "image" ? "/image.jpg" : full.filepath,
+            previewStart: 2.5,
+          }}
+        />,
+      );
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+      act(() => intersect(true));
+      const first = await screen.findByTestId("looker-preview");
+      await loadPreview();
+      const width = screen.getByRole("article").style.width;
+      act(() => intersect(false));
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+      expect(screen.getByRole("article").style.width).toBe(width);
+      expect(disconnect).not.toHaveBeenCalled();
+      act(() => intersect(true));
+      expect(await screen.findByTestId("looker-preview")).not.toBe(first);
+      expect((await previewProps()).previewStart).toBe(2.5);
+      unmount();
+      expect(disconnect).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("fills a resized tray and refits when cards are added or removed", async () => {
+    const resize = observeCardArea();
+    const square = { ...full, aspectRatio: 1 };
+    const cards = (count: number) => (
+      <SelectionCards className="cards" label="Selected episodes">
+        {Array.from({ length: count }, (_, index) => (
+          <Card
+            key={index}
+            group={{ ...square, episodeId: `episode-${index}` }}
+          />
+        ))}
+      </SelectionCards>
+    );
+    const view = render(cards(1));
+    resize(500, 300);
+    expect(screen.getByRole("article").style.height).toBe("300px");
+    expect(screen.getByRole("article").style.width).toBe("300px");
+    view.rerender(cards(4));
+    await waitFor(() =>
+      expect(screen.getAllByRole("article")[0].style.height).toBe("146px"),
+    );
+    view.rerender(cards(1));
+    await waitFor(() =>
+      expect(screen.getByRole("article").style.height).toBe("300px"),
+    );
+    resize(500, 108);
+    expect(screen.getByRole("article").style.height).toBe("108px");
+  });
+
+  it("refits after image metadata arrives and resizes image crops", async () => {
+    const resize = observeCardArea();
+    render(
+      <SelectionCards className="cards" label="Selected patches">
+        <Card
+          group={{
+            ...full,
+            filepath: "/birds.jpg",
+            crop: [0.1, 0.2, 0.2, 0.4],
+          }}
+        />
+      </SelectionCards>,
+    );
+    resize(400, 300);
+    const card = screen.getByRole("article");
+    expect(card.style.height).toBe("300px");
+    await loadPreview(8);
+    await waitFor(() => expect(card.style.height).toBe("101.5px"));
+    expect(card.style.width).toBe("400px");
+    expect((await previewProps()).sourceAspect).toBe(8);
+    expect((await previewProps()).crop).toEqual([0.1, 0.2, 0.2, 0.4]);
+  });
+
+  it("grows multimodal previews as squares and refits a narrow bucket", async () => {
+    const resize = observeCardArea();
+    render(
+      <SelectionCards
+        className="columnCards"
+        label="Selected episodes"
+        multimodal
+      >
+        <SelectionCard
+          group={full}
+          mediaType="multimodal"
+          unit={{ one: "episode", many: "episodes", temporal: true }}
+          {...handlers}
+        />
+      </SelectionCards>,
+    );
+    resize(500, 300);
+    const card = screen.getByRole("article");
+    expect([card.style.width, card.style.height]).toEqual(["300px", "300px"]);
+    resize(200, 300);
+    expect([card.style.width, card.style.height]).toEqual(["200px", "200px"]);
+  });
+
+  it.each([
+    ["image", "gs://bucket/image.jpg"],
+    ["video", "s3://bucket/video.mp4"],
+  ])(
+    "waits for resolved %s media and recovers when its URL changes",
+    async (mediaType, filepath) => {
+      const group = { ...full, filepath, previewStart: 2.5 };
+      const props = {
+        mediaType,
+        unit: {
+          one: "sample",
+          many: "samples",
+          temporal: mediaType === "video",
+        },
+        ...handlers,
+      };
+      const view = render(<SelectionCard group={group} {...props} />);
+      expect(screen.getByRole("article").querySelector("img,video")).toBeNull();
+
+      const resolved = (signature: string) => ({
+        ...group,
+        node: {
+          id: group.episodeId,
+          sample: { _id: group.episodeId, filepath, _media_type: mediaType },
+          urls: [
+            {
+              field: "filepath",
+              url: `https://media.example/asset?signature=${signature}`,
+            },
+          ],
+        },
+      });
+      view.rerender(<SelectionCard group={resolved("first")} {...props} />);
+      const preview = await previewProps();
+      expect(preview.node.urls?.[0].url).toBe(
+        "https://media.example/asset?signature=first",
+      );
+      expect(preview.previewStart).toBe(2.5);
+      act(() => preview.onError?.());
+      expect(screen.queryByTestId("looker-preview")).toBeNull();
+      view.rerender(<SelectionCard group={resolved("renewed")} {...props} />);
+      expect((await previewProps()).node.urls?.[0].url).toBe(
+        "https://media.example/asset?signature=renewed",
+      );
+    },
+  );
+
+  it("uses the selected thumbnail field and the grid's missing-media fallback", async () => {
+    const group = {
+      ...full,
+      node: {
+        id: "episode",
+        sample: {
+          _id: "episode",
+          filepath: full.filepath,
+          _media_type: "video",
+        },
+        urls: [
+          {
+            field: "filepath",
+            url: "https://media.example/clip.mp4?signature=video",
+          },
+          {
+            field: "poster",
+            url: "https://media.example/poster.jpg?signature=image",
+          },
+          { field: "missing", url: null },
+        ],
+      },
+    };
+    mediaOptions.field = "poster";
+    const view = render(<Card group={group} />);
+    expect((await previewProps()).node).toBe(group.node);
+    mediaOptions.field = "missing";
+    view.rerender(<Card group={group} />);
+    expect(screen.queryByTestId("looker-preview")).toBeNull();
+    mediaOptions.fallback = true;
+    view.rerender(<Card group={group} />);
+    expect(await screen.findByTestId("looker-preview")).toBeTruthy();
+  });
+
+  it.each([
+    ["3d", "/scene.fo3d"],
+    ["point-cloud", "/cloud.pcd"],
+    ["group", "/scene.fo3d"],
+    ["group", "/cloud.pcd"],
+  ])(
+    "previews a %s sample from %s with the grid looker",
+    async (mediaType, filepath) => {
+      const group = {
+        ...full,
+        filepath,
+        node: {
+          id: "episode",
+          sample: { _id: "episode", filepath },
+          urls: [{ field: "filepath", url: filepath }],
+          aspectRatio: 1,
+        },
+      };
+      render(
+        <SelectionCard
+          group={group}
+          mediaType={mediaType}
+          unit={{ one: "sample", many: "samples", temporal: false }}
+          {...handlers}
+        />,
+      );
+      expect((await screen.findByTestId("looker-preview")).dataset.nodeId).toBe(
+        "episode",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^Open / }));
+      expect(handlers.open).toHaveBeenCalledWith(group);
+      fireEvent.click(screen.getByRole("button", { name: /^Remove / }));
+      expect(handlers.remove).toHaveBeenCalledWith("episode");
+    },
+  );
+
+  it("shows distinct crops for patches that share the same source image", async () => {
+    const patches: EpisodeSelection[] = [
+      {
+        ...full,
+        episodeId: "left",
+        filepath: "/birds.jpg",
+        aspectRatio: 2,
+        crop: [0.1, 0.2, 0.2, 0.4],
+      },
+      {
+        ...full,
+        episodeId: "right",
+        filepath: "/birds.jpg",
+        aspectRatio: 2,
+        crop: [0.5, 0.1, 0.4, 0.2],
+      },
+    ];
+    render(
+      <>
+        {patches.map((group) => (
+          <Card key={group.episodeId} group={group} candidate={null} />
+        ))}
+      </>,
+    );
+    const cards = screen.getAllByRole("article");
+    await screen.findAllByTestId("looker-preview");
+    for (const patch of patches) {
+      expect(previewMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          crop: patch.crop,
+          sourceAspect: 2,
+          node: expect.objectContaining({ id: patch.episodeId }),
+        }),
+      );
+    }
+    expect(cards.map((card) => card.style.width)).toEqual(["108px", "426px"]);
+  });
+
+  it("sizes a patch from the Looker when metadata is missing", async () => {
+    render(
+      <Card
+        group={{ ...full, filepath: "/birds.jpg", crop: [0.1, 0.2, 0.2, 0.4] }}
+      />,
+    );
+    const card = screen.getByRole("article");
+    await loadPreview();
+    expect((await previewProps()).sourceAspect).toBe(2);
+    expect(card.style.width).toBe("108px");
+  });
+
+  it("keeps ordinary image previews uncropped", async () => {
+    render(
+      <Card group={{ ...full, filepath: "/birds.jpg", aspectRatio: 2 }} />,
+    );
+    expect((await previewProps()).crop).toBeUndefined();
+  });
+
+  it("shows the grouped segment scope and opens the episode from its body", async () => {
+    render(<Card group={captured} candidate={captured} />);
+    expect(screen.getByText("2 segments")).toBeTruthy();
+    expect(await screen.findByTitle("10–30 frames 60–75 frames")).toBeTruthy();
+    expect(screen.queryByText("drive.mp4")).toBeNull();
+    expect(screen.queryByText("Matches changed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open drive.mp4" }));
+    expect(handlers.open).toHaveBeenCalledWith(
+      expect.objectContaining(captured),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove drive.mp4 from selection" }),
+    );
+    expect(handlers.remove).toHaveBeenCalledWith("episode");
+  });
+
+  it("offers replace and add when current matches differ, naming the destination", async () => {
+    render(<Card group={captured} candidate={current} />);
+    fireEvent.click(screen.getByText("Matches changed"));
+    expect(await screen.findByText("Current matches differ")).toBeTruthy();
+    expect(screen.getByText("0–20, 34–50 frames")).toBeTruthy();
+    const add = screen.getByRole("button", { name: "Add matching segments" });
+    expect(add.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(add);
+    expect(handlers.capture).toHaveBeenCalledWith(current, "add");
+    fireEvent.click(screen.getByText("Matches changed"));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Replace with 2 matching segments",
+      }),
+    );
+    expect(handlers.capture).toHaveBeenCalledWith(current, "replace");
+  });
+
+  it("never accumulates onto or from a full episode", async () => {
+    const view = render(<Card group={full} candidate={current} />);
+    fireEvent.click(screen.getByText("Matches changed"));
+    expect(
+      (
+        await screen.findByRole("button", { name: "Add matching segments" })
+      ).hasAttribute("disabled"),
+    ).toBe(true);
+    view.unmount();
+    render(<Card group={captured} candidate={full} />);
+    fireEvent.click(screen.getByText("Matches changed"));
+    expect(
+      await screen.findByRole("button", { name: "Replace with full episode" }),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "Add matching segments" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("distinguishes out-of-results and unavailable episodes while keeping them actionable", () => {
+    const view = render(<Card group={captured} candidate={null} />);
+    expect(screen.getByText("Not in view")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "Open drive.mp4" })
+        .hasAttribute("disabled"),
+    ).toBe(false);
+    view.unmount();
+    render(<Card group={{ ...full, unavailable: true }} candidate={null} />);
+    expect(screen.getByText("Unavailable")).toBeTruthy();
+    expect(screen.queryByText("Not in view")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "drive.mp4 is unavailable" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove drive.mp4 from selection" }),
+    );
+    expect(handlers.remove).toHaveBeenCalledWith("episode");
+  });
+
+  it("does not flag an episode as outside the results while its match is unknown", () => {
+    render(<Card group={captured} />);
+    expect(screen.queryByText("Not in view")).toBeNull();
+  });
+
+  it("sizes minimum-height cards from the media aspect ratio", async () => {
+    const wide = render(
+      <Card group={{ ...full, aspectRatio: 16 / 9 }} candidate={full} />,
+    );
+    expect(parseFloat(screen.getByRole("article").style.width)).toBeCloseTo(
+      106 * (16 / 9) + 2,
+    );
+    wide.unmount();
+    const tall = render(
+      <Card group={{ ...full, aspectRatio: 9 / 16 }} candidate={full} />,
+    );
+    expect(parseFloat(screen.getByRole("article").style.width)).toBeCloseTo(
+      106 * (9 / 16) + 2,
+    );
+    tall.unmount();
+    render(<Card group={full} candidate={full} />);
+    const article = screen.getByRole("article");
+    expect(article.style.width).toBe("208px");
+    await loadPreview();
+    expect(article.style.width).toBe("214px");
+  });
+
+  it("points the grid at its tile while hovered or focused", () => {
+    const tile = document.createElement("div");
+    const overlay = document.createElement("div");
+    tile.appendChild(overlay);
+    registerTile({ id: "episode", overlayEl: overlay, sample: {} });
+    const { unmount } = render(<Card group={full} candidate={full} />);
+    const article = screen.getByRole("article");
+    fireEvent.pointerEnter(article);
+    expect(tile.hasAttribute("data-fo-tile-highlight")).toBe(true);
+    fireEvent.pointerLeave(article);
+    expect(tile.hasAttribute("data-fo-tile-highlight")).toBe(false);
+    fireEvent.focus(screen.getByRole("button", { name: "Open drive.mp4" }));
+    expect(tile.hasAttribute("data-fo-tile-highlight")).toBe(true);
+    unmount();
+    expect(tile.hasAttribute("data-fo-tile-highlight")).toBe(false);
+    unregisterTile("episode");
+  });
+
+  it("mirrors a hovered grid tile", () => {
+    render(<Card group={full} candidate={full} />);
+    const article = screen.getByRole("article");
+    article.scrollIntoView = vi.fn();
+    expect(article.hasAttribute("data-mirrored")).toBe(false);
+    act(() => setHoveredTile("episode"));
+    expect(article.getAttribute("data-mirrored")).toBe("true");
+    expect(article.scrollIntoView).toHaveBeenCalledWith({
+      block: "nearest",
+      behavior: "smooth",
+    });
+    act(() => setHoveredTile("other"));
+    expect(article.hasAttribute("data-mirrored")).toBe(false);
+    act(() => setHoveredTile(null));
+  });
+
+  it("scrolls the grid to its parent and remembers a miss until the results change", async () => {
+    const locate = vi.fn(async () => false);
+    const view = render(<Card group={full} candidate={full} locate={locate} />);
+    const button = screen.getByRole("button", {
+      name: "Show drive.mp4 in grid",
+    });
+    expect(button.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(locate).toHaveBeenCalledWith("episode", expect.any(AbortSignal)),
+    );
+    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(true));
+    expect(button.title).toBe("Not in view");
+    view.rerender(
+      <Card group={full} candidate={{ ...full }} locate={locate} />,
+    );
+    expect(button.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("shows loading until arrival and lets the user cancel without recording a miss", async () => {
+    const locate = vi.fn(
+      (_id: string, signal?: AbortSignal) =>
+        new Promise<boolean>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(signal.reason));
+        }),
+    );
+    render(<Card group={full} candidate={full} locate={locate} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show drive.mp4 in grid" }),
+    );
+    const cancel = await screen.findByRole("button", {
+      name: "Cancel showing drive.mp4 in grid",
+    });
+    expect(cancel.getAttribute("aria-busy")).toBe("true");
+    expect(cancel.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(cancel);
+    const retry = await screen.findByRole("button", {
+      name: "Show drive.mp4 in grid",
+    });
+    expect(retry.hasAttribute("disabled")).toBe(false);
+    expect(retry.title).not.toBe("Not in view");
+  });
+
+  it.each([new Error("network"), new DOMException("timeout", "TimeoutError")])(
+    "leaves %s retryable and reports an accessible error",
+    async (error) => {
+      const locate = vi.fn(async () => {
+        throw error;
+      });
+      render(<Card group={full} candidate={full} locate={locate} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show drive.mp4 in grid" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("status", { name: "Show in grid status" })
+            .textContent,
+        ).toContain("Try again"),
+      );
+      expect(
+        screen
+          .getByRole("button", { name: "Show drive.mp4 in grid" })
+          .hasAttribute("disabled"),
+      ).toBe(false);
+    },
+  );
+
+  it("offers no grid scroll for parents outside the results or without a locator", () => {
+    const outside = render(
+      <Card group={full} candidate={null} locate={vi.fn()} />,
+    );
+    const button = screen.getByRole("button", {
+      name: "Show drive.mp4 in grid",
+    });
+    expect(button.hasAttribute("disabled")).toBe(true);
+    expect(button.title).toBe("Not in view");
+    outside.unmount();
+    render(<Card group={full} candidate={full} />);
+    expect(
+      screen.queryByRole("button", { name: /Show .* in grid/ }),
+    ).toBeNull();
+  });
+
+  it("draws a multimodal sample with the grid's own renderer node", async () => {
+    const node = {
+      id: "episode",
+      sample: { _id: "episode", filepath: "/logs/drive.mcap" },
+      urls: [{ field: "filepath", url: "/logs/drive.mcap" }],
+      aspectRatio: 1,
+    };
+    const { container } = render(
+      <SelectionCard
+        group={{ ...full, filepath: "/logs/drive.mcap", node }}
+        candidate={null}
+        mediaType="multimodal"
+        unit={{ one: "episode", many: "episodes", temporal: true }}
+        {...handlers}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector("[data-node-id]")?.getAttribute("data-node-id"),
+      ).toBe("episode"),
+    );
+    expect(
+      screen.getByRole("button", { name: "Open drive.mcap" }),
+    ).toBeTruthy();
+  });
+
+  it.each(["video", "multimodal"])(
+    "uses the grid footer for %s segments and whole episodes",
+    async (mediaType) => {
+      const node = {
+        id: "episode",
+        sample: { _id: "episode", filepath: "/logs/drive.mcap" },
+      };
+      const props = {
+        mediaType,
+        unit: { one: "episode", many: "episodes", temporal: true },
+        ...handlers,
+      };
+      const view = render(
+        <SelectionCard group={{ ...captured, node }} {...props} />,
+      );
+      const lanes = await screen.findByTestId("tile-lanes");
+      expect(lanes.dataset.nodeId).toBe("episode");
+      expect(lanes.closest("[data-grid-tile]")).toBeTruthy();
+      expect(lanes.closest("button")).toBeNull();
+
+      view.rerender(<SelectionCard group={{ ...full, node }} {...props} />);
+      expect(screen.getByTestId("tile-lanes")).toBe(lanes);
+
+      view.rerender(
+        <SelectionCard
+          group={{ ...captured, node, unavailable: true }}
+          {...props}
+        />,
+      );
+      expect(screen.queryByTestId("tile-lanes")).toBeNull();
+    },
+  );
+});

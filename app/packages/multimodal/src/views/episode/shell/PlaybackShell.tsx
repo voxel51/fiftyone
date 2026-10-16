@@ -33,23 +33,9 @@ import type { SceneSource } from "../../../scene-inventory/index";
 import { WebGpuViewStage } from "../../../visualization/webgpu/WebGpuViewStage";
 import { TileMediaEpisodePublisher } from "../tiles/TileMediaEpisodePublisher";
 import styles from "./PlaybackShell.module.css";
+import { clampSidebarWidth, SIDEBAR_SIZE_PX } from "../layout/sidebar-geometry";
 
 const EMPTY_SOURCES: readonly SceneSource[] = [];
-const SIDEBAR_SIZE_PX = 360;
-
-// User-resizable bounds for the left sidebar. MIN keeps the settings
-// controls readable (labels + inputs don't wrap into uselessness below
-// ~280); MAX stops the sidebar from crowding the tiles out of the modal.
-export const SIDEBAR_MIN_WIDTH_PX = 280;
-export const SIDEBAR_MAX_WIDTH_PX = 560;
-
-/** Clamp a requested sidebar width to the resizable bounds. */
-export function clampSidebarWidth(px: number): number {
-  return Math.min(
-    SIDEBAR_MAX_WIDTH_PX,
-    Math.max(SIDEBAR_MIN_WIDTH_PX, Math.round(px)),
-  );
-}
 
 /** Inputs for the reusable episode playback shell. */
 export interface PlaybackShellProps {
@@ -167,6 +153,8 @@ export interface PlaybackShellProps {
   defaultLeftOpen?: boolean;
   /** Whether the right sidebar starts open. @default true */
   defaultRightOpen?: boolean;
+  /** Whether the bottom Tracks drawer starts open. @default false */
+  defaultTimelineTracksOpen?: boolean;
   /** Observes left-sidebar visibility — e.g. to persist the choice. */
   onLeftOpenChange?: (open: boolean) => void;
   /** Observes right-sidebar visibility — e.g. to persist the choice. */
@@ -178,7 +166,7 @@ export interface PlaybackShellProps {
   mainOverlay?: ReactNode;
   /**
    * Starting width of the left sidebar in px, clamped to
-   * {@link SIDEBAR_MIN_WIDTH_PX}–{@link SIDEBAR_MAX_WIDTH_PX}. The pane
+   * the shared sidebar geometry bounds. The pane
    * is drag-resizable via its edge handle either way; this only seeds
    * the width (uncontrolled, like `defaultLeftOpen`). Defaults to the
    * fixed 360px the shell has always used.
@@ -280,6 +268,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
   rightSidebar = <TilingInspectorSidebar />,
   defaultLeftOpen = true,
   defaultRightOpen = true,
+  defaultTimelineTracksOpen = false,
   onLeftOpenChange,
   onRightOpenChange,
   mainOverlay,
@@ -334,6 +323,7 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               }
               defaultLeftOpen={defaultLeftOpen}
               defaultRightOpen={defaultRightOpen}
+              timelineDrawerDefaultOpen={defaultTimelineTracksOpen}
               onLeftOpenChange={onLeftOpenChange}
               onRightOpenChange={onRightOpenChange}
               mainOverlay={mainOverlay}
@@ -347,9 +337,6 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
               timelineDrawerMaxSize={timelineDrawerMaxSize}
               sharedImageWebGpuViews={sharedImageWebGpuViews}
               className={className}
-              // Start with the tracks drawer collapsed. Pinned tracks remain
-              // visible below the ruler until the user expands the drawer.
-              timelineDrawerDefaultOpen={false}
               decorateTrack={decorateTrack}
               timelineRulerOverlay={timelineRulerOverlay}
             />

@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { AnyEpisodeDataStream, DataStream } from "../data-stream";
 
 interface DataStreamContextValue {
@@ -17,18 +24,32 @@ const DataStreamContext = createContext<DataStreamContextValue>({
 export const DataStreamProvider: React.FC<{
   readonly children: React.ReactNode;
   readonly expectedSourceKey?: string | null;
-}> = ({ children, expectedSourceKey }) => {
-  const [dataStream, setDataStream] = useState<AnyEpisodeDataStream | null>(
-    null,
+  /** Logical session owner; separate episodes can share the same byte source. */
+  readonly expectedOwner?: object | null;
+}> = ({ children, expectedSourceKey, expectedOwner }) => {
+  const [published, setPublished] = useState<{
+    dataStream: AnyEpisodeDataStream | null;
+    owner: object | null | undefined;
+  }>({ dataStream: null, owner: undefined });
+  const ownerRef = useRef(expectedOwner);
+  ownerRef.current = expectedOwner;
+  const setDataStream = useCallback(
+    (next: AnyEpisodeDataStream | null) => {
+      if (ownerRef.current !== expectedOwner) return;
+      setPublished({ dataStream: next, owner: expectedOwner });
+    },
+    [expectedOwner],
   );
+  const { dataStream } = published;
   const visibleDataStream =
-    expectedSourceKey === undefined ||
-    dataStream?.sourceKey === expectedSourceKey
+    (expectedSourceKey === undefined ||
+      dataStream?.sourceKey === expectedSourceKey) &&
+    (expectedOwner === undefined || published.owner === expectedOwner)
       ? dataStream
       : null;
   const value = useMemo(
     () => ({ dataStream: visibleDataStream, setDataStream }),
-    [visibleDataStream],
+    [visibleDataStream, setDataStream],
   );
   return (
     <DataStreamContext.Provider value={value}>
