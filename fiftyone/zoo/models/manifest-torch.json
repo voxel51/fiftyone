@@ -13582,6 +13582,82 @@
             ],
             "training_data": [],
             "date_added": "2026-10-07 12:00:00"
+        },
+        {
+            "base_name": "ovis-vl-embedding-2b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "2B vision-language embedding model that maps images and text into one space for cross-modal retrieval",
+            "source": "https://huggingface.co/ATH-MaaS/Ovis-VL-Embedding-2B",
+            "author": "Alibaba ATH-MaaS",
+            "license": "Apache 2.0",
+            "size_bytes": 4446561395,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ovis_embedding.OvisEmbeddingModel",
+                "config": {
+                    "name_or_path": "ATH-MaaS/Ovis-VL-Embedding-2B"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.17"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "text-embeddings",
+                "vlm",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-10-16 12:00:00"
+        },
+        {
+            "base_name": "ovis-vl-embedding-9b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "9B vision-language embedding model that maps images and text into one space for cross-modal retrieval",
+            "source": "https://huggingface.co/ATH-MaaS/Ovis-VL-Embedding-9B",
+            "author": "Alibaba ATH-MaaS",
+            "license": "Apache 2.0",
+            "size_bytes": 16805555314,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ovis_embedding.OvisEmbeddingModel",
+                "config": {
+                    "name_or_path": "ATH-MaaS/Ovis-VL-Embedding-9B"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers>=5.17"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "embeddings",
+                "text-embeddings",
+                "vlm",
+                "torch",
+                "transformer"
+            ],
+            "training_data": [],
+            "date_added": "2026-10-16 12:00:00"
         }
     ]
 }
