@@ -253,7 +253,16 @@ class TestD3ModelConfig:
         assert config.raw_inputs is True
         assert config.output_processor_cls is D3OutputProcessor
 
-    @pytest.mark.parametrize("name", ["vllm-sr/d3", "vllm-sr/d3-mini"])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "vllm-sr/d3",
+            "vllm-sr/d3-mini",
+            "vllm-sr/d3-nano",
+            "vllm-sr/d3-lite",
+            "vllm-sr/d3-edge",
+        ],
+    )
     def test_releases_load_their_pinned_revisions(self, name):
         """Each release loads at its own pinned revision"""
         config = D3ModelConfig({"classes": ["a", "b"], "name_or_path": name})

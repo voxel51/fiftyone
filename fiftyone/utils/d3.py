@@ -47,6 +47,9 @@ PINNED_REVISIONS = {
     "vllm-sr/d3": "cc2ed4abbef9e8563e957a6fd3e806fc0322f71f",
     "vllm-sr/d3-flash": "3d8f2001503490fcbb8a88321fa5c6cec8f8c17c",
     "vllm-sr/d3-mini": "1c0afac684bc7b951266368110aff83ef72bae43",
+    "vllm-sr/d3-nano": "d1ca18f4ea3c89a5ffd5e600143ed72cd3cfe2a0",
+    "vllm-sr/d3-lite": "42eb4acf2fe60b7e6638145f11fb5786d84dde4e",
+    "vllm-sr/d3-edge": "9a66596ae3883bc015e59a0278095084e366484f",
 }
 
 QUESTION_TYPES = ("noul", "choice", "score")
@@ -485,8 +488,8 @@ class D3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         name_or_path ("vllm-sr/d3-flash"): the HuggingFace repository of a d3
             release
         revision (None): the commit hash, branch or tag of the release to
-            load. The releases run their own code, so the d3, d3-flash and
-            d3-mini releases load their pinned revisions when this is omitted
+            load. The releases run their own code, so each d3 release on
+            the Hub loads its pinned revision when this is omitted
         questions (None): the questions to answer about each image, a dict
             mapping a question ID, which must be a valid field name, to a
             dict with:
