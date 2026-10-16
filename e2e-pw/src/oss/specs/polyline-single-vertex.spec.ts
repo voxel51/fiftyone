@@ -58,8 +58,8 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
   await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
 });
@@ -68,7 +68,7 @@ test("a lone vertex renders and hovers like a keypoint", async ({ modal }) => {
   // park the cursor away from the vertex, then hover it; the cursor gate
   // retries until the dot's hit target answers
   await modal.sampleCanvas.move(0.9, 0.9);
-  await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+  await modal.sampleCanvas.hoverLabel(0.5, 0.5);
 
   await modal.sampleCanvas.tooltip.assert.isVisible();
   await modal.sampleCanvas.tooltip.assert.hasField("polylines");
@@ -78,11 +78,13 @@ test("a lone vertex renders and hovers like a keypoint", async ({ modal }) => {
 test("polyline attributes offer visibility eyes in the modal", async ({
   modal,
 }) => {
-  await modal.sidebar.clickFieldDropdown("polylines");
+  await modal.eventUtils.after("animation-onRest", () =>
+    modal.sidebar.clickFieldDropdown("polylines"),
+  );
 
   const labelEye = modal.sidebar.locator.getByTestId(
     "shown-attribute-polylines.polylines.label",
   );
-  await expect(labelEye).toBeVisible();
-  await expect(labelEye).toBeEnabled();
+  expect(await labelEye.isVisible()).toBe(true);
+  expect(await labelEye.isEnabled()).toBe(true);
 });

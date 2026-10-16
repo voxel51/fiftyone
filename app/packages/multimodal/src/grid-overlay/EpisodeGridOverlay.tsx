@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import type { IntervalTileContext } from "../extensions/episode-intervals";
 import {
   useCallback,
@@ -20,6 +21,7 @@ import {
   useEpisodeTimeRange,
 } from "../extensions/episode-intervals";
 import { temporalTagIntervalSource } from "./temporal-tag-interval-source";
+import { savedSegmentIntervalSource } from "../extensions/episode-intervals/saved-segments";
 import styles from "./grid-overlay.module.css";
 
 /** Cap the stacked levels so the lane stays compact on a small grid tile. */
@@ -73,7 +75,10 @@ const MAX_READOUT_NAMES = 12;
  * Sources that ship in this package. Everything else arrives through the
  * registry — see `extensions/episode-intervals/types.ts`.
  */
-const BUILT_IN_SOURCES = [temporalTagIntervalSource];
+const BUILT_IN_SOURCES = [
+  savedSegmentIntervalSource,
+  temporalTagIntervalSource,
+];
 
 /**
  * Bottom-of-tile interval lane for multimodal grid previews.
@@ -89,6 +94,32 @@ export function EpisodeGridOverlay({ ctx }: { ctx: IntervalTileContext }) {
       {(resolved) => <IntervalLane ctx={ctx} resolved={resolved} />}
     </EpisodeIntervalSources>
   );
+}
+
+type GridLaneE2EEvents = {
+  "e2e:multimodal:grid-lane-shown": {
+    sampleId: string;
+    marks: number;
+    sources: string;
+    /** The lane's time axis: the recording's duration once it is known */
+    domainNs: number;
+  };
+};
+
+/** Dispatches the lane's e2e signal after the commit that shows it */
+function LaneShown({
+  sampleId,
+  marks,
+  sources,
+  domainNs,
+}: GridLaneE2EEvents["e2e:multimodal:grid-lane-shown"]) {
+  useEffect(() => {
+    getEventBus<GridLaneE2EEvents>().dispatch(
+      "e2e:multimodal:grid-lane-shown",
+      { sampleId, marks, sources, domainNs },
+    );
+  }, [sampleId, marks, sources, domainNs]);
+  return null;
 }
 
 function IntervalLane({
@@ -266,6 +297,14 @@ function IntervalLane({
       ref={containerRef}
     >
       {sentinel}
+      <LaneShown
+        sampleId={episodeId}
+        marks={levels.reduce((total, placed) => total + placed.length, 0)}
+        sources={[
+          ...new Set(levels.flat().map((interval) => interval.sourceId)),
+        ].join(",")}
+        domainNs={domainSpan}
+      />
       {fitsReadout && (
         <Readout
           intervals={intervals}

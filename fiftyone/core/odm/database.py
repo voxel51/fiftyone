@@ -47,6 +47,7 @@ fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
 fota = fou.lazy_import("fiftyone.core.tags")
+fosub = fou.lazy_import("fiftyone.core.subsets")
 
 
 logger = logging.getLogger(__name__)
@@ -1741,7 +1742,7 @@ def _patch_runs(dataset_name, runs_field, run_cls, run_str, dry_run=False):
         runs_dict.update(missing_runs)
         made_changes = True
 
-    if made_changes:
+    if made_changes and not dry_run:
         conn.datasets.update_one(
             {"name": dataset_name},
             {"$set": {runs_field: runs_dict}},
@@ -1802,6 +1803,9 @@ def delete_dataset(name, dry_run=False):
         _logger.info("Deleting %d tag(s)", num_tags)
         if not dry_run:
             fota.delete_for_dataset_id(_id)
+
+    if not dry_run:
+        fosub.delete_for_dataset_id(_id)
 
     view_ids = _get_saved_view_ids(dataset_dict)
 

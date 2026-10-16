@@ -440,7 +440,7 @@ interactively explore the evaluation results in the App:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can execute
     model evaluations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 

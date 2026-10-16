@@ -50,6 +50,8 @@ const playbackHarness = vi.hoisted(() => {
       initialLayout: undefined as unknown,
       initialTiles: {} as Record<string, unknown>,
       onLeftOpenChange: vi.fn(),
+      defaultTimelineTracksOpen: false,
+      onTimelineTracksOpenChange: vi.fn(),
       onLeftSidebarWidthChange: vi.fn(),
       onSceneUpAxisChange: vi.fn(),
       onTimelineSamplingRateChange: vi.fn(),
@@ -71,6 +73,10 @@ const sourceFactsHarness = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../runtime/source-facts-service", () => sourceFactsHarness);
+
+vi.mock("../loading/ModalLoadingOverlay", () => ({
+  ModalLoadingOverlay: () => null,
+}));
 
 vi.mock("./PlaybackShell", () => {
   const MockPlaybackShell = ({
@@ -221,6 +227,8 @@ describe("SourcePlayback", () => {
       initialLayout: undefined,
       initialTiles: {},
       onLeftOpenChange: vi.fn(),
+      defaultTimelineTracksOpen: false,
+      onTimelineTracksOpenChange: vi.fn(),
       onLeftSidebarWidthChange: vi.fn(),
       onSceneUpAxisChange: vi.fn(),
       onTimelineSamplingRateChange: vi.fn(),
@@ -1043,6 +1051,33 @@ describe("SourcePlayback", () => {
         .querySelector("[data-episode-playback-shell]")
         ?.hasAttribute("data-episode-source-transitioning"),
     ).toBe(false);
+  });
+
+  it("restores fresh pin preferences when the saved browsing scope changes", () => {
+    const session = { activate: vi.fn() } as unknown as EpisodeSession;
+    const source = createSource("sample");
+    playbackHarness.sceneInventory = readyInventory("/camera");
+    const props = { session, source, fileName: "sample.mcap" };
+    const { rerender } = render(
+      <SourcePlayback {...props} pinScopeKey="subset-a" />,
+    );
+    const first = screen
+      .getByTestId("playback-shell")
+      .getAttribute("data-instance-id");
+    rerender(
+      <SourcePlayback
+        {...props}
+        pinScopeKey="subset-a"
+        defaultPinnedTrackIds={["late-track"]}
+      />,
+    );
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).toBe(first);
+    rerender(<SourcePlayback {...props} pinScopeKey="subset-b" />);
+    expect(
+      screen.getByTestId("playback-shell").getAttribute("data-instance-id"),
+    ).not.toBe(first);
   });
 
   it("remounts the shell when the resolved timeline mode changes across a source navigation", () => {

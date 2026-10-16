@@ -21,8 +21,13 @@ import {
   is3dPinned,
   pinned3DSampleSlice,
 } from "./renderConfig3d.atoms";
+import {
+  exclusionViewStages,
+  lensWireExclusions,
+  taskSchemaWireExclusions,
+} from "./schemaSettings.atoms";
 import { datasetName } from "./selectors";
-import { mapSampleResponse } from "./utils";
+import { mapSampleResponse, withoutPaths } from "./utils";
 import { view } from "./view";
 
 export const modalLooker = atom<Lookers | null>({
@@ -169,7 +174,24 @@ export const nullableModalSampleId = selector<string>({
   },
 });
 
-export const modalSample = graphQLSelector<
+/**
+ * The view of the modal sample queries: the current view plus the active
+ * task's hidden fields, which never reach the payload. The Explore lens's
+ * are removed by `modalSample` instead.
+ */
+export const modalSampleView = selector({
+  key: "modalSampleView",
+  get: ({ get }) => [
+    ...get(view),
+    ...exclusionViewStages(get(taskSchemaWireExclusions)),
+  ],
+});
+
+/**
+ * The modal sample as fetched: without the active task's hidden fields,
+ * with every other field (see `modalSample`).
+ */
+export const fetchedModalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
 >({
@@ -205,7 +227,7 @@ export const modalSample = graphQLSelector<
 
     return {
       dataset: get(datasetName),
-      view: get(view),
+      view: get(modalSampleView),
       filter: {
         id: current.id,
         group: slice
@@ -213,6 +235,26 @@ export const modalSample = graphQLSelector<
           : null,
       },
     };
+  },
+});
+
+/**
+ * The modal sample without the fields and attributes the Explore schema
+ * lens hides (the task's never reach the payload).
+ *
+ * The lens's paths are removed here rather than excluded in the query: the
+ * query's response is stored in one Relay record per sample whatever its
+ * view, so a lens-specific query overwrote the record the other lenses
+ * read, and switching back showed the fields still hidden. Removing them
+ * here also means a lens switch never refetches the sample or reloads its
+ * media, and a sample the lens hides nothing on keeps its identity.
+ */
+export const modalSample = selector<ModalSample>({
+  key: "modalSampleWithoutHiddenPaths",
+  get: ({ get }) => {
+    const modal = get(fetchedModalSample);
+    const sample = withoutPaths(modal.sample, get(lensWireExclusions) ?? []);
+    return sample === modal.sample ? modal : { ...modal, sample };
   },
 });
 
@@ -258,7 +300,7 @@ export const groupSampleAtMainSlice = graphQLSelector<
 
     return {
       dataset: get(datasetName),
-      view: get(view),
+      view: get(modalSampleView),
       filter: {
         id: current.id,
         group: slice ? { slice, slices: [slice], id: get(groupId) } : null,

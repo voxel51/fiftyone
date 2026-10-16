@@ -133,7 +133,7 @@ The following media types are available:
 
 .. note::
 
-    † :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users must upgrade their
+    † :ref:`Voxel51 <fiftyone-enterprise>` users must upgrade their
     deployment to 2.8.0+ in order to use `unknown` or "custom" media types.
 
 .. _dataset-persistence:

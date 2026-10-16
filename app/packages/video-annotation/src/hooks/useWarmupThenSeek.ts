@@ -2,8 +2,15 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useEffect } from "react";
-import { usePlayback } from "@fiftyone/playback";
+import { useEffect, useRef } from "react";
+import {
+  getIsPlaying,
+  getIsPlayPending,
+  getPlayhead,
+  usePlayback,
+  usePlaybackStore,
+  useSeekEvent,
+} from "@fiftyone/playback";
 
 /** A stream that can prefetch the chunk containing a given stream time. */
 interface Warmupable {
@@ -19,32 +26,44 @@ interface Warmupable {
  *
  * Pass the stream from a construct-once ref (stable identity) so the effect
  * runs once per registration.
- *
- * `time` may be a getter (also of stable identity) for a position that moves
- * while the warmup is in flight, such as the playhead: it is read once to
- * pick the chunk and again to seek when the warmup lands.
+ * A supplied opening time makes the host own startup: null waits for its
+ * scope to resolve, and subsequent user playback takes precedence. Omitting
+ * it preserves the annotation surface's initial label-paint kick at zero.
  */
 export function useWarmupThenSeek(
   stream: Warmupable | null,
-  time: number | (() => number) = 0,
+  time?: number | null | (() => number),
 ): void {
   const { seek } = usePlayback();
+  const store = usePlaybackStore();
+  const seekEvent = useSeekEvent();
+  const hasSought = useRef(false);
+  if (seekEvent) hasSought.current = true;
 
   useEffect(() => {
-    if (!stream) {
+    if (!stream || time === null) {
       return undefined;
     }
 
     const read = typeof time === "function" ? time : () => time;
     let cancelled = false;
-    void stream.warmup(read()).then(() => {
-      if (!cancelled) {
-        seek(read());
+    const target = read() ?? 0;
+    void stream.warmup(target).then(() => {
+      // Late scope/label data must not undo a scrub or a press of Play.
+      if (
+        !cancelled &&
+        (typeof time === "function" ||
+          ((time === undefined || !hasSought.current) &&
+            getPlayhead(store) === 0 &&
+            !getIsPlaying(store) &&
+            !getIsPlayPending(store)))
+      ) {
+        seek(read() ?? 0);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [stream, seek, time]);
+  }, [stream, seek, time, store]);
 }

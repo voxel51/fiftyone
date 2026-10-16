@@ -75,6 +75,8 @@ export interface GridPosterCache {
   peek(key: GridPosterCacheKey): GridPosterCacheEntry | null;
   put(key: GridPosterCacheKey, entry: GridPosterCacheEntry): boolean;
   stats(): GridPosterCacheStats;
+  /** Notifies after an entry is stored, for consumers that read on demand. */
+  subscribe(listener: () => void): () => void;
   /** Promotes an entry without changing hit/miss diagnostics. */
   touch(key: GridPosterCacheKey): GridPosterCacheEntry | null;
 }
@@ -114,6 +116,7 @@ export function createGridPosterCache(
     1,
   );
   const counters: MutableStats = emptyCounters();
+  const listeners = new Set<() => void>();
   const cache = new LRUCache<GridPosterCacheKey, GridPosterCacheEntry>({
     dispose: (_value, _key, reason) => {
       if (reason === "evict") counters.evictions += 1;
@@ -146,6 +149,7 @@ export function createGridPosterCache(
       cache.set(key, immutableEntry);
       counters.puts += 1;
       if (replacing) counters.replacements += 1;
+      for (const listener of listeners) listener();
       return true;
     },
     stats() {
@@ -153,6 +157,12 @@ export function createGridPosterCache(
         ...counters,
         entryCount: cache.size,
         retainedBytes: cache.calculatedSize,
+      };
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
       };
     },
     touch(key) {

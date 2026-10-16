@@ -44,17 +44,27 @@ export class SchemaManagerPom {
   }
 
   /**
-   * Go back using the top-left arrow
-   */
-  async back() {
-    await this.locator.getByTestId("schema-manager-back").click();
-  }
-
-  /**
    * Close the modal
    */
   async close() {
-    await this.locator.getByTestId("close-schema-manager").click();
+    await this.eventUtils.after("e2e:schema-manager:closed", () =>
+      this.locator.getByTestId("close-schema-manager").click(),
+    );
+  }
+
+  /**
+   * The schema row's dropdown trigger (grid sidebar and sample modal).
+   * "Manage schema" lives inside its menu; the standalone gear only
+   * renders where the row does not (inside a workflow task). Both the
+   * grid sidebar and the sample modal render the row; with the modal
+   * open, its trigger is the one on top.
+   */
+  async lensTrigger() {
+    const modal = this.page.getByTestId("modal");
+    if (await modal.isVisible()) {
+      return modal.getByTestId("schema-lens-select");
+    }
+    return this.page.getByTestId("schema-lens-select").first();
   }
 
   /**
@@ -62,7 +72,57 @@ export class SchemaManagerPom {
    * schema manager modal to open
    */
   async open() {
-    await this.page.getByTestId("open-schema-manager").click();
+    await this.eventUtils.after("e2e:schema-manager:opened", async () => {
+      const trigger = await this.lensTrigger();
+      if (await trigger.isVisible()) {
+        await trigger.click();
+        await this.page
+          .getByRole("menu")
+          .getByTestId("open-schema-manager")
+          .click();
+        return;
+      }
+      await this.page.getByTestId("open-schema-manager").click();
+    });
+  }
+
+  /**
+   * Create a custom schema from the actions menu. The manager switches to
+   * the new schema, whose rows can be moved between Active and Hidden.
+   *
+   * @param name The schema name (unique per dataset)
+   */
+  async createSchema(name: string) {
+    await this.locator.getByTestId("schema-actions-menu").click();
+    await this.page.getByRole("menu").getByTestId("schema-action-new").click();
+    const input = this.locator.getByTestId("schema-name-input");
+    await input.fill(name);
+    await this.locator
+      .getByRole("button", { name: "Save", exact: true })
+      .click();
+    await expect(input).toBeHidden();
+  }
+
+  /**
+   * Apply a custom schema as the sidebar's schema lens, or the dataset
+   * default when no name is given. The dataset default shows every field;
+   * only a custom schema hides fields.
+   *
+   * @param name The schema name, or undefined for the default
+   */
+  async applyLens(name?: string) {
+    const trigger = await this.lensTrigger();
+    await trigger.click();
+    const menu = this.page.getByRole("menu");
+    if (name) {
+      await menu
+        .getByTestId("schema-lens-option")
+        .filter({ hasText: name })
+        .click();
+    } else {
+      await menu.getByTestId("schema-lens-option-default").click();
+    }
+    await expect(menu).toBeHidden();
   }
 
   /**
@@ -92,8 +152,8 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.assert.isHiddenFieldRow(field);
+    // the move is a round-trip; the row lands in its new section after it
+    await this.afterFieldIn("hidden", field, () => this.moveFields());
   }
 
   /**
@@ -106,8 +166,21 @@ export class SchemaManagerPom {
     const row = this.getFieldRow(field);
     await row.clickCheckbox();
     await row.assert.isChecked(true);
-    await this.moveFields();
-    await this.assert.isActiveFieldRow(field);
+    await this.afterFieldIn("active", field, () => this.moveFields());
+  }
+
+  /** Run `action` and resolve once `section` renders a row for `field` */
+  private afterFieldIn<T>(
+    section: "active" | "hidden",
+    field: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    return this.eventUtils.after("e2e:schema-manager:fields", action, (e) => {
+      const detail = e.detail as { section: string; paths: string };
+      return (
+        detail.section === section && detail.paths.split(",").includes(field)
+      );
+    });
   }
 }
 
@@ -126,7 +199,7 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.activeFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
@@ -138,14 +211,14 @@ class SchemaManagerAsserter {
     const locator = this.schemaManagerPom.hiddenFields.getByTestId(
       `field-row-${field}`,
     );
-    await expect(locator).toBeAttached();
+    expect(await locator.count()).toBe(1);
   }
 
   /**
    * Is schema manager modal closed
    */
   async isClosed() {
-    await expect(this.schemaManagerPom.locator).toBeHidden();
+    expect(await this.schemaManagerPom.locator.isVisible()).toBe(false);
   }
 
   /**
@@ -156,21 +229,10 @@ class SchemaManagerAsserter {
   }
 
   /**
-   * Is the "Add schema" button disabled
-   */
-  async isDisabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeDisabled();
-  }
-
-  /**
-   * Is the "Add schema" button enabled
+   * Is the schema entry point (the schema row's trigger) enabled
    */
   async isEnabled() {
-    await expect(
-      this.schemaManagerPom.page.getByTestId("open-schema-manager"),
-    ).toBeEnabled();
+    await expect(await this.schemaManagerPom.lensTrigger()).toBeEnabled();
   }
 
   /**

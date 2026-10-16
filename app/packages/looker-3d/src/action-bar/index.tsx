@@ -1,9 +1,14 @@
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { isFo3dSamplePath } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Logs } from "../Logs";
-import { SET_EGO_VIEW_EVENT, SET_TOP_VIEW_EVENT } from "../constants";
+import {
+  type Looker3dEvents,
+  SET_EGO_VIEW_EVENT,
+  SET_TOP_VIEW_EVENT,
+} from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
 import { LEVA_CONTAINER_ID } from "../fo3d/Leva";
 import { getMediaPathForFo3dSample } from "../fo3d/utils";
@@ -88,7 +93,7 @@ export const ActionBar = ({
         key="set-top-view"
         dataCy="looker-3d-set-top-view"
         onChangeView={() => {
-          window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
+          getEventBus<Looker3dEvents>().dispatch(SET_TOP_VIEW_EVENT);
         }}
         view={"top"}
         label={"T"}
@@ -101,7 +106,7 @@ export const ActionBar = ({
         key="set-ego-view"
         dataCy="looker-3d-set-ego-view"
         onChangeView={() => {
-          window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
+          getEventBus<Looker3dEvents>().dispatch(SET_EGO_VIEW_EVENT);
         }}
         view={"pov"}
         label={"E"}

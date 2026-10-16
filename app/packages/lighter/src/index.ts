@@ -65,6 +65,8 @@ export type {
   InteractionHandler,
   OverlayEvent,
 } from "./interaction/InteractionManager";
+export { GuidedKeypointHandler } from "./interaction/GuidedKeypointHandler";
+export type { GuidedKeypointCallbacks } from "./interaction/GuidedKeypointHandler";
 export { InteractiveDetectionHandler } from "./interaction/InteractiveDetectionHandler";
 export {
   InteractiveKeypointHandler,

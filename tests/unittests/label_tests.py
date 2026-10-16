@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from bson import Binary, ObjectId
+from mongoengine import ValidationError
 import numpy as np
 import numpy.testing as nptest
 
@@ -158,6 +159,49 @@ class LabelTests(unittest.TestCase):
             label_id == dynamic.classifications.classifications[0].id
         )
         self.assertFalse("classification" in dynamic)
+
+    @drop_datasets
+    def test_dynamic_keypoint_point_attributes(self):
+        # the App writes per-point attributes value-filled, one entry per
+        # skeleton node, because a declared list field validates elements
+        sample = fo.Sample(
+            filepath="image.jpg",
+            keypoints=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(
+                        label="person",
+                        points=[[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+                        occluded=[False, True, False],
+                    )
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        dataset.add_dynamic_sample_fields()
+
+        schema = dataset.get_field_schema(flat=True)
+        field = schema["keypoints.keypoints.occluded"]
+        self.assertIsInstance(field, fo.ListField)
+        self.assertIsInstance(field.field, fo.BooleanField)
+
+        # a setattr round trip re-validates the stored list
+        sample = dataset.first()
+        kp = sample.keypoints.keypoints[0]
+        kp.occluded = list(kp.occluded)
+        sample.save()
+
+        sample.reload()
+        self.assertListEqual(
+            sample.keypoints.keypoints[0].occluded, [False, True, False]
+        )
+
+        # a null hole is what the value fill avoids
+        kp = sample.keypoints.keypoints[0]
+        kp.occluded = [False, None, False]
+        with self.assertRaises(ValidationError):
+            sample.save()
 
     @drop_datasets
     def test_dynamic_label_tags(self):

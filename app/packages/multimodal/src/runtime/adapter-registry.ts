@@ -4,18 +4,22 @@ import type {
   FormatAdapter,
   SampleDescriptor,
 } from "../ports";
-import { throwIfAborted } from "../utils/cancellation";
+import { createAbortError, throwIfAborted } from "../utils/cancellation";
 
 const descriptors = new Map<string, AdapterDescriptor>();
+const adapterLoads = new Map<AdapterDescriptor, Promise<FormatAdapter>>();
 
 /** Registers one build-time format adapter descriptor. */
 export function registerFormatAdapter(
   descriptor: AdapterDescriptor,
 ): () => void {
+  const previous = descriptors.get(descriptor.id);
+  if (previous) adapterLoads.delete(previous);
   descriptors.set(descriptor.id, descriptor);
   return () => {
     if (descriptors.get(descriptor.id) === descriptor) {
       descriptors.delete(descriptor.id);
+      adapterLoads.delete(descriptor);
     }
   };
 }
@@ -48,12 +52,49 @@ export async function loadFormatAdapter(
 ): Promise<FormatAdapter | null> {
   const descriptor = await findFormatAdapterDescriptor(sample, options);
   if (!descriptor) return null;
-  const adapter = await descriptor.load(options);
-  throwIfAborted(options?.signal);
+  // Loading code is shared across previews and modal opens. A departing
+  // sample may cancel its own open, but must not cancel another consumer's
+  // module load (including the view extensions composed by registration).
+  let loading = adapterLoads.get(descriptor);
+  if (!loading) {
+    loading = Promise.resolve()
+      .then(() => descriptor.load())
+      .catch((error: unknown) => {
+        if (adapterLoads.get(descriptor) === loading) {
+          adapterLoads.delete(descriptor);
+        }
+        throw error;
+      });
+    adapterLoads.set(descriptor, loading);
+  }
+  const signal = options?.signal;
+  if (!signal) return loading;
+  const sharedLoad = loading;
+  const adapter = await new Promise<FormatAdapter>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+    sharedLoad.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  throwIfAborted(signal);
   return adapter;
 }
 
 /** Clears registration state between isolated registry tests. */
 export function resetFormatAdapterRegistryForTests(): void {
   descriptors.clear();
+  adapterLoads.clear();
 }

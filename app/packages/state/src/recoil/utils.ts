@@ -51,6 +51,78 @@ export const mapSampleResponse = <
   return data;
 };
 
+type PathTree = Map<string, PathTree | null>;
+
+const buildPathTree = (paths: readonly string[]): PathTree => {
+  const root: PathTree = new Map();
+  for (const path of paths) {
+    const keys = path.split(".");
+    let node = root;
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      if (i === keys.length - 1) {
+        node.set(key, null);
+        break;
+      }
+
+      let child = node.get(key);
+      // an ancestor is already removed whole
+      if (child === null) break;
+
+      if (child === undefined) {
+        child = new Map();
+        node.set(key, child);
+      }
+      node = child;
+    }
+  }
+  return root;
+};
+
+const prunePaths = (value: unknown, tree: PathTree): unknown => {
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((item) => {
+      const pruned = prunePaths(item, tree);
+      changed ||= pruned !== item;
+      return pruned;
+    });
+    return changed ? next : value;
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const source = value as Record<string, unknown>;
+  let next: Record<string, unknown> | null = null;
+  for (const [key, child] of tree) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+
+    if (child === null) {
+      next ??= { ...source };
+      delete next[key];
+      continue;
+    }
+
+    const pruned = prunePaths(source[key], child);
+    if (pruned !== source[key]) {
+      next ??= { ...source };
+      next[key] = pruned;
+    }
+  }
+  return next ?? value;
+};
+
+/**
+ * Returns `value` without the given dotted paths. A path passes through
+ * lists at any depth, so `gt.detections.year` removes `year` from every
+ * detection. Only the objects on a removed path are copied: everything
+ * else, and `value` itself when nothing is removed, keeps its identity.
+ */
+export const withoutPaths = <T>(value: T, paths: readonly string[]): T =>
+  paths.length ? (prunePaths(value, buildPathTree(paths)) as T) : value;
+
 export const fieldsMatcher = (
   fields: StrictField[],
 

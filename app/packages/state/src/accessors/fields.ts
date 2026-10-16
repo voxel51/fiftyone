@@ -1,3 +1,4 @@
+import type { Field } from "@fiftyone/utilities";
 import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
 import { activeFields, field, fieldPaths, labelFields, State } from "../recoil";
@@ -33,3 +34,9 @@ export const useFieldPaths = (
  */
 export const useFieldType = (path: string | null): string | undefined =>
   useRecoilValue(field(path ?? ""))?.ftype;
+
+/**
+ * A field's schema entry, or null when the path is not in the schema.
+ */
+export const useField = (path: string): Field | null =>
+  useRecoilValue(field(path));

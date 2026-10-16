@@ -1,7 +1,8 @@
 import type { CallbackInterface, RecoilState } from "recoil";
 
+import { useEffect } from "react";
 import { useRelayEnvironment } from "react-relay";
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -11,6 +12,7 @@ import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import * as sidebarExpandedAtoms from "../recoil/sidebarExpanded";
+import { EVENTS_FIELD } from "../event-facets/identity";
 import { is3d } from "@fiftyone/utilities";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
@@ -21,7 +23,9 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const modalFilters = Object.fromEntries(
     Object.entries(filters).filter(
       ([path]) =>
-        paths.some((p) => path.startsWith(p)) || path === "_label_tags",
+        paths.some((p) => path.startsWith(p)) ||
+        path === "_label_tags" ||
+        path === EVENTS_FIELD,
     ),
   );
 
@@ -51,9 +55,12 @@ export default () => {
         [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
         [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
         [groupAtoms.modalGroupSlice, groupAtoms.groupSlice],
+        // The grid's stored choice, not its resolved list: the resolved
+        // list leaves out the fields the current schema hides, which then
+        // stayed inactive in the modal once a schema switch showed them
         [
-          schemaAtoms.activeFields({ modal: true }),
-          schemaAtoms.activeFields({ modal: false }),
+          schemaAtoms._activeFields({ modal: true }),
+          schemaAtoms._activeFields({ modal: false }),
         ],
         [
           sidebarAtoms.sidebarGroupsDefinition(true),
@@ -87,8 +94,29 @@ export default () => {
       }
       // do not set modal filters from grid when navigation is not provided
       navigation && (await setModalFilters(cbInterface));
-      navigation && modalAtoms.modalNavigation.set(navigation);
+      modalAtoms.modalNavigation.set(navigation ?? null);
     },
     [environment],
   );
+};
+
+/**
+ * Adds the paths the grid's sidebar groups gain while the modal is open,
+ * for example fields a schema switch shows again or a newly created
+ * field, to the modal's groups, which are otherwise the copy taken when
+ * the modal opened.
+ */
+export const useSyncModalSidebarGroups = () => {
+  const gridGroups = useRecoilValue(
+    sidebarAtoms.sidebarGroupsDefinition(false),
+  );
+  const setModalGroups = useSetRecoilState(
+    sidebarAtoms.sidebarGroupsDefinition(true),
+  );
+
+  useEffect(() => {
+    setModalGroups((modalGroups) =>
+      sidebarAtoms.withMissingSidebarPaths(modalGroups, gridGroups),
+    );
+  }, [gridGroups, setModalGroups]);
 };

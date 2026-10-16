@@ -1,12 +1,15 @@
 import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
+import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useCallback, useMemo, useRef } from "react";
+import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { registerTile, unregisterTile } from "./gridTileRegistry";
 import type { TileDecoratorSample } from "./tileDecorators";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
 import { useGridCustomRendererItem } from "./useGridCustomRendererItem";
 import useSelectSample from "./useSelectSample";
+import type { GridSelectionClick } from "./useGridSelectionClick";
 import { useTileIntervalOverlay } from "./useTileIntervalOverlay";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -61,6 +64,13 @@ const ensureTileWrapping = (
   return { innerHost, overlayHost };
 };
 
+/** A custom-rendered tile opens through the grid's own click path */
+const setItemOpen = (item: unknown, open: (() => void) | undefined) => {
+  if (item instanceof GridCustomRendererItem) {
+    item.setOpen(open);
+  }
+};
+
 /** Extract a stable sample-id from whatever payload `store.get` returned. */
 const sampleIdFromResult = (result: unknown): string | null => {
   const r = result as { sample?: Record<string, unknown> } & Record<
@@ -81,16 +91,21 @@ export default function useRenderer({
   id,
   records,
   store,
+  pickTile,
 }: {
   cache: LookerCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
+  pickTile: GridSelectionClick;
 }) {
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
-  const selectSample = useSelectSample(records);
+  const selectSample = useSelectSample(records, pickTile);
+  const selection = useGridSelection();
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const sampleRenderer = useGridCustomRendererItem(createLooker);
   const tileOverlay = useTileIntervalOverlay();
 
@@ -121,7 +136,7 @@ export default function useRenderer({
   );
 
   const showItem = useCallback<Show<number, fos.Sample>>(
-    ({ id, element, dimensions, spotlight, zooming }) => {
+    ({ id, element, dimensions, open, spotlight, zooming }) => {
       const key = id.description;
 
       // Wrap the tile element so the looker has a host of its own (which
@@ -153,6 +168,7 @@ export default function useRenderer({
 
       const instance = cache.get(key);
       if (instance) {
+        setItemOpen(instance, open);
         instance.attach(innerHost, dimensions, getFontSize());
         cache.show(key);
         // Re-register so the overlay div (potentially recreated on a
@@ -183,6 +199,10 @@ export default function useRenderer({
         id,
         getFontSize(),
       );
+      if (selectionRef.current.enabled)
+        item.updateOptions({
+          selected: selectionRef.current.membership.has(key),
+        });
 
       item.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail),
@@ -195,6 +215,7 @@ export default function useRenderer({
         }
       });
 
+      setItemOpen(item, open);
       cache.set(key, item);
       item.attach(innerHost, dimensions);
       registerWithSample(result);

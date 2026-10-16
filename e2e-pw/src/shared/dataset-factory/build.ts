@@ -4,26 +4,32 @@
 
 import { OssLoader } from "src/oss/fixtures/loader";
 import { writeToTmpFile } from "src/oss/utils/fs";
+import { mediaDir } from "./media";
 import type {
   BaseDatasetOptions,
+  EmbeddedDocType,
   FieldType,
   FrameSpec,
   GroupSliceConfig,
-  Label,
+  OrthographicProjections,
   SampleSpec,
 } from "./types";
 
 /**
- * The set of field type strings that are considered FiftyOne label types.
- * Used by {@link isLabelType} to distinguish label fields from scalar fields.
+ * The field type strings that are embedded document types, FiftyOne labels
+ * and `DynamicEmbeddedDocument`. Used by {@link isEmbeddedDocType} to tell
+ * them from scalar fields.
  */
-const LABEL_TYPES = new Set([
+const EMBEDDED_DOC_TYPES = new Set([
+  "DynamicEmbeddedDocument",
   "Classification",
   "Classifications",
   "Detection",
   "Detections",
   "Heatmap",
   "Instance",
+  "Keypoint",
+  "Keypoints",
   "Polyline",
   "Polylines",
   "Segmentation",
@@ -32,43 +38,57 @@ const LABEL_TYPES = new Set([
 ]);
 
 /**
- * Type guard for the FiftyOne {@link Label} types.
+ * Type guard for the {@link EmbeddedDocType} types.
  *
  * @example
- * isLabelType("Detection")  // true
- * isLabelType("FloatField") // false
+ * isEmbeddedDocType("Detection")  // true
+ * isEmbeddedDocType("FloatField") // false
  */
-function isLabelType(fieldType: string): fieldType is Label {
-  return LABEL_TYPES.has(fieldType);
+function isEmbeddedDocType(fieldType: string): fieldType is EmbeddedDocType {
+  return EMBEDDED_DOC_TYPES.has(fieldType);
 }
 
 export interface BuildOptions extends Pick<
   BaseDatasetOptions,
+  | "appConfig"
   | "datasetName"
+  | "indexes"
   | "labelSchemas"
   | "promptableIndexes"
   | "savedViews"
   | "schema"
+  | "skeletons"
+  | "subsets"
   | "staticTransforms"
+  | "temporalTags"
 > {
-  mediaType: "image" | "video" | "3d" | "multimodal" | "group";
+  mediaType: "image" | "video" | "3d" | "point-cloud" | "multimodal" | "group";
   samples: SampleSpec[];
   frames?: FrameSpec[];
   sampleFrames?: boolean;
   groupSlices?: GroupSliceConfig[];
+  orthographicProjections?: OrthographicProjections;
 }
 
-/** `ListField<ListField<FloatField>>` → `fo.ListField(fo.ListField(fo.FloatField()))`. */
+/**
+ * `ListField<ListField<FloatField>>` → `fo.ListField(fo.ListField(fo.FloatField()))`;
+ * an embedded document type → `fo.EmbeddedDocumentField(fo.<type>)`.
+ */
 const fieldInstance = (fieldType: string): string => {
   const list = /^ListField<(.*)>$/.exec(fieldType);
-  return list ? `fo.ListField(${fieldInstance(list[1])})` : `fo.${fieldType}()`;
+  if (list) {
+    return `fo.ListField(${fieldInstance(list[1])})`;
+  }
+  return isEmbeddedDocType(fieldType)
+    ? `fo.EmbeddedDocumentField(fo.${fieldType})`
+    : `fo.${fieldType}()`;
 };
 
 const addField = (fieldPath: string, fieldType: FieldType) => {
   const isFrameField = fieldPath.startsWith("frames.");
   const method = isFrameField ? "add_frame_field" : "add_sample_field";
   const name = isFrameField ? fieldPath.slice("frames.".length) : fieldPath;
-  if (isLabelType(fieldType)) {
+  if (isEmbeddedDocType(fieldType)) {
     return `dataset.${method}("${name}", fo.EmbeddedDocumentField, embedded_doc_type=fo.${fieldType})`;
   }
   const list = /^ListField<(.*)>$/.exec(fieldType);
@@ -80,25 +100,41 @@ const addField = (fieldPath: string, fieldType: FieldType) => {
 /**
  * Builds a dataset from generated media: declares `schema`, inserts the sample
  * (and frame) documents directly into the underlying MongoDB collections with
- * their fixed ids, then applies `labelSchemas` and `savedViews`.
+ * their fixed ids, then applies `labelSchemas`, `savedViews` and `subsets`.
  */
 export const build = (() => {
   const loader = new OssLoader();
   return async ({
+    appConfig = {},
     datasetName,
     frames = [],
     groupSlices = [],
+    indexes = [],
     labelSchemas = {},
     mediaType,
+    orthographicProjections,
     promptableIndexes = [],
     sampleFrames = false,
     samples,
     savedViews = {},
     schema = {},
+    skeletons = {},
     staticTransforms = [],
+    subsets = {},
+    temporalTags = [],
   }: BuildOptions) => {
     const payload = writeToTmpFile(
-      JSON.stringify({ samples, frames, labelSchemas, staticTransforms }),
+      JSON.stringify({
+        appConfig,
+        frames,
+        indexes,
+        labelSchemas,
+        samples,
+        skeletons,
+        staticTransforms,
+        subsets,
+        temporalTags,
+      }),
       "json",
     );
     const hasVideo =
@@ -106,13 +142,16 @@ export const build = (() => {
       groupSlices.some((slice) => slice.mediaType === "video");
     const mediaTypeCode =
       mediaType === "group"
-        ? [
-            `dataset.add_group_field("group", default="${groupSlices[0]?.name}")`,
-            ...groupSlices.map(
-              (slice) =>
-                `dataset.add_group_slice("${slice.name}", "${slice.mediaType}")`,
-            ),
-          ].join("\n")
+        ? `dataset.add_group_field("group", default="${groupSlices[0]?.name}")
+for name, media_type in ${JSON.stringify(
+            groupSlices.map((slice) => [slice.name, slice.mediaType]),
+          )}:
+    if media_type == "3d" and "3d" in dataset._doc.group_media_types.values():
+        # add_group_slice() allows one 3d slice; the App renders several
+        dataset._doc.group_media_types[name] = media_type
+        dataset.save()
+    else:
+        dataset.add_group_slice(name, media_type)`
         : `dataset.media_type = "${mediaType}"`;
 
     await loader.executePythonCode(`
@@ -123,6 +162,8 @@ from bson import ObjectId, json_util
 import fiftyone as fo
 from fiftyone import ViewField as F
 from fiftyone.core.camera import StaticTransform
+import fiftyone.core.subsets as fosub
+import fiftyone.core.tags as fotags
 
 with open("${payload}") as f:
     payload = json_util.loads(f.read())
@@ -138,6 +179,13 @@ ${Object.entries(schema)
   .map(([fieldPath, fieldType]) => addField(fieldPath, fieldType))
   .join("\n")}
 
+if payload["skeletons"]:
+    dataset.skeletons = {
+        name: fo.KeypointSkeleton(labels=s["labels"], edges=s["edges"])
+        for name, s in payload["skeletons"].items()
+    }
+    dataset.save()
+
 for transform in payload["staticTransforms"]:
     dataset.add_static_transform(StaticTransform(**transform))
 
@@ -152,6 +200,8 @@ for spec in payload["samples"]:
         kwargs["group"] = fo.Group(id=spec["group"]["id"]).element(
             spec["group"]["name"]
         )
+    if "mediaType" in spec:
+        kwargs["media_type"] = spec["mediaType"]
     sample = fo.Sample(
         _id=ObjectId(spec["id"]), filepath=spec["filepath"], **kwargs
     )
@@ -215,6 +265,51 @@ ${
 ${Object.entries(savedViews)
   .map(([name, view]) => `dataset.save_view("${name}", ${view})`)
   .join("\n")}
+
+for name, indexes in payload["subsets"].items():
+    fosub.save_subset(
+        dataset, name, samples=[payload["samples"][i]["id"] for i in indexes]
+    )
+
+if payload["temporalTags"]:
+    fotags.add_temporal_tags(
+        dataset,
+        [
+            fotags.TemporalTag(
+                payload["samples"][t["sample"]]["id"],
+                t["start"],
+                t["end"],
+                t["tag"],
+                anchor=t.get("anchor"),
+            )
+            for t in payload["temporalTags"]
+        ],
+    )
+
+for key, value in payload["appConfig"].items():
+    if key == "color_scheme":
+        value = fo.ColorScheme(**value)
+    elif key == "sidebar_groups":
+        value = [fo.SidebarGroupDocument(**group) for group in value]
+    setattr(dataset.app_config, key, value)
+if payload["appConfig"]:
+    dataset.save()
+
+for index_spec in payload["indexes"]:
+    dataset.create_index(index_spec)
+
+${
+  orthographicProjections
+    ? `import fiftyone.utils.utils3d as fou3d
+
+fou3d.compute_orthographic_projection_images(
+    dataset,
+    ${JSON.stringify(orthographicProjections.size)},
+    "${mediaDir(datasetName)}/orthographic-projections",
+    skip_failures=${orthographicProjections.skipFailures ? "True" : "False"},
+)`
+    : ""
+}
 
 ${
   promptableIndexes.length

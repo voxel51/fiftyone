@@ -60,6 +60,12 @@ const makeScene = () => {
   const overlays = new Map<string, Shim>();
   const deselectOverlay = vi.fn();
   const selectOverlay = vi.fn();
+  // signature mirrors Scene2D.removeOverlay so the `lifecycle` flag is observable
+  const removeOverlay = vi.fn(
+    (id: string, _withUndo?: boolean, _lifecycle?: boolean) => {
+      overlays.delete(id);
+    },
+  );
 
   const scene = {
     getOverlay: (id: string) => overlays.get(id),
@@ -67,9 +73,7 @@ const makeScene = () => {
     addOverlay: (overlay: Shim) => {
       overlays.set(overlay.id, overlay);
     },
-    removeOverlay: (id: string) => {
-      overlays.delete(id);
-    },
+    removeOverlay,
     deselectOverlay,
     selectOverlay,
   } as unknown as Scene2D;
@@ -86,7 +90,14 @@ const makeScene = () => {
     ),
   } as unknown as OverlayFactory;
 
-  return { scene, overlays, overlayFactory, deselectOverlay, selectOverlay };
+  return {
+    scene,
+    overlays,
+    overlayFactory,
+    deselectOverlay,
+    selectOverlay,
+    removeOverlay,
+  };
 };
 
 describe("lighter adapters", () => {
@@ -267,7 +278,7 @@ describe("lighter bridge", () => {
   });
 
   it("clear removes only bridge-managed overlays", () => {
-    const { scene, overlays, overlayFactory } = makeScene();
+    const { scene, overlays, overlayFactory, removeOverlay } = makeScene();
     // surface-owned transients the bridge never touched: the media image
     // plane and an uncommitted draft sharing the scene
     overlays.set("image", makeOverlay("image", "", {}));
@@ -298,6 +309,10 @@ describe("lighter bridge", () => {
     expect(overlays.has("d2")).toBe(false);
     expect(overlays.has("image")).toBe(true);
     expect(overlays.has("draft")).toBe(true);
+    // flagged `lifecycle`: teardown eviction, so the sidebar's overlay-removed
+    // handler doesn't read it as a delete
+    expect(removeOverlay).toHaveBeenCalledWith("d1", false, true);
+    expect(removeOverlay).toHaveBeenCalledWith("d2", false, true);
   });
 
   it("drives the full engine read-half over a scene", () => {
@@ -356,7 +371,8 @@ describe("lighter bridge", () => {
     engine.updateLabel(ref("ground_truth", "d1"), {
       bounding_box: [0.1, 0.2, 0.3, 0.4],
     });
-    const { scene, overlays, overlayFactory, deselectOverlay } = makeScene();
+    const { scene, overlays, overlayFactory, deselectOverlay, removeOverlay } =
+      makeScene();
     const bridge = createLighterBridge({
       scene,
       overlayFactory,
@@ -372,6 +388,9 @@ describe("lighter bridge", () => {
     expect(deselectOverlay).toHaveBeenCalledWith("d1", {
       ignoreSideEffects: true,
     });
+    // flagged `lifecycle`: a re-home unmounts then remounts the same id, so the
+    // sidebar's overlay-removed handler doesn't read it as a delete
+    expect(removeOverlay).toHaveBeenCalledWith("d1", false, true);
   });
 
   it("content scope: only labels meeting the 2D requirements mount", () => {

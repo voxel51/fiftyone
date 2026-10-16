@@ -33,6 +33,7 @@ import {
 import { VISUALIZATION_KIND } from "../../../visualization";
 import { ImagePanel } from "../../../visualization/media-2d/ImagePanel";
 import { VideoPanel } from "../../../visualization/media-2d/VideoPanel";
+import { FrameRenderedSignal } from "../../../visualization/webgpu/FrameRenderedSignal";
 import { BitmapImageFrameView } from "../../../visualization/media-2d/BitmapImageView";
 import GpuImageAnnotationLayer from "../../../visualization/media-2d/GpuImageAnnotationLayer";
 import { GpuImageAnnotationPicker } from "../../../visualization/media-2d/GpuImageAnnotationPicker";
@@ -41,6 +42,10 @@ import type { PanelNotice } from "../../../visualization/panel-ui/PanelNotices";
 import { useImagePanZoom } from "../../../visualization/media-2d/use-image-pan-zoom";
 import type { GpuPointCloudProjectionPickerHandle } from "../../../visualization/composition/GpuPointCloudProjectionPicker";
 import { useDataStream } from "../playback/data-stream-context";
+import {
+  useFramePresentation,
+  useFrameUnavailable,
+} from "../../../visualization/webgpu/FramePresentation";
 import { usePublishImageAspectRatio } from "./image-aspect-ratios";
 import { groupImageLabelSources } from "./image-label-source-groups";
 import { useImageProjection } from "../settings/modal/state";
@@ -73,9 +78,11 @@ import styles from "../tiles/Tile.module.css";
 import {
   TileEmptyState,
   TileStatusBadge,
+  useTileEmptyStateFinal,
   useTileStreamWarningNotices,
 } from "../tiles/TileStreamState";
 import type { EpisodeTileProps } from "../tiles/tile-types";
+import { usePanelUnavailable } from "../tiles/use-panel-unavailable";
 import {
   useStreamContentFrame,
   usePlaybackStreamValue,
@@ -103,6 +110,7 @@ import { projectionStreamsForHover } from "./hover-projection-streams";
 import { useSourcePoster } from "./source-poster-context";
 import { shouldPresentDestinationPoster } from "./destination-poster";
 import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 const IMAGE_FIT = "contain";
 const EMPTY_PROJECTION_STREAMS: readonly string[] = [];
@@ -948,6 +956,49 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
       sourceKey,
     ],
   );
+  const onFrameRendered = useFramePresentation(
+    sourceKey,
+    requestedImageContentTimeNs !== null &&
+      committedImageContentTimeNs === requestedImageContentTimeNs,
+  );
+  const panel = usePanelUnavailable(`${sourceKey}\n${stream}`);
+  const sharedVideoRejected =
+    frame?.kind === "encoded-video" &&
+    !isSharedEncodedVideoVisualization(frame);
+  const emptyStateFinal = useTileEmptyStateFinal(stream ? [stream] : []);
+  // A pane that cannot produce a frame settles the destination: a refused
+  // codec or video, a failed decode or canvas, or a final empty state.
+  useFrameUnavailable(
+    sourceKey,
+    tileId,
+    Boolean(refusedCodec) ||
+      sharedVideoRejected ||
+      panel.unavailable ||
+      (!(frame && playbackFrame) && emptyStateFinal),
+  );
+  const sceneChildren = useMemo(
+    () => (
+      <>
+        <FrameRenderedSignal
+          detail={{
+            imageContentTimeNs: committedImageContentTimeNs?.toString() ?? null,
+            pointSize: pointCloudProjection.pointSize,
+            projectedStreamCount: renderedProjectionLayers.length,
+          }}
+          event="e2e:multimodal:image-frame-rendered"
+          onRendered={onFrameRendered}
+        />
+        {panelSceneChildren}
+      </>
+    ),
+    [
+      committedImageContentTimeNs,
+      onFrameRendered,
+      panelSceneChildren,
+      pointCloudProjection.pointSize,
+      renderedProjectionLayers.length,
+    ],
+  );
 
   return (
     <>
@@ -962,6 +1013,17 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           ref={mediaSurfaceRef}
           style={imagePanZoom.surfaceStyle}
         >
+          {requestedImageContentTimeNs !== null &&
+          committedImageContentTimeNs === requestedImageContentTimeNs ? (
+            <ShownSignal
+              event="e2e:multimodal:image-shown"
+              detail={{
+                stream,
+                title: images.find((s) => s.id === stream)?.label ?? "",
+                contentTimeNs: requestedImageContentTimeNs.toString(),
+              }}
+            />
+          ) : null}
           {frame && playbackFrame ? (
             frame.kind === "encoded-video" ? (
               isSharedEncodedVideoVisualization(frame) ? (
@@ -973,8 +1035,9 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                   notices={imageNotices}
                   onImageLoaded={handleImageLoaded}
                   onResetView={imagePanZoom.resetView}
+                  onUnavailableChange={panel.onUnavailableChange}
                   priority={isPlaying ? "playing" : "visible"}
-                  sceneChildren={panelSceneChildren}
+                  sceneChildren={sceneChildren}
                   stream={stream}
                   targetTimeNs={playbackFrame.contentTimeNs}
                   textureMesh={
@@ -996,7 +1059,8 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
                 notices={imageNotices}
                 onImageLoaded={handleImageLoaded}
                 onResetView={imagePanZoom.resetView}
-                sceneChildren={panelSceneChildren}
+                onUnavailableChange={panel.onUnavailableChange}
+                sceneChildren={sceneChildren}
                 textureMesh={
                   rectifiedViewActive ? rectifiedDisplay?.textureMesh : null
                 }
@@ -1067,7 +1131,10 @@ const ImageTile: React.FC<EpisodeTileProps> = ({ initialSourceId }) => {
           {unsupportedVideoCodecMessage(refusedCodec)}
         </div>
       ) : (
-        <TileEmptyState streams={stream ? [stream] : []} />
+        <TileEmptyState
+          streams={stream ? [stream] : []}
+          title={images.find((s) => s.id === stream)?.label ?? ""}
+        />
       )}
     </>
   );

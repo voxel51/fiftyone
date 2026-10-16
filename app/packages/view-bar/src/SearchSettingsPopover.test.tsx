@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const HINT = "Ranked over the whole index.";
 
-vi.mock("@fiftyone/state", () => ({
+vi.mock("@fiftyone/state", async () => ({
+  ...(await import("@fiftyone/state/src/similarity-search/limits")),
   useTextSearchProviders: () =>
     new Map([["multimodal", { method: "multimodal", resultsHint: HINT }]]),
 }));

@@ -13,6 +13,7 @@ import { MultiPanelView } from "../annotation/MultiPanelView";
 import { SinglePanelView } from "../annotation/SinglePanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
+import { LookerErrorShown } from "../ErrorBoundary";
 import {
   useFo3d,
   useFo3dCameraControlsConfig,
@@ -116,6 +117,7 @@ const Fo3dLoadErrorState = ({ error }: { error: Error | null }) => {
       dataCy="looker3d"
       wrapperStyle={{ textAlign: "center", maxWidth: 420 }}
     >
+      <LookerErrorShown />
       <div data-cy="looker-error-info">{message}</div>
     </Loading>
   );

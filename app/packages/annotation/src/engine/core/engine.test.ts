@@ -275,6 +275,24 @@ describe("engine undo (driven through the commit/drop emission contract)", () =>
     expect(engine.getLabel(created)?.label).toBe("bird");
   });
 
+  it("a record: false transaction writes and dispatches but adds no undo unit", () => {
+    const { engine } = makeEngine("sample-1", {
+      ground_truth: { detections: [makeDet("d1", "cat")] },
+    });
+    const nav = createUndoNavigator(engine);
+    const changes = vi.fn();
+    engine.subscribeChanges(changes);
+
+    engine.transaction(
+      () => engine.updateLabel(ref("ground_truth", "d1"), { label: "dog" }),
+      { record: false },
+    );
+
+    expect(engine.getLabel(ref("ground_truth", "d1"))?.label).toBe("dog");
+    expect(changes).toHaveBeenCalled();
+    expect(nav.canUndo()).toBe(false);
+  });
+
   it("one transaction = one undo unit, inverses applied in reverse order", () => {
     const { engine } = makeEngine("sample-1", {
       ground_truth: { detections: [makeDet("d1", "cat")] },

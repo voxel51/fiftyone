@@ -180,6 +180,7 @@ export default function Selection(props: SelectionProps) {
           );
         }}
         open={isOpen}
+        onClose={() => setIsOpen(false)}
         onClick={() => {
           setIsOpen(!isOpen);
         }}

@@ -94,7 +94,6 @@ packages/core/src/components/Filters/use-incomplete-results.tsx
 packages/core/src/components/Filters/use-label-attribute-icon.tsx
 packages/core/src/components/Grid/Actions/index.tsx
 packages/core/src/components/Grid/Actions/Patches/index.tsx
-packages/core/src/components/Grid/Actions/SaveFilters/index.tsx
 packages/core/src/components/Grid/GridCustomRendererItem.tsx
 packages/core/src/components/Grid/Header/Header.tsx
 packages/core/src/components/Grid/Header/Sort.tsx
@@ -123,12 +122,6 @@ packages/core/src/components/Modal/Sidebar/Annotate/QuickEditEntry.tsx
 packages/core/src/components/Modal/Sidebar/Annotate/SchemaManager/styled.ts
 packages/core/src/components/Modal/TooltipInfo.tsx
 packages/core/src/components/QueryPerformanceToast.tsx
-packages/core/src/components/Schema/SchemaSearchHelp.tsx
-packages/core/src/components/Schema/SchemaSearch.tsx
-packages/core/src/components/Schema/SchemaSelectControls.tsx
-packages/core/src/components/Schema/SchemaSelectionRow.tsx
-packages/core/src/components/Schema/SchemaSelection.tsx
-packages/core/src/components/Schema/SchemaSettings.tsx
 packages/core/src/components/Sidebar/Entries/Draggable.tsx
 packages/core/src/components/Sidebar/Entries/FilterablePathEntry/Arrow.tsx
 packages/core/src/components/Sidebar/Entries/FilterablePathEntry/DisabledReason.tsx
@@ -140,8 +133,6 @@ packages/core/src/components/Sidebar/Entries/GroupEntries.tsx
 packages/core/src/components/Sidebar/Entries/PathValueEntry.tsx
 packages/core/src/components/Sidebar/Entries/QueryPerformanceIcon.tsx
 packages/core/src/components/Sidebar/SidebarContainer.tsx
-packages/core/src/components/Sidebar/ViewSelection/styledComponents.tsx
-packages/core/src/components/Sidebar/ViewSelection/ViewDialog.tsx
 packages/core/src/components/Snackbar.tsx
 packages/core/src/components/Starter/index.tsx
 packages/core/src/components/ViewBar/ViewBar.tsx

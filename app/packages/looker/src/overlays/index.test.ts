@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { EMBEDDED_DOCUMENT_FIELD, type Schema } from "@fiftyone/utilities";
 
+import { zoomAspectRatio } from "../zoom";
 import { RegularLabel } from "./base";
 import DetectionOverlay from "./detection";
 import * as index from "./index";
@@ -23,6 +25,29 @@ describe("label overlay processing", () => {
       index.fromLabelList(DetectionOverlay, "detections")("field", {}),
     ).toStrictEqual([]);
   });
+
+  it.each(["TemporalDetections", "Classifications"])(
+    "resolves an omitted empty %s list",
+    (type) => {
+      const schema: Schema = {
+        labels: {
+          name: "labels",
+          path: "labels",
+          dbField: null,
+          description: null,
+          info: null,
+          subfield: null,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: `fiftyone.core.labels.${type}`,
+        },
+      };
+      const { classifications } = index.accumulateOverlays(
+        { labels: { _cls: type } },
+        schema,
+      );
+      expect(classifications).toEqual([["labels", []]]);
+    },
+  );
 
   it("label hash is generated correctly", () => {
     const hashLabelWithIndex0 = getHashLabelColorByInstance({
@@ -52,5 +77,37 @@ describe("label overlay processing", () => {
     expect(hashLabelWithUndefinedIndexUndefinedId).toEqual(
       "only-label-no-index-no-id",
     );
+  });
+});
+
+describe("zoom points", () => {
+  it("include a Polylines field's points", () => {
+    const schema = {
+      lanes: {
+        dbField: "lanes",
+        embeddedDocType: "fiftyone.core.labels.Polylines",
+        fields: {},
+        ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+        name: "lanes",
+        path: "lanes",
+      },
+    } as never;
+    const sample = {
+      lanes: {
+        _cls: "Polylines",
+        polylines: [
+          {
+            points: [
+              [
+                [0.1, 0.1],
+                [0.5, 0.3],
+              ],
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(zoomAspectRatio(sample, schema, 1)).toBeCloseTo(2);
   });
 });

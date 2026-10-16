@@ -103,9 +103,9 @@ export const countValues = selectorFamily({
     (path: string) =>
     ({ get }) => {
       const f = get(field(path));
-      let ftype = f.ftype;
+      let ftype = f?.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = f.subfield;
+        ftype = f?.subfield;
       }
       const data = get(countValuesData(path));
 
@@ -130,9 +130,9 @@ export const histogramValues = selectorFamily({
     (path: string) =>
     ({ get }) => {
       const f = get(field(path));
-      let ftype = f.ftype;
+      let ftype = f?.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = f.subfield;
+        ftype = f?.subfield;
       }
       const data = get(histogramValuesData(path));
 
@@ -169,9 +169,9 @@ export const distribution = selectorFamily({
     (path: string) =>
     ({ get }) => {
       const f = get(field(path));
-      let ftype = f.ftype;
+      let ftype = f?.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = f.subfield;
+        ftype = f?.subfield;
       }
 
       switch (ftype) {

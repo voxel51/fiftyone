@@ -530,7 +530,7 @@ datasets:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can manage
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can manage
     indexes natively in the App via the
     :ref:`Query Performance panel <query-performance>`.
 
@@ -1050,7 +1050,7 @@ your selection by clicking this icon or reopening the modal and pressing the
 
     If your dataset has many fields and you frequently work with different
     subsets of them, you can persist/reload field selections by
-    :ref:`saving views <app-saving-views>`.
+    :ref:`saving queries <app-saving-queries>`.
 
 .. _app-field-visibility-filter-rules:
 
@@ -1064,9 +1064,10 @@ determine which fields to include in the sidebar.
 
 .. note::
 
-    Filter rules are dynamic. If you :ref:`save a view <app-saving-views>` that
-    contains a filter rule, the matching fields may increase or decrease over
-    time as you modify the dataset's schema.
+    Filter rules are dynamic. If you
+    :ref:`save a query <app-saving-queries>` that contains a filter rule, the
+    matching fields may increase or decrease over time as you modify the
+    dataset's schema.
 
 Filter rules provide a simple syntax with different options for matching
 fields:
@@ -1302,27 +1303,30 @@ You can also dynamically edit your current color scheme by modifying it:
     Did you know? You can also configure default color schemes for
     :ref:`individual datasets <dataset-app-config-color-scheme>` via Python!
 
+.. _app-saving-queries:
+
 .. _app-saving-views:
 
-Saving views
-____________
+Saving queries
+______________
 
 .. customavailablein::
     :oss_version: 0.19.0
     :enterprise_version: 1.1
 
-You can use the menu in the upper-left of the App to record the current state
-of the App's view bar and filters sidebar as a **saved view** into your
-dataset:
+You can save the current state of the App's view bar and filters sidebar as a
+**saved query** on your dataset. Click the bookmark icon in the view bar's
+search row (or press `Cmd+S`/`Ctrl+S`), give the query a name, and click
+`Save`. The new query is loaded immediately, and the bookmark shows its name.
 
-.. image:: /images/app/app-save-view.gif
-    :alt: app-save-view
-    :align: center
+When you save a query, the App records the complete view definition: the
+stages in the view bar plus any sidebar filters, sorting, field visibility
+settings, and selections made in plots, all compiled into view stages. Samples
+selected in the grid are included only if you choose
+`Limit to the N selected samples`, which saves their IDs as a
+:class:`Select <fiftyone.core.stages.Select>` stage.
 
-Saved views are persisted on your dataset under a name of your choice so that
-you can quickly load them in a future session via this UI.
-
-Saved views are a convenient way to record semantically relevant subsets of a
+Saved queries are a convenient way to record semantically relevant slices of a
 dataset, such as:
 
 -   Samples in a particular state, eg with certain tag(s)
@@ -1332,31 +1336,50 @@ dataset, such as:
 
 .. note::
 
-    Saved views only store the rule(s) used to extract content from the
-    underlying dataset, not the actual content itself. Saving views is cheap.
-    Don't worry about storage space!
+    Saved queries were previously called *saved views*. Saved views you
+    created before appear in the Saved queries menu automatically, and the
+    :ref:`saved view methods <saving-views>` in Python, such as
+    :meth:`save_view() <fiftyone.core.dataset.Dataset.save_view>`
+    and
+    :meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>`,
+    work with the same records. Existing links to saved views keep working.
 
-    Keep in mind, though, that the contents of a saved view may change as the
-    underlying dataset is modified. For example, if a save view contains
-    samples with a certain tag, the view's contents will change as you
-    add/remove this tag from samples.
+.. note::
 
-You can load a saved view at any time by selecting it from the saved view menu:
+    Saved queries store how to find content in the underlying dataset, not the
+    content itself. Saving queries is cheap. Don't worry about storage space!
 
-.. image:: /images/app/app-load-saved-view.gif
-    :alt: app-load-saved-view
-    :align: center
+    Keep in mind, though, that the contents of a saved query may change as the
+    underlying dataset is modified. For example, if a saved query matches
+    samples with a certain tag, its contents will change as you add/remove
+    this tag from samples.
 
-You can also edit or delete saved views by clicking on their pencil icon:
+    To keep a particular set of samples regardless of later changes, save them
+    as a **subset** from the grid's selection tray instead. Subsets you create
+    from a query's results keep their members even if the query changes or is
+    deleted.
 
-.. image:: /images/app/app-edit-saved-view.gif
-    :alt: app-edit-saved-view
-    :align: center
+You can load a saved query at any time by selecting it from the bookmark menu.
+Loading a query replaces the stages in the view bar with the query's
+definition; editing the view afterwards does not change the saved query.
+
+If a subset is open in the grid, loading a query runs it within that subset.
+Saving a query while a subset is open saves only the query's stages, not the
+subset, so loading it later runs on whatever scope is open at the time.
+
+To rename a saved query or change its description or color, hover over it in
+the menu and click its pencil icon. To change what a query finds, load it,
+adjust the view, and save the result under a new name. Click a query's trash
+icon to delete it; subsets created from its results are not affected.
+
+If a saved query can no longer be loaded, for example because it uses a field
+that has since been deleted, the App shows an error and keeps your current
+view. The saved query itself is left unchanged.
 
 .. note::
 
     Did you know? You can also programmatically create, modify, and delete
-    saved views :ref:`via Python <saving-views>`!
+    saved queries :ref:`via Python <saving-views>`!
 
 .. _app-sample-view:
 
@@ -1763,7 +1786,7 @@ You can also create new fields on your dataset via the Schema Manager, as well.
 
 .. note::
 
-    In FiftyOne Enterprise, only users with
+    In Voxel51, only users with
     :ref:`Can manage <enterprise-can-manage>` dataset access can access the
     Schema Manager.
 
@@ -2256,7 +2279,7 @@ samples/patches in the Samples panel:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can generate
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can generate
     embeddings visualizations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
@@ -2570,7 +2593,7 @@ that dives into various aspects of the model's performance:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can execute
     model evaluations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
@@ -2732,7 +2755,7 @@ The rest of the content in this section is applied to the following dataset:
     )
     dataset.apply_model(model, label_field="scene")
 
-    # Create some saved views
+    # Create some saved queries
     dataset.save_view("indoor scenes", dataset.match(F("scene.label") == "indoor"))
     dataset.save_view("outdoor scenes", dataset.match(F("scene.label") == "outdoor"))
 
@@ -2762,8 +2785,8 @@ meaningful sets of interest. FiftyOne supports four methods to define subsets:
     on the values that a particular sample field takes
 -   **Label attribute:** partition at the label-level by defining subsets based
     on the values that a particular attribute of the ground truth labels takes
--   **Saved views:** define subsets based on the ground truth labels in a list
-    of saved views
+-   **Saved queries:** define subsets based on the ground truth labels in a
+    list of saved queries
 -   **Custom code:** use custom code to define subsets based on arbitrary
     Python expressions and/or combinations of the above methods
 
@@ -2843,25 +2866,25 @@ based on the field value that its member labels take.
 
 .. _app-scenario-analysis-saved-views:
 
-Select saved views
-~~~~~~~~~~~~~~~~~~
+Select saved queries
+~~~~~~~~~~~~~~~~~~~~
 
-Selecting saved views allows you to define a scenario where each subset
+Selecting saved queries allows you to define a scenario where each subset
 contains the ground truth labels in a specified
-:ref:`saved view <saving-views>`.
+:ref:`saved query <app-saving-queries>`.
 
 For example, in the example below we define a scenario that contains two
 subsets:
 
--   Samples in the `indoor scenes` saved view
--   Samples in the `outdoor scenes` saved view
+-   Samples in the `indoor scenes` saved query
+-   Samples in the `outdoor scenes` saved query
 
 .. image:: /images/app/scenario-analysis-create-saved-views.gif
     :alt: scenario-analysis-create-saved-views
     :align: center
 
 As you can see in the Distribution preview above, each subset is assigned the
-name of the saved view that defines it.
+name of the saved query that defines it.
 
 .. _app-scenario-analysis-custom-code:
 

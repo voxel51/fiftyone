@@ -1,0 +1,9 @@
+/* Screenshot style: hide everything in the episode shell except its canvases,
+   so a capture shows rendered pixels and no DOM chrome. */
+[data-episode-playback-shell] * {
+  visibility: hidden !important;
+}
+
+[data-episode-playback-shell] canvas {
+  visibility: visible !important;
+}

@@ -7,7 +7,7 @@
  * Assertions are relative to the track's current field so the serial tests
  * don't depend on each other's end state.
  */
-import { Browser, expect, test as base, type Page } from "src/oss/fixtures";
+import { test as base, type Page } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -23,13 +23,6 @@ const otherField = (current: string) =>
   FIELDS.find((f) => f !== current) ?? FIELDS[0];
 
 const CLASSES = ["vehicle", "person", "road sign"];
-
-const savedSample = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT"].includes(r.request().method()),
-  );
 
 const test = base.extend<{ modal: ModalPom }>({
   modal: async ({ page, eventUtils }, use) => {
@@ -53,33 +46,25 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Re-select the track and return to a form-open state (a move drops the anchor). */
 const reselect = async (modal: ModalPom, label = "vehicle") => {
-  if (await modal.sidebar.edit.backButton.isVisible()) {
-    await modal.sidebar.edit.exitToList();
-  }
   await modal.videoAnnotate.selectLabel(label);
 };
 
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 test.describe.serial("video annotation field move", () => {
@@ -137,7 +122,7 @@ test.describe.serial("video annotation field move", () => {
   });
 
   test("moving a track between frame fields re-homes it and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -148,18 +133,16 @@ test.describe.serial("video annotation field move", () => {
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
 
-    const saved = savedSample(page);
-    await modal.sidebar.edit.moveFieldTo(to);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.moveFieldTo(to),
+    );
 
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.selectLabel("vehicle");
-      await expect
-        .poll(() => freshModal.sidebar.edit.getCurrentField())
-        .toBe(to);
+      await freshModal.sidebar.edit.assert.currentField(to);
     });
   });
 
@@ -174,20 +157,20 @@ test.describe.serial("video annotation field move", () => {
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
 
-    const saved = savedSample(page);
-    await modal.sidebar.edit.moveFieldTo(to);
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.moveFieldTo(to),
+    );
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
 
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.edit.undo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(from);
+    await modal.sidebar.edit.assert.currentField(from);
 
     await modal.sidebar.edit.assert.redoIsEnabled();
     await modal.sidebar.edit.redo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
   });
 });

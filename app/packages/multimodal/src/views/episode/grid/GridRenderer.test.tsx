@@ -33,6 +33,7 @@ import type {
 import { PushVideoAccessUnitReader } from "../../../video/push-reader";
 import { REORDERED_VIDEO_DECODE_LOOKAHEAD_NS } from "../../../video/stream-engine";
 import {
+  getGridPosterCache,
   gridPreviewStateKey,
   pointCloudPoseKey,
   type GridPosterCacheEntry,
@@ -41,6 +42,11 @@ import { GridRenderer, HOVER_INTENT_DELAY_MS } from "./GridRenderer";
 import classes from "./GridRenderer.module.css";
 import { useGridPreview } from "./use-grid-preview";
 import { useEpisodePreviewSession } from "../../session/use-episode-preview-session";
+import { preloadEpisodeModal } from "../shell/modal-loader";
+import { publishLoadingLayout } from "../loading/loading-layout";
+import { useModalThumbnail } from "../loading/modal-thumbnail";
+import { useSourceBootstrap } from "../../../runtime/react/source-bootstrap";
+import type { SourceBootstrap } from "../../../runtime/source-bootstrap-cache";
 import type {
   GridPosterProviderLookupStatus,
   ResolvedGridPosterProviderDescriptor,
@@ -130,6 +136,10 @@ const posterCaptureHarness = vi.hoisted(() => ({
   capture: vi.fn(),
 }));
 
+const bootstrapHarness = vi.hoisted(() => ({
+  bootstrap: null as SourceBootstrap | null,
+}));
+
 const sourceHarness = vi.hoisted(() => ({
   byteSource: null as ByteSourceDescriptor | null,
 }));
@@ -191,6 +201,21 @@ vi.mock("../../session/use-stable-episode-source", () => ({
 
 vi.mock("./grid-poster-codec", () => ({
   captureGridPoster: posterCaptureHarness.capture,
+}));
+
+vi.mock("../shell/modal-loader", () => ({
+  preloadEpisodeModal: vi.fn(),
+  scheduleEpisodeModalPreload: vi.fn(),
+}));
+
+vi.mock("../loading/loading-layout", () => ({
+  publishLoadingLayout: vi.fn(),
+}));
+
+vi.mock("../../../runtime/react/source-bootstrap", () => ({
+  useSourceBootstrap: vi.fn((source: ByteSourceDescriptor | null) =>
+    source ? bootstrapHarness.bootstrap : null,
+  ),
 }));
 
 vi.mock("../../session/use-episode-preview-session", () => ({
@@ -358,6 +383,10 @@ afterEach(() => {
   previewHarness.preview.streamSourceNames = [];
   previewHarness.preview.pause.mockClear();
   previewHarness.preview.play.mockClear();
+  vi.mocked(preloadEpisodeModal).mockClear();
+  vi.mocked(publishLoadingLayout).mockClear();
+  vi.mocked(useSourceBootstrap).mockClear();
+  bootstrapHarness.bootstrap = null;
   snapshotHarness.requests.length = 0;
   posterCaptureHarness.capture.mockReset();
   sourceHarness.byteSource = null;
@@ -456,7 +485,7 @@ describe("GridRenderer", () => {
       gridPreviewStateKey({
         datasetId: "dataset-id",
         episodeId: "1",
-        mediaField: undefined,
+        mediaField: "filepath",
         selectedSourceName: null,
         source,
       }),
@@ -959,6 +988,204 @@ describe("GridRenderer", () => {
     },
   );
 
+  it("leaves its poster in the grid cache until the modal asks for it", async () => {
+    sourceHarness.byteSource = {
+      sourceId: "modal-thumbnail-registration",
+      url: "memory://modal-thumbnail-registration",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    bitmapViewHarness.commitOnFitEffect = true;
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:modal-thumbnail");
+    const thumbnail: { current: ReturnType<typeof useModalThumbnail> } = {
+      current: null,
+    };
+    const ThumbnailProbe = () => {
+      thumbnail.current = useModalThumbnail({
+        datasetId: "dataset-id",
+        mediaField: "filepath",
+        sampleId: "1",
+      });
+      return null;
+    };
+
+    try {
+      render(
+        <>
+          <GridRenderer ctx={rendererCtx()} />
+          <ThumbnailProbe />
+        </>,
+      );
+      await waitFor(() =>
+        expect(posterCaptureHarness.capture).toHaveBeenCalledTimes(1),
+      );
+      expect(thumbnail.current).toBeNull();
+      expect(createObjectURL).not.toHaveBeenCalled();
+
+      const key = posterCaptureHarness.capture.mock.calls[0]?.[0].key;
+      act(() => {
+        getGridPosterCache().put(key, {
+          bytes: new Uint8Array([1, 2, 3]),
+          height: 100,
+          mimeType: "image/webp",
+          sourceKind: "image",
+          streamId: null,
+          streamSourceName: null,
+          streamSourceNames: [],
+          width: 100,
+        });
+      });
+      expect(thumbnail.current).toEqual({
+        kind: "image",
+        url: "blob:modal-thumbnail",
+      });
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+    } finally {
+      createObjectURL.mockRestore();
+    }
+  });
+
+  it("does not capture the previous camera while its replacement is loading", () => {
+    sourceHarness.byteSource = {
+      sourceId: "modal-thumbnail-camera-change",
+      url: "memory://modal-thumbnail-camera-change",
+    };
+    previewHarness.preview.frame = imageFrame(new Uint8Array([9]));
+    previewHarness.preview.status = "ready";
+    const thumbnail: { current: ReturnType<typeof useModalThumbnail> } = {
+      current: null,
+    };
+    const ThumbnailProbe = () => {
+      thumbnail.current = useModalThumbnail({
+        datasetId: "dataset-id",
+        mediaField: "filepath",
+        sampleId: "1",
+      });
+      return null;
+    };
+    const view = () => (
+      <>
+        <GridRenderer ctx={rendererCtx()} />
+        <ThumbnailProbe />
+      </>
+    );
+    const { container, rerender } = render(view());
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 100;
+    container.appendChild(canvas);
+    act(() =>
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(canvas, {
+        width: 100,
+        height: 100,
+      }),
+    );
+    fireEvent.pointerDown(getGridRendererRoot(container));
+    expect(thumbnail.current?.kind).toBe("canvas");
+
+    gridStreamHarness.selected = "/camera/rear";
+    rerender(view());
+    expect(thumbnail.current).toBeNull();
+    // The old canvas is still connected, but belongs to the previous key.
+    fireEvent.pointerDown(getGridRendererRoot(container));
+    expect(thumbnail.current).toBeNull();
+
+    act(() =>
+      bitmapViewHarness.lastProps?.onCanvasCommitted?.(canvas, {
+        width: 100,
+        height: 100,
+      }),
+    );
+    fireEvent.pointerDown(getGridRendererRoot(container));
+    expect(thumbnail.current?.kind).toBe("canvas");
+  });
+
+  it("lays out a reference-backed tile from its own streams, not its shared asset", () => {
+    sourceHarness.byteSource = {
+      sourceId: "shared-episode-asset",
+      url: "memory://shared-episode-asset.mp4",
+    };
+    bootstrapHarness.bootstrap = {
+      manifest: {
+        streams: [{ id: "/other/episode", sourceName: "/other/episode" }],
+      },
+    } as unknown as SourceBootstrap;
+    previewHarness.preview.streamSourceNames = ["/cam/left"];
+
+    render(
+      <GridRenderer
+        ctx={rendererCtx(undefined, {
+          field: "filepath",
+          mediaReference: { key: "episode-1" },
+        })}
+      />,
+    );
+
+    expect(vi.mocked(useSourceBootstrap)).toHaveBeenLastCalledWith(null);
+    expect(
+      vi
+        .mocked(publishLoadingLayout)
+        .mock.lastCall?.[1].map((source) => source.sourceName),
+    ).toEqual(["/cam/left"]);
+  });
+
+  it("keeps reference camera panes in asset order instead of picker order", () => {
+    previewHarness.preview.streamSourceNames = [
+      "observation.images.front_side",
+      "observation.images.side",
+      "observation.images.wrist",
+    ];
+    previewHarness.preview.streamSourceName = "observation.images.front_side";
+    const cameraNames = [
+      "observation.images.side",
+      "observation.images.wrist",
+      "observation.images.front_side",
+    ];
+
+    render(
+      <GridRenderer
+        ctx={rendererCtx(
+          undefined,
+          { field: "filepath", mediaReference: { key: "episode-1" } },
+          {
+            id: "1",
+            _media: {
+              assets: cameraNames.map((featureName) => ({
+                id: featureName,
+                featureName,
+                role: "video-stream",
+                selector: { kind: "whole-file" },
+              })),
+              poster: cameraNames[2],
+            },
+          },
+        )}
+      />,
+    );
+
+    const publication = vi.mocked(publishLoadingLayout).mock.lastCall;
+    expect(publication?.[1].map((source) => source.sourceName)).toEqual(
+      cameraNames,
+    );
+    expect(publication?.[3]).toBe(cameraNames[2]);
+  });
+
+  it("only preloads the modal on hover while the grid is active", () => {
+    const ctx = rendererCtx();
+    const { container, rerender } = render(<GridRenderer ctx={ctx} />);
+    const root = getGridRendererRoot(container);
+
+    fireEvent.pointerOver(root);
+    expect(preloadEpisodeModal).toHaveBeenCalledTimes(1);
+    fireEvent.pointerOut(root);
+
+    rerender(<GridRenderer ctx={ctx} isGridActive={false} />);
+    fireEvent.pointerOver(root);
+    expect(preloadEpisodeModal).toHaveBeenCalledTimes(1);
+  });
+
   it("requires hover intent before starting playback", () => {
     vi.useFakeTimers();
     previewHarness.preview.frame = imageFrame(new Uint8Array([1]));
@@ -1437,10 +1664,15 @@ describe("GridRenderer", () => {
   });
 });
 
-function rendererCtx(openModal?: () => void) {
+function rendererCtx(
+  openModal?: () => void,
+  media: Record<string, unknown> = { field: "filepath" },
+  sample: Record<string, unknown> = { id: "1" },
+) {
   return {
     dataset: { datasetId: "dataset-id", name: "dataset" },
-    sample: { sample: { id: "1" } },
+    media,
+    sample: { sample },
     ...(openModal ? { openModal } : {}),
   } as never;
 }

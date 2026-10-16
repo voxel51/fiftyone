@@ -41,7 +41,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
 
 .. customcarditem::
     :header: Getting Started with Enterprise
-    :description: Create your first dataset in FiftyOne Enterprise. Learn to configure cloud credentials, install the SDK, import samples, and schedule metadata computation.
+    :description: Create your first dataset in Voxel51. Learn to configure cloud credentials, install the SDK, import samples, and schedule metadata computation.
     :link: ../enterprise/getting_started.html
     :image: https://docs.voxel51.com/_images/getting_started_cloud_creds.gif
     :tags: FiftyOne-Enterprise

@@ -1,15 +1,24 @@
 import { PillButton } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
 import type { MutableRefObject } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
-import Loading from "../Loading";
 import type { ActionProps } from "../types";
 import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Grid from "./Grid";
 import Modal from "./Modal";
+import { useSelectionSummary } from "./hooks";
+
+/** e2e specs read the selected counts once they have rendered */
+type SelectedE2EEvents = {
+  "e2e:actions:selected-shown": {
+    modal: boolean;
+    samples: number;
+    labels: number;
+  };
+};
 
 export default ({
   modal,
@@ -21,9 +30,7 @@ export default ({
 }) => {
   const { refresh } = adaptiveMenuItemProps || {};
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const samples = useRecoilValue(fos.selectedSamples);
-  const labels = useRecoilValue(fos.selectedLabelIds);
+  const { sampleCount, labelCount, text } = useSelectionSummary();
   const ref = useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
 
@@ -42,33 +49,20 @@ export default ({
   const paintsLabels = !!lookerRef?.current || !!scene;
 
   useEffect(() => {
-    /** refresh **/
-    samples.size;
-    /** refresh **/
-
+    // Remeasure the toolbar item when either count changes its width.
     refresh?.();
-  }, [samples.size, refresh]);
+  }, [text, refresh]);
 
   useEffect(() => {
-    return () => {
-      setLoading(false);
-    };
-  }, []);
+    getEventBus<SelectedE2EEvents>().dispatch("e2e:actions:selected-shown", {
+      modal,
+      samples: sampleCount,
+      labels: labelCount,
+    });
+  }, [modal, sampleCount, labelCount]);
 
-  if (samples.size < 1 && labels.size < 1 && !modal) {
+  if (sampleCount < 1 && labelCount < 1 && !modal) {
     return null;
-  }
-
-  let text: string | undefined = samples.size.toLocaleString();
-  let title = "Manage selected";
-  if (samples.size > 0 && labels.size > 0) {
-    // use title to display count
-    title = `${text} sample${
-      samples.size > 1 ? "s" : ""
-    } | ${labels.size.toLocaleString()} label${labels.size > 1 ? "s" : ""}`;
-    text = undefined;
-  } else if (labels.size > 0) {
-    text = labels.size.toLocaleString();
   }
 
   return (
@@ -77,21 +71,15 @@ export default ({
       ref={ref}
     >
       <PillButton
-        icon={loading ? <Loading /> : <Check />}
+        icon={<Check />}
         open={open}
-        onClick={() => {
-          if (loading) {
-            return;
-          }
-          setOpen(!open);
-        }}
-        highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
+        onClick={() => setOpen(!open)}
+        highlight={open}
         text={text}
-        title={title}
+        title="Manage sample and label selection"
+        aria-label={`Manage selection: ${text}`}
+        arrow
         tooltipPlacement={modal ? "bottom" : "top"}
-        style={{
-          cursor: loading ? "default" : "pointer",
-        }}
         data-cy="action-manage-selected"
       />
       {open &&

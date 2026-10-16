@@ -112,12 +112,13 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     }
 
     if (reload) {
+      // scheduled first so this draw reports the reload as pending
+      this.updateSample(this.sample);
       this.updater({
         ...state,
         reloading: this.state.disabled,
         disabled: false,
       });
-      this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });
     }

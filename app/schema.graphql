@@ -33,6 +33,8 @@ input AggregationForm {
   slices: [String!]
   view: BSONArray!
   viewName: String = null
+  eventSearch: String = null
+  eventOffset: Int! = 0
 }
 
 type AggregationQueryTimeout {
@@ -40,7 +42,7 @@ type AggregationQueryTimeout {
   path: String!
 }
 
-union AggregationResponse = BooleanAggregation | DataAggregation | IntAggregation | FloatAggregation | RootAggregation | StringAggregation | AggregationQueryTimeout
+union AggregationResponse = EventAggregation | BooleanAggregation | DataAggregation | IntAggregation | FloatAggregation | RootAggregation | StringAggregation | AggregationQueryTimeout
 
 union AggregationResponses = CountResponse | BoolCountValuesResponse | IntCountValuesResponse | StrCountValuesResponse | DatetimeHistogramValuesResponse | FloatHistogramValuesResponse | IntHistogramValuesResponse
 
@@ -338,6 +340,22 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type EventAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  total: Int!
+  events: [EventFacetValue!]!
+}
+
+type EventFacetValue {
+  projection: String!
+  id: String!
+  name: String!
+  label: String!
+  count: Int!
+}
+
 input ExtendedViewForm {
   filters: JSON = null
   mixed: Boolean = null
@@ -533,7 +551,6 @@ type Mutation {
   deleteSavedView(subscription: String!, session: String, viewName: String!, datasetName: String): String
   updateSavedView(viewName: String!, subscription: String, session: String, updatedInfo: SavedViewInfo!, datasetName: String = null): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
-  searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
 type NamedKeypointSkeleton {

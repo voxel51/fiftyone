@@ -31,10 +31,12 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
         router.history.replace(
           resolveURL({
             currentPathname: router.history.location.pathname,
-            currentSearch: router.history.location.search,
+            currentSearch: router.location.search,
           }),
           {
-            ...router.get().state,
+            // A hard refresh may still be loading the entry. History keeps
+            // the route state, including the view and schema policy.
+            ...router.location.state,
             event: "fieldVisibility",
             fieldVisibility: stage,
           },

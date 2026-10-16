@@ -6,6 +6,19 @@ export default r(graphql`
   query aggregationsQuery($form: AggregationForm!) {
     aggregations(form: $form) {
       __typename
+      ... on EventAggregation {
+        path
+        count
+        exists
+        total
+        events {
+          projection
+          id
+          name
+          label
+          count
+        }
+      }
       ... on AggregationQueryTimeout {
         path
         queryTime

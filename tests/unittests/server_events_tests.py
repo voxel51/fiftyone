@@ -7,6 +7,7 @@ FiftyOne Server events tests.
 """
 
 import asyncio
+import inspect
 import unittest
 from unittest import mock
 
@@ -20,6 +21,7 @@ import fiftyone.server.events.listener as fosl
 import fiftyone.server.events.initialize as fosi
 import fiftyone.server.events.polling as fosp
 import fiftyone.server.events.state as foss
+import fiftyone.server.routes.events as fosre
 
 from decorators import drop_datasets
 
@@ -161,6 +163,11 @@ class _Connection:
         self.closed = True
         await self.stream()
 
+    async def abandon(self):
+        # the server closes the stream where it waits, as when the tab goes
+        # away while an event is still being sent
+        await self._events.aclose()
+
 
 class TestAppCount(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -236,6 +243,91 @@ class TestAppCount(unittest.IsolatedAsyncioTestCase):
         # queues are last-in first-out, so a stale count must not linger
         # behind the latest one
         self.assertEqual(_read_counts("a"), [1])
+
+    async def test_stream_closed_at_a_yield_stops_counting(self):
+        await _Connection("a").open()
+        b = _Connection("b")
+        await b.open()
+        _read_counts("a")
+
+        await b.abandon()
+        self.assertEqual(foss.get_app_count(), 1)
+        self.assertEqual(_read_counts("a"), [1])
+
+    async def test_response_cancelled_mid_send_stops_counting(self):
+        await self._check_response_cleanup("cancel")
+
+    async def test_response_disconnected_mid_send_stops_counting(self):
+        await self._check_response_cleanup("disconnect")
+
+    async def test_response_send_failure_stops_counting(self):
+        await self._check_response_cleanup("error")
+
+    async def _check_response_cleanup(self, ending):
+        a = _Connection("a")
+        await a.open()
+        sending = asyncio.Event()
+        finish = asyncio.Event()
+
+        async def receive():
+            if ending == "disconnect":
+                await finish.wait()
+                return {"type": "http.disconnect"}
+
+            await asyncio.Future()
+
+        async def send(message):
+            if message["type"] == "http.response.body":
+                sending.set()
+                if ending == "error":
+                    await finish.wait()
+                    raise OSError("send failed")
+
+                await asyncio.Future()
+
+        response = await inspect.unwrap(fosre.Events.post)(
+            None,
+            mock.Mock(),
+            {
+                "initializer": {},
+                "events": _APP_EVENTS,
+                "subscription": "b",
+            },
+        )
+        streaming = asyncio.create_task(
+            response({"type": "http"}, receive, send)
+        )
+        try:
+            await asyncio.wait_for(sending.wait(), timeout=5)
+            self.assertEqual(foss.get_app_count(), 2)
+            self.assertEqual(_read_counts("a"), [2])
+
+            if ending == "cancel":
+                streaming.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await streaming
+            else:
+                finish.set()
+                result = await asyncio.wait_for(
+                    asyncio.gather(streaming, return_exceptions=True),
+                    timeout=5,
+                )
+                if ending == "error":
+                    # Older sse-starlette versions wrap send errors in an
+                    # exception group; newer ones propagate the error itself.
+                    self.assertIsInstance(result[0], Exception)
+                else:
+                    self.assertIsNone(result[0])
+
+            # Keep the response alive: cleanup must not depend on GC.
+            self.assertEqual(foss.get_app_count(), 1)
+            self.assertEqual(_read_counts("a"), [1])
+            self.assertEqual(_read_counts("b"), [])
+        finally:
+            streaming.cancel()
+            await asyncio.gather(streaming, return_exceptions=True)
+            await response.body_iterator.aclose()
+            await a.abandon()
 
     async def test_session_clients_are_not_counted(self):
         await _Connection("a").open()

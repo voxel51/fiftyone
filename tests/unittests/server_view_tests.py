@@ -296,6 +296,70 @@ class ServerViewTests(unittest.TestCase):
         self.assertIn("clip-pred-test", sample)
 
     @drop_datasets
+    def test_pagination_data_includes_undeclared_rotation(self):
+        dataset = fo.Dataset("test")
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection=fo.Detection(
+                    bounding_box=[0.1, 0.1, 0.2, 0.2], rotation=0.25
+                ),
+                detections=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            bounding_box=[0.1, 0.1, 0.2, 0.2], rotation=0.5
+                        )
+                    ]
+                ),
+            )
+        )
+
+        # rotation is a dynamic attribute, so it is not declared
+        schema = dataset.get_field_schema(flat=True)
+        self.assertNotIn("detection.rotation", schema)
+        self.assertNotIn("detections.detections.rotation", schema)
+
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(),
+            )
+        )
+
+        self.assertEqual(sample["detection"]["rotation"], 0.25)
+        self.assertEqual(
+            sample["detections"]["detections"][0]["rotation"], 0.5
+        )
+
+    @drop_datasets
+    def test_pagination_data_includes_undeclared_frame_rotation(self):
+        dataset = fo.Dataset("test")
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        bounding_box=[0.1, 0.1, 0.2, 0.2], rotation=0.5
+                    )
+                ]
+            )
+        )
+        dataset.add_sample(sample)
+
+        # the grid attaches each video's first frame, see `_handle_frames()`
+        view = fosv.get_view("test", pagination_data=True)
+        (sample,) = list(
+            foo.aggregate(
+                foo.get_db_conn()[view._dataset._sample_collection_name],
+                view._pipeline(attach_frames=True, detach_frames=False),
+            )
+        )
+
+        (frame,) = sample["frames"]
+        self.assertEqual(frame["detections"]["detections"][0]["rotation"], 0.5)
+
+    @drop_datasets
     def test_extended_frame_sample(self):
         dataset = fod.Dataset("test")
         sample = fos.Sample(
@@ -1105,6 +1169,91 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(len(second_samples.edges), 1)
         self.assertEqual(second_samples.edges[0].node.id, second._id)
+
+
+class SavedViewTests(unittest.IsolatedAsyncioTestCase):
+    def _make_dataset(self):
+        dataset = fod.Dataset()
+        dataset.add_sample(fos.Sample(filepath="image.jpg", label="cat"))
+        dataset.save_view(
+            "Only labels",
+            dataset.select_fields("label"),
+            description="kept",
+            color="#ff0000",
+        )
+        return dataset
+
+    @drop_datasets
+    async def test_load_saved_view_by_slug(self):
+        dataset = self._make_dataset()
+
+        view = fosv.load_saved_view_by_slug(dataset, "only-labels")
+        self.assertEqual(view.name, "Only labels")
+        self.assertIsNone(fosv.load_saved_view_by_slug(dataset, "missing"))
+        self.assertIsNone(fosv.load_saved_view_by_slug(dataset, None))
+
+    @drop_datasets
+    async def test_failing_saved_view_raises_and_is_retained(self):
+        dataset = self._make_dataset()
+        view_doc = dataset._get_saved_view_doc("only-labels", slug=True)
+        stages = list(view_doc.view_stages)
+        dataset.delete_sample_field("label")
+
+        with self.assertRaisesRegex(
+            ValueError, "Saved query 'Only labels' could not be loaded"
+        ):
+            fosv.load_saved_view_by_slug(dataset, "only-labels")
+
+        # The failing definition and its metadata are left untouched
+        dataset.reload()
+        view_doc = dataset._get_saved_view_doc("only-labels", slug=True)
+        self.assertEqual(view_doc.view_stages, stages)
+        self.assertEqual(view_doc.description, "kept")
+        self.assertEqual(view_doc.color, "#ff0000")
+
+    @drop_datasets
+    async def test_serialize_dataset_never_substitutes_dataset(self):
+        from fiftyone.server.query import serialize_dataset
+
+        dataset = self._make_dataset()
+
+        data = await serialize_dataset(dataset.name, [], "only-labels")
+        self.assertEqual(data.view_name, "Only labels")
+
+        # An unknown slug, such as an old link, opens the unsaved view
+        data = await serialize_dataset(dataset.name, [], "missing")
+        self.assertIsNone(data.view_name)
+
+        dataset.delete_sample_field("label")
+        with self.assertRaisesRegex(ValueError, "could not be loaded"):
+            await serialize_dataset(dataset.name, [], "only-labels")
+
+    @drop_datasets
+    async def test_saving_a_selection_keeps_every_stage(self):
+        from fiftyone.server.mutation import StateForm, _build_result_view
+
+        dataset = fod.Dataset()
+        dataset.add_samples(
+            [fos.Sample(filepath="%d.jpg" % i, index=i) for i in range(6)]
+        )
+        view = dataset.match(fo.ViewField("index") > 1).sort_by(
+            "index", reverse=True
+        )
+        picked = view.take(2, seed=51).values("id")
+
+        saved = _build_result_view(
+            view, StateForm(sample_ids=picked), keep_stages=True
+        )
+
+        self.assertEqual(
+            [type(stage).__name__ for stage in saved._stages],
+            ["Match", "SortBy", "Select"],
+        )
+        self.assertEqual(
+            saved.values("index"),
+            [i for i in view.values("index") if i in saved.values("index")],
+        )
+        self.assertEqual(_build_result_view(view, None)._stages, view._stages)
 
 
 class ServerDocTests(unittest.TestCase):

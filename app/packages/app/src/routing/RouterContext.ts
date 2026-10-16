@@ -109,14 +109,19 @@ export const createRouter = <T extends OperationType>(
         throw e;
       }
 
+      const loadingResource = nextCurrentEntryResource;
       requestAnimationFrame(() => {
+        if (nextCurrentEntryResource !== loadingResource) return;
         for (const [_, [__, onPending]] of subscribers) onPending?.();
       });
 
-      const loadingResource = nextCurrentEntryResource;
       loadingResource.load().then((entry) => {
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
+            // Another transition can start after the load resolves but before
+            // this frame runs. Never publish its superseded entry while the
+            // next resource is still loading.
+            if (nextCurrentEntryResource !== loadingResource) return;
             let current: Entry<T> | undefined = undefined;
             try {
               current = currentEntryResource.read();
@@ -141,7 +146,16 @@ export const createRouter = <T extends OperationType>(
     history,
 
     get location() {
-      return history.location as FiftyOneLocation;
+      const location = history.location as FiftyOneLocation;
+      // Shared UI features write query parameters without a route transition.
+      // Read those changes before a modal/view writer builds the next URL.
+      return !isNotebook() && window.location.pathname === location.pathname
+        ? {
+            ...location,
+            search: window.location.search,
+            hash: window.location.hash,
+          }
+        : location;
     },
 
     get(next = false) {

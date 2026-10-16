@@ -19,12 +19,7 @@ import {
 import { graphQLSelectorFamily } from "recoil-relay";
 import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import {
-  mediaType,
-  selectedLabels,
-  selectedSamples,
-  similarityParameters,
-} from "./atoms";
+import { mediaType, selectedLabels, similarityParameters } from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import {
@@ -148,8 +143,9 @@ export const groupSlice = selector<string>({
         sessionGroupSlice,
         get(defaultGroupSlice) === slice ? new DefaultValue() : slice,
       );
+      // The selection tray keeps sample selection across slices and marks
+      // cards that fall outside the active slice, so only labels reset.
       set(selectedLabels, []);
-      set(selectedSamples, new Map());
 
       return;
     }
@@ -159,7 +155,6 @@ export const groupSlice = selector<string>({
       const session = getSessionRef();
       session.sessionGroupSlice =
         slice instanceof DefaultValue ? undefined : slice;
-      session.selectedSamples = new Map();
       session.selectedLabels = [];
 
       unsubscribe();

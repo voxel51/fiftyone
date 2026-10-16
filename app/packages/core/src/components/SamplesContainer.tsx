@@ -6,13 +6,13 @@ import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { SelectionTrayHost } from "./Grid/Selection/SelectionTrayPortal";
 import MainSpace from "./MainSpace";
-import SchemaSettings from "./Schema/SchemaSettings";
 import { Entries, default as RenderSidebar } from "./Sidebar";
 import { Filter } from "./Sidebar/Entries";
+import SchemaLensRow from "./Sidebar/SchemaLensRow";
 import { createExploreIsDisabled } from "./Sidebar/InteractiveSidebar";
 import SidebarContainer from "./Sidebar/SidebarContainer";
-import ViewSelection from "./Sidebar/ViewSelection";
 
 const { IS_APP_MODE_FIFTYONE } = constants;
 
@@ -20,6 +20,7 @@ const Container = styled.div`
   display: flex;
   justify-content: space-between;
   flex-grow: 1;
+  min-height: 0;
   overflow: hidden;
   background: ${({ theme }) => theme.background.header};
 `;
@@ -30,7 +31,6 @@ const TopContainer = styled.div`
   display: flex;
   flex-direction: column;
   row-gap: 0.5rem;
-  border-radius: 0 6px 0 0;
 `;
 
 const Sidebar = () => {
@@ -49,6 +49,12 @@ const Sidebar = () => {
     ) => {
       switch (entry.kind) {
         case fos.EntryKind.PATH: // e.g. metadata
+          if (fos.isSidebarFacet(entry.path)) {
+            return {
+              children: <Entries.Facet modal={false} path={entry.path} />,
+              disabled: true,
+            };
+          }
           const isDisabled = disabled.has(entry.path);
 
           return {
@@ -119,10 +125,8 @@ const Sidebar = () => {
 
   return (
     <SidebarContainer modal={false}>
-      <SchemaSettings />
-
       <TopContainer>
-        <ViewSelection />
+        <SchemaLensRow padded={false} />
         <Filter />
       </TopContainer>
 
@@ -142,22 +146,24 @@ function SamplesContainer() {
   const isModalOpen = useRecoilValue(fos.isModalActive);
 
   return (
-    <Container>
-      {!isModalOpen && (
-        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-      )}
-      {showSidebar && <Sidebar />}
-      <MainSpace />
-      {!isModalOpen && (
-        <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
-      )}
-      {IS_APP_MODE_FIFTYONE && (
-        <PanelArea
-          id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
-          resize={{ direction: "left" }}
-        />
-      )}
-    </Container>
+    <SelectionTrayHost>
+      <Container>
+        {!isModalOpen && (
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+        )}
+        {showSidebar && <Sidebar />}
+        <MainSpace />
+        {!isModalOpen && (
+          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+        )}
+        {IS_APP_MODE_FIFTYONE && (
+          <PanelArea
+            id={PANEL_AREA.GRID_SIDEBAR_RIGHT}
+            resize={{ direction: "left" }}
+          />
+        )}
+      </Container>
+    </SelectionTrayHost>
   );
 }
 

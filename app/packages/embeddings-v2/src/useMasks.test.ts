@@ -129,3 +129,22 @@ describe("useMasks", () => {
     await waitFor(() => expect(result.current.error).toMatch("boom"));
   });
 });
+
+it("reloads masks after the loaded subset's members change", async () => {
+  const view: unknown[] = [];
+  const filters = { _selection_scope: { subsetId: "subset" } };
+  vi.mocked(fetchMasks).mockResolvedValue(
+    masks({ match: new Uint8Array([1, 0]) }),
+  );
+  const { result, rerender } = renderHook(
+    ({ revision }) =>
+      useMasks("ds", "viz", view, filters, 2, null, true, revision),
+    { initialProps: { revision: 0 } },
+  );
+  await waitFor(() => expect(result.current.visibleCount).toBe(1));
+  vi.mocked(fetchMasks).mockResolvedValue(
+    masks({ match: new Uint8Array([1, 1]) }),
+  );
+  rerender({ revision: 1 });
+  await waitFor(() => expect(result.current.visibleCount).toBe(2));
+});

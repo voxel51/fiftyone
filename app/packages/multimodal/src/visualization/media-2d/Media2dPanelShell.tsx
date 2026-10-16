@@ -9,6 +9,7 @@ import {
   type PanelNoticeScope,
 } from "../panel-ui/PanelNotices";
 import controlStyles from "../panel-ui/PanelControl.module.css";
+import { useReportUnavailable } from "../panel-ui/use-report-unavailable";
 import {
   VISUALIZATION_HUD_BACKGROUND_COLOR,
   VISUALIZATION_HUD_BORDER_COLOR,
@@ -32,9 +33,13 @@ export interface Media2dPanelShellProps {
   readonly canvasSurface?: string;
   readonly children: (usesSharedView: boolean) => ReactNode;
   readonly className?: string;
+  /** The panel's own media failed (decode, fetch, or video engine error). */
+  readonly failed?: boolean;
   readonly notices?: readonly PanelNotice[];
   readonly noticeScope?: PanelNoticeScope;
   readonly onResetView?: () => void;
+  /** Reports whether a media or canvas failure prevents drawing the frame. */
+  readonly onUnavailableChange?: (unavailable: boolean) => void;
   readonly resetReady?: boolean;
   readonly resetTitle: string;
   readonly status?: ReactNode;
@@ -48,15 +53,18 @@ export function Media2dPanelShell({
   canvasSurface,
   children,
   className,
+  failed = false,
   notices = EMPTY_PANEL_NOTICES,
   noticeScope = "image",
   onResetView,
+  onUnavailableChange,
   resetReady = false,
   resetTitle,
   status,
   style,
 }: Media2dPanelShellProps) {
   const [canvasError, setCanvasError] = useState<string | null>(null);
+  useReportUnavailable(failed || canvasError !== null, onUnavailableChange);
   const sharedStage = useWebGpuViewStage();
   const useSharedView = sharedStage !== null && sharedStage.error === null;
   const panelNotices = useMemo<readonly PanelNotice[]>(

@@ -16,6 +16,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 import fiftyone.core.odm as foo
+import fiftyone.core.subsets as fosub
+import fiftyone.core.utils as fou
 import fiftyone.server.view as fosv
 from fiftyone.server.decorators import route
 
@@ -25,7 +27,8 @@ FIFTYONE_GEO_CACHE_SIZE = os.environ.get("FIFTYONE_GEO_CACHE_SIZE", 5)
 
 
 # last_modified_at is included as an argument for cache keying purposes,
-# it is not used within the function logic itself.
+# subset_modified_at invalidates entries after saved subset membership changes.
+# Neither value is used within the function logic itself.
 # filters_key, stages_key, extended_key are JSON strings for hashability
 # For performance, we might want to batchify this so not all points are
 # stored as a single huge entry
@@ -38,6 +41,7 @@ async def _fetch_geo_points(
     stages_key,
     extended_key,
     last_modified_at,
+    subset_modified_at=None,
 ):
 
     # deserialize keys back to Python objects for use
@@ -104,6 +108,15 @@ class GeoPoints(HTTPEndpoint):
             dataset = dataset._dataset
 
             last_modified_at = str(dataset.last_modified_at)
+            subset_id = (
+                (filters or {}).get("_selection_scope", {}).get("subsetId")
+            )
+            subset_modified_at = None
+            if subset_id:
+                subset = await fou.run_sync_task(
+                    fosub.get_subset, dataset, subset_id
+                )
+                subset_modified_at = str(subset["last_modified_at"])
 
             filters_key = (
                 json_util.dumps(filters, sort_keys=True) if filters else None
@@ -132,6 +145,7 @@ class GeoPoints(HTTPEndpoint):
                 stages_key,
                 extended_key,
                 last_modified_at,
+                subset_modified_at,
             )
 
             return results

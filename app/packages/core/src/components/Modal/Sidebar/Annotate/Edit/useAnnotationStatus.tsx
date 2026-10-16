@@ -9,6 +9,9 @@ import {
   aiSegmentationStatus,
   brushStatus,
   detectionStatus,
+  keypointFreeformStatus,
+  keypointGuidedStatus,
+  keypointResolvedStatus,
   mergeInitialStatus,
   mergeTargetSetStatus,
   penStatus,
@@ -17,6 +20,10 @@ import {
 } from "./annotationStatusContent";
 import { useAnnotationContext } from "./useAnnotationContext";
 import { _unsafeDetectionModeActiveAtom } from "./useDetectionMode";
+import {
+  _unsafeKeypointModeActiveAtom,
+  useGuidedKeypoints,
+} from "./useKeypointMode";
 import { _unsafeMergeTargetIdAtom } from "./useMergeTool";
 import { _unsafePolylineModeActiveAtom } from "./usePolylineMode";
 import {
@@ -46,6 +53,13 @@ export const useAnnotationStatus = () => {
     _unsafeSegmentationModeActiveAtom,
   );
   const polylineModeActive = useAtomValue(_unsafePolylineModeActiveAtom);
+  const keypointModeActive = useAtomValue(_unsafeKeypointModeActiveAtom);
+  const {
+    nodeLabels,
+    nodeCount: keypointNodeCount,
+    targetIndex: keypointTargetIndex,
+    points: keypointPoints,
+  } = useGuidedKeypoints();
   const tool = useAtomValue(_unsafeToolAtom);
   const mergeTargetId = useAtomValue(_unsafeMergeTargetIdAtom);
   const {
@@ -90,6 +104,26 @@ export const useAnnotationStatus = () => {
       return polylineProgressStatus();
     }
 
+    if (keypointModeActive) {
+      // Free-form field (no skeleton): click-to-append flow
+      if (keypointNodeCount === 0) return keypointFreeformStatus();
+
+      if (keypointTargetIndex !== null) {
+        const placedCount =
+          keypointPoints?.filter(
+            (p) => Number.isFinite(p[0]) && Number.isFinite(p[1]),
+          ).length ?? 0;
+        return keypointGuidedStatus(
+          nodeLabels?.[keypointTargetIndex] ??
+            `point ${keypointTargetIndex + 1}`,
+          placedCount,
+          keypointNodeCount,
+        );
+      }
+
+      return keypointResolvedStatus();
+    }
+
     return null;
   }, [
     cuboidModeActive,
@@ -102,6 +136,11 @@ export const useAnnotationStatus = () => {
     inferenceProgress,
     inferenceError,
     vertexCount,
+    keypointModeActive,
+    keypointNodeCount,
+    keypointTargetIndex,
+    keypointPoints,
+    nodeLabels,
   ]);
 
   useEffect(() => {

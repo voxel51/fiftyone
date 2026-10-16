@@ -1,7 +1,5 @@
 export * from "./hooks-utils";
 export * from "./media-field-lookers";
-export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
-export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
 export {
   default as usePromptableSimilarityKeys,
   type PromptableSimilarityIndex,
@@ -74,7 +72,10 @@ export { default as useSessionSpaces } from "./useSessionSpaces";
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
-export { default as useSetModalState } from "./useSetModalState";
+export {
+  default as useSetModalState,
+  useSyncModalSidebarGroups,
+} from "./useSetModalState";
 export { default as useSetSelected } from "./useSetSelected";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
 export { default as useSetSessionColorScheme } from "./useSetSessionColorScheme";

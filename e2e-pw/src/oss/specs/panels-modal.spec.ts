@@ -1,6 +1,7 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import { PythonPanelPom } from "src/oss/poms/operators/python-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const SAMPLE_TAB_LABEL = "Sample";
@@ -24,35 +25,27 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    samples = []
-    for i in range(0, 5):
-        sample = fo.Sample(filepath=f"{i}.png", count=i)
-        samples.append(sample)
-    
-    dataset.add_samples(samples)`);
+  await datasetFactory.createDataset({ datasetName });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("Modal Panels: Counter", async ({ grid, modal }) => {
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute(true);
+test("Modal Panels: Counter", async ({ eventUtils, grid, modal }) => {
+  await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
   await modal.panel.assert.verifyAvailableTabs([
     SAMPLE_TAB_LABEL,
     COUNTER_TAB_LABEL,
   ]);
 
-  await modal.panel.bringPanelToForeground(COUNTER_TAB_ID);
+  // the panel mounts, and so loads, when its tab is first brought forward
+  await new PythonPanelPom(eventUtils, COUNTER_TAB_ID).afterRender(() =>
+    modal.panel.bringPanelToForeground(COUNTER_TAB_ID),
+  );
 
   const content = modal.panel.getContent(COUNTER_TAB_ID);
-  await expect(content.getByText("Count: 0")).toBeVisible();
+  expect(await content.getByText("Count: 0").isVisible()).toBe(true);
 });

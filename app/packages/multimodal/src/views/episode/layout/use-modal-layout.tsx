@@ -89,6 +89,9 @@ export interface ModalLayout {
   resetTiles: Record<string, TilingTile>;
   defaultLeftOpen: boolean;
   onLeftOpenChange: (open: boolean) => void;
+  /** Persisted open state for the bottom Tracks drawer. */
+  defaultTimelineTracksOpen: boolean;
+  onTimelineTracksOpenChange: (open: boolean) => void;
   /** Persisted sidebar width; `undefined` keeps the shell's default. */
   defaultLeftSidebarWidth: number | undefined;
   onLeftSidebarWidthChange: (px: number) => void;
@@ -335,6 +338,13 @@ export function useModalLayout({
     [datasetId],
   );
 
+  const onTimelineTracksOpenChange = useCallback(
+    (open: boolean) => {
+      writeModalLayout({ timelineTracksOpen: open }, datasetId);
+    },
+    [datasetId],
+  );
+
   const onSceneUpAxisChange = useCallback(
     (axis: Scene3dUpAxis) => {
       setSceneUpAxis(axis);
@@ -407,6 +417,8 @@ export function useModalLayout({
     resetTiles: defaultTiles,
     defaultLeftOpen: persisted?.leftSidebarOpen ?? true,
     onLeftOpenChange,
+    defaultTimelineTracksOpen: persisted?.timelineTracksOpen ?? false,
+    onTimelineTracksOpenChange,
     defaultLeftSidebarWidth: persisted?.sidebarWidthPx,
     onLeftSidebarWidthChange,
     sceneUpAxis,

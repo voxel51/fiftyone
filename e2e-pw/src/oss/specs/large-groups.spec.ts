@@ -21,40 +21,25 @@ const extensionDatasetNamePairs = ["mp4", "png"].map(
     ] as const,
 );
 
+// slices "0" to "99", several carousel pages
+const SLICES = Array.from({ length: 100 }, (_, index) => String(index));
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  let pythonCode = `
-      import fiftyone as fo
-  `;
-
-  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-    pythonCode += `
-      # ${extension} dataset
-      dataset = fo.Dataset("${datasetName}")
-      dataset.add_group_field("group", default="0")
-      dataset.persistent = True
-  
-      first_group = fo.Group()
-      second_group = fo.Group()
-      samples = []
-      for i in range(0, 100):
-          first = fo.Sample(
-              filepath=f"{i}-first.${extension}", group=first_group.element(f"{i}")
-          )
-          second = fo.Sample(
-              filepath=f"{i}-second.${extension}", group=second_group.element(f"{i}")
-          )
-      
-          samples.extend([first, second])
-      
-      dataset.add_samples(samples)
-      `;
-  });
-  await fiftyoneLoader.executePythonCode(pythonCode);
+  for (const [extension, datasetName] of extensionDatasetNamePairs) {
+    const mediaType = extension === "mp4" ? "video" : "image";
+    await datasetFactory.createDataset({
+      mediaType: "group",
+      datasetName,
+      numGroups: 2,
+      videoOptions: { container: "mp4", duration: 1, frameRate: 1 },
+      slices: SLICES.map((name) => ({ name, mediaType })),
+    });
+  }
 });
 
 test.afterEach(async ({ modal, page }) => {
@@ -72,10 +57,9 @@ test.describe.serial("group carousel", () => {
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
       await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
-      await grid.openFirstSample();
+      await modal.afterCarouselRendered(() => grid.openFirstSample());
       await modal.sidebar.toggleSidebarGroup("GROUP");
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
-      await modal.waitForCarouselToLoad();
       await modal.scrollCarouselTo("19");
       await modal.navigateSlice("group.name", "19", true);
       await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");

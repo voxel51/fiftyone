@@ -124,22 +124,24 @@ const expectPersistedSliceClasses = async (
     const modal = new ModalPom(readPage, new EventUtils(readPage));
     await fiftyoneLoader.waitUntilGridVisible(readPage, datasetName, {
       searchParams: new URL(page.url()).searchParams,
+      modalSample: "loaded-or-error",
     });
-    await modal.waitForSampleLoadDomAttribute(true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
     for (const slice of SLICE_NAMES) {
-      await modal.sidebar.annotate.selectAnnotationSlice(slice);
-      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
+      const select = () => modal.sidebar.annotate.selectAnnotationSlice(slice);
       if (SLICES[slice].media === "3d") {
-        await modal.annotate3d.waitForSurface();
+        await modal.annotate3d.afterSurface(select);
+      } else {
+        await select();
       }
+      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
       // switching the annotation slice re-federates the active sample (and
       // loads a 3D slice's scene), so settle on the count first
-      await expect
-        .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-          timeout: 20_000,
-        })
-        .toBe(expected[slice].length);
+      await modal.sidebar.annotate.assert.hasActiveLabelsCount(
+        expected[slice].length,
+      );
       expect((await modal.annotate3d.listedLabels()).sort()).toEqual(
         expected[slice],
       );
@@ -177,7 +179,12 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     modal,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
+    );
 
     // walk every slice, then revisit in reverse: the count must stay each slice's
     // own count throughout. Switching the slice re-federates the active sample
@@ -185,11 +192,9 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     const visit = async (slice: SliceName) => {
       await modal.sidebar.annotate.selectAnnotationSlice(slice);
       await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await expect
-        .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-          timeout: 20_000,
-        })
-        .toBe(SLICES[slice].count);
+      await modal.sidebar.annotate.assert.hasActiveLabelsCount(
+        SLICES[slice].count,
+      );
     };
 
     for (const slice of SLICE_NAMES) {
@@ -211,21 +216,23 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
+    );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // change the first of the image slice's two detections cat -> dog
     await modal.annotate3d.selectLabel("cat");
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the image sample changed (now one dog + one cat); 3D slices untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -242,27 +249,32 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
+    );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // draw a new detection clear of the two seeded boxes (which sit at low x),
     // then assign it a distinct class so the create is unambiguous
     await modal.sidebar.annotate.detectionMode("Detections");
     await modal.sampleCanvas.move(0.6, 0.6, "crosshair");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.82, 0.82);
-    await modal.sampleCanvas.up();
+    // the draw saves on its own; it must land before the class change's save
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.82, 0.82);
+      await modal.sampleCanvas.up();
+    });
 
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the new "dog" detection lands on the image sample only — 3D slices untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -278,27 +290,26 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
     // select the mesh slice as the annotation target — in annotate mode this
     // mounts the 3D looker + its annotation surface (the grouped 3D path); the
     // surface must finish loading before the cuboid is selectable
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // select the mesh cuboid and change its class
     await modal.annotate3d.selectLabel("cat");
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // only the mesh sample changed; image + cloud untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -314,18 +325,16 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // keep the seeded cuboid so the detections field stays enabled (an emptied
     // slice drops the field and the `cuboid-mode` toolbar with it); it sits off
@@ -334,17 +343,19 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     await modal.looker3dControls.setTopView();
     await modal.annotate3d.toggleCreateCuboid();
     await modal.annotate3d.assert.createCuboidActive(true);
-    await modal.annotate3d.drawCuboid([
-      [0.4, 0.4],
-      [0.6, 0.4],
-      [0.6, 0.6],
-    ]);
+    // the draw saves on its own; it must land before the class change's save
+    await modal.sidebar.annotate.afterSave(async () => {
+      await modal.sampleCanvas3d.click(0.4, 0.4);
+      await modal.sampleCanvas3d.click(0.6, 0.4);
+      await modal.sampleCanvas3d.click(0.6, 0.6);
+    });
 
     // the freshly-drawn cuboid auto-selects with its edit form open; give it a
     // distinct class so the create is unambiguous, then let it autosave
-    await modal.sidebar.edit.selectFieldChoice("label", "dog");
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "dog"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "dog");
-    await modal.sidebar.annotate.waitForSavesSettled();
 
     // the created "dog" cuboid lands on the mesh sample only — the seeded "cat"
     // stays and image + cloud are untouched
@@ -361,24 +372,22 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     fiftyoneLoader,
     page,
   }) => {
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
-    await modal.sidebar.switchMode("annotate");
+    await modal.afterSampleLoaded(() => grid.openFirstSample(), true);
+    await modal.sidebar.annotate.afterLabelList(() =>
+      modal.sidebar.switchMode("annotate"),
+    );
 
-    await modal.sidebar.annotate.selectAnnotationSlice("mesh");
+    await modal.annotate3d.afterSurface(() =>
+      modal.sidebar.annotate.selectAnnotationSlice("mesh"),
+    );
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("mesh");
-    await modal.annotate3d.waitForSurface();
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(1);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(1);
 
     // delete the mesh cuboid via the 3D annotation toolbar
     await modal.annotate3d.selectLabel("cat");
-    let saved = modal.sidebar.annotate.waitForPatch();
-    await modal.annotate3d.deleteSelected();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.annotate3d.deleteSelected(),
+    );
 
     // the delete persists to the mesh sample only — image + cloud untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -388,9 +397,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // undo restores the mesh cuboid
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
@@ -398,9 +405,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // redo re-applies the delete
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.redo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: [],
@@ -415,21 +420,22 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     page,
   }) => {
     await grid.openFirstSample();
-    await modal.sidebar.switchMode("annotate");
+    // the default slice is the image, whose canvas reveals on entering annotate
+    await modal.afterLighterReady(() =>
+      modal.sidebar.annotate.afterLabelList(() =>
+        modal.sidebar.switchMode("annotate"),
+      ),
+    );
 
     await modal.sidebar.annotate.selectAnnotationSlice("image");
     await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice("image");
-    await expect
-      .poll(() => modal.sidebar.annotate.getActiveLabelsCount(), {
-        timeout: 20_000,
-      })
-      .toBe(2);
+    await modal.sidebar.annotate.assert.hasActiveLabelsCount(2);
 
     // delete one of the image slice's two detections via the label menu
     await modal.annotate3d.selectLabel("cat");
-    let saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.deleteLabel();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
 
     // the delete persists to the image sample only — 3D slices untouched
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
@@ -439,9 +445,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // undo restores the deleted detection (still only on the image sample)
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.undo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.undo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat", "cat"],
       mesh: ["cat"],
@@ -449,9 +453,7 @@ test.describe.serial("grouped 2D+3D annotation — federation by slice", () => {
     });
 
     // redo re-applies the delete (still only on the image sample)
-    saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sidebar.edit.redo();
-    await saved;
+    await modal.sidebar.annotate.afterSave(() => modal.sidebar.edit.redo());
     await expectPersistedSliceClasses(page, fiftyoneLoader, {
       image: ["cat"],
       mesh: ["cat"],

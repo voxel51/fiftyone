@@ -711,6 +711,35 @@ export function buildTileEmptyStateModel({
   };
 }
 
+/**
+ * Whether a contentless tile's message is final at the playhead: it has no
+ * streams, or each stream failed or has a gap the opening first-data seek will
+ * not move past. Loading streams are still being read and ready streams are
+ * delivering a frame. A gap whose start is unknown, or starts within the
+ * auto-seek threshold, can resolve once the playhead lands on first data.
+ */
+export function isTileEmptyStateFinal({
+  playheadSec,
+  startTimes,
+  statuses,
+}: {
+  readonly playheadSec: number;
+  readonly startTimes: readonly (number | null)[];
+  readonly statuses: readonly StreamStatus[];
+}): boolean {
+  return statuses.every((status, index) => {
+    if (status === "failed") return true;
+    if (status !== "gap") return false;
+    const startSec = startTimes[index];
+    return (
+      startSec !== null &&
+      startSec !== undefined &&
+      (startSec > INITIAL_DATA_AUTO_SEEK_THRESHOLD_SECONDS ||
+        startSec <= playheadSec)
+    );
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Stabilizer
 // ---------------------------------------------------------------------------

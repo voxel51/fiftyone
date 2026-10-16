@@ -4,14 +4,21 @@ import {
   usePlaybackStore,
   type PlaybackStore,
 } from "@fiftyone/playback";
-import { act, cleanup, render, screen } from "@testing-library/react";
-import { useEffect, useState } from "react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
+import { useEffect, useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTimelineIndex, type TimelineIndex } from "../../../runtime";
 import {
   TileEmptyState,
   TileStatusBadge,
   TileStreamNoticeStrip,
+  useTileEmptyStateFinal,
   useTileStreamWarningNotices,
 } from "./TileStreamState";
 import { PanelNotices } from "../../../visualization/panel-ui/PanelNotices";
@@ -156,6 +163,32 @@ describe("TileEmptyState", () => {
     expect(
       screen.getByText("Displaying stale frame from 2.4s ago"),
     ).toBeTruthy();
+  });
+});
+
+describe("useTileEmptyStateFinal", () => {
+  it("settles failures and long gaps but waits on loading and opening gaps", () => {
+    const { result } = renderHook(
+      () => ({
+        final: useTileEmptyStateFinal([STREAM]),
+        store: usePlaybackStore(),
+      }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <PlaybackProvider>{children}</PlaybackProvider>
+        ),
+      },
+    );
+    expect(result.current.final).toBe(false);
+    act(() => {
+      setStreamStatus(result.current.store, STREAM, "gap");
+      setStreamStartTimeSec(result.current.store, STREAM, 0.2);
+    });
+    expect(result.current.final).toBe(false);
+    act(() => setStreamStartTimeSec(result.current.store, STREAM, 12));
+    expect(result.current.final).toBe(true);
+    act(() => setStreamStatus(result.current.store, STREAM, "failed"));
+    expect(result.current.final).toBe(true);
   });
 });
 

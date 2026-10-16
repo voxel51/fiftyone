@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { Box3, type Group } from "three";
 import { type Mock, afterEach, describe, expect, it, vi } from "vitest";
-import { useFo3dBounds } from "./use-bounds";
+import { FO3D_ASSET_LOADING, useFo3dBounds } from "./use-bounds";
 
 vi.useFakeTimers();
 
@@ -37,6 +37,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -92,6 +93,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -127,6 +129,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -172,6 +175,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -206,6 +210,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -257,6 +262,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -294,6 +300,7 @@ describe("useFo3dBounds", () => {
     const objectRef = {
       current: {
         updateWorldMatrix: vi.fn(),
+        traverse: vi.fn(),
       },
     } as unknown as React.RefObject<Group>;
 
@@ -333,6 +340,43 @@ describe("useFo3dBounds", () => {
 
     // Should stabilize because boxes are within epsilon tolerance
     expect(result.current.boundingBox).not.toBeNull();
+
+    unmount();
+  });
+
+  it("does not settle while an asset is still loading", () => {
+    let loading = true;
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+        traverse: vi.fn((visit: (child: { userData: object }) => void) =>
+          visit({ userData: loading ? { [FO3D_ASSET_LOADING]: true } : {} }),
+        ),
+      },
+    } as unknown as React.RefObject<Group>;
+
+    (Box3 as unknown as Mock).mockImplementation(function () {
+      return {
+        min: { x: 0, y: 0, z: 0 },
+        max: { x: 1, y: 1, z: 1 },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    const { result, unmount } = renderHook(() => useFo3dBounds(objectRef));
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current.boundingBox).toBeNull();
+    expect(result.current.isComputing).toBe(true);
+
+    loading = false;
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current.boundingBox?.max.x).toBe(1);
+    expect(result.current.isComputing).toBe(false);
 
     unmount();
   });

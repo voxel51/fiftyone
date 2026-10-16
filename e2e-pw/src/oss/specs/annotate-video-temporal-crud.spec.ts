@@ -112,17 +112,10 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
-};
-
-const savedResponse = (page: Page) =>
-  page.waitForResponse(
-    (r) =>
-      /\/sample\//.test(r.url()) &&
-      ["POST", "PATCH", "PUT", "DELETE"].includes(r.request().method()),
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
   );
+};
 
 const stepForward = async (modal: ModalPom, n: number) => {
   for (let i = 0; i < n; i++) {
@@ -132,7 +125,7 @@ const stepForward = async (modal: ModalPom, n: number) => {
 
 test.describe.serial("video annotation temporal detection CRUD", () => {
   test("New TD creates a temporal detection, a class edit persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -148,34 +141,30 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     await va.assert.temporalTrackCount(4);
 
     // find the new TD row and open its editor from the timeline
-    const newTrack = (await va.temporalTrackIds()).find((t) => !before.has(t));
-    expect(newTrack).toBeTruthy();
+    const created = (await va.temporalTrackIds()).filter((t) => !before.has(t));
+    expect(created).toHaveLength(1);
+    const [newTrack] = created;
 
     // the tracks drawer starts closed; pin the new TD row so the timeline click
     // has a visible target
-    await va.pinTrack(newTrack as string);
+    await va.pinTrack(newTrack);
 
-    const saved = savedResponse(page);
-    await va.clickTrack(newTrack as string);
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await modal.sidebar.edit.selectFieldChoice("label", "depart");
+    await va.clickTrack(newTrack);
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "depart"),
+    );
     await modal.sidebar.edit.assert.verifyFieldValue("label", "depart");
-    await saved;
 
     // the create + class survive a true round-trip
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
-    try {
-      const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
-      await openAnnotate(fiftyoneLoader, m2, freshPage);
-      await m2.videoAnnotate.assert.temporalTrackCount(4);
-    } finally {
-      await context.close();
-    }
+    const freshPage = await openFreshPage();
+    const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
+    await openAnnotate(fiftyoneLoader, m2, freshPage);
+    await m2.videoAnnotate.assert.temporalTrackCount(4);
   });
 
   test("deleting the middle TD preserves the siblings' ids and labels", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -195,11 +184,11 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
     expect(expectedIds).toHaveLength(2);
 
     // delete it through the editor (engine delete -> id-aligned list diff)
-    const saved = savedResponse(page);
     await va.selectLabel("pass");
-    await expect(modal.sidebar.edit.backButton).toBeVisible();
-    await modal.sidebar.edit.deleteLabel();
-    await saved;
+    await modal.sidebar.edit.assert.isOpen();
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.deleteLabel(),
+    );
 
     await va.assert.temporalTrackCount(2);
     expect((await va.temporalTrackIds()).sort()).toEqual(expectedIds);
@@ -210,22 +199,17 @@ test.describe.serial("video annotation temporal detection CRUD", () => {
 
     // the round-trip is the real guard: the surviving two keep IDENTICAL ids
     // (a mid-list delete must not rewrite a sibling's _id) and their labels.
-    const context = await browser.newContext();
-    const freshPage = await context.newPage();
-    try {
-      const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
-      const va2 = m2.videoAnnotate;
-      await openAnnotate(fiftyoneLoader, m2, freshPage);
-      await va2.assert.temporalTrackCount(2);
-      expect((await va2.temporalTrackIds()).sort()).toEqual(expectedIds);
+    const freshPage = await openFreshPage();
+    const m2 = new ModalPom(freshPage, new EventUtils(freshPage));
+    const va2 = m2.videoAnnotate;
+    await openAnnotate(fiftyoneLoader, m2, freshPage);
+    await va2.assert.temporalTrackCount(2);
+    expect((await va2.temporalTrackIds()).sort()).toEqual(expectedIds);
 
-      // labels intact: approach at frame 1, depart in its third; no "pass"
-      await va2.assert.labelListed("approach");
-      await stepForward(m2, 13);
-      await va2.assert.labelListed("depart");
-      await va2.assert.labelListed("pass", false);
-    } finally {
-      await context.close();
-    }
+    // labels intact: approach at frame 1, depart in its third; no "pass"
+    await va2.assert.labelListed("approach");
+    await stepForward(m2, 13);
+    await va2.assert.labelListed("depart");
+    await va2.assert.labelListed("pass", false);
   });
 });

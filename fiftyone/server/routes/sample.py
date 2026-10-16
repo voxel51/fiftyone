@@ -21,6 +21,7 @@ import fiftyone as fo
 import fiftyone.core.frame as fof
 from fiftyone.server import decorators, utils
 from fiftyone.server.exceptions import DbVersionMismatchError
+import fiftyone.server.hooks as fosh
 from fiftyone.server.utils.datasets import (
     get_dataset,
     get_sample_from_dataset,
@@ -477,9 +478,11 @@ class Sample(HTTPEndpoint):
         content_type = request.headers.get("Content-Type", "")
         ctype = content_type.split(";", 1)[0].strip().lower()
         if ctype == "application/json":
-            self._handle_patch(sample, data)
+            with fosh.get().sample_write(sample, list(data)):
+                self._handle_patch(sample, data)
         elif ctype == "application/json-patch+json":
-            _handle_top_level_patch(sample, data)
+            with fosh.get().sample_write(sample, fosh.write_paths(data)):
+                _handle_top_level_patch(sample, data)
         else:
             raise HTTPException(
                 status_code=415, detail=f"Unsupported Content-Type '{ctype}'"
@@ -503,6 +506,8 @@ class Sample(HTTPEndpoint):
                 response_body["frames"] = [
                     head_frame.to_dict(include_private=True)
                 ]
+
+        response_body = fosh.get().transform_sample_dict(sample, response_body)
 
         return utils.json.JSONResponse(response_body, headers={"ETag": etag})
 
@@ -641,12 +646,17 @@ class SampleField(HTTPEndpoint):
 
         # Apply patches - RootDeleteError signals deletion is needed
         logger.debug("Applying patches to field with id %s", field_id)
-        try:
-            handle_json_patch(field, data)
-            is_delete = False
-        except RootDeleteError:
-            field_list.remove(field)
-            is_delete = True
+        field_pointer = "/" + path.replace(".", "/")
+        write_paths = [field_pointer + p for p in fosh.write_paths(data)] or [
+            field_pointer
+        ]
+        with fosh.get().sample_write(sample, write_paths):
+            try:
+                handle_json_patch(field, data)
+                is_delete = False
+            except RootDeleteError:
+                field_list.remove(field)
+                is_delete = True
 
         # Save the source sample
         etag = save_sample(sample, source_if_match)
@@ -670,7 +680,10 @@ class SampleField(HTTPEndpoint):
 
                 if generated_sample is not None:
                     return utils.json.JSONResponse(
-                        utils.json.serialize(generated_sample),
+                        fosh.get().transform_sample_dict(
+                            generated_sample,
+                            utils.json.serialize(generated_sample),
+                        ),
                         headers={"ETag": etag},
                     )
             except Exception:
@@ -683,7 +696,10 @@ class SampleField(HTTPEndpoint):
                 )
 
         return utils.json.JSONResponse(
-            utils.json.serialize(sample), headers={"ETag": etag}
+            fosh.get().transform_sample_dict(
+                sample, utils.json.serialize(sample)
+            ),
+            headers={"ETag": etag},
         )
 
 

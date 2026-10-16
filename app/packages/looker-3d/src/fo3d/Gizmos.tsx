@@ -1,8 +1,13 @@
+import { getEventBus } from "@fiftyone/events";
 import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { DoubleSide, Vector3 } from "three";
-import { FO_USER_DATA } from "../constants";
+import {
+  FO_USER_DATA,
+  GRID_TOGGLED_EVENT,
+  type Looker3dE2EEvents,
+} from "../constants";
 import {
   gridCellSizeAtom,
   gridSectionSizeAtom,
@@ -91,6 +96,14 @@ export const Gizmos = ({
 }) => {
   const { upVector, sceneBoundingBox } = useFo3dContext();
   const isGridOn = useRecoilValue(isGridOnAtom);
+
+  // sent from the scene, so the next rendered frame shows the grid it reports
+  useEffect(() => {
+    if (!isGridVisible) return;
+    getEventBus<Looker3dE2EEvents>().dispatch(GRID_TOGGLED_EVENT, {
+      on: isGridOn,
+    });
+  }, [isGridOn, isGridVisible]);
 
   const gridHelperQuarternion = useMemo(
     () => getGridQuaternionFromUpVector(upVector),

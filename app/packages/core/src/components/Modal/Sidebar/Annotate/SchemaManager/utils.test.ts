@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LABEL_TYPE_OPTIONS, LABEL_TYPE_OPTIONS_VIDEO } from "./constants";
+import {
+  FRAME_PREFIX_AUTO_ERROR,
+  FRAME_PREFIX_SAMPLE_ERROR,
+  getDefaultAttributesForType,
+  LABEL_TYPE_OPTIONS_3D,
+  LABEL_TYPE_OPTIONS_VIDEO,
+} from "./constants";
 import {
   createDefaultFormData,
   defaultClassesComponent,
@@ -8,6 +14,7 @@ import {
   getAttributeTypeLabel,
   getClassNameError,
   getLabelTypeOptions,
+  isFrameLevelLabelType,
   reconcileComponent,
   toAttributeConfig,
   toFormData,
@@ -155,6 +162,53 @@ describe("dynamic attribute flag", () => {
   });
 });
 
+describe("attribute scope", () => {
+  it("defaults to field scope for a new attribute", () => {
+    expect(createDefaultFormData().scope).toBe("field");
+  });
+
+  it("hydrates the form from a point-scoped config", () => {
+    const form = toFormData({
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+    });
+    expect(form.scope).toBe("point");
+  });
+
+  it("defaults the form to field scope when the config omits scope", () => {
+    expect(toFormData({ name: "color", type: "str" }).scope).toBe("field");
+  });
+
+  it("serializes point scope and omits field scope", () => {
+    const point = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+    });
+    expect(point.scope).toBe("point");
+
+    const field = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "color",
+      type: "str",
+    });
+    expect(field.scope).toBeUndefined();
+  });
+
+  it("drops the default value for point scope", () => {
+    const config = toAttributeConfig({
+      ...createDefaultFormData(),
+      name: "occluded",
+      type: "bool",
+      scope: "point",
+      default: "true",
+    });
+    expect(config.default).toBeUndefined();
+  });
+});
+
 describe("validateFieldName", () => {
   it("rejects '.' for non-video media", () => {
     expect(validateFieldName("frames.detections", null, "image")).toMatch(
@@ -189,12 +243,73 @@ describe("validateFieldName", () => {
 });
 
 describe("getLabelTypeOptions", () => {
-  it("offers the spatial set for a video frame field", () => {
-    expect(getLabelTypeOptions("video", true)).toBe(LABEL_TYPE_OPTIONS);
+  it("offers every label type on video; frame-level classification is absent", () => {
+    expect(getLabelTypeOptions("video")).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+    const ids = getLabelTypeOptions("video").map((o) => o.id);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "detections",
+        "polylines",
+        "classification",
+        "temporaldetections",
+      ]),
+    );
+  });
+});
+
+describe("validateFieldName with a video label scope", () => {
+  it("rejects a typed frames. prefix on a frame-level type", () => {
+    expect(validateFieldName("frames.dets", null, "video", "frame")).toBe(
+      FRAME_PREFIX_AUTO_ERROR,
+    );
+    expect(validateFieldName("dets", null, "video", "frame")).toBeNull();
   });
 
-  it("limits a sample-level video field to clip-level types", () => {
-    expect(getLabelTypeOptions("video", false)).toBe(LABEL_TYPE_OPTIONS_VIDEO);
+  it("rejects a typed frames. prefix on a sample-level type", () => {
+    expect(validateFieldName("frames.cls", null, "video", "sample")).toBe(
+      FRAME_PREFIX_SAMPLE_ERROR,
+    );
+    expect(validateFieldName("cls", null, "video", "sample")).toBeNull();
+  });
+
+  it("checks duplicates against the prefixed name for frame-level types", () => {
+    expect(
+      validateFieldName("dets", { "frames.dets": {} }, "video", "frame"),
+    ).toBe("Field name already exists");
+    expect(
+      validateFieldName("dets", { dets: {} }, "video", "frame"),
+    ).toBeNull();
+  });
+
+  it("offers keypoints on image and video datasets, as a frame field on video", () => {
+    const ids = (options: { id: string }[]) => options.map((o) => o.id);
+    expect(ids(getLabelTypeOptions("image"))).toContain("keypoints");
+    expect(ids(getLabelTypeOptions("video"))).toContain("keypoints");
+    expect(isFrameLevelLabelType("keypoints")).toBe(true);
+    expect(ids(LABEL_TYPE_OPTIONS_3D)).not.toContain("keypoints");
+  });
+});
+
+describe("getDefaultAttributesForType", () => {
+  it("scopes a new keypoints field's confidence to the points", () => {
+    const confidence = getDefaultAttributesForType("keypoints", false).find(
+      (attr) => attr.name === "confidence",
+    );
+    expect(confidence).toEqual({
+      name: "confidence",
+      type: "float",
+      component: "text",
+      scope: "point",
+    });
+  });
+
+  it("keeps label-level confidence for the other label types", () => {
+    for (const type of ["detections", "polylines", "classification"]) {
+      const confidence = getDefaultAttributesForType(type, false).find(
+        (attr) => attr.name === "confidence",
+      );
+      expect(confidence?.scope).toBeUndefined();
+    }
   });
 });
 
@@ -238,6 +353,38 @@ describe("reconcileComponent", () => {
       reconcileComponent({ component: "dropdown", classes: classes(2) })
         .component,
     ).toBe("dropdown");
+  });
+
+  it("keeps a primitive field's radio or dropdown when it has values", () => {
+    const scanned = {
+      type: "str",
+      component: "radio",
+      values: ["ego_vehicle", "other_vehicle"],
+    };
+    expect(reconcileComponent(scanned)).toEqual(scanned);
+    expect(
+      reconcileComponent({ ...scanned, component: "dropdown" }).component,
+    ).toBe("dropdown");
+  });
+
+  it("derives radio or dropdown for a text primitive field with values", () => {
+    expect(
+      reconcileComponent({ type: "int", component: "text", values: [1, 2] })
+        .component,
+    ).toBe("radio");
+    expect(
+      reconcileComponent({
+        type: "str",
+        component: "text",
+        values: classes(6),
+      }).component,
+    ).toBe("dropdown");
+  });
+
+  it("resets a primitive field to text and strips values when none remain", () => {
+    expect(
+      reconcileComponent({ type: "str", component: "radio", values: [] }),
+    ).toEqual({ type: "str", component: "text" });
   });
 
   it("resets to text and strips classes when none remain", () => {
