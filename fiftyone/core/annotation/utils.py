@@ -440,8 +440,15 @@ def declare_label_schema_attributes(sample_collection, label_schemas):
             if pick is None:
                 attr_type = attr[foac.TYPE]
                 ftype = foac.TYPE_TO_FIELD[attr_type]
-                # A point-scoped keypoint attribute's type is its ELEMENT
-                # type: its values are lists parallel to `points`
+                # No values to infer a type from, so the label schema's
+                # `type` decides. For a point-scoped keypoint attribute
+                # (`scope: "point"`, see "Attribute scopes" in
+                # constants.py), `type` describes ONE node's value (e.g.
+                # "bool"), but the attribute is stored as a list with one
+                # value per node, parallel to `points`. Declaring the bare
+                # element type would make every stored list fail
+                # validation, so the sample would no longer load. Declare
+                # a list of that type instead, as for `list<...>` types
                 is_point_scoped = attr.get(foac.SCOPE) == foac.POINT_SCOPE
                 if is_point_scoped or attr_type in (
                     foac.FLOAT_LIST,
