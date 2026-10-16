@@ -4701,21 +4701,27 @@ class HiltiSLAMChallenge2023Dataset(FiftyOneDataset):
 
     @property
     def name(self):
+        """The name of the dataset."""
         return "hilti-slam-challenge-2023"
 
     @property
     def license(self):
+        """The license under which the recordings are distributed."""
         return "CC-BY-NC-SA-3.0"
 
     @property
     def tags(self):
+        """A tuple of tags for the dataset."""
         return ("multimodal", "mcap", "slam", "lidar", "imu")
 
     @property
     def supported_splits(self):
+        """None; the dataset has no splits."""
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        """Downloads the pinned revision from the Hugging Face Hub, where it
+        is stored in FiftyOne's serialized format."""
         logger.info("Downloading %s from the Hugging Face Hub", self._REPO_ID)
         hfh.snapshot_download(
             repo_id=self._REPO_ID,
