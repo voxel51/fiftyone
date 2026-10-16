@@ -43,10 +43,14 @@ const PLOT_SCENE_RADIUS = 8;
  * canvas's containers keep painting the scene's background. The hover card
  * is portaled to the body, so it is hidden by its own id. Hovering never
  * redraws the canvas, so the pointer needs no parking. Inset past the
- * scene's rounded corners and border, which antialias differently run to run
+ * scene's rounded corners and border, which antialias differently run to run.
+ * Only a band through the middle: the camera fits the cloud to the plot's
+ * width and centers it on the pixel grid, so the band reads the same however
+ * tall the page leaves the plot (a banner, a tray, a toolbar row)
  */
 const PLOT_CAPTURE: CanvasCapture = {
   inset: PLOT_SCENE_RADIUS,
+  band: 300,
   style: [
     "[data-cy=embeddings-plot] *:not(:has(canvas)):not(canvas) { visibility: hidden !important; }",
     "[data-cy=embeddings-hover-card] { visibility: hidden !important; }",

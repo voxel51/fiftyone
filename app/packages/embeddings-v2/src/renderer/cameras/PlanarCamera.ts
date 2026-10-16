@@ -83,8 +83,9 @@ export class PlanarCamera implements CameraAdapter {
 
   /** Orthographic window: screen -> data is exact rectangle algebra */
   toDataPolygon(polygon: Polygon): Array<[number, number]> {
+    const frustum = this.frustum();
     return polygon.map(([x, y]) =>
-      pxToData(this.rect, this.width, this.height, x, y),
+      pxToData(frustum, this.width, this.height, x, y),
     );
   }
 
@@ -156,9 +157,28 @@ export class PlanarCamera implements CameraAdapter {
     this.listeners.abort();
   }
 
+  /**
+   * The rect as drawn: shifted half a device pixel along any axis with an
+   * odd device-pixel count, so the view's center always lands on a pixel
+   * boundary. Without the shift every point antialiases differently on an
+   * odd-sized canvas than on an even one, and a layout change that adds or
+   * removes one pixel of height re-rasterizes the whole plot. Pan and wheel
+   * zoom stay in rect space: the shift is a constant half pixel on screen.
+   */
+  private frustum(): Rect {
+    const { x0, y0, x1, y1 } = this.rect;
+    // the drawing buffer's size, as WebGLRenderer.setSize floors it
+    const dpr = window.devicePixelRatio || 1;
+    const bufferWidth = Math.floor(this.width * dpr);
+    const bufferHeight = Math.floor(this.height * dpr);
+    const dx = bufferWidth % 2 ? (x1 - x0) / bufferWidth / 2 : 0;
+    const dy = bufferHeight % 2 ? (y1 - y0) / bufferHeight / 2 : 0;
+    return { x0: x0 + dx, y0: y0 + dy, x1: x1 + dx, y1: y1 + dy };
+  }
+
   /** Push the rect into the camera frustum and notify */
   private apply(): void {
-    const { x0, y0, x1, y1 } = this.rect;
+    const { x0, y0, x1, y1 } = this.frustum();
     this.camera.left = x0;
     this.camera.right = x1;
     this.camera.top = y1;
