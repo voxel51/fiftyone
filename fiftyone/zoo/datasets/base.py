@@ -479,10 +479,12 @@ class BDD100KDataset(FiftyOneDataset):
 
     @property
     def license(self):
+        """The URL of the BDD100K license."""
         return "https://doc.bdd100k.com/license.html"
 
     @property
     def tags(self):
+        """A tuple of tags for the dataset."""
         return ("image", "multilabel", "automotive")
 
     @property
@@ -490,6 +492,10 @@ class BDD100KDataset(FiftyOneDataset):
         return ("train", "validation", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        """Prepares every split on the first call, since the source holds
+        them all, from ``source_dir`` when given and from the Internet
+        Archive mirror otherwise.
+        """
         parent_dir = os.path.dirname(dataset_dir)
         split_dir = os.path.join(parent_dir, split)
 

@@ -452,6 +452,16 @@ def download_bdd100k_dataset(
             with open(marker, "w"):
                 pass
 
+    for split in ("train", "val", "test"):
+        images_dir = os.path.join(extracted_dir, "images", "100k", split)
+        if not os.path.isdir(images_dir):
+            # The parse below requires every split's images
+            raise OSError(
+                "Expected %s images at '%s', but that directory does not "
+                "exist. The extracted archive at '%s' does not have the "
+                "expected layout" % (split, images_dir, extracted_dir)
+            )
+
     for split in ("train", "val"):
         mot_dir = os.path.join(extracted_dir, "labels", "100k", split)
         out_path = os.path.join(
@@ -551,6 +561,9 @@ def _convert_mot_poly2d(mot_poly2d, category):
 
 
 def _count_split_samples(dataset_dir):
+    """Returns the number of images in the split directories of
+    ``dataset_dir``.
+    """
     total = 0
     for split in ("train", "validation", "test"):
         split_data_dir = os.path.join(dataset_dir, split, "data")
@@ -782,7 +795,7 @@ def _parse_bdd_polylines(d, frame_size, extra_attrs):
         if "types" in poly2d:
             _attributes["types"] = poly2d["types"]
 
-        _attributes = _filter_attributes(attributes, extra_attrs)
+        _attributes = _filter_attributes(_attributes, extra_attrs)
 
         polylines.append(
             fol.Polyline(
