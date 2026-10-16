@@ -32,6 +32,7 @@ import {
   dynamicGroupParameters,
   fieldSchema,
   groupMediaTypes,
+  gridExtendedStages,
   gridSortBy,
   isGroup,
   isClipsView,
@@ -324,7 +325,10 @@ export function useGridViewScope() {
     rangeConstraint: useSelectionRangeConstraint(useCurrentDatasetName()),
     view: useView(),
     filters: useRecoilValue(filters),
-    extendedStages: useRecoilValue(extendedStages),
+    // The grid's own stages: without the Explore schema lens, whose hidden
+    // fields the grid leaves out of what it draws, so a lens switch neither
+    // changes the grid's request nor refetches its pages
+    extendedStages: useRecoilValue(gridExtendedStages),
     sort: useRecoilValue(gridSortBy),
     refresh: useRecoilValue(refresher),
   };
