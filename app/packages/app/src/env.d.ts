@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_API?: string;
   readonly VITE_HAS_UPDATES: boolean;
   readonly VITE_DEV_WORKTREE_NAME?: string;
+  readonly VITE_HIDE_SHARED_SESSION_BANNER?: string;
 }
 
 interface ImportMeta {

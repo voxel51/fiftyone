@@ -8,6 +8,7 @@ import {
   view as currentView,
   datasetName,
   resetExtendedSelectionTransaction,
+  resetFiltersTransaction,
   stateSubscription,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
@@ -25,7 +26,9 @@ const onSetView: RegisteredSetter =
     set(pendingEntry, true);
     // A new view replaces the base of a lasso constraint. Captured tray
     // choices remain independent of that constraint. Sidebar filters never
-    // reach this setter, so a lasso still composes with them.
+    // reach this setter, so a lasso still composes with them. The filters go
+    // too: a page reload keeps them (a layout write reloads it), so the view
+    // change is what clears them.
     //
     // Deferred to the publish rather than done here: a rejected view rolls
     // back without ever publishing, and dropping the stage up front would
@@ -34,6 +37,7 @@ const onSetView: RegisteredSetter =
     const unsubscribe = subscribe((_, transaction) => {
       try {
         resetExtendedSelectionTransaction(transaction);
+        resetFiltersTransaction(transaction);
       } finally {
         unsubscribe();
       }

@@ -38,6 +38,12 @@ export interface CanvasCapture {
   target?: (root: Locator) => Locator;
   /** Pixels trimmed from each edge, for antialiased rounded corners */
   inset?: number;
+  /**
+   * Capture only a band this many pixels tall (even) through the target's
+   * middle, for a surface that centers its drawing on its own pixel grid: a
+   * change in the page's height then leaves the capture unchanged
+   */
+  band?: number;
   /** CSS applied for the capture to hide overlays */
   style?: string;
   /** Park the pointer and wait out hover affordances before the capture */
@@ -477,6 +483,7 @@ class SampleCanvasAsserter {
     await expectScreenshot(target, name, {
       inset: capture.inset,
       style: capture.style,
+      band: capture.band,
     });
   }
 

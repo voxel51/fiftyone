@@ -87,7 +87,10 @@ export function ColorByMenu({
     setActiveIndex(0);
   }, [open, filtered]);
 
-  const selectedLabel = options.find((o) => o.id === value)?.data.label ?? "";
+  // Before the options load, show the value itself: a field's label is its
+  // path, so the trigger never blanks while the list fills
+  const selectedLabel =
+    options.find((o) => o.id === value)?.data.label ?? value;
   const activeOption = filtered[activeIndex] ?? null;
   const activeOptionId = activeOption
     ? `${listId}-${activeOption.id}`
@@ -196,7 +199,11 @@ export function ColorByMenu({
               Color by
             </Text>
             <span className="emb-facet-trigger-label">
-              <Text variant={TextVariant.Md} color={TextColor.Foreground}>
+              <Text
+                variant={TextVariant.Md}
+                color={TextColor.Foreground}
+                data-cy="embeddings-color-by-value"
+              >
                 {selectedLabel}
               </Text>
             </span>

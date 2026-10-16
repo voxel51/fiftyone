@@ -2,8 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { setView, type setViewMutation } from "@fiftyone/relay";
-import { datasetName, view, stateSubscription } from "@fiftyone/state";
+import { setView, subscribe, type setViewMutation } from "@fiftyone/relay";
+import {
+  datasetName,
+  resetFiltersTransaction,
+  stateSubscription,
+  view,
+} from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
@@ -21,6 +26,16 @@ const onSetViewName: RegisteredSetter =
     if (!dataset) {
       throw new Error("no dataset");
     }
+
+    // A saved view is a new view: the sidebar filters clear when it
+    // publishes, as for any view change (see onSetView)
+    const unsubscribe = subscribe((_, transaction) => {
+      try {
+        resetFiltersTransaction(transaction);
+      } finally {
+        unsubscribe();
+      }
+    });
 
     const previousView = get(view);
     commitMutation<setViewMutation>(environment, {

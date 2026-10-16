@@ -29,6 +29,8 @@ vi.mock("@fiftyone/components", () => ({
 // whose relay fragments need the Babel transform; the pill never calls it
 vi.mock("@fiftyone/state", () => ({
   resetExtendedSelectionTransaction: vi.fn(),
+  // state.ts registers its counts at import
+  registerExtendedSelectionResetParticipant: () => () => undefined,
 }));
 
 function NonceProbe() {

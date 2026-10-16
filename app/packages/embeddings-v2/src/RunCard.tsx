@@ -43,6 +43,8 @@ export interface RunCardProps {
   /** Trailing action cluster; clicks do not bubble to the card */
   actions?: ReactNode;
   onClick?: () => void;
+  /** Stable handle for tests (`data-cy`) */
+  testId?: string;
 }
 
 const TOKEN_VARS = {
@@ -63,11 +65,13 @@ export function RunCard({
   meta,
   actions,
   onClick,
+  testId,
 }: RunCardProps) {
   const interactive = Boolean(onClick);
   return (
     <div
       className="emb-run-card"
+      data-cy={testId}
       data-interactive={interactive ? "true" : "false"}
       style={TOKEN_VARS}
       role={interactive ? "button" : undefined}

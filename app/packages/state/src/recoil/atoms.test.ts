@@ -57,3 +57,23 @@ describe("isDatasetChange", () => {
     );
   });
 });
+
+describe("readOverrideStage", () => {
+  const stage = { "fiftyone.core.stages.Select": { sample_ids: ["a"] } };
+
+  it("keeps a stage written in step through a reload of the same dataset", () => {
+    // A publish whose commit is still pending when a page reload lands: the
+    // atom's effect hasn't updated the mirror yet, so the publisher writes it
+    atoms.writeOverrideStageMirror(stage);
+    expect(
+      atoms.readOverrideStage({ datasetId: "a" }, { datasetId: "a" }),
+    ).toBe(stage);
+  });
+
+  it("drops the stage on a dataset switch", () => {
+    atoms.writeOverrideStageMirror(stage);
+    expect(
+      atoms.readOverrideStage({ datasetId: "b" }, { datasetId: "a" }),
+    ).toBe(null);
+  });
+});

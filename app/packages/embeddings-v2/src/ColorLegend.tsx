@@ -109,6 +109,7 @@ export function ColorLegend({
                 key={label}
                 className="emb-legend-row"
                 disabled={!interactive}
+                data-cy={`embeddings-legend-row-${label}`}
                 data-off={offLabels?.has(label) ? "true" : "false"}
                 onClick={(event) => handleRowClick(label, event.detail)}
               >
@@ -125,6 +126,7 @@ export function ColorLegend({
                   className="emb-legend-count"
                   variant={TextVariant.Md}
                   color={TextColor.Tertiary}
+                  data-cy={`embeddings-legend-count-${label}`}
                 >
                   {scopedCounts
                     ? `${scopedCounts[index]?.toLocaleString() ?? 0} / ${cls.count.toLocaleString()}`

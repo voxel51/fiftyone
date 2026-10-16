@@ -5,10 +5,19 @@ import {
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { DefaultValue, selectorFamily, useRecoilValue } from "recoil";
+import {
+  DefaultValue,
+  selectorFamily,
+  type TransactionInterface_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
 import { activeFilterValues } from "./activeFilterValues";
-import { extendedSelection, extendedSelectionOverrideStage } from "./atoms";
+import {
+  extendedSelection,
+  extendedSelectionOverrideStage,
+  isDatasetChange,
+} from "./atoms";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds, isFrameField } from "./selectors";
@@ -34,36 +43,64 @@ export const modalFilters = sessionAtom({
   key: "modalFilters",
 });
 
-export const filters = (() => {
-  let current: State.Filters;
-  return graphQLSyncFragmentAtom<datasetFragment$key, State.Filters>(
-    {
-      fragments: [datasetFragment],
-      keys: ["dataset"],
-      default: {},
-      read: (data, previous) => {
-        if (current === undefined) {
-          current = getSessionRef().filters;
-        } else if (previous && data.id !== previous?.id) {
-          current = {};
-        }
+// `read` runs on every fragment update, so it must hand back the last write
+// or a refetch drops the filters. Module scope so the reset can clear it.
+let currentFilters: State.Filters | undefined;
 
-        return current;
+/**
+ * What the filters atom reads from a dataset fragment update: the session's
+ * filters on the first read, none after a dataset switch, and otherwise the
+ * last write. A reload of the same dataset (a layout write, a refresh) keeps
+ * them; a view change clears them through {@link resetFiltersTransaction}.
+ */
+export function readFilters(
+  data: { datasetId: string },
+  previous: { datasetId: string } | null,
+): State.Filters {
+  if (currentFilters === undefined) {
+    currentFilters = getSessionRef().filters;
+  } else if (isDatasetChange(data, previous)) {
+    currentFilters = {};
+  }
+
+  return currentFilters;
+}
+
+export const filters = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  State.Filters
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    default: {},
+    read: readFilters,
+  },
+  {
+    effects: [
+      ({ onSet }) => {
+        onSet((next) => {
+          setQueryPerformancePath(null);
+          currentFilters = next;
+        });
       },
-    },
-    {
-      effects: [
-        ({ onSet }) => {
-          onSet((next) => {
-            setQueryPerformancePath(null);
-            current = next;
-          });
-        },
-      ],
-      key: "filters",
-    },
-  );
-})();
+    ],
+    key: "filters",
+  },
+);
+
+/**
+ * Clears the sidebar filters inside the caller's Recoil transaction. The
+ * atom's effect updates the value `read` hands back only once the
+ * transaction commits, so that is cleared here as well, in step with the
+ * reset.
+ */
+export function resetFiltersTransaction(
+  cb: Pick<TransactionInterface_UNSTABLE, "reset">,
+): void {
+  cb.reset(filters);
+  currentFilters = {};
+}
 
 export { activeFilterValues } from "./activeFilterValues";
 

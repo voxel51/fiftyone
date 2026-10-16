@@ -2,7 +2,7 @@
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { RecoilRoot, useRecoilValue } from "recoil";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetExtendedSelectionTransaction } from "@fiftyone/state";
 import { selectionCountState, selectionSampleCountState } from "./state";
 import { useClearSelectionOnClose } from "./useClearSelectionOnClose";
@@ -21,9 +21,16 @@ vi.mock("@fiftyone/spaces", () => ({
 // counts clear in
 vi.mock("@fiftyone/state", () => ({
   resetExtendedSelectionTransaction: vi.fn(),
+  // state.ts registers its counts at import
+  registerExtendedSelectionResetParticipant: () => () => undefined,
 }));
 
 describe("useClearSelectionOnClose", () => {
+  beforeEach(() => {
+    vi.mocked(resetExtendedSelectionTransaction).mockClear();
+    registry.effect = null;
+  });
+
   it("registers a close effect that clears the selection and the pill", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <RecoilRoot
@@ -61,5 +68,15 @@ describe("useClearSelectionOnClose", () => {
     // The pill reads these; left set, a reopened panel's tab would claim
     // a selection that no longer exists
     expect(result.current).toEqual({ count: null, sampleCount: null });
+  });
+
+  it("leaves another panel's selection when the plot published none", () => {
+    // The plot only highlights a selection made elsewhere (a Map lasso);
+    // its owner clears it, as the Map panel does on its own close
+    renderHook(() => useClearSelectionOnClose(), { wrapper: RecoilRoot });
+
+    act(() => registry.effect?.());
+
+    expect(resetExtendedSelectionTransaction).not.toHaveBeenCalled();
   });
 });

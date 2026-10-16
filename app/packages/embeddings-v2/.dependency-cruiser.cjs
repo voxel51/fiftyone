@@ -35,13 +35,17 @@ module.exports = {
     {
       // Third: the renderer keeps zero workspace dependencies — three
       // is its only runtime dep; React appears solely in the wrapper
-      // layer via the host.
+      // layer via the host. One deliberate exception: @fiftyone/events,
+      // the App's one channel for e2e test signals. Its bus is plain
+      // TypeScript that imports no other workspace package (React lives
+      // only in its hooks, which the renderer doesn't use), so it adds no
+      // drift and can't close a cycle.
       name: "renderer-keeps-no-workspace-deps",
       severity: "error",
       from: { path: SRC },
       to: {
         path: "node_modules/@fiftyone(/|$)|^packages/",
-        pathNot: "^packages/embeddings-v2/",
+        pathNot: "^packages/(embeddings-v2|events)/",
       },
     },
     {
