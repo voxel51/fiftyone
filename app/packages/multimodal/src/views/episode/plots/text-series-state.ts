@@ -39,13 +39,17 @@ export interface TextSeriesState {
     priorAtNs?: bigint,
   ): Float64Array;
 
-  /** Whether reads should ask for priors: the series holds text. */
-  isText(key: string): boolean;
+  /**
+   * Whether reads should also fetch the newest sample before their window:
+   * the series holds text, or nothing yet shows its kind (a field the
+   * catalog has not listed, or a catalog still loading).
+   */
+  needsPrior(key: string): boolean;
 
   /** Snapshot of a text series' labels, indexed by code. */
   labels(key: string): readonly string[] | undefined;
 
-  /** Notes the catalog's text fields, so their first reads ask for priors. */
+  /** Notes the catalog's fields, so known numeric fields skip priors. */
   noteCatalog(streams: readonly NumericStreamFields[]): void;
 
   /**
@@ -72,7 +76,11 @@ export function createTextSeriesState(): TextSeriesState {
   // One append-only table per text series, so cached tiles from different
   // reads keep one code per label.
   const labelTables = new Map<string, SeriesLabelTable>();
+  const catalogKeys = new Set<string>();
   const catalogTextKeys = new Set<string>();
+  // Fields a read has shown to be numeric, whether or not the catalog has
+  // listed them.
+  const numericKeys = new Set<string>();
   // Tiles only hold samples inside their range, so the newest sample before
   // each read window lives here.
   const priorsByKey = new Map<string, HeldStatePrior[]>();
@@ -84,7 +92,10 @@ export function createTextSeriesState(): TextSeriesState {
         table = createSeriesLabelTable();
         labelTables.set(key, table);
       }
-      if (!table) return field.values;
+      if (!table) {
+        if (field.values.some(Number.isFinite)) numericKeys.add(key);
+        return field.values;
+      }
 
       const values = remapSeriesLabelCodes(field.values, field.labels, table);
       if (
@@ -102,8 +113,9 @@ export function createTextSeriesState(): TextSeriesState {
       }
       return values;
     },
-    isText(key) {
-      return labelTables.has(key) || catalogTextKeys.has(key);
+    needsPrior(key) {
+      if (labelTables.has(key) || catalogTextKeys.has(key)) return true;
+      return !catalogKeys.has(key) && !numericKeys.has(key);
     },
     labels(key) {
       const labels = labelTables.get(key)?.labels;
@@ -112,9 +124,9 @@ export function createTextSeriesState(): TextSeriesState {
     noteCatalog(streams) {
       for (const stream of streams) {
         for (const field of stream.fields) {
-          if (field.valueType === "string") {
-            catalogTextKeys.add(numericSeriesKey(stream.streamId, field.path));
-          }
+          const key = numericSeriesKey(stream.streamId, field.path);
+          catalogKeys.add(key);
+          if (field.valueType === "string") catalogTextKeys.add(key);
         }
       }
     },

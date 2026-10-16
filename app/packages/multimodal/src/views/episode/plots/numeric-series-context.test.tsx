@@ -551,9 +551,11 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     const request = sliceRequestOf(client, 0);
     expect(request.maxChunks).toBe(1);
     expect(request.preferredTimeNs).toBe(30_000_000_000n);
+    // No field catalog has loaded, so neither field's kind is known yet and
+    // both ask for the held state before the window.
     expect(request.selections).toEqual([
-      { fields: ["accel.x"], stream: "/imu" },
-      { fields: ["speed"], stream: "/odom" },
+      { fields: ["accel.x"], includePrior: true, stream: "/imu" },
+      { fields: ["speed"], includePrior: true, stream: "/odom" },
     ]);
     const state = context.current?.seriesByKey.get(
       numericSeriesKey("/imu", "accel.x"),

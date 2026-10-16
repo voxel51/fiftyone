@@ -937,7 +937,7 @@ export function NumericSeriesBridge({
             selections: [...fieldsByStream].map(([stream, fields]) => ({
               fields: [...fields],
               ...([...fields].some((field) =>
-                textSeries.isText(numericSeriesKey(stream, field)),
+                textSeries.needsPrior(numericSeriesKey(stream, field)),
               )
                 ? { includePrior: true }
                 : {}),

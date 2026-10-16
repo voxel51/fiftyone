@@ -17,7 +17,7 @@ describe("createTextSeriesState", () => {
     const field = packed([0, 1], [3, 4]);
 
     expect(state.encode(KEY, field, 0n)).toBe(field.values);
-    expect(state.isText(KEY)).toBe(false);
+    expect(state.needsPrior(KEY)).toBe(false);
     expect(state.tileKey(KEY)).toBe(KEY);
   });
 
@@ -33,12 +33,14 @@ describe("createTextSeriesState", () => {
 
     expect([...second]).toEqual([1, 0]);
     expect(state.labels(KEY)).toEqual(["PARK", "DRIVE"]);
-    expect(state.isText(KEY)).toBe(true);
+    expect(state.needsPrior(KEY)).toBe(true);
     expect(state.tileKey(KEY)).not.toBe(KEY);
   });
 
-  it("treats catalog text fields as text before their first read", () => {
+  it("asks for priors until a field is known to be numeric", () => {
     const state = createTextSeriesState();
+    const unlisted = numericSeriesKey("/drive", "note");
+    expect(state.needsPrior(KEY)).toBe(true);
 
     state.noteCatalog([
       {
@@ -53,8 +55,15 @@ describe("createTextSeriesState", () => {
       },
     ]);
 
-    expect(state.isText(KEY)).toBe(true);
-    expect(state.isText(numericSeriesKey("/drive", "speed"))).toBe(false);
+    expect(state.needsPrior(KEY)).toBe(true);
+    expect(state.needsPrior(numericSeriesKey("/drive", "speed"))).toBe(false);
+    // The catalog can miss fields, e.g. text first published after the
+    // sampled messages; those ask until a read shows their kind.
+    expect(state.needsPrior(unlisted)).toBe(true);
+    state.encode(unlisted, packed([0], [Number.NaN]), 0n);
+    expect(state.needsPrior(unlisted)).toBe(true);
+    state.encode(unlisted, packed([1], [2]), 0n);
+    expect(state.needsPrior(unlisted)).toBe(false);
   });
 
   it("holds the prior state into a horizon with no earlier sample", () => {
