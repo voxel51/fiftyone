@@ -8,6 +8,8 @@ const mockActivateSchemas = vi.fn();
 const mockSetLabelSchema = vi.fn();
 const mockSetActiveSchemaPaths = vi.fn();
 let mockCanManageSchema = true;
+let mockActiveFieldsChoice: string[] | null = [];
+const mockSetActiveFields = vi.fn();
 
 // stand-ins for the schema atoms, read through jotaiStore.get()
 const LABEL_SCHEMAS_ATOM = { atom: "labelSchemasData" };
@@ -61,7 +63,7 @@ vi.mock("@fiftyone/state", () => ({
       registerExitCallback: vi.fn(),
     };
   }),
-  useActiveModalFields: () => [[], vi.fn()],
+  useActiveModalFields: () => [mockActiveFieldsChoice, mockSetActiveFields],
   useModalSample: () => ({ sample: { _id: "test-sample-id" } }),
   useQueryPerformanceSampleLimit: () => 1000,
   useUnboundStateRef: (val: unknown) => ({ current: val }),
@@ -120,6 +122,31 @@ vi.mock("./useSchemaResolver", async () => {
 
 const { useAnnotationContextManager, InitializationStatus } =
   await import("./useAnnotationContextManager");
+const { DefaultContextManager } = await import("@fiftyone/state");
+
+describe("enter", () => {
+  beforeEach(() => {
+    mockSetActiveFields.mockClear();
+    mockActiveFieldsChoice = [];
+  });
+
+  it("restores the default active fields on exit, not a resolved list", async () => {
+    // nothing chosen: the default, which follows the current schema
+    mockActiveFieldsChoice = null;
+    const manager = vi.mocked(DefaultContextManager).mock.results[0].value;
+    manager.registerExitCallback.mockClear();
+
+    const { result } = renderHook(() => useAnnotationContextManager());
+    await act(async () => {
+      await result.current.enter();
+    });
+
+    const [[{ callback }]] = manager.registerExitCallback.mock.calls;
+    callback();
+
+    expect(mockSetActiveFields).toHaveBeenCalledWith(null);
+  });
+});
 
 describe("activateField", () => {
   beforeEach(() => {
