@@ -16,6 +16,29 @@ export type ExecutionStoreSubscribeCallback<T> = (
 ) => void;
 
 /**
+ * Delivers execution store notifications by other means than the operator's
+ * SSE stream. Returns a release function, or `null` to decline a subscription
+ * (which then falls back to the operator's stream).
+ */
+export type ExecutionStoreTransport = (request: {
+  operatorUri: string;
+  datasetId?: string;
+  onMessage: ExecutionStoreSubscribeCallback<unknown>;
+  onHealth: (healthy: boolean) => void;
+}) => (() => void) | null;
+
+let transport: ExecutionStoreTransport | null = null;
+
+/** Routes subscriptions through `next`, or back to the operator's stream when `null`. */
+export const setExecutionStoreTransport = (
+  next: ExecutionStoreTransport | null,
+) => {
+  transport = next;
+};
+
+export const getExecutionStoreTransport = () => transport;
+
+/**
  * Custom hook to subscribe to an execution store using Server-Sent Events (SSE).
  *
  * @param operatorUri - The URI of the execution store subscription operator.
@@ -103,11 +126,23 @@ export const useExecutionStoreSubscribe = <T>({
   const setupSubscription = useRecoilCallback(
     ({ snapshot }) =>
       () => {
+        const resolvedOperatorUri = resolveOperatorURI(operatorUri);
+
+        const release = transport?.({
+          operatorUri: resolvedOperatorUri,
+          datasetId,
+          onMessage: (key, value, metadata) =>
+            callbackRef.current(key, value as T, metadata),
+          onHealth: setIsSubscriptionHealthy,
+        });
+        if (release) {
+          abortControllerRef.current.signal.addEventListener("abort", release);
+          return;
+        }
+
         const datasetName = datasetId
           ? snapshot.getLoadable(fos.datasetName).getValue()
           : undefined;
-
-        const resolvedOperatorUri = resolveOperatorURI(operatorUri);
 
         const data = {
           dataset_id: datasetId,
