@@ -14,6 +14,7 @@ import warnings
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -22,6 +23,11 @@ import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 logger = logging.getLogger(__name__)
+
+
+_BDD100K_IA_BASE = "https://archive.org/download/bdd100k"
+_BDD100K_IMAGES_ZIP = "bdd100k_images.zip"
+_BDD100K_LABELS_ZIP = "bdd100k_labels.zip"
 
 
 class BDDDatasetImporter(
@@ -376,6 +382,196 @@ def load_bdd_annotations(json_path):
     return {d["name"]: d for d in annotations}
 
 
+def download_bdd100k_dataset(
+    dataset_dir, scratch_dir=None, source_dir=None, copy_files=True
+):
+    """Downloads the BDD100K dataset from the Internet Archive mirror.
+
+    If ``source_dir`` is provided, an existing download in the legacy 2018
+    layout is used instead of fetching from the network.
+
+    Args:
+        dataset_dir: the directory in which to construct the dataset
+        scratch_dir (None): a scratch directory for downloads and extraction
+        source_dir (None): an existing BDD100K source directory in the
+            legacy 2018 layout
+        copy_files (True): whether to copy (True) or move (False) source
+            files when populating ``dataset_dir``
+
+    Returns:
+        the number of samples added across all splits
+    """
+    if source_dir is not None:
+        try:
+            parse_bdd100k_dataset(
+                source_dir, dataset_dir, copy_files=copy_files
+            )
+        except OSError as e:
+            # The underlying error advises a manual download, which no longer
+            # applies; the chained cause carries its detail
+            raise OSError(
+                "Failed to parse the BDD100K source directory '%s'. Expected "
+                "the legacy 2018 layout described by `fiftyone zoo datasets "
+                "info bdd100k`." % source_dir
+            ) from e
+
+        return _count_split_samples(dataset_dir)
+
+    if scratch_dir is None:
+        scratch_dir = os.path.join(dataset_dir, "scratch")
+
+    etau.ensure_dir(scratch_dir)
+
+    extracted_dir = os.path.join(scratch_dir, "bdd100k")
+
+    # Whatever is reused from the scratch directory is complete: an archive
+    # is renamed into place once it has downloaded in full, and its marker is
+    # written once it has extracted in full, so an interrupted step is
+    # repeated rather than reused
+    for name, filename in (
+        ("images", _BDD100K_IMAGES_ZIP),
+        ("labels", _BDD100K_LABELS_ZIP),
+    ):
+        archive = os.path.join(scratch_dir, filename)
+        if not os.path.isfile(archive):
+            logger.info(
+                "Downloading BDD100K %s from %s...", name, _BDD100K_IA_BASE
+            )
+            etaw.download_file(
+                "%s/%s" % (_BDD100K_IA_BASE, filename),
+                path=archive + ".part",
+            )
+            os.replace(archive + ".part", archive)
+        else:
+            logger.info("Using existing archive '%s'", archive)
+
+        marker = os.path.join(scratch_dir, "%s.extracted" % name)
+        if not os.path.isfile(marker):
+            logger.info("Extracting %s archive...", name)
+            etau.extract_archive(archive, outdir=scratch_dir)
+            with open(marker, "w"):
+                pass
+
+    for split in ("train", "val", "test"):
+        images_dir = os.path.join(extracted_dir, "images", "100k", split)
+        if not os.path.isdir(images_dir):
+            # The parse below requires every split's images
+            raise OSError(
+                "Expected %s images at '%s', but that directory does not "
+                "exist. The extracted archive at '%s' does not have the "
+                "expected layout" % (split, images_dir, extracted_dir)
+            )
+
+    for split in ("train", "val"):
+        mot_dir = os.path.join(extracted_dir, "labels", "100k", split)
+        out_path = os.path.join(
+            extracted_dir,
+            "labels",
+            "bdd100k_labels_images_%s.json" % split,
+        )
+        if os.path.isfile(out_path):
+            logger.info("Using existing consolidated labels '%s'", out_path)
+            continue
+        if not os.path.isdir(mot_dir):
+            # Both splits are required by the parse below, so failing here
+            # names the missing directory instead of surfacing later
+            raise OSError(
+                "Expected %s labels at '%s', but that directory does not "
+                "exist. The extracted archive at '%s' does not have the "
+                "expected layout" % (split, mot_dir, extracted_dir)
+            )
+        logger.info(
+            "Converting %s per-image labels to legacy layout...", split
+        )
+        _convert_mot_to_legacy_labels(mot_dir, out_path)
+
+    try:
+        parse_bdd100k_dataset(
+            extracted_dir, dataset_dir, copy_files=copy_files
+        )
+    except OSError as e:
+        raise OSError(
+            "Failed to parse BDD100K from the archives extracted to '%s'. "
+            "The download may be incomplete or the mirror layout may have "
+            "changed; delete '%s' to force a fresh download."
+            % (extracted_dir, scratch_dir)
+        ) from e
+
+    return _count_split_samples(dataset_dir)
+
+
+def _convert_mot_to_legacy_labels(mot_dir, out_path):
+    """Consolidates per-image MOT-style label JSONs at ``mot_dir`` into a
+    single legacy-format JSON at ``out_path``.
+    """
+    entries = []
+    for filename in sorted(etau.list_files(mot_dir)):
+        if not filename.endswith(".json"):
+            continue
+        mot = etas.load_json(os.path.join(mot_dir, filename))
+
+        name = mot.get("name", "")
+        if name and not name.endswith(".jpg"):
+            name = name + ".jpg"
+
+        frames = mot.get("frames") or []
+        raw_objects = frames[0].get("objects", []) if frames else []
+
+        labels = []
+        for obj in raw_objects:
+            converted = {k: v for k, v in obj.items() if k != "poly2d"}
+            if "poly2d" in obj:
+                converted["poly2d"] = _convert_mot_poly2d(
+                    obj["poly2d"], obj.get("category", "")
+                )
+            labels.append(converted)
+
+        entries.append(
+            {
+                "name": name,
+                "attributes": mot.get("attributes", {}) or {},
+                "labels": labels,
+            }
+        )
+
+    # Renamed into place once written, so a reused file is complete
+    etas.write_json(entries, out_path + ".part")
+    os.replace(out_path + ".part", out_path)
+
+
+def _convert_mot_poly2d(mot_poly2d, category):
+    """Wraps a MOT-style poly2d (list of ``[x, y, type]`` triples) in the
+    legacy structure: ``[{"vertices": [...], "types": "...", "closed": bool}]``.
+
+    ``closed`` is inferred from the category prefix: drivable / alternative
+    areas (``area/*``) are closed polygons; lane markings (``lane/*``) are
+    open polylines.
+    """
+    # A point without its type is dropped, so vertices and types stay aligned
+    points = [pt for pt in mot_poly2d if len(pt) >= 3]
+    vertices = [[pt[0], pt[1]] for pt in points]
+    types = "".join(pt[2] for pt in points)
+    return [
+        {
+            "vertices": vertices,
+            "types": types,
+            "closed": category.startswith("area/"),
+        }
+    ]
+
+
+def _count_split_samples(dataset_dir):
+    """Returns the number of images in the split directories of
+    ``dataset_dir``.
+    """
+    total = 0
+    for split in ("train", "validation", "test"):
+        split_data_dir = os.path.join(dataset_dir, split, "data")
+        if os.path.isdir(split_data_dir):
+            total += len(etau.list_files(split_data_dir))
+    return total
+
+
 def parse_bdd100k_dataset(
     source_dir, dataset_dir, copy_files=True, overwrite=False
 ):
@@ -599,7 +795,7 @@ def _parse_bdd_polylines(d, frame_size, extra_attrs):
         if "types" in poly2d:
             _attributes["types"] = poly2d["types"]
 
-        _attributes = _filter_attributes(attributes, extra_attrs)
+        _attributes = _filter_attributes(_attributes, extra_attrs)
 
         polylines.append(
             fol.Polyline(
