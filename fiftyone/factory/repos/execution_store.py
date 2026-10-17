@@ -347,6 +347,7 @@ class ExecutionStoreRepo(AbstractExecutionStoreRepo):
                 f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
             )
         self._dataset_id = dataset_id
+        self._notification_service = None
 
         if not is_notification_service_disabled():
             if notification_service is None:
