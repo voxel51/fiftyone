@@ -40,13 +40,20 @@ def _get_database_name():
     return config.get("database_name", "fiftyone")
 
 
-def _load_config():
+def _get_config_path():
     if "FIFTYONE_CONFIG_PATH" in os.environ:
-        config_path = os.environ["FIFTYONE_CONFIG_PATH"]
+        return os.environ["FIFTYONE_CONFIG_PATH"]
+
+    if "FIFTYONE_CONFIG_DIR" in os.environ:
+        config_dir = os.environ["FIFTYONE_CONFIG_DIR"]
     else:
-        config_path = os.path.join(
-            os.path.expanduser("~"), ".fiftyone", "config.json"
-        )
+        config_dir = os.path.join(os.path.expanduser("~"), ".fiftyone")
+
+    return os.path.join(config_dir, "config.json")
+
+
+def _load_config():
+    config_path = _get_config_path()
 
     config = {}
 
