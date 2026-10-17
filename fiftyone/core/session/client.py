@@ -84,6 +84,7 @@ class Client:
                         asdict(
                             ListenPayload(
                                 events=[
+                                    "app_count_update",
                                     "capture_notebook_cell",
                                     "close_session",
                                     "reactivate_notebook_cell",

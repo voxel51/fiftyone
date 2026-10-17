@@ -47,6 +47,7 @@ from fiftyone.core.session.constants import (
     VALID_SELECTION_TYPES,
 )
 from fiftyone.core.session.events import (
+    AppCountUpdate,
     CaptureNotebookCell,
     CloseSession,
     DeactivateNotebookCell,
@@ -84,6 +85,8 @@ logger = logging.getLogger(__name__)
 _session = None
 _server_services = {}
 _subscribed_sessions = defaultdict(set)
+
+_WAIT_POLL_INTERVAL = 1
 
 _APP_WEB_MESSAGE = """
 App launched. Point your web browser to http://localhost:{0}
@@ -395,7 +398,7 @@ class Session(object):
             config.notebook_height = height
 
         self._plots: t.Optional[fop.PlotManager] = None
-        self._wait_closed = False
+        self._wait_closed_at: t.Optional[float] = None
 
         # Maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
@@ -1272,9 +1275,18 @@ class Session(object):
                 while True:
                     time.sleep(10)
             else:
-                self._wait_closed = False
-                while not self._wait_closed:
-                    time.sleep(wait)
+                self._wait_closed_at = None
+                while True:
+                    closed_at = self._wait_closed_at
+                    if closed_at is None:
+                        time.sleep(_WAIT_POLL_INTERVAL)
+                        continue
+
+                    remaining = closed_at + wait - time.monotonic()
+                    if remaining <= 0:
+                        return
+
+                    time.sleep(remaining)
         except KeyboardInterrupt:
             self._disable_wait_warning = True
             raise
@@ -1302,9 +1314,15 @@ class Session(object):
 
 def _attach_listeners(session: "Session"):
     on_close_session: t.Callable[[CloseSession], None] = lambda _: setattr(
-        session, "_wait_closed", True
+        session, "_wait_closed_at", time.monotonic()
     )
     session._client.add_event_listener("close_session", on_close_session)
+
+    def on_app_count_update(event: AppCountUpdate) -> None:
+        if event.count > 0:
+            session._wait_closed_at = None
+
+    session._client.add_event_listener("app_count_update", on_app_count_update)
 
     on_refresh: t.Callable[[Refresh], None] = lambda event: _on_refresh(
         session, event.state

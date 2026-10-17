@@ -7,7 +7,11 @@ FiftyOne session events-related unit tests.
 """
 
 from dataclasses import asdict
+import threading
+import time
+import types
 import unittest
+from unittest import mock
 
 from dacite import from_dict
 
@@ -16,7 +20,9 @@ from fiftyone.core.session.constants import (
     DEFAULT_LABEL_SELECTION_STYLE,
     VALID_ICON_STYLES,
 )
+import fiftyone.core.session.session as foss
 from fiftyone.core.session.session import (
+    _attach_listeners,
     _normalize_selected_labels,
     _on_select_labels,
     _resolve_label_selection_style,
@@ -24,6 +30,8 @@ from fiftyone.core.session.session import (
 )
 from fiftyone.core.session.utils import normalize_selected_samples
 from fiftyone.core.session.events import (
+    AppCountUpdate,
+    CloseSession,
     SelectLabels,
     SetLabelSelectionStyle,
     SetSampleSelectionStyle,
@@ -419,3 +427,71 @@ class SessionTests(unittest.TestCase):
             state.label_selection_style,
             {"default": "dashed", "alt": "dashed"},
         )
+
+
+class _FakeClient:
+    def __init__(self):
+        self.listeners = {}
+
+    def add_event_listener(self, event_name, listener):
+        self.listeners[event_name] = listener
+
+
+@mock.patch.object(foss, "_WAIT_POLL_INTERVAL", 0.01)
+@mock.patch.object(foss.focx, "is_notebook_context", return_value=False)
+class SessionWaitTests(unittest.TestCase):
+    def _session(self):
+        session = types.SimpleNamespace(
+            _client=_FakeClient(), _wait_closed_at=None
+        )
+        _attach_listeners(session)
+        return session
+
+    def _wait(self, session, wait):
+        returned = threading.Event()
+
+        def run():
+            foss.Session.wait(session, wait)
+            returned.set()
+
+        threading.Thread(target=run, daemon=True).start()
+        time.sleep(0.05)
+        return returned
+
+    def _emit(self, session, event):
+        session._client.listeners[event.get_event_name()](event)
+
+    def test_wait_returns_after_close(self, _):
+        session = self._session()
+        returned = self._wait(session, 0.2)
+
+        self._emit(session, AppCountUpdate(count=0))
+        self._emit(session, CloseSession())
+
+        self.assertFalse(returned.wait(0.1))
+        self.assertTrue(returned.wait(1))
+
+    def test_wait_continues_after_reconnect(self, _):
+        session = self._session()
+        returned = self._wait(session, 0.2)
+
+        self._emit(session, CloseSession())
+        time.sleep(0.1)
+        self._emit(session, AppCountUpdate(count=1))
+
+        self.assertFalse(returned.wait(0.4))
+
+        self._emit(session, CloseSession())
+        self.assertTrue(returned.wait(1))
+
+    def test_wait_restarts_window_on_each_close(self, _):
+        session = self._session()
+        returned = self._wait(session, 0.3)
+
+        self._emit(session, CloseSession())
+        time.sleep(0.2)
+        self._emit(session, AppCountUpdate(count=1))
+        self._emit(session, CloseSession())
+
+        self.assertFalse(returned.wait(0.2))
+        self.assertTrue(returned.wait(1))
