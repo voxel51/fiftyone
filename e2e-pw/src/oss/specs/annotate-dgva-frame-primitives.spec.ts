@@ -97,6 +97,7 @@ test("primitives follow the playhead and the order-by field is read-only", async
   const sidebar = modal.sidebar.annotate;
   await sidebar.assert.primitiveValue("weather", weatherAt(1));
   await sidebar.assert.primitiveValue("timestamp", String(timestampAt(1)));
+  await modal.videoAnnotate.toggleClockDisplay();
   await modal.videoAnnotate.assert.clock(`#1 / #${FRAMES}`);
   await modal.videoAnnotate.assert.orderByReadout(`(${timestampAt(1)})`);
 

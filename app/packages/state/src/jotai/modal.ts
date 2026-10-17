@@ -58,3 +58,9 @@ export type AnnotationSurface = "image" | "video" | "dgva" | "3d";
 export const __unsafeAnnotationSurfaceAtom = atom<AnnotationSurface | null>(
   null as AnnotationSurface | null,
 );
+
+export type VideoTimelineDisplay = "frames" | "time";
+
+/** `null` until the user toggles; `use_frame_number` decides until then. */
+export const __unsafeVideoTimelineDisplayAtom =
+  atom<VideoTimelineDisplay | null>(null as VideoTimelineDisplay | null);
