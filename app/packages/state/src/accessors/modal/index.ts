@@ -22,7 +22,7 @@ import type { ModalSample } from "../../recoil";
 import type { Sample } from "@fiftyone/looker";
 import {
   State,
-  _activeFields,
+  activeFieldsChoice,
   activeModalSample,
   currentSampleId,
   fieldSchema,
@@ -41,7 +41,7 @@ import { GroupSampleNotFound } from "../../recoil/modal";
  * schema, so restoring it brings back fields a schema switch showed again.
  */
 export const useActiveModalFields = () =>
-  useRecoilState(_activeFields({ modal: true }));
+  useRecoilState(activeFieldsChoice({ modal: true }));
 
 /**
  * Manager which supports switching modal modes.
