@@ -7,6 +7,7 @@ import {
   isPlayingAtom,
   seekEventAtom,
   speedAtom,
+  stepIntervalAtom,
 } from "./atoms";
 import { PlaybackProvider, usePlaybackStore } from "./PlaybackProvider";
 import { getMasterMuted, setMasterMuted } from "./store-access";
@@ -124,15 +125,16 @@ describe("useVideoSync", () => {
   });
 
   describe("seek events → video", () => {
-    it("seeks the video when a seek event fires", () => {
+    it("seeks the video to the middle of the event's frame", () => {
       const video = makeVideo(0);
       const { result } = renderSync(video);
+      const step = result.current.store.get(stepIntervalAtom);
 
       act(() => {
         result.current.store.set(seekEventAtom, { time: 5, seq: 1 });
       });
 
-      expect(video.currentTime).toBe(5);
+      expect(video.currentTime).toBeCloseTo(5 + step / 2, 12);
     });
 
     it("does not seek when the ref is null", () => {

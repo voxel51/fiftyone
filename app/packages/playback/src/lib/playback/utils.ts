@@ -87,3 +87,20 @@ export function resolveAtTime<T>(
 
   return bestKey !== null ? (cache.get(bestKey) as T) : null;
 }
+
+/**
+ * The time to seek a `<video>` element to so it shows the frame `time` falls
+ * in: that frame's midpoint. A seek onto a frame's exact start can resolve to
+ * the previous frame once the browser rounds it to the container's
+ * timescale, so a frame step would repaint the frame it just left.
+ */
+export function videoSeekTime(time: number, step: number): number {
+  if (!(step > 0) || !Number.isFinite(time)) {
+    return time;
+  }
+
+  // the same tolerance as the engine's frame math, so a time sitting at
+  // `K * step` reads as frame K
+  const frame = Math.floor((time + step * 1e-6) / step);
+  return Math.max(0, (frame + 0.5) * step);
+}

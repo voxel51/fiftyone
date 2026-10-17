@@ -93,7 +93,9 @@ export const getFrameNumber = (
   if (time === duration) {
     stamp -= 0.1 * frameDuration;
   }
-  return Math.floor(stamp * frameRate + FRAME_ZERO_OFFSET);
+  // a time on a frame's start can land a hair below it in floating point
+  // (31 / 15 * 15 is 30.999…), which would floor to the previous frame
+  return Math.floor(stamp * frameRate + 1e-6 + FRAME_ZERO_OFFSET);
 };
 
 export const getClampedTime = (
