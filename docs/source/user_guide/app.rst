@@ -449,6 +449,36 @@ from the `Sort by` dropdown in the upper right corner of the Samples panel.
     When :ref:`Query Performance <app-optimizing-query-performance>` is
     enabled, only fields that are indexed can be sorted on.
 
+.. note::
+
+    For datasets with more than 10,000 samples, the `Sort by` dropdown lists
+    only fields with their own index, and a note at the bottom of the dropdown
+    says so. Wildcard indexes such as `$**` do not count. For
+    :ref:`grouped datasets <groups>`, sort on a single-value field with a
+    compound index that ends with the group slice name:
+
+    .. code-block:: python
+
+        dataset.create_index([("captured_at", 1), ("group.name", 1)])
+
+    If the grid is already sorted by an unindexed field, for example from a
+    saved workspace, the sort stays in place and the dropdown marks the field
+    as not indexed. The grid scrolls through such a sort in order, but cannot
+    jump to a position in it. Add an index on the field to jump through it.
+
+When the grid holds more than a few pages of samples, a scroll rail replaces
+its scrollbar. Drag the rail to jump through the view; its labels show where
+you are:
+
+-   For datasets with at most 10,000 samples, and for unsorted patches, clips
+    and frames views with fewer than 100,000 samples, the sample's position
+-   For larger datasets sorted by a numeric or datetime field, the field's
+    value
+-   For larger unsorted datasets, the date samples were added
+
+Unsorted patches, clips and frames views with 100,000 or more samples, and
+sorts that cannot jump, show a normal scrollbar instead.
+
 .. _app-managing-grid-memory:
 
 Managing grid memory usage
@@ -789,6 +819,37 @@ the following indexes:
 
     For example, a `("created_at", "ground_truth.label")` compound index
     provides indexed sidebar results for the `created_at` field.
+
+.. _app-sidebar-size-tiers:
+
+Sidebar size tiers
+------------------
+
+For your dataset, and for views that
+:ref:`Query Performance <app-optimizing-query-performance>` can serve, the grid
+sidebar loads its fields according to the size of your dataset:
+
+-   **Fewer than 1,000 samples**: every field's values and counts load up
+    front in a single request, so expanding a field shows them instantly
+-   **Up to 10,000 samples**: every field, indexed or not, is fully
+    searchable with counts when you expand it
+
+In both, fields with fewer than 25 values list them as checkboxes.
+-   **More than 10,000 samples**: the sidebar uses
+    :ref:`Query Performance <app-optimizing-query-performance>`, and indexed
+    fields show lightning bolt icons
+
+Other views, such as patches, clips and frames views, load each field when you
+expand it, with counts. Frame fields are sized by the dataset's number of
+frames. Sizes come from the
+collections' estimated counts, so picking a tier never counts or scans your
+data.
+
+Query Performance, and its setting in the gear menu, is only available for
+datasets with more than 10,000 samples. You can customize the first limit and
+the checkbox limit via the `sidebar_full_aggregation_limit` and
+`sidebar_checkbox_limit` settings of your
+:ref:`App config <configuring-fiftyone-app>`.
 
 .. _app-disabling-query-performance:
 
@@ -2056,7 +2117,8 @@ _________________
 
 If you find yourself frequently using/recreating a certain
 :ref:`spaces layout <app-spaces>`, you can save it as a workspace with a name
-of your choice and then load it later via the App or programmatically!
+of your choice and then load it later via the App or programmatically! A
+workspace saved in the App also keeps the grid's current filters and sort.
 
 .. _app-saving-workspaces:
 
@@ -2064,38 +2126,34 @@ Saving workspaces in the App
 ----------------------------
 
 Continuing from the :ref:`example above <app-spaces-layout>`, once you've
-configured a spaces layout of interest, click the "Unsaved workspace" icon in
-the upper right corner to open the workspaces menu and save your current
-workspace with a name and optional description/color of your choice:
-
-.. image:: /images/app/app-save-workspace.gif
-    :alt: app-save-workspace
-    :align: center
+configured a spaces layout of interest, click "Save workspace" at the right end
+of the tab row and save your current workspace with a name and optional
+description/color of your choice.
 
 .. note::
 
     Saved workspaces include all aspects of your current spaces layout,
     including panel types, layouts, sizes, and even the current state of each
-    panel!
+    panel, as well as the grid's current filters and sort.
 
-You can load saved workspaces at any time later via this same menu:
+Once a workspace is active, the tab row shows its name. Click it to open the
+workspace menu, where you can:
 
-.. image:: /images/app/app-load-workspace.gif
-    :alt: app-load-workspace
-    :align: center
+-   Choose any saved workspace to apply its layout, then its filters, then its
+    sort
+-   Search your workspaces, when the dataset has more than five
+-   Click "Update with current layout" to save your current layout, filters
+    and sort into the active workspace
+-   Click "Edit workspace" to change the active workspace's name, description
+    or color
+-   Click "Delete" to delete the active workspace, which you can undo from the
+    notification that follows
+-   Click "Save as new workspace" to save your current layout, filters and
+    sort under a new name
 
-You can also edit the details of an existing saved workspace at any time by
-clicking on its pencil icon in the workspace menu:
-
-.. image:: /images/app/app-update-workspace.gif
-    :alt: app-update-workspace
-    :align: center
-
-.. note::
-
-    If you want to modify the layout of an existing saved workspace, you must
-    delete the existing workspace and then re-save it under the same name after
-    modifying the layout in the App.
+A dot beside the workspace's name in the tab row means that your panels,
+splits, active tabs, filters or sort differ from what the workspace saved.
+Resizing panels or changing a panel's own state does not count as a change.
 
 .. _app-saving-workspaces-python:
 
@@ -2146,6 +2204,7 @@ to create a new saved workspace with a name of your choice:
         workspace,
         description="Samples, embeddings, histograms, oh my!",
         color="#FF6D04",
+        sort={"field": "uniqueness", "descending": True},
     )
 
 .. note::
@@ -2175,6 +2234,11 @@ Then in a future session you can load the workspace by name with
     # Or, load a workspace on an existing session
     session.spaces = workspace
 
+.. note::
+
+    Loading a workspace in Python sets its spaces layout. The App applies a
+    workspace's filters and sort when you choose it from the workspace menu.
+
 Saved workspaces have certain editable metadata such as a name, description,
 and color that you can view via
 :meth:`get_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`
@@ -2199,7 +2263,9 @@ and update via
     # {
     #   'name': 'still-my-workspace',
     #   'description': 'Samples, embeddings, histograms, oh my oh my!!',
-    #   'color': None
+    #   'color': '#FF6D04',
+    #   'filters': None,
+    #   'sort': {'field': 'uniqueness', 'descending': True}
     # }
 
 You can also use
