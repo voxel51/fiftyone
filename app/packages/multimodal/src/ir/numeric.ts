@@ -1,6 +1,9 @@
 import type { StreamId } from "./manifest";
 
-/** One scalar numeric leaf addressable by a plot or inspector. */
+/**
+ * One scalar leaf addressable by a plot or inspector. A "string" value type
+ * plots as discrete states; every other type plots as a numeric line.
+ */
 export interface NumericFieldDescriptor {
   readonly path: string;
   readonly valueType: string;
@@ -30,6 +33,12 @@ export interface NumericSeriesField {
   readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when supplied by the adapter. */
   readonly bucketGapMask?: Uint8Array;
+
+  /**
+   * Present when the field holds text: each finite value is an index into
+   * these labels, local to this result. NaN still marks a gap.
+   */
+  readonly labels?: readonly string[];
   readonly path: string;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;

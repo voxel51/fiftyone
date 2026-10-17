@@ -298,6 +298,11 @@ values, robot state and action dimensions, etc. — over the full duration of
 the recording. A playhead marks the current playback position, and clicking
 anywhere in the plot seeks the shared clock to that time.
 
+Text fields, such as a drive mode, a gear, or a decoded CAN signal like a
+road condition, are plotted as state lanes beneath any numeric series. Each
+lane shows when the value changed and how long each state held, and the
+legend reads out the state at the hovered time.
+
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/plot-panel.webp
    :alt: multimodal-plot-tile
    :align: center
@@ -850,9 +855,9 @@ projections are supported:
 
 -   **labels**: per-message rows extracted from annotation streams, e.g. the
     text and geometry of every image annotation
--   **signals**: numeric time series sampled from message fields, e.g.
-    vehicle speed, steering angle, or IMU rates, with configurable sampling
-    strategies
+-   **signals**: time series sampled from message fields, e.g. vehicle
+    speed, steering angle, or IMU rates, or discrete states such as a drive
+    mode or road condition, with configurable sampling strategies
 -   **events**: derived time intervals computed from other projections using
     :ref:`expressions <multimodal-expressions>`, e.g. "windows of high
     steering lasting at least 500ms"

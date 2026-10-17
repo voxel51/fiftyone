@@ -293,18 +293,40 @@ describe("StructuredMessageTree", () => {
     expect(entryReads).toBe(readsAfterInitialRender);
   });
 
-  it("shows add-to-plot actions for every rendered scalar numeric leaf", () => {
-    render(
-      <StructuredMessageTree onAddNumericFieldToPlot={addToPlot} root={ROOT} />,
-    );
+  it("shows add-to-plot actions for every rendered plottable scalar leaf", () => {
+    render(<StructuredMessageTree onAddFieldToPlot={addToPlot} root={ROOT} />);
 
     expect(screen.getByTestId("episode-raw-plot-speed")).toBeTruthy();
     expect(screen.getByTestId("episode-raw-plot-sequence")).toBeTruthy();
     expect(screen.getByTestId("episode-raw-plot-pose.position.x")).toBeTruthy();
-    expect(screen.queryByTestId("episode-raw-plot-label")).toBeNull();
-    expect(screen.queryByTestId("episode-raw-plot-enabled")).toBeNull();
+    expect(screen.getByTestId("episode-raw-plot-label")).toBeTruthy();
+    expect(screen.getByTestId("episode-raw-plot-enabled")).toBeTruthy();
     expect(screen.getByTestId("episode-raw-plot-unlisted")).toBeTruthy();
     expect(screen.getByTestId("episode-raw-plot-data.0")).toBeTruthy();
+  });
+
+  it("does not offer truncated text, which is payload rather than a state", () => {
+    render(
+      <StructuredMessageTree
+        onAddFieldToPlot={addToPlot}
+        root={{
+          entries: [
+            [
+              "blob",
+              {
+                kind: "scalar",
+                truncated: true,
+                value: "aGVsbG8",
+                valueType: "string",
+              },
+            ],
+          ],
+          kind: "object",
+        }}
+      />,
+    );
+
+    expect(screen.queryByTestId("episode-raw-plot-blob")).toBeNull();
   });
 
   it("hides add-to-plot actions when no handler is available", () => {
@@ -314,9 +336,7 @@ describe("StructuredMessageTree", () => {
   });
 
   it("emits the dotted field path when a plottable row is added", () => {
-    render(
-      <StructuredMessageTree onAddNumericFieldToPlot={addToPlot} root={ROOT} />,
-    );
+    render(<StructuredMessageTree onAddFieldToPlot={addToPlot} root={ROOT} />);
 
     fireEvent.click(screen.getByTestId("episode-raw-plot-pose.position.x"));
 
@@ -328,9 +348,7 @@ describe("StructuredMessageTree", () => {
   });
 
   it("emits an indexed dotted path for numeric array elements", () => {
-    render(
-      <StructuredMessageTree onAddNumericFieldToPlot={addToPlot} root={ROOT} />,
-    );
+    render(<StructuredMessageTree onAddFieldToPlot={addToPlot} root={ROOT} />);
 
     fireEvent.click(screen.getByTestId("episode-raw-plot-data.0"));
 

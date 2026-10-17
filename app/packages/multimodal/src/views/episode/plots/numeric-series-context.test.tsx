@@ -551,14 +551,84 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     const request = sliceRequestOf(client, 0);
     expect(request.maxChunks).toBe(1);
     expect(request.preferredTimeNs).toBe(30_000_000_000n);
+    // No field catalog has loaded, so neither field's kind is known yet and
+    // both ask for the held state before the window.
     expect(request.selections).toEqual([
-      { fields: ["accel.x"], stream: "/imu" },
-      { fields: ["speed"], stream: "/odom" },
+      { fields: ["accel.x"], includePrior: true, stream: "/imu" },
+      { fields: ["speed"], includePrior: true, stream: "/odom" },
     ]);
     const state = context.current?.seriesByKey.get(
       numericSeriesKey("/imu", "accel.x"),
     );
     expect(state?.status).toBe("ready");
+  });
+
+  it("holds a sparse text state from before the window", async () => {
+    const source = createSource();
+    const client = createClient({
+      enumerateNumericFields: vi.fn(async () => [
+        {
+          availability: "ready" as const,
+          encoding: "json",
+          fields: [{ path: "mode", valueType: "string" }],
+          sourceName: "/drive",
+          streamId: "/drive",
+        },
+      ]),
+      readNumericSeriesSlice: vi.fn(
+        async (request: NumericSeriesSliceRequest) => ({
+          ...sliceResult(request, { stopReason: "source-exhausted" }),
+          // The topic published "SPORT" before the window and nothing inside
+          // it: only the prior sample comes back.
+          series: [
+            {
+              baseTimeNs: 0n,
+              fields: [
+                {
+                  labels: ["SPORT"],
+                  path: "mode",
+                  timesSec: Float64Array.from([5]),
+                  values: Float64Array.from([0]),
+                },
+              ],
+              sampleCount: 1,
+              streamId: "/drive",
+              truncated: false,
+            },
+          ],
+        }),
+      ),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await enumerateFields(context);
+    await act(async () => {
+      context.current?.subscribeSeries("/drive", "mode");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+
+    const request = sliceRequestOf(client, 0);
+    expect(request.selections).toEqual([
+      { fields: ["mode"], includePrior: true, stream: "/drive" },
+    ]);
+    expect(request.window.startNs).toBeGreaterThan(5_000_000_000n);
+    const state = context.current?.seriesByKey.get(
+      numericSeriesKey("/drive", "mode"),
+    );
+    expect(state?.labels).toEqual(["SPORT"]);
+    expect([...(state?.timesSec ?? [])]).toEqual([5]);
+    expect([...(state?.values ?? [])]).toEqual([0]);
   });
 
   it("publishes the first page before continuing the horizon", async () => {
@@ -1116,6 +1186,69 @@ describe("NumericSeriesBridge (playback store: windowed fetches)", () => {
     });
 
     expect(client.readNumericSeries).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one stable label encoding for a text series across reads", async () => {
+    const labelsByRead = [
+      ["dry", "wet"],
+      ["wet", "ice"],
+    ];
+    const source = createSource();
+    const client = createClient({
+      readNumericSeries: vi.fn(
+        async (
+          request: Parameters<NumericSeriesCapability["readNumericSeries"]>[0],
+        ) => {
+          const read = vi.mocked(client.readNumericSeries).mock.calls.length;
+          const startSec = Number(request.window.startNs) / 1e9;
+          return {
+            baseTimeNs: 0n,
+            fields: request.fields.map((path) => ({
+              labels: labelsByRead[read - 1],
+              path,
+              timesSec: Float64Array.from([startSec, startSec + 1]),
+              values: Float64Array.from([0, 1]),
+            })),
+            sampleCount: 2,
+            streamId: request.stream,
+            truncated: false,
+          };
+        },
+      ),
+    });
+    const context = createContextRef();
+    const store = createStore();
+    store.set(playheadAtom, 60);
+
+    render(
+      <Harness
+        client={client}
+        contextRef={context}
+        durationSec={DURATION_SEC}
+        source={source}
+        store={store}
+      />,
+    );
+    await act(async () => {
+      context.current?.subscribeSeries("/vehicle", "road");
+      await advanceTimers(FIELD_SELECTION_DEBOUNCE_MS);
+    });
+    const key = numericSeriesKey("/vehicle", "road");
+    expect(context.current?.seriesByKey.get(key)?.labels).toEqual([
+      "dry",
+      "wet",
+    ]);
+
+    await act(async () => {
+      store.set(playheadAtom, 1_800);
+      await flushMicrotasks();
+    });
+
+    const state = context.current?.seriesByKey.get(key);
+    expect(client.readNumericSeries).toHaveBeenCalledTimes(2);
+    expect(state?.labels).toEqual(["dry", "wet", "ice"]);
+    // The second read's local codes (wet=0, ice=1) map onto the shared table.
+    expect([...(state?.values ?? [])]).toEqual([1, 2]);
   });
 
   it("publishes only the current viewport after disjoint fills", async () => {

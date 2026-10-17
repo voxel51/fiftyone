@@ -41,6 +41,13 @@ const FIELD_SAMPLE_MESSAGE_LIMIT = 3;
  */
 const SAMPLED_ARRAY_ELEMENT_LIMIT = DEFAULT_RAW_PRUNE_BUDGETS.maxArrayLength;
 
+/**
+ * Sampled text longer than this is treated as payload (encoded blobs,
+ * serialized documents) rather than a state worth plotting. Schema-declared
+ * text fields are listed regardless; their length is unknown up front.
+ */
+const SAMPLED_TEXT_MAX_LENGTH = 256;
+
 interface NumericFieldWalkResult {
   readonly fields: McapNumericFieldDescriptor[];
   needsSampling: boolean;
@@ -93,6 +100,11 @@ const ROS_NUMERIC_SCALAR_TYPES: ReadonlySet<string> = new Set([
   "float64",
   "float",
   "double",
+]);
+
+const ROS_TEXT_SCALAR_TYPES: ReadonlySet<string> = new Set([
+  "string",
+  "wstring",
 ]);
 
 function rosNumericFields(
@@ -152,6 +164,8 @@ function walkRosDefinition(
 
     if (ROS_NUMERIC_SCALAR_TYPES.has(field.type)) {
       result.fields.push({ path, valueType: field.type });
+    } else if (ROS_TEXT_SCALAR_TYPES.has(field.type)) {
+      result.fields.push({ path, valueType: "string" });
     }
   }
 }
@@ -193,7 +207,11 @@ function walkProtobufType(
       continue;
     }
 
-    if (PROTOBUF_NUMERIC_SCALAR_TYPES.has(field.type)) {
+    // Text plots as discrete states; `bytes` stays unplottable.
+    if (
+      PROTOBUF_NUMERIC_SCALAR_TYPES.has(field.type) ||
+      field.type === "string"
+    ) {
       result.fields.push({ path, valueType: field.type });
     }
   }
@@ -206,10 +224,11 @@ function protobufNumericFields(type: Type): NumericFieldWalkResult {
 }
 
 /**
- * Collects numeric leaf field paths from sampled message records. Arrays are
- * addressed by dotted indexes (`position.0`) and bounded to the same first 50
- * elements shown by the raw-message inspector. The union across samples is
- * returned in first-seen order.
+ * Collects plottable leaf field paths (numeric, boolean, and short text) from
+ * sampled message records. Arrays are addressed by dotted indexes
+ * (`position.0`) and bounded to the same first 50 elements shown by the
+ * raw-message inspector. The union across samples is returned in first-seen
+ * order.
  */
 export function numericFieldsFromSamples(
   samples: readonly Record<string, unknown>[],
@@ -227,7 +246,7 @@ function walkSampleValue(
   depth: number,
   out: Map<string, McapNumericFieldDescriptor>,
 ): void {
-  const valueType = sampledNumericValueType(value);
+  const valueType = sampledValueType(value);
   if (prefix && valueType) {
     if (!out.has(prefix)) {
       out.set(prefix, { path: prefix, valueType });
@@ -264,7 +283,7 @@ function walkSampleValue(
 }
 
 /**
- * Enumerates plottable numeric fields for every requested topic.
+ * Enumerates plottable numeric and text fields for every requested topic.
  * Protobuf channels walk their binary descriptor and ROS channels walk their
  * parsed message definitions without touching message data. Schemas
  * containing dynamic paths and JSON channels fall back to at most three
@@ -645,7 +664,10 @@ function mergeNumericFields(
   return [...byPath.values()];
 }
 
-function sampledNumericValueType(value: unknown): string | undefined {
+function sampledValueType(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value.length <= SAMPLED_TEXT_MAX_LENGTH ? "string" : undefined;
+  }
   if (typeof value === "number") {
     return Number.isFinite(value) ? "number" : undefined;
   }

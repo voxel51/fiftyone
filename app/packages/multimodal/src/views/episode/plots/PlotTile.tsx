@@ -43,8 +43,9 @@ import { useRegisterTileSettings } from "../tiles/tile-settings-context";
 import styles from "../tiles/Tile.module.css";
 
 /**
- * Numeric plot tile: charts enabled stream+field series against the recording
- * timeline with a playback-synced playhead and click-to-seek. The bridge loads
+ * Plot tile: charts enabled stream+field series against the recording
+ * timeline with a playback-synced playhead and click-to-seek. Numeric fields
+ * draw as lines; text fields draw as lanes of held states. The bridge loads
  * the follow or pinned viewport on demand; exact shading keeps unread source
  * spans distinct from decoded no-data gaps and unavailable source units.
  */
@@ -130,6 +131,7 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
     const out: {
       readonly color: string;
       readonly label: string;
+      readonly labels?: readonly string[];
       readonly timesSec: Float64Array;
       readonly values: Float64Array;
     }[] = [];
@@ -142,6 +144,7 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
         out.push({
           color: entry.config.color,
           label: plotSeriesDisplayName(entry.config, sourceNamesByBinding),
+          labels: entry.state.labels,
           timesSec: entry.state.timesSec,
           values: entry.state.values,
         });
@@ -151,7 +154,16 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
   }, [resolved, sourceNamesByBinding]);
 
   const chartSeries: readonly TimeseriesChartSeries[] = useMemo(
-    () => ready.map((entry) => ({ color: entry.color, label: entry.label })),
+    () =>
+      ready.map((entry) => ({
+        color: entry.color,
+        kind: entry.labels ? "states" : "line",
+        label: entry.label,
+      })),
+    [ready],
+  );
+  const stateLabels = useMemo(
+    () => ready.map((entry) => entry.labels),
     [ready],
   );
 
@@ -285,6 +297,7 @@ const PlotTile: React.FC<EpisodeTileProps> = () => {
           registerPlayheadListener={registerPlayheadListener}
           resetZoomRevision={resetZoomRevision}
           series={chartSeries}
+          stateLabels={stateLabels}
           unavailableRanges={unavailableRanges}
         />
       ) : (

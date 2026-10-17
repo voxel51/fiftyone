@@ -1,4 +1,4 @@
-import { Checkbox } from "@voxel51/voodo";
+import { Checkbox, Text } from "@voxel51/voodo";
 import React, { useMemo, useState } from "react";
 import type { NumericStreamFields } from "../../../ir";
 import { useNumericSeriesContext } from "./numeric-series-context";
@@ -15,9 +15,10 @@ import SidebarGroup from "../settings/controls/SidebarGroup";
 import settingsStyles from "../tiles/Tile.settings.module.css";
 
 /**
- * Settings sidebar for the plot tile: every stream with numeric leaf
+ * Settings sidebar for the plot tile: every stream with plottable leaf
  * fields, one checkbox per field, enabled series carrying their color
- * swatch. Streams without plottable fields are listed disabled with an
+ * swatch and text fields (plotted as states) marked as such. Streams
+ * without plottable fields are listed disabled with an
  * availability reason — a legible gap beats silent absence. Registered
  * into the sidebar's tile-settings registry, so it renders while this
  * tile is focused.
@@ -132,6 +133,7 @@ function PlotStreamGroup({
       <div className={settingsStyles.optionStack}>
         {stream.fields.map((field) => {
           const enabled = enabledByPath.get(field.path);
+          const isText = field.valueType === "string";
           return (
             <div
               className={settingsStyles.fieldRow}
@@ -146,12 +148,21 @@ function PlotStreamGroup({
                 }
                 {...settingsBooleanNoSpaceToggleProps}
               />
-              {enabled ? (
-                <span
-                  aria-hidden="true"
-                  className={PlotTileStyles.swatch}
-                  style={{ backgroundColor: enabled.color }}
-                />
+              {isText || enabled ? (
+                <span className={PlotTileStyles.fieldMeta}>
+                  {isText ? (
+                    <Text color="text-secondary" variant="caption">
+                      text
+                    </Text>
+                  ) : null}
+                  {enabled ? (
+                    <span
+                      aria-hidden="true"
+                      className={PlotTileStyles.swatch}
+                      style={{ backgroundColor: enabled.color }}
+                    />
+                  ) : null}
+                </span>
               ) : null}
             </div>
           );
@@ -168,7 +179,7 @@ function unavailableStreamCopy(
     case "schema-unavailable":
       return {
         message:
-          "This stream's schema could not be read, so numeric fields cannot be listed",
+          "This stream's schema could not be read, so its fields cannot be listed",
         summary: "schema unavailable",
       };
     case "unsupported-encoding":
@@ -179,8 +190,8 @@ function unavailableStreamCopy(
     case "no-numeric-fields":
       return {
         message:
-          "This stream decodes, but its schema has no scalar numeric fields to plot",
-        summary: "no numeric fields",
+          "This stream decodes, but has no scalar numeric or text fields to plot",
+        summary: "no plottable fields",
       };
   }
 }
