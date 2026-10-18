@@ -7,9 +7,18 @@ Using Agents
 .. default-role:: code
 
 .. meta::
-    :description: How to connect AI assistants to FiftyOne using the MCP
-        server and FiftyOne Skills, with setup instructions for every
-        major AI tool.
+    :description: How to connect AI assistants to a Voxel51 deployment
+        using the agent gateway (MCP) and FiftyOne Skills, authenticated
+        as yourself with your own account permissions.
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+.. note::
+
+    Remote agent access is a Voxel51 feature and must be explicitly enabled
+    by your deployment's administrator (it ships behind a feature flag, off
+    by default). If it's not enabled yet, ask your FiftyOne admin.
 
 .. _using-agents-overview:
 
@@ -31,10 +40,11 @@ to complete this task end to end."*
 Two Parts, One System
 ---------------------
 
-**FiftyOne MCP Server** connects agents to FiftyOne's 80+ operators, dataset
-management, model inference, brain computations, and the App. It implements
-the open `Model Context Protocol <https://modelcontextprotocol.io>`_ standard,
-giving any compatible agent direct access to your data and tools.
+**The agent gateway** connects an agent directly to your Voxel51 deployment
+over the open `Model Context Protocol <https://modelcontextprotocol.io>`_
+standard. You authenticate as yourself, through a one-time browser approval,
+so the agent acts with exactly your own role and dataset permissions, no
+separate service account or shared credential involved.
 
 **FiftyOne Skills** are expert workflows built on top. Each skill teaches the
 agent how to complete a specific task: import data, find duplicates, visualize
@@ -47,39 +57,47 @@ ___________
 
 .. _using-agents-step1:
 
-Step 1: Install the MCP Server
---------------------------------
+Step 1: Install the Skill
+---------------------------
+
+The fastest path: install the skill and let it handle the rest, including
+asking you for your deployment's URL and walking you through the one-time
+browser approval.
 
 .. code-block:: bash
 
-    pip install fiftyone-mcp-server
+    curl -fsSL https://skil.sh | sh -s -- voxel51/fiftyone-skills
 
-.. warning::
+When prompted, select **voxel51-agent-setup**. Then just ask your agent:
 
-   Install into the same Python environment where FiftyOne is installed.
-   If you use a virtual environment or conda environment, activate it first
-   or use the full path to the executable in your AI tool config.
+.. code-block:: prompt
 
-To verify the installation:
+    "Connect my agent to our Voxel51 deployment"
 
-.. code-block:: bash
-
-    fiftyone-mcp
-
-You should see:
-
-.. code-block:: text
-
-    Starting fiftyone-mcp server...
-    fiftyone-mcp server initialized successfully
-
-Press ``Ctrl+C`` to stop it. Your AI tool manages the server lifecycle
-automatically once configured.
+See the :ref:`Agent Ecosystem <agents-skills>` for the full list of
+available skills, or :ref:`develop your own <developing-skills-authoring>`.
 
 .. _using-agents-step2:
 
-Step 2: Configure Your AI Tool
---------------------------------
+Step 2: Manual Configuration (optional)
+------------------------------------------
+
+Prefer to configure it yourself, without installing the skill? Add the
+gateway as a remote MCP server using your deployment's gateway URL:
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Deployment
+     - Gateway URL
+   * - Voxel51 Cloud
+     - ``https://app.voxel51.com/api/proxy/fiftyone-teams/mcp``
+   * - Self-hosted Voxel51
+     - ``https://<your-deployment>/api/proxy/fiftyone-teams/mcp`` (ask your
+       admin for ``<your-deployment>``)
+
+Substitute whichever applies in the examples below.
 
 .. tabs::
 
@@ -87,21 +105,23 @@ Step 2: Configure Your AI Tool
 
       .. code-block:: bash
 
-          claude mcp add fiftyone -- fiftyone-mcp
+          claude mcp add --transport http --scope user voxel51-agent-gateway \
+            https://<your-deployment>/api/proxy/fiftyone-teams/mcp \
+            --client-id voxel51-agent-mcp
 
    .. tab:: Claude Desktop
 
-      Edit ``~/Library/Application Support/Claude/claude_desktop_config.json``:
+      Remote servers are added through the Connectors UI, not
+      ``claude_desktop_config.json`` (that file is for local servers only):
 
-      .. code-block:: json
-
-          {
-            "mcpServers": {
-              "fiftyone": {
-                "command": "fiftyone-mcp"
-              }
-            }
-          }
+      1. Go to **Settings > Connectors**.
+      2. Click **Add**, then **Add custom connector**.
+      3. Enter a name and the gateway URL.
+      4. Under **OAuth client**, choose **Use your own OAuth client** (not
+         *Register automatically*, which attempts Dynamic Client
+         Registration and fails against this deployment) and enter
+         ``voxel51-agent-mcp``.
+      5. Click **Add**, then sign in when prompted.
 
    .. tab:: Cursor
 
@@ -112,16 +132,14 @@ Step 2: Configure Your AI Tool
 
           {
             "mcpServers": {
-              "fiftyone": {
-                "command": "fiftyone-mcp"
+              "voxel51-agent-gateway": {
+                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "auth": {
+                  "CLIENT_ID": "voxel51-agent-mcp"
+                }
               }
             }
           }
-
-      Or use the one-click install:
-      `Install FiftyOne MCP in Cursor <cursor://anysphere.cursor-deeplink/mcp/install?name=fiftyone&config=eyJjb21tYW5kIjoiZmlmdHlvbmUtbWNwIn0>`_
-
-      Restart Cursor after saving.
 
    .. tab:: VS Code
 
@@ -131,115 +149,52 @@ Step 2: Configure Your AI Tool
 
           {
             "servers": {
-              "fiftyone": {
-                "command": "fiftyone-mcp",
-                "type": "stdio"
+              "voxel51-agent-gateway": {
+                "type": "http",
+                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "oauth": {
+                  "clientId": "voxel51-agent-mcp"
+                }
               }
             }
           }
-
-      Or use the one-click install:
-      `Install FiftyOne MCP in VS Code <https://insiders.vscode.dev/redirect/mcp/install?name=fiftyone&config=%7B%22command%22%3A%22fiftyone-mcp%22%7D>`_
 
    .. tab:: GitHub Copilot
 
       Add to ``.vscode/mcp.json`` in your workspace (create if it doesn't
-      exist):
+      exist), same shape as the VS Code tab (including the ``oauth``
+      block), then enable **Agent mode** in Copilot Chat.
 
-      .. code-block:: json
+.. important::
 
-          {
-            "servers": {
-              "fiftyone": {
-                "type": "stdio",
-                "command": "fiftyone-mcp"
-              }
-            }
-          }
+    The ``--client-id`` (or equivalent) is required: this deployment's auth
+    server doesn't support Dynamic Client Registration, so a client that
+    tries to register one on its own fails with
+    ``Incompatible auth server: does not support dynamic client
+    registration``. ``voxel51-agent-mcp`` is the fixed client id every agent
+    uses. If your client's config format has no way to pin a client id and
+    hits that error, install the skill instead (Step 1), which also offers
+    a CLI-based fallback (``fiftyone agent login``).
 
-      Enable **Agent mode** in Copilot Chat. MCP tools appear automatically
-      once the server is configured.
-
-   .. tab:: Gemini CLI
-
-      The Gemini CLI extension registers the MCP server automatically.
-      Install skills and MCP together:
-
-      .. code-block:: bash
-
-          gemini extensions install https://github.com/voxel51/fiftyone-skills.git --consent
-
-      If ``fiftyone-mcp`` is not on your PATH, edit the extension config
-      to use the full path to the executable.
-
-   .. tab:: Antigravity
-
-      Create or edit ``.antigravity/mcp.json`` in your project directory:
-
-      .. code-block:: json
-
-          {
-            "mcpServers": {
-              "fiftyone": {
-                "command": "fiftyone-mcp"
-              }
-            }
-          }
-
-      Restart Antigravity after saving.
-
-   .. tab:: uvx (no install)
-
-      If you have `uv <https://github.com/astral-sh/uv>`_ installed, skip
-      the ``pip install`` step entirely:
-
-      .. code-block:: json
-
-          {
-            "mcpServers": {
-              "fiftyone": {
-                "command": "uvx",
-                "args": ["fiftyone-mcp-server"]
-              }
-            }
-          }
+Restart your agent after adding the server; new MCP servers only attach on
+the next session. Then trigger the connection (e.g. by trying to use one of
+the new tools): your agent opens a browser for a one-time OAuth consent
+screen. Sign in and approve, no API key needed.
 
 .. _using-agents-step3:
 
-Step 3: Install Skills
------------------------
-
-Skills teach your agent how to complete complex FiftyOne workflows end to
-end. Run the command below to download the `universal installer <https://skil.sh>`_
-and install the default skills pack from `voxel51/fiftyone-skills
-<https://github.com/voxel51/fiftyone-skills>`_:
-
-.. code-block:: bash
-
-    curl -sL skil.sh | sh -s -- voxel51/fiftyone-skills
-
-You can also :ref:`develop and install your own skills <developing-skills-authoring>`
-to teach agents custom workflows specific to your project.
-
-See the :ref:`Agent Ecosystem <agents-skills>` for the full list of
-available skills and per-agent install instructions.
-
-.. _using-agents-step4:
-
-Step 4: Use It
+Step 3: Use It
 ---------------
 
 .. code-block:: prompt
 
-    "List all my datasets"
-    "Load quickstart dataset and show summary"
-    "Open the map panel and show me the embeddings"
-    "Select samples with confidence above 0.9"
-    "What plugins are available? Install the brain plugin"
-    "Find near-duplicate images in my dataset"
+    "List the FiftyOne operators I can run"
+    "Run the duplicate-detection operator on my quickstart dataset"
+    "Evaluate my model's predictions and summarize the results"
+    "Check the status of my last background run"
 
-Your agent automatically discovers operators and executes the appropriate
-tools.
+Your agent discovers the operators your account is permitted to run, live
+on every call, and executes the appropriate tools.
 
 .. _using-agents-tools:
 
@@ -247,74 +202,21 @@ Available Tools
 _______________
 
 .. list-table::
-   :widths: 5 25 10 60
+   :widths: 25 75
    :header-rows: 1
 
-   * -
-     - Category
-     - Tools
+   * - Tool
      - Description
-   * - 📊
-     - Dataset Management
-     - 3
-     - List, load, and summarize datasets
-   * - 🎯
-     - App Operations
-     - 29
-     - Control the App UI (views, panels, selection, …)
-   * - ⚡
-     - Operator System
-     - 3
-     - Discover and execute any FiftyOne operator
-   * - 🔄
-     - Pipelines
-     - 2
-     - Run pipelines and manage delegated operations
-   * - 🔌
-     - Plugin Management
-     - 5
-     - Discover, install, and manage plugins
-   * - 🖥️
-     - Session
-     - 1
-     - Launch the FiftyOne App server
-   * - 📈
-     - Aggregations
-     - 8
-     - Count, distinct, bounds, mean, histogram, …
-   * - 🧬
-     - Samples
-     - 5
-     - Add, tag, untag, and set values on samples
-   * - 🗂️
-     - Schema
-     - 2
-     - Inspect and modify dataset field schemas
-   * - 🎨
-     - App Config
-     - 6
-     - Color scheme, sidebar groups, active fields
-
-.. _using-agents-modes:
-
-Tool Modes
-__________
-
-Which tools are available depends on your integration:
-
-.. list-table::
-   :widths: 30 25 45
-   :header-rows: 1
-
-   * - Integration
-     - Modes
-     - Use case
-   * - Voxel-Agent
-     - ``app`` + ``sdk``
-     - Agent in :ref:`Voxel51 <fiftyone-enterprise>` (full UI control + data operations)
-   * - Terminal / CLI
-     - ``session`` + ``sdk``
-     - Headless agent (launch the App, query data, execute operators)
+   * - ``list_operators``
+     - List the operators you currently have permission to run
+   * - ``get_operator_schema``
+     - Get one operator's input schema before running it
+   * - ``execute_operator``
+     - Run an operator, optionally in the background (``delegate=True``)
+   * - ``list_delegated_operations``
+     - List your own background runs and their status
+   * - ``get_delegated_operation``
+     - Check on one background run's status and, once complete, its outcome
 
 .. _using-agents-resources:
 
@@ -327,19 +229,13 @@ _________
 
    * - Resource
      - Description
-   * - `FiftyOne MCP Server <https://github.com/voxel51/fiftyone-mcp-server>`_
-     - Source code and contributing guide
    * - `FiftyOne Skills <https://github.com/voxel51/fiftyone-skills>`_
-     - Expert workflows for AI assistants
+     - Expert workflows for AI assistants, including ``voxel51-agent-setup``
    * - `FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_
      - Official plugin collection
    * - `Model Context Protocol <https://modelcontextprotocol.io>`_
      - MCP specification
-   * - `PyPI Package <https://pypi.org/project/fiftyone-mcp-server/>`_
-     - MCP server on PyPI
-   * - `MCP Discovery Manifest </.well-known/mcp.json>`_
-     - Machine-readable FiftyOne MCP server manifest
-   * - `Skills Manifest </.well-known/skills.json>`_
-     - Pointer to the FiftyOne skills marketplace manifest
+   * - `Voxel51 documentation <https://docs.voxel51.com/enterprise/index.html>`_
+     - Voxel51 Cloud and self-hosted deployment docs
    * - `Discord Community <https://discord.gg/fiftyone-community>`_
      - Get help and share ideas
