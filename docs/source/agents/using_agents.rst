@@ -111,18 +111,17 @@ Substitute whichever applies in the examples below.
 
    .. tab:: Claude Desktop
 
-      Edit ``~/Library/Application Support/Claude/claude_desktop_config.json``:
+      Remote servers are added through the Connectors UI, not
+      ``claude_desktop_config.json`` (that file is for local servers only):
 
-      .. code-block:: json
-
-          {
-            "mcpServers": {
-              "voxel51-agent-gateway": {
-                "type": "http",
-                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
-              }
-            }
-          }
+      1. Go to **Settings > Connectors**.
+      2. Click **Add**, then **Add custom connector**.
+      3. Enter a name and the gateway URL.
+      4. Under **OAuth client**, choose **Use your own OAuth client** (not
+         *Register automatically*, which attempts Dynamic Client
+         Registration and fails against this deployment) and enter
+         ``voxel51-agent-mcp``.
+      5. Click **Add**, then sign in when prompted.
 
    .. tab:: Cursor
 
@@ -134,8 +133,10 @@ Substitute whichever applies in the examples below.
           {
             "mcpServers": {
               "voxel51-agent-gateway": {
-                "type": "http",
-                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
+                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "auth": {
+                  "CLIENT_ID": "voxel51-agent-mcp"
+                }
               }
             }
           }
@@ -150,7 +151,10 @@ Substitute whichever applies in the examples below.
             "servers": {
               "voxel51-agent-gateway": {
                 "type": "http",
-                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
+                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "oauth": {
+                  "clientId": "voxel51-agent-mcp"
+                }
               }
             }
           }
@@ -158,8 +162,8 @@ Substitute whichever applies in the examples below.
    .. tab:: GitHub Copilot
 
       Add to ``.vscode/mcp.json`` in your workspace (create if it doesn't
-      exist), same shape as the VS Code tab, then enable **Agent mode** in
-      Copilot Chat.
+      exist), same shape as the VS Code tab (including the ``oauth``
+      block), then enable **Agent mode** in Copilot Chat.
 
 .. important::
 
