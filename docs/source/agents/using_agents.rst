@@ -66,7 +66,7 @@ browser approval.
 
 .. code-block:: bash
 
-    curl -sL skil.sh | sh -s -- voxel51/fiftyone-skills
+    curl -fsSL https://skil.sh | sh -s -- voxel51/fiftyone-skills
 
 When prompted, select **voxel51-agent-setup**. Then just ask your agent:
 
