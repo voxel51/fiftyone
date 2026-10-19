@@ -6,6 +6,15 @@ import { NumericFilter } from "./pathFilters/numeric";
 import { StringFilter } from "./pathFilters/string";
 import { expandPath } from "./schema";
 
+export const isValueWithinRange = (
+  value: number,
+  range: NumericFilter["range"],
+): boolean => {
+  const [min, max] = range;
+
+  return (min === null || value >= min) && (max === null || value <= max);
+};
+
 export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
   {
     key: "skeletonFilter",
@@ -92,9 +101,7 @@ export default selectorFamily<(path: string, value: Point) => boolean, boolean>(
                 }
               }
 
-              const includes =
-                value[key] >= numFilter.range[0] &&
-                value[key] <= numFilter.range[1];
+              const includes = isValueWithinRange(value[key], numFilter.range);
               const r = numFilter.exclude ? !includes : includes;
 
               if (!r) {
