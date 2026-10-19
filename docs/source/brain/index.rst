@@ -726,7 +726,7 @@ pre-compute embeddings and them feed them to
     index = fob.compute_near_duplicates(
         dataset,
         embeddings=embeddings,
-        thresh=0.02,
+        threshold=0.02,
     )
 
 Finding near-duplicate samples
