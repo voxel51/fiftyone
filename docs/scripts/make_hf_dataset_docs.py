@@ -252,10 +252,14 @@ This is a **Hugging Face dataset**. For large datasets, ensure `huggingface_hub>
 """
                 # The page title is the first heading, so cards that open
                 # with an H2 like "## Installation" need an H1 of their own
+                pretty = metadata.get("pretty_name") if metadata else None
+                title_text = (
+                    " ".join(str(pretty or "").split()) or display_name
+                )
                 title = (
                     ""
                     if self._first_heading_level(readme or "") == 1
-                    else f"# {display_name}\n\n"
+                    else f"# {title_text}\n\n"
                 )
                 f.write(
                     title
