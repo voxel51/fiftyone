@@ -411,7 +411,8 @@ def _parse_export_fields(fields, media_field, export_media):
         fields = media_field
 
     if isinstance(fields, dict):
-        paths, header = zip(*fields.items())
+        paths = list(fields.keys())
+        header = list(fields.values())
     elif etau.is_str(fields):
         paths = [fields]
         header = [fields]
