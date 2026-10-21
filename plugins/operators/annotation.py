@@ -268,8 +268,53 @@ class CreateAndActivateField(foo.Operator):
             name="create_and_activate_field",
             label="Create and activate field",
             unlisted=True,
+            dynamic=True,
             risk_level=types.RiskLevel.MEDIUM,
         )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        inputs.str(
+            "field_name",
+            required=True,
+            label="Field name",
+            description="The name of the field to create",
+        )
+
+        inputs.enum(
+            "field_category",
+            ["label", "primitive"],
+            required=True,
+            label="Field category",
+            description=(
+                "Whether to create a label field (detections, "
+                "classifications, keypoints, etc.) or a primitive field "
+                "(string, int, float, etc.)"
+            ),
+        )
+
+        field_category = ctx.params.get("field_category")
+        if field_category == "label":
+            type_choices = sorted(foac.LABEL_TYPE_TO_CLASS)
+        elif field_category == "primitive":
+            type_choices = sorted(foac.TYPE_TO_FIELD)
+        else:
+            type_choices = sorted(
+                set(foac.LABEL_TYPE_TO_CLASS) | set(foac.TYPE_TO_FIELD)
+            )
+
+        inputs.enum(
+            "field_type",
+            type_choices,
+            required=True,
+            label="Field type",
+            description="The type of field to create for the chosen category",
+        )
+
+        inputs.bool("read_only", default=False, label="Read only")
+
+        return types.Property(inputs)
 
     def execute(self, ctx):
         field_name = ctx.params.get("field_name")
@@ -283,6 +328,18 @@ class CreateAndActivateField(foo.Operator):
         is_frame_field = field_name.startswith(_FRAMES_PREFIX)
 
         try:
+            if field_category not in ("label", "primitive"):
+                if field_type in foac.LABEL_TYPE_TO_CLASS:
+                    field_category = "label"
+                elif field_type in foac.TYPE_TO_FIELD:
+                    field_category = "primitive"
+                else:
+                    raise ValueError(
+                        f"Unknown field type: {field_type!r}. Expected a "
+                        f"label type ({sorted(foac.LABEL_TYPE_TO_CLASS)}) "
+                        f"or a primitive type ({sorted(foac.TYPE_TO_FIELD)})"
+                    )
+
             if field_category == "label":
                 label_schema = self._create_label_field(
                     ctx, field_name, field_type, read_only, is_frame_field
