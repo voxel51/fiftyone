@@ -17,38 +17,31 @@ Using Agents
 .. note::
 
     Remote agent access is a Voxel51 feature and must be explicitly enabled
-    by your deployment's administrator (it ships behind a feature flag, off
-    by default). If it's not enabled yet, ask your FiftyOne admin.
+    by your deployment's administrator. If it's not enabled yet, ask your Voxel51 admin.
 
-.. _using-agents-overview:
+.. _using-agents-outcomes:
 
-What Are Skills and MCP?
-________________________
+What You'll Have When You're Done
+__________________________________
 
-Skills and MCP solve different parts of the same problem. MCP is about
-connection: it lets an agent talk to real systems, run real operations, and
-get real results instead of just generating text. Skills are about guidance:
-they teach the agent how to use those capabilities correctly for a specific
-task. MCP exposes what the system can do, while skills explain how and when
-to do it.
+- Your coding agent (Claude Code, Cursor, or any MCP-compliant client)
+  connected directly to your Voxel51 deployment
+- A one-time browser approval instead of a shared credential: the agent acts
+  with exactly your own role and dataset permissions
+- The ability to ask your agent to run any FiftyOne operator you're permitted
+  to use, in the foreground or as a background run
 
-On their own, tools are powerful but ambiguous. Skills turn those tools into
-repeatable workflows. They encode experience, decisions, and guardrails.
-Together, they let agents move from *"I can call functions"* to *"I know how
-to complete this task end to end."*
+.. _using-agents-prereqs:
 
-Two Parts, One System
----------------------
+Before You Start
+_________________
 
-**The agent gateway** connects an agent directly to your Voxel51 deployment
-over the open `Model Context Protocol <https://modelcontextprotocol.io>`_
-standard. You authenticate as yourself, through a one-time browser approval,
-so the agent acts with exactly your own role and dataset permissions, no
-separate service account or shared credential involved.
-
-**FiftyOne Skills** are expert workflows built on top. Each skill teaches the
-agent how to complete a specific task: import data, find duplicates, visualize
-embeddings. Skills handle the nuances so you don't have to.
+- A Voxel51 deployment with remote agent access enabled by an admin
+- Your deployment's host: Voxel51 Cloud is always ``app.voxel51.com``; for a
+  self-hosted deployment, ask your admin
+- A coding agent that can fetch a URL and act on what it reads (Claude Code,
+  Cursor, and most others can); if yours can't, skip to
+  :ref:`Manual Configuration <using-agents-manual>` below
 
 .. _using-agents-quickstart:
 
@@ -57,29 +50,59 @@ ___________
 
 .. _using-agents-step1:
 
-Step 1: Install the Skill
----------------------------
+Step 1: Copy the Prompt
+-------------------------
 
-The fastest path: install the skill and let it handle the rest, including
-asking you for your deployment's URL and walking you through the one-time
-browser approval.
+Paste this into your agent's chat:
+
+.. code-block:: prompt
+
+    Read and follow https://raw.githubusercontent.com/voxel51/fiftyone-skills/main/skills/voxel51-agent-setup/SKILL.md
+    to connect me to my Voxel51 deployment.
+
+That's it, no install step first. Your agent fetches the skill and takes it
+from there: asks which deployment you're on, configures the connection, and
+walks you through the one-time browser approval below.
+
+Prefer a persistent install over a one-off fetch? Run the universal
+installer and select **voxel51-agent-setup**, then use the same prompt:
 
 .. code-block:: bash
 
     curl -fsSL https://skil.sh | sh -s -- voxel51/fiftyone-skills
 
-When prompted, select **voxel51-agent-setup**. Then just ask your agent:
-
-.. code-block:: prompt
-
-    "Connect my agent to our Voxel51 deployment"
-
-See the :ref:`Agent Ecosystem <agents-skills>` for the full list of
-available skills, or :ref:`develop your own <developing-skills-authoring>`.
-
 .. _using-agents-step2:
 
-Step 2: Manual Configuration (optional)
+Step 2: What to Expect
+------------------------
+
+Your agent asks which deployment you're on (Voxel51 Cloud or self-hosted),
+then configures the connection on its own. When it tries to use the
+connection for the first time, your browser opens to a one-time approval
+screen:
+
+.. image:: https://cdn.voxel51.com/voxel-agent/mcp-server/mcp_oauth_approval.webp
+   :alt: One-time browser approval screen for connecting a coding agent to a Voxel51 deployment
+   :align: center
+
+Sign in and click **Approve**. No API key or token to copy anywhere:
+
+.. image:: https://cdn.voxel51.com/voxel-agent/mcp-server/mcp_auth_success.webp
+   :alt: Browser confirmation that authentication succeeded and you can return to your coding agent
+   :align: center
+
+Close the tab and return to your agent; it picks up from there and confirms
+the connection.
+
+.. note::
+
+    New MCP servers only attach on the next session. If the tools don't
+    appear right away, restart your agent (or start a fresh conversation)
+    and try again.
+
+.. _using-agents-manual:
+
+Step 3: Manual Configuration (optional)
 ------------------------------------------
 
 Prefer to configure it yourself, without installing the skill? Add the
@@ -165,25 +188,16 @@ Substitute whichever applies in the examples below.
       exist), same shape as the VS Code tab (including the ``oauth``
       block), then enable **Agent mode** in Copilot Chat.
 
-.. important::
-
-    The ``--client-id`` (or equivalent) is required: this deployment's auth
-    server doesn't support Dynamic Client Registration, so a client that
-    tries to register one on its own fails with
-    ``Incompatible auth server: does not support dynamic client
-    registration``. ``voxel51-agent-mcp`` is the fixed client id every agent
-    uses. If your client's config format has no way to pin a client id and
-    hits that error, install the skill instead (Step 1), which also offers
-    a CLI-based fallback (``fiftyone agent login``).
-
 Restart your agent after adding the server; new MCP servers only attach on
 the next session. Then trigger the connection (e.g. by trying to use one of
 the new tools): your agent opens a browser for a one-time OAuth consent
-screen. Sign in and approve, no API key needed.
+screen. Sign in and approve, no API key needed. If your client's config has
+no way to pin a client id, install the skill instead (Step 1), or use
+``fiftyone agent login``.
 
-.. _using-agents-step3:
+.. _using-agents-step4:
 
-Step 3: Use It
+Step 4: Use It
 ---------------
 
 .. code-block:: prompt
@@ -195,6 +209,24 @@ Step 3: Use It
 
 Your agent discovers the operators your account is permitted to run, live
 on every call, and executes the appropriate tools.
+
+.. _using-agents-overview:
+
+How This Works
+_______________
+
+**The agent gateway** connects your agent directly to your Voxel51
+deployment over the open `Model Context Protocol
+<https://modelcontextprotocol.io>`_ standard. Skills and MCP solve different
+parts of the same problem: MCP exposes what your deployment can do, while a
+skill like ``voxel51-agent-setup`` teaches the agent how and when to do it,
+so you get a repeatable workflow instead of a list of raw tool calls.
+
+**FiftyOne Skills** don't stop at connecting the agent. Once you're
+connected, other skills teach it to complete specific tasks end to end:
+import data, find duplicates, visualize embeddings, and more. See the
+:ref:`Agent Ecosystem <agents-skills>` for the full list, or
+:ref:`develop your own <developing-skills-authoring>`.
 
 .. _using-agents-tools:
 
