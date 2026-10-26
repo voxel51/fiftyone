@@ -192,8 +192,7 @@ Restart your agent after adding the server; new MCP servers only attach on
 the next session. Then trigger the connection (e.g. by trying to use one of
 the new tools): your agent opens a browser for a one-time OAuth consent
 screen. Sign in and approve, no API key needed. If your client's config has
-no way to pin a client id, install the skill instead (Step 1), or use
-``fiftyone agent login``.
+no way to pin a client id, install the skill instead (Step 1).
 
 .. _using-agents-step4:
 
