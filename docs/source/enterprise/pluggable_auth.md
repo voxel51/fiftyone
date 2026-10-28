@@ -9,12 +9,14 @@ immediately consistent across Voxel51, and it may run in environments without
 egress to the internet. CAS provides a UI, REST API, and JavaScript (JS) Hook
 mechanism to manage Voxel51 user data and authentication.
 
-CAS authenticates users through
-[OpenID Connect (OIDC)](https://openid.net/developers/discover-openid-and-openid-connect/)
-and [OAuth2](https://oauth.net/2/) identity providers, which organizations
-configure themselves. Deployments whose license includes Auth0 settings can
-also sign in through Auth0, which connects to SAML and other
+CAS authenticates users through an identity provider. Unless the deployment is
+air-gapped, users sign in through the Auth0 provider Voxel51 configures for it,
+which connects to SAML and other
 [enterprise identity providers](https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers).
+Air-gapped deployments configure their own
+[OpenID Connect (OIDC)](https://openid.net/developers/discover-openid-and-openid-connect/)
+or [OAuth2](https://oauth.net/2/) identity provider in CAS, as described in
+[Identity Providers](#custom-identity-providers).
 
 (upgrading-from-legacy-mode)=
 
@@ -44,9 +46,9 @@ configurations (Identity Providers, Session timeouts, and JS hooks).
 
 ![Sign In to CAS](/images/enterprise/cas/cas_sign_in.png)
 
-To login to this application navigate to
-`https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations`. In the top right of the
-screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
+To log in to this application, navigate to
+`https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and enter the
+`FIFTYONE_AUTH_SECRET` in the top right of the page.
 
 > **NOTE**: The value of `FIFTYONE_AUTH_SECRET` should be set prior to
 > installation or upgrade.
@@ -102,6 +104,8 @@ to test the connection.
 > Invitation links can still be generated and manually distributed without an
 > SMTP configuration.
 
+(custom-identity-providers)=
+
 ## Identity Providers (IdP)
 
 Custom identity providers are supported in air-gapped deployments only. Use the
@@ -143,12 +147,12 @@ configuration for KeyCloak as an Identity Provider.
 
 ## Getting Started
 
-Follow the steps below to configure your first admin user in CAS and signin to
+Follow the steps below to configure your first admin user in CAS and sign in to
 the app.
 
-1. Login to the SuperUser UI by navigating to
-   `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and using the
-   `FIFTYONE_AUTH_SECRET` to login at in the top right of the page.
+1. Log in to the Super Admin UI by navigating to
+   `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and entering the
+   `FIFTYONE_AUTH_SECRET` in the top right of the page.
 1. Create an Admin
     1. Click on the “Admins” tab
     1. Click “Add admin” in the bottom left
@@ -162,14 +166,14 @@ the app.
            configuration as a JSON object
     1. In the “Profile callback” field, set the mapping that your Identity
        Provider expects
-1. Login to the app with the same email address as above
+1. Log in to the app with the same email address as above
     1. Navigate to `https://<YOUR_FIFTYONE_TEAMS_URL>/datasets`
-    1. You should be immediately redirected to the signin page. For air-gapped
-       deployments, you should see the a button to signin via your newly
-       configured authentication provider. For all others, you should see a
-       button to signin with the provider Voxel51 has configured for you.
-    1. Before logging in, set the admin user (in step 5). Otherwise, you will
-       need to remove this user from the database and try again.
+    1. You should be immediately redirected to the sign-in page. For air-gapped
+       deployments, you should see a button to sign in through your newly
+       configured identity provider. For all others, you should see a button to
+       sign in through the provider Voxel51 has configured for you.
+    1. Before logging in, create the admin user (in step 2). Otherwise, you
+       will need to remove this user from the database and try again.
     1. Click the login button and provide the credentials to authenticate to
        your IdP
     1. Click on the icon in the top right corner then click “Settings”
