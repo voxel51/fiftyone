@@ -390,6 +390,69 @@ describe("BitmapImageView", () => {
     });
   });
 
+  it("keeps its image and size while out of the document, as a grid tile is while the grid rebuilds", async () => {
+    vi.useFakeTimers({ toFake: ["clearTimeout", "setTimeout"] });
+    const decodes = stubCreateImageBitmap();
+    let width = 100;
+    let height = 50;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      () =>
+        ({
+          bottom: height,
+          height,
+          left: 0,
+          right: width,
+          top: 0,
+          width,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+    let resize: ResizeObserverCallback | null = null;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resize = callback;
+        }
+        disconnect() {
+          // no-op in the test observer
+        }
+        observe() {
+          // no-op in the test observer
+        }
+        unobserve() {
+          // no-op in the test observer
+        }
+      },
+    );
+    sharedMockContext();
+    const bytes = new Uint8Array(24);
+    bytes.set([0x89, 0x50, 0x4e, 0x47], 0);
+    bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+    bytes.set([0, 0, 0x0f, 0xa0], 16);
+    bytes.set([0, 0, 0x07, 0xd0], 20);
+
+    const onCanvasCommitted = vi.fn();
+    const { container } = render(
+      <BitmapImageView bytes={bytes} onCanvasCommitted={onCanvasCommitted} />,
+    );
+    decodes.settle(0, fakeBitmap(100, 50));
+    await act(async () => undefined);
+    onCanvasCommitted.mockClear();
+
+    width = 0;
+    height = 0;
+    act(() => resize?.([], {} as ResizeObserver));
+    act(() => vi.advanceTimersByTime(BITMAP_IMAGE_RESIZE_DEBOUNCE_MS * 5));
+
+    expect(onCanvasCommitted).not.toHaveBeenCalled();
+    expect(createImageBitmap).toHaveBeenCalledTimes(1);
+    const canvas = container.querySelector("canvas");
+    expect([canvas?.width, canvas?.height]).toEqual([100, 50]);
+  });
+
   it("requests a tile-sized bitmap while preserving natural dimensions", async () => {
     const decodes = stubCreateImageBitmap();
     stubElementSize(200, 200);
