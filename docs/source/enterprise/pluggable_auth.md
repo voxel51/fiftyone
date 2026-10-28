@@ -105,8 +105,8 @@ to test the connection.
 ## Identity Providers (IdP)
 
 Use the CAS REST API or Super Admin UI to configure Voxel51 to authenticate
-users via OIDC or OAuth2 compatible Identity Providers. Below is an example
-configuration for KeyCloak as an Identity Provider.
+users via OIDC-compatible or OAuth2-compatible Identity Providers. Below is an
+example configuration for KeyCloak as an Identity Provider.
 
 ```json
 {
