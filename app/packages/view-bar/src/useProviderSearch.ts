@@ -133,6 +133,9 @@ export const useProviderSearch = ({
             key: "view-bar-text-search-failed",
             msg: error instanceof Error ? error.message : String(error),
             variant: "error",
+            // A provider's refusal explains what to do instead, which the
+            // default few seconds are too short to read
+            autoHideDuration: 10000,
           });
         })
         .finally(() => {
