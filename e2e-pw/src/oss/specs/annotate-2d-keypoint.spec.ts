@@ -304,11 +304,20 @@ test.describe("2D annotation keypoint", () => {
       edit.keypointPointAttributeToggle("occluded").click(),
     );
     await edit.assert.keypointPointAttributeChecked("occluded", true);
+
+    // a second edit saves over the stored list: the server loads the sample
+    // first, which fails if the field schema declared the attribute as a
+    // single bool instead of a list
+    await edit.afterKeypointChecklist(() => edit.keypointNodeRow(2).click());
+    await annotate.afterSave(() =>
+      edit.keypointPointAttributeToggle("occluded").click(),
+    );
+    await edit.assert.keypointPointAttributeChecked("occluded", true);
     // the label already carries the field's first class (person), which
     // addresses its row after the reopen
 
-    // after a reopen, only node 1 reads occluded: the stored list is the full
-    // parallel list, one entry per node
+    // after a reopen, only nodes 1 and 2 read occluded: the stored list is
+    // the full parallel list, one entry per node
     await inFreshPage(
       openFreshPage,
       fiftyoneLoader,
@@ -325,7 +334,7 @@ test.describe("2D annotation keypoint", () => {
           );
           await fresh.edit.assert.keypointPointAttributeChecked(
             "occluded",
-            index === 1,
+            index === 1 || index === 2,
           );
         }
       },
