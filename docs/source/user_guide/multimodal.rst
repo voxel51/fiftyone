@@ -31,6 +31,18 @@ lets you visualize, play back, tag, and query all of them in lockstep.
     to visually explore, find similar moments in, and semantically search
     your recordings.
 
+.. _multimodal-installation:
+
+Installation
+____________
+
+Working with multimodal datasets in Python requires some additional
+dependencies, which you can install via FiftyOne's `multimodal` extra:
+
+.. code-block:: shell
+
+    pip install "fiftyone[multimodal]"
+
 .. _multimodal-overview:
 
 Overview
