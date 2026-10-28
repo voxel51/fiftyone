@@ -145,7 +145,7 @@ jobs:
         run: python3 e2e-pw/scripts/check-e2e-events.py .
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
       - name: Prepare yarn
         uses: ./.github/actions/setup-yarn
       - name: Cache E2E Node Modules
