@@ -103,6 +103,15 @@ is automatically inferred as `"multimodal"`:
 
     print(dataset.media_type)  # multimodal
 
+Custom MCAP messages can also become signals, event tracks, and scene geometry
+through :ref:`MCAP scripts <multimodal-mcap-scripts>`, an Enterprise
+feature that saves JavaScript or TypeScript transformations with your dataset.
+
+.. toctree::
+   :maxdepth: 1
+
+   multimodal/mcap_scripts
+
 .. _multimodal-lerobot-datasets:
 
 LeRobot datasets
@@ -415,7 +424,7 @@ tile is showing. It contains the following tabs:
     tile appears with its specific options — for example, which streams and
     overlays an image tile displays, the 3D tile's colormaps and camera
     behavior, the topic/field series charted by a plot tile, or the topic
-    shown in a message tile
+    shown in a message tile. Clicking a tile opens its tab
 
 .. _multimodal-inspector-sidebar:
 
@@ -1178,6 +1187,10 @@ The supported syntax is as follows.
     changed(path)                         # instant events when a value changes;
                                           # may be &&-chained with filter
                                           # predicates
+    rising(pred)                          # instant events when pred changes
+                                          # from false to true
+    falling(pred)                         # instant events when pred changes
+                                          # from true to false
     unique(path)                          # distinct values
     any(pred)                             # true if pred holds anywhere
     max(path), max(abs(path))             # maximum (absolute) value
@@ -1195,9 +1208,19 @@ The supported syntax is as follows.
     path == "string"
     !path                       # boolean NOT
     changed(path)
+    rising(pred)
+    falling(pred)
     path                        # bare path; truthy check
     pred1 && pred2 [&& ...]     # logical AND
     pred1 || pred2 [|| ...]     # logical OR
+
+`rising` and `falling` compare consecutive boolean results of their predicate.
+The first result does not produce an edge. For example,
+`rising(vehicle_speed_signals.speed > speed_threshold)` emits one instant
+event when speed crosses above the threshold; further numeric changes above
+the threshold do not emit more events. Like `changed`, edge predicates may be
+combined with filter predicates using `&&`. Transition predicates cannot be
+used as inputs to `contiguous` or `overlaps`, which require state predicates.
 
 .. note::
 
@@ -1239,6 +1262,57 @@ Thumbnails are written to your dataset's
 tables, as immutable, content-addressed objects under the dataset's
 `artifacts/grid/` prefix, and are served to the App through authorized
 endpoints.
+
+.. _multimodal-playback-renditions:
+
+Playback renditions
+___________________
+
+Recordings with several JPEG cameras often need more bandwidth to play in
+real time than a cloud bucket or a remote link delivers, so playback stalls
+to buffer. A **playback rendition** is a smaller copy of an MCAP recording
+for streaming playback. It keeps the timestamps and message order of every
+topic you don't drop, re-encodes `foxglove.CompressedImage` cameras as H.264
+`foxglove.CompressedVideo`, and stores point cloud intensities that are whole
+numbers in `[0, 255]` as one byte.
+
+Use
+:func:`generate_renditions() <fiftyone.multimodal.renditions.generate_renditions>`
+to write a rendition for each MCAP sample. Each rendition's path is stored in
+a new media field, which `make_default=True` makes the default for the grid
+and the modal. Samples without a rendition still show `filepath`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.renditions as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    config = fomr.RenditionConfig(
+        max_image_width=800,  # downscale wider camera frames
+        drop_topics=["/CAM_*/lidar"],  # leave out derived topics
+    )
+
+    fomr.generate_renditions(
+        dataset,
+        config=config,
+        output_field="playback_filepath",
+        make_default=True,
+    )
+
+Renditions are written to `datasets/<dataset ID>/renditions/` under the
+`managed_storage_root` in your :ref:`FiftyOne config <configuring-fiftyone>`,
+which FiftyOne Enterprise admins can also set in Settings > Infrastructure >
+Storage. Pass `output_dir` to write them to another directory or bucket.
+
+Renditions trade fidelity for bytes: camera frames are downscaled and
+lossy-compressed, and options like `point_fields` and `point_stride` drop
+point cloud data. The source recording is never modified: choose `filepath`
+under Display options > Media field to inspect full-fidelity data. Writing renditions
+requires `PyAV <https://github.com/PyAV-Org/PyAV>`_ with an FFmpeg build that
+includes `libx264`.
 
 .. _multimodal-segment-embeddings:
 

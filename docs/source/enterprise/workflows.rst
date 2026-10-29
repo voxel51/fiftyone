@@ -122,6 +122,40 @@ stage:
 .. image:: https://cdn.voxel51.com/enterprise/workflows/workflows_stage_config.webp
    :alt: Editing the assignee for a Review stage
 
+.. _enterprise-workflows-assignment:
+
+Handing out tasks
+^^^^^^^^^^^^^^^^^
+
+Each Annotate or Review stage splits its samples into **tasks** (batches)
+and offers them to its **assignee pool**: specific people, user groups, or
+anyone with Can tag permission on the dataset. The stage's **Assignment**
+setting decides how a task reaches a person:
+
+- **Manual** (default): tasks open unassigned. Pool members claim them from
+  **My Tasks**, and anyone in the pool or a manager can assign them from the
+  **Tasks** tab.
+- **Automatic**: an **assignment policy** hands out every new batch as it
+  is created. The built-in policy, *Least loaded*, gives each batch to
+  the person in the pool with the fewest open tasks across all datasets,
+  flattening groups to their members, so every batch gets exactly one
+  owner. A manual unassign or **Unclaim** never triggers it; the task
+  simply returns to the pool.
+
+Once the workflow starts, its stages are locked: the **Workflow** tab
+shows them read-only. On the **Tasks** tab, a manager can press
+**Auto-assign now** to run the policy over everything still unassigned,
+even on a manual stage. Tasks the policy assigned show an *auto* marker
+next to the assignee; if a policy fails, its tasks stay unassigned and
+claimable, and a notice says why.
+
+Plugins can register their own policies (for example "the batch of
+samples from camera X goes to the team that owns camera X"); they appear
+in the policy dropdown automatically. See
+:ref:`the assignment policy contract <enterprise-workflows-assignment-policies>`
+and the :ref:`Management SDK <enterprise-sdk-workflow-assignment>` for the
+scripted version of every control above.
+
 Starting a Workflow
 ~~~~~~~~~~~~~~~~~~~
 
@@ -392,3 +426,130 @@ What Counts (and What Doesn't)
 - **Skip** is not a submission.
 - Rates never punish waiting: one reviewed-and-approved submission with
   ten more still pending reads *100% first-pass approval*, not 9%.
+
+.. _enterprise-workflows-assignment-policies:
+
+Writing an assignment policy
+----------------------------
+
+An assignment policy is an operator in your plugin that carries an
+``assignment_policy_descriptor`` attribute. The workflow runtime finds it
+by that attribute, lists it in the stage's **Assignment policy** dropdown,
+and calls it with one request per run: after a wave of samples creates
+new tasks, after a stage is switched to automatic, or when a manager
+presses **Auto-assign now**. The policy only answers *who holds what*;
+the runtime validates the answer against the pool and writes it with a
+compare-and-swap, so a person who claimed a task meanwhile keeps it.
+
+The request arrives as ``ctx.params["request"]``:
+
+.. code-block:: text
+
+    {
+      "stage":   {"workflow_id", "stage_id", "kind", "name", "pool",
+                  "priority", "batching", "options"},
+      "tasks":   [{"id", "batch_index", "sample_total", "open_samples",
+                   "priority", "assigned_to", "assigned_by", "created_at",
+                   "source_collection", "sample_ids"?}, ...],
+      "pending": [{"task_id", "reason"}, ...],
+      "assignee_pool": {
+        "users":  [{"id", "name", "open_tasks", "open_samples",
+                    "last_submit_at", "via_groups",
+                    "first_pass_approval"?, "first_pass_judged"?}, ...],
+        "groups": [{"id", "name", "member_ids", "open_tasks"}, ...]
+      },
+      "triggered_by": "system" | "<user id>"
+    }
+
+``pending`` names the tasks that need an owner; ``tasks`` lists every open
+task of the stage for context. An "anyone" pool arrives already resolved
+to every user with Can tag permission.
+
+The descriptor shapes the rest:
+
+-   ``options`` declares number fields (``"type": "int"`` or ``"float"``,
+    with an optional ``label``, ``description``, ``default``, ``min``,
+    ``max`` and ``unit``). They appear under the policy in the stage form,
+    each stage keeps its own values, and they arrive, over the defaults, as
+    ``request["stage"]["options"]``.
+-   ``request_fields`` asks for facts that cost a read: ``"sample_ids"``
+    adds each task's sample ids (load the samples yourself if the decision
+    depends on their content), and ``"first_pass_approval"`` adds each
+    user's first-pass approval rate (0 to 1, ``None`` without history)
+    and how many of their samples were judged.
+
+Return a dict:
+
+.. code-block:: text
+
+    {
+      "assignments": [{"task_id", "assignees": [...], "note"?}, ...],
+      "priorities":  {"<task_id>": 0..10},            # optional
+      "fallthrough": "default" | "none"               # optional
+    }
+
+``assignees`` may be one person, several people, one or more groups, or
+``[]`` to leave the task unassigned; every principal must come from the
+pool. Tasks you do not answer for are handed to the built-in least-loaded
+policy unless you return ``"fallthrough": "none"``.
+
+A complete example that routes each batch to the team whose cameras it
+came from, and lets the default policy handle the rest:
+
+.. code-block:: python
+
+    import fiftyone as fo
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    CAMERA_TEAMS = {"cam_a": "group:team-a-id", "cam_b": "group:team-b-id"}
+
+
+    class AssignByCamera(foo.Operator):
+        assignment_policy_descriptor = {
+            "label": "By camera team",
+            "description": "Each batch goes to the team that owns its camera.",
+            # each task's sample ids, to read their camera
+            "request_fields": ["sample_ids"],
+        }
+
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="assign_by_camera",
+                label="Assign by camera team",
+                unlisted=True,
+            )
+
+        def execute(self, ctx):
+            request = ctx.params["request"]
+            field = "camera"
+            tasks = {t["id"]: t for t in request["tasks"]}
+            pool = {g["id"] for g in request["assignee_pool"]["groups"]}
+            out = []
+            for pending in request["pending"]:
+                task = tasks[pending["task_id"]]
+                view = ctx.dataset.select(task["sample_ids"])
+                cameras = set(view.distinct(field))
+                team = next(
+                    (CAMERA_TEAMS[c] for c in cameras if c in CAMERA_TEAMS),
+                    None,
+                )
+                if team in pool:
+                    out.append(
+                        {
+                            "task_id": task["id"],
+                            "assignees": [team],
+                            "note": f"camera {', '.join(sorted(cameras))}",
+                        }
+                    )
+            # Batches without a known camera fall through to least-loaded
+            return {"assignments": out, "fallthrough": "default"}
+
+
+    def register(p):
+        p.register(AssignByCamera)
+
+Once the plugin is installed, pick **By camera team** in the stage's
+**Assignment policy** dropdown, or set it from a script with
+:meth:`update_stage_assignment() <fiftyone.management.workflows.update_stage_assignment>`.
