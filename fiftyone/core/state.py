@@ -202,13 +202,16 @@ class StateDescription(etas.Serializable):
                 view = fov.DatasetView._build(dataset, stages)
 
         config = (
-            fo.AppConfig.from_dict(d["config"])
+            fo.AppConfig(d["config"], _warn_removed_options=False)
             if d.get("config", None)
             else None
         )
 
         for field, value in d.get("config", {}).items():
-            setattr(config, field, value)
+            if field in ("show_confidence", "show_index", "show_label"):
+                object.__setattr__(config, field, value)
+            else:
+                setattr(config, field, value)
 
         fo.config.timezone = d.get("config", {}).get("timezone", None)
 
