@@ -270,7 +270,7 @@ abstract method that we'll implement.
             self,
             request: DataLensSearchRequest,
             ctx: foo.ExecutionContext
-        ) -> Generator[DataLensSearchResponse, None, None]
+        ) -> Generator[DataLensSearchResponse, None, None]:
             # We'll implement our logic here
             pass
 
@@ -321,7 +321,7 @@ provides configuration options for your operator.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         pass
 
 The
@@ -342,6 +342,8 @@ the following properties:
     return in a single batch.
 -   `request.max_results`: a number indicating the maximum number of
     samples to return across all batches.
+-   `request.is_preview`: a boolean indicating whether this request is in the
+    context of a Data Lens preview (rather than an import).
 
 .. note::
 
@@ -401,7 +403,7 @@ sample.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         # We'll use a placeholder image for our synthetic data
         image_url = "https://placehold.co/150x150"
 
@@ -437,7 +439,7 @@ Let's modify our operator to incorporate the `request.batch_size` property.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         samples = []
 
         # Generate number of samples equal to request.batch_size
@@ -485,7 +487,7 @@ method.
 .. code-block:: python
     :linenos:
 
-    def resolve_input(self):
+    def resolve_input(self, ctx):
         # We define our inputs as an object.
         # We'll add specific fields to this object which represent a single input.
         inputs = types.Object()
@@ -517,7 +519,7 @@ logic to integrate `sample_text` into our operator.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         # Retrieve our "sample_text" input from request.search_params.
         # These parameter names should match those used in resolve_input().
         sample_text = request.search_params.get("sample_text", "")

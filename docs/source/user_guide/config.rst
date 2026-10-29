@@ -50,6 +50,13 @@ FiftyOne supports the configuration options described below:
 |                                          |                                                 |                               | require writing dataset contents to disk, such as ingesting datasets via               |
 |                                          |                                                 |                               | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
 +------------------------------------------+-------------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `managed_storage_root`                   | `FIFTYONE_MANAGED_STORAGE_ROOT`                 | `None`                        | The cloud URI or absolute shared directory under which FiftyOne stores the data it     |
+|                                          |                                                 |                               | manages itself, such as robot packages and default projection warehouses. Every        |
+|                                          |                                                 |                               | FiftyOne process must be able to read and write it. Relative paths and `~` are not     |
+|                                          |                                                 |                               | allowed. When unset, FiftyOne Enterprise uses the root saved in Settings >             |
+|                                          |                                                 |                               | Infrastructure > Storage, or else the projection storage location. In FiftyOne SaaS,   |
+|                                          |                                                 |                               | the tenant's storage always takes precedence.                                          |
++------------------------------------------+-------------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_ml_backend`                     | `FIFTYONE_DEFAULT_ML_BACKEND`                   | `torch`                       | The default ML backend to use when performing operations such as                       |
 |                                          |                                                 |                               | downloading datasets from the FiftyOne Dataset Zoo that support multiple ML            |
 |                                          |                                                 |                               | backends. Supported values are `torch` and `tensorflow`. By default,                   |
@@ -214,6 +221,7 @@ and the CLI:
             "default_video_ext": ".mp4",
             "do_not_track": false,
             "logging_level": "INFO",
+            "managed_storage_root": null,
             "max_process_pool_workers": null,
             "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
@@ -269,6 +277,7 @@ and the CLI:
             "default_video_ext": ".mp4",
             "do_not_track": false,
             "logging_level": "INFO",
+            "managed_storage_root": null,
             "max_process_pool_workers": null,
             "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
@@ -756,69 +765,76 @@ property.
 
 The FiftyOne App can be configured in the ways described below:
 
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| Config field               | Environment variable                    | Default value | Description                                                                                |
-+============================+=========================================+===============+============================================================================================+
-| `color_by`                 | `FIFTYONE_APP_COLOR_BY`                 | `"field"`     | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or     |
-|                            |                                         |               | render each instance ID/trajectory index (`"instance"`).                                   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `color_pool`               | `FIFTYONE_APP_COLOR_POOL`               | See below     | A list of browser supported color strings from which the App should draw from when         |
-|                            |                                         |               | drawing labels (e.g., object bounding boxes).                                              |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `colorscale`               | `FIFTYONE_APP_COLORSCALE`               | `"viridis"`   | The colorscale to use when rendering heatmaps in the App. See                              |
-|                            |                                         |               | :ref:`this section <heatmaps>` for more details.                                           |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `default_query_performance`| `FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE`| `True`        | Default if a user hasn't selected a query performance mode in their current session. See   |
-|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view. See          |
-|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `enable_query_performance` | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
-|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `follow_static_symlinks`   | `FIFTYONE_APP_FOLLOW_STATIC_SYMLINKS`   | `True`        | Whether the App server follows symlinks when serving the App's static files.               |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
-|                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `loop_videos`              | `FIFTYONE_APP_LOOP_VIDEOS`              | `False`       | Whether to loop videos by default in the expanded sample view.                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `max_query_time`           | `FIFTYONE_APP_MAX_QUERY_TIME`           | `60`          | Maximum query time in seconds for potentially slow sidebar and grid requests. Only applies |
-|                            |                                         |               | when :ref:`Query Performance <app-optimizing-query-performance>` is enabled.               |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `media_fallback`           | `FIFTYONE_APP_MEDIA_FALLBACK`           | `False`       | Whether to fall back to the default media field (`"filepath"`) when the configured media   |
-|                            |                                         |               | field's value for a sample is not defined.                                                 |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `multicolor_keypoints`     | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`     | `False`       | Whether to independently color keypoint points by their index                              |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `notebook_height`          | `FIFTYONE_APP_NOTEBOOK_HEIGHT`          | `800`         | The height of App instances displayed in notebook cells.                                   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `proxy_url`                | `FIFTYONE_APP_PROXY_URL`                | `None`        | A URL string to override the default server URL. Useful for configuring the session        |
-|                            |                                         |               | through a reverse proxy in notebook environments.                                          |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_confidence`          | `FIFTYONE_APP_SHOW_CONFIDENCE`          | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
-|                            |                                         |               | App's sidebar.                                                                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_index`               | `FIFTYONE_APP_SHOW_INDEX`               | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
-|                            |                                         |               | App's sidebar.                                                                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_label`               | `FIFTYONE_APP_SHOW_LABEL`               | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
-|                            |                                         |               | App's sidebar.                                                                             |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_skeletons`           | `FIFTYONE_APP_SHOW_SKELETONS`           | `True`        | Whether to show keypoint skeletons, if available.                                          |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `show_tooltip`             | `FIFTYONE_APP_SHOW_TOOLTIP`             | `True`        | Whether to show the tooltip when hovering over labels in the App's expanded sample view.   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `theme`                    | `FIFTYONE_APP_THEME`                    | `"browser"`   | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`.  |
-|                            |                                         |               | If `"browser"`, your current theme will be persisted in your browser's storage.            |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `use_frame_number`         | `FIFTYONE_APP_USE_FRAME_NUMBER`         | `False`       | Whether to use the frame number instead of a timestamp in the expanded sample view. Only   |
-|                            |                                         |               | applicable to video samples.                                                               |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `plugins`                  | N/A                                     | `{}`          | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for         |
-|                            |                                         |               | details.                                                                                   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| Config field                     | Environment variable                          | Default value | Description                                                                                |
++==================================+===============================================+===============+============================================================================================+
+| `color_by`                       | `FIFTYONE_APP_COLOR_BY`                       | `"field"`     | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or     |
+|                                  |                                               |               | render each instance ID/trajectory index (`"instance"`).                                   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `color_pool`                     | `FIFTYONE_APP_COLOR_POOL`                     | See below     | A list of browser supported color strings from which the App should draw from when         |
+|                                  |                                               |               | drawing labels (e.g., object bounding boxes).                                              |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `colorscale`                     | `FIFTYONE_APP_COLORSCALE`                     | `"viridis"`   | The colorscale to use when rendering heatmaps in the App. See                              |
+|                                  |                                               |               | :ref:`this section <heatmaps>` for more details.                                           |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `default_query_performance`      | `FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE`      | `True`        | Default if a user hasn't selected a query performance mode in their current session. See   |
+|                                  |                                               |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `disable_frame_filtering`        | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`        | `False`       | Whether to disable frame filtering for video datasets in the App's grid view. See          |
+|                                  |                                               |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `enable_query_performance`       | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE`       | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
+|                                  |                                               |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `follow_static_symlinks`         | `FIFTYONE_APP_FOLLOW_STATIC_SYMLINKS`         | `True`        | Whether the App server follows symlinks when serving the App's static files.               |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `grid_zoom`                      | `FIFTYONE_APP_GRID_ZOOM`                      | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
+|                                  |                                               |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `loop_videos`                    | `FIFTYONE_APP_LOOP_VIDEOS`                    | `False`       | Whether to loop videos by default in the expanded sample view.                             |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `max_query_time`                 | `FIFTYONE_APP_MAX_QUERY_TIME`                 | `60`          | Maximum query time in seconds for potentially slow sidebar and grid requests. Only applies |
+|                                  |                                               |               | when :ref:`Query Performance <app-optimizing-query-performance>` is enabled.               |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `media_fallback`                 | `FIFTYONE_APP_MEDIA_FALLBACK`                 | `False`       | Whether to fall back to the default media field (`"filepath"`) when the configured media   |
+|                                  |                                               |               | field's value for a sample is not defined.                                                 |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `multicolor_keypoints`           | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`           | `False`       | Whether to independently color keypoint points by their index                              |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `notebook_height`                | `FIFTYONE_APP_NOTEBOOK_HEIGHT`                | `800`         | The height of App instances displayed in notebook cells.                                   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `proxy_url`                      | `FIFTYONE_APP_PROXY_URL`                      | `None`        | A URL string to override the default server URL. Useful for configuring the session        |
+|                                  |                                               |               | through a reverse proxy in notebook environments.                                          |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `show_confidence`                | `FIFTYONE_APP_SHOW_CONFIDENCE`                | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
+|                                  |                                               |               | App's sidebar.                                                                             |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `show_index`                     | `FIFTYONE_APP_SHOW_INDEX`                     | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
+|                                  |                                               |               | App's sidebar.                                                                             |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `show_label`                     | `FIFTYONE_APP_SHOW_LABEL`                     | `True`        | Deprecated; has no effect. Label attribute visibility is controlled per attribute in the   |
+|                                  |                                               |               | App's sidebar.                                                                             |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `show_skeletons`                 | `FIFTYONE_APP_SHOW_SKELETONS`                 | `True`        | Whether to show keypoint skeletons, if available.                                          |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `show_tooltip`                   | `FIFTYONE_APP_SHOW_TOOLTIP`                   | `True`        | Whether to show the tooltip when hovering over labels in the App's expanded sample view.   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `sidebar_checkbox_limit`         | `FIFTYONE_APP_SIDEBAR_CHECKBOX_LIMIT`         | `25`          | Fields with fewer values than this list them as checkboxes in the grid sidebar of datasets |
+|                                  |                                               |               | with at most 10,000 samples.                                                               |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `sidebar_full_aggregation_limit` | `FIFTYONE_APP_SIDEBAR_FULL_AGGREGATION_LIMIT` | `1000`        | Datasets with fewer samples (or frames, for frame fields) than this populate every grid    |
+|                                  |                                               |               | sidebar field up front, with counts, in one request. See :ref:`this section                |
+|                                  |                                               |               | <app-sidebar-size-tiers>` for more details.                                                |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `theme`                          | `FIFTYONE_APP_THEME`                          | `"browser"`   | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`.  |
+|                                  |                                               |               | If `"browser"`, your current theme will be persisted in your browser's storage.            |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `use_frame_number`               | `FIFTYONE_APP_USE_FRAME_NUMBER`               | `False`       | Whether to use the frame number instead of a timestamp in the expanded sample view. Only   |
+|                                  |                                               |               | applicable to video samples.                                                               |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `plugins`                        | N/A                                           | `{}`          | A dict of plugin configurations. See :ref:`this section <configuring-plugins>` for         |
+|                                  |                                               |               | details.                                                                                   |
++----------------------------------+-----------------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
