@@ -679,10 +679,10 @@ class VOCBoundingBox(object):
         x, y, w, h = bounding_box
         width, height = frame_size
         return cls(
-            int(width * x),
-            int(height * y),
-            int(width * (x + w)),
-            int(height * (y + h)),
+            int(round(width * x)),
+            int(round(height * y)),
+            int(round(width * (x + w))),
+            int(round(height * (y + h))),
         )
 
     def to_detection_format(self, frame_size):
