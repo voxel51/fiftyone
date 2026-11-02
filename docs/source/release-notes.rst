@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 Voxel51 2.25.2
 --------------
-*Released November 2, 2026*
+*Released November 3, 2026*
 
 - **Security fixes** in the Enterprise images:
 
