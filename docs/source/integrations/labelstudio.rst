@@ -189,6 +189,12 @@ In order to use the Label Studio backend, you must install the
 
     pip install label-studio-sdk
 
+.. note::
+
+    Polyline annotation requires a Label Studio server version of 1.23.0 or
+    later. This is a server requirement, not a Label Studio Python SDK version
+    requirement.
+
 Using the Label Studio backend
 ------------------------------
 
@@ -434,7 +440,8 @@ more details:
         attributes populated
     -   ``"polylines"``: polylines stored in |Polylines| fields with their
         :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
-        `False`
+        `False`. Only straight, single-path geometry is supported; Bezier,
+        skeleton, and multi-path geometry are not yet supported
     -   ``"polygons"``: polygons stored in |Polylines| fields with their
         :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `True`
