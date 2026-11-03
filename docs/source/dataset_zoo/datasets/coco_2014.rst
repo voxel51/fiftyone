@@ -12,8 +12,8 @@ COCO-2014
 COCO is a large-scale object detection, segmentation, and captioning
 dataset.
 
-This version contains images, bounding boxes, and segmentations for the 2014
-version of the dataset.
+This version contains images, bounding boxes, segmentations, and keypoints for
+the 2014 version of the dataset.
 
 .. note::
 
@@ -37,7 +37,7 @@ version of the dataset.
 -   Dataset source: http://cocodataset.org/#home
 -   Dataset license: CC-BY-4.0
 -   Dataset size: 37.57 GB
--   Tags: ``image, detection, segmentation``
+-   Tags: ``image, detection, segmentation, keypoint``
 -   Supported splits: ``train, validation, test``
 -   ZooDataset class:
     :class:`COCO2014Dataset <fiftyone.zoo.datasets.base.COCO2014Dataset>`
@@ -65,8 +65,8 @@ COCO-2014 by passing them to
     splits are loaded
 
 -   **label_types** (*None*): a label type or list of label types to load.
-    Supported values are ``("detections", "segmentations")``. By default, only
-    detections are loaded
+    Supported values are ``("detections", "segmentations", "keypoints")``. By
+    default, only detections are loaded
 
 -   **classes** (*None*): a string or list of strings specifying required
     classes to load. If provided, only samples containing at least one instance
@@ -168,8 +168,8 @@ COCO-2014 by passing them to
         session.dataset = dataset
 
         #
-        # Download the entire validation split and load both detections and
-        # segmentations
+        # Download the entire validation split and load detections,
+        # segmentations, and keypoints
         #
         # Subsequent partial loads of the validation split will never require
         # downloading any images
@@ -178,7 +178,7 @@ COCO-2014 by passing them to
         dataset = foz.load_zoo_dataset(
             "coco-2014",
             split="validation",
-            label_types=["detections", "segmentations"],
+            label_types=["detections", "segmentations", "keypoints"],
         )
 
         session.dataset = dataset
@@ -223,8 +223,8 @@ COCO-2014 by passing them to
         fiftyone app launch coco-2014-validation-25
 
         #
-        # Download the entire validation split and load both detections and
-        # segmentations
+        # Download the entire validation split and load detections,
+        # segmentations, and keypoints
         #
         # Subsequent partial loads of the validation split will never require
         # downloading any images
@@ -233,7 +233,7 @@ COCO-2014 by passing them to
         fiftyone zoo datasets load coco-2014 \
             --split validation \
             --kwargs \
-                label_types=detections,segmentations
+                label_types=detections,segmentations,keypoints
 
         fiftyone app launch coco-2014-validation
 

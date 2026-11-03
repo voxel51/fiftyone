@@ -841,8 +841,9 @@ class COCO2014Dataset(FiftyOneDataset):
 
     Args:
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
+            supported values are
+            ``("detections", "segmentations", "keypoints")``. By default,
+            only "detections" are loaded
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
@@ -900,7 +901,7 @@ class COCO2014Dataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "detection", "segmentation")
+        return ("image", "detection", "segmentation", "keypoint")
 
     @property
     def supported_splits(self):
@@ -1039,8 +1040,9 @@ class COCO2017Dataset(FiftyOneDataset):
 
     Args:
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
+            supported values are
+            ``("detections", "segmentations", "keypoints")``. By default,
+            only "detections" are loaded
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
@@ -1098,7 +1100,7 @@ class COCO2017Dataset(FiftyOneDataset):
 
     @property
     def tags(self):
-        return ("image", "detection", "segmentation")
+        return ("image", "detection", "segmentation", "keypoint")
 
     @property
     def supported_splits(self):
