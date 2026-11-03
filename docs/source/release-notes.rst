@@ -3,6 +3,39 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _fiftyone-enterprise-2-25-2:
+
+Voxel51 2.25.2
+--------------
+*Released November 3, 2026*
+
+- **Security fixes** in the Enterprise images:
+
+  - App and CAS: upgraded Next.js to 15.5.28, sharp to 0.35.5, browserslist
+    to 4.29.5, js-yaml to 4.3.2, ip-address to 10.7.5, brace-expansion,
+    shell-quote to 1.12.0, undici to 6.29.1, handlebars to 4.7.10, and
+    maplibre-gl to 6.x
+  - App and CAS: the bundled npm is upgraded to 12.2.1, with patched copies
+    of tar, ip-address, brace-expansion, and undici
+  - CAS no longer includes the unused `@auth/core`, and the App image no
+    longer includes `tinypool`
+  - Brotli is upgraded to 1.2.1 in the FiftyOne, API, and agentic labeling
+    images, and the agentic labeling image's system `libbrotli1` is patched
+  - API: upgraded aiohttp to 3.14.5
+  - Internal and GPT images: upgraded langchain to 1.3.18
+  - CV and internal images: upgraded transformers to 5.10.2
+  - Internal image: the OSMO CLI's bundled cryptography is upgraded to
+    50.0.2
+  - Telemetry sidecar: upgraded pip to 26.2
+
+- Expanding a multimodal projection group in the App sidebar no longer
+  queries every projection in the dataset
+- Auto-projected numeric signals keep floating-point values, and values that
+  don't match a column's type are stored as null instead of failing the
+  write
+- Multimodal datasets in Azure storage can be read with service principal
+  credentials
+
 .. _fiftyone-enterprise-2-25-1:
 
 Voxel51 2.25.1
