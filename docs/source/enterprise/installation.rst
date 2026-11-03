@@ -175,8 +175,10 @@ When configuring CORS, set the allowed origin(s) to the URL(s) from which your
 users access the Voxel51 App, and allow the ``GET`` and ``HEAD``
 methods. For media that is read in byte ranges (such as MCAP), also allow the
 ``Range`` request header and expose the ``Content-Range``, ``Content-Length``,
-and ``Accept-Ranges`` response headers. Details are provided below for each
-cloud platform.
+and ``Accept-Ranges`` response headers. If users will use **Upload from this
+computer** to add media to a dataset, also allow the ``PUT`` method, since the
+browser uploads each file directly to your bucket via a presigned URL.
+Details are provided below for each cloud platform.
 
 Browser caching
 _______________
@@ -248,6 +250,10 @@ and the shared credentials file should use
     the `s3:ListBucket` permission, as `s3:GetBucketLocation` does not support
     this.
 
+    To let users **Upload from this computer** into a bucket, the credentials
+    also need the `s3:PutObject` permission on that bucket; the permissions
+    above are read-only.
+
 3. Permanently register AWS credentials on a particular machine by adding the
 following keys to your :ref:`media cache config <enterprise-media-cache-config>`:
 
@@ -266,12 +272,15 @@ here is an example configuration:
     [
         {
             "AllowedHeaders": ["*"],
-            "AllowedMethods": ["GET", "HEAD"],
+            "AllowedMethods": ["GET", "HEAD", "PUT"],
             "AllowedOrigins": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
             "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "MaxAgeSeconds": 86400
         }
     ]
+
+Omit ``"PUT"`` above if you don't need **Upload from this computer** to work
+against this bucket.
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on S3 objects <https://docs.aws.amazon.com/whitepapers/latest/build-static-websites-aws/controlling-how-long-amazon-s3-content-is-cached-by-amazon-cloudfront.html#specify-cache-control-headers>`_.
@@ -317,6 +326,22 @@ In the above, the credentials file can contain any format supported by
 which includes a service account key, stored authorized user credentials, or
 external account credentials.
 
+.. note::
+
+    To let users **Upload from this computer** into a bucket, the credentials
+    also need the `storage.objects.create` permission on that bucket (included
+    in the `Storage Object Creator` and `Storage Object Admin` roles) in
+    addition to read access.
+
+.. note::
+
+    If you're relying on ambient application default credentials (option 1
+    above) rather than an explicit service account key file, the service
+    account also needs the `roles/iam.serviceAccountTokenCreator` role
+    granted on itself. This lets it sign its own short-lived URLs, which is
+    how every signed GCS media URL this deployment issues is produced,
+    including but not limited to uploads.
+
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
 
@@ -325,11 +350,14 @@ here is an example configuration:
     [
         {
             "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
-            "method": ["GET", "HEAD"],
+            "method": ["GET", "HEAD", "PUT"],
             "responseHeader": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "maxAgeSeconds": 3600
         }
     ]
+
+Omit ``"PUT"`` above if you don't need **Upload from this computer** to work
+against this bucket.
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on GCP content <https://cloud.google.com/storage/docs/metadata#cache-control>`_.
@@ -463,6 +491,13 @@ alias:
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
 
+.. note::
+
+    To let users **Upload from this computer** into a container, the
+    credentials also need write access, such as the `Storage Blob Data
+    Contributor` role; read-only roles like `Storage Blob Data Reader` are
+    not sufficient.
+
 If you need to configure CORS on your Azure Blob storage account, you can do so
 at the storage-account level (Blob service) via the Azure portal
 (**Settings > Resource sharing (CORS)**) or the Azure CLI:
@@ -471,12 +506,15 @@ at the storage-account level (Blob service) via the Azure portal
 
     az storage cors add \
         --services b \
-        --methods GET HEAD \
+        --methods GET HEAD PUT \
         --origins "https://fiftyone-enterprise-deployment.yourcompany.com" \
         --allowed-headers "*" \
         --exposed-headers "Content-Range" "Content-Length" "Accept-Ranges" \
         --max-age 3600 \
         --account-name "<account-name>"
+
+Omit ``PUT`` above if you don't need **Upload from this computer** to work
+against this storage account.
 
 See the
 `Azure Storage CORS documentation <https://learn.microsoft.com/en-us/rest/api/storageservices/cross-origin-resource-sharing--cors--support-for-the-azure-storage-services>`_
@@ -557,6 +595,27 @@ alias:
 
     # For example
     filepath = "minio://test-bucket/image.jpg"
+
+.. note::
+
+    To let users **Upload from this computer** into a bucket, the credentials
+    also need a policy granting `s3:PutObject` on that bucket; read-only
+    policies are not sufficient.
+
+If you need **Upload from this computer** to PUT directly to a MinIO bucket
+from the browser, you also need to allow your deployment's origin in MinIO's
+CORS configuration. Newer MinIO releases support per-bucket CORS
+configuration; consult your MinIO version's own documentation for the exact
+mechanism. On older releases without per-bucket CORS, set the
+``MINIO_API_CORS_ALLOW_ORIGIN`` environment variable on the MinIO server
+instead, for example:
+
+.. code-block:: shell
+
+    export MINIO_API_CORS_ALLOW_ORIGIN="https://fiftyone-enterprise-deployment.yourcompany.com"
+
+Omit this configuration if you don't need **Upload from this computer** to
+work against this bucket.
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on MinIO content using the metadata field of the put_object API <https://min.io/docs/minio/linux/developers/python/API.html>`_.
@@ -717,7 +776,7 @@ ___________________________________
 
 If credentials are configured both on the local machine and remotely via the
 Enterprise server, the behavior is for the Enterprise SDK to use the first
-matching set of credentials found. 
+matching set of credentials found.
 
 *  When running the Enterprise SDK locally, the default is to use local
    credentials, if any exist, and otherwise to use managed credentials returned

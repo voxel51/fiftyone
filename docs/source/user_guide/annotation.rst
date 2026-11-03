@@ -42,6 +42,7 @@ In-App annotation within FiftyOne supports datasets containing the following med
 * :ref:`Labels <basics-labels>`
 
   * ``Classification``
+  * ``Regression``
   * ``Detections``
   * ``Instance segmentations``
   * ``2D Polylines and Polygons``
@@ -756,6 +757,11 @@ The right sidebar shows the fields of the sample under the playhead and
 updates as you scrub. The ``order_by`` field is read-only in this view because
 changing it would reorder the frames; edit it from the ungrouped view. Fields
 are the samples' own fields, so there is no ``frames.`` prefix.
+
+Any other dynamic group, such as one without an ``order_by_key``, is annotated
+one sample at a time. The Annotate tab edits the group element on screen as an
+ordinary sample, and the paginator below it moves between the group's
+elements.
 
 
 ----

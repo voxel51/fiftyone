@@ -186,3 +186,12 @@ Group management
 .. autoapimodule:: fiftyone.management.user_groups
    :members:
    :undoc-members:
+
+.. _enterprise-sdk-workflow-assignment:
+
+Workflow task assignment
+------------------------
+
+.. autoapimodule:: fiftyone.management.workflows
+   :members:
+   :undoc-members:
