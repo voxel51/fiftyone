@@ -28,7 +28,7 @@ interface ItemsSchema {
 export default function CheckboxesWidget(props: WidgetProps) {
   const {
     label,
-    value: values = [], // use plural for internal cohesiveness
+    value,
     disabled,
     readonly,
     onChange = () => {},
@@ -41,6 +41,16 @@ export default function CheckboxesWidget(props: WidgetProps) {
   const enumNames = items.enumNames || enumValues;
 
   const isDisabled = disabled || readonly;
+
+  // A destructuring default only covers `undefined`. The annotate edit form
+  // writes an explicit `null` when a conditional attribute is hidden (so the
+  // autosave delta carries an unset), and SDK-written labels can hold `None`.
+  // Treat both as "nothing selected" so the toggle handler never dereferences
+  // a null value.
+  const values = useMemo<unknown[]>(
+    () => (Array.isArray(value) ? value : []),
+    [value],
+  );
 
   const options = useMemo<Option[]>(
     () =>
@@ -55,7 +65,7 @@ export default function CheckboxesWidget(props: WidgetProps) {
   // convert values to string for comparison.
   const validStringValues = useMemo(
     // handle strings, ints, etc., de-duping as we goa
-    () => new Set((values ?? []).map((v: unknown) => String(v))),
+    () => new Set(values.map((v: unknown) => String(v))),
     [values],
   );
 
