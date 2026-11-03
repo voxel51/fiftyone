@@ -15,6 +15,14 @@ labels on your :ref:`datasets <using-datasets>` or specific
 
 .. note::
 
+    Just need to fix a few labels? You can create, edit, and delete labels
+    directly in the App with :ref:`in-App annotation <in-app-annotation>`,
+    no external annotation tool required. The annotation API described on
+    this page is best suited for larger annotation jobs in a dedicated tool
+    like CVAT, Label Studio, Labelbox, or V7.
+
+.. note::
+
     Did you know? You can request, manage, and import annotations from within
     the FiftyOne App by installing the
     `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_

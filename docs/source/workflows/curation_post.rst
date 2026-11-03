@@ -7,7 +7,8 @@ Labels are rarely perfect on the first pass. After annotation, use FiftyOne to
 verify label quality and prepare your dataset for training: find likely
 :ref:`annotation mistakes <brain-label-mistakes>`, review labels as
 :ref:`object patches <object-patches-views>`, and :ref:`filter and slice
-<app-filtering>` your dataset in the App.
+<app-filtering>` your dataset in the App. When you find a mistake, fix it on
+the spot with :ref:`in-App annotation <in-app-annotation>`.
 
 .. toctree::
    :maxdepth: 1
