@@ -7,6 +7,8 @@ FiftyOne service utilities.
 """
 
 import psutil
+import pymongo
+import pymongo.errors
 
 from fiftyone.service.ipc import send_request
 
@@ -117,6 +119,70 @@ def get_listening_tcp_ports(process):
             and conn.status == psutil.CONN_LISTEN
         ):
             yield conn.laddr[1]  # port
+
+
+def shutdown_mongod(process, timeout=60):
+    """Asks the given ``mongod`` process to shut itself down, and waits for it
+    to exit.
+
+    ``mongod`` persists the metadata that its document counts are read from
+    only when it shuts down cleanly or its storage engine checkpoints, which by
+    default happens every 60 seconds. After a process is terminated before
+    that, the documents are recovered from the journal but the counts are not,
+    so collections can report 0 documents while still containing them.
+    Terminating a process on Windows maps to ``TerminateProcess()``, which
+    ``mongod`` cannot handle.
+
+    Args:
+        process (psutil.Process): the ``mongod`` process
+        timeout (60): the number of seconds to wait for the process to exit
+
+    Returns:
+        True if the process exited, and False if it must be terminated instead
+    """
+    try:
+        ports = list(get_listening_tcp_ports(process))
+    except psutil.Error:
+        return False
+
+    if not ports:
+        # the database never started listening, so it has nothing to persist
+        return False
+
+    client = None
+    try:
+        client = pymongo.MongoClient(
+            host="127.0.0.1",
+            port=ports[0],
+            directConnection=True,
+            # the database is local and known to be listening, so these only
+            # bound the failure cases, in which the process is terminated
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000,
+        )
+        client.admin.command("shutdown", 1)
+    except pymongo.errors.ServerSelectionTimeoutError:
+        # NB: this is a subclass of `AutoReconnect`, but unlike the disconnect
+        # below, it means the database was never reached, so it did not shut
+        # down and must be terminated instead
+        return False
+    except pymongo.errors.AutoReconnect:
+        # expected: the database closes its connections while shutting down,
+        # which can also outlast the socket timeout, so wait for it to exit
+        pass
+    except Exception:
+        return False
+    finally:
+        if client is not None:
+            client.close()
+
+    try:
+        process.wait(timeout=timeout)
+    except psutil.TimeoutExpired:
+        return False
+
+    return True
 
 
 def send_ipc_message(process, message):
