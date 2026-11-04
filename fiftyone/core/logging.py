@@ -24,7 +24,7 @@ class JsonFormatter(logging.Formatter):
 
     def format(self, record):
         log_entry = {
-            "timestamp": f'{self.formatTime(record, "%Y-%m-%dT%H:%M:%S")}{record.msecs/1000:.3f}Z',
+            "timestamp": f'{self.formatTime(record, "%Y-%m-%dT%H:%M:%S")}.{int(record.msecs):03d}Z',
             "severity": record.levelname,
             "level": record.levelno,
             "logger": record.name,
