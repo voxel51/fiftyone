@@ -717,7 +717,7 @@ ___________________________________
 
 If credentials are configured both on the local machine and remotely via the
 Enterprise server, the behavior is for the Enterprise SDK to use the first
-matching set of credentials found. 
+matching set of credentials found.
 
 *  When running the Enterprise SDK locally, the default is to use local
    credentials, if any exist, and otherwise to use managed credentials returned
@@ -777,17 +777,6 @@ Set the root in one of these places:
 A service that has its own `FIFTYONE_MANAGED_STORAGE_ROOT` uses that value
 instead of the saved one. If you set the variable on more than one container,
 use the same value on each.
-
-If no root is set, Voxel51 uses the projection storage location that older
-versions saved in your organization's settings. If neither is set, robot
-imports fail, and so does
-:func:`generate_renditions() <fiftyone.multimodal.renditions.generate_renditions>`
-unless you pass `output_dir`. Voxel51 never falls back to a service's local
-disk.
-
-The root only controls where new files go. Each file's absolute path is
-saved when it's written, so if you change the root, existing files stay
-where they are and still load.
 
 .. _enterprise-ai-model-weights:
 
