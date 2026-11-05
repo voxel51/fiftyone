@@ -289,6 +289,8 @@ trajectories, and camera frustums. Coordinate frame transforms from the
 recording are used to place everything correctly, and you can select the
 reference frame, track a moving frame with the camera, measure distances, and
 inspect points via hover tooltips.
+The 3D tile can also show :ref:`robots <multimodal-robots>` from URDF
+models.
 
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/3d-panel.webp
    :alt: multimodal-3d-tile
@@ -449,6 +451,118 @@ and action data per dimension: the dataset's declared statistics (from
 `meta/stats.json`), this episode's computed statistics — including seekable
 extremes that jump the playhead to where a min/max occurred — recorded
 cadence, out-of-declared-range counts, and action-vs-state tracking error.
+
+.. _multimodal-robots:
+
+Robots
+______
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+.. note::
+
+    Robots are only available in :ref:`Voxel51 <fiftyone-enterprise>`.
+
+The :ref:`3D tile <multimodal-3d-tile>` can show robots from
+`URDF <https://wiki.ros.org/urdf>`_ models. Each link follows its recorded
+coordinate frame. A joint source, such as a `JointState` topic or a LeRobot
+`state` or `action` feature, moves the joints.
+
+FiftyOne finds URDFs in two places:
+
+-   **The recording**: MCAP attachments named `*.urdf`, and string topics that
+    carry a URDF, such as `/robot_description`
+-   **The robot library**: URDF packages that you import once. Every dataset
+    in your deployment can use them
+
+Until you save a robot setup for a dataset, the 3D tile shows a recording's
+robot by itself when the recording has exactly one URDF attachment or
+`robot_description` topic. If the episode has exactly one `JointState`
+stream, that stream moves the joints.
+
+The robot library stores its packages under the
+:ref:`managed storage root <enterprise-managed-storage-root>`. You need a root
+to import a package or to save a robot from a recording. You don't need one
+to show the robots that FiftyOne finds in a recording.
+
+.. _multimodal-robots-app:
+
+Setting up robots in the App
+----------------------------
+
+Focus the 3D tile and open the **Robots** group in its settings tab:
+
+-   Click **Add robot** to choose a URDF from the recording or the robot
+    library. To import a new robot, drop in a URDF with its meshes, a ZIP
+    archive, or a USD/USDZ asset. Expand Xacro files to URDF before you
+    import them, for example with `xacro robot.urdf.xacro > robot.urdf`
+-   Open a robot's options menu and choose **Placement and joints…** to set
+    its placement, frame prefix, and joint source. You can attach its root
+    to its recorded root frame, to another recorded frame, or to a link of
+    another robot. Choose **Robot preview (not recorded)** to show the robot
+    apart from the recording. If the recording has no coordinate frames, a
+    robot on its recorded root frame shows in the robot preview
+-   When a robot has problems, such as links with no recorded frames or
+    joint names that the joint source doesn't use, an issue count shows
+    next to its name. Click the count to see each issue and its fix, if
+    there is one
+-   Click **Save for all episodes** to save the setup to the dataset. Every
+    episode then shows the same robots. Saving imports the recording's URDFs
+    into the robot library. You need edit access to the dataset to save
+
+.. _multimodal-robots-sdk:
+
+Managing robots in Python
+-------------------------
+
+Use `fiftyone.multimodal.robots` to manage the robot library and a dataset's
+robot setup:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.robots as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    # Import a URDF package into the robot library
+    arm = fomr.import_robot_model("/path/to/arm.zip", "urdf/arm.urdf")
+
+    # Show the arm in every episode, moved by a JointState topic
+    dataset.save_robot_configuration(
+        [fomr.robot_instance(arm, joint_stream="/joint_states")]
+    )
+
+`import_robot_model()` takes a package directory, ZIP archive, or tar archive,
+and the path of the URDF in it. It keeps the URDF and the meshes and textures
+that it references, and resolves `package://` paths. Meshes must be STL, DAE,
+glTF, GLB, or OBJ. A package can have at most 4096 files, 64 MiB per file,
+and 256 MiB in total, and the URDF itself can be at most 1 MiB. If the
+library already has the same package, you get the existing revision.
+
+`robot_instance()` also accepts:
+
+-   `frame_prefix`: the prefix of the robot's recorded link frames
+-   `joint_feature`: `"state"` or `"action"`, to move the joints from a
+    LeRobot feature instead of a topic
+-   `parent_frame`: a recorded frame to attach the robot's root to, instead
+    of the root link's own frame
+-   `position` and `quaternion`: the root's offset from `parent_frame`, as
+    `[x, y, z]` in metres and `[x, y, z, w]`
+
+`fomr.list_robot_models()` lists the library, newest first.
+
+`fomr.remove_robot_model()` hides a package from the library. Datasets that
+use it still show it.
+
+`dataset.save_robot_configuration(None)` removes the dataset's robot setup,
+so FiftyOne finds robots in each recording again.
+
+Clones and :ref:`FiftyOneDataset exports <multimodal-export>` keep the
+dataset's robot setup. An export copies the robots' packages when it exports
+media.
 
 .. _multimodal-timeline-tracks:
 
