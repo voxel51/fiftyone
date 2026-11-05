@@ -20,14 +20,8 @@ lookahead. The dataset stores only a script's definition: source, inputs,
 outputs, and parameters. Scripts never change the MCAP file or write results
 to the dataset; results can be cached in your browser.
 
-Anyone with access to a dataset can see and run its scripts. Each viewer
-chooses which scripts run for them.
-
 Create a script
 ---------------
-
-You describe what you want, an agent writes the script, and the App runs it on
-your recording.
 
 1.  Open an MCAP sample, select **Scripts**, and create a script.
 2.  Select **Copy for agent**, optionally describe what you want, and select
@@ -64,7 +58,7 @@ closest topic. Type issues are advisory: they do not block Preview or Save.
 Script files
 ------------
 
-A script is one file. A header at its top declares the script's name, inputs,
+A script is one file. A header at the top declares the script's name, inputs,
 outputs, and parameters, and the transform follows:
 
 .. code-block:: typescript
@@ -104,12 +98,6 @@ The header takes these keys:
     :ref:`Stateless and stateful scripts <multimodal-mcap-scripts-execution>`.
 -   `apiVersion`: `1` (the default).
 
-The header must be strict JSON: quoted keys, no comments, and no trailing
-commas. The App, the SDK, and the server read it without running the file, and
-a saved script's fields always match its header. The editor's panels show what
-the header declares, and their quick fixes rewrite the header. The App gives a
-script saved without a header one from its saved fields when you next edit it.
-
 Messages, state, and outputs
 ----------------------------
 
@@ -131,9 +119,6 @@ Select **Stateful** when outputs depend on earlier messages. A stateful script
 computes from the start of the recording, and a seek may replay earlier
 messages. `event.state` starts empty for each recording and all outputs share
 it. Keep it small: the latest values or an open interval, not every message.
-
-If a message throws, the script skips that message's outputs but keeps its
-earlier changes to `event.state`. Validate input before you change state.
 
 Outputs
 ~~~~~~~
@@ -309,38 +294,13 @@ Escape message text before you insert it, as `esc` does.
 
 No JavaScript runs in a panel. The App removes scripts, event handlers, links,
 forms, images and media, embedded content, remote resources, and CSS at-rules,
-animation, and fixed positioning, then reports what it removed. Static SVG and
-`<details>` sections are allowed. A snapshot is limited to 256 KiB and 5,000
-elements.
+animation, and fixed positioning, etc.
 
 Theme colors follow the App's light and dark themes: `--html-fg`,
 `--html-muted`, `--html-bg`, `--html-surface`, `--html-border`,
 `--html-accent`, `--html-success`, `--html-warning`, `--html-danger`, and
 `--html-code-bg`. Give each `<details>` a stable `id` so its open state
 survives new snapshots.
-
-Add a panel with **HTML** next to **Saved**, from **Topics**, or from the layout
-menu. Each panel shows one output and keeps it in saved layouts. A panel whose
-script is off or deleted stays in the layout and says why it is empty.
-
-Preview and limits
-------------------
-
-Preview shows all outputs for up to 10 minutes of the recording, with its own
-cursor. Select an event to inspect it, or expand **Inspect output**.
-`console.log` and its siblings write to **Logs**, which stay in your browser
-session.
-
-Scripts run in a sandbox without network, storage, timers, `Date`, or
-`Math.random`. Time, memory, reads, and retained output are bounded. A message
-that throws is skipped. The run reports how many messages it skipped and where
-the last one failed: topic, recording time, and source line. **Seek playback**
-jumps there. A run stops after 100 consecutive failures, or when more than 5%
-of messages fail after the first 1,000.
-
-Changing source, inputs, outputs, execution mode, or parameter values starts a
-new computation. Earlier results stay cached, so restoring a value reuses
-them.
 
 Enable, share, and reuse
 ------------------------
@@ -404,47 +364,7 @@ Write the script as one :ref:`file with a header
     scripts.disable("Grasp")
     scripts.delete("Grasp")
 
-`create()` reads the script's fields from its header. Arguments that you also
-pass, such as `name` or `outputs`, must match the header. For a source without
-a header, pass `name`, `inputs`, and `outputs`, and optionally `execution`
-(`"stateless"` by default) and `params`. `create()` also takes `enabled`
-(`False` by default).
-
-`update()` takes any of `name`, `inputs`, `outputs`, `source`, `execution`,
-`params`, and `enabled`. A new source's header sets the fields it declares.
-When you change fields without passing a source, `update()` rewrites the saved
-header to match.
-
-`enable()` and `disable()` set **On by default for everyone with access**.
-They never change a viewer's own **Enabled for you** choice or parameter
-**Values**, which stay in that viewer's browser.
-
 The SDK validates definitions like the App does, but it does not compile or run
 source. Preview a new script in the App before you enable it. Writes require
 dataset edit permission. Viewers see changes the next time they open the
 recording.
-
-Move and share scripts:
-
-.. code-block:: python
-    :linenos:
-
-    scripts.export_file("Grasp", "/tmp/grasp.ts")  # the file, with its header
-    scripts.export_file("Grasp", "/tmp/grasp.json")  # the App's JSON format
-    fo.load_dataset("other-drives").scripts.import_file("/tmp/grasp.ts")
-
-    scripts.org.share("Grasp")  # publish to Org scripts
-    scripts.org.share("Grasp", update="Grasp")  # replace your org copy
-    scripts.org.list()
-    scripts.org.copy("Grasp")  # an independent dataset copy
-    scripts.org.delete("Grasp")
-
-`export_file()` writes the source with its header to a `.ts`, `.js`, or `.mjs`
-path, adding a header from the saved fields if the source has none. Other
-paths get the JSON format. `import_file()` reads either.
-
-Clones of a dataset or a view, and
-:class:`FiftyOneDataset <fiftyone.types.FiftyOneDataset>` exports, keep the
-dataset's scripts. Snapshots do not.
-
-Scripts only run on MCAP datasets, so `dataset.scripts` refuses other formats.
