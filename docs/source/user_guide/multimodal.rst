@@ -424,7 +424,7 @@ tile is showing. It contains the following tabs:
     tile appears with its specific options — for example, which streams and
     overlays an image tile displays, the 3D tile's colormaps and camera
     behavior, the topic/field series charted by a plot tile, or the topic
-    shown in a message tile
+    shown in a message tile. Clicking a tile opens its tab
 
 .. _multimodal-inspector-sidebar:
 
