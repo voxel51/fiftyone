@@ -1178,6 +1178,10 @@ The supported syntax is as follows.
     changed(path)                         # instant events when a value changes;
                                           # may be &&-chained with filter
                                           # predicates
+    rising(pred)                          # instant events when pred changes
+                                          # from false to true
+    falling(pred)                         # instant events when pred changes
+                                          # from true to false
     unique(path)                          # distinct values
     any(pred)                             # true if pred holds anywhere
     max(path), max(abs(path))             # maximum (absolute) value
@@ -1195,9 +1199,19 @@ The supported syntax is as follows.
     path == "string"
     !path                       # boolean NOT
     changed(path)
+    rising(pred)
+    falling(pred)
     path                        # bare path; truthy check
     pred1 && pred2 [&& ...]     # logical AND
     pred1 || pred2 [|| ...]     # logical OR
+
+`rising` and `falling` compare consecutive boolean results of their predicate.
+The first result does not produce an edge. For example,
+`rising(vehicle_speed_signals.speed > speed_threshold)` emits one instant
+event when speed crosses above the threshold; further numeric changes above
+the threshold do not emit more events. Like `changed`, edge predicates may be
+combined with filter predicates using `&&`. Transition predicates cannot be
+used as inputs to `contiguous` or `overlaps`, which require state predicates.
 
 .. note::
 
