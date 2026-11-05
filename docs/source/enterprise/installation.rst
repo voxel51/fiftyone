@@ -747,6 +747,48 @@ server, and there is no need to configure credentials locally. To enable
 downloading of credentials to machines, set the environment variable
 `FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` in the `teams-api` container.
 
+.. _enterprise-managed-storage-root:
+
+Managed storage root
+--------------------
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+Voxel51 stores the files that it writes itself under one **managed storage
+root**: :ref:`robot library <multimodal-robots>` packages,
+:ref:`playback renditions <multimodal-playback-renditions>`, and
+:ref:`projection tables <multimodal-indexing>` whose manifest names no
+storage location (`sink`).
+The root is a cloud URI, such as `s3://my-bucket/fiftyone`, or an absolute
+path to a shared directory. Every Voxel51 service must be able to read and
+write files there.
+
+Set the root in one of these places:
+
+-   **Settings > Infrastructure > Storage**: an admin enters the root. Click
+    **Check storage access** to confirm that a worker can read and write
+    files there
+-   `FIFTYONE_MANAGED_STORAGE_ROOT` on the `teams-api` container: at
+    startup, the API saves the value in your organization's settings, and
+    the other services and SDK clients use it from there. The Storage page
+    then shows the root as read-only
+
+A service that has its own `FIFTYONE_MANAGED_STORAGE_ROOT` uses that value
+instead of the saved one. If you set the variable on more than one container,
+use the same value on each.
+
+If no root is set, Voxel51 uses the projection storage location that older
+versions saved in your organization's settings. If neither is set, robot
+imports fail, and so does
+:func:`generate_renditions() <fiftyone.multimodal.renditions.generate_renditions>`
+unless you pass `output_dir`. Voxel51 never falls back to a service's local
+disk.
+
+The root only controls where new files go. Each file's absolute path is
+saved when it's written, so if you change the root, existing files stay
+where they are and still load.
+
 .. _enterprise-ai-model-weights:
 
 AI model weights
