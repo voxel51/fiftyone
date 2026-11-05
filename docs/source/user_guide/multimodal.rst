@@ -1240,6 +1240,57 @@ tables, as immutable, content-addressed objects under the dataset's
 `artifacts/grid/` prefix, and are served to the App through authorized
 endpoints.
 
+.. _multimodal-playback-renditions:
+
+Playback renditions
+___________________
+
+Recordings with several JPEG cameras often need more bandwidth to play in
+real time than a cloud bucket or a remote link delivers, so playback stalls
+to buffer. A **playback rendition** is a smaller copy of an MCAP recording
+for streaming playback. It keeps the timestamps and message order of every
+topic you don't drop, re-encodes `foxglove.CompressedImage` cameras as H.264
+`foxglove.CompressedVideo`, and stores point cloud intensities that are whole
+numbers in `[0, 255]` as one byte.
+
+Use
+:func:`generate_renditions() <fiftyone.multimodal.renditions.generate_renditions>`
+to write a rendition for each MCAP sample. Each rendition's path is stored in
+a new media field, which `make_default=True` makes the default for the grid
+and the modal. Samples without a rendition still show `filepath`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.renditions as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    config = fomr.RenditionConfig(
+        max_image_width=800,  # downscale wider camera frames
+        drop_topics=["/CAM_*/lidar"],  # leave out derived topics
+    )
+
+    fomr.generate_renditions(
+        dataset,
+        config=config,
+        output_field="playback_filepath",
+        make_default=True,
+    )
+
+Renditions are written to `datasets/<dataset ID>/renditions/` under the
+`managed_storage_root` in your :ref:`FiftyOne config <configuring-fiftyone>`,
+which FiftyOne Enterprise admins can also set in Settings > Infrastructure >
+Storage. Pass `output_dir` to write them to another directory or bucket.
+
+Renditions trade fidelity for bytes: camera frames are downscaled and
+lossy-compressed, and options like `point_fields` and `point_stride` drop
+point cloud data. The source recording is never modified: choose `filepath`
+under Display options > Media field to inspect full-fidelity data. Writing renditions
+requires `PyAV <https://github.com/PyAV-Org/PyAV>`_ with an FFmpeg build that
+includes `libx264`.
+
 .. _multimodal-segment-embeddings:
 
 Segment embeddings __SUB_BETA__
