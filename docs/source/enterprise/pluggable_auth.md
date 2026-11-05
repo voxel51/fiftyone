@@ -147,38 +147,40 @@ configuration for KeyCloak as an Identity Provider.
 
 ## Getting Started
 
-Follow the steps below to configure your first admin user in CAS and sign in to
-the app.
+Follow the steps below to add your first admin and sign in to the app.
 
-1. Log in to the Super Admin UI by navigating to
+1. Log in to the [Super Admin UI](#super-admin-ui) by navigating to
    `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and entering the
    `FIFTYONE_AUTH_SECRET` in the top right of the page.
-1. Create an Admin
-    1. Click on the “Admins” tab
-    1. Click “Add admin” in the bottom left
-    1. Set the name and email address (as it appears in your Identity Provider)
-       and click “Add”
-1. (Air-gapped Only) Add your Identity Provider
-    1. Click on the “Identity Providers” tab at the top of the screen and click
+1. (Air-gapped only) Add your identity provider
+    1. Click the “Identity Providers” tab at the top of the page, then click
        “Add provider”
-    1. Fill out the “Add identity provider”
-        1. You can also click “Switch to advanced editor” to provide the full
-           configuration as a JSON object
-    1. In the “Profile callback” field, set the mapping that your Identity
-       Provider expects
-1. Log in to the app with the same email address as above
-    1. Navigate to `https://<YOUR_FIFTYONE_TEAMS_URL>/datasets`
-    1. You should be immediately redirected to the sign-in page. For air-gapped
-       deployments, you should see a button to sign in through your newly
-       configured identity provider. For all others, you should see a button to
-       sign in through the provider Voxel51 has configured for you.
-    1. Before logging in, create the admin user (in step 2). Otherwise, you
-       will need to remove this user from the database and try again.
-    1. Click the login button and provide the credentials to authenticate to
-       your IdP
-    1. Click on the icon in the top right corner then click “Settings”
-    1. Click “Users” on the left side
-    1. Validate the user is listed as an admin
+    1. Fill out the “Add identity provider” form, or click “Switch to advanced
+       editor” to provide the full configuration as a JSON object
+    1. In the “Profile callback” field, map the user info your identity
+       provider returns to the Voxel51 user's `id`, `name`, `email`, and
+       `image`, as the `profile` of the
+       [example configuration](#custom-identity-providers) does
+1. Add an admin
+    1. Click the “Admins” tab
+    1. Click “Add admin” in the bottom left
+    1. Enter the user's name and the email address they have in your identity
+       provider, then click “Add”
+1. Sign in to the app with that email address
+    1. Navigate to `https://<YOUR_FIFTYONE_TEAMS_URL>/datasets`, which
+       redirects you to the sign-in page
+    1. Click the button for your identity provider, or, outside air-gapped
+       deployments, the provider Voxel51 configured for you, and sign in
+    1. Click the icon in the top right corner, then click “Settings”
+    1. Click “Users” on the left side and check that the user is listed as an
+       admin
+
+> **NOTE:** Steps 3 and 4 can be done in either order when the user is able to
+> sign in before being added: with an invitation, or when “Allow auto join” is
+> checked on the identity provider, which gives them the organization's default
+> role. Adding a user who has already signed in as an admin changes their role
+> to admin. Otherwise, a user who is not a member of the organization cannot
+> sign in, so add the admin first.
 
 ## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
 
@@ -367,7 +369,7 @@ above) or by directly visiting `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/api-doc`
    </td>
    <td><code>false</code>
    </td>
-   <td>When set to True, sign in page with identity provider choices will be skipped when there is only one identity provider is configured
+   <td>When set to True, sign in page with identity provider choices will be skipped when only one identity provider is configured
    </td>
   </tr>
 </table>
@@ -410,9 +412,9 @@ async function Hook(context) {
             // returning or throwing here does not affect the sign out flow
             break;
 
-        // user is being redirected on sign in our sign out
+        // user is being redirected on sign in or sign out
         case "redirect":
-            // user will be redirected to this URL on sign in our sign out
+            // user will be redirected to this URL on sign in or sign out
             return "/settings/accounts";
     }
 }
