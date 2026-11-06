@@ -9,10 +9,6 @@ Voxel51 2.26.0
 --------------
 *Released November 6, 2026*
 
-- **A redesigned App**: the datasets page, dataset page, view bar, sidebars,
-  panels, runs, Manage and Access pages, share dialog, and annotation sidebar
-  have a new look, with no features removed. Workspaces are now called
-  Layouts, and the App fits phones and narrow windows
 - **Annotation Projects**: a new top-level Projects page replaces the
   dataset Annotate tab. A project holds batches of annotation work across
   datasets; each batch starts from a workflow template on the whole dataset,
@@ -27,21 +23,38 @@ Voxel51 2.26.0
 - **Task assignment**: workflow stages have an assignee pool of people and
   groups. Tasks can be split by size or count, claimed from the pool,
   assigned manually or automatically, and prioritized
-- **Multisensor temporal 3D annotation**: label cuboid and polyline tracks
-  across entire sequences in the new 3D viewer, with every camera and LiDAR
-  view of the scene in sync. Edit cuboid tracks on the timeline (resize,
-  move, split, merge, interpolate, keyframes), with ego and top camera
-  presets and a draggable heading arrow
-- **Scene playback**: ordered dynamic groups over grouped datasets play
-  every camera and LiDAR slice on one timeline in a rebuilt sample page, in
-  both Inspect and Annotate. The timeline index for groups of up to 100,000
+- **Activity and audit logs**: see who did what at every level of your
+  deployment. Every sample has a history panel of its edits, reviews, tags,
+  and comments. Every dataset has an Activity tab that lists each change
+  and who made it, alongside the dataset's snapshots. The new
+  Monitoring > Audit Log records every action across your organization,
+  filterable by person, dataset, and event type, and downloadable as CSV
+- **Multisensor temporal 3D annotation**: play every camera and LiDAR slice
+  of a grouped scene in sync on one timeline, in both Inspect and Annotate,
+  and label cuboid and polyline tracks across the whole sequence in the new
+  3D viewer. Edit cuboid tracks on the timeline (resize, move, split,
+  merge, interpolate, keyframes), with ego and top camera presets and a
+  draggable heading arrow. The timeline index for groups of up to 100,000
   samples is created automatically
-- **Per-field label schemas**: label schemas can define field visibility
-  and attributes per field, and are now enforced server-side by default.
-  Set `VFF_SCHEMA_ENFORCEMENT=false` to turn enforcement off
-- **Selection tray and subsets**: organize selected samples into sections,
-  save exact selections as reusable subsets, and keep saved view
-  definitions as saved queries
+- **Keypoint and skeleton annotation**: create and edit keypoints in the
+  App with guided skeleton placement, per-point attributes, and keypoint
+  tracks on video datasets
+- **Multimodal scripts and robots**: have an agent write a script over an
+  MCAP recording's topics, from a chat or the SDK, and see the results as
+  plots, timeline events, 3D geometry, or HTML panels that follow playback.
+  Scripts can be shared with your organization. Episodes show URDF robots
+  from MCAP attachments, description topics, or an org-wide robot library,
+  posed from recorded TF and joint states. Import robots and props from
+  USD/USDZ files, including NVIDIA SimReady assets. LeRobot episodes show
+  URDF robots and camera frustums
+- **A redesigned App**: the datasets page, dataset page, view bar, sidebars,
+  panels, runs, Manage and Access pages, share dialog, and annotation sidebar
+  have a new look, with no features removed. Workspaces are now called
+  Layouts, and the App fits phones and narrow windows
+- **Subsets and saved queries**: saved views are now called saved queries,
+  and existing saved views carry over. Save exact selections of samples as
+  reusable subsets, and organize selected samples into sections in the new
+  selection tray
 - **New view bar**: write and edit view expressions in the App, add stages
   through descriptor-driven forms, and run similarity search from the bar
 
@@ -52,8 +65,6 @@ App
   in the App and grid, can be edited with a rotate handle, and interpolates
   between keyframes. The CVAT integration converts rotations between
   degrees and radians
-- Create and edit keypoints in the App with guided skeleton placement,
-  per-point attributes, and keypoint tracks on video datasets
 - Temporal tags are available on plain video datasets and the video slices
   of grouped datasets, not only multimodal episodes
 - Hide a detection field's bounding boxes from the sidebar, for example to
@@ -69,6 +80,9 @@ App
 Annotation
 ^^^^^^^^^^
 
+- Label schemas can define field visibility and attributes per field, and
+  are now enforced server-side by default. Set
+  `VFF_SCHEMA_ENFORCEMENT=false` to turn enforcement off
 - Add selected samples, or all matching results, to a running batch from
   the selection tray
 - Annotation tasks open directly on the layout their fields need, and step
@@ -81,14 +95,6 @@ Annotation
 Multimodal
 ^^^^^^^^^^
 
-- **Scripts**: have an agent write a script over an MCAP recording's
-  topics, from a chat or the SDK, and see the results as plots, timeline
-  events, 3D geometry, or HTML panels that follow playback. Scripts can be
-  shared with your organization
-- **Robots**: episodes show URDF robots from MCAP attachments, description
-  topics, or an org-wide robot library, posed from recorded TF and joint
-  states. Import robots and props from USD/USDZ files, including NVIDIA
-  SimReady assets. LeRobot episodes show URDF robots and camera frustums
 - Projections read each recording once, project every field of every
   channel, and run 1.2-3.3x faster. Text and boolean signals are indexed
   automatically, and adding derived events or summaries no longer
@@ -125,6 +131,8 @@ Agent
 Administration
 ^^^^^^^^^^^^^^
 
+- The new Monitoring > Activity page shows the work your team produced
+  each day and by person
 - On-prem users can upload files from their computer to cloud storage and
   import them into a dataset
 - Invitations hold a license seat until they expire, and seats are
