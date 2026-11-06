@@ -42,6 +42,7 @@ _BRAND = {
 }
 _OCCLUDED = {"name": "occluded", "type": "bool", "component": "toggle"}
 _NOTES = {"name": "notes", "type": "list<str>", "component": "text"}
+_POINT_OCCLUDED = dict(_OCCLUDED, scope="point")
 
 
 class DeclareLabelSchemaAttributesTests(unittest.TestCase):
@@ -139,6 +140,37 @@ class DeclareLabelSchemaAttributesTests(unittest.TestCase):
         )
         self.assertIsInstance(
             dataset.get_field("frames.gt.detections.brand"), fof.StringField
+        )
+
+    @drop_datasets
+    def test_point_scoped_attributes_without_values_are_lists(self):
+        # A point-scoped attribute's schema type is its ELEMENT type, but its
+        # values are lists parallel to `points`
+        dataset = fo.Dataset()
+        sample = fo.Sample(
+            filepath="/tmp/0.png",
+            kp=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(label="a", points=[[0.1, 0.1], [0.2, 0.2]])
+                ]
+            ),
+        )
+        dataset.add_sample(sample)
+
+        dataset.update_label_schema(
+            "kp", _schema(dataset, "kp", _POINT_OCCLUDED), allow_new_attrs=True
+        )
+
+        occluded = dataset.get_field("kp.keypoints.occluded")
+        self.assertIsInstance(occluded, fof.ListField)
+        self.assertIsInstance(occluded.field, fof.BooleanField)
+
+        # loading a sample validates it against the declared field, so a
+        # per-point list must load once it is saved
+        sample.kp.keypoints[0].occluded = [False, True]
+        sample.save()
+        self.assertListEqual(
+            dataset[sample.id].kp.keypoints[0].occluded, [False, True]
         )
 
     @drop_datasets
