@@ -103,6 +103,15 @@ is automatically inferred as `"multimodal"`:
 
     print(dataset.media_type)  # multimodal
 
+Custom MCAP messages can also become signals, event tracks, and scene geometry
+through :ref:`MCAP scripts <multimodal-mcap-scripts>`, an Enterprise
+feature that saves JavaScript or TypeScript transformations with your dataset.
+
+.. toctree::
+   :maxdepth: 1
+
+   multimodal/mcap_scripts
+
 .. _multimodal-lerobot-datasets:
 
 LeRobot datasets
@@ -212,7 +221,7 @@ least one stream it can display:
       -
     * - :ref:`3D <multimodal-3d-tile>`
       - ✓
-      -
+      - ✓
     * - :ref:`Map <multimodal-map-tile>`
       - ✓
       -
@@ -280,6 +289,8 @@ trajectories, and camera frustums. Coordinate frame transforms from the
 recording are used to place everything correctly, and you can select the
 reference frame, track a moving frame with the camera, measure distances, and
 inspect points via hover tooltips.
+The 3D tile can also show :ref:`robots <multimodal-robots>` from URDF
+models.
 
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/3d-panel.webp
    :alt: multimodal-3d-tile
@@ -415,7 +426,7 @@ tile is showing. It contains the following tabs:
     tile appears with its specific options — for example, which streams and
     overlays an image tile displays, the 3D tile's colormaps and camera
     behavior, the topic/field series charted by a plot tile, or the topic
-    shown in a message tile
+    shown in a message tile. Clicking a tile opens its tab
 
 .. _multimodal-inspector-sidebar:
 
@@ -440,6 +451,48 @@ and action data per dimension: the dataset's declared statistics (from
 `meta/stats.json`), this episode's computed statistics — including seekable
 extremes that jump the playhead to where a min/max occurred — recorded
 cadence, out-of-declared-range counts, and action-vs-state tracking error.
+
+.. _multimodal-robots:
+
+Robots
+______
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+The :ref:`3D tile <multimodal-3d-tile>` shows robots from
+`URDF <https://wiki.ros.org/urdf>`_ models. Links follow their recorded
+frames, and a `JointState` topic or a LeRobot `state` or `action` feature
+moves the joints.
+
+URDFs come from the recording (`*.urdf` attachments and `robot_description`
+topics) or from the robot library, which every dataset in your deployment
+shares. Until you save a setup, the 3D tile shows a recording's robot when the
+recording has exactly one URDF.
+
+To set up robots, open the **Robots** group in the 3D tile's settings.
+**Add robot** adds a URDF from the recording or the library, or imports a URDF
+with its meshes, a ZIP, or a USD/USDZ file. A robot's **Placement and
+joints…** menu item sets where it attaches and what moves its joints.
+**Save for all episodes** saves the setup to the dataset.
+
+You can do the same in Python:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.robots as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    arm = fomr.import_robot_model("/path/to/arm.zip", "urdf/arm.urdf")
+    dataset.save_robot_configuration(
+        [fomr.robot_instance(arm, joint_stream="/joint_states")]
+    )
+
+Importing a robot, or saving one from a recording, requires a
+:ref:`managed storage root <enterprise-managed-storage-root>`.
 
 .. _multimodal-timeline-tracks:
 
@@ -1178,6 +1231,10 @@ The supported syntax is as follows.
     changed(path)                         # instant events when a value changes;
                                           # may be &&-chained with filter
                                           # predicates
+    rising(pred)                          # instant events when pred changes
+                                          # from false to true
+    falling(pred)                         # instant events when pred changes
+                                          # from true to false
     unique(path)                          # distinct values
     any(pred)                             # true if pred holds anywhere
     max(path), max(abs(path))             # maximum (absolute) value
@@ -1195,9 +1252,19 @@ The supported syntax is as follows.
     path == "string"
     !path                       # boolean NOT
     changed(path)
+    rising(pred)
+    falling(pred)
     path                        # bare path; truthy check
     pred1 && pred2 [&& ...]     # logical AND
     pred1 || pred2 [|| ...]     # logical OR
+
+`rising` and `falling` compare consecutive boolean results of their predicate.
+The first result does not produce an edge. For example,
+`rising(vehicle_speed_signals.speed > speed_threshold)` emits one instant
+event when speed crosses above the threshold; further numeric changes above
+the threshold do not emit more events. Like `changed`, edge predicates may be
+combined with filter predicates using `&&`. Transition predicates cannot be
+used as inputs to `contiguous` or `overlaps`, which require state predicates.
 
 .. note::
 
@@ -1239,6 +1306,57 @@ Thumbnails are written to your dataset's
 tables, as immutable, content-addressed objects under the dataset's
 `artifacts/grid/` prefix, and are served to the App through authorized
 endpoints.
+
+.. _multimodal-playback-renditions:
+
+Playback renditions
+___________________
+
+Recordings with several JPEG cameras often need more bandwidth to play in
+real time than a cloud bucket or a remote link delivers, so playback stalls
+to buffer. A **playback rendition** is a smaller copy of an MCAP recording
+for streaming playback. It keeps the timestamps and message order of every
+topic you don't drop, re-encodes `foxglove.CompressedImage` cameras as H.264
+`foxglove.CompressedVideo`, and stores point cloud intensities that are whole
+numbers in `[0, 255]` as one byte.
+
+Use
+:func:`generate_renditions() <fiftyone.multimodal.renditions.generate_renditions>`
+to write a rendition for each MCAP sample. Each rendition's path is stored in
+a new media field, which `make_default=True` makes the default for the grid
+and the modal. Samples without a rendition still show `filepath`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.renditions as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    config = fomr.RenditionConfig(
+        max_image_width=800,  # downscale wider camera frames
+        drop_topics=["/CAM_*/lidar"],  # leave out derived topics
+    )
+
+    fomr.generate_renditions(
+        dataset,
+        config=config,
+        output_field="playback_filepath",
+        make_default=True,
+    )
+
+Renditions are written to `datasets/<dataset ID>/renditions/` under the
+`managed_storage_root` in your :ref:`FiftyOne config <configuring-fiftyone>`,
+which FiftyOne Enterprise admins can also set in Settings > Infrastructure >
+Storage. Pass `output_dir` to write them to another directory or bucket.
+
+Renditions trade fidelity for bytes: camera frames are downscaled and
+lossy-compressed, and options like `point_fields` and `point_stride` drop
+point cloud data. The source recording is never modified: choose `filepath`
+under Display options > Media field to inspect full-fidelity data. Writing renditions
+requires `PyAV <https://github.com/PyAV-Org/PyAV>`_ with an FFmpeg build that
+includes `libx264`.
 
 .. _multimodal-segment-embeddings:
 

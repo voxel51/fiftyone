@@ -50,6 +50,11 @@ FiftyOne supports the configuration options described below:
 |                                          |                                                 |                               | require writing dataset contents to disk, such as ingesting datasets via               |
 |                                          |                                                 |                               | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
 +------------------------------------------+-------------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `managed_storage_root`                   | `FIFTYONE_MANAGED_STORAGE_ROOT`                 | `None`                        | The cloud URI or absolute shared directory under which FiftyOne stores the data it     |
+|                                          |                                                 |                               | manages itself, such as robot packages and default projection warehouses. When unset,  |
+|                                          |                                                 |                               | FiftyOne Enterprise uses the root saved in Settings > Infrastructure > Storage, or     |
+|                                          |                                                 |                               | else the projection storage location previously configured.                            |
++------------------------------------------+-------------------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_ml_backend`                     | `FIFTYONE_DEFAULT_ML_BACKEND`                   | `torch`                       | The default ML backend to use when performing operations such as                       |
 |                                          |                                                 |                               | downloading datasets from the FiftyOne Dataset Zoo that support multiple ML            |
 |                                          |                                                 |                               | backends. Supported values are `torch` and `tensorflow`. By default,                   |
@@ -214,6 +219,7 @@ and the CLI:
             "default_video_ext": ".mp4",
             "do_not_track": false,
             "logging_level": "INFO",
+            "managed_storage_root": null,
             "max_process_pool_workers": null,
             "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
@@ -269,6 +275,7 @@ and the CLI:
             "default_video_ext": ".mp4",
             "do_not_track": false,
             "logging_level": "INFO",
+            "managed_storage_root": null,
             "max_process_pool_workers": null,
             "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
