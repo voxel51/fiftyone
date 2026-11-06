@@ -7,7 +7,7 @@ typing_extensions==4.16.0
 
 # precommit requirements
 pre-commit==4.6.2
-pylint==4.0.7
+pylint==4.0.9
 jupyter-client==8.9.1
 
 # docs requirements
