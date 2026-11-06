@@ -81,8 +81,9 @@ Annotation
 ^^^^^^^^^^
 
 - Label schemas can define field visibility and attributes per field, and
-  are now enforced server-side by default. Set
-  `VFF_SCHEMA_ENFORCEMENT=false` to turn enforcement off
+  are now enforced server-side by default. To turn enforcement off, set
+  `VFF_SCHEMA_ENFORCEMENT=false` on the `fiftyone-app` container, and on
+  `teams-plugins` if your deployment runs a dedicated plugins container
 - Add selected samples, or all matching results, to a running batch from
   the selection tray
 - Annotation tasks open directly on the layout their fields need, and step
