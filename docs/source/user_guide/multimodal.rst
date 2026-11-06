@@ -221,7 +221,7 @@ least one stream it can display:
       -
     * - :ref:`3D <multimodal-3d-tile>`
       - ✓
-      -
+      - ✓
     * - :ref:`Map <multimodal-map-tile>`
       - ✓
       -
