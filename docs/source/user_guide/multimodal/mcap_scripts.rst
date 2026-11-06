@@ -10,15 +10,32 @@ MCAP Scripts
     MCAP scripts are only available in :ref:`FiftyOne Enterprise
     <fiftyone-enterprise>`.
 
-A script is a function over recorded MCAP messages. Its outputs appear as
+A script is a transformation of recorded MCAP messages. Its outputs appear as
 plotted signals, timeline intervals and events, 3D geometry, or HTML panels
-that follow playback. One script can fill several named outputs from the same
-computation.
+that play back alongside the rest of your episode. One script can fill several
+named outputs from the same computation.
 
 Scripts run in the browser, on demand, over the time you view plus a short
 lookahead. The dataset stores only a script's definition: source, inputs,
 outputs, and parameters. Scripts never change the MCAP file or write results
 to the dataset; results can be cached in your browser.
+
+When to use a script
+--------------------
+
+Use a script to see something that your recordings don't publish directly,
+such as speed from a velocity topic, the intervals when a gripper is closed,
+or a planner's state as a status card. A script is quick to change, and the
+MCAP files stay as they are.
+
+Scripts are the wrong tool when:
+
+-   Other tools or training pipelines need the result. Process the source
+    MCAPs and record the result as a new topic.
+-   You want to search or filter episodes by the result. Results are not
+    saved to the dataset; use :ref:`MCAP indexing <multimodal-indexing>`.
+-   The computation is too slow for playback. Scripts run in each viewer's
+    browser.
 
 Create a script
 ---------------
@@ -27,7 +44,8 @@ Create a script
 2.  Select **Copy for agent**, optionally describe what you want, and select
     **Copy**. The copy holds every topic with its schema, the API, worked
     examples, and the current file. Select **Copy message examples too** to
-    add an example message of the topics you tick. Paste it into a chat.
+    add an example message of the topics you tick. Paste it into a chat with
+    Voxel51 Agent or with your own agent.
 3.  Paste the script the agent writes into the file. A complete script
     replaces the file, with its changed lines marked, and the panels beside
     it show the inputs, parameters, and outputs that its
@@ -318,10 +336,10 @@ creator and organization admins can update or delete an org script; that never
 changes dataset copies.
 
 **Export script to file** saves the editor contents as JSON. **Import script
-from file** adds that JSON, or a script file with a header such as
-`export_file()` writes, to another dataset as a draft. Check its topic names and
-preview it before you save. Files, org scripts, and saved scripts never include
-viewer values, enablement, or results.
+from file** adds a script to another dataset as a draft, from that JSON or from
+a script file with a header. Check its topic names and preview it before you
+save. Files, org scripts, and saved scripts never include viewer values,
+enablement, or results.
 
 .. _multimodal-mcap-scripts-python:
 
