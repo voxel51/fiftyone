@@ -2878,6 +2878,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@isaacs/nonrecursive-glob-match@npm:^1.0.1":
+  version: 1.0.3
+  resolution: "@isaacs/nonrecursive-glob-match@npm:1.0.3"
+  checksum: 10/b163380c2a4eab632b180c3dace65443e3064ebb58e228b5eab5630ceafd4581356aa63eb624d5634876c729e0797c45462ef2ef3ef35df0bb1bddbda6380447
+  languageName: node
+  linkType: hard
+
 "@joshwooding/vite-plugin-react-docgen-typescript@npm:^0.7.0":
   version: 0.7.0
   resolution: "@joshwooding/vite-plugin-react-docgen-typescript@npm:0.7.0"
@@ -14939,12 +14946,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:9.0.7":
-  version: 9.0.7
-  resolution: "minimatch@npm:9.0.7"
+"minimatch@npm:11.0.1":
+  version: 11.0.1
+  resolution: "minimatch@npm:11.0.1"
   dependencies:
-    brace-expansion: "npm:^5.0.2"
-  checksum: 10/72b9ba4af39f6a89934d56c9cc3bf1d86fb004b00c5e5b3d7f48b004f224005fd2919f52785643b7a18d53fc86f7befc7f25c85ef194cc06708b078682f8c9e5
+    "@isaacs/nonrecursive-glob-match": "npm:^1.0.1"
+    brace-expansion: "npm:^5.0.12"
+  checksum: 10/93f7925d97aa246454c212cfa34a9d6ef6c99e45b20a4efaf91819a4631db647b29e9d8e62a2dc2a6bb34be7d1b9e9535c73f0e6511c858ea0527e1d5d422131
   languageName: node
   linkType: hard
 
