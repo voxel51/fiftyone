@@ -42,6 +42,7 @@ In-App annotation within FiftyOne supports datasets containing the following med
 * :ref:`Labels <basics-labels>`
 
   * ``Classification``
+  * ``Regression``
   * ``Detections``
   * ``Instance segmentations``
   * ``2D Polylines and Polygons``
@@ -735,14 +736,20 @@ groups can be annotated as a video. Each frame is one sample of the group, in
 ``order_by`` order, so object tracks, keyframes, dynamic attributes and events
 span the group's samples, and every edit is written to the sample it lands on.
 
-The view must be an ordered dynamic group of images with an ``order_by_key``,
-which makes it :ref:`query performant <app-query-performant-stages>`:
+The view must be an ordered dynamic group of images played on the timeline.
+An ordered group plays on the timeline only when the dataset has a compound
+index that starts with the ``group_by`` field(s) followed by the ``order_by``
+field, and opens on it by default. Without that index the group is shown with
+pagination, and the timeline option in the display options (cog icon) above
+the sample is disabled and names the index to create:
 
 .. code-block:: python
 
     import fiftyone as fo
 
     dataset = fo.load_dataset("my-image-dataset")
+    dataset.create_index([("scene", 1), ("timestamp", 1)])
+
     view = dataset.group_by("scene", order_by="timestamp", order_by_key=0.0)
     session = fo.launch_app(view)
 
@@ -756,6 +763,11 @@ The right sidebar shows the fields of the sample under the playhead and
 updates as you scrub. The ``order_by`` field is read-only in this view because
 changing it would reorder the frames; edit it from the ungrouped view. Fields
 are the samples' own fields, so there is no ``frames.`` prefix.
+
+A dynamic group shown with pagination, which is every unordered group, is
+annotated one sample at a time. The Annotate tab edits the group element on
+screen as an ordinary sample, and the paginator below it moves between the
+group's elements.
 
 
 ----

@@ -4800,6 +4800,42 @@ The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-bui
 package offers a utility for configuring `vite <https://vite.dev>`_ to build your
 JS plugin bundle.
 
+Theme colors
+------------
+
+The App's theme is built on the `Voodo <https://github.com/voxel51/design-system>`_
+design system. The colors returned by `useTheme()` from `@fiftyone/components`
+and the `--fo-palette-*` CSS variables are plain color values taken from
+Voodo's tokens for the active light or dark mode, so they can be used anywhere,
+including libraries that parse colors such as plotly, canvas and three.js.
+
+Voodo's own `cssVar.color.*` tokens from `@voxel51/voodo` are CSS `var()`
+references. They work in any CSS context but cannot be parsed in JavaScript.
+If you pass one to a library that parses colors, resolve it first with
+`resolveCssColor()` or `resolveCssColorsDeep()` from `@fiftyone/utilities`,
+or with the `useResolvedCssColor()` hook from `@fiftyone/components`, which
+re-resolves when the theme mode changes:
+
+.. code-block:: jsx
+    :linenos:
+
+    import { useResolvedCssColor, useTheme } from "@fiftyone/components";
+    import { cssVar } from "@voxel51/voodo";
+
+    function MyPlot({ data }) {
+      // plain colors; safe to hand straight to plotly
+      const theme = useTheme();
+      const layout = {
+        paper_bgcolor: theme.background.level1,
+        font: { color: theme.text.secondary },
+      };
+
+      // a Voodo token, resolved to a concrete color for a parser
+      const accent = useResolvedCssColor(cssVar.color.brand.primary);
+
+      // ...
+    }
+
 Component types
 ---------------
 
