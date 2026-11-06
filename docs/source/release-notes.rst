@@ -27,10 +27,11 @@ Voxel51 2.26.0
 - **Task assignment**: workflow stages have an assignee pool of people and
   groups. Tasks can be split by size or count, claimed from the pool,
   assigned manually or automatically, and prioritized
-- **3D annotation**: draw and edit 3D cuboids and polylines in the new 3D
-  viewer, with camera views, ego and top camera presets, a draggable
-  heading arrow, and timeline track operations (resize, move, split, merge,
-  interpolate, keyframes) for cuboid tracks
+- **Multisensor temporal 3D annotation**: label cuboid and polyline tracks
+  across entire sequences in the new 3D viewer, with every camera and LiDAR
+  view of the scene in sync. Edit cuboid tracks on the timeline (resize,
+  move, split, merge, interpolate, keyframes), with ego and top camera
+  presets and a draggable heading arrow
 - **Scene playback**: ordered dynamic groups over grouped datasets play
   every camera and LiDAR slice on one timeline in a rebuilt sample page, in
   both Inspect and Annotate. The timeline index for groups of up to 100,000
