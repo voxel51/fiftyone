@@ -7,8 +7,8 @@ typing_extensions==4.16.0
 
 # precommit requirements
 pre-commit==4.6.2
-pylint==4.0.7
-jupyter-client==8.9.1
+pylint==4.1.1
+jupyter-client==8.10.0
 
 # docs requirements
 autodocsumm==0.2.15
@@ -20,7 +20,7 @@ pypandoc>=1.17
 sphinx-markdown-builder==0.6.11
 huggingface_hub>=1.17.0
 requests>=2.34.2
-ipykernel==7.3.0
+ipykernel==7.4.0
 ipython_genutils==0.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
@@ -28,7 +28,7 @@ jsx-lexer==2.0.1
 libsass==0.23.0
 myst-parser==5.1.0
 nbsphinx==0.9.8
-pydata-sphinx-theme==0.21.0
+pydata-sphinx-theme==0.22.0
 sphinx-autobuild==2025.8.25
 sphinx-tabs==3.5.0
 sphinx-design==0.7.0
