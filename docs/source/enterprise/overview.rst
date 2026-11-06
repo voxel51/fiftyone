@@ -351,9 +351,10 @@ datasets, or deployment. Voxel51 integrates with your organization's
 existing security infrastructure: users authenticate through your identity
 provider using OIDC, OAuth2, or SAML — see
 :ref:`Pluggable Authentication <pluggable-auth>` for the supported
-authentication modes — and all database access is brokered by the central
-authentication service.
+identity providers — and user, group and organization data is managed by the
+central authentication service.
 
-When deployed with :ref:`internal authentication mode <pluggable-auth>`, no
-outside network access is required to operate Voxel51, making it
-suitable for air-gapped and other high-security environments.
+When users sign in through an identity provider reachable inside your
+deployment's network, including its discovery, token and user-info endpoints,
+no outside network access is required to operate Voxel51, making it suitable
+for air-gapped and other high-security environments.
