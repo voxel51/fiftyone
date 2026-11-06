@@ -25,7 +25,8 @@ const EXCLUDED = {
 };
 
 // label types whose `bounding_box` gets a header-only row with an eyeball
-// that toggles the field's box outlines
+// that toggles the field's box outlines. Modal only: in the grid, the field's
+// checkbox is enough
 const BOUNDING_BOX_TYPES = [
   withPath(LABELS_PATH, DETECTION),
   withPath(LABELS_PATH, DETECTIONS),
@@ -114,7 +115,12 @@ export const getFilterItemsProps = (
   }
 
   const docType = parent.embeddedDocType;
-  if (!is3dDataset && docType && BOUNDING_BOX_TYPES.includes(docType)) {
+  if (
+    modal &&
+    !is3dDataset &&
+    docType &&
+    BOUNDING_BOX_TYPES.includes(docType)
+  ) {
     extra.push({
       color,
       path: [path, "bounding_box"].join("."),

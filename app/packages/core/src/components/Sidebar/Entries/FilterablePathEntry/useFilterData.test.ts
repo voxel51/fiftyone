@@ -28,7 +28,7 @@ describe("getFilterItemsProps", () => {
     const items = getFilterItemsProps(
       "#ffffff",
       "ground_truth.detections",
-      false,
+      true,
       labelField(DETECTIONS),
       [],
       noSkeleton,
@@ -49,7 +49,7 @@ describe("getFilterItemsProps", () => {
     const items = getFilterItemsProps(
       "#ffffff",
       "ground_truth",
-      false,
+      true,
       labelField(DETECTION),
       [],
       noSkeleton,
@@ -71,7 +71,7 @@ describe("getFilterItemsProps", () => {
     const items = getFilterItemsProps(
       "#ffffff",
       "frames.ground_truth.detections",
-      false,
+      true,
       labelField(DETECTIONS),
       [],
       noSkeleton,
@@ -91,8 +91,24 @@ describe("getFilterItemsProps", () => {
     const items = getFilterItemsProps(
       "#ffffff",
       "ground_truth.polylines",
-      false,
+      true,
       labelField(POLYLINES),
+      [],
+      noSkeleton,
+      "ground_truth",
+      false,
+    );
+
+    expect(items.map(({ ftype }) => ftype)).not.toContain("_BOUNDING_BOX");
+  });
+
+  it("adds no bounding box row in the grid", () => {
+    // in the grid, the field's checkbox already hides its boxes
+    const items = getFilterItemsProps(
+      "#ffffff",
+      "ground_truth.detections",
+      false,
+      labelField(DETECTIONS),
       [],
       noSkeleton,
       "ground_truth",
@@ -107,7 +123,7 @@ describe("getFilterItemsProps", () => {
     const items = getFilterItemsProps(
       "#ffffff",
       "ground_truth.detections",
-      false,
+      true,
       labelField(DETECTIONS),
       [],
       noSkeleton,

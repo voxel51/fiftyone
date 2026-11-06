@@ -78,4 +78,16 @@ describe("useLookerOptions", () => {
     expect(result.current).not.toBe(first);
     expect(result.current.hiddenBoundingBoxes).toEqual(["ground_truth"]);
   });
+
+  it("keeps drawing boxes in the grid", () => {
+    // the grid has no toggle, so a field hidden in the modal stays drawn
+    const store = createStore();
+    store.set(hiddenBoundingBoxesAtom(mocks.datasetId), ["ground_truth"]);
+
+    const { result } = renderHook(() => useLookerOptions(false), {
+      wrapper: wrapper(store),
+    });
+
+    expect(result.current.hiddenBoundingBoxes).toEqual([]);
+  });
 });
