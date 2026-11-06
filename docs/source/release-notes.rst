@@ -162,6 +162,10 @@ Model and dataset zoo
 Upgrade notes
 ^^^^^^^^^^^^^
 
+- After upgrading, run `FIFTYONE_DATABASE_ADMIN=true fiftyone migrate --all`
+  as described in the upgrade guide. This release adds sample attribution
+  fields to existing datasets, and datasets that are not migrated cannot be
+  read by older SDK versions once they are edited in 2.26.0
 - Legacy authentication mode and `FIFTYONE_AUTH_MODE` are removed. On
   first start after the upgrade, CAS imports remaining Auth0 members,
   roles, and groups. Invitations are enabled by default
