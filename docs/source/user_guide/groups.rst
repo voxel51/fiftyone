@@ -1054,7 +1054,8 @@ You can use the selector shown below to change which slice you are viewing:
 .. note::
 
     In order to view 3D scenes in the grid view, you must populate
-    :ref:`orthographic projection images <orthographic-projection-images>`.
+    :ref:`orthographic projection images <orthographic-projection-images>`
+    or show them through a :ref:`grid camera <groups-grid-cameras>`.
 
 When you open the expanded modal with a grouped dataset or view loaded in the
 App, you'll have access to all samples in the current group.
@@ -1097,10 +1098,160 @@ you can use the dynamic grouping action to playback scenes in sequential order:
    :alt: dynamic-groups
    :align: center
 
+When a scene plays on the timeline, you can also
+:ref:`plot numeric fields <app-dynamic-groups-plot>` over its frames.
+
 .. note::
 
     Did you know? You can also create :ref:`dynamic group views <view-groups>`
     into your grouped datasets via Python.
+.. _groups-grid-cameras:
+
+Grid cameras
+------------
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+The grid can show a point cloud or 3D slice through one of the dataset's
+cameras: each tile shows the image of that camera's slice in the same group,
+with the 3D slice's 3D detections projected onto it.
+
+Only calibrated cameras can be grid cameras. A camera slice is calibrated when
+FiftyOne can resolve both its :ref:`intrinsics <camera-intrinsics>` and a
+:ref:`static transform <sensor-extrinsics>` that places it relative to the 3D
+slice, by the usual :ref:`calibration precedence <resolving-calibration>`.
+Use ``get_camera_calibration()``
+to check which camera slices are calibrated:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.core.camera as focam
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # The left camera's intrinsics, and its pose in the `pcd` slice's frame
+    dataset.add_intrinsics(
+        "left",
+        fo.PinholeCameraIntrinsics(fx=721.5, fy=721.5, cx=609.6, cy=172.9),
+    )
+    dataset.add_static_transform(
+        fo.StaticTransform(
+            translation=[0.0, 0.27, -0.08],
+            quaternion=[-0.7071068, 0.0, 0.0, 0.7071068],
+            source_frame="left",
+            target_frame="pcd",
+        )
+    )
+
+    print(focam.get_camera_calibration(dataset))
+
+.. code-block:: text
+
+    {'left': {'intrinsics': True, 'transform': True}, 'right': {'intrinsics': False, 'transform': False}}
+
+The dataset's :ref:`grid_cameras <dataset-app-config-grid-cameras>` App
+config setting picks the camera that each 3D slice shows by default:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.default_group_slice = "pcd"
+    dataset.app_config.grid_cameras = {"pcd": "left"}
+    dataset.save()
+
+    session = fo.launch_app(dataset)
+
+The grid's slice selector then lists two ways to show each such 3D slice:
+**Point cloud**, or one of the dataset's cameras under **Projected on a
+camera**. The dataset's camera is marked **Default**, and cameras without
+calibration are disabled and marked **No calibration**. The selector names the
+slice and its camera, for example `pcd · left`. Your choice applies to your
+browser tab only, and **Use dataset default** returns to the dataset's
+setting.
+
+While the grid shows a 3D slice through a camera:
+
+-   A tile whose group has no sample on the camera's slice is marked
+    `No left sample`, and a tile whose camera cannot be placed is marked
+    `No calibration`
+-   Hovering over a :ref:`dynamic group <groups-dynamic-scenes>` plays the
+    camera's frames, each with its detections projected onto it
+-   In the Lanes view, which shows every slice of a group in a row, each
+    calibrated camera's column also shows the 3D slice's detections projected
+    onto its image
+
+.. _groups-display-settings:
+
+Display settings
+----------------
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+The grid's display settings, behind the gear icon in the grid's toolbar, have
+a **Groups** section for grouped datasets:
+
+-   **Primary slice**: the slice the grid shows, listed when the view has
+    more than one slice
+-   **Grid camera for <slice>**: for each point cloud or 3D slice that has a
+    calibrated camera, **Point cloud** or one of the calibrated cameras. A
+    camera that the dataset already shows without calibration stays listed,
+    marked **No calibration**
+
+Both apply at once, to your browser tab only, like the grid's slice selector.
+If you can edit the dataset, **Save as dataset default** saves what your tab
+shows as the dataset's
+:meth:`default_group_slice <fiftyone.core.dataset.Dataset.default_group_slice>`
+and :ref:`grid_cameras <dataset-app-config-grid-cameras>`, which every tab
+then shows unless it picks otherwise. The button is enabled while your tab
+differs from the dataset's defaults.
+
+.. note::
+
+    In :ref:`Voxel51 <fiftyone-enterprise>`, saving these defaults requires
+    :ref:`Can edit <enterprise-can-edit>` access to the dataset.
+
+.. _groups-configure-3d-dataset:
+
+Configuring 3D datasets in the App
+----------------------------------
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+The **Configure 3D dataset** operator, in the App's
+:ref:`Operator browser <using-operators>`, sets up a grouped dataset with
+point cloud or 3D slices in one run. Every input has a default, so you can run
+it as is:
+
+-   **Primary slice**: the dataset's default group slice, a 3D slice by
+    default
+-   **Grid camera** for each 3D slice: **None (point cloud)**, or one of the
+    calibrated cameras
+-   **Camera calibration**: whether each camera slice is calibrated, or is
+    missing intrinsics or a static transform
+-   **Generate thumbnails**: smaller camera images at the sizes you choose, and
+    a lighter point cloud for each 3D sample, which the App reads in place of
+    the full media. They are written to the output directory, a `thumbnails`
+    folder in your media's common directory by default. This option is off by
+    default when the dataset already has thumbnails, since running it again
+    rewrites all of them
+
+The operator requires :ref:`Can edit <enterprise-can-edit>` access to the
+dataset, and reloads the dataset in the App when it finishes. It runs as a
+:ref:`delegated operation <delegated-operations>` by default; you can run it
+immediately when it generates no thumbnails, or when the dataset has at most
+1,000 samples across its slices.
+
+.. note::
+
+    Did you know? You can also generate thumbnails in Python via
+    ``generate_thumbnails()``.
+
 
 .. _linking-labels-across-slices:
 
