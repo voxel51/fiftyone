@@ -4031,8 +4031,9 @@ class SampleCollection(object):
 
         Args:
             model: a :class:`fiftyone.core.models.Model`, Hugging Face
-                transformers model, Ultralytics model, SuperGradients model, or
-                Lightning Flash model
+                Transformers model, Ultralytics model, SuperGradients model,
+                Lightning Flash model, or the name of a zoo model to load via
+                :func:`fiftyone.zoo.models.load_zoo_model`
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
@@ -4113,8 +4114,9 @@ class SampleCollection(object):
 
         Args:
             model: a :class:`fiftyone.core.models.Model`, Hugging Face
-                Transformers model, Ultralytics model, SuperGradients model, or
-                Lightning Flash model
+                Transformers model, Ultralytics model, SuperGradients model,
+                Lightning Flash model, or the name of a zoo model to load via
+                :func:`fiftyone.zoo.models.load_zoo_model`
             embeddings_field (None): the name of a field in which to store the
                 embeddings. When computing video frame embeddings, the
                 "frames." prefix is optional
@@ -4195,8 +4197,9 @@ class SampleCollection(object):
 
         Args:
             model: a :class:`fiftyone.core.models.Model`, Hugging Face
-                Transformers model, Ultralytics model,  SuperGradients model,
-                or Lightning Flash model
+                Transformers model, Ultralytics model, SuperGradients model,
+                Lightning Flash model, or the name of a zoo model to load via
+                :func:`fiftyone.zoo.models.load_zoo_model`
             patches_field: the name of the field defining the image patches in
                 each sample to embed. Must be of type
                 :class:`fiftyone.core.labels.Detection`,

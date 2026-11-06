@@ -10,6 +10,7 @@ import os
 import random
 import string
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -17,6 +18,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.models as fomo
 import fiftyone.utils.image as foui
 
 from decorators import drop_datasets
@@ -292,3 +294,28 @@ class VideoModelTests(VideoDatasetTests):
     def test_image_model_frames_batch(self):
         model = MockBatchImageModel()
         self._test_model(model, batch_size=2)
+
+
+class _ZooModelLoaded(Exception):
+    pass
+
+
+class ZooModelNameTests(unittest.TestCase):
+    def test_a_model_name_is_loaded_from_the_zoo(self):
+        calls = [
+            lambda: fomo.apply_model(None, "some-zoo-model"),
+            lambda: fomo.compute_embeddings(None, "some-zoo-model"),
+            lambda: fomo.compute_patch_embeddings(
+                None, "some-zoo-model", "patches"
+            ),
+        ]
+
+        for call in calls:
+            # The lazy module proxy keeps whatever it first resolved, so the
+            # proxy itself is replaced rather than an attribute of the zoo
+            with mock.patch.object(fomo, "foz") as zoo:
+                zoo.load_zoo_model.side_effect = _ZooModelLoaded
+                with self.assertRaises(_ZooModelLoaded):
+                    call()
+
+            zoo.load_zoo_model.assert_called_once_with("some-zoo-model")
