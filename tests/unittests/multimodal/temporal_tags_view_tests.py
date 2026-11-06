@@ -179,6 +179,22 @@ class GroupedTemporalTagGridFilterTests(unittest.TestCase):
                 )
 
 
+class GroupedTemporalTagScopeTests(unittest.TestCase):
+    @isolate_temporal_tags
+    @drop_datasets
+    def test_view_without_stages_holds_the_active_slice(self):
+        dataset, _, _ = _make_tagged_group_dataset()
+
+        for slice_name, num_tags in (("image", 0), ("video", 1)):
+            with self.subTest(slice=slice_name):
+                dataset.group_slice = slice_name
+                tags = dataset.view().temporal_tags
+
+                self.assertEqual(len(tags), num_tags)
+                self.assertEqual(bool(tags), bool(num_tags))
+                self.assertEqual(len(list(tags.values())), num_tags)
+
+
 class TemporalTagCountTests(unittest.TestCase):
     @isolate_temporal_tags
     @drop_datasets
