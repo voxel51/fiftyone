@@ -339,6 +339,8 @@ List of Label Instances
 
 Under the "Labels" header, you'll see a flattened list of all label instances included in fields enabled while in the "Explore" tab. You can edit an existing label instance by clicking on that label instance within the "Labels" list.
 
+:ref:`Hidden labels <app-hidden-labels>`, and labels on fields that the sample's tiles hide, are left out of the list until you show them again.
+
 For label types with spatial properties (e.g., 2D bounding boxes), you'll notice a visual indicator highlighting label instances in both the Annotation Canvas and "Labels" list as you hover over either part of the user interface.
 
 .. _list-of-primitives:

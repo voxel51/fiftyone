@@ -623,6 +623,27 @@ field:
 
     Numeric field filters are not supported by wildcard indexes.
 
+.. _app-query-time-limit:
+
+While Query Performance is enabled, each query that the sidebar and grid run
+is limited to the `max_query_time` of your
+:ref:`App config <configuring-fiftyone-app>`, in seconds. Without Query
+Performance, they have no time limit. You can change the limit for a session
+like so:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    app_config = fo.app_config.copy()
+    app_config.max_query_time = 120
+
+    session = fo.launch_app(dataset, config=app_config)
+
 .. _app-compound-indexes-for-query-performance:
 
 Compound indexes
@@ -982,6 +1003,32 @@ elements of the group as a video.
 Ordered groups of images can also be annotated as a video, with object tracks
 that span the group's samples. See
 :ref:`Annotating dynamic groups as video <dynamic-group-video-annotation>`.
+
+.. _app-dynamic-groups-plot:
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+When a group plays on the timeline, you can plot its numeric fields over its
+elements. Open the **Layout** menu in the header of the expanded sample view
+and choose **Plot** under **Add tile**. With the plot in focus, the left
+sidebar's **Tile** tab lists the sample fields that hold one number per
+sample: ints, floats and booleans, including fields of embedded documents such
+as ``metadata.width``, but not fields inside lists. Check a field to plot it:
+
+-   The x axis is the group's elements in order, the same frames that the
+    timeline plays. Booleans are drawn as 0 and 1, and an element with no value
+    leaves a gap in its line
+-   Each field is drawn in the color that the dataset's
+    :ref:`color scheme <app-color-schemes>` gives it
+-   The playhead follows the timeline, and the legend shows each field's value
+    at the current frame. Click or drag on the plot to move the timeline there
+-   The zoom controls work as in the multimodal
+    :ref:`Plot tile <multimodal-plot-tile>`
+
+You can open more than one plot, and each plot's fields are saved with the
+layout. A plot draws at most the first 20,000 elements of a group, and says so
+when the group is longer.
 
 .. _app-field-visibility:
 
@@ -1713,6 +1760,10 @@ dataset, the projection images will be rendered for each sample in the grid:
 .. image:: /images/app/app-orthographic-projections.gif
     :alt: orthographic-projections
     :align: center
+
+On :ref:`grouped datasets <groups>`, the grid can also show a 3D slice through
+a calibrated camera, with the slice's 3D detections projected onto the
+camera's images. See :ref:`grid cameras <groups-grid-cameras>`.
 
 .. _app-3d-visualizer-config:
 
@@ -3409,6 +3460,28 @@ segmentations, and keypoints can be selected as well.
 When you have selected labels in the App, you can use the selected labels
 options in the upper-right (the orange checkmark button) to hide these labels
 from view or exclude all other labels.
+
+.. _app-hidden-labels:
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+In the expanded sample view, hidden labels leave the sample's sidebars and
+timeline, not only its media. So do the fields that you uncheck in the left
+sidebar's **Tile** tab, which sets the fields of the tile in focus:
+
+-   In Annotate mode, the right sidebar's label list leaves them out
+-   In Inspect mode, the right sidebar drops a selected label's details while
+    it is hidden. The label stays selected, and its details return when you
+    show it again
+-   For videos and :ref:`dynamic groups <app-dynamic-groups>` played on the
+    timeline, the timeline follows the tile in focus and drops the rows of
+    hidden fields, hidden events and hidden untracked labels. A hidden object
+    track keeps its row, since the tile still draws the track on its other
+    frames
+
+The eye icon in the header of the sample view counts the hidden labels; click
+it to show them all again.
 
 You can also access the
 :meth:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`
