@@ -2229,10 +2229,11 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
 
     mask = mask_utils.decode(rle).astype(bool)
 
+    # Copy the crop so that it does not keep the full frame mask alive
     return mask[
         int(round(y)) : int(round(y + h)),
         int(round(x)) : int(round(x + w)),
-    ]
+    ].copy()
 
 
 def _normalize_coco_segmentation(segmentation):
