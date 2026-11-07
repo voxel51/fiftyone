@@ -6,6 +6,7 @@ FiftyOne import/export-related unit tests.
 |
 """
 
+import csv
 import os
 import pathlib
 import random
@@ -2816,6 +2817,25 @@ class CSVDatasetTests(ImageDatasetTests):
 
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
+
+    @drop_datasets
+    def test_csv_dataset_fields_dict_without_media_field(self):
+        dataset = self._make_dataset()
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields={"weather.label": "weather"},
+        )
+
+        with open(os.path.join(export_dir, "labels.csv"), "r") as f:
+            rows = list(csv.reader(f))
+
+        self.assertListEqual(rows[0], ["weather"])
+        self.assertListEqual([r[0] for r in rows[1:]], ["sunny", "sunny", ""])
+        self.assertEqual(len(os.listdir(os.path.join(export_dir, "data"))), 3)
 
 
 class GeoLocationDatasetTests(ImageDatasetTests):
