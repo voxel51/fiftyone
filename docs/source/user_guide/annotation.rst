@@ -119,6 +119,14 @@ The "Schema Manager" user interface defines the Annotation Schema for the datase
 
 "Hidden fields" are fields that never reach anyone viewing through the selected schema, whether in the grid, the sidebars or the sample data. The default schema has no hidden fields. To hide fields, create a :ref:`custom schema <schema-manager-custom-schemas>`, select the fields you want under "Active fields", and move them to "Hidden fields".
 
+To delete a field, click the 🗑️ icon next to it in "Active fields" and confirm. This deletes the field from the dataset and from every label schema on it, and removes its data from every sample.
+
+.. warning::
+   Deleting a field also deletes its data, and there is no way to recover it.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/delete_field.webp
+   :alt: The Delete field confirmation in the Schema Manager
+
 .. _schema-manager-custom-schemas:
 
 Custom schemas
@@ -218,6 +226,13 @@ For primitives, depending on your field's data type, you'll see optional and/or 
 
 .. image:: https://cdn.voxel51.com/enterprise/projects/schema_field_gui.webp
    :alt: The Edit field schema page in GUI mode showing the classes and attributes of a detections field
+
+On a :ref:`grouped dataset <groups>`, label fields also have a "Slices" section.
+Check the group slices the field is annotated on: the field applies only to
+those slices, and you must choose at least one.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/schema_slices.webp
+   :alt: The Slices section of the Edit field schema page on a grouped dataset, with the left slice checked
 
 Creating New Fields
 ^^^^^^^^^^^^^^^^^^^
@@ -319,14 +334,15 @@ annotation UI as they annotate.
 You can also set a condition from the GUI. When you add or edit an attribute
 in the "Edit field schema" page, set its "Visibility" to "Show only when…" and
 add a condition: pick a field of the label, such as ``label``, an operator, and
-a value. Add more rules to a condition and choose whether "all" or "any" of
+a value. For example, to ask for a ``breed`` only on dogs, add a string
+attribute named ``breed`` and show it when ``label`` is ``dog``. Add more rules to a condition and choose whether "all" or "any" of
 them must be true. Conditions are checked from top to bottom and the first
 match is used, and "Add condition" adds another one. The attribute is hidden
 when no condition matches, unless you turn on "Else" to show it anyway. The
 form also lists the classes the attribute is not asked for.
 
 .. image:: https://cdn.voxel51.com/enterprise/projects/conditional_attribute.webp
-   :alt: The New attribute form with Show only when set and a condition that shows the attribute when the label is dog
+   :alt: Adding a breed attribute that is shown only when the label is dog
 
 Bypassing Schema Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

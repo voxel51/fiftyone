@@ -1215,8 +1215,139 @@ overlap, with an adjustable match threshold:
     def register(p):
         p.register(BoxesByOverlap)
 
-A fuller example, which scores boxes on overlap and attributes together, honors
-conditional attributes, adds critical attributes that zero a box when wrong,
-and decides pass or fail itself, is in the ``workflow-label-scorer-examples``
-plugin of the
-`fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository.
+A fuller scorer scores each box on overlap and attribute agreement together,
+counts :ref:`conditional attributes <annotation-conditional-attributes>` the way
+the schema asks them, lets you mark **critical attributes** whose wrong value
+zeroes a box, and decides pass or fail itself with a ``verdict`` step:
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    from fiftyone.management.scoring import (
+        label_from_dict,
+        pair_objects,
+        score_attributes,
+    )
+
+
+    class BoxesWithAttributes(foo.Operator):
+        label_scorer_descriptor = {
+            "label": "Boxes + attributes",
+            "description": "IoU and attribute agreement per matched box",
+            "label_types": ["Detections"],
+            "kinds": ["benchmark", "consensus"],
+            "verdict": True,
+            "options": {
+                "min_iou": {
+                    "type": "float",
+                    "label": "Match at IoU",
+                    "default": 0.5,
+                    "min": 0,
+                    "max": 1,
+                },
+                "attribute_weight": {
+                    "type": "float",
+                    "label": "Attribute weight",
+                    "description": "Share of a box's score from its attributes",
+                    "default": 0.4,
+                    "min": 0,
+                    "max": 1,
+                },
+                "critical": {
+                    "type": "attributes",
+                    "label": "Critical attributes",
+                    "description": "A wrong value zeroes the box.",
+                    "default": [],
+                },
+                "pass_threshold": {
+                    "type": "float",
+                    "label": "Pass score",
+                    "default": 0.8,
+                    "min": 0,
+                    "max": 1,
+                },
+                "max_critical_misses": {
+                    "type": "int",
+                    "label": "Critical misses allowed",
+                    "default": 0,
+                    "min": 0,
+                },
+            },
+        }
+
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="boxes_with_attributes",
+                label="Boxes + attributes scorer",
+                unlisted=True,
+            )
+
+        def execute(self, ctx):
+            request = ctx.params["request"]
+            options = request["options"]
+            if request["step"] == "verdict":
+                return _verdict(options, request["samples"])
+            specs = request["field"].get("attributes")
+            return {
+                "scores": {
+                    s["id"]: _score(options, specs, s)
+                    for s in request["samples"]
+                }
+            }
+
+
+    def _score(options, specs, sample):
+        w = options["attribute_weight"]
+        critical = set(options.get("critical") or [])
+        res = pair_objects(
+            label_from_dict(sample["a"]),
+            label_from_dict(sample["b"]),
+            min_iou=options["min_iou"],
+        )
+        scores = []
+        misses = 0
+        for m in res["matches"]:
+            attrs = score_attributes(m["pred"], m["gold"], specs)
+            wrong = {
+                slot["name"]
+                for slot in attrs["slots"]
+                if slot.get("agree") == 0.0
+            }
+            if wrong & critical:
+                misses += 1
+                scores.append(0.0)
+            else:
+                scores.append((1 - w) * m["iou"] + w * attrs["score"])
+        n = len(scores) + len(res["extra"]) + len(res["missed"])
+        return {
+            "score": sum(scores) / n if n else 1.0,
+            "extra": res["extra"],
+            "missed": res["missed"],
+            "detail": {"critical_misses": misses},
+        }
+
+
+    def _verdict(options, samples):
+        if not samples:
+            return {"score": None, "passed": False, "summary": "Nothing scored"}
+        mean = sum(s["score"] for s in samples) / len(samples)
+        misses = sum(
+            (s.get("detail") or {}).get("critical_misses", 0) for s in samples
+        )
+        return {
+            "score": mean,
+            "passed": mean >= options["pass_threshold"]
+            and misses <= options["max_critical_misses"],
+            "summary": f"{misses} critical attribute miss(es)",
+        }
+
+
+    def register(p):
+        p.register(BoxesWithAttributes)
+
+A box scores ``(1 - w) * IoU + w * attribute agreement``, where *w* is the
+**Attribute weight**. An attempt, or a consensus set, passes when its mean
+score clears the **Pass score** and its critical misses stay within the
+allowance. This formula is only an example: yours can ignore IoU, score other
+label types, or decide pass or fail any way it likes.
