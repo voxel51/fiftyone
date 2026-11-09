@@ -129,13 +129,14 @@ The schema picker at the top of the Schema Manager switches between the dataset'
 * **Default schema (all fields)** is the dataset's own annotation schema. Every field is visible and nothing is hidden. It is not stored as a separate schema.
 * **Custom schemas** are named schemas that you create from the picker's menu. Each one decides, field by field, who can see and edit what.
 
-In a custom schema every field has one of three levels:
+In a custom schema every field is either active or hidden:
 
-* **Annotate**: the field is visible and editable.
-* **Explore**: the field is visible but read-only, for example a model's predictions that should stay as context.
-* **Hidden**: the field is removed from the grid, the sidebars and the sample data, for example ground truth that annotators should not see.
+* **Active fields** are visible to anyone viewing through the schema. Each active field can also be configured separately, for example as read-only so that a model's predictions stay as context.
+* **Hidden fields** are removed from the grid, the sidebars and the sample data, for example ground truth that annotators should not see.
 
-Attributes of an annotatable field can be set the same way, so you can make an attribute read-only or hide it. To check what someone viewing through a custom schema will see, choose it in the schema lens, the dropdown at the top of the left sidebar. The grid, the sidebars and the sample data apply it right away.
+Do not delete a custom schema while a batch uses it. The batch's stages stop applying it, so fields you hid may become visible to annotators.
+
+Attributes of an active field can be set the same way, so you can make an attribute read-only or hide it. To check what someone viewing through a custom schema will see, choose it in the schema lens, the dropdown at the top of the left sidebar. The grid, the sidebars and the sample data apply it right away.
 
 .. note::
 
@@ -214,6 +215,9 @@ For each ``class`` and ``attribute`` in the GUI:
 * Drag and drop ``classes`` or ``attributes`` within sections to reorder within the Annotation Schema (see: :ref:`ordering-in-the-annotation-schema`).
 
 For primitives, depending on your field's data type, you'll see optional and/or required properties to configure for your field's schema.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/schema_field_gui.webp
+   :alt: The Edit field schema page in GUI mode showing the classes and attributes of a detections field
 
 Creating New Fields
 ^^^^^^^^^^^^^^^^^^^
@@ -312,6 +316,18 @@ Once this ontology is attached to a label field, annotators will see
 these conditional attributes in the right sidebar of the in-App
 annotation UI as they annotate.
 
+You can also set a condition from the GUI. When you add or edit an attribute
+in the "Edit field schema" page, set its "Visibility" to "Show only when…" and
+add a condition: pick a field of the label, such as ``label``, an operator, and
+a value. Add more rules to a condition and choose whether "all" or "any" of
+them must be true. Conditions are checked from top to bottom and the first
+match is used, and "Add condition" adds another one. The attribute is hidden
+when no condition matches, unless you turn on "Else" to show it anyway. The
+form also lists the classes the attribute is not asked for.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/conditional_attribute.webp
+   :alt: The New attribute form with Show only when set and a condition that shows the attribute when the label is dog
+
 Bypassing Schema Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -321,9 +337,9 @@ If you do not see a field or its contents in the "Annotate" tab of the sample ex
    Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with :ref:`"Can manage" access <enterprise-can-manage>` on a dataset.
 
 .. image:: /_static/images/annotation/bypass_schema_quick_edit.gif
-   :alt: Quick-edit pencil icon on the Explore tab
+   :alt: Quick-edit pencil icon on the Inspect tab
 
-While on the "Explore" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
+While on the "Inspect" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
 
 1. The App scans your dataset to impute a schema for the field
 2. The App then adds your field to the Annotation Schema, using the imputed field schema
@@ -332,7 +348,7 @@ While on the "Explore" tab of the sample expanded view, hover over the field wit
 Getting Started with Annotation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To access fields in the "Annotate" tab, first check the box next to the field in the "Explore" tab. Only those labels you are visualizing in the "Explore" tab will be available for in-App annotation in the "Annotate" tab.
+To access fields in the "Annotate" tab, first check the box next to the field in the "Inspect" tab. Only those labels you are visualizing in the "Inspect" tab will be available for in-App annotation in the "Annotate" tab.
 
 .. image:: /_static/images/annotation/annotate_tab_overview.png
    :alt: Annotate tab overview with Canvas, Toolbar, and Labels list
@@ -360,7 +376,7 @@ The annotation actions toolbar is where you can create a new label instance or (
 List of Label Instances
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Under the "Labels" header, you'll see a flattened list of all label instances included in fields enabled while in the "Explore" tab. You can edit an existing label instance by clicking on that label instance within the "Labels" list.
+Under the "Labels" header, you'll see a flattened list of all label instances included in fields enabled while in the "Inspect" tab. You can edit an existing label instance by clicking on that label instance within the "Labels" list.
 
 For label types with spatial properties (e.g., 2D bounding boxes), you'll notice a visual indicator highlighting label instances in both the Annotation Canvas and "Labels" list as you hover over either part of the user interface.
 

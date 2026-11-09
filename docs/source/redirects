@@ -67,3 +67,6 @@ user_guide/dataset_creation/common_datasets.rst  user_guide/dataset_creation/dat
 # Introduced in v0.2
 examples/dataset_creation.rst  user_guide/dataset_creation/datasets.rst
 examples/index.rst  tutorials/index.rst
+
+# Replaced by Projects in v2.26
+enterprise/workflows.rst  enterprise/projects.rst

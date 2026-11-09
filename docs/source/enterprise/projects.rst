@@ -173,8 +173,9 @@ for reference examples.
    :alt: The Guidelines tab of a project with label rules and example images
 
 While working on a task, annotators open the guidelines from the **...** menu
-at the top right of the sample modal. They appear in a panel beside the sample,
-so annotators never have to leave the task to look them up.
+at the top right of the sample modal: choose **Guidelines**, the item with the
+book icon. They appear in a panel beside the sample, so annotators never have
+to leave the task to look them up.
 
 .. image:: https://cdn.voxel51.com/enterprise/projects/task_guidelines.webp
    :alt: An annotator opening the project guidelines from the menu of the sample modal while working on a task
@@ -204,26 +205,21 @@ The schema picker at the top of the Schema Manager switches between:
 - **Custom schemas**: named schemas you create from the picker's menu. Create
   one, give it a name, and choose how each field behaves.
 
-In a custom schema every field has one of three levels:
+In a custom schema every field is either *active* or *hidden*:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 20 80
+- **Active fields** are visible to annotators. Set up an active field with
+  classes and attributes to make it editable, or configure it as read-only to
+  keep it as context, for example a model's predictions.
+- **Hidden fields** do not reach anyone viewing through the schema: not the
+  grid, not the sidebars, not the sample data. Use them to keep ground truth
+  away from annotators.
 
-   * - Level
-     - What annotators see
-   * - **Annotate**
-     - The field is visible and editable. Fields in this level are the
-       *active fields* that you set up with classes and attributes.
-   * - **Explore**
-     - The field is visible but read-only. Use it for context such as a
-       model's predictions.
-   * - **Hidden**
-     - The field does not reach anyone viewing through the schema: not the
-       grid, not the sidebars, not the sample data. Use it to keep ground truth
-       away from annotators.
+.. warning::
 
-Attributes inside an annotatable field can be set the same way, so you can,
+   Do not delete a schema while a batch uses it. The batch's stages stop
+   applying it, so fields you hid may become visible to annotators.
+
+Attributes inside an active field can be set the same way, so you can,
 for example, make ``confidence`` read-only or hide a ``reviewer_notes``
 attribute from labelers. To hide fields, select them under **Active fields**
 and move them to **Hidden fields**. Fields you have not set up yet appear as
@@ -368,7 +364,7 @@ goes back to the pool for anyone to pick up.
 Plugins can add their own policies, for example "the batch of samples from
 camera X goes to the team that owns camera X". They show up in the
 **Assignment policy** dropdown automatically. See
-:ref:`Writing an assignment policy <enterprise-projects-assignment-policies>`.
+:ref:`Writing a custom assignment policy <enterprise-projects-assignment-policies>`.
 You can also assign tasks and change stage assignment from a script with the
 :ref:`Management SDK <enterprise-sdk-workflow-assignment>`.
 
@@ -397,11 +393,11 @@ The **Tasks** tab
 
 The **Tasks** tab lists every task by stage, so you can see work across the
 whole pipeline in one place. Each row shows the task's priority, assignee, and
-progress. From a row you can change the priority, assign or reassign the task,
-**Assign to me** to take it yourself, and open it.
+progress. From a row you can **change the priority**, **assign** or **reassign**
+the task, **Assign to me** to take it yourself, and open it.
 
 .. image:: https://cdn.voxel51.com/enterprise/projects/batch_tasks.webp
-   :alt: The Tasks tab of a batch showing annotate tasks assigned automatically
+   :alt: The Tasks tab of a batch listing its tasks by stage, with priority, assignee and progress, and an Assign to me button
 
 The **Metrics** tab
 ~~~~~~~~~~~~~~~~~~~
@@ -448,8 +444,10 @@ Click the stage to configure it:
   written to.
 - **Copies**: how many times each sample is labeled (2 by default).
 - **Metric**: how copies are compared. **Built-in** scores boxes by overlap
-  (IoU, same class only) and classifications by their attributes. A plugin can
-  add its own metric.
+  (IoU, same class only) and classifications by their attributes, as
+  :ref:`described below <enterprise-projects-scoring>`. A plugin can add its
+  own metric: see
+  :ref:`Writing a custom scoring policy <enterprise-projects-scoring-policies>`.
 - **Pass threshold**: the mean pairwise agreement needed to pass, from 0 to 1
   (0.6 by default).
 - **Priority**: applies to annotators and pick reviewers alike.
@@ -490,12 +488,15 @@ Open the project's **Benchmarks** tab and click **New benchmark**.
 - **Ground truth field**: the labels every attempt is scored against.
 - **Pass threshold**: the score needed to pass, from 0 to 1 (0.6 by default).
 - **Custom metrics**: **No** uses the built-in scorer, **Yes** lets you pick a
-  metric registered by a plugin.
+  metric registered by a plugin. See
+  :ref:`Writing a custom scoring policy <enterprise-projects-scoring-policies>`.
 
 The built-in scorer matches boxes to ground truth boxes of the same class by
 overlap (IoU), and compares classifications and patch attributes. It applies
 no IoU cutoff, so a box that overlaps a little scores a little. Each
-attempt's score is the mean over its samples.
+attempt's score is the mean over its samples. See
+:ref:`How benchmark and consensus scores are calculated <enterprise-projects-scoring>`
+for the rules and worked examples.
 
 Attempts
 ~~~~~~~~
@@ -520,6 +521,179 @@ attempt the scorer could not score shows the scorer's error.
 
 A benchmark's mean score also feeds the **Quality** card on the project's
 :ref:`Metrics <enterprise-projects-metrics>` tab.
+
+.. _enterprise-projects-scoring:
+
+How benchmark and consensus scores are calculated
+-------------------------------------------------
+
+Benchmarks and consensus stages score labels the same way. A benchmark compares
+each person's labels with the gold set, and a consensus stage compares the
+copies of a sample with each other. For every sample the built-in scorer scores
+each label, averages the label scores into the sample's score, and compares
+that average with the **Pass threshold**, the one number you set.
+
+- **Boxes, masks, polylines and keypoints** are worth the overlap (IoU) of the
+  label with its partner of the same class, and 0 with no partner.
+- **Classifications and patches** are worth the share of attribute slots that
+  agree. The class is one slot, and so is each string or boolean attribute.
+- **Sample score**: the average of its label scores. A missing or extra label
+  counts as 0.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/score_lanes.webp
+   :alt: Labels take one of two paths: spatial labels are paired within their class and score their IoU, single labels compare class and attributes; all label scores are averaged and compared with the pass threshold
+
+A label takes one path or the other, never both. There is no IoU threshold: a
+pair with an overlap of 0.3 simply scores 0.3.
+
+Example: detections
+~~~~~~~~~~~~~~~~~~~
+
+A benchmark sample has three gold boxes. The annotator drew three boxes: two
+line up with a gold box of the same class, one is an extra, and one gold box
+was missed. Attributes on the boxes are not scored.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_example_boxes.webp
+   :alt: Gold boxes drawn solid and submitted boxes drawn dashed: two same-class pairs overlap, one submitted box has no gold partner and one gold box has no submitted partner
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 40 15 15
+
+   * - Label
+     - Pair
+     - IoU
+     - Score
+   * - A / A'
+     - ``car`` = ``car``
+     - 0.92
+     - 0.92
+   * - B / B'
+     - ``truck`` = ``truck``
+     - 0.85
+     - 0.85
+   * - C (missed)
+     - no partner
+     - 0
+     - 0
+   * - D (extra)
+     - no partner
+     - 0
+     - 0
+
+The sample's score is the average of the four label scores:
+(0.92 + 0.85 + 0 + 0) / 4 = 0.44.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_example_bars.webp
+   :alt: Bars for the four label scores, with the sample average of 0.44 below a pass threshold of 0.70
+
+The missed and extra boxes pull the average below a pass threshold of 0.7, so
+this sample does not pass.
+
+Boxes only pair within their class. Had the annotator labeled B' as ``car``, it
+would pair with nothing: B' becomes an extra and B a miss. The sample then has
+five labels and one score, (0.92 + 0 + 0 + 0 + 0) / 5 = 0.18.
+
+Example: classifications and patches
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A scene classification has nothing to overlap, so its score is the share of
+attribute slots that agree. A patch benchmark fixes the box, so the patch's one
+object is scored the same way. The slots are the class plus the schema's string
+and boolean attributes, including
+:ref:`conditional attributes <annotation-conditional-attributes>`, which a
+labeler is only asked when their condition holds. Take this schema, where two
+questions are always asked and two are conditional:
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_attr_tree.webp
+   :alt: A schema with class and occluded always asked, vehicle_type asked when class is vehicle, and truck_kind asked when vehicle_type is truck
+
+A slot counts when either side was asked it, and scores 1 only when both sides
+were asked and gave the same answer:
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_attr_slots.webp
+   :alt: The four states of a slot: asked on both sides and equal scores 1, asked on both sides and different scores 0, asked on one side only scores 0, asked on neither side is skipped
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 28 28 16
+
+   * - Gold
+     - Submitted
+     - Slots counted
+     - Score
+   * - vehicle, not occluded, truck, semi
+     - vehicle, not occluded, truck, box
+     - class, occluded, vehicle_type match; truck_kind differs
+     - 3 / 4 = 0.75
+   * - vehicle, not occluded, truck, semi
+     - vehicle, not occluded, car
+     - class and occluded match; vehicle_type differs; truck_kind asked on the gold side only
+     - 2 / 4 = 0.50
+   * - vehicle, not occluded, truck, semi
+     - pedestrian, not occluded
+     - occluded matches; class differs; vehicle_type and truck_kind asked on the gold side only
+     - 1 / 4 = 0.25
+   * - pedestrian, not occluded
+     - pedestrian, not occluded
+     - class and occluded match; the other two are never asked
+     - 2 / 2 = 1.00
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_attr_depth.webp
+   :alt: Scores for a mistake at the leaf, in the middle and at the root of the tree, and for full agreement
+
+The deeper the mistake, the smaller the penalty. A wrong class near the root
+hides the questions below it on one side, so it also costs those slots.
+Leftover values from a branch that is no longer shown are never scored.
+
+Example: consensus
+~~~~~~~~~~~~~~~~~~
+
+A consensus stage has no gold copy. Every pair of copies is scored with the
+same rules, and the sample's agreement is the mean over the pairs. When it
+meets the pass threshold, the sample passes and the copy with the highest mean
+agreement with the others is kept. Otherwise the sample goes to a
+:ref:`pick review <enterprise-projects-labelers>`.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_consensus.webp
+   :alt: Three annotators as a triangle with pairwise agreement 0.90, 0.60 and 0.70, averaging 0.73
+
+What is scored, and what is skipped
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Field
+     - Treatment
+   * - Boxes, masks, polylines, keypoints
+     - IoU of the same-class pair. Keypoints use object keypoint similarity,
+       and temporal detections use frame-range IoU. Attributes on these labels
+       are not scored.
+   * - Classifications, or a patch's one object
+     - Attribute agreement: the class plus the schema's string and boolean
+       attributes, one slot each, 1 if equal and 0 if not. A blank on one side
+       counts as 0.
+   * - Conditional attributes
+     - Counted when asked on either side.
+   * - Read-only attributes and read-only classes
+     - Skipped, because they are not the labeler's work. With nothing left to
+       compare, the label scores 1.
+   * - Float and integer attributes
+     - Skipped by the built-in scorer. A custom scorer can add its own rule.
+   * - Multi-label classifications
+     - Overlap of the two sets of labels (Jaccard).
+   * - Semantic segmentation
+     - Mean IoU over the classes.
+   * - ``id``, ``index``, ``confidence``, tags, 3D location and rotation, and
+       other system fields
+     - Skipped.
+
+You set one number per benchmark or consensus stage, the **Pass threshold**.
+To change how labels are compared, for example to score boxes on overlap and
+attributes together, write a
+:ref:`custom scoring policy <enterprise-projects-scoring-policies>`.
 
 .. _enterprise-projects-metrics:
 
@@ -718,8 +892,8 @@ open in review mode. In both, the sample modal is set up for the task:
 
 - The sidebar shows only the fields that the stage's
   :ref:`label schema <enterprise-projects-schemas>` lets you see.
-- The **...** menu at the top right has **Guidelines**, which opens your
-  project's guidelines in a panel beside the sample.
+- The **...** menu at the top right has **Guidelines** (the book icon), which
+  opens your project's guidelines in a panel beside the sample.
 - A bar at the bottom shows how many samples are **left**, your progress
   (for example *5 / 12*), and the task's actions.
 
@@ -736,8 +910,8 @@ and fill in the attributes. Your labels are saved with the sample when you submi
 - **Submit and next** saves your work and moves to the next sample.
 - **Skip** moves on without labeling. The sample stays pending, and you get it
   again before the task completes.
-- Use :kbd:`Cmd+Z` (:kbd:`Ctrl+Z` on Windows) to undo and redo a change before
-  you submit.
+- Use :kbd:`Cmd+Z` (:kbd:`Ctrl+Z` on Windows) to undo and :kbd:`Cmd+Y`
+  (:kbd:`Ctrl+Y` on Windows) to redo a change before you submit.
 
 When you submit the last sample, a *Task completed* message offers **Stay
 here**, **See all projects** or **Next task**.
@@ -760,8 +934,26 @@ with *1 rejected*, and the task completes when every sample has been decided.
 .. image:: https://cdn.voxel51.com/enterprise/projects/review_task.webp
    :alt: A review task with Approve and Reject buttons and a rejected count
 
-In a consensus pick review, the copies are drawn on the sample, and the
-**Copy to keep** menu in the footer chooses the one that is kept.
+Consensus review
+^^^^^^^^^^^^^^^^
+
+In a :ref:`consensus batch <enterprise-projects-consensus>`, samples whose
+copies agree pass on their own. When the copies of a sample did not agree
+enough to pass, the sample comes to you as a *pick review*, and you choose
+which annotator's work to keep.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/consensus_pick.webp
+   :alt: A pick review with two annotators' copies drawn on the sample and the Copy to keep dropdown open
+
+1. Compare the copies. Each annotator's copy is drawn on the sample in its own
+   color and listed in the sidebar, where you can show or hide it.
+2. Open the **Copy to keep** dropdown in the footer. It lists each annotator
+   with the field that holds their copy, for example *Sbx Labeler2
+   (animals_1)*. Choose the one whose work you want to keep.
+3. Click **Submit**. The kept copy is written to the stage's label field and
+   the sample moves on through the stage's **Picked** output. If none of the
+   copies is usable, click **Reject all** to send the sample out through the
+   **Rejected** output instead.
 
 Leaving comments
 ^^^^^^^^^^^^^^^^
@@ -775,8 +967,8 @@ follows the work as it moves through the pipeline.
 
 .. _enterprise-projects-assignment-policies:
 
-Writing an assignment policy
-----------------------------
+Writing a custom assignment policy
+----------------------------------
 
 An assignment policy is an operator in your plugin that carries an
 ``assignment_policy_descriptor`` attribute. The runtime finds it by that
@@ -898,3 +1090,133 @@ from, and lets the default policy handle the rest:
 Once the plugin is installed, pick **By camera team** in the stage's
 **Assignment policy** dropdown, or set it from a script with
 :meth:`update_stage_assignment() <fiftyone.management.workflows.update_stage_assignment>`.
+
+.. _enterprise-projects-scoring-policies:
+
+Writing a custom scoring policy
+-------------------------------
+
+A scoring policy, also called a label scorer, replaces only the maths of
+:ref:`benchmark and consensus scoring <enterprise-projects-scoring>`: how
+close two labels are, and what passes. Voxel51 keeps doing everything around
+it: queueing the work so a submit never waits, building the request, retrying
+when the scorer is down, storing the scores, settling attempts, routing
+consensus sets and feeding the Metrics rollups.
+
+A scorer is an operator in your plugin that carries a
+``label_scorer_descriptor`` attribute. The runtime finds it by that attribute,
+so nothing else needs registering. It then appears in the **Metric** select of
+a consensus stage, and of **New benchmark** when **Custom metrics** is **Yes**.
+Install the plugin where the workflows plugin runs.
+
+The descriptor shapes how the scorer is listed and configured:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Key
+     - Meaning
+   * - ``label``, ``description``
+     - Shown in the **Metric** select.
+   * - ``label_types``
+     - The field types it scores, for example ``["Detections"]``. Leave it out
+       to accept any.
+   * - ``kinds``
+     - ``"benchmark"``, ``"consensus"`` or both.
+   * - ``verdict``
+     - ``True`` if the scorer decides pass or fail itself (see below).
+   * - ``options``
+     - Fields shown under the **Metric** select: ``float``, ``int``, ``bool``,
+       ``choice`` or ``attributes``. Each stage keeps its own values, which
+       arrive as ``request["options"]``. An option named ``pass_threshold``
+       replaces the stage's own pass threshold.
+
+The runtime calls ``execute`` with ``ctx.params["request"]``. The ``score``
+step carries many samples per call. ``a`` is the submission (or one copy) and
+``b`` the gold (or another copy), both as label dicts:
+
+.. code-block:: text
+
+    {
+      "kind": "benchmark",
+      "step": "score",
+      "field": {"name": "gt", "label_type": "Detections", "attributes": [...]},
+      "options": {"min_iou": 0.5, ...},
+      "samples": [{"id": "...", "sample_id": "...", "a": {...}, "b": {...}}]
+    }
+
+Return a score from 0 to 1 for each sample id, and optionally ``passed``,
+per-box ``matches``, ``extra`` and ``missed`` (the App colors the boxes) and a
+free-form ``detail``. Return ``None`` for an id to hand it to the built-in
+scorer:
+
+.. code-block:: text
+
+    {"scores": {"<id>": {"score": 0.8, "detail": {...}}}}
+
+If the descriptor sets ``verdict``, a second ``verdict`` step runs once per
+attempt (or consensus set) after its last score. It receives every sample's
+score and detail and returns ``{"score", "passed", "summary"?, "kept"?}``.
+
+``fiftyone.management.scoring`` has the built-in scorer's pieces to build on:
+``pair_objects``, ``score_attributes`` (which understands conditional
+attributes) and ``label_from_dict``. A minimal scorer that scores boxes on
+overlap, with an adjustable match threshold:
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    from fiftyone.management.scoring import label_from_dict, pair_objects
+
+
+    class BoxesByOverlap(foo.Operator):
+        label_scorer_descriptor = {
+            "label": "Boxes by overlap",
+            "description": "Mean IoU of matched boxes; extras and misses score 0",
+            "label_types": ["Detections"],
+            "kinds": ["benchmark", "consensus"],
+            "options": {
+                "min_iou": {
+                    "type": "float",
+                    "label": "Match at IoU",
+                    "description": "Boxes below this overlap don't pair.",
+                    "default": 0.5,
+                    "min": 0,
+                    "max": 1,
+                },
+            },
+        }
+
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="boxes_by_overlap",
+                label="Boxes by overlap scorer",
+                unlisted=True,
+            )
+
+        def execute(self, ctx):
+            request = ctx.params["request"]
+            min_iou = request["options"]["min_iou"]
+            scores = {}
+            for sample in request["samples"]:
+                res = pair_objects(
+                    label_from_dict(sample["a"]),
+                    label_from_dict(sample["b"]),
+                    min_iou=min_iou,
+                )
+                n = len(res["matches"]) + len(res["extra"]) + len(res["missed"])
+                total = sum(m["iou"] for m in res["matches"])
+                scores[sample["id"]] = {"score": total / n if n else 1.0}
+            return {"scores": scores}
+
+
+    def register(p):
+        p.register(BoxesByOverlap)
+
+A fuller example, which scores boxes on overlap and attributes together, honors
+conditional attributes, adds critical attributes that zero a box when wrong,
+and decides pass or fail itself, is in the ``workflow-label-scorer-examples``
+plugin of the
+`fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository.
