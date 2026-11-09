@@ -13,8 +13,8 @@ In-App Annotation
    :class: tip
 
    Learn how Voxel51 can help you organize and coordinate
-   annotation projects across your team with FiftyOne
-   :ref:`Annotation Workflows <enterprise-workflows>`!
+   annotation work across your team with FiftyOne
+   :ref:`Projects <enterprise-projects>`!
 
 Overview
 --------
@@ -113,11 +113,33 @@ Schema Manager
 .. image:: /_static/images/annotation/schema_manager.png
    :alt: Schema Manager
 
-The "Schema Manager" user interface defines the Annotation Schema for the dataset. The main page of the Schema Manager features two sections: "Active fields" and "Hidden fields".
+The "Schema Manager" user interface defines the Annotation Schema for the dataset. Open it from the gear icon at the top of the "Annotate" panel. The main page features a schema picker, a search box, and two sections: "Active fields" and "Hidden fields".
 
-"Active fields" are fields included in your Annotation Schema.
+"Active fields" are the fields available in the "Inspect" and "Annotate" sidebars. A field that has been set up, that is, one with a label schema, is annotatable. A field that has not been set up yet is *unscanned*: you can inspect it but not edit it until you click "Set up" and configure its schema.
 
-"Hidden fields" are all fields not yet included in your Annotation Schema, but that can be activated for your Annotation Schema. To activate (a) field(s) for your Annotation Schema, check the box next to the field(s) you want, then click "Move…to active fields".
+"Hidden fields" are fields that never reach anyone viewing through the selected schema, whether in the grid, the sidebars or the sample data. The default schema has no hidden fields. To hide fields, create a :ref:`custom schema <schema-manager-custom-schemas>`, select the fields you want under "Active fields", and move them to "Hidden fields".
+
+.. _schema-manager-custom-schemas:
+
+Custom schemas
+""""""""""""""
+
+The schema picker at the top of the Schema Manager switches between the dataset's schemas:
+
+* **Default schema (all fields)** is the dataset's own annotation schema. Every field is visible and nothing is hidden. It is not stored as a separate schema.
+* **Custom schemas** are named schemas that you create from the picker's menu. Each one decides, field by field, who can see and edit what.
+
+In a custom schema every field has one of three levels:
+
+* **Annotate**: the field is visible and editable.
+* **Explore**: the field is visible but read-only, for example a model's predictions that should stay as context.
+* **Hidden**: the field is removed from the grid, the sidebars and the sample data, for example ground truth that annotators should not see.
+
+Attributes of an annotatable field can be set the same way, so you can make an attribute read-only or hide it. To check what someone viewing through a custom schema will see, choose it in the schema lens, the dropdown at the top of the left sidebar. The grid, the sidebars and the sample data apply it right away.
+
+.. note::
+
+    FiftyOne Enterprise can enforce a custom schema on an annotation task. When a stage of a :ref:`batch's workflow <enterprise-projects-schemas>` references a schema, everyone who opens that stage's tasks sees only what the schema allows.
 
 .. _ordering-in-the-annotation-schema:
 

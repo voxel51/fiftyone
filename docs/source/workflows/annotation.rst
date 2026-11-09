@@ -19,7 +19,7 @@ Auto-Labeling 🚀 to generate high-quality labels automatically.
    :hidden:
 
    Annotating datasets <../user_guide/annotation>
-   Annotation Workflows 🚀 __SUB_NEW__ <../enterprise/workflows>
+   Projects 🚀 __SUB_NEW__ <../enterprise/projects>
    Agentic Labeling 🚀 __SUB_NEW__ <../enterprise/agentic_labeling>
    Auto-Labeling 🚀 <../enterprise/verified_auto_labeling>
    Building Annotation Workflows and Ontologies __SUB_NEW__ <../tutorials/fiftyone_annotation_workflows.ipynb>

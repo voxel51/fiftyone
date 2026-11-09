@@ -271,7 +271,7 @@ If a run fails, a red banner shows the error and a collapsible **Stack trace**.
 
 When the run completes, its labels are written to your chosen field, ready to
 review in the grid. Consider creating an
-:ref:`annotation workflow <enterprise-workflows>` for your annotators to
+:ref:`project <enterprise-projects>` for your annotators to
 review the results.
 
 .. _agentic-labeling-tasks:
