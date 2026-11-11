@@ -531,7 +531,9 @@ Benchmarks and consensus stages score labels the same way. A benchmark compares
 each person's labels with the gold set, and a consensus stage compares the
 copies of a sample with each other. For every sample the built-in scorer scores
 each label, averages the label scores into the sample's score, and compares
-that average with the **Pass threshold**, the one number you set.
+that average with the **Pass threshold**, the one number you set. In a
+consensus stage every pair of copies is scored this way, and the sample's
+agreement is the mean over the pairs.
 
 - **Boxes, masks, polylines and keypoints** are worth the overlap (IoU) of the
   label with its partner of the same class, and 0 with no partner.
@@ -553,7 +555,7 @@ A benchmark sample has three gold boxes. The annotator drew three boxes: two
 line up with a gold box of the same class, one is an extra, and one gold box
 was missed. Attributes on the boxes are not scored.
 
-.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_example_boxes.webp
+.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_boxes_v2.webp
    :alt: Gold boxes drawn solid and submitted boxes drawn dashed: two same-class pairs overlap, one submitted box has no gold partner and one gold box has no submitted partner
 
 .. list-table::
@@ -645,18 +647,6 @@ were asked and gave the same answer:
 The deeper the mistake, the smaller the penalty. A wrong class near the root
 hides the questions below it on one side, so it also costs those slots.
 Leftover values from a branch that is no longer shown are never scored.
-
-Example: consensus
-~~~~~~~~~~~~~~~~~~
-
-A consensus stage has no gold copy. Every pair of copies is scored with the
-same rules, and the sample's agreement is the mean over the pairs. When it
-meets the pass threshold, the sample passes and the copy with the highest mean
-agreement with the others is kept. Otherwise the sample goes to a
-:ref:`pick review <enterprise-projects-labelers>`.
-
-.. image:: https://cdn.voxel51.com/enterprise/projects/scoring_consensus.webp
-   :alt: Three annotators as a triangle with pairwise agreement 0.90, 0.60 and 0.70, averaging 0.73
 
 What is scored, and what is skipped
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
