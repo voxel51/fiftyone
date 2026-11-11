@@ -258,7 +258,8 @@ You can reset the active group slice to the default value by setting
 
 You can also change the default group slice at any time by setting the
 :meth:`default_group_slice <fiftyone.core.dataset.Dataset.default_group_slice>`
-property.
+property. The default group slice also decides the frames of the scenes the
+App plays from :ref:`dynamic groups <groups-dynamic-scenes>`.
 
 .. _groups-adding-fields:
 
@@ -1087,12 +1088,16 @@ by selecting `group` mode under the App's settings menu:
    :alt: groups-stats
    :align: center
 
+.. _groups-dynamic-scenes:
+
 You can also use the App's :ref:`dynamic groups <app-dynamic-groups>` feature
 to view *groups of groups* organized by a field of your choice.
 
 For example, if you have a grouped dataset whose group slices contain different
 sensor modalities for each `frame_number` of a scene with a given `scene_id`,
-you can use the dynamic grouping action to playback scenes in sequential order:
+you can use the dynamic grouping action to playback scenes in sequential order.
+Playback requires an index on the group-by field followed by the order-by
+field, as described in :ref:`dynamic groups <app-dynamic-groups>`:
 
 .. image:: /images/groups/dynamic-groups.gif
    :alt: dynamic-groups
@@ -1100,6 +1105,20 @@ you can use the dynamic grouping action to playback scenes in sequential order:
 
 When a scene plays on the timeline, you can also
 :ref:`plot numeric fields <app-dynamic-groups-plot>` over its frames.
+
+The dataset's
+:meth:`default_group_slice <fiftyone.core.dataset.Dataset.default_group_slice>`
+decides a scene's frames: each group in the scene with a sample on the default
+slice is one frame, in order, and the scene opens on its first frame. The
+other slices show their sample in the same group, or `No sample` where the
+group has none. The slice the grid shows when you open a scene does not change
+its frames. Set the default group slice to the sensor present in every frame,
+such as the LiDAR slice of a driving dataset:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.default_group_slice = "lidar"
 
 .. note::
 
