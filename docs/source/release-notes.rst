@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 Voxel51 2.26.0
 --------------
-*Released November 6, 2026*
+*Released November 11, 2026*
 
 - **Annotation Projects**: a new top-level Projects page replaces the
   dataset Annotate tab. A project holds batches of annotation work across
