@@ -535,6 +535,37 @@ You can disable frame filtering for a video dataset as follows:
     Did you know? You can also globally disable frame filtering for all video
     datasets via your :ref:`App config <configuring-fiftyone-app>`.
 
+.. _dataset-app-config-grid-cameras:
+
+Grid cameras
+~~~~~~~~~~~~
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+For a :ref:`grouped dataset <groups>` with point cloud or 3D slices, you can
+pick an image slice for each 3D slice whose images the App's grid shows, with
+the 3D slice's 3D detections projected onto them. The camera slice must be
+calibrated, as described in :ref:`grid cameras <groups-grid-cameras>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Show the `pcd` slice through the calibrated `left` camera
+    dataset.app_config.grid_cameras = {"pcd": "left"}
+    dataset.save()  # must save after edits
+
+Saving validates the setting: its keys must be point cloud or 3D slices and
+its values image slices, otherwise the save raises an error and keeps the
+previous setting. A camera without calibration is saved with a warning, since
+the App cannot project labels onto its images. Renaming or deleting a group
+slice updates the setting to match.
+
+.. note::
+
+    Did you know? You can also set grid cameras from the App's
+    :ref:`display settings <groups-display-settings>`.
+
 .. _dataset-app-config-reset:
 
 Resetting a dataset's App config
@@ -888,6 +919,12 @@ should be formatted as ``"source_frame::target_frame"`` or simply
 
     See :ref:`this section <camera-intrinsics-extrinsics>` for more information
     about creating and using camera intrinsics and extrinsics.
+
+.. note::
+
+    Did you know? The App's grid can show a point cloud or 3D slice through a
+    calibrated camera slice, with its 3D detections projected onto the
+    camera's images. See :ref:`grid cameras <groups-grid-cameras>`.
 
 .. note::
 
