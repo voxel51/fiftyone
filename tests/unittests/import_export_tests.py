@@ -1681,6 +1681,51 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
 
     @drop_datasets
+    def test_voc_detection_dataset_reserved_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            name="Felix",
+                            bndbox="custom",
+                            mood="surly",
+                        ),
+                    ]
+                ),
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        # Custom attributes that share a name with a VOC field are skipped
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        detection = dataset2.first().ground_truth.detections[0]
+
+        self.assertEqual(detection.label, "cat")
+        self.assertEqual(detection.mood, "surly")
+        self.assertTrue(
+            np.allclose(
+                detection.bounding_box, [0.1, 0.1, 0.4, 0.4], atol=0.02
+            )
+        )
+
+    @drop_datasets
     def test_voc_detection_dataset(self):
         dataset = self._make_dataset()
 
