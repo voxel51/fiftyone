@@ -535,7 +535,7 @@ def read_json(path):
         the JSON data
     """
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except ValueError:
         raise ValueError("Unable to parse JSON file '%s'" % path)
@@ -583,7 +583,7 @@ def read_ndjson(path):
     Returns:
         a list of JSON dicts
     """
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         with jsonlines.Reader(f) as r:
             return list(r.iter(skip_empty=True))
 
@@ -595,7 +595,7 @@ def write_ndjson(obj, path):
         obj: a list of JSON dicts
         path: the filepath
     """
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         with jsonlines.Writer(f) as w:
             w.write_all(obj)
 
@@ -609,7 +609,7 @@ def read_yaml(path):
     Returns:
         a list of JSON dicts
     """
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -621,7 +621,7 @@ def write_yaml(obj, path, **kwargs):
         path: the filepath
         **kwargs: optional arguments for ``yaml.dump(..., **kwargs)``
     """
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         return yaml.dump(obj, stream=f, **kwargs)
 
 

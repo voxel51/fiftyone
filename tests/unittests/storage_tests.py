@@ -916,6 +916,33 @@ class TestSerializationLocal:
 
         assert read_data == data
 
+    def test_write_and_read_json_non_ascii(self, temp_dir):
+        path = os.path.join(temp_dir, "test.json")
+        data = {"latin": "café", "cjk": "椅子"}
+
+        fos.write_json(data, path)
+        read_data = fos.read_json(path)
+
+        assert read_data == data
+
+    def test_write_and_read_ndjson_non_ascii(self, temp_dir):
+        path = os.path.join(temp_dir, "test.ndjson")
+        data = [{"latin": "café"}, {"cjk": "椅子"}]
+
+        fos.write_ndjson(data, path)
+        read_data = fos.read_ndjson(path)
+
+        assert read_data == data
+
+    def test_write_and_read_yaml_non_ascii(self, temp_dir):
+        path = os.path.join(temp_dir, "test.yaml")
+        data = {"latin": "café", "cjk": "椅子"}
+
+        fos.write_yaml(data, path, allow_unicode=True)
+        read_data = fos.read_yaml(path)
+
+        assert read_data == data
+
     def test_write_json_pretty(self, temp_dir):
         path = os.path.join(temp_dir, "pretty.json")
         data = {"key": "value"}
