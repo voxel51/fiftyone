@@ -1532,6 +1532,7 @@ class CVATImage(object):
         points = [
             CVATImagePoints.from_keypoint(k, metadata) for k in _keypoints
         ]
+        points = [p for p in points if p.points]
 
         return cls(
             None,
@@ -1644,7 +1645,12 @@ class HasCVATPoints(object):
     @staticmethod
     def _to_abs_points(points, frame_size):
         w, h = frame_size
-        return [(int(round(x * w)), int(round(y * h))) for x, y in points]
+        # CVAT shapes cannot store missing points, which are nan in FiftyOne
+        return [
+            (int(round(x * w)), int(round(y * h)))
+            for x, y in points
+            if not (math.isnan(x) or math.isnan(y))
+        ]
 
     @staticmethod
     def _to_cvat_points_str(points):
@@ -2276,9 +2282,11 @@ class CVATTrack(object):
                         fn, _label, frame_size
                     )
             elif isinstance(_label, fol.Keypoint):
-                points[fn - 1] = CVATVideoPoints.from_keypoint(
+                _points = CVATVideoPoints.from_keypoint(
                     fn, _label, frame_size
                 )
+                if _points.points:
+                    points[fn - 1] = _points
             elif _label is not None:
                 msg = "Ignoring unsupported label type '%s'" % _label.__class__
                 warnings.warn(msg)
@@ -6709,6 +6717,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             abs_points = HasCVATPoints._to_abs_points(kp.points, frame_size)
+            if not abs_points:
+                continue
+
             flattened_points = list(itertools.chain.from_iterable(abs_points))
 
             shape = {

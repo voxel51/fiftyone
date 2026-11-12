@@ -3316,6 +3316,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # data/_images/<filename>
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
+    @drop_datasets
+    def test_cvat_image_dataset_missing_keypoints(self):
+        nan = float("nan")
+
+        sample = fo.Sample(
+            filepath=self._new_image(),
+            keypoints=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(
+                        label="person",
+                        points=[(0.25, 0.25), (nan, nan), (0.5, 0.75)],
+                    ),
+                    fo.Keypoint(label="person", points=[(nan, nan)]),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
+            label_field="keypoints",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
+        )
+
+        # Missing points are not written
+        keypoints = dataset2.first().keypoints.keypoints
+        self.assertEqual(len(keypoints), 1)
+        self.assertEqual(len(keypoints[0].points), 2)
+        for point, expected in zip(
+            keypoints[0].points, [(0.25, 0.25), (0.5, 0.75)]
+        ):
+            self.assertTrue(np.allclose(point, expected, atol=0.05))
+
     @skipwindows
     @drop_datasets
     def test_fiftyone_dataset(self):
