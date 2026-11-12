@@ -1372,7 +1372,7 @@ def _parse_yolo_classes(classes):
 
 
 def _read_yaml_file(path):
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -1382,7 +1382,7 @@ def _write_yaml_file(d, path, **kwargs):
 
 
 def _read_file_lines(path):
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         lines = [l.strip() for l in f.read().splitlines()]
         return [l for l in lines if l]
 
