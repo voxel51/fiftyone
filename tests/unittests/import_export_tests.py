@@ -5098,6 +5098,50 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_cvat_video_dataset_index_per_label(self):
+        sample = fo.Sample(filepath=self._new_video())
+        for frame_number in (1, 2):
+            sample.frames[frame_number] = fo.Frame(
+                predictions=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            index=1,
+                        ),
+                        fo.Detection(
+                            label="dog",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            index=1,
+                        ),
+                    ]
+                )
+            )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            frame_labels_field="frames.predictions",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+        )
+
+        # Trajectories are identified by `(label, index)`
+        self.assertEqual(dataset2.count("frames.detections.detections"), 4)
+        self.assertDictEqual(
+            dataset2.count_values("frames.detections.detections.label"),
+            {"cat": 2, "dog": 2},
+        )
+
+    @drop_datasets
     def test_cvat_video_dataset(self):
         dataset = self._make_dataset()
 
