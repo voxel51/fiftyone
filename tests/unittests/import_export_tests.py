@@ -1850,6 +1850,52 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_text_detection_datasets_non_ascii(self):
+        for dataset_type in (
+            fo.types.YOLOv4Dataset,
+            fo.types.KITTIDetectionDataset,
+        ):
+            dataset = fo.Dataset()
+            dataset.add_sample(
+                fo.Sample(
+                    filepath=self._new_image(name="straße"),
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="café",
+                                bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            ),
+                        ]
+                    ),
+                )
+            )
+
+            export_dir = self._new_dir()
+
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=dataset_type,
+                label_field="ground_truth",
+            )
+
+            dataset2 = fo.Dataset.from_dir(
+                dataset_dir=export_dir,
+                dataset_type=dataset_type,
+                label_field="ground_truth",
+            )
+
+            self.assertEqual(len(dataset2), 1)
+
+            sample = dataset2.first()
+
+            self.assertEqual(
+                os.path.basename(sample.filepath), "straße.jpg"
+            )
+            self.assertEqual(
+                sample.ground_truth.detections[0].label, "café"
+            )
+
+    @drop_datasets
     def test_yolov4_dataset(self):
         dataset = self._make_dataset()
 
