@@ -489,7 +489,7 @@ def _to_keypoints(result, confidence_thresh=None, classes=None):
     for cls, _points, _confs, idx in zip(clss, points, confs, track_ids):
         label = result.names[cls]
 
-        if confidence_thresh is not None:
+        if confidence_thresh is not None and _confs is not None:
             _points[_confs < confidence_thresh] = np.nan
 
         if classes is not None and label not in classes:
