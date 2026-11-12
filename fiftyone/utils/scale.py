@@ -577,6 +577,11 @@ def _to_scale_image_labels(labels_dict, frame_size):
         if isinstance(label, fol.Classification):
             attrs_dict = _to_classification(name, label)
             global_attributes.update(attrs_dict)
+        elif isinstance(label, fol.Classifications):
+            # Multilabel classifications are lists, as parsed on import
+            global_attributes[name] = [
+                c.label for c in label.classifications
+            ]
         elif isinstance(label, (fol.Detection, fol.Detections)):
             annos = _to_detections(label, frame_size)
             annotations.extend(annos)
