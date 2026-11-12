@@ -2647,6 +2647,44 @@ class CSVDatasetTests(ImageDatasetTests):
         return dataset
 
     @drop_datasets
+    def test_csv_dataset_non_ascii(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                weather=fo.Classification(label="晴れ"),
+                city="Zürich",
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+            fields={
+                "filepath": "filepath",
+                "weather.label": "weather",
+                "city": "city",
+            },
+        )
+
+        with open(
+            os.path.join(export_dir, "labels.csv"), "r", encoding="utf-8"
+        ) as f:
+            self.assertIn("晴れ", f.read())
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CSVDataset,
+        )
+
+        sample = dataset2.first()
+
+        self.assertEqual(sample.weather, "晴れ")
+        self.assertEqual(sample.city, "Zürich")
+
+    @drop_datasets
     def test_csv_dataset(self):
         dataset = self._make_dataset()
 
