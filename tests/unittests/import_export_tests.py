@@ -1368,6 +1368,55 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
 
     @drop_datasets
+    def test_coco_detection_dataset_reserved_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            confidence=0.9,
+                            score=0.5,
+                            area=123.0,
+                            bbox="custom",
+                            mood="surly",
+                        ),
+                    ]
+                ),
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        # Custom attributes that share a name with a COCO field are skipped
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_field="ground_truth",
+            iscrowd="crowd",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
+            label_types="detections",
+            label_field="ground_truth",
+            extra_attrs=True,
+        )
+
+        detection = dataset2.first().ground_truth.detections[0]
+
+        self.assertEqual(detection.label, "cat")
+        self.assertAlmostEqual(detection.confidence, 0.9)
+        self.assertEqual(detection.mood, "surly")
+        self.assertTrue(
+            np.allclose(detection.bounding_box, [0.1, 0.1, 0.4, 0.4])
+        )
+
+    @drop_datasets
     def test_coco_detection_dataset(self):
         dataset = self._make_dataset()
 

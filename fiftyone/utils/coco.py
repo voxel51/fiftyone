@@ -1345,8 +1345,11 @@ class COCOObject(object):
         attributes = _get_attributes(label, extra_attrs)
         attributes.pop(id_attr, None)  # okay if `id_attr` is None
         attributes.pop(iscrowd, None)
-        attributes.pop("area", None)
         attributes.pop("visible", None)
+
+        # Custom attributes cannot override the COCO object's own fields
+        for name in _COCO_OBJECT_FIELDS:
+            attributes.pop(name, None)
 
         return cls(
             id=_id,
@@ -2150,6 +2153,19 @@ def _coco_objects_to_keypoints(
         return None
 
     return fol.Keypoints(keypoints=keypoints)
+
+
+_COCO_OBJECT_FIELDS = (
+    "id",
+    "image_id",
+    "category_id",
+    "bbox",
+    "segmentation",
+    "keypoints",
+    "score",
+    "area",
+    "iscrowd",
+)
 
 
 def _get_attributes(label, extra_attrs):
