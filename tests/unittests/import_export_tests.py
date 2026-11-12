@@ -2847,6 +2847,39 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         return dataset
 
     @drop_datasets
+    def test_geojson_dataset_multiple_geometries(self):
+        point = [-73.98, 40.75]
+        polygon = [
+            [[-74.0, 40.7], [-73.9, 40.7], [-73.9, 40.8], [-74.0, 40.7]]
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                location=fo.GeoLocation(point=point, polygon=polygon),
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.GeoJSONDataset,
+        )
+
+        # The feature's geometry is a `GeometryCollection`
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.GeoJSONDataset,
+        )
+
+        location = dataset2.first().location
+
+        self.assertEqual(location.point, point)
+        self.assertEqual(location.polygon, polygon)
+
+    @drop_datasets
     def test_geojson_dataset(self):
         dataset = self._make_dataset()
 
