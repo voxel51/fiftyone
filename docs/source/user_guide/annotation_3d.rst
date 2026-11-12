@@ -313,8 +313,8 @@ If a camera is missing from the **View** list, or a grid tile shows
 How to: View a 3D scene
 -----------------------
 
-Open a group with a 3D slice in the sample modal. The 3D tile shows its point
-clouds and 3D labels. In a scene, every slice, camera and LiDAR alike, plays in
+Open a group with a LiDAR slice (`point-cloud` or `3d`) in the sample modal.
+The 3D tile shows its point clouds and 3D labels. In a scene, every slice, camera and LiDAR alike, plays in
 sync on one timeline, in both the **Inspect** and **Annotate** tabs.
 
 A good layout for a scene puts one 3D tile on the left and up to three more 3D
