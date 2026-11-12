@@ -1850,6 +1850,42 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_kitti_detection_dataset_boolean_attributes(self):
+        sample = fo.Sample(filepath=self._new_image())
+        sample["ground_truth"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="car",
+                    bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    occluded=True,
+                    truncated=False,
+                )
+            ]
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        detection = dataset2.first().ground_truth.detections[0]
+
+        self.assertEqual(detection.occluded, 1)
+        self.assertEqual(detection.truncated, 0)
+
+    @drop_datasets
     def test_yolov4_dataset(self):
         dataset = self._make_dataset()
 
