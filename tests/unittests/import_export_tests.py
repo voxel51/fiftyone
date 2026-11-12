@@ -3204,6 +3204,33 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_cvat_image_dataset_no_objects(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Detections(),
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
+            label_field="predictions",
+        )
+
+        # The exported task has no labels
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
+            include_all_data=True,
+        )
+
+        self.assertEqual(len(dataset2), 1)
+
+    @drop_datasets
     def test_cvat_image_dataset(self):
         dataset = self._make_dataset()
 
