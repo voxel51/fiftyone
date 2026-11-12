@@ -69,7 +69,7 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
   ...timelineProps
 }) => {
   const tracks = useTracks();
-  const { setPinned } = useTrackPinning();
+  const { reveal } = useTrackPinning();
   const { state, actions } = useTemporalTagMode();
 
   const existingTags = useMemo(() => {
@@ -81,17 +81,19 @@ const TemporalTagTimeline: React.FC<TemporalTagTimelineProps> = ({
     return Array.from(new Set([...(hostTags ?? []), ...onTimeline]));
   }, [tracks, hostTags]);
 
-  // Pin the tag's track on creation so a new tag is visible without the user
-  // hunting for it in the drawer. The track for a brand-new label does not
-  // exist until the write round-trips, but pinning is by id and the timeline
-  // renders only pinned tracks that exist, so pinning ahead is safe.
+  // Reveal (not pin) the tag's track on creation so a new tag is visible
+  // without the user hunting for it in the drawer. A reveal is session-only:
+  // reopening the sample drops it unless the user pinned it. The track for a
+  // brand-new label does not exist until the write round-trips, but reveals
+  // are by id and the tray renders only tracks that exist, so revealing ahead
+  // is safe.
   const handleTagCreate = useMemo(() => {
     if (!onTagCreate) return undefined;
     return async (tag: TemporalTagCreatePayload) => {
       await onTagCreate(tag);
-      setPinned(temporalTagTrackId(tag.tag), true);
+      reveal(temporalTagTrackId(tag.tag));
     };
-  }, [onTagCreate, setPinned]);
+  }, [onTagCreate, reveal]);
 
   const tagContextValue = {
     state,
