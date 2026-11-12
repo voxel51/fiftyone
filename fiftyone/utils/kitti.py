@@ -785,7 +785,8 @@ def _make_kitti_detection_row(detection, frame_size):
 
     dimensions = detection.get_attribute_value("dimensions", None)
     if dimensions is not None:
-        dimensions = dimensions.tolist()
+        # may be a list, eg when imported from KITTI, or a numpy array
+        dimensions = np.asarray(dimensions).tolist()
     else:
         dimensions = [0, 0, 0]
 
@@ -793,7 +794,8 @@ def _make_kitti_detection_row(detection, frame_size):
 
     location = detection.get_attribute_value("location", None)
     if location is not None:
-        location = location.tolist()
+        # may be a list, eg when imported from KITTI, or a numpy array
+        location = np.asarray(location).tolist()
     else:
         location = [0, 0, 0]
 

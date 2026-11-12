@@ -1745,6 +1745,60 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_kitti_detection_dataset_3d_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="car",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            dimensions=np.array([1.5, 1.6, 3.5]),
+                            location=np.array([1.0, 1.5, 10.0]),
+                        ),
+                    ]
+                ),
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        # The imported 3D attributes are lists, and can be exported again
+
+        export_dir2 = self._new_dir()
+
+        dataset2.export(
+            export_dir=export_dir2,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        dataset3 = fo.Dataset.from_dir(
+            dataset_dir=export_dir2,
+            dataset_type=fo.types.KITTIDetectionDataset,
+            label_field="ground_truth",
+        )
+
+        detection = dataset3.first().ground_truth.detections[0]
+
+        self.assertListEqual(list(detection.dimensions), [1.5, 1.6, 3.5])
+        self.assertListEqual(list(detection.location), [1.0, 1.5, 10.0])
+
+    @drop_datasets
     def test_kitti_detection_dataset(self):
         dataset = self._make_dataset()
 
