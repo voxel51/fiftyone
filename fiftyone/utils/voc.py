@@ -713,6 +713,7 @@ class VOCAnnotationWriter(object):
     def __init__(self):
         environment = jinja2.Environment(
             loader=jinja2.FileSystemLoader(foc.RESOURCES_DIR),
+            autoescape=True,
             trim_blocks=True,
             lstrip_blocks=True,
         )
