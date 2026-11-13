@@ -292,6 +292,12 @@ inspect points via hover tooltips.
 The 3D tile can also show :ref:`robots <multimodal-robots>` from URDF
 models.
 
+.. note::
+
+    This is the multimodal 3D tile. To view and annotate point clouds,
+    cuboids and tracks in grouped datasets, see
+    :ref:`3D Annotation <annotation-3d>`.
+
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/3d-panel.webp
    :alt: multimodal-3d-tile
    :align: center

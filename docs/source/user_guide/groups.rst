@@ -1061,16 +1061,8 @@ You can use the selector shown below to change which slice you are viewing:
 When you open the expanded modal with a grouped dataset or view loaded in the
 App, you'll have access to all samples in the current group.
 
-If the group contains image/video slices, the lefthand side of the modal will
-contain a scrollable carousel that you can use to choose which sample to load
-in the maximized image/video visualizer below.
-
-If the group contains 3D slices, the righthand side of the modal will contain a
-:ref:`3D visualizer <app-3d-visualizer>`:
-
-.. image:: /images/groups/groups-modal.gif
-   :alt: groups-modal
-   :align: center
+The modal shows the group's slices as tiles, which you arrange from the
+**Layout** menu. 3D slices open in a :ref:`3D tile <annotation-3d>`.
 
 When a group contains multiple direct PCD slices, you can use
 :ref:`static transforms <grouped-pcd-world-alignment>` to display their point
@@ -1124,6 +1116,9 @@ such as the LiDAR slice of a driving dataset:
 
     Did you know? You can also create :ref:`dynamic group views <view-groups>`
     into your grouped datasets via Python.
+
+.. _app-3d-orthographic-projections:
+
 .. _groups-grid-cameras:
 
 Grid cameras
