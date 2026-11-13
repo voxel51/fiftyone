@@ -3477,6 +3477,52 @@
             "date_added": "2023-12-13 14:25:51"
         },
         {
+            "base_name": "bioclip-2.5-vith14-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "BioCLIP 2.5 Huge vision-language model for zero-shot species classification and embeddings of organismal images across the tree of life",
+            "source": "https://huggingface.co/imageomics/bioclip-2.5-vith14",
+            "author": "Imageomics Institute",
+            "license": "MIT",
+            "size_bytes": 3949548670,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.open_clip.TorchOpenClipModel",
+                "config": {
+                    "clip_model": "hf-hub:imageomics/bioclip-2.5-vith14",
+                    "pretrained": "",
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "embeddings_layer": "visual",
+                    "text_prompt": "A photo of"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "open_clip_torch"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "text-embeddings",
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "clip",
+                "zero-shot",
+                "transformer"
+            ],
+            "training_data": [
+                {
+                    "name": "TreeOfLife-200M",
+                    "url": "https://huggingface.co/datasets/imageomics/TreeOfLife-200M"
+                }
+            ],
+            "date_added": "2026-10-15 00:00:00"
+        },
+        {
             "base_name": "classification-transformer-torch",
             "base_filename": null,
             "version": null,
