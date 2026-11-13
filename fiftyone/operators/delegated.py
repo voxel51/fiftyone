@@ -12,11 +12,14 @@ import logging
 import logging.handlers
 import multiprocessing
 import os
+import signal
 import sys
+import threading
 import traceback
 
 import psutil
 
+import fiftyone as fo
 from fiftyone.core.logging import _get_loggers
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repo_factory import RepositoryFactory
@@ -24,6 +27,7 @@ from fiftyone.operators.logging_utils import LineFlushedStdio
 from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
+    OperationTerminated,
     PipelineExecutionContext,
     do_execute_operator,
     do_execute_pipeline,
@@ -63,14 +67,16 @@ def _capture_child_output(queue):
         sys.stdout, sys.stderr = orig_stdout, orig_stderr
 
 
-def _terminate_worker_process(operation_id, log_queue=None):
+def _terminate_worker_process(operation_id, log_queue=None, exit_code=0):
     """Cleanup hook run after the worker's terminal state is in Mongo.
 
     Drains the multiprocessing log queue so the feeder thread can flush
     buffered records (otherwise the tail of the run's logs is lost),
     then walks this process's descendants and kills each so leaked
     subprocesses (DataLoader workers, asyncio tasks, mp resource
-    trackers, etc.) don't outlive the operation.
+    trackers, etc.) don't outlive the operation. Exits with
+    ``exit_code`` without waiting on threads, so an operator thread that
+    cannot be interrupted does not keep the process alive.
     """
     try:
         sys.stdout.flush()
@@ -102,7 +108,122 @@ def _terminate_worker_process(operation_id, log_queue=None):
     except psutil.NoSuchProcess:
         pass
 
-    os._exit(0)
+    os._exit(exit_code)
+
+
+@contextlib.contextmanager
+def _raise_on_sigterm():
+    """Turns ``SIGTERM`` into :class:`OperationTerminated` raised in the
+    running operation, for the duration of the block, then restores the
+    previous handler.
+
+    Used where the operator itself runs: the monitored child process and
+    the synchronous path. A no-op off the main thread, where Python cannot
+    install signal handlers.
+    """
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _handler(signum, frame):
+        raise OperationTerminated(signum)
+
+    previous = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, _handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
+@contextlib.contextmanager
+def _forward_sigterm(child_process, grace_seconds):
+    """While the monitored launcher waits on its child, forwards
+    ``SIGTERM`` to the child, joins it for up to ``grace_seconds``, then
+    exits non-zero; restores the previous handler afterwards.
+
+    The grace sits under the pod's ``terminationGracePeriodSeconds``, so
+    the child records its failure and the launcher exits before the
+    orchestrator kills it.
+
+    Args:
+        child_process: the started ``multiprocessing`` child
+        grace_seconds: how long to wait for the child after forwarding
+    """
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _handler(signum, frame):
+        # The child is its own session leader; signal its pid, not its
+        # group, so that its own handler raises inside the operator
+        logger.info(
+            "Received signal %s; forwarding to child process %s and "
+            "waiting up to %ss",
+            signal.Signals(signum).name,
+            child_process.pid,
+            grace_seconds,
+        )
+        try:
+            os.kill(child_process.pid, signum)
+        except ProcessLookupError:
+            pass
+        child_process.join(grace_seconds)
+        # Unwinds through the caller's cleanup, which terminates a child
+        # that is still alive
+        sys.exit(128 + signum)
+
+    previous = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, _handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
+def _terminated_result(signum):
+    """The failure recorded for an operation stopped by a signal."""
+    return ExecutionResult(
+        error=f"Operation terminated by signal {signal.Signals(signum).name}"
+    )
+
+
+def _run_operation(coro):
+    """Runs ``coro`` to completion on a new event loop, like
+    :func:`asyncio.run`.
+
+    Unlike :func:`asyncio.run`, when :class:`OperationTerminated` is raised
+    the loop's default executor is not joined. With the default
+    ``fo.config.max_thread_pool_workers`` a synchronous operator runs in
+    that executor and cannot be interrupted, so joining it would delay
+    recording the termination until the operator finished on its own.
+    With a configured pool the operator runs in the shared pool instead,
+    which is never joined here.
+    """
+    loop = asyncio.new_event_loop()
+    terminated = False
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    except OperationTerminated:
+        terminated = True
+        raise
+    finally:
+        try:
+            tasks = asyncio.all_tasks(loop)
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                loop.run_until_complete(
+                    asyncio.gather(*tasks, return_exceptions=True)
+                )
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            if not terminated:
+                loop.run_until_complete(loop.shutdown_default_executor())
+        finally:
+            asyncio.set_event_loop(None)
+            # Shuts down the default executor without waiting on it
+            loop.close()
 
 
 def _execute_operator_in_child_process(
@@ -127,10 +248,9 @@ def _execute_operator_in_child_process(
             pass
     operation = None
     try:
-
         with _capture_child_output(log_queue), logging_context(
             {"delegated_operation_id": str(operation_id)}
-        ):
+        ), _raise_on_sigterm():
             service = DelegatedOperationService()
             try:
                 operation = service.get(operation_id)
@@ -147,7 +267,7 @@ def _execute_operator_in_child_process(
                         operation.operator,
                     )
 
-                result = asyncio.run(service._execute_operator(operation))
+                result = _run_operation(service._execute_operator(operation))
                 result.raise_exceptions()
 
                 updated_doc = service.set_completed(
@@ -162,6 +282,26 @@ def _execute_operator_in_child_process(
                         logger.info(
                             "Operation %s was not marked as COMPLETED because its state changed externally.",
                             operation.id,
+                        )
+            except OperationTerminated as e:
+                result = _terminated_result(e.signum)
+                updated_doc = service.set_failed(
+                    doc_id=operation_id,
+                    result=result,
+                    update_pipeline=operation.parent_id if operation else None,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.info(
+                            "Operation %s failed: %s",
+                            operation_id,
+                            result.error,
+                        )
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as FAILED because its state changed externally.",
+                            operation_id,
                         )
             except Exception:
                 result = ExecutionResult(error=traceback.format_exc())
@@ -744,44 +884,80 @@ class DelegatedOperationService(object):
     def _execute_operation_sync(self, operation, log=False):
         """Executes an operation synchronously in the current process."""
         updated_doc = None
-        try:
-            result = asyncio.run(self._execute_operator(operation))
-            result.raise_exceptions()
-            updated_doc = self.set_completed(
-                doc_id=operation.id,
-                result=result,
-                required_state=ExecutionRunState.RUNNING,
-            )
-            if log:
-                if updated_doc:
-                    logger.info("Operation %s complete", operation.id)
-                else:
-                    logger.info(
-                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+        with _raise_on_sigterm():
+            try:
+                result = _run_operation(self._execute_operator(operation))
+                result.raise_exceptions()
+                updated_doc = self.set_completed(
+                    doc_id=operation.id,
+                    result=result,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.info("Operation %s complete", operation.id)
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as COMPLETED because its state changed externally.",
+                            operation.id,
+                        )
+            except OperationTerminated as e:
+                result = _terminated_result(e.signum)
+                try:
+                    updated_doc = self.set_failed(
+                        doc_id=operation.id,
+                        result=result,
+                        update_pipeline=operation.parent_id,
+                        required_state=ExecutionRunState.RUNNING,
+                    )
+                    if log:
+                        if updated_doc:
+                            logger.info(
+                                "Operation %s failed: %s",
+                                operation.id,
+                                result.error,
+                            )
+                        else:
+                            logger.info(
+                                "Operation %s was not marked as FAILED because its state changed externally.",
+                                operation.id,
+                            )
+                except Exception:
+                    logger.exception(
+                        "Failed to mark terminated operation %s as FAILED",
                         operation.id,
                     )
-        except Exception:
-            logger.debug(
-                "Uncaught exception when executing operator",
-                exc_info=True,
-            )
-            result = ExecutionResult(error=traceback.format_exc())
-            updated_doc = self.set_failed(
-                doc_id=operation.id,
-                result=result,
-                update_pipeline=operation.parent_id,
-                required_state=ExecutionRunState.RUNNING,
-            )
-            if log:
-                if updated_doc:
-                    logger.info(
-                        "Operation %s failed\n%s", operation.id, result.error
+                finally:
+                    # The process was asked to stop: end it rather than
+                    # return to a caller that would start the next queued
+                    # operation while the operator's thread may still run
+                    _terminate_worker_process(
+                        operation.id, exit_code=128 + e.signum
                     )
-                else:
-                    logger.info(
-                        "Operation %s was not marked as FAILED because its state changed externally.",
-                        operation.id,
-                    )
+            except Exception:
+                logger.debug(
+                    "Uncaught exception when executing operator",
+                    exc_info=True,
+                )
+                result = ExecutionResult(error=traceback.format_exc())
+                updated_doc = self.set_failed(
+                    doc_id=operation.id,
+                    result=result,
+                    update_pipeline=operation.parent_id,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.info(
+                            "Operation %s failed\n%s",
+                            operation.id,
+                            result.error,
+                        )
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as FAILED because its state changed externally.",
+                            operation.id,
+                        )
         if not updated_doc:
             return ExecutionResult(
                 error="Operation state changed externally during execution."
@@ -816,11 +992,14 @@ class DelegatedOperationService(object):
             )
             child_process.start()
 
-            result = self._monitor_operation(
-                child_process,
-                operation.id,
-                check_interval_seconds,
-            )
+            with _forward_sigterm(
+                child_process, fo.config.delegated_termination_grace_seconds
+            ):
+                result = self._monitor_operation(
+                    child_process,
+                    operation.id,
+                    check_interval_seconds,
+                )
 
             if not result:
                 try:
