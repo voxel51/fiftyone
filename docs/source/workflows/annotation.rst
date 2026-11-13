@@ -19,6 +19,7 @@ Auto-Labeling 🚀 to generate high-quality labels automatically.
    :hidden:
 
    Annotating datasets <../user_guide/annotation>
+   3D Annotation 🚀 __SUB_NEW__ <../user_guide/annotation_3d>
    Projects 🚀 __SUB_NEW__ <../enterprise/projects>
    Agentic Labeling 🚀 __SUB_NEW__ <../enterprise/agentic_labeling>
    Auto-Labeling 🚀 <../enterprise/verified_auto_labeling>

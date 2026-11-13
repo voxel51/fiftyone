@@ -3,6 +3,180 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _fiftyone-enterprise-2-26-0:
+
+Voxel51 2.26.0
+--------------
+*Released November 11, 2026*
+
+- **Annotation Projects**: a new top-level Projects page replaces the
+  dataset Annotate tab. A project holds batches of annotation work across
+  datasets; each batch starts from a workflow template on the whole dataset,
+  a subset, or a saved query. My work lists every task assigned to you,
+  available to pick up, or completed, and projects and batches have their
+  own Metrics tabs
+- **Benchmarks and consensus**: run a benchmark batch that scores
+  labelers against ground truth on a copy of the dataset, or a consensus
+  batch that has several labelers annotate the same samples. Boxes are
+  scored on same-class IoU and attributes are scored against their label
+  schema, with support for custom scoring plugins
+- **Task assignment**: workflow stages have an assignee pool of people and
+  groups. Tasks can be split by size or count, claimed from the pool,
+  assigned manually or automatically, and prioritized
+- **Activity and audit logs**: see who did what at every level of your
+  deployment. Every sample has a history panel of its edits, reviews, tags,
+  and comments. Every dataset has an Activity tab that lists each change
+  and who made it, alongside the dataset's snapshots. The new
+  Monitoring > Audit Log records every action across your organization,
+  filterable by person, dataset, and event type, and downloadable as CSV
+- **Multisensor temporal 3D annotation**: play every camera and LiDAR slice
+  of a grouped scene in sync on one timeline, in both Inspect and Annotate,
+  and label cuboid and polyline tracks across the whole sequence in the new
+  3D viewer. Edit cuboid tracks on the timeline (resize, move, split,
+  merge, interpolate, keyframes), with ego and top camera presets and a
+  draggable heading arrow. The timeline index for groups of up to 100,000
+  samples is created automatically
+- **Keypoint and skeleton annotation**: create and edit keypoints in the
+  App with guided skeleton placement, per-point attributes, and keypoint
+  tracks on video datasets
+- **Multimodal scripts and robots**: have an agent write a script over an
+  MCAP recording's topics, from a chat or the SDK, and see the results as
+  plots, timeline events, 3D geometry, or HTML panels that follow playback.
+  Scripts can be shared with your organization. Episodes show URDF robots
+  from MCAP attachments, description topics, or an org-wide robot library,
+  posed from recorded TF and joint states. Import robots and props from
+  USD/USDZ files, including NVIDIA SimReady assets. LeRobot episodes show
+  URDF robots and camera frustums
+- **A redesigned App**: the datasets page, dataset page, view bar, sidebars,
+  panels, runs, Manage and Access pages, share dialog, and annotation sidebar
+  have a new look, with no features removed. Workspaces are now called
+  Layouts, and the App fits phones and narrow windows
+- **Subsets and saved queries**: saved views are now called saved queries,
+  and existing saved views carry over. Save exact selections of samples as
+  reusable subsets, and organize selected samples into sections in the new
+  selection tray
+- **New view bar**: write and edit view expressions in the App, add stages
+  through descriptor-driven forms, and run similarity search from the bar
+
+App
+^^^
+
+- Rotated bounding boxes: 2D detections can carry a `rotation` that renders
+  in the App and grid, can be edited with a rotate handle, and interpolates
+  between keyframes. The CVAT integration converts rotations between
+  degrees and radians
+- Temporal tags are available on plain video datasets and the video slices
+  of grouped datasets, not only multimodal episodes
+- Hide a detection field's bounding boxes from the sidebar, for example to
+  see instance masks without their boxes
+- `fiftyone.utils.thumbnails.generate_thumbnails()` writes multiple image
+  and point cloud sizes, and the App loads the smallest size that covers
+  each tile
+- The App warns when it is open in more than one tab on the same session
+- Video timelines count frames from 1, matching FiftyOne frame numbers
+- The runs page shows how long each run took
+- Fixed label overlay flicker in the modal and during video playback
+
+Annotation
+^^^^^^^^^^
+
+- Label schemas can define field visibility and attributes per field, and
+  are now enforced server-side by default. To turn enforcement off, set
+  `VFF_SCHEMA_ENFORCEMENT=false` on the `fiftyone-app` container, and on
+  `teams-plugins` if your deployment runs a dedicated plugins container
+- Add selected samples, or all matching results, to a running batch from
+  the selection tray
+- Annotation tasks open directly on the layout their fields need, and step
+  between samples without returning to the grid
+- New batches, benchmarks, and tasks default to priority P3
+- Annotation instructions moved into a status bar help tooltip
+- Temporal detection supports can no longer be set past the end of the
+  video or with a stop frame before the start frame
+
+Multimodal
+^^^^^^^^^^
+
+- Projections read each recording once, project every field of every
+  channel, and run 1.2-3.3x faster. Text and boolean signals are indexed
+  automatically, and adding derived events or summaries no longer
+  reprojects recordings
+- MCAP recordings in cloud storage open, play, and seek faster. The new
+  `fiftyone.multimodal.renditions` module writes smaller playback copies
+  for slow links
+- Video and grouped video datasets support segment embeddings, with
+  matches shown on video timelines and tiles. Search multimodal embeddings
+  from the view bar, and color embeddings plots by sample fields
+- Save and share multimodal viewer layouts with your organization, or
+  move them as JSON files
+- Plot text fields, such as a drive mode, as state lanes
+- Admins can set one managed storage root for FiftyOne-managed data in
+  Settings > Infrastructure > Storage or with
+  `FIFTYONE_MANAGED_STORAGE_ROOT`
+- Clones and native exports keep precomputed projections; pass
+  `export_projections=False` to omit them
+- An episode that keeps crashing the projection worker fails after 3
+  attempts instead of being retried forever
+
+Agent
+^^^^^
+
+- The Agent can create frames views from video datasets at a fixed or
+  maximum FPS, and search existing embeddings indexes in natural language
+- Every member's Agent follows the organization's default model and
+  auto-run setting
+- On-prem admins can manage LLM provider connections from Agent Settings
+- More built-in operators are available to agents through MCP
+- The Agent always works on the dataset, view, and selection of the tab
+  you are chatting in
+
+Administration
+^^^^^^^^^^^^^^
+
+- The new Monitoring > Activity page shows the work your team produced
+  each day and by person
+- On-prem users can upload files from their computer to cloud storage and
+  import them into a dataset
+- Invitations hold a license seat until they expire, and seats are
+  assigned per member, so an organization at its limit no longer locks
+  out existing members
+- Fewer unexpected sign-outs: expired sessions refresh when possible or
+  return you to the page you were on after sign-in
+- Creating a dataset from a view keeps its indexes
+
+Model and dataset zoo
+^^^^^^^^^^^^^^^^^^^^^
+
+- Added models to the Model Zoo: C-RADIOv4, MapAnything, Sapiens2 pose,
+  Point Transformer V3 point cloud embeddings, Rex-Omni, Unlimited-OCR,
+  PaddleOCR-VL, GLM-OCR, TIPSv2, Muse Glimmer 30B, Qwen3.8-27B, MoGe-3,
+  Florence-2, Argus and Argus-Lite, MiMo-V2.6-Distill-Qwen-9B, YOLO26
+  depth, Clef-Flash, and Winnow-12B. Removed `yolo-nas-torch`
+- Added 3D detection evaluation with
+  `evaluate_detections(method="nuscenes")`, including in the Model
+  Evaluation panel
+- Added multimodal, tactile, SLAM, and event camera datasets to the Dataset
+  Zoo, including `taf-tactile-force`, `dreamtac`, `haptile`, `tum-rgbd`,
+  `dsec-sample`, `m3ed-sample`, `grandtour-sample`, and eleven MCAP
+  datasets
+
+Upgrade notes
+^^^^^^^^^^^^^
+
+- After upgrading, run `FIFTYONE_DATABASE_ADMIN=true fiftyone migrate --all`
+  as described in the upgrade guide. This release adds sample attribution
+  fields to existing datasets, and datasets that are not migrated cannot be
+  read by older SDK versions once they are edited in 2.26.0
+- Legacy authentication mode and `FIFTYONE_AUTH_MODE` are removed. On
+  first start after the upgrade, CAS imports remaining Auth0 members,
+  roles, and groups. Invitations are enabled by default
+- The Enterprise web app no longer runs on Next.js. Deployments that
+  override the `teams-app` container command must use
+  `node /app/packages/app/dist-server/index.cjs`
+- FiftyOne registers its mongoengine connection under the `voxel51` alias
+  instead of `default`
+- FiftyOne supports pymongo 4.9 through 4.19 and motor 3.6 through 3.7,
+  so you can install a pymongo release with recent CVE fixes
+
 .. _fiftyone-enterprise-2-25-2:
 
 Voxel51 2.25.2
