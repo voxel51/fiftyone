@@ -131,6 +131,8 @@ from .core.labels import (
     Regression,
     Classification,
     Classifications,
+    VQA,
+    VQAs,
     Detection,
     Detections,
     Polyline,
