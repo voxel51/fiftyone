@@ -1093,6 +1093,15 @@ datasets.
    :alt: mistakenness
    :align: center
 
+.. tip::
+
+    Once you've found likely mistakes, you can fix them directly in the App
+    with :ref:`in-App annotation <in-app-annotation>`: change a label's class,
+    adjust its bounding box, draw a missing object, or
+    :ref:`delete <deleting-labels>` a spurious one. For larger re-annotation
+    passes, you can instead send the labels to an external tool via the
+    :ref:`annotation API <fiftyone-annotation>`.
+
 .. _brain-sample-hardness:
 
 Sample hardness
