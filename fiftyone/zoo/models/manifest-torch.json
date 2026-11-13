@@ -13623,6 +13623,62 @@
             ],
             "training_data": [],
             "date_added": "2026-10-07 12:00:00"
+        },
+        {
+            "base_name": "lightonocr-3-0.8b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "0.8B end-to-end OCR model that returns every block of a document page with its type, bounding box and text",
+            "source": "https://huggingface.co/lightonai/LightOnOCR-3-0.8B",
+            "author": "LightOn",
+            "license": "Apache 2.0",
+            "size_bytes": 1736109272,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.lightonocr.LightOnOCRModel",
+                "config": {
+                    "name_or_path": "lightonai/LightOnOCR-3-0.8B"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=5.17"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch", "transformer", "vlm"],
+            "training_data": [],
+            "date_added": "2026-10-16 12:00:00"
+        },
+        {
+            "base_name": "lightonocr-3-4b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "4B end-to-end OCR model that returns every block of a document page with its type, bounding box and text",
+            "source": "https://huggingface.co/lightonai/LightOnOCR-3-4B",
+            "author": "LightOn",
+            "license": "Apache 2.0",
+            "size_bytes": 9108699477,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.lightonocr.LightOnOCRModel",
+                "config": {
+                    "name_or_path": "lightonai/LightOnOCR-3-4B"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=5.17"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["ocr", "detection", "torch", "transformer", "vlm"],
+            "training_data": [],
+            "date_added": "2026-10-16 12:00:00"
         }
     ]
 }
