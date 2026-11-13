@@ -212,7 +212,9 @@ In a custom schema every field is either *active* or *hidden*:
   keep it as context, for example a model's predictions.
 - **Hidden fields** do not reach anyone viewing through the schema: not the
   grid, not the sidebars, not the sample data. Use them to keep ground truth
-  away from annotators.
+  away from annotators. One exception: a field that the batch's saved query
+  filters on stays visible in its tasks (see below), so do not rely on hiding
+  to protect a field the query needs.
 
 .. warning::
 
@@ -486,7 +488,8 @@ Open the project's **Benchmarks** tab and click **New benchmark**.
 - **Label schema**: the schema whose classes and attributes attempts are
   labeled with, and scored with.
 - **Ground truth field**: the labels every attempt is scored against.
-- **Pass threshold**: the score needed to pass, from 0 to 1 (0.6 by default).
+- **Pass threshold**: from 0 to 1 (0.6 by default). An attempt passes when its
+  mean score over all its samples reaches this number.
 - **Custom metrics**: **No** uses the built-in scorer, **Yes** lets you pick a
   metric registered by a plugin. See
   :ref:`Writing a custom scoring policy <enterprise-projects-scoring-policies>`.
@@ -530,13 +533,22 @@ How benchmark and consensus scores are calculated
 Benchmarks and consensus stages score labels the same way. A benchmark compares
 each person's labels with the gold set, and a consensus stage compares the
 copies of a sample with each other. For every sample the built-in scorer scores
-each label, averages the label scores into the sample's score, and compares
-that average with the **Pass threshold**, the one number you set. In a
-consensus stage every pair of copies is scored this way, and the sample's
-agreement is the mean over the pairs.
+each label and averages the label scores into the sample's score. The
+**Pass threshold**, the one number you set, decides the outcome:
 
-- **Boxes, masks, polylines and keypoints** are worth the overlap (IoU) of the
-  label with its partner of the same class, and 0 with no partner.
+- In a **benchmark**, the threshold applies to the attempt: it passes when the
+  mean of its sample scores reaches the threshold. A single low sample does not
+  fail an attempt on its own.
+- In a **consensus** stage, every pair of copies of a sample is scored the same
+  way and the sample's agreement is the mean over the pairs. A sample whose
+  agreement reaches the threshold passes and keeps the best copy. Any other
+  sample goes to a pick review.
+
+Each label is scored as follows:
+
+- **Boxes, masks and polylines** are worth the overlap (IoU) of the label with
+  its partner of the same class, and 0 with no partner. **Keypoints** use
+  object keypoint similarity instead.
 - **Classifications and patches** are worth the share of attribute slots that
   agree. The class is one slot, and so is each string or boolean attribute.
 - **Sample score**: the average of its label scores. A missing or extra label
@@ -587,10 +599,11 @@ The sample's score is the average of the four label scores:
 (0.92 + 0.85 + 0 + 0) / 4 = 0.44.
 
 .. image:: https://cdn.voxel51.com/enterprise/projects/scoring_example_bars.webp
-   :alt: Bars for the four label scores, with the sample average of 0.44 below a pass threshold of 0.70
+   :alt: Bars for the four label scores, with the sample average of 0.44 shown against a threshold line at 0.70
 
-The missed and extra boxes pull the average below a pass threshold of 0.7, so
-this sample does not pass.
+The missed and extra boxes pull the sample's score down to 0.44, well under a
+threshold of 0.7. In a benchmark that sample lowers the attempt's mean, and in
+a consensus stage it would go to a pick review.
 
 Boxes only pair within their class. Had the annotator labeled B' as ``car``, it
 would pair with nothing: B' becomes an extra and B a miss. The sample then has
@@ -680,7 +693,9 @@ What is scored, and what is skipped
        other system fields
      - Skipped.
 
-You set one number per benchmark or consensus stage, the **Pass threshold**.
+You set one number per benchmark or consensus stage, the **Pass threshold**:
+the attempt mean for a benchmark, the pairwise agreement for a consensus
+stage.
 To change how labels are compared, for example to score boxes on overlap and
 attributes together, write a
 :ref:`custom scoring policy <enterprise-projects-scoring-policies>`.
@@ -1146,8 +1161,37 @@ scorer:
     {"scores": {"<id>": {"score": 0.8, "detail": {...}}}}
 
 If the descriptor sets ``verdict``, a second ``verdict`` step runs once per
-attempt (or consensus set) after its last score. It receives every sample's
-score and detail and returns ``{"score", "passed", "summary"?, "kept"?}``.
+attempt (or consensus set) after its last score. It replaces the built-in
+pass-or-fail rule, so the threshold only applies if your code applies it. The
+request carries every sample's result:
+
+.. code-block:: text
+
+    {
+      "kind": "benchmark",
+      "step": "verdict",
+      "options": {"pass_threshold": 0.6, ...},
+      "attempt": {"id": "...", "user_id": "...", "trial": 1, "sample_total": 40},
+      "samples": [
+        {"id": "...", "sample_id": "...", "score": 0.8, "passed": true,
+         "detail": {...}}
+      ]
+    }
+
+A consensus verdict has ``"set": {"sample_id": "...", "fields": [...]}`` in
+place of ``attempt``. Its ``samples`` hold one entry per pair of copies, each
+naming the pair with ``a_field`` and ``b_field``. Return the verdict:
+
+.. code-block:: text
+
+    {"score": 0.82, "passed": true, "summary": "2 critical attribute misses",
+     "kept": "animals_2"}
+
+``score`` is a number from 0 to 1 (or ``None``),
+``passed`` must be ``true`` or ``false``, and ``summary`` is optional free text.
+``kept`` is for consensus only: the name of the copy's label field, one of
+``fields``, to write as the result when the sample passes. Leave it out, or
+name anything else, and the copy with the highest mean agreement is kept.
 
 ``fiftyone.management.scoring`` has the built-in scorer's pieces to build on:
 ``pair_objects``, ``score_attributes`` (which understands conditional
