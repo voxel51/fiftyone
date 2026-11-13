@@ -78,7 +78,7 @@ Undo/Redo
 .. image:: /_static/images/annotation/undo_redo_buttons.png
    :alt: Undo/Redo buttons
 
-While editing metadata, you can undo and redo actions using the buttons in the upper-right corner of the "Annotate" panel, or via ``Ctrl+``/``Cmd+z`` and ``Ctrl+``/``Cmd+y``. Your changes included in the undo stack are limited to your active annotation session, i.e., while the expanded view remains open.
+While editing metadata, you can undo and redo actions using the buttons in the upper-right corner of the "Annotate" panel, or via ``Cmd+Z`` to undo and ``Cmd+Shift+Z`` or ``Cmd+Y`` to redo. On Windows and Linux, use ``Ctrl+Z`` and ``Ctrl+Shift+Z``. Your changes included in the undo stack are limited to your active annotation session, i.e., while the expanded view remains open.
 
 ----
 
@@ -290,27 +290,10 @@ Once this ontology is attached to a label field, annotators will see
 these conditional attributes in the right sidebar of the in-App
 annotation UI as they annotate.
 
-Bypassing Schema Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you do not see a field or its contents in the "Annotate" tab of the sample expanded view, and you don't want to go through the process of configuring a schema for the field and adding it to the Annotation Schema, you can bypass interacting with the Schema Manager altogether and ask the FiftyOne App to take the requisite steps on your behalf.
-
-.. warning::
-   Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with :ref:`"Can manage" access <enterprise-can-manage>` on a dataset.
-
-.. image:: /_static/images/annotation/bypass_schema_quick_edit.gif
-   :alt: Quick-edit pencil icon on the Explore tab
-
-While on the "Explore" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
-
-1. The App scans your dataset to impute a schema for the field
-2. The App then adds your field to the Annotation Schema, using the imputed field schema
-3. You are then navigated to the "Annotate" tab and placed into either an edit context for your field or a filtered :ref:`list of label instances <list-of-label-instances>`, depending on your field's type
-
 Getting Started with Annotation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To access fields in the "Annotate" tab, first check the box next to the field in the "Explore" tab. Only those labels you are visualizing in the "Explore" tab will be available for in-App annotation in the "Annotate" tab.
+A field appears in the "Annotate" tab once it is in the Annotation Schema. Add it with the :ref:`Schema Manager <schema-import-management>`. The checkbox next to a field in the sidebar shows or hides its labels, in both the "Inspect" and "Annotate" tabs.
 
 .. image:: /_static/images/annotation/annotate_tab_overview.png
    :alt: Annotate tab overview with Canvas, Toolbar, and Labels list
@@ -338,7 +321,7 @@ The annotation actions toolbar is where you can create a new label instance or (
 List of Label Instances
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Under the "Labels" header, you'll see a flattened list of all label instances included in fields enabled while in the "Explore" tab. You can edit an existing label instance by clicking on that label instance within the "Labels" list.
+Under the "Labels" header, you'll see a flattened list of all label instances in the fields checked in the sidebar. You can edit an existing label instance by clicking on that label instance within the "Labels" list.
 
 :ref:`Hidden labels <app-hidden-labels>`, and labels on fields that the sample's tiles hide, are left out of the list until you show them again.
 
@@ -774,257 +757,21 @@ group's elements.
 
 ----
 
+.. Keep old links to the 3D polyline section that moved to annotation_3d.rst working.
+
+.. raw:: html
+
+   <span id="creating-3d-polylines"></span>
+
 How to: 3D Label Annotation
 ---------------------------
 
-3D Annotation Mode
-~~~~~~~~~~~~~~~~~~
-
-Supported 3D Datasets
-^^^^^^^^^^^^^^^^^^^^^
-
-3D annotation mode is only supported for ``3d`` :ref:`type datasets <3d-datasets>` and dataset views, or grouped datasets with ``3d`` slices.
-
-.. note::
-   ``point-cloud`` :ref:`type datasets <point-cloud-datasets>` are deprecated and do not support annotation. We recommend converting them to ``3d`` type datasets.
-
-For grouped datasets, you can use the slice selector within the Annotate tab to select the image or 3d slice you wish to annotate.
-
-.. image:: /_static/images/annotation/3d_slice_selector.png
-   :alt: Slice selector
-
-Camera Projections
-^^^^^^^^^^^^^^^^^^
-
-**Pointcloud projections**
-
-.. image:: /_static/images/annotation/pointcloud_projections.png
-   :alt: Pointcloud projections
-
-Projection surfaces allow you to flatten a 3D point cloud onto a 2D plane for easier annotation. You can toggle between different projection views using the dropdown menus.
-
-**2D Image Projections**
-
-If your dataset contains :ref:`groups <groups>`, where at least one group slice contains 2D images, you'll also see those slices available for visualization in the dropdown menu.
-
-.. image:: /_static/images/annotation/image_projection_slices.png
-   :alt: 2D image projections
-
-If you have defined the necessary :ref:`camera intrinsic and extrinsic parameters <camera-intrinsics-extrinsics>`, then you will also be able to project the 3D labels onto the 2D images in real time.
-
-.. image:: /_static/images/annotation/labels_projected_on_image.gif
-   :alt: 3D image projections
-
-
-3D Annotation Controls
-~~~~~~~~~~~~~~~~~~~~~~
-
-Annotation Plane
-^^^^^^^^^^^^^^^^
-
-.. image:: /_static/images/annotation/annotation_plane_concept.gif
-   :alt: Annotation plane concept
-
-3D annotation mode in FiftyOne provides the concept of an "annotation plane". When a new point is created (for example the vertex of a polyline or cuboid), it gets placed at the location of the mouse pointer. However, the depth of the point would be ambiguous and so this annotation plane is used to define the point depth. By default, the annotation plane is set to be the XY plane.
-
-.. image:: /_static/images/annotation/reposition_annotation_plane.gif
-   :alt: Annotation plane positioning
-
-The annotation plane can be repositioned by clicking the annotation plane icon in the left toolbar. Iteratively moving the annotation plane and placing vertices is an efficient way to annotate complex 3D shapes.
-
-.. image:: /_static/images/annotation/annotation_plane_workflow.gif
-   :alt: Moving annotation plane
-
-Visualizer Controls
-^^^^^^^^^^^^^^^^^^^
-
-The 3D annotation toolbar on the left side of the screen contains all options for spatially manipulating 3D cuboids and polylines. The icons represent the following actions:
-
-* Cancel the annotation of the current label, presenting the option to either save or discard changes
-
-.. image:: /_static/images/annotation/control_cancel_icon.png
-   :alt: Cancel annotation button
-
-* Begin annotation of a new cuboid
-
-.. image:: /_static/images/annotation/control_new_cuboid_icon.png
-   :alt: Begin annotation of a new cuboid
-
-* Begin annotation of a new polyline or segment
-
-.. image:: /_static/images/annotation/control_new_polyline_icon.png
-   :alt: Begin annotation of a new polyline or segment
-
-* Add a new vertex to the selected polyline
-
-.. image:: /_static/images/annotation/control_add_vertex_icon.png
-   :alt: Add a new vertex to the selected polyline
-
-* Enable a mode where double clicking automatically closes the polyline
-
-.. image:: /_static/images/annotation/control_auto_close_icon.png
-   :alt: Enable a mode where double clicking automatically closes the polyline
-
-* Enable visualization and manipulation of the annotation plane
-
-.. image:: /_static/images/annotation/control_show_plane_icon.png
-   :alt: Enable visualization and manipulation of the annotation plane
-
-The camera position can be manipulated to snap to the X,Y,Z directions or to the annotation plane with the keyboard shortcuts. The number keys 1-4 and CTRL+1-4 correspond to the top/bottom, right/left, front/back, and annotation plane respectively as shown in the video below.
-
-.. image:: /_static/images/annotation/camera_snap_shortcuts.gif
-   :alt: Camera controls
-
-How to: 3D Cuboid Annotation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To begin creating and editing 3D cuboids, enter polyline annotation mode by clicking on the cuboid icon in the annotate actions toolbar. When in cuboid annotation mode, the 3D cuboid toolbar becomes available on the left side of the Annotation Canvas.
-
-.. image:: /_static/images/annotation/cuboid_toolbar.png
-   :alt: 3D cuboid toolbar
-
-Creating 3D Cuboids
-^^^^^^^^^^^^^^^^^^^
-
-After entering cuboid annotation mode, create a new 3D cuboid by clicking on the cuboid icon in the cuboid toolbar on the left side, then click the 3D scene to place the first corner of the cuboid. Click a second time to define the opposite corner of the base (XY plane) of the cuboid. This second click finishes the creation of the cuboid, always defaulting to a height of 1.0 in the lz direction.
-
-.. image:: /_static/images/annotation/create_3d_cuboid.gif
-   :alt: Creating a 3D cuboid
-
-Newly created cuboids are oriented based on the current annotation plane. The depth of the first two clicks in the 3D scene is dictated by the location of the annotation plane which is described above (defaulting to the XY plane).
-
-Transforming 3D Cuboids
-^^^^^^^^^^^^^^^^^^^^^^^
-
-After selecting a cuboid, the left toolbar provides new actions to transform the cuboid via translation, rotation, and scaling.
-
-**Translation**
-
-.. image:: /_static/images/annotation/cuboid_translate.gif
-   :alt: Translation mode
-
-Click the translation icon in the left toolbar to enable translation mode. In this mode, the cuboid can be translated (moved) along the x, y, or z axes by clicking and dragging the corresponding directional arrow on the cuboid. Additionally, you can move the cuboid within a plane (XY, XZ, or YZ) by clicking and dragging the corresponding colored plane handle. For 3D translation in all directions, click and drag the white cube at the center of the cuboid.
-
-**Rotation**
-
-.. image:: /_static/images/annotation/cuboid_rotate.gif
-   :alt: Rotation mode
-
-After selecting a cuboid, click the rotation icon in the left toolbar to enable rotation mode. In this mode, the cuboid can be rotated about the x, y, or z axes by clicking and dragging the corresponding colored circle on the cuboid. You can also rotate about the plane orthogonal to the current camera view using the outermost yellow circle.
-
-**Scaling**
-
-.. image:: /_static/images/annotation/cuboid_scale.gif
-   :alt: Scaling mode
-
-After selecting a cuboid, click the scaling icon in the left toolbar to enable scaling mode. In this mode, the cuboid can be scaled (resized) along the x, y, or z axes by clicking and dragging the corresponding directional arrow on the cuboid. In addition to scaling along an axis, you can scale the cuboid within a plane (XY, XZ, or YZ) by clicking and dragging the corresponding colored plane handle.
-
-Attribute Editing
-^^^^^^^^^^^^^^^^^
-
-.. image:: /_static/images/annotation/cuboid_attributes_panel.png
-   :alt: Cuboid attributes panel
-
-Cuboid attributes can be edited in the right sidebar when a given cuboid is selected. Custom attributes in this panel are defined by the :ref:`Schema Manager <schema-manager>`.
-
-How to: 3D Polyline Annotation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. image:: /_static/images/annotation/polyline_annotation_intro.gif
-   :alt: 3D polyline annotation
-
-To begin creating and editing 3D polylines, enter polyline annotation mode by clicking on the polyline icon in the annotate actions toolbar. When in polyline annotation mode, the 3D polyline toolbar becomes available on the left side of the Annotation Canvas.
-
-
-.. image:: /_static/images/annotation/polyline_toolbar.png
-   :alt: Polyline toolbar
-
-.. _creating-3d-polylines:
-
-Creating Polylines
-^^^^^^^^^^^^^^^^^^
-
-After entering polyline annotation mode, create a new 3D polyline by clicking on the polyline icon in the polyline toolbar on the left side, then click the 3D scene to create the first vertex of the polyline. After placing the final vertex of your polyline, double click anywhere on the 3D scene to finish creation of the polyline segment.
-
-.. image:: /_static/images/annotation/create_3d_polyline.gif
-   :alt: Creating a polyline
-
-
-Newly created vertices are placed at the location of the mouse pointer. The depth of a newly created vertex in the 3D scene is dictated by the location of the annotation plane which is described below (defaulting to the XY plane).
-
-Polylines vs Segments
-^^^^^^^^^^^^^^^^^^^^^
-
-The points of a single :ref:`Polyline in FiftyOne <3d-polylines>` are represented as a list of lists of vertices:
-
-.. code-block:: python
-
-   # A list of lists of `[x, y, z]` points in scene coordinates describing
-   # the vertices of each shape in the polyline
-   points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
-
-This allows for the possibility of multiple disjointed segments within a single polyline as shown in the code example above. This may be useful, for example, if you are annotating a dashed lane marking where each dash is a disjointed segment of the same polyline, allowing all of the segments to share the same attributes.
-
-.. image:: /_static/images/annotation/polyline_segments_diagram.png
-   :alt: Polyline segments
-
-In the right Annotate sidebar, you can see the number of segments and vertices in the current Polyline.
-
-Adding New Segments
-^^^^^^^^^^^^^^^^^^^
-
-.. image:: /_static/images/annotation/add_polyline_segment.gif
-   :alt: Adding new segments
-
-To add a new segment to an existing polyline, first select the polyline to be edited, then select the new polyline segment button in the left toolbar and finally click to annotate the new segment.
-
-Vertex Manipulation
-^^^^^^^^^^^^^^^^^^^
-
-When positioning a vertex in 3D space, the vertex controls become available when you click to select a given vertex (or the polyline centroid). These controls allow you to click either the 3 RGB directional arrows to move the vertex along the given axis, 3 CMY planes to move the vertex in the given plane, and a clickable center to position the vertex in 3D space.
-
-.. image:: /_static/images/annotation/polyline_vertex_controls.gif
-   :alt: Vertex manipulation controls
-
-Adding and Deleting Vertices
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. image:: /_static/images/annotation/add_delete_polyline_vertex.gif
-   :alt: Adding and deleting vertices
-
-
-Vertices can also be added to and deleted from existing polylines. To add a new vertex, first select the polyline to which the vertex should be added, then click on the new vertex icon in the left toolbar, and finally select the location on the polyline that the new vertex should be added. The new vertex can now be moved to the desired location.
-
-A selected vertex can be deleted by pressing the trash can icon in the left toolbar (or by pressing the delete key).
-
-.. image:: /_static/images/annotation/delete_vertex_icon.png
-   :alt: Delete vertex icon
-
-Attribute Editing
-^^^^^^^^^^^^^^^^^
-
-.. image:: /_static/images/annotation/polyline_attributes_panel.png
-   :alt: Polyline attributes panel
-
-Polyline attributes can be edited in the right sidebar when a given polyline is selected. Custom attributes in this panel are defined by the :ref:`Schema Manager <schema-manager>`.
-
-In addition to custom attributes, the attribute sidebar for 3D polylines also shows the number of segments and vertices in the selected polyline, as well as the polyline-specific "closed" and "filled" attributes which affect how the polyline is rendered. Setting the "closed" attribute to True will automatically render a line segment from the first vertex of a polyline to the last vertex to close the shape. Setting the "filled" attribute to True will show the region enclosed by the polyline as filled.
-
-.. image:: /_static/images/annotation/polyline_closed_example.png
-   :alt: Closed polyline example
-
-.. image:: /_static/images/annotation/polyline_filled_example.png
-   :alt: Filled polyline example
-
-.. image:: /_static/images/annotation/polyline_closed_filled_example.png
-   :alt: Closed and filled polyline
-
-
-Additionally, you can select the icon to the left to enter a mode that will automatically close the polyline when the annotation canvas is double clicked.
-
-.. image:: /_static/images/annotation/polyline_auto_close_icon.png
-   :alt: Auto-close mode icon
-
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+Cuboids, 3D polylines and their tracks are annotated in the 3D tile, with
+camera views, World and Ego fill, and keyframes. See
+:ref:`3D Annotation <annotation-3d>`.
 
 ----
 

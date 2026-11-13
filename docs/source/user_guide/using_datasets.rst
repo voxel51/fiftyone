@@ -5905,17 +5905,6 @@ contains a point cloud slice:
 Point cloud datasets
 ____________________
 
-.. warning::
-
-    The `point-cloud` media type has been deprecated in favor of the
-    :ref:`3D media type <3d-datasets>`.
-
-    While we'll keep supporting the `point-cloud` media type for backward
-    compatibility, we recommend using the `3d` media type for new datasets.
-
-    To use a PCD file as a 3D sample in a new dataset, create it with
-    `media_type="3d"` explicitly.
-
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 with extension `.pcd` is recognized as a point cloud sample, and datasets
