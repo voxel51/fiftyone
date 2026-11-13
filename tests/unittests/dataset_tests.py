@@ -30,6 +30,7 @@ from freezegun import freeze_time
 from mongoengine import ValidationError
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
@@ -6372,6 +6373,62 @@ class DatasetIdTests(unittest.TestCase):
             set(default_indexes),
             set(dataset5.list_indexes()),
         )
+
+    @drop_datasets
+    def test_clone_view_runs_view_cloners(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(3)]
+        )
+        view = dataset.limit(2)
+
+        calls = []
+
+        def cloner(*args):
+            calls.append(args)
+
+        fod.register_view_cloner(cloner)
+        try:
+            clone = view.clone()
+        finally:
+            fod._view_cloners.remove(cloner)
+
+        self.assertEqual(len(calls), 1)
+        called_view, dst_dataset, _ = calls[0]
+        self.assertIs(called_view, view)
+        self.assertEqual(dst_dataset.name, clone.name)
+        self.assertEqual(len(dst_dataset), 2)
+
+    @drop_datasets
+    def test_clone_dataset_skips_view_cloners(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="image.jpg"))
+
+        cloner = MagicMock()
+        fod.register_view_cloner(cloner)
+        try:
+            dataset.clone()
+        finally:
+            fod._view_cloners.remove(cloner)
+
+        cloner.assert_not_called()
+
+    @drop_datasets
+    def test_clone_view_survives_failing_view_cloner(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i) for i in range(3)]
+        )
+
+        cloner = MagicMock(side_effect=RuntimeError("broken"))
+        fod.register_view_cloner(cloner)
+        try:
+            clone = dataset.limit(1).clone()
+        finally:
+            fod._view_cloners.remove(cloner)
+
+        cloner.assert_called_once()
+        self.assertEqual(len(clone), 1)
 
 
 class DatasetDeletionTests(unittest.TestCase):
