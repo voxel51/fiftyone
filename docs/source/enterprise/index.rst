@@ -145,10 +145,10 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: agent.html
 
 .. customcalloutitem::
-    :header: Annotation Workflows  __SUB_NEW__
-    :description: Define annotation and review workflows, run them over a dataset, and track per-sample task progress.
-    :button_text: Build your first workflow
-    :button_link: workflows.html
+    :header: Projects  __SUB_NEW__
+    :description: Organize your team's work into projects and batches, run annotate, review, consensus and benchmark workflows, and track quality and progress.
+    :button_text: Set up your first project
+    :button_link: projects.html
 
 .. customcalloutitem::
     :header: Plugins

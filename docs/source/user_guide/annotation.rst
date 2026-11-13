@@ -13,8 +13,8 @@ In-App Annotation
    :class: tip
 
    Learn how Voxel51 can help you organize and coordinate
-   annotation projects across your team with FiftyOne
-   :ref:`Annotation Workflows <enterprise-workflows>`!
+   annotation work across your team with FiftyOne
+   :ref:`Projects <enterprise-projects>`!
 
 Overview
 --------
@@ -113,11 +113,42 @@ Schema Manager
 .. image:: /_static/images/annotation/schema_manager.png
    :alt: Schema Manager
 
-The "Schema Manager" user interface defines the Annotation Schema for the dataset. The main page of the Schema Manager features two sections: "Active fields" and "Hidden fields".
+The "Schema Manager" user interface defines the Annotation Schema for the dataset. Open it from the gear icon at the top of the "Annotate" panel. The main page features a schema picker, a search box, and two sections: "Active fields" and "Hidden fields".
 
-"Active fields" are fields included in your Annotation Schema.
+"Active fields" are the fields available in the "Inspect" and "Annotate" sidebars. A field that has been set up, that is, one with a label schema, is annotatable. A field that has not been set up yet is *unscanned*: you can inspect it but not edit it until you click "Set up" and configure its schema.
 
-"Hidden fields" are all fields not yet included in your Annotation Schema, but that can be activated for your Annotation Schema. To activate (a) field(s) for your Annotation Schema, check the box next to the field(s) you want, then click "Move…to active fields".
+"Hidden fields" are fields that never reach anyone viewing through the selected schema, whether in the grid, the sidebars or the sample data. The default schema has no hidden fields. To hide fields, create a :ref:`custom schema <schema-manager-custom-schemas>`, select the fields you want under "Active fields", and move them to "Hidden fields".
+
+To delete a field, click the 🗑️ icon next to it in "Active fields" and confirm. This deletes the field from the dataset and from every label schema on it, and removes its data from every sample.
+
+.. warning::
+   Deleting a field also deletes its data, and there is no way to recover it.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/delete_field.webp
+   :alt: The Delete field confirmation in the Schema Manager
+
+.. _schema-manager-custom-schemas:
+
+Custom schemas
+""""""""""""""
+
+The schema picker at the top of the Schema Manager switches between the dataset's schemas:
+
+* **Default schema (all fields)** is the dataset's own annotation schema. Every field is visible and nothing is hidden. It is not stored as a separate schema.
+* **Custom schemas** are named schemas that you create from the picker's menu. Each one decides, field by field, who can see and edit what.
+
+In a custom schema every field is either active or hidden:
+
+* **Active fields** are visible to anyone viewing through the schema. Each active field can also be configured separately, for example as read-only so that a model's predictions stay as context.
+* **Hidden fields** are removed from the grid, the sidebars and the sample data, for example ground truth that annotators should not see.
+
+Do not delete a custom schema while a batch uses it. The batch's stages stop applying it, so fields you hid may become visible to annotators.
+
+Attributes of an active field can be set the same way, so you can make an attribute read-only or hide it. To check what someone viewing through a custom schema will see, choose it in the schema lens, the dropdown at the top of the left sidebar. The grid, the sidebars and the sample data apply it right away.
+
+.. note::
+
+    FiftyOne Enterprise can enforce a custom schema on an annotation task. When a stage of a :ref:`batch's workflow <enterprise-projects-schemas>` references a schema, everyone who opens that stage's tasks sees only what the schema allows.
 
 .. _ordering-in-the-annotation-schema:
 
@@ -192,6 +223,16 @@ For each ``class`` and ``attribute`` in the GUI:
 * Drag and drop ``classes`` or ``attributes`` within sections to reorder within the Annotation Schema (see: :ref:`ordering-in-the-annotation-schema`).
 
 For primitives, depending on your field's data type, you'll see optional and/or required properties to configure for your field's schema.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/schema_field_gui.webp
+   :alt: The Edit field schema page in GUI mode showing the classes and attributes of a detections field
+
+On a :ref:`grouped dataset <groups>`, label fields also have a "Slices" section.
+Check the group slices the field is annotated on: the field applies only to
+those slices, and you must choose at least one.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/schema_slices.webp
+   :alt: The Slices section of the Edit field schema page on a grouped dataset, with the left slice checked
 
 Creating New Fields
 ^^^^^^^^^^^^^^^^^^^
@@ -289,6 +330,19 @@ written to the label.
 Once this ontology is attached to a label field, annotators will see
 these conditional attributes in the right sidebar of the in-App
 annotation UI as they annotate.
+
+You can also set a condition from the GUI. When you add or edit an attribute
+in the "Edit field schema" page, set its "Visibility" to "Show only when…" and
+add a condition: pick a field of the label, such as ``label``, an operator, and
+a value. For example, to ask for a ``breed`` only on dogs, add a string
+attribute named ``breed`` and show it when ``label`` is ``dog``. Add more rules to a condition and choose whether "all" or "any" of
+them must be true. Conditions are checked from top to bottom and the first
+match is used, and "Add condition" adds another one. The attribute is hidden
+when no condition matches, unless you turn on "Else" to show it anyway. The
+form also lists the classes the attribute is not asked for.
+
+.. image:: https://cdn.voxel51.com/enterprise/projects/conditional_attribute.webp
+   :alt: Adding a breed attribute that is shown only when the label is dog
 
 Getting Started with Annotation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
