@@ -10,14 +10,14 @@ const test = base.extend<{
   url: UrlPom;
   viewBar: ViewBarPom;
 }>({
-  operatorsBrowser: async ({ page }, use) => {
-    await use(new OperatorsBrowserPom(page));
+  operatorsBrowser: async ({ page, eventUtils }, use) => {
+    await use(new OperatorsBrowserPom(page, eventUtils));
   },
   url: async ({ page, eventUtils }, use) => {
     await use(new UrlPom(page, eventUtils));
   },
-  viewBar: async ({ page }, use) => {
-    await use(new ViewBarPom(page));
+  viewBar: async ({ page, eventUtils }, use) => {
+    await use(new ViewBarPom(page, eventUtils));
   },
 });
 
@@ -25,31 +25,9 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    samples = []
-    for i in range(0, 10):
-        sample = fo.Sample(
-            filepath=f"{i}.png",
-            detections=fo.Detections(detections=[fo.Detection(label=f"label-{i}")]),
-            classification=fo.Classification(label=f"label-{i}"),
-            bool=i % 2 == 0,
-            str=f"{i}",
-            int=i % 2,
-            float=i / 2,
-            list_str=[f"{i}"],
-            list_int=[i % 2],
-            list_float=[i / 2],
-            list_bool=[i % 2 == 0],
-        )
-        samples.append(sample)
-    
-    dataset.add_samples(samples)`);
+  await datasetFactory.createDataset({ datasetName });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -63,7 +41,9 @@ test("Built-in operators: set view", async ({
 }) => {
   await operatorsBrowser.show();
   await operatorsBrowser.search("E2E");
-  await url.pageChange(() => operatorsBrowser.choose("E2E: Set view"));
   // A view set by an operator opens the stages row on its own
-  await viewBar.assert.hasViewStage("Limit3");
+  await viewBar.afterStagesShown(() =>
+    url.pageChange(() => operatorsBrowser.choose("E2E: Set view")),
+  );
+  await viewBar.assert.viewStages(["Limit3"]);
 });

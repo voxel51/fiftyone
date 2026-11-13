@@ -1,11 +1,10 @@
 import {
   BackgroundColor,
   Pill,
-  Size,
   Text,
   TextColor,
-  TextVariant,
   type IconInput,
+  type IconProps,
 } from "@voxel51/voodo";
 import type { FC, ReactNode } from "react";
 import styles from "./SelectionTray.module.css";
@@ -29,24 +28,18 @@ interface NoticeProps {
 
 /** A compact, toned feedback block for dialogs and pickers. */
 export function Notice({ tone, icon, title, children, role }: NoticeProps) {
-  const Icon =
-    typeof icon === "string"
-      ? null
-      : (icon as FC<{
-          size?: Size;
-          color?: TextColor;
-        }>);
+  const Icon = typeof icon === "string" ? null : (icon as FC<IconProps>);
   return (
     <div className={styles.notice} data-tone={tone} role={role}>
       {Icon && (
         <span className={styles.noticeIcon}>
-          <Icon size={Size.Sm} color={ICON_COLOR[tone]} />
+          <Icon size="sm" color={ICON_COLOR[tone]} />
         </span>
       )}
       <span className={styles.noticeBody}>
-        <Text variant={TextVariant.Sm}>{title}</Text>
+        <Text variant="body-tertiary">{title}</Text>
         {children ? (
-          <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+          <Text variant="caption" color="text-secondary">
             {children}
           </Text>
         ) : null}
@@ -60,7 +53,7 @@ export function ScopePill({ source }: { source: "explicit" | "results" }) {
   const explicit = source === "explicit";
   return (
     <Pill
-      size={Size.Xs}
+      size="xs"
       backgroundColor={
         explicit ? BackgroundColor.Selected : BackgroundColor.CardElevated
       }

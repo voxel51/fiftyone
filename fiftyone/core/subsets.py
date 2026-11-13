@@ -23,7 +23,7 @@ import json
 import re
 from uuid import uuid4
 
-from bson import BSON, ObjectId
+from bson import BSON, ObjectId, json_util
 from bson.errors import InvalidDocument
 from pymongo import InsertOne, ReplaceOne, UpdateOne
 from pymongo.errors import BulkWriteError, DuplicateKeyError, OperationFailure
@@ -40,6 +40,9 @@ _BATCH_SIZE = 1000
 _OPERATION_TTL = timedelta(days=7)
 _APPLY_LEASE = timedelta(minutes=5)
 _JOURNAL_BYTES = 8 * 1024 * 1024
+# A subset keeps its most recent captures; older ones age out
+_MAX_CAPTURES = 100
+_MAX_CAPTURE_VIEW_BYTES = 16 * 1024
 
 
 def create_subset(
@@ -173,6 +176,7 @@ def save_subset(
         captured = members
     else:
         view, captured = _sample_members(dataset, samples)
+    source = _samples_source(dataset, samples, view)
     members = list(members if members is not None else captured)
     subset = create_subset(
         dataset,
@@ -187,7 +191,7 @@ def save_subset(
     )
     try:
         if members:
-            add_members(dataset, subset["id"], members=members)
+            add_members(dataset, subset["id"], members=members, source=source)
         return subset_summary(dataset, subset["id"])
     except Exception:
         # The caller has not received the ID yet; don't leave a partial subset
@@ -197,9 +201,18 @@ def save_subset(
 
 
 def add_members(
-    dataset, subset_id, samples=None, members=None, operation_id=None
+    dataset,
+    subset_id,
+    samples=None,
+    members=None,
+    operation_id=None,
+    source=None,
 ):
-    """Adds SDK samples or explicit references using the shared retry journal."""
+    """Adds SDK samples or explicit references using the shared retry journal.
+
+    A sample collection records itself as the capture's source; ``source``
+    describes explicit members, as built by :func:`capture_source`.
+    """
     fosc.check_access(dataset, "edit")
     if (samples is None) == (members is None):
         raise ValueError("Provide either samples or members")
@@ -209,10 +222,72 @@ def add_members(
             dataset, subset_id
         ).get("view_key"):
             raise ValueError("Open this subset in its matching entity view")
+        source = _samples_source(dataset, samples, view)
     if operation_id is None:
         operation_id = str(uuid4())
-    prepare_add(dataset, subset_id, operation_id, members, preview=False)
+    prepare_add(
+        dataset,
+        subset_id,
+        operation_id,
+        members,
+        preview=False,
+        source=source,
+    )
     return apply_add(dataset, operation_id)
+
+
+def capture_source(dataset, stages=None, saved_view=None):
+    """Describes where a capture's members came from.
+
+    ``stages`` are the serialized view stages the capture ran against, and
+    ``saved_view`` names the saved view that was loaded, if any. The saved
+    view is recorded by ID, name, and slug as of the capture, so the record
+    keeps its meaning after the saved view is renamed or deleted. Stages over
+    16 KiB of BSON, such as long ID lists, are left out.
+
+    Args:
+        dataset: the subset's :class:`fiftyone.core.dataset.Dataset`
+        stages (None): a list of serialized view stages
+        saved_view (None): the name of a saved view on ``dataset``
+
+    Returns:
+        a source dict, or None when there is nothing to record
+    """
+    source = {}
+    if saved_view:
+        try:
+            doc = dataset._get_saved_view_doc(saved_view)
+        except ValueError:
+            # Deleted since it was loaded; the capture still stands
+            doc = None
+        if doc is not None:
+            source["saved_view"] = {
+                "id": str(doc.id),
+                "name": doc.name,
+                "slug": doc.slug,
+            }
+    if stages is not None:
+        # Kept as plain JSON so summaries serialize as they are. Describing a
+        # capture must never fail the add it describes
+        try:
+            stages = json.loads(json_util.dumps(list(stages)))
+            encoded = BSON.encode({"view": stages})
+        except (InvalidDocument, TypeError, ValueError):
+            encoded = None
+        if encoded is not None and len(encoded) <= _MAX_CAPTURE_VIEW_BYTES:
+            source["view"] = stages
+    return source or None
+
+
+def _samples_source(dataset, samples, view):
+    import fiftyone.core.collections as foc
+
+    # Only a collection carries a definition; IDs were picked explicitly
+    if not isinstance(samples, foc.SampleCollection):
+        return None
+    return capture_source(
+        dataset, view._serialize(include_uuids=False), saved_view=view.name
+    )
 
 
 def _sample_members(dataset, samples):
@@ -345,7 +420,7 @@ def _subset_queries(dataset, search, view):
 def _subset_cursor(collection, query, skip, limit, metadata):
     projection = {"member_pending": 0}
     if not metadata:
-        projection.update(provenance=0, lineage=0)
+        projection.update(provenance=0, lineage=0, captures=0)
     cursor = (
         collection.find(query, projection)
         .sort([("created_at", 1), ("_id", 1)])
@@ -358,7 +433,7 @@ def _subset_cursor(collection, query, skip, limit, metadata):
 
 def subset_summary(dataset, subset_id, counts=False):
     """One subset's saved counts, optionally resolving live availability."""
-    summary = _summary(get_subset(dataset, subset_id))
+    summary = _summary(get_subset(dataset, subset_id, captures=True))
     if counts:
         summary["counts"] = subset_counts(dataset, subset_id)
     return summary
@@ -398,10 +473,14 @@ async def async_subset_summary(dataset, subset_id):
     return _summary(doc)
 
 
-def get_subset(dataset, subset_id):
-    """Returns a dataset-scoped subset or raises rather than broadening scope."""
+def get_subset(dataset, subset_id, captures=False):
+    """Returns a dataset-scoped subset or raises rather than broadening scope.
+
+    The capture history is only read when ``captures`` is True.
+    """
     doc = _collection("subsets").find_one(
-        {"_id": ObjectId(subset_id), "_dataset_id": dataset._doc.id}
+        {"_id": ObjectId(subset_id), "_dataset_id": dataset._doc.id},
+        None if captures else {"captures": 0},
     )
     if doc is None:
         raise ValueError("This subset is not available in the current dataset")
@@ -866,10 +945,13 @@ def prepare_add(
     snapshot=None,
     progress=None,
     preview=True,
+    source=None,
 ):
     """Freezes a validated add and previews changes in bounded batches.
 
     ``snapshot`` is server-owned metadata for a normalized member iterator.
+    ``source``, from :func:`capture_source`, is recorded in the subset's
+    captures once the add applies.
     Explicit members are validated against source samples or existing saved
     identities, so a deleted parent can be carried forward without admitting
     arbitrary foreign or generated IDs. Retry receipts expire after seven days.
@@ -898,6 +980,9 @@ def prepare_add(
             "digest": digest,
             "state": "preparing",
             "captured_at": now,
+            "captured_by": fosc.get_actor(),
+            "operation_id": operation_id,
+            "source": source,
             "expires_at": expires,
             "count": count,
         },
@@ -1108,12 +1193,41 @@ def _apply_members(dataset, operation_id, operation, renew, progress):
             raise ValueError("This subset was deleted while adding members")
     result["counts"] = counts
     renew()
+    _record_capture(dataset, operation, result)
     operations.update_one(
         {"_id": key}, {"$set": {"state": "complete", "result": result}}
     )
     candidates.delete_many({"operation_id": key})
     _touch(dataset, subset_id)
     return result
+
+
+def _record_capture(dataset, operation, result):
+    """Adds one completed add to its subset's captures, at most once."""
+    if not (result["added"] or result["provenanceUpdated"]):
+        return
+    capture = {
+        "operation": operation["_id"],
+        "operation_id": operation.get("operation_id"),
+        "captured_at": operation["captured_at"],
+        "captured_by": operation.get("captured_by"),
+        "added": result["added"],
+        **(operation.get("source") or {}),
+    }
+    # The operation key matches its members' `added_by`; a retry after a
+    # crash between this write and completion must not record it twice
+    _collection("subsets").update_one(
+        {
+            "_id": ObjectId(operation["subset_id"]),
+            "_dataset_id": dataset._doc.id,
+            "captures.operation": {"$ne": operation["_id"]},
+        },
+        {
+            "$push": {
+                "captures": {"$each": [capture], "$slice": -_MAX_CAPTURES}
+            }
+        },
+    )
 
 
 @contextmanager
@@ -1523,20 +1637,12 @@ def _flush_membership(db, doc):
 
 def _summary(doc, metadata=True):
     """Formats saved metadata without I/O, shared by sync and async reads."""
-    created_at = doc.get("created_at")
-    if created_at is not None:
-        # Mongo stores UTC milliseconds and may return a naive datetime.
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        created_at = created_at.astimezone(timezone.utc).isoformat(
-            timespec="milliseconds"
-        )
     summary = {
         "id": str(doc["_id"]),
         "name": doc["name"],
         "description": doc.get("description"),
         "created_by": doc.get("created_by"),
-        "created_at": created_at,
+        "created_at": _isoformat(doc.get("created_at")),
         "view": doc.get("view"),
         "preferredGroupSlice": doc.get("preferred_group_slice"),
         "memberCount": doc["member_count"],
@@ -1546,9 +1652,34 @@ def _summary(doc, metadata=True):
     }
     if metadata:
         summary.update(
-            provenance=doc.get("provenance"), lineage=doc.get("lineage")
+            provenance=doc.get("provenance"),
+            lineage=doc.get("lineage"),
+            captures=[
+                _capture_summary(capture)
+                for capture in reversed(doc.get("captures") or [])
+            ],
         )
     return summary
+
+
+def _capture_summary(capture):
+    return {
+        "operationId": capture.get("operation_id"),
+        "capturedAt": _isoformat(capture.get("captured_at")),
+        "capturedBy": capture.get("captured_by"),
+        "added": capture["added"],
+        "savedView": capture.get("saved_view"),
+        "view": capture.get("view"),
+    }
+
+
+def _isoformat(value):
+    if value is None:
+        return None
+    # Mongo stores UTC milliseconds and may return a naive datetime.
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat(timespec="milliseconds")
 
 
 def _member_kinds(doc):

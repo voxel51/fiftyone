@@ -112,6 +112,12 @@ const PainterFactory3D = (
    * Impute bounding box parameters.
    */
   Detection: (label: DetectionLabel) => {
+    // `location` and `dimensions` are optional on a Detection; without them
+    // there is no cuboid to project
+    if (!label.location || !label.dimensions) {
+      return;
+    }
+
     const { min_bound, max_bound, normal } = orthographicProjectionParams;
     const [xmin, ymin, zmin] = min_bound;
     const [xmax, ymax, zmax] = max_bound;

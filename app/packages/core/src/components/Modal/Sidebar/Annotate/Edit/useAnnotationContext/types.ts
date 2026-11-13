@@ -7,6 +7,7 @@ import {
   POLYLINE,
 } from "@fiftyone/utilities";
 import type { BaseOverlay, OverlayFactory, Scene2D } from "@fiftyone/lighter";
+import type { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import type { PrimitiveAtom } from "jotai";
 import type { AttributeConfig } from "../../SchemaManager/utils";
 
@@ -46,6 +47,13 @@ export interface CreateDeps {
    */
   engine: AnnotationEngine;
   sample: string;
+  /**
+   * Resolves the keypoint skeleton for a field (falling back to the dataset's
+   * default skeleton). Keypoint creation seeds one `[NaN, NaN]` hole per
+   * skeleton node so guided placement can fill them in node order; fields
+   * without a skeleton start empty (free-form).
+   */
+  getSkeleton: (field: string) => KeypointSkeleton | null;
 }
 
 /**

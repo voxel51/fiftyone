@@ -46,9 +46,10 @@ describe("layout-persistence", () => {
     ).not.toBeNull();
   });
 
-  it("round-trips sidebar state and layout", () => {
+  it("round-trips sidebar/track state and layout", () => {
     writeModalLayout({
       leftSidebarOpen: true,
+      timelineTracksOpen: true,
       layout: {
         direction: "row",
         first: "camera-default",
@@ -58,6 +59,7 @@ describe("layout-persistence", () => {
     });
     const read = readModalLayout();
     expect(read?.leftSidebarOpen).toBe(true);
+    expect(read?.timelineTracksOpen).toBe(true);
     expect(read?.layout).toEqual({
       direction: "row",
       first: "camera-default",

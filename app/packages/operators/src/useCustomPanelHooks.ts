@@ -69,10 +69,14 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     true,
   );
   const setCustomPanelState = useSetCustomPanelState();
-  const data = getPanelViewData({
-    state: panelState?.state,
-    data: panelStateLocal?.data,
-  });
+  const data = useMemo(
+    () =>
+      getPanelViewData({
+        state: panelState?.state,
+        data: panelStateLocal?.data,
+      }),
+    [panelState?.state, panelStateLocal?.data],
+  );
   const panelSchema = panelStateLocal?.schema;
   const ctx = useGlobalExecutionContext();
   const currentSample = useCurrentSample();

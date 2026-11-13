@@ -4,17 +4,12 @@ import type {
   SelectionUnit,
 } from "@fiftyone/state/src/selection";
 import {
-  Anchor,
   Button,
   InfoOutlinedIcon,
   Popover,
   PopoverAnchor,
-  Size,
   Text,
   TextColor,
-  TextVariant,
-  Tooltip,
-  Variant,
 } from "@voxel51/voodo";
 import {
   formatRanges,
@@ -27,6 +22,7 @@ import {
   streamsLabel,
 } from "./format";
 import RangeTrack from "./RangeTrack";
+import SelectionTooltip from "./SelectionTooltip";
 import styles from "./SelectionTray.module.css";
 import { trayTheme } from "./theme";
 
@@ -74,14 +70,14 @@ function Side({
   return (
     <>
       <Text
-        variant={TextVariant.Label}
+        variant="label"
         color={tone === "selected" ? TextColor.Accent : TextColor.Info}
         className={styles.compareLabel}
       >
         {label}
       </Text>
       <div className={styles.compareBody}>
-        <Text variant={TextVariant.Sm}>
+        <Text variant="body-tertiary">
           {groupDescriptor(group)}
           {streams ? ` · ${streams}` : ""}
         </Text>
@@ -89,8 +85,8 @@ function Side({
           <>
             <RangeTrack members={segments} domain={domain} tone={tone} />
             <Text
-              variant={TextVariant.Xs}
-              color={TextColor.Secondary}
+              variant="caption"
+              color="text-secondary"
               title={listRanges(segments).join("\n")}
             >
               {formatRanges(segments, 4)}
@@ -123,7 +119,7 @@ export default function MismatchPopover({
           className={styles.flag}
           aria-label="Current matches differ from the selection. Review options."
         >
-          <InfoOutlinedIcon size={Size.Xs} />
+          <InfoOutlinedIcon size="xs" />
           Matches changed
         </button>
       }
@@ -131,10 +127,10 @@ export default function MismatchPopover({
       {({ close }) => (
         <div className={styles.panel} style={trayTheme}>
           <div>
-            <Text variant={TextVariant.Md} style={{ display: "block" }}>
+            <Text variant="body-secondary" style={{ display: "block" }}>
               Current matches differ
             </Text>
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            <Text variant="body-tertiary" color="text-secondary">
               Your selection stays as captured until you choose.
             </Text>
           </div>
@@ -154,8 +150,8 @@ export default function MismatchPopover({
           </div>
           <div className={styles.panelActions}>
             <Button
-              size={Size.Sm}
-              variant={Variant.Secondary}
+              size="sm"
+              variant="secondary"
               onClick={() => {
                 capture(candidate, "replace");
                 close();
@@ -164,18 +160,17 @@ export default function MismatchPopover({
               {replaceLabel(candidate, unit)}
             </Button>
             {addReason ? (
-              <Tooltip
-                anchor={Anchor.Top}
+              <SelectionTooltip
                 wrapperClassName={styles.tipWrap}
-                content={<Text variant={TextVariant.Sm}>{addReason}</Text>}
+                content={<Text variant="body-tertiary">{addReason}</Text>}
               >
-                <Button size={Size.Sm} disabled>
+                <Button size="sm" disabled>
                   Add matching segments
                 </Button>
-              </Tooltip>
+              </SelectionTooltip>
             ) : (
               <Button
-                size={Size.Sm}
+                size="sm"
                 onClick={() => {
                   capture(candidate, "add");
                   close();

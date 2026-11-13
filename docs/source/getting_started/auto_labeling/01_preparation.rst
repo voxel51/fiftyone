@@ -20,14 +20,14 @@ Preparation for auto labeling involves:
 Setting Up a Compute Cluster
 ----------------------------
 
-A compute orchestrator is the infrastructure that executes model inference and other computationally intensive operations in FiftyOne Enterprise. Delegated operations run on these orchestrators. Many inference tasks are compute-heavy, so having GPU support in your orchestrator is recommended. For Auto Labeling to work, you need at least one active orchestrator. See the :ref:`delegated operations documentation <enterprise-delegated-operations>` for more details.
+A compute orchestrator is the infrastructure that executes model inference and other computationally intensive operations in Voxel51. Delegated operations run on these orchestrators. Many inference tasks are compute-heavy, so having GPU support in your orchestrator is recommended. For Auto Labeling to work, you need at least one active orchestrator. See the :ref:`delegated operations documentation <enterprise-delegated-operations>` for more details.
 
 Dataset Preparation
 -------------------
 
-This guide presumes you have an unlabeled image dataset loaded into your FiftyOne Enterprise instance. This dataset should contain objects of interest as we will be performing object detection for our auto-labeling task.
+This guide presumes you have an unlabeled image dataset loaded into your Voxel51 instance. This dataset should contain objects of interest as we will be performing object detection for our auto-labeling task.
 
-To create a dataset in FiftyOne Enterprise and load in samples, see :ref:`creating datasets <enterprise-creating-datasets>`. In order to include specific examples in this guide we will be using an unlabeled version of the :ref:`BDD100K image dataset <dataset-zoo-bdd100k>` available in the :doc:`FiftyOne dataset zoo </dataset_zoo/index>`.
+To create a dataset in Voxel51 and load in samples, see :ref:`creating datasets <enterprise-creating-datasets>`. In order to include specific examples in this guide we will be using an unlabeled version of the :ref:`BDD100K image dataset <dataset-zoo-bdd100k>` available in the :doc:`FiftyOne dataset zoo </dataset_zoo/index>`.
 
 
 Identify Labeling Task and Classes

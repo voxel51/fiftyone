@@ -56,8 +56,7 @@ export default function Teams({
 
   useEffect(() => {
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
-    // The intro is a one-time nudge for people, not for the e2e harness
-    if (!hasSeenTooltip && !window.IS_PLAYWRIGHT) {
+    if (!hasSeenTooltip) {
       setShowPopover(true);
     }
   }, []);
@@ -93,20 +92,20 @@ export default function Teams({
             target="_blank"
             id="fo-cta-enterprise-button"
           >
-            Explore Enterprise
+            Upgrade
           </Button>
         }
       >
         <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
           <Heading level={HeadingLevel.H2}>Accelerate your workflow</Heading>
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-            With FiftyOne Enterprise you can connect to your data lake, automate
-            your data curation and model analysis tasks, securely collaborate
-            with your team, and more.
+            With Voxel51 you can connect to your data lake, automate your data
+            curation and model analysis tasks, securely collaborate with your
+            team, and more.
           </Text>
           <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
             <Button variant={Variant.Primary} size={Size.Md} onClick={explore}>
-              Explore Enterprise
+              Upgrade
             </Button>
             <Button
               variant={Variant.Secondary}

@@ -7,6 +7,7 @@ import {
   saveModalSpacesToLocalStorage,
   useModalSpaces,
 } from "./modal-spaces-utils";
+import { ModalSamplePending } from "./ModalSamplePending";
 
 const ModalSpaceImpl = React.memo(
   ({ defaultSpaces }: { defaultSpaces: SpaceNodeJSON }) => {
@@ -37,5 +38,5 @@ export const ModalSpace = () => {
     return <ModalSpaceImpl defaultSpaces={defaultModalSpaces} />;
   }
 
-  return <Loading>Pixelating...</Loading>;
+  return <ModalSamplePending fallback={<Loading>Pixelating...</Loading>} />;
 };

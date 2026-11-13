@@ -7,8 +7,10 @@
  * The view the browser applies lives in the server process's memory
  * (`fiftyone/server/events/state.py`), not in MongoDB, so a separate Python
  * process cannot see it by loading the dataset. The server's `/events` route
- * does expose it: posting `polling: true` returns the current state as a
- * `state_update` event.
+ * does expose it: a stream opens with the current state as a `state_update`
+ * event. The read closes the stream at that event, so the server stops
+ * counting it as an App at once; a polling read would count as an App for its
+ * whole lease and bring the shared session banner into the test's page.
  *
  * The payload carries an empty `AppInitializer` on purpose. A payload naming a
  * dataset the server does not currently hold makes `handle_dataset_change`
@@ -18,16 +20,10 @@
  * `handle_app_initializer` instead, so nothing is written.
  */
 
-import type { APIRequestContext } from "@playwright/test";
-
 /** A serialized view stage, as `DatasetView._serialize()` writes it. */
 export interface SerializedStage {
   _cls: string;
   kwargs: [string, unknown][];
-}
-
-interface StateUpdateResponse {
-  events: { event: string; data: { state: SessionState } }[];
 }
 
 interface SessionState {
@@ -36,51 +32,62 @@ interface SessionState {
   view_name?: string | null;
 }
 
-const readState = async (
-  request: APIRequestContext,
-  baseURL: string,
-): Promise<SessionState> => {
-  const response = await request.post(`${baseURL}/events`, {
-    data: {
-      initializer: {},
-      events: ["state_update"],
-      subscription: `e2e-${Math.random().toString(36).slice(2)}`,
-      polling: true,
-    },
-  });
+const STATE_UPDATE = /event: state_update\r?\ndata: (.*)\r?\n/;
 
-  if (!response.ok()) {
-    throw new Error(
-      `reading session state failed: ${response.status()} ${await response.text()}`,
-    );
+const readState = async (baseURL: string): Promise<SessionState> => {
+  const controller = new AbortController();
+  try {
+    const response = await fetch(`${baseURL}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initializer: {},
+        events: ["state_update"],
+        subscription: `e2e-${Math.random().toString(36).slice(2)}`,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(
+        `reading session state failed: ${response.status} ${await response.text()}`,
+      );
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let received = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        throw new Error(`no state_update in /events stream: ${received}`);
+      }
+      received += decoder.decode(value, { stream: true });
+      const update = STATE_UPDATE.exec(received);
+      if (update) {
+        return (JSON.parse(update[1]) as { state: SessionState }).state;
+      }
+    }
+  } finally {
+    controller.abort();
   }
-
-  const body = (await response.json()) as StateUpdateResponse;
-  const update = body.events?.find((e) => e.event === "state_update");
-
-  if (!update) {
-    throw new Error(
-      `no state_update in /events response: ${JSON.stringify(body)}`,
-    );
-  }
-
-  return update.data.state;
 };
 
 /**
- * The stages the server currently holds for `datasetName`, in order. Empty
- * when the session is on the unfiltered dataset.
+ * The stages the server on `serverPort` currently holds for `datasetName`, in
+ * order. Empty when the session is on the unfiltered dataset. The read goes to
+ * the FiftyOne server itself: the dev App server proxies only some routes, and
+ * `/events` is not one of them.
  *
  * Throws when the session is on a different dataset, so a test that navigated
  * somewhere unexpected fails as a wrong navigation rather than as an empty
  * view.
  */
 export const getSessionView = async (
-  request: APIRequestContext,
-  baseURL: string,
+  serverPort: number,
   datasetName: string,
 ): Promise<SerializedStage[]> => {
-  const state = await readState(request, baseURL);
+  const state = await readState(`http://127.0.0.1:${serverPort}`);
 
   if (state.dataset !== datasetName) {
     throw new Error(

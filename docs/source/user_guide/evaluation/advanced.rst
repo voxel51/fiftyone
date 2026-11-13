@@ -263,7 +263,7 @@ You can add custom metrics to your evaluation runs in FiftyOne.
 Custom metrics are supported by all FiftyOne evaluation methods, and you can
 compute them via the SDK, or directly
 :ref:`from the App <model-evaluation-panel>` if you're running
-:ref:`FiftyOne Enterprise <fiftyone-enterprise>`.
+:ref:`Voxel51 <fiftyone-enterprise>`.
 
 Using custom metrics
 ~~~~~~~~~~~~~~~~~~~~

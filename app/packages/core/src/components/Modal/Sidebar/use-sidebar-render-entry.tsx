@@ -23,6 +23,12 @@ export const useModalSidebarRenderEntry = () => {
     ) => {
       switch (entry.kind) {
         case fos.EntryKind.PATH: {
+          if (fos.isSidebarFacet(entry.path)) {
+            return {
+              children: <Entries.Facet modal={true} path={entry.path} />,
+              disabled: true,
+            };
+          }
           const isTag = entry.path === fos.TAGS_FIELD;
           const isLabelTag = entry.path === fos.LABEL_TAGS_FIELD;
           const isTemporalTag = entry.path === fos.TEMPORAL_TAGS_FIELD;

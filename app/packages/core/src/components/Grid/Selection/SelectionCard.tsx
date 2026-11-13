@@ -7,23 +7,17 @@ import {
 } from "@fiftyone/state/src/selection";
 import { isDirect3dSamplePath } from "@fiftyone/utilities";
 import {
-  Anchor,
   BackgroundColor,
   Button,
   CenterFocusWeakIcon,
   CloseIcon,
   FolderOffIcon,
   ImageIcon,
-  OpenInNewIcon,
   Pill,
   PlayArrowIcon,
   SemanticColor,
-  Size,
+  Spinner,
   Text,
-  TextColor,
-  TextVariant,
-  Tooltip,
-  Variant,
   ViewInArIcon,
   VisibilityOffIcon,
   WarningAmberIcon,
@@ -45,14 +39,17 @@ import {
   plural,
   segmentsOf,
 } from "./format";
+import LookerPreview from "./LookerPreview";
 import MismatchPopover from "./MismatchPopover";
-import RangeTrack from "./RangeTrack";
+import { useSelectionCardSize } from "./SelectionCards";
+import SelectionTooltip from "./SelectionTooltip";
+import { startSectionDrag } from "./sectionDrag";
 import styles from "./SelectionTray.module.css";
-import { CARD_PREVIEW_HEIGHT, cardWidth, MULTIMODAL_CARD_WIDTH } from "./theme";
+import { CARD_HEIGHT, cardWidth, MULTIMODAL_CARD_HEIGHT } from "./theme";
 
 // The plugin renderer graph is heavy; only multimodal cards pay for it.
 const RendererPreview = lazy(() => import("./RendererPreview"));
-const LookerPreview = lazy(() => import("./LookerPreview"));
+const SelectionTileLanes = lazy(() => import("./SelectionTileLanes"));
 
 type Selection = ReturnType<typeof useGridSelection>;
 interface Props extends Pick<Selection, "capture" | "remove"> {
@@ -66,11 +63,13 @@ interface Props extends Pick<Selection, "capture" | "remove"> {
   /** Display name; defaults to the media file name. */
   title?: string;
   open: (group: EpisodeSelection) => Promise<void>;
-  /** Scrolls the grid to this parent; resolves false when it is not shown. */
-  locate?: (episodeId: string) => Promise<boolean>;
+  /** Reveals this parent; resolves false only when it is outside the results. */
+  locate?: (episodeId: string, signal?: AbortSignal) => Promise<boolean>;
+  /** The section a drag takes this card from; unset, the card does not drag. */
+  dragFrom?: string;
 }
 
-/** Defers thumbnail media until the card is near the strip's viewport. */
+/** Mounts previews only while the card is near the viewport. */
 function useNearViewport(ref: RefObject<Element>) {
   const [near, setNear] = useState(false);
   // This effect observes the card so large selections only load visible media.
@@ -82,10 +81,7 @@ function useNearViewport(ref: RefObject<Element>) {
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setNear(true);
-          observer.disconnect();
-        }
+        setNear(entries.at(-1)?.isIntersecting ?? false);
       },
       { rootMargin: "240px" },
     );
@@ -128,6 +124,7 @@ export default function SelectionCard({
   locate,
   capture,
   remove,
+  dragFrom,
 }: Props) {
   const root = useRef<HTMLElement>(null);
   const near = useNearViewport(root);
@@ -158,6 +155,10 @@ export default function SelectionCard({
   // A new URL (including a renewed signature) can recover a failed preview.
   const [failedSrc, setFailedSrc] = useState<string>();
   const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string>();
+  const locateRequest = useRef<AbortController>();
+  // Removing a card also cancels its pending navigation.
+  useEffect(() => () => locateRequest.current?.abort(), []);
   // A miss is remembered against the match it was reported for, so fresh
   // results re-enable the control without an effect.
   const [missedFor, setMissedFor] = useState<{
@@ -165,8 +166,19 @@ export default function SelectionCard({
   } | null>(null);
   const missed = missedFor !== null && missedFor.candidate === candidate;
   // Media that arrives without a known ratio reports its own once loaded.
-  const [measured, setMeasured] = useState<number | null>(null);
-  const sourceAspect = group.aspectRatio ?? group.node?.aspectRatio ?? measured;
+  const [measured, setMeasured] = useState<{
+    src: string | undefined;
+    aspectRatio: number;
+  }>();
+  const [videoMetadata, setVideoMetadata] = useState<{
+    src: string;
+    duration: number;
+  }>();
+  const sourceAspect = [
+    measured?.src === src ? measured?.aspectRatio : undefined,
+    group.aspectRatio,
+    group.node?.aspectRatio,
+  ].find((ratio) => ratio !== undefined && Number.isFinite(ratio) && ratio > 0);
   const crop = group.crop;
   const aspect = crop
     ? (sourceAspect ?? 1) * (crop[2] / crop[3])
@@ -176,11 +188,25 @@ export default function SelectionCard({
     mediaType === "3d" ||
     mediaType === "point-cloud" ||
     isDirect3dSamplePath(group.filepath);
-  const width = multimodal ? MULTIMODAL_CARD_WIDTH : cardWidth(aspect);
+  const size = useSelectionCardSize();
+  const preferredHeight =
+    size?.height ?? (multimodal ? MULTIMODAL_CARD_HEIGHT : CARD_HEIGHT);
+  const naturalWidth = multimodal
+    ? preferredHeight
+    : cardWidth(aspect, preferredHeight);
+  const width = Math.min(naturalWidth, size?.width ?? naturalWidth);
+  // Narrow buckets shrink both dimensions instead of squeezing the card's
+  // width around letterboxed media at the original height.
+  const height = multimodal
+    ? width
+    : aspect && width < naturalWidth
+      ? Math.max(0, width - 2) / aspect + 2
+      : preferredHeight;
+  const previewHeight = height - 2;
   const temporal = unit.temporal;
   const kind = src && src !== failedSrc ? preview?.nativeLookerType : null;
-  const rendered = (multimodal || threeD) && Boolean(group.node);
-  const hasPreview = rendered || Boolean(kind);
+  const hasPreview =
+    Boolean(group.node) && (multimodal || threeD || Boolean(kind));
   const full = isFullEpisode(group);
   const segments = segmentsOf(group);
   const title = titleProp ?? episodeTitle(group, unit);
@@ -194,7 +220,7 @@ export default function SelectionCard({
   const status = unavailable
     ? "unavailable"
     : outside
-      ? "not in current results"
+      ? "not in view"
       : mismatch
         ? "current matches differ"
         : null;
@@ -208,16 +234,28 @@ export default function SelectionCard({
     <article
       ref={root}
       className={styles.card}
-      style={{ width }}
+      style={{ width, height }}
+      data-tray-aspect-ratio={aspect ?? 0}
       data-episode-id={group.episodeId}
       data-unavailable={unavailable || undefined}
       data-outside={outside || undefined}
       data-mirrored={mirrored || undefined}
       aria-label={`${title}, ${descriptor}${status ? `, ${status}` : ""}`}
+      draggable={dragFrom !== undefined || undefined}
+      onDragStart={
+        dragFrom === undefined
+          ? undefined
+          : (event) =>
+              startSectionDrag(event, {
+                episodeId: group.episodeId,
+                from: dragFrom,
+              })
+      }
       {...correspondence}
     >
       <div
         className={`${styles.preview}${multimodal ? ` ${styles.squarePreview}` : ""}`}
+        data-grid-tile=""
       >
         <button
           type="button"
@@ -228,13 +266,17 @@ export default function SelectionCard({
         >
           {unavailable ? (
             <span className={styles.placeholder}>
-              <FolderOffIcon size={Size.Lg} color={TextColor.Muted} />
+              <FolderOffIcon size="lg" color="text-muted" />
             </span>
-          ) : near && rendered && group.node ? (
+          ) : near &&
+            previewHeight > 0 &&
+            width > 2 &&
+            hasPreview &&
+            group.node ? (
             <Suspense
               fallback={
                 <span className={styles.placeholder}>
-                  <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
+                  <PlaceholderIcon size="lg" color="text-muted" />
                 </span>
               }
             >
@@ -243,177 +285,164 @@ export default function SelectionCard({
                   node={group.node}
                   fallback={
                     <span className={styles.placeholder}>
-                      <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
+                      <PlaceholderIcon size="lg" color="text-muted" />
                     </span>
                   }
                 />
               ) : (
-                <LookerPreview node={group.node} width={width} />
+                <LookerPreview
+                  node={group.node}
+                  width={width - 2}
+                  height={previewHeight}
+                  crop={kind === "image" ? crop : undefined}
+                  sourceAspect={sourceAspect ?? undefined}
+                  previewStart={group.previewStart}
+                  onError={() => setFailedSrc(src)}
+                  onMetadata={({ aspectRatio, duration }) => {
+                    setMeasured({ src, aspectRatio });
+                    if (src && duration !== undefined) {
+                      setVideoMetadata({ src, duration });
+                    }
+                  }}
+                />
               )}
             </Suspense>
-          ) : near && kind === "video" && src ? (
-            <video
-              className={styles.media}
-              src={src}
-              muted
-              playsInline
-              preload="metadata"
-              onError={() => setFailedSrc(src)}
-              onLoadedMetadata={(event) => {
-                const { videoWidth, videoHeight } = event.currentTarget;
-                if (videoWidth && videoHeight)
-                  setMeasured(videoWidth / videoHeight);
-                event.currentTarget.currentTime = group.previewStart ?? 0;
-              }}
-            />
-          ) : near && kind === "image" && src ? (
-            <div
-              className={crop ? styles.crop : styles.imageFrame}
-              style={
-                crop
-                  ? {
-                      width: `min(100%, ${CARD_PREVIEW_HEIGHT * (aspect ?? 1)}px)`,
-                      aspectRatio: aspect ?? undefined,
-                    }
-                  : undefined
-              }
-            >
-              <img
-                className={styles.media}
-                style={
-                  crop
-                    ? {
-                        position: "absolute",
-                        width: `${100 / crop[2]}%`,
-                        height: `${100 / crop[3]}%`,
-                        left: `${(-100 * crop[0]) / crop[2]}%`,
-                        top: `${(-100 * crop[1]) / crop[3]}%`,
-                        maxWidth: "none",
-                      }
-                    : undefined
-                }
-                src={src}
-                alt=""
-                loading="lazy"
-                onError={() => setFailedSrc(src)}
-                onLoad={(event) => {
-                  const { naturalWidth, naturalHeight } = event.currentTarget;
-                  if (naturalWidth && naturalHeight)
-                    setMeasured(naturalWidth / naturalHeight);
-                }}
-              />
-            </div>
           ) : (
             <span className={styles.placeholder}>
-              <PlaceholderIcon size={Size.Lg} color={TextColor.Muted} />
-            </span>
-          )}
-          {!unavailable && hasPreview && (
-            <span className={styles.openHint} aria-hidden="true">
-              <span>
-                <OpenInNewIcon size={Size.Sm} />
-              </span>
+              <PlaceholderIcon size="lg" color="text-muted" />
             </span>
           )}
         </button>
         {(dynamicGroup || (temporal && !full)) && (
           <span className={styles.kind}>
-            <Text variant={TextVariant.Label} color={TextColor.Foreground}>
+            <Text variant="label" color="text-foreground">
               {dynamicGroup ? "Group" : descriptor}
             </Text>
           </span>
         )}
-        {temporal && !full && segments.length > 0 && (
-          <span
-            className={styles.segmentTrack}
-            title={listRanges(segments).join("\n")}
-          >
-            <RangeTrack members={segments} className={styles.segmentBars} />
-          </span>
-        )}
         <span className={styles.tools}>
           {locate && (
-            <Tooltip
-              anchor={Anchor.Top}
+            <SelectionTooltip
               content={
-                <Text variant={TextVariant.Sm}>
+                <Text variant="body-tertiary">
                   {outside || missed
-                    ? "Not in current results"
-                    : "Scroll to grid"}
+                    ? "Not in view"
+                    : locating
+                      ? "Cancel showing in grid"
+                      : (locateError ?? "Show in grid")}
                 </Text>
               }
             >
               <Button
-                variant={Variant.Icon}
-                size={Size.Xs}
+                variant="icon"
+                size="xs"
                 className={styles.tool}
-                aria-label={`Scroll to ${title} in the grid`}
-                title={outside || missed ? "Not in current results" : undefined}
-                leadingIcon={CenterFocusWeakIcon}
+                aria-label={
+                  locating
+                    ? `Cancel showing ${title} in grid`
+                    : `Show ${title} in grid`
+                }
+                title={outside || missed ? "Not in view" : locateError}
+                leadingIcon={locating ? undefined : CenterFocusWeakIcon}
                 aria-busy={locating || undefined}
-                disabled={unavailable || outside || missed || locating}
+                disabled={unavailable || outside || missed}
                 data-card-locate=""
                 onClick={async () => {
+                  if (locateRequest.current) {
+                    locateRequest.current.abort();
+                    return;
+                  }
+                  const controller = new AbortController();
+                  locateRequest.current = controller;
                   setLocating(true);
+                  setLocateError(undefined);
                   try {
-                    if (!(await locate(group.episodeId)))
+                    if (!(await locate(group.episodeId, controller.signal)))
                       setMissedFor({ candidate });
+                  } catch (error) {
+                    if (
+                      !(error instanceof Error && error.name === "AbortError")
+                    )
+                      setLocateError("Could not show this item. Try again.");
                   } finally {
+                    locateRequest.current = undefined;
                     setLocating(false);
                   }
                 }}
-              />
-            </Tooltip>
+              >
+                {locating && <Spinner size="xs" />}
+              </Button>
+              <span
+                role="status"
+                aria-label="Show in grid status"
+                className={styles.locateStatus}
+              >
+                {locateError ?? ""}
+              </span>
+            </SelectionTooltip>
           )}
-          <Tooltip
-            anchor={Anchor.Top}
-            content={
-              <Text variant={TextVariant.Sm}>Remove from selection</Text>
-            }
+          <SelectionTooltip
+            content={<Text variant="body-tertiary">Remove from selection</Text>}
           >
             <Button
-              variant={Variant.Icon}
-              size={Size.Xs}
+              variant="icon"
+              size="xs"
               className={styles.tool}
               aria-label={`Remove ${title} from selection`}
               leadingIcon={CloseIcon}
               data-card-remove=""
               onClick={() => remove(group.episodeId)}
             />
-          </Tooltip>
+          </SelectionTooltip>
         </span>
-        {(unavailable || outside || mismatch) && (
-          <div className={styles.flags}>
-            {mismatch && candidate && (
-              <MismatchPopover
-                group={group}
-                candidate={candidate}
-                unit={unit}
-                capture={capture}
-              />
-            )}
-            {unavailable && (
-              <Pill
-                size={Size.Xs}
-                icon={WarningAmberIcon}
-                backgroundColor={SemanticColor.Warning}
-                color={TextColor.Foreground}
-              >
-                Unavailable
-              </Pill>
-            )}
-            {outside && (
-              <Pill
-                size={Size.Xs}
-                icon={VisibilityOffIcon}
-                backgroundColor={BackgroundColor.CardElevated}
-                color={TextColor.Secondary}
-              >
-                Not in results
-              </Pill>
-            )}
-          </div>
-        )}
+        <div className={styles.footer}>
+          {(unavailable || outside || mismatch) && (
+            <div className={styles.flags}>
+              {mismatch && candidate && (
+                <MismatchPopover
+                  group={group}
+                  candidate={candidate}
+                  unit={unit}
+                  capture={capture}
+                />
+              )}
+              {unavailable && (
+                <Pill
+                  size="xs"
+                  icon={WarningAmberIcon}
+                  backgroundColor={SemanticColor.Warning}
+                  color="text-foreground"
+                >
+                  Unavailable
+                </Pill>
+              )}
+              {outside && (
+                <Pill
+                  size="xs"
+                  icon={VisibilityOffIcon}
+                  backgroundColor={BackgroundColor.CardElevated}
+                  color="text-secondary"
+                >
+                  Not in view
+                </Pill>
+              )}
+            </div>
+          )}
+          {near && temporal && !unavailable && group.node && (
+            <div title={listRanges(segments).join("\n")}>
+              <Suspense fallback={null}>
+                <SelectionTileLanes
+                  node={group.node}
+                  videoDuration={
+                    videoMetadata?.src === src
+                      ? videoMetadata?.duration
+                      : undefined
+                  }
+                />
+              </Suspense>
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );

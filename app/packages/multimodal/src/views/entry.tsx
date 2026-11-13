@@ -2,10 +2,13 @@ import {
   PluginComponentType,
   registerComponent,
   SAMPLE_RENDERER_GRID_SLOT,
+  type SampleRendererProps,
 } from "@fiftyone/plugins";
 import React, { lazy, Suspense } from "react";
+import { EpisodeModalLoading } from "./episode/loading/EpisodeModalLoading";
+import { loadEpisodeModal } from "./episode/shell/modal-loader";
 
-const LazyModalRenderer = lazy(() => import("./episode/shell/ModalRenderer"));
+const LazyModalRenderer = lazy(loadEpisodeModal);
 const LazyGridRenderer = lazy(() =>
   import("./episode/grid/GridRenderer").then(({ GridRenderer }) => ({
     default: GridRenderer,
@@ -37,7 +40,19 @@ function withSuspense<T extends object>(
   };
 }
 
-const ModalRenderer = withSuspense(LazyModalRenderer);
+const ModalRenderer: React.FC<SampleRendererProps> = (props) => (
+  <Suspense
+    fallback={
+      <EpisodeModalLoading
+        datasetId={props.ctx.dataset.datasetId}
+        mediaField={props.ctx.media.field}
+        sampleId={props.ctx.destinationSampleId ?? props.ctx.sample.sample._id}
+      />
+    }
+  >
+    <LazyModalRenderer {...props} />
+  </Suspense>
+);
 const EpisodeGridRenderer = withSuspense(LazyGridRenderer);
 const GridStreamSelector = withSuspense(LazyGridStreamSelector);
 const McapExplorer = withSuspense(LazyMcapExplorer);
@@ -69,7 +84,10 @@ export function registerEpisodeViews(): void {
     sampleRendererOptions: {
       supports: (ctx) =>
         ctx.media.extension === "mcap" || ctx.media.mediaReference != null,
-      modal: { persistAcrossSamples: true },
+      modal: {
+        persistAcrossSamples: true,
+        loadingComponent: EpisodeModalLoading,
+      },
       grid: {
         clickBehavior: "passthrough",
         enabled: true,

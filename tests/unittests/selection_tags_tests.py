@@ -6,13 +6,16 @@ Frozen selection tagging tests.
 |
 """
 
+from datetime import datetime, timedelta, timezone
 import os
 import unittest
+from unittest.mock import patch
 
 from bson import ObjectId
 
 import fiftyone as fo
 import fiftyone.core.tags as fot
+import fiftyone.server.selection as foss
 from fiftyone.server.selection import resolve_scope, tag_selection
 
 
@@ -60,6 +63,82 @@ class SelectionTagTests(unittest.TestCase):
         self.assertEqual(preview["tags"], ["review"])
         self.assertEqual(preview["counts"]["segments"], 1)
         self.assertEqual(preview["counts"]["fullEpisodes"], 1)
+
+    def test_temporal_counts_deduplicate_unanchored_and_anchored_tags(self):
+        member = _segment(self.ids[0], "0", "10", ["filepath"])
+        member["range"]["timebase"] = "sequence"
+        fot.add_temporal_tags(
+            self.dataset,
+            fot.TemporalTag(
+                sample_id=self.ids[0],
+                start=0,
+                end=10,
+                index_type=1,
+                tag="review",
+            ),
+        )
+        for _ in range(2):
+            result = tag_selection(
+                self.dataset, [member], changes={"review": True, "new": True}
+            )
+            self.assertEqual(result["targets"], 1)
+            self.assertEqual(result["applied"], {"review": 1, "new": 1})
+        result = tag_selection(
+            self.dataset, [member], changes={"review": False, "new": False}
+        )
+        self.assertEqual(result["applied"], {})
+        self.assertEqual(list(fot.list_temporal_tags(self.dataset)), [])
+
+    def test_two_stream_counts_and_removal_preserve_overlapping_ranges(self):
+        sample_id = self.ids[0]
+        member = _segment(sample_id, "0", "10")
+        fot.add_temporal_tags(
+            self.dataset,
+            [
+                fot.TemporalTag(
+                    sample_id=sample_id,
+                    start=0,
+                    end=10,
+                    index_type=3,
+                    tag="review",
+                ),
+                fot.TemporalTag(
+                    sample_id=sample_id,
+                    start=0,
+                    end=10,
+                    index_type=3,
+                    anchor="camera-a",
+                    tag="review",
+                ),
+                fot.TemporalTag(
+                    sample_id=sample_id,
+                    start=0,
+                    end=20,
+                    index_type=3,
+                    anchor="camera-b",
+                    tag="review",
+                ),
+            ],
+        )
+        with patch.object(
+            foss, "_sample_streams", return_value=["camera-a", "camera-b"]
+        ):
+            result = tag_selection(self.dataset, [member])
+            self.assertEqual(result["targets"], 2)
+            self.assertEqual(result["applied"], {"review": 2})
+            result = tag_selection(
+                self.dataset, [member], changes={"review": True}
+            )
+            self.assertEqual(result["applied"], {"review": 2})
+            result = tag_selection(
+                self.dataset, [member], changes={"review": False}
+            )
+            self.assertEqual(result["applied"], {})
+        remaining = list(fot.list_temporal_tags(self.dataset))
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(
+            (remaining[0].anchor, remaining[0].end), ("camera-b", 20)
+        )
 
     def test_remove_preserves_overlaps_and_other_streams(self):
         member = _segment(self.ids[0])
@@ -359,6 +438,88 @@ class AppliedTagTests(unittest.TestCase):
         )
         self.assertEqual(result["applied"], {})
         self.assertEqual(result["tags"], [])
+
+    def test_applies_multiple_sample_and_label_edits_together(self):
+        for sample in self.dataset:
+            sample["ground_truth"] = fo.Classification(
+                label="cat", tags=["old"]
+            )
+            sample.save()
+        members = [
+            {"episodeId": sid, "kind": "episode"}
+            for sid in self.dataset.values("id")
+        ]
+        for target, removed in (("members", "reviewed"), ("labels", "old")):
+            changes = {removed: False, "train": True, "night": True}
+            for _ in range(2):
+                result = tag_selection(
+                    self.dataset, members, target=target, changes=changes
+                )
+                self.assertEqual(result["targets"], 3)
+                self.assertEqual(result["applied"], {"train": 3, "night": 3})
+
+    def test_validates_all_changes_before_writing(self):
+        members = [{"episodeId": self.dataset.first().id, "kind": "episode"}]
+        for changes in (
+            {},
+            {"valid": True, " ": False},
+            {"valid": True, "bad": "yes"},
+            {"tag": True, " tag ": False},
+            ["tag"],
+        ):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                tag_selection(self.dataset, members, changes=changes)
+        self.assertEqual(self.dataset.count_sample_tags(), {"reviewed": 2})
+
+    def test_snapshot_batches_share_edits_and_keep_frozen_tag_filtered_scope(
+        self,
+    ):
+        snapshot = foss.create_snapshot(
+            self.dataset,
+            {"view": self.dataset.match_tags("reviewed")._serialize()},
+        )
+        request = {
+            "snapshotId": snapshot["snapshotId"],
+            "changes": {"reviewed": False, "train": True, "night": True},
+        }
+        with patch.object(foss, "SNAPSHOT_CHUNK", 1), patch.object(
+            foss, "_member_tag_values", wraps=foss._member_tag_values
+        ) as values, patch.object(
+            foss, "_tag_scope", wraps=foss._tag_scope
+        ) as scope:
+            result = foss.tag_captured_members(self.dataset, request)
+            self.assertEqual(result["applied"], {"train": 2, "night": 2})
+            self.assertEqual(result["targets"], 2)
+            self.assertEqual(values.call_count, 1)
+            self.assertEqual(scope.call_count, 1)
+        self.assertEqual(
+            foss.tag_captured_members(self.dataset, request), result
+        )
+        self.assertEqual(
+            self.dataset.count_sample_tags(), {"train": 2, "night": 2}
+        )
+        capture = foss.snapshot_info(self.dataset, snapshot["snapshotId"])
+        self.assertGreater(
+            capture["expires_at"].replace(tzinfo=timezone.utc),
+            datetime.now(timezone.utc) + timedelta(days=6),
+        )
+
+    def test_snapshot_reports_missing_chunks_in_write_pass(self):
+        snapshot = foss.create_snapshot(self.dataset, {"view": []})
+        members = foss.load_snapshot(self.dataset, snapshot["snapshotId"])[0]
+        with patch.object(
+            foss,
+            "iter_snapshot",
+            side_effect=[iter(members), iter(members[:1])],
+        ):
+            with self.assertRaisesRegex(ValueError, "incomplete"):
+                foss.tag_captured_members(
+                    self.dataset,
+                    {
+                        "snapshotId": snapshot["snapshotId"],
+                        "changes": {"train": True},
+                    },
+                )
 
 
 if __name__ == "__main__":

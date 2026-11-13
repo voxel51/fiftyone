@@ -133,9 +133,9 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 test.describe.serial("video non-box label rendering", () => {
@@ -200,21 +200,17 @@ test.describe.serial("video non-box label rendering", () => {
   }) => {
     // The video surface used to show only Detection; masks (Segmentation mode)
     // and polylines are now ungated alongside it.
-    await expect(page.getByTestId("detection-mode")).toBeVisible();
-    await expect(page.getByTestId("segmentation-mode")).toBeVisible();
-    await expect(page.getByTestId("polyline-mode")).toBeVisible();
+    expect(await page.getByTestId("detection-mode").isVisible()).toBe(true);
+    expect(await page.getByTestId("segmentation-mode").isVisible()).toBe(true);
+    expect(await page.getByTestId("polyline-mode").isVisible()).toBe(true);
   });
 
   test("polyline create mode activates on the video surface", async ({
     modal,
-    page,
   }) => {
     // The mode only enters (active flips true) when an active polyline field
     // exists and the button isn't disabled — i.e. create is wired for video.
     await modal.sidebar.annotate.polylineMode();
-    await expect(page.getByTestId("polyline-mode")).toHaveAttribute(
-      "data-cy-active",
-      "true",
-    );
+    await modal.sidebar.annotate.assert.polylineModeIsActive();
   });
 });

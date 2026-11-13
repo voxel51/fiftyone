@@ -6,13 +6,16 @@ Episode selection candidate routes.
 |
 """
 
+import asyncio
 from contextvars import copy_context
 from dataclasses import asdict
 import json
 
 from bson.errors import InvalidId
+from pymongo.errors import PyMongoError
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
+from starlette.responses import JSONResponse
 
 import fiftyone.core.json as foj
 import fiftyone.core.subsets as fosub
@@ -21,6 +24,7 @@ from fiftyone.server import decorators
 import fiftyone.server.samples as foses
 import fiftyone.server.selection as foss
 import fiftyone.server.selection_jobs as fosj
+import fiftyone.server.selection_navigation as fosn
 from fiftyone.server.utils.datasets import get_dataset
 
 
@@ -128,6 +132,84 @@ class SelectionPosition(HTTPEndpoint):
             raise HTTPException(400, detail=str(error)) from error
 
 
+_navigation_workers = asyncio.Semaphore(4)
+
+
+class SelectionNavigation(HTTPEndpoint):
+    """Returns a bounded neighborhood or an exact-order fallback location."""
+
+    @decorators.route
+    async def post(self, request, data):
+        try:
+            # Bound queueing as well as the database work. Cancelled clients
+            # must not start an expensive lookup when their slot opens later.
+            workers = _navigation_workers
+            await asyncio.wait_for(
+                workers.acquire(), timeout=fosn.QUERY_SECONDS
+            )
+            lookup = None
+            try:
+                if await request.is_disconnected():
+                    return JSONResponse({}, status_code=499)
+                lookup = asyncio.create_task(
+                    _run_dataset_task(request, fosn.sample_neighborhood, data)
+                )
+
+                def release(completed):
+                    workers.release()
+                    # Retrieve errors even if the client stopped awaiting us.
+                    if not completed.cancelled():
+                        completed.exception()
+
+                lookup.add_done_callback(release)
+                # Cancelling an await cannot stop its executor thread. Keep
+                # the slot until the bounded database operation actually ends.
+                view, result = await asyncio.shield(lookup)
+            finally:
+                if lookup is None:
+                    workers.release()
+            if await request.is_disconnected():
+                return JSONResponse({}, status_code=499)
+            if result["kind"] == "seek":
+                ids = result.pop("ids")
+                nodes = await asyncio.wait_for(
+                    foses.sample_nodes_for_ids(
+                        view, ids, max_time_ms=fosn.QUERY_SECONDS * 1000
+                    ),
+                    timeout=fosn.QUERY_SECONDS,
+                )
+                result["nodes"] = []
+                for sample_id in ids:
+                    if sample_id not in nodes:
+                        raise HTTPException(
+                            409,
+                            detail="The grid results changed; try again",
+                        )
+                    node = nodes[sample_id]
+                    payload = foj.stringify(asdict(node))
+                    payload["aspectRatio"] = payload.pop("aspect_ratio")
+                    payload["__typename"] = type(node).__name__
+                    if "frame_rate" in payload:
+                        payload["frameRate"] = payload.pop("frame_rate")
+                        payload["frameNumber"] = payload.pop("frame_number")
+                    result["nodes"].append(payload)
+            return result
+        except PermissionError as error:
+            raise HTTPException(403, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(400, detail=str(error)) from error
+        except PyMongoError as error:
+            if not error.timeout:
+                raise
+            raise HTTPException(
+                408, detail="Finding this item took too long"
+            ) from error
+        except asyncio.TimeoutError as error:
+            raise HTTPException(
+                408, detail="Finding this item took too long"
+            ) from error
+
+
 class SelectionTags(HTTPEndpoint):
     """Reads and edits tags on complete captured membership."""
 
@@ -137,10 +219,12 @@ class SelectionTags(HTTPEndpoint):
             return await _run_dataset_task(
                 request, foss.tag_captured_members, data
             )
+        except foss.SelectionCaptureUnavailableError as error:
+            return JSONResponse({"message": str(error)}, status_code=410)
         except PermissionError as error:
-            raise HTTPException(403, detail=str(error)) from error
+            return JSONResponse({"message": str(error)}, status_code=403)
         except (ValueError, KeyError, TypeError, InvalidId) as error:
-            raise HTTPException(400, detail=str(error)) from error
+            return JSONResponse({"message": str(error)}, status_code=400)
 
 
 class Subsets(HTTPEndpoint):
@@ -196,7 +280,7 @@ class Subsets(HTTPEndpoint):
 
 
 class Subset(HTTPEndpoint):
-    """Reads or deletes one dataset-scoped saved subset."""
+    """Reads, edits, or deletes one dataset-scoped saved subset."""
 
     @decorators.route
     async def get(self, request):
@@ -212,6 +296,21 @@ class Subset(HTTPEndpoint):
                 request.path_params["dataset_id"],
             )
             return await fosub.async_subset_summary(dataset, subset_id)
+        except PermissionError as error:
+            raise HTTPException(403, detail=str(error)) from error
+        except (ValueError, InvalidId) as error:
+            raise HTTPException(400, detail=str(error)) from error
+
+    @decorators.route
+    async def post(self, request, data):
+        subset_id = request.path_params["subset_id"]
+
+        def update(dataset):
+            fosub.update_subset_info(dataset, subset_id, data)
+            return fosub.subset_summary(dataset, subset_id)
+
+        try:
+            return await _run_dataset_task(request, update)
         except PermissionError as error:
             raise HTTPException(403, detail=str(error)) from error
         except (ValueError, InvalidId) as error:
@@ -322,6 +421,7 @@ SelectionRoutes = [
     ("/dataset/{dataset_id}/selection/tags", SelectionTags),
     ("/dataset/{dataset_id}/selection/availability", SelectionAvailability),
     ("/dataset/{dataset_id}/selection/position", SelectionPosition),
+    ("/dataset/{dataset_id}/selection/navigation", SelectionNavigation),
     ("/dataset/{dataset_id}/subsets", Subsets),
     ("/dataset/{dataset_id}/subsets/add", SubsetAdd),
     ("/dataset/{dataset_id}/subsets/{subset_id}/remove", SubsetRemove),

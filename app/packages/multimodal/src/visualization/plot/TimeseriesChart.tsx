@@ -5,15 +5,29 @@ import "uplot/dist/uPlot.min.css";
 import { CLICK_DRAG_TOLERANCE_PX } from "../interaction/interaction";
 import styles from "./TimeseriesChart.module.css";
 import {
+  drawStateLanes,
+  heldStateCode,
+  laneNameGutterWidth,
+  reserveStateLaneBand,
+  stateLaneLayout,
+  type StateLane,
+} from "./state-lanes";
+import {
   TIMESERIES_ZOOM_IN_FACTOR,
   TIMESERIES_ZOOM_OUT_FACTOR,
   touchZoomPanPlugin,
   zoomTimeseriesChart,
 } from "./timeseries-zoom";
 
-/** Identity of one drawn series: legend label + mark color. */
+/** Identity of one drawn series: legend label, mark color, and mark kind. */
 export interface TimeseriesChartSeries {
   readonly color: string;
+
+  /**
+   * "states" draws a text-valued series as a lane of held, labeled states
+   * below any lines; its values index `stateLabels`. Defaults to "line".
+   */
+  readonly kind?: "line" | "states";
   readonly label: string;
 }
 
@@ -87,9 +101,15 @@ export interface TimeseriesChartProps {
   readonly resetZoomRevision?: number;
 
   /**
-   * Drawn series. Label, color, or order changes rebuild the chart.
+   * Drawn series. Label, color, kind, or order changes rebuild the chart.
    */
   readonly series: readonly TimeseriesChartSeries[];
+
+  /**
+   * Labels for "states" series, aligned with `series`. Kept out of `series`
+   * so a growing label table redraws the chart instead of rebuilding it.
+   */
+  readonly stateLabels?: readonly (readonly string[] | undefined)[];
 }
 
 const AXIS_INK = "#898781";
@@ -99,25 +119,56 @@ const CHART_FONT = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
 const MIN_Y_AXIS_SIZE_PX = 52;
 const Y_AXIS_LABEL_GUTTER_PX = 16;
 
-const yAxisSize: uPlot.Axis.Size = (chart, values) => {
-  if (!values || values.length === 0) {
-    return MIN_Y_AXIS_SIZE_PX;
-  }
-  chart.ctx.save();
-  chart.ctx.font = CHART_FONT;
-  let widestLabel = 0;
-  for (const value of values) {
-    widestLabel = Math.max(
-      widestLabel,
-      chart.ctx.measureText(String(value)).width,
+/** Scale for state series, which draw through a hook rather than paths. */
+const STATE_SCALE = "state";
+
+/** Sizes the y-axis gutter for tick labels and any state lane names. */
+function yAxisSize(laneNames: () => readonly string[]): uPlot.Axis.Size {
+  return (chart, values) => {
+    const names = laneNames();
+    if ((!values || values.length === 0) && names.length === 0) {
+      return MIN_Y_AXIS_SIZE_PX;
+    }
+    chart.ctx.save();
+    chart.ctx.font = CHART_FONT;
+    let widestLabel = laneNameGutterWidth(chart.ctx, names);
+    for (const value of values ?? []) {
+      // Filtered ticks (hidden beside state lanes) arrive as null.
+      if (value == null) continue;
+      widestLabel = Math.max(
+        widestLabel,
+        chart.ctx.measureText(String(value)).width,
+      );
+    }
+    chart.ctx.restore();
+    return Math.max(
+      MIN_Y_AXIS_SIZE_PX,
+      Math.ceil(widestLabel + Y_AXIS_LABEL_GUTTER_PX),
     );
+  };
+}
+
+/** Plot-area height in CSS pixels; uPlot sizes its overlay to the plot. */
+function plotHeightPx(chart: uPlot): number {
+  return chart.over.clientHeight;
+}
+
+/**
+ * The time a state series' last sample holds until: the end of the inspected
+ * range containing it, since no later message was found there.
+ */
+function heldStateEndSec(
+  coverage: readonly TimeseriesCoverageRange[],
+  xs: ArrayLike<number>,
+  lastSampleSec: number,
+): number {
+  for (const range of coverage) {
+    if (lastSampleSec >= range.startSec && lastSampleSec <= range.endSec) {
+      return range.endSec;
+    }
   }
-  chart.ctx.restore();
-  return Math.max(
-    MIN_Y_AXIS_SIZE_PX,
-    Math.ceil(widestLabel + Y_AXIS_LABEL_GUTTER_PX),
-  );
-};
+  return xs.length > 0 ? xs[xs.length - 1] : lastSampleSec;
+}
 
 function resetTimeseriesChart(
   chart: uPlot,
@@ -199,6 +250,7 @@ function finiteYRange(
   startSec: number,
   endSec: number,
   coverage: readonly TimeseriesCoverageRange[],
+  stateColumns: ReadonlySet<number>,
 ): readonly [number, number] | null {
   const xs = data[0];
   const visibleCoverage =
@@ -228,6 +280,7 @@ function finiteYRange(
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (let column = 1; column < data.length; column += 1) {
+    if (stateColumns.has(column)) continue;
     const values = data[column];
     for (let index = 0; index < xs.length; index += 1) {
       if (visible[index] === 0) continue;
@@ -247,7 +300,8 @@ function finiteYRange(
 }
 
 /**
- * Fits y to finite, coherently loaded data inside the intended x viewport.
+ * Fits y to finite, coherently loaded line data inside the intended x
+ * viewport, leaving the bottom band free when state lanes share the plot.
  * When no replacement values are ready, the last finite domain is restored.
  * The caller supplies the x viewport because uPlot commits scale writes
  * asynchronously and a mid-commit scale read can be degenerate.
@@ -258,12 +312,16 @@ function fitVisibleYRange(
   coverage: readonly TimeseriesCoverageRange[],
   previousRef: React.MutableRefObject<readonly [number, number] | null>,
   window: readonly [number, number],
+  stateColumns: ReadonlySet<number>,
 ): void {
-  const next = finiteYRange(data, window[0], window[1], coverage);
+  const next = finiteYRange(data, window[0], window[1], coverage, stateColumns);
   if (next) previousRef.current = next;
   const range = next ?? previousRef.current;
   if (!range) return;
-  chart.setScale("y", { min: range[0], max: range[1] });
+  const height = plotHeightPx(chart);
+  const { reservedPx } = stateLaneLayout(height, stateColumns.size, true);
+  const [min, max] = reserveStateLaneBand(range, height, reservedPx);
+  chart.setScale("y", { min, max });
 }
 
 function renderCoverageBands(
@@ -343,8 +401,20 @@ function appendCoverageBand(
   layer.appendChild(band);
 }
 
+/** Aligned-data columns that hold state series (column 0 is time). */
+function stateSeriesColumns(
+  series: readonly TimeseriesChartSeries[],
+): ReadonlySet<number> {
+  return new Set(
+    series.flatMap((entry, index) =>
+      entry.kind === "states" ? [index + 1] : [],
+    ),
+  );
+}
+
 /**
- * Dense multi-series line chart on uPlot. Renders on the shared dark
+ * Dense multi-series line chart on uPlot; text-valued series draw as
+ * labeled state lanes below the lines. Renders on the shared dark
  * visualization surface; identity is carried by the always-present
  * legend (live cursor values) plus mark color, never color alone. The
  * x scale shows the recording timeline while exact overlays distinguish
@@ -367,6 +437,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   registerPlayheadListener,
   resetZoomRevision = 0,
   series,
+  stateLabels,
   unavailableRanges = EMPTY_COVERAGE_RANGES,
 }) => {
   const plotRef = useRef<HTMLDivElement | null>(null);
@@ -386,6 +457,10 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
   dataRef.current = data;
   const seriesRef = useRef(series);
   seriesRef.current = series;
+  const stateColumnsRef = useRef<ReadonlySet<number>>(new Set());
+  stateColumnsRef.current = stateSeriesColumns(series);
+  const stateLabelsRef = useRef(stateLabels);
+  stateLabelsRef.current = stateLabels;
   const onSeekRef = useRef(onSeek);
   onSeekRef.current = onSeek;
   const onSeekEndRef = useRef(onSeekEnd);
@@ -441,6 +516,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       coverageRangesRef.current,
       visibleYRangeRef,
       xRange,
+      stateColumnsRef.current,
     );
     if (!pointerInsideRef.current) {
       syncLegendCursor(
@@ -468,14 +544,42 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
     const xLimits = [0, xMax] as const;
     let viewportFrame: number | undefined;
     let stableViewportKey = "";
+    const hasLines = currentSeries.some((entry) => entry.kind !== "states");
+    const stateLanes = (): StateLane[] =>
+      seriesRef.current.flatMap((entry, index) =>
+        entry.kind === "states"
+          ? [
+              {
+                color: entry.color,
+                column: index + 1,
+                labels: stateLabelsRef.current?.[index] ?? [],
+                name: entry.label,
+              },
+            ]
+          : [],
+      );
+    // Beside state lanes, numeric ticks and grid lines stop at the lowest
+    // line value so the lane band below reads as its own region.
+    const yTickFilter: uPlot.Axis.Filter = (_chart, splits) => {
+      if (stateColumnsRef.current.size === 0) return splits;
+      const floor = hasLines ? visibleYRangeRef.current?.[0] : undefined;
+      return splits.map((split) =>
+        floor !== undefined && split >= floor ? split : null,
+      );
+    };
     const queueViewportPublication = (chart: uPlot) => {
       if (viewportFrame !== undefined) cancelAnimationFrame(viewportFrame);
       viewportFrame = requestAnimationFrame(() => {
         viewportFrame = undefined;
+        const pixelWidth = Math.max(chart.over.clientWidth, host.clientWidth);
+        // A chart measured before layout (e.g. mid sample switch) has no
+        // width yet. Its demand would ask for a single bucket across the
+        // whole window; the resize observer publishes the real width.
+        if (pixelWidth <= 0) return;
         onViewportChangeRef.current?.({
           endSec: chart.scales.x.max ?? xMax,
           mode: hasInteractiveScaleRef.current ? "pinned" : "follow",
-          pixelWidth: Math.max(chart.over.clientWidth, host.clientWidth, 1),
+          pixelWidth,
           startSec: chart.scales.x.min ?? 0,
         });
       });
@@ -491,11 +595,12 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
           ticks: { stroke: TICK_STROKE, width: 1 },
         },
         {
+          filter: yTickFilter,
           font: CHART_FONT,
-          grid: { stroke: GRID_STROKE, width: 1 },
-          size: yAxisSize,
+          grid: { filter: yTickFilter, stroke: GRID_STROKE, width: 1 },
+          size: yAxisSize(() => stateLanes().map((lane) => lane.name)),
           stroke: AXIS_INK,
-          ticks: { stroke: TICK_STROKE, width: 1 },
+          ticks: { filter: yTickFilter, stroke: TICK_STROKE, width: 1 },
         },
       ],
       cursor: {
@@ -504,6 +609,13 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
           setScale: true,
           x: true,
           y: false,
+        },
+        points: {
+          // State lanes show the held value in the legend, not a dot.
+          size: (chart, seriesIndex) =>
+            stateColumnsRef.current.has(seriesIndex)
+              ? 0
+              : (chart.series[seriesIndex].points?.size ?? 0),
         },
         y: false,
       },
@@ -525,6 +637,22 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
               durationSec,
               pointerInsideRef.current,
             ),
+          (chart) => {
+            const lanes = stateLanes();
+            drawStateLanes(
+              chart,
+              lanes,
+              stateLaneLayout(plotHeightPx(chart), lanes.length, hasLines),
+              (lastSampleSec) =>
+                heldStateEndSec(
+                  coverageRangesRef.current,
+                  chart.data[0],
+                  lastSampleSec,
+                ),
+              CHART_FONT,
+              AXIS_INK,
+            );
+          },
         ],
         setScale: [
           (chart, key) => {
@@ -543,6 +671,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
                   coverageRangesRef.current,
                   visibleYRangeRef,
                   xWindow,
+                  stateColumnsRef.current,
                 );
               }
               renderCoverageBands(
@@ -574,16 +703,46 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       ],
       scales: {
         x: { time: false },
+        // Without lines the numeric axis only frames the lanes.
+        ...(hasLines ? {} : { y: { auto: false, range: [0, 1] } }),
+        [STATE_SCALE]: { auto: false, range: [0, 1] },
       },
       series: [
         { class: styles.timeLegendRow, label: "Time" },
-        ...currentSeries.map((entry) => ({
-          label: entry.label,
-          points: { show: false },
-          spanGaps: false,
-          stroke: entry.color,
-          width: 2,
-        })),
+        ...currentSeries.map(
+          (entry, index): uPlot.Series =>
+            entry.kind === "states"
+              ? {
+                  label: entry.label,
+                  paths: () => null,
+                  points: { show: false },
+                  scale: STATE_SCALE,
+                  stroke: entry.color,
+                  value: (chart, _value, seriesIndex, dataIndex) => {
+                    // uPlot snaps each series to its nearest sample, which for
+                    // a sparse state topic can be the next transition; a held
+                    // state reads back from the cursor's own position instead.
+                    const cursorIndex =
+                      dataIndex === null
+                        ? null
+                        : (chart.cursor.idx ?? dataIndex);
+                    const code =
+                      cursorIndex === null
+                        ? null
+                        : heldStateCode(chart.data[seriesIndex], cursorIndex);
+                    return code === null
+                      ? "--"
+                      : (stateLabelsRef.current?.[index]?.[code] ?? "--");
+                  },
+                }
+              : {
+                  label: entry.label,
+                  points: { show: false },
+                  spanGaps: false,
+                  stroke: entry.color,
+                  width: 2,
+                },
+        ),
       ],
       width: Math.max(host.clientWidth, 160),
     };
@@ -603,6 +762,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       coverageRangesRef.current,
       visibleYRangeRef,
       [0, xMax],
+      stateColumnsRef.current,
     );
 
     const coverageLayer = document.createElement("div");
@@ -937,6 +1097,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       coverageRangesRef.current,
       visibleYRangeRef,
       stableXWindowRef.current,
+      stateColumnsRef.current,
     );
     chart.redraw();
     if (!pointerInsideRef.current) {
@@ -973,6 +1134,7 @@ const TimeseriesChart: React.FC<TimeseriesChartProps> = ({
       coverageRanges,
       visibleYRangeRef,
       stableXWindowRef.current,
+      stateColumnsRef.current,
     );
   }, [coverageRanges, unavailableRanges]);
 

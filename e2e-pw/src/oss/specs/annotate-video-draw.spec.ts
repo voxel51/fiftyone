@@ -6,7 +6,7 @@
  * and survives a fresh browser context. Foundational coverage for video on the
  * annotation engine.
  */
-import { Browser, test as base } from "src/oss/fixtures";
+import { Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -92,31 +92,26 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Verify persisted state from a brand-new browser context (true round-trip). */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
-  try {
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await openAnnotate(fiftyoneLoader, freshModal, freshPage);
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await openAnnotate(fiftyoneLoader, freshModal, freshPage);
+  await verify(freshModal);
 };
 
 test.describe.serial("video per-frame detection drawing", () => {
   test("drawing a box adds a timeline track, opens its editor, and persists", async ({
-    browser,
+    openFreshPage,
     fiftyoneLoader,
     modal,
     page,
@@ -128,26 +123,24 @@ test.describe.serial("video per-frame detection drawing", () => {
 
     // draw a box in detection mode
     await modal.sidebar.annotate.detectionMode("Detections");
-    await modal.sampleCanvas.move(0.55, 0.55);
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.78, 0.78);
-    await modal.sampleCanvas.up();
+    await modal.videoAnnotate.afterTracksChange(async () => {
+      await modal.sampleCanvas.move(0.55, 0.55);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.78, 0.78);
+      await modal.sampleCanvas.up();
+    });
 
     // the draw creates exactly one object track on the timeline
     await modal.videoAnnotate.assert.objectTrackCount(1);
 
     // the freshly-drawn box opens its edit form; assigning a class commits it
-    const saved = page.waitForResponse(
-      (r) =>
-        /\/sample\//.test(r.url()) &&
-        ["POST", "PATCH", "PUT"].includes(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.selectFieldChoice("label", "person"),
     );
-    await modal.sidebar.edit.selectFieldChoice("label", "person");
     await modal.sidebar.edit.assert.verifyFieldValue("label", "person");
-    await saved;
 
     // the frame label survives a true round-trip
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.videoAnnotate.assert.objectTrackCount(1);
     });
   });

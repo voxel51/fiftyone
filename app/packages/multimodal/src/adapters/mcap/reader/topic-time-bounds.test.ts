@@ -81,6 +81,209 @@ describe("readTopicIndexedTimeBoundsForReader", () => {
     expect(results.get("/unknown")).toBeNull();
   });
 
+  it("coalesces topics in one chunk and reuses first/last reads only within a lookup", async () => {
+    const chunk = indexedChunk(64n, 0n, 100n, [
+      [7, [80n, 10n, 30n]],
+      [8, [60n, 20n]],
+    ]);
+    const { readable } = createReadable(chunk.records);
+    const reader = createReader({ chunkIndexes: [chunk.index] });
+    const request = { topics: ["/camera", "/lidar"] };
+    const expected = new Map([
+      ["/camera", { firstLogTimeNs: 10n, lastLogTimeNs: 80n }],
+      ["/lidar", { firstLogTimeNs: 20n, lastLogTimeNs: 60n }],
+    ]);
+    expect(
+      await readTopicIndexedTimeBoundsForReader(reader, readable, request),
+    ).toEqual(expected);
+    expect(readable.read).toHaveBeenCalledTimes(1);
+    expect(readable.read).toHaveBeenCalledWith(
+      64n,
+      chunk.index.messageIndexLength,
+    );
+    expect(
+      await readTopicIndexedTimeBoundsForReader(reader, readable, request),
+    ).toEqual(expected);
+    expect(readable.read).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps overlapping topic walks independent and skips channels after their bounds settle", async () => {
+    const first = indexedChunk(64n, 0n, 100n, [
+      [7, [0n, 100n]],
+      [8, [40n, 60n]],
+    ]);
+    // The camera's first and last bounds are already definitive; its corrupt
+    // record in the overlapping chunk must never be parsed or requested.
+    const overlap = indexedChunk(256n, 10n, 90n, [
+      [7, [50n]],
+      [8, [20n, 80n]],
+    ]);
+    overlap.records[0].bytes[0] = 0xff;
+    const { readable } = createReadable([...first.records, ...overlap.records]);
+    const reader = createReader({ chunkIndexes: [overlap.index, first.index] });
+    const result = await readTopicIndexedTimeBoundsForReader(reader, readable, {
+      topics: ["/camera", "/lidar"],
+    });
+    expect(result.get("/camera")).toEqual({
+      firstLogTimeNs: 0n,
+      lastLogTimeNs: 100n,
+    });
+    expect(result.get("/lidar")).toEqual({
+      firstLogTimeNs: 20n,
+      lastLogTimeNs: 80n,
+    });
+    expect(readable.read).toHaveBeenCalledTimes(2);
+    expect(readable.read).toHaveBeenNthCalledWith(
+      2,
+      overlap.records[1].offset,
+      BigInt(overlap.records[1].bytes.length),
+    );
+  });
+
+  it("preserves per-topic probe caps with overlapping chunks", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const first = indexedChunk(64n, 0n, 100n, [
+        [7, [30n, 70n]],
+        [8, [40n, 60n]],
+      ]);
+      const overlap = indexedChunk(256n, 10n, 90n, [
+        [7, [20n, 80n]],
+        [8, [20n, 80n]],
+      ]);
+      const { readable } = createReadable([
+        ...first.records,
+        ...overlap.records,
+      ]);
+      const result = await readTopicIndexedTimeBoundsForReader(
+        createReader({ chunkIndexes: [first.index, overlap.index] }),
+        readable,
+        {
+          topics: ["/camera", "/lidar"],
+          maxChunkProbesPerTopic: 1,
+        },
+      );
+      expect(result.get("/camera")).toEqual({
+        firstLogTimeNs: 30n,
+        lastLogTimeNs: 70n,
+      });
+      expect(result.get("/lidar")).toEqual({
+        firstLogTimeNs: 40n,
+        lastLogTimeNs: 60n,
+      });
+      expect(readable.read).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledTimes(4);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("keeps sparse indexes and individually oversized records in separate reads", async () => {
+    const chunk = indexedChunk(64n, 0n, 100n, [
+      [7, [10n]],
+      [9, Array.from({ length: 5000 }, () => 50n)],
+      [8, [90n]],
+    ]);
+    const { readable } = createReadable(chunk.records);
+    const reader = createReader({ chunkIndexes: [chunk.index] });
+    const result = await readTopicIndexedTimeBoundsForReader(reader, readable, {
+      topics: ["/camera", "/lidar"],
+    });
+    expect(result.get("/lidar")).toEqual({
+      firstLogTimeNs: 90n,
+      lastLogTimeNs: 90n,
+    });
+    expect(readable.read).toHaveBeenCalledTimes(2);
+    for (const call of vi.mocked(readable.read).mock.calls)
+      expect(call[1]).toBe(31n);
+
+    // The 64 KiB threshold is a coalescing bound, not a ban on a larger
+    // single valid MessageIndex. Selecting that channel still reads it.
+    const withLargeChannel = {
+      ...reader,
+      channelsById: new Map([
+        ...reader.channelsById,
+        [9, createChannel({ id: 9, topic: "/large" })] as const,
+      ]),
+    };
+    expect(
+      (
+        await readTopicIndexedTimeBoundsForReader(withLargeChannel, readable, {
+          topics: ["/large"],
+        })
+      ).get("/large"),
+    ).toEqual({ firstLogTimeNs: 50n, lastLogTimeNs: 50n });
+    expect(readable.read).toHaveBeenLastCalledWith(
+      chunk.records[1].offset,
+      BigInt(chunk.records[1].bytes.length),
+    );
+  });
+
+  it("combines channels on the same topic and handles empty indexes", async () => {
+    const chunk = indexedChunk(64n, 0n, 100n, [
+      [7, []],
+      [8, [30n]],
+      [9, [10n, 90n]],
+    ]);
+    const { readable } = createReadable(chunk.records);
+    const reader = createReader({ chunkIndexes: [chunk.index] });
+    const withSecondCamera = {
+      ...reader,
+      channelsById: new Map([
+        ...reader.channelsById,
+        [9, createChannel({ id: 9, topic: "/camera" })] as const,
+      ]),
+    };
+    const results = await readTopicIndexedTimeBoundsForReader(
+      withSecondCamera,
+      readable,
+      { topics: ["/unknown", "/camera", "/lidar"] },
+    );
+    expect([...results.keys()]).toEqual(["/unknown", "/camera", "/lidar"]);
+    expect(results.get("/camera")).toEqual({
+      firstLogTimeNs: 10n,
+      lastLogTimeNs: 90n,
+    });
+    expect(readable.read).toHaveBeenCalledTimes(1);
+    expect(
+      (
+        await readTopicIndexedTimeBoundsForReader(reader, readable, {
+          topics: ["/camera"],
+        })
+      ).get("/camera"),
+    ).toBeNull();
+  });
+
+  it("rejects corrupt selected indexes and stops exact reads on cancellation", async () => {
+    const first = indexedChunk(64n, 0n, 10n, [[7, [0n]]]);
+    const last = indexedChunk(256n, 90n, 100n, [[7, [100n]]]);
+    const { readable } = createReadable([...first.records, ...last.records]);
+    const reader = createReader({ chunkIndexes: [first.index, last.index] });
+    const cancelled = new DOMException("cancelled", "AbortError");
+    const readExact = vi.fn(async () => {
+      throw cancelled;
+    });
+    await expect(
+      readTopicIndexedTimeBoundsForReader(
+        reader,
+        { ...readable, readExact },
+        { topics: ["/camera"] },
+      ),
+    ).rejects.toBe(cancelled);
+    expect(readExact).toHaveBeenCalledTimes(1);
+    expect(readable.read).not.toHaveBeenCalled();
+
+    first.records[0].bytes[9] = 8; // mismatched channel ID
+    const corrupt = createReadable(first.records).readable;
+    await expect(
+      readTopicIndexedTimeBoundsForReader(
+        createReader({ chunkIndexes: [first.index] }),
+        corrupt,
+        { topics: ["/camera"] },
+      ),
+    ).rejects.toThrow("did not match expected channel 7");
+  });
+
   it("rejects oversized topic requests", async () => {
     const { readable } = createReadable([]);
     const reader = createReader({ chunkIndexes: [] });
@@ -213,5 +416,35 @@ function createChannel(
     schemaId: 3,
     topic: options.topic ?? "/topic",
     type: "Channel",
+  };
+}
+
+function indexedChunk(
+  offset: bigint,
+  start: bigint,
+  end: bigint,
+  channels: readonly (readonly [number, readonly bigint[]])[],
+) {
+  let nextOffset = offset;
+  const offsets = new Map<number, bigint>();
+  const records = channels.map(([id, times]) => {
+    const bytes = createMessageIndexRecord(
+      id,
+      times.map((time, index) => [time, BigInt(index)] as const),
+    );
+    const record = { bytes, offset: nextOffset };
+    offsets.set(id, nextOffset);
+    nextOffset += BigInt(bytes.length);
+    return record;
+  });
+  return {
+    records,
+    index: createChunkIndex({
+      chunkStartOffset: offset - 32n,
+      messageStartTime: start,
+      messageEndTime: end,
+      messageIndexOffsets: offsets,
+      messageIndexLength: nextOffset - offset,
+    }),
   };
 }

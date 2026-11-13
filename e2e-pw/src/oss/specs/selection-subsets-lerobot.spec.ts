@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
@@ -171,8 +171,16 @@ if fo.dataset_exists("${datasetName}"):
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
   sidebar: async ({ page }, use) => use(new SidebarPom(page)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
 });
+
+/**
+ * Where the "inspection" range of episode 1 opens, and its timeline mark. The
+ * episode seeks on a 30 Hz display clock, so 100 ms lands at 133 ms.
+ */
+const PLACE_RANGE_START = "0:00.13 / 0:00.20";
+const PLACE_RANGE_TITLE = "Temporal tag: inspection  (0.10-0.20s)";
 
 test("LeRobot whole episodes and temporal ranges reopen with their source", async ({
   datasetName,
@@ -185,43 +193,43 @@ test("LeRobot whole episodes and temporal ranges reopen with their source", asyn
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await grid.assert.isTileCountEqualTo(2);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
   await tray.createSubset("Whole pick episode");
-  await tray.openCreatedSubset();
+  await grid.afterCustomTilesMounted(1, () =>
+    grid.afterEntryCounts(() => tray.openCreatedSubset()),
+  );
+  await grid.assert.isEntryCountTextEqualTo("1 sample");
   await grid.assert.isTileCountEqualTo(1);
-  await grid.openFirstSample();
-  await modal.episode.waitForReady(/^Episode 0 · pick/);
+  await modal.episode.afterReady(/^Episode 0 · pick/, () =>
+    grid.openFirstSample(),
+  );
   await modal.close();
 
-  await tray.chooseAllSamples();
+  await grid.afterEntryCounts(() => tray.chooseAllSamples());
+  await tray.clear();
   await sidebar.clickFieldDropdown("_temporal_tags");
-  await sidebar.applyFilter("inspection");
-  await expect(tray.locator).toContainText(/1 segment across 1 episode/);
+  await grid.afterEntryCounts(() => sidebar.applyFilter("inspection"));
+  await tray.untilSettledEmpty("Act on 1 segment across 1 episode");
   await tray.createSubset("Place range");
-  await tray.openCreatedSubset();
+  // the count stays at the one filtered episode; its tile remounts as a range
+  await grid.afterSavedSegmentsShown(() =>
+    grid.afterCustomTilesMounted(1, () => tray.openCreatedSubset()),
+  );
   await grid.assert.isTileCountEqualTo(1);
-  await expect(grid.locator.getByTestId("saved-segment-tile")).toHaveAttribute(
-    "title",
-    /Temporal tag: inspection/,
+  await grid.assert.describesSavedSegments(
+    "1 saved segment — Temporal tag: inspection",
   );
-  await grid.toggleSelectNthSample(0);
-  await expect(tray.cards.first()).toHaveAttribute(
-    "aria-label",
-    /file-006\.mp4, 1 segment/,
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
+  await tray.assert.cardLabels(["file-006.mp4, 1 segment"]);
+  // the episode opens at the saved range, which its timeline marks
+  await modal.afterSavedRangesShown(
+    () =>
+      modal.episode.afterReady(/^Episode 1 · place/, () =>
+        grid.openFirstSample(),
+      ),
+    modal.episode.playhead(PLACE_RANGE_START),
   );
-  await grid.openFirstSample();
-  await expect(modal.episode.shell).toBeVisible();
-  await modal.episode.waitForReady(/^Episode 1 · place/);
-  await expect(
-    modal.locator.getByText("Temporal tag: inspection").first(),
-  ).toBeVisible({ timeout: 30_000 });
-  await expect(modal.savedRangeBars).toHaveCount(1);
-  await expect(modal.savedRangeBars.first()).toHaveAttribute(
-    "title",
-    /Temporal tag: inspection.*\(0\.10-0\.20s\)/,
-  );
-  await expect(
-    modal.episode.controls.locator('[data-testid="timeline-playhead-time"]'),
-  ).toHaveText(/^0:00\.1[0-4] \/ 0:00\.20$/);
+  await modal.assert.showsSavedRanges([PLACE_RANGE_TITLE]);
+  await modal.assert.playheadReads(PLACE_RANGE_START);
   await modal.close();
 });

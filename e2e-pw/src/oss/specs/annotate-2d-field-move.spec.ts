@@ -7,7 +7,7 @@
  * label's current field so the serial tests don't depend on each other's end
  * state.
  */
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -67,10 +67,10 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
   });
-  await modal.waitForSampleLoadDomAttribute();
   await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
+  await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 });
 
 /**
@@ -80,9 +80,6 @@ test.beforeEach(async ({ fiftyoneLoader, modal, page }) => {
  * must be read from a fresh selection, not the stale form.
  */
 const reselect = async (modal: ModalPom, label = "cat") => {
-  if (await modal.sidebar.edit.backButton.isVisible()) {
-    await modal.sidebar.edit.exitToList();
-  }
   await modal.sidebar.annotate.selectActiveLabel(label, 0);
 };
 
@@ -93,25 +90,22 @@ const reselect = async (modal: ModalPom, label = "cat") => {
  * pattern".
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.waitForSampleLoadDomAttribute();
-    await freshModal.sidebar.switchMode("annotate");
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 test.describe.serial("2D annotation field move", () => {
@@ -121,10 +115,10 @@ test.describe.serial("2D annotation field move", () => {
   }) => {
     await reselect(modal);
 
-    // Read the current field; move to the other one (relative → order-safe).
+    // The seeded label starts in `detections`; move it to the other field.
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
-    expect(FIELDS).toContain(from);
+    expect(from).toBe("detections");
 
     // Count sample patches from a CLEAN baseline (selection doesn't dirty), so
     // the single engine transaction should be the only one that hits the wire.
@@ -140,16 +134,13 @@ test.describe.serial("2D annotation field move", () => {
     page.on("response", countPatch);
 
     try {
-      const saved = page.waitForResponse(
-        (r) =>
-          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+      await modal.sidebar.annotate.afterSave(() =>
+        modal.sidebar.edit.moveFieldTo(to),
       );
-      await modal.sidebar.edit.moveFieldTo(to);
-      await saved;
 
       // The move deselected the label; re-select to read its new home.
       await reselect(modal);
-      await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+      await modal.sidebar.edit.assert.currentField(to);
 
       // One transaction → exactly one autosave patch (empty ticks are filtered).
       expect(patches).toBe(1);
@@ -161,39 +152,34 @@ test.describe.serial("2D annotation field move", () => {
     await modal.sidebar.edit.assert.undoIsEnabled();
     await modal.sidebar.edit.undo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(from);
+    await modal.sidebar.edit.assert.currentField(from);
 
     await modal.sidebar.edit.assert.redoIsEnabled();
     await modal.sidebar.edit.redo();
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
   });
 
   test("a field move persists across a fresh load", async ({
-    browser,
     fiftyoneLoader,
     modal,
-    page,
+    openFreshPage,
   }) => {
     await reselect(modal);
 
     const from = await modal.sidebar.edit.getCurrentField();
     const to = otherField(from);
 
-    const saved = page.waitForResponse(
-      (r) => /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sidebar.edit.moveFieldTo(to),
     );
-    await modal.sidebar.edit.moveFieldTo(to);
-    await saved;
 
     await reselect(modal);
-    await expect.poll(() => modal.sidebar.edit.getCurrentField()).toBe(to);
+    await modal.sidebar.edit.assert.currentField(to);
 
-    await inFreshContext(browser, fiftyoneLoader, async (freshModal) => {
+    await inFreshContext(openFreshPage, fiftyoneLoader, async (freshModal) => {
       await freshModal.sidebar.annotate.selectActiveLabel("cat", 0);
-      await expect
-        .poll(() => freshModal.sidebar.edit.getCurrentField())
-        .toBe(to);
+      await freshModal.sidebar.edit.assert.currentField(to);
     });
   });
 });

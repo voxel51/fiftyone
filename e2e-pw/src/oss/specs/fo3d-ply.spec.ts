@@ -1,25 +1,13 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-import fs from "node:fs";
-import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
-import {
-  getPlyCube,
-  getPlyPointCloud,
-} from "./fo3d-ascii-asset-factory/ply-factory";
-
 const datasetName = getUniqueDatasetNameWithPrefix("fo3d-ply");
-
-const plyMeshPath = `/tmp/test-ply-mesh-${datasetName}.ply`;
-const plyPointCloudPath = `/tmp/test-ply-pointcloud-${datasetName}.ply`;
-const scenePath = `/tmp/test-scene-${datasetName}.fo3d`;
 
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  modalSidebar: ModalSidebarPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -27,51 +15,44 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  modalSidebar: async ({ page }, use) => {
-    await use(new ModalSidebarPom(page));
-  },
 });
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  fs.writeFileSync(plyMeshPath, getPlyCube());
-  fs.writeFileSync(plyPointCloudPath, getPlyPointCloud());
-
-  await fiftyoneLoader.executePythonCode(
-    `
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    scene = fo.Scene()
-    
-    # Add PLY mesh
-    ply_mesh = fo.PlyMesh("ply_mesh", "${plyMeshPath}")
-    ply_mesh.default_material = fo.MeshBasicMaterial(color="blue", opacity=0.8)
-    ply_mesh.scale = 0.5
-    ply_mesh.position = [1, 1, 0]
-    scene.add(ply_mesh)
-
-    # Add PLY point cloud
-    ply_pointcloud = fo.PlyMesh("ply_pointcloud", "${plyPointCloudPath}", is_point_cloud=True)
-    ply_pointcloud.scale = 2
-    ply_pointcloud.position = [-1, 0, 0]
-    scene.add(ply_pointcloud)
-    
-    scene.write("${scenePath}")
-
-    sample1 = fo.Sample(filepath="${scenePath}", name="sample1")
-
-    dataset.add_samples([sample1])
-    `,
-  );
+  // a blue cube mesh and a PLY point cloud beside it
+  await datasetFactory.createDataset({
+    mediaType: "3d",
+    datasetName,
+    sceneOptions: {
+      meshes: [
+        {
+          shape: "cube",
+          vertexColors: false,
+          name: "ply_mesh",
+          material: {
+            _type: "MeshBasicMaterial",
+            color: "blue",
+            opacity: 0.8,
+            wireframe: false,
+          },
+          scale: 0.5,
+          position: [1, 1, 0],
+        },
+        {
+          shape: "point-cloud",
+          numPoints: 125,
+          name: "ply_pointcloud",
+          isPointCloud: true,
+          scale: 0.5,
+          position: [-1, 0, 0],
+        },
+      ],
+    },
+  });
 });
 
 test.describe.serial("fo3d-ply", () => {
@@ -80,14 +61,13 @@ test.describe.serial("fo3d-ply", () => {
   });
 
   test("PLY scene is rendered correctly", async ({ modal, grid, page }) => {
-    const mask = modal.looker3dScreenshotMasks;
     await page.evaluate(() => {
       localStorage.setItem("fo-3d-annotation-tips-dismissed", "true");
     });
-    await grid.openFirstSample();
+    await modal.looker3dControls.afterAllAssetsLoaded(() =>
+      grid.openFirstSample(),
+    );
     await modal.modalContainer.hover();
-
-    await modal.looker3dControls.waitForAllAssetsLoaded();
 
     // Go to top view (press keyboard "T")
     await modal.looker3dControls.setTopView();
@@ -95,12 +75,6 @@ test.describe.serial("fo3d-ply", () => {
     // Hide grid helper (better for screenshots)
     await modal.looker3dControls.toggleGridHelper();
 
-    await expect(modal.modalContainer).toHaveScreenshot(
-      "ply-scene-top-view.png",
-      {
-        mask,
-        animations: "allow",
-      },
-    );
+    await modal.sampleCanvas3d.assert.hasScreenshot("ply-scene-top-view.png");
   });
 });

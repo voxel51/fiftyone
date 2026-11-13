@@ -47,6 +47,10 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
       {entries.map(({ dataCy, ...data }, i) => (
         <PillButton
           {...data}
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onClick();
+          }}
           data-cy={dataCy}
           highlight={false}
           key={i}
@@ -131,7 +135,7 @@ const GroupEntry = React.memo(
     const [editing, setEditing] = useState(false);
     const [hovering, setHovering] = useState(false);
     const ref = useRef<HTMLInputElement>(null);
-    const canCommit = useRef(false);
+    const pressStartedOnHeader = useRef(false);
     const theme = useTheme();
     const notify = fos.useNotification();
     const canModifySidebarGroup = useRecoilValue(fos.canModifySidebarGroup);
@@ -155,18 +159,26 @@ const GroupEntry = React.memo(
               data-cy={`sidebar-group-${title}`}
               onMouseEnter={() => !hovering && setHovering(true)}
               onMouseLeave={() => hovering && setHovering(false)}
-              onMouseDown={(event) => {
-                editing ? event.stopPropagation() : (canCommit.current = true);
+              onMouseDownCapture={() => {
+                // Reset before child controls can stop the press bubbling.
+                pressStartedOnHeader.current = false;
               }}
-              onMouseMove={() => (canCommit.current = false)}
+              onMouseDown={(event) => {
+                if (editing) {
+                  event.stopPropagation();
+                  return;
+                }
+                pressStartedOnHeader.current = true;
+              }}
+              onClick={(event) => {
+                if (pressStartedOnHeader.current && !editing) onClick?.(event);
+                pressStartedOnHeader.current = false;
+              }}
               style={{
                 cursor: "unset",
                 borderBottomColor: editing
                   ? theme.primary.plainColor
                   : theme.primary.softBorder,
-              }}
-              onMouseUp={(event) => {
-                canCommit.current && onClick && onClick(event);
               }}
             >
               {before}
@@ -218,7 +230,8 @@ const GroupEntry = React.memo(
                       event.preventDefault();
                       event.stopPropagation();
                     }}
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.stopPropagation();
                       setEditing(true);
                       if (ref.current) {
                         ref.current.setSelectionRange(
@@ -239,7 +252,10 @@ const GroupEntry = React.memo(
                       event.preventDefault();
                       event.stopPropagation();
                     }}
-                    onClick={() => onDelete()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete();
+                    }}
                   />
                 </span>
               )}

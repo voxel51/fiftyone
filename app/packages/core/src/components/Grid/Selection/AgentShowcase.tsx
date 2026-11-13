@@ -10,11 +10,7 @@ import {
   PauseIcon,
   PlayArrowIcon,
   RichButton,
-  Size,
   Text,
-  TextColor,
-  TextVariant,
-  Variant,
 } from "@voxel51/voodo";
 import {
   useId,
@@ -84,6 +80,8 @@ const showcaseTheme = {
   "--agent-skeleton": cssVar.color.skeleton.base,
   "--agent-shimmer": cssVar.color.skeleton.shimmer,
   "--agent-overlay": cssVar.color.scrim.heavy,
+  "--agent-brand-primary": cssVar.color.brand.primary,
+  "--agent-brand-accent": cssVar.color.brand.accent,
   "--agent-focus": cssVar.color.focus.ring,
   "--agent-font-xs": cssVar.text.xs,
   "--agent-space-sm": cssVar.spacing.sm,
@@ -106,8 +104,8 @@ function PlayerSkeleton({ unavailable }: { unavailable: boolean }) {
       <div className={styles.skeletonCenter}>
         {unavailable ? (
           <>
-            <ErrorOutlineIcon size={20} color={TextColor.Tertiary} />
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            <ErrorOutlineIcon size={20} color="text-tertiary" />
+            <Text variant="body-tertiary" color="text-secondary">
               Video not accessible
             </Text>
           </>
@@ -178,8 +176,8 @@ function Player({
       />
       {state === "ready" ? (
         <Button
-          size={Size.Sm}
-          variant={Variant.Icon}
+          size="sm"
+          variant="icon"
           className={styles.playToggle}
           leadingIcon={paused ? PlayArrowIcon : PauseIcon}
           aria-label={paused ? "Play" : "Pause"}
@@ -244,8 +242,8 @@ function Showcase() {
           </span>
         </div>
         <Text
-          variant={TextVariant.Md}
-          color={TextColor.Secondary}
+          variant="body-secondary"
+          color="text-secondary"
           className={styles.lede}
         >
           Talk to your data. Voxel51 Agent turns plain-language requests into
@@ -311,12 +309,12 @@ export default function AgentShowcase({
       showCloseButton={false}
       footer={
         <>
-          <Button size={Size.Md} variant={Variant.Borderless} onClick={onClose}>
+          <Button size="md" variant="borderless" onClick={onClose}>
             Not now
           </Button>
           <Button
-            size={Size.Md}
-            variant={Variant.Primary}
+            size="md"
+            variant="primary"
             trailingIcon={OpenInNewIcon}
             href={LEARN_MORE_URL}
             target="_blank"

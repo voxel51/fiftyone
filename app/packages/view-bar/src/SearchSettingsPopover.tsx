@@ -10,7 +10,10 @@
  */
 
 import type { PromptableSimilarityIndex, SearchSources } from "@fiftyone/state";
-import { useTextSearchProviders } from "@fiftyone/state";
+import {
+  clampSimilarityResultCount,
+  useTextSearchProviders,
+} from "@fiftyone/state";
 import {
   Align,
   Button,
@@ -57,12 +60,6 @@ export interface SearchSettingsPopoverProps {
   onChangeSources: (values: string[]) => void;
   onOpenPanel: () => void;
 }
-
-/** Clamp a typed match count to something the search can actually run. */
-export const clampMatches = (raw: number, fallback: number): number => {
-  if (!Number.isFinite(raw)) return fallback;
-  return Math.min(Math.max(Math.round(raw), 1), 10_000);
-};
 
 /**
  * How an index reads in the picker: its key, then the model it embeds with
@@ -128,7 +125,7 @@ const ResultsInput: React.FC<{ k: number; onChangeK: (k: number) => void }> = ({
         setDraft(text);
         const n = Number(text);
         if (text.trim() && Number.isFinite(n) && n >= 1) {
-          onChangeK(clampMatches(n, k));
+          onChangeK(clampSimilarityResultCount(n, k));
         }
       }}
       // Leaving the field empty or invalid keeps the last usable count

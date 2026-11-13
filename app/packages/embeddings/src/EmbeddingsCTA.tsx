@@ -2,8 +2,6 @@ import { PanelCTA, PanelCTAProps } from "@fiftyone/components";
 import ComputeVisualizationButton from "./ComputeVisualizationButton";
 import useComputeVisualization from "./useComputeVisualization";
 
-const TRY_LINK = "http://voxel51.com/try-embeddings";
-
 export function Actions(props: ActionsProps) {
   const computeViz = useComputeVisualization();
   const defaultHandler = () => computeViz.prompt();
@@ -16,7 +14,7 @@ export default function EmbeddingsCTA(props: EmbeddingsCTAProps) {
   return (
     <PanelCTA
       label="Embeddings help you explore and understand your dataset"
-      demoLabel="Upgrade to FiftyOne Enterprise to Create Embeddings"
+      demoLabel="Upgrade to Voxel51 to Create Embeddings"
       description="You can compute and visualize embeddings for your dataset using a selection of pre-trained models or your own embeddings"
       docLink="https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
       docCaption="Learn how to create embeddings visualizations via code."
@@ -26,7 +24,6 @@ export default function EmbeddingsCTA(props: EmbeddingsCTAProps) {
       name="Embeddings"
       onBack={onBack}
       mode={mode}
-      tryLink={TRY_LINK}
     />
   );
 }

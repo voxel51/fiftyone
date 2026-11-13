@@ -2,6 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
+const SESSION_FILTERS = vi.hoisted(() => ({
+  cluster: { values: ["b"], exclude: true },
+}));
+vi.mock("../session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../session")>()),
+  getSessionRef: () => ({ filters: SESSION_FILTERS }),
+}));
+
 import { TestSelectorFamily, setMockAtoms } from "../../../../__mocks__/recoil";
 import { activeFilterValues } from "./activeFilterValues";
 import * as filters from "./filters";
@@ -107,5 +115,43 @@ describe("activeFilterValues", () => {
     expect(activeFilterValues({ tag: { values: [null] } }, "tag")).toBe(
       activeFilterValues({}, "other"),
     );
+  });
+});
+
+describe("readFilters", () => {
+  // A fresh module per test: `read` keeps its last value in module scope
+  const load = async () => {
+    vi.resetModules();
+    return import("./filters");
+  };
+  const first = { id: "fetch-1", datasetId: "a" };
+  const reload = { id: "fetch-2", datasetId: "a" };
+  const otherDataset = { id: "fetch-2", datasetId: "b" };
+
+  it("keeps the filters across a reload of the same dataset", async () => {
+    // `id` is minted per fetch: a layout write (a panel tab switch, a plot's
+    // color-by) reloads the page, and must not read as a dataset switch
+    const { readFilters } = await load();
+    expect(readFilters(first, null)).toBe(SESSION_FILTERS);
+    expect(readFilters(reload, first)).toBe(SESSION_FILTERS);
+  });
+
+  it("clears the filters on a dataset switch", async () => {
+    const { readFilters } = await load();
+    readFilters(first, null);
+    expect(readFilters(otherDataset, first)).toEqual({});
+  });
+
+  it("keeps a view change's reset through the reload that follows", async () => {
+    const {
+      filters: atom,
+      readFilters,
+      resetFiltersTransaction,
+    } = await load();
+    readFilters(first, null);
+    const reset = vi.fn();
+    resetFiltersTransaction({ reset });
+    expect(reset).toHaveBeenCalledWith(atom);
+    expect(readFilters(reload, first)).toEqual({});
   });
 });

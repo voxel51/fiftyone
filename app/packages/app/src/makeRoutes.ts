@@ -61,11 +61,26 @@ const makeRoutes = () => {
 
         const view = state?.view || [];
 
+        // The server loads a saved query before applying extendedView. Route
+        // state can already contain those saved stages after session sync;
+        // sending them again applies conversions and grouping twice.
+        const extendedView = variables.savedViewSlug ? [] : [...view];
+        if (state.fieldVisibility) {
+          extendedView.push(state.fieldVisibility);
+        }
+        if (state.schemaExclusion?.length) {
+          extendedView.push({
+            _cls: "fiftyone.core.stages.ExcludeFields",
+            kwargs: {
+              field_names: state.schemaExclusion,
+              _allow_missing: true,
+            },
+          });
+        }
+
         return {
           ...variables,
-          extendedView: state.fieldVisibility
-            ? [...view, state.fieldVisibility]
-            : view,
+          extendedView,
         };
       },
     },

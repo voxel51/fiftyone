@@ -5,17 +5,21 @@
  * refetches whenever the user enters the Annotate sidebar inside a sample
  * modal. That loader doesn't run on the grid, so when the Schema Manager
  * is opened from the grid (`?schemaManager=open` via `SchemaManagerOutlet`)
- * the atoms stay `null` and downstream components like
- * `ActiveFieldsSection` hit "Maximum update depth exceeded".
+ * the atoms stay `null` and the Schema Manager has no schemas to
+ * render.
  *
- * This hook is the minimal complement: a one-shot fetch that fills the
- * atoms iff they're currently null. It does NOT close the modal or clear
- * existing data — that responsibility stays with `useLoadSchemas`.
+ * This hook is the minimal complement: one fetch per dataset that fills
+ * the atoms iff they're null — which, because the atoms are scoped to the
+ * dataset (see `schemaDatasetName`), is also the case right after a
+ * dataset switch. It does NOT close the modal or clear existing data —
+ * that responsibility stays with `useLoadSchemas`.
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
+import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import { activeLabelSchemas, labelSchemasData } from "./state";
 import {
   operatorAsPromise,
@@ -25,13 +29,20 @@ import {
 } from "./useSchemaManager";
 
 export const useEnsureSchemasLoaded = (enabled: boolean): void => {
+  const datasetName = useRecoilValue(fos.datasetName);
   const schemasData = useAtomValue(labelSchemasData);
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);
   const get = useOperatorExecutor("get_label_schemas") as unknown as Operator<
     ListSchemasRequest,
     ListSchemasResponse
-  > & { isExecuting: boolean; hasExecuted: boolean };
+  >;
+
+  // `useOperatorExecutor` returns a new object each render; read the
+  // latest through a ref so the fetch effect is keyed on the dataset,
+  // not on executor identity.
+  const getRef = useRef(get);
+  getRef.current = get;
 
   // Mirror the latest atom value into a ref so the in-flight request's
   // resolve callback can re-check synchronously: if another loader (e.g.
@@ -40,38 +51,46 @@ export const useEnsureSchemasLoaded = (enabled: boolean): void => {
   const schemasDataRef = useRef(schemasData);
   schemasDataRef.current = schemasData;
 
-  // Gate on `isExecuting || hasExecuted` (stable booleans) rather than
-  // `get.result` — `useOperatorExecutor` returns a new object reference
-  // each render, so excluding `get` from the deps is intentional.
-  useEffect(() => {
-    if (
-      !enabled ||
-      schemasData !== null ||
-      get.isExecuting ||
-      get.hasExecuted
-    ) {
-      return undefined;
-    }
+  // The dataset as of the latest render: the atoms are scoped to it at
+  // write time, so a result that lands after a dataset switch must be
+  // dropped rather than written under the new dataset's name.
+  const datasetRef = useRef(datasetName);
+  datasetRef.current = datasetName;
 
-    let cancelled = false;
-    operatorAsPromise(get, {})
+  // The dataset this hook last fetched for. Annotation entry clears the
+  // atoms to null on purpose while it activates a field and refetches
+  // them itself; refilling them here then would write the pre-activation
+  // `active_label_schemas` over that clear.
+  const fetchedForRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !datasetName || schemasData !== null) return undefined;
+    if (fetchedForRef.current === datasetName) return undefined;
+    fetchedForRef.current = datasetName;
+
+    // No "cancelled" flag: if the effect re-runs while the fetch is in
+    // flight (e.g. `enabled` flips off and on) the fetched-for guard above
+    // returns early, so discarding this result would leave the atoms
+    // null for good. The ref re-checks below are the only guards needed:
+    // the dataset one drops a result that outlived a dataset switch, the
+    // data one keeps a stale fetch from clobbering another loader's data.
+    operatorAsPromise(getRef.current, {})
       .then((result) => {
-        if (cancelled) return;
-        // Re-check: another loader may have populated the atoms while
-        // our request was in flight; preserve their data instead of
-        // overwriting it with ours.
+        if (datasetRef.current !== datasetName) return;
         if (schemasDataRef.current !== null) return;
         setData(result.label_schemas);
         setActive(result.active_label_schemas);
       })
       .catch(() => {
+        // allow a retry
+        if (fetchedForRef.current === datasetName) {
+          fetchedForRef.current = null;
+        }
         // `useOperatorExecutor`'s built-in error toast surfaces the
         // failure to the user; nothing further to do here.
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, schemasData]);
+  }, [enabled, datasetName, schemasData]);
 };

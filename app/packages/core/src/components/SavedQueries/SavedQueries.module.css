@@ -1,0 +1,292 @@
+/* The menu shares the selection tray's token aliases (`--tray-*`, applied by
+   `trayTheme` on the portaled panel), so its notices render the same. */
+
+/* The popover's anchor fills the view bar's row, like the stages toggle */
+.anchor {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+/* The popover's and tooltip's own wrappers sit between the anchor and the
+   trigger; they stretch too, so the whole row height is clickable */
+.anchor > div,
+.fill {
+  display: flex;
+  height: 100%;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  height: 100%;
+  padding: 0 10px;
+  /* Divides from the search the way the stages toggle does */
+  border-left: 1px solid var(--fo-palette-primary-plainBorder);
+}
+
+.trigger[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.triggerName {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The sections carry their own padding and dividers run edge to edge; the
+   double class outranks the panel's padding utility */
+.panel.panel {
+  width: 380px;
+  padding: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tray-space-sm);
+  padding: var(--tray-space-md);
+}
+
+.section + .section {
+  border-top: 1px solid var(--tray-border);
+}
+
+.saveForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tray-space-xs);
+}
+
+.saveRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+}
+
+.nameField {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Room for the color ribbon at the start of the field; the double class
+   outranks the input's own padding utility */
+.nameInput.nameInput {
+  padding-left: 28px;
+}
+
+.ribbonSlot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ribbon::before {
+  content: "";
+  width: 10px;
+  height: 14px;
+  background: var(--swatch);
+  /* A bookmark's notched tail, like the icon saved queries wear */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
+
+.ribbon:hover {
+  background: var(--tray-raised);
+}
+
+.ribbon:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 0;
+}
+
+/* The rows' highlight reaches closer to the edges than the other sections'
+   content, while their text lines up with it */
+.list {
+  gap: var(--tray-space-xs);
+  padding: var(--tray-space-sm);
+}
+
+.list > :not(.rows) {
+  margin-inline: var(--tray-space-sm);
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  min-height: 24px;
+}
+
+.eyebrow {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.row:hover,
+.row:focus-within,
+.row[data-loaded="true"] {
+  background: var(--tray-raised);
+}
+
+.rowMain {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--tray-space-sm);
+  min-width: 0;
+  padding: 6px var(--tray-space-sm);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rowMain:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: -2px;
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rowTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tray-space-xs);
+  min-width: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Edit and delete stay out of the way until the row is pointed at or
+   focused, but remain reachable by keyboard */
+.rowActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding-right: 4px;
+  opacity: 0;
+}
+
+.row:hover .rowActions,
+.row:focus-within .rowActions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rowActions {
+    opacity: 1;
+  }
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tray-space-xs);
+  padding: var(--tray-space-sm);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tray-destructive) 10%, transparent);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tray-space-xs);
+}
+
+form.body > .actions {
+  padding: 0 var(--tray-space-md) var(--tray-space-md);
+}
+
+.editHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+  padding: var(--tray-space-md) var(--tray-space-md) 0;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 236px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 2px var(--tray-popover);
+  cursor: pointer;
+}
+
+.swatch[aria-checked="true"] {
+  border-color: var(--tray-text);
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 2px;
+}
+
+.hint {
+  display: block;
+  padding: var(--tray-space-sm) var(--tray-space-md);
+  border-top: 1px solid var(--tray-border);
+}

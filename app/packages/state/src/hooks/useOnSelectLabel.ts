@@ -1,5 +1,5 @@
 import {
-  LabelToggledEvent,
+  FO_LABEL_TOGGLED_EVENT,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import * as recoil from "recoil";
@@ -32,13 +32,11 @@ export function useOnSelectLabel() {
         },
       }: SelectEvent) => {
         if (isShiftPressed) {
-          selectiveRenderingEventBus.emit(
-            new LabelToggledEvent({
-              sourceInstanceId: instanceId,
-              sourceSampleId: sampleId,
-              sourceLabelId: id,
-            }),
-          );
+          selectiveRenderingEventBus.dispatch(FO_LABEL_TOGGLED_EVENT, {
+            sourceInstanceId: instanceId,
+            sourceSampleId: sampleId,
+            sourceLabelId: id,
+          });
           return;
         }
 

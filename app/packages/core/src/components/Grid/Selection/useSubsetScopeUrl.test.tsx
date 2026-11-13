@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   datasetId: "dataset-a",
   domainId: "dataset-a",
   enabled: true,
+  initialBoundary: {} as SelectionBoundary,
   getSubset: vi.fn(),
   openSubset: vi.fn(),
 }));
@@ -21,7 +22,9 @@ vi.mock("@fiftyone/state/src/selection", async () => ({
   getSubset: mocks.getSubset,
   useGridSelectionDataset: () => mocks,
   useSelectionBoundary: () => {
-    [boundary, setBoundary] = useState<SelectionBoundary>({});
+    [boundary, setBoundary] = useState<SelectionBoundary>(
+      mocks.initialBoundary,
+    );
     return [boundary, setBoundary];
   },
 }));
@@ -41,6 +44,7 @@ beforeEach(() => {
   navigate("");
   mocks.datasetId = mocks.domainId = "dataset-a";
   mocks.enabled = true;
+  mocks.initialBoundary = {};
   mocks.getSubset.mockReset().mockResolvedValue({ id: "one", view: null });
   mocks.openSubset.mockReset().mockImplementation((subsetId, subsetScope) => {
     setBoundary({ subsetId, subsetScope });
@@ -101,6 +105,24 @@ describe("saved subset scope URL and preferences", () => {
     });
     act(() => setBoundary({}));
     expect(window.location.search).toBe("?id=sample&schemaManager=open");
+    expect(localStorage.getItem(preference())).toBeNull();
+  });
+
+  it("leaves a converted scope when entering an explicit All samples link", () => {
+    mocks.domainId = "dataset-a|frames";
+    mocks.initialBoundary = { subsetId: "frames", subsetScope: "episodes" };
+    navigate("?subset=");
+
+    renderHook(useSubsetScopeUrl);
+
+    expect(mocks.openSubset).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(boundary.subsetId).toBeUndefined();
+    expect(window.location.search).toBe("");
     expect(localStorage.getItem(preference())).toBeNull();
   });
 

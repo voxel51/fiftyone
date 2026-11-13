@@ -21,6 +21,7 @@ import SidebarGroup from "../../settings/controls/SidebarGroup";
 import { SettingsLabel } from "../../settings/controls/SettingsLabel";
 import { SettingsNumberField } from "../../settings/controls/SettingsNumberField";
 import styles from "./ViewpointSettings.module.css";
+import { ShownSignal } from "../../../../visualization/ShownSignal";
 
 const CAMERA_AXES = ["X", "Y", "Z"] as const;
 const CAMERA_NAVIGATION_OPTIONS: {
@@ -60,6 +61,17 @@ const ViewpointSettings: React.FC<{
         </Text>
       ) : (
         <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+          <ShownSignal
+            event="e2e:multimodal:camera-pose"
+            detail={{
+              "Position X": pose.position[0],
+              "Position Y": pose.position[1],
+              "Position Z": pose.position[2],
+              "Target X": orbit.target[0],
+              "Target Y": orbit.target[1],
+              "Target Z": orbit.target[2],
+            }}
+          />
           <FormField
             label={
               <SettingsLabel

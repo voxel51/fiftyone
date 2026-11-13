@@ -1,5 +1,5 @@
-import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const env = vi.hoisted(() => ({
   promptKeys: [] as {
@@ -19,7 +19,8 @@ const env = vi.hoisted(() => ({
   onRun: null as null | ((index: { key: string }, query: string) => void),
 }));
 
-vi.mock("@fiftyone/state", () => ({
+vi.mock("@fiftyone/state", async () => ({
+  ...(await import("@fiftyone/state/src/similarity-search/hooks")),
   useCurrentDatasetName: () => "robots",
   usePromptableSimilarityKeys: () => env.promptKeys,
 }));
@@ -67,6 +68,7 @@ const renderController = () =>
   renderHook(() => useTextSearch({ currentView: [], sortStageOffered: true }));
 
 describe("useTextSearch", () => {
+  afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();

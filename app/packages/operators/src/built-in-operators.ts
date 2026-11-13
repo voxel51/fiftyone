@@ -153,7 +153,7 @@ class ViewFromJSON extends Operator {
   }
 }
 
-class OpenPanel extends Operator {
+export class OpenPanel extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
@@ -253,6 +253,14 @@ class OpenPanel extends Operator {
     const newNode = new SpaceNode();
     await initializePanel(newNode.id, scope, state, data);
     newNode.type = name;
+    const sideSpace =
+      layout && spaces.root.layout === getLayout(layout)
+        ? spaces.root.lastChild()
+        : undefined;
+    if (sideSpace?.isPanelContainer()) {
+      spaces.addNodeAfter(sideSpace, newNode, isActive);
+      return;
+    }
     spaces.addNodeAfter(targetSpace, newNode, isActive);
     if (layout) {
       spaces.splitLayout(targetSpace, getLayout(layout), newNode);
@@ -634,7 +642,7 @@ class SetView extends Operator {
   async resolveInput(): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.list("view", new types.Object(), { view: new types.HiddenView({}) });
-    inputs.str("name", { label: "Name or slug of a saved view" });
+    inputs.str("name", { label: "Name or slug of a saved query" });
     return new types.Property(inputs);
   }
   async execute({ hooks, params }: ExecutionContext) {
@@ -649,7 +657,7 @@ class SetView extends Operator {
         savedViews.find((view) => slug === view.slug);
       if (!savedView) {
         throw new Error(
-          `Saved view with name or slug "${name}" does not exist`,
+          `Saved query with name or slug "${name}" does not exist`,
         );
       }
       hooks.setViewName(slug);

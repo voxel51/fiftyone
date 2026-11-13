@@ -27,6 +27,10 @@ async function checkPort(port: number): Promise<boolean> {
       if (err.code === "ECONNREFUSED") {
         resolved = true;
         resolve(true); // Port is available.
+      } else if (err.code === "ECONNRESET") {
+        // a listener that is still shutting down holds the port
+        resolved = true;
+        resolve(false);
       } else {
         resolved = true;
         reject(err);

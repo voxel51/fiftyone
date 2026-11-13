@@ -1,7 +1,20 @@
 import { is3d, MEDIA_TYPE_IMAGE, type Schema } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
-import { selectedSamples } from "../recoil/atoms";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
+import {
+  extendedSelection,
+  extendedSelectionOverrideStage,
+  selectedSamples,
+  similarityParameters,
+} from "../recoil/atoms";
+import { hasFilters } from "../recoil/filters";
+import { fieldVisibilityStage } from "../recoil/schemaSettings.atoms";
 import { groupSlice } from "../recoil/groups";
 import {
   anyTagging,
@@ -15,9 +28,11 @@ import {
   expressionCatalog,
   extendedStages,
   filters,
+  groupField,
   dynamicGroupParameters,
   fieldSchema,
   groupMediaTypes,
+  gridExtendedStages,
   gridSortBy,
   isGroup,
   isClipsView,
@@ -31,11 +46,22 @@ import {
   stageDefinitions,
   State,
   view,
+  viewName,
 } from "../recoil";
 
 import { useSelectionRangeConstraint } from "../selection/range-constraint";
+import { constrainsScope, withSelectionScope } from "../recoil/aggregations";
+import {
+  selectionScopeBoundary,
+  selectionScopeRevision,
+} from "../recoil/selectionScope";
+import { resetExtendedSelectionTransaction } from "../hooks/useResetExtendedSelection";
 
-export { useSetSelectionScopeBoundary } from "../recoil/selectionScope";
+export {
+  useHoldScopedCountsUntilNextPage,
+  useSetSelectionBoundaries,
+  useSetSelectionScopeBoundary,
+} from "../recoil/selectionScope";
 
 /**
  * Get the current dataset ID.
@@ -171,6 +197,15 @@ export const useIsGroupDataset = () => {
   return useRecoilValue(isGroup);
 };
 
+/**
+ * The current dataset's group field.
+ *
+ * @returns The group field's name, or null if the dataset is not a group
+ *   dataset
+ */
+export const useGroupField = (): string | null =>
+  useRecoilValue(groupField) || null;
+
 export type GroupSliceMediaType = "video" | "3d" | "image" | "multimodal";
 
 /**
@@ -275,6 +310,9 @@ export const useDynamicGroupGroupBy = (): string | null => {
 /** Whether the current view is a patches view. */
 export const useIsPatchesView = (): boolean => useRecoilValue(isPatchesView);
 
+/** Whether the current view contains individual video frames. */
+export const useIsFramesView = (): boolean => useRecoilValue(isFramesView);
+
 /** The server's stage descriptors, as `fiftyone/core/stages.py` describes them. */
 export const useStageDefinitions = () => useRecoilValue(stageDefinitions);
 
@@ -287,9 +325,28 @@ export function useGridViewScope() {
     rangeConstraint: useSelectionRangeConstraint(useCurrentDatasetName()),
     view: useView(),
     filters: useRecoilValue(filters),
-    extendedStages: useRecoilValue(extendedStages),
+    // The grid's own stages: without the Explore schema lens, whose hidden
+    // fields the grid leaves out of what it draws, so a lens switch neither
+    // changes the grid's request nor refetches its pages
+    extendedStages: useRecoilValue(gridExtendedStages),
     sort: useRecoilValue(gridSortBy),
     refresh: useRecoilValue(refresher),
+  };
+}
+
+/** Sidebar filters and the browsing boundary shared by grid-linked panels. */
+export function useScopedGridFilters() {
+  const currentFilters = useRecoilValue(filters);
+  const boundary = useRecoilValue(selectionScopeBoundary);
+  const revision = useRecoilValue(selectionScopeRevision);
+  const scopedFilters = useMemo(
+    () => withSelectionScope(currentFilters, boundary),
+    [currentFilters, boundary],
+  );
+  return {
+    filters: scopedFilters,
+    boundary,
+    revision: constrainsScope(boundary) ? revision : 0,
   };
 }
 
@@ -298,16 +355,15 @@ export function useDatasetSampleCount() {
   return useRecoilValue(datasetSampleCount);
 }
 
-/** Clears the range-producing temporal tag constraint when returning to episodes. */
-export function useClearTemporalTagConstraint() {
+/** Clears the outgoing query's constraints when opening a new browsing scope. */
+export function useClearGridViewConstraints() {
   return useRecoilCallback(
-    ({ set }) =>
+    ({ set, reset }) =>
       () => {
-        set(filters, (current) => {
-          const next = { ...current };
-          delete next._temporal_tags;
-          return next;
-        });
+        set(filters, {});
+        reset(gridSortBy);
+        reset(similarityParameters);
+        resetExtendedSelectionTransaction({ set, reset });
       },
     [],
   );
@@ -365,3 +421,33 @@ export const useFilters = (): State.Filters => useRecoilValue(filters);
  * sent them. */
 export const useExtendedStages = (): Record<string, unknown> =>
   useRecoilValue(extendedStages);
+
+/** The loaded saved view's name, or null while the view is unsaved. */
+export const useLoadedSavedViewName = (): string | null =>
+  useRecoilValue(viewName);
+
+/** Loads a saved view by slug into the working view. */
+export const useSetSavedViewName = () => useSetRecoilState(viewName);
+
+/** Whether the viewer may save, edit, and delete saved views, and why not. */
+export const useSavedViewEditPermission = () =>
+  useRecoilValue(canEditSavedViews);
+
+/** Returns the working view to the unsaved full dataset. */
+export const useResetView = () => useResetRecoilState(view);
+
+/**
+ * The App state that saving a view compiles into stages beside the view
+ * bar's own: sidebar filters, sorting, field visibility, and selections made
+ * in plots or by search.
+ */
+export function useSavedViewTransientState() {
+  return {
+    filters: useRecoilValue(hasFilters(false)),
+    sort: useRecoilValue(gridSortBy),
+    similarity: useRecoilValue(similarityParameters),
+    fieldVisibility: useRecoilValue(fieldVisibilityStage),
+    extendedSelection: useRecoilValue(extendedSelection),
+    overrideStage: useRecoilValue(extendedSelectionOverrideStage),
+  };
+}

@@ -1,11 +1,12 @@
 import {
   compactScopeLabel,
   countSelection,
+  defaultSelectionBucketIcon,
   FOLD_STEP,
   foldWindow,
   SELECTION_BUCKET_ICONS,
   SELECTION_BUCKET_NAME_LENGTH,
-  selectionBucketGesture,
+  selectionBucketIcon,
   selectionBucketTitle,
   useFoldRevealed,
   type EpisodeSelection,
@@ -13,32 +14,30 @@ import {
   type SelectionBucketIcon,
   type SelectionUnit,
 } from "@fiftyone/state/src/selection";
+import { useOutsideClick } from "@fiftyone/state";
 import {
-  Anchor,
+  BackgroundColor,
   Button,
-  ClearAllIcon,
-  DeleteOutlineIcon,
+  CheckIcon,
+  CloseIcon,
   Dropdown,
   DropdownAnchor,
-  EditIcon,
-  HighlightAltIcon,
+  IconAction,
   Input,
-  MenuIconTextItem,
-  MenuSeparator,
+  MenuTextItem,
   MoreHorizontalIcon,
+  Pill,
   Popover,
   PopoverAnchor,
-  Size,
   Text,
   TextColor,
-  TextVariant,
-  Tooltip,
-  Variant,
 } from "@voxel51/voodo";
-import { useState, type ReactNode } from "react";
-import BucketAvatar, { BUCKET_ICONS } from "./BucketAvatar";
-import { gestureLabel } from "./bucketGestures";
+import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import FoldCard from "./FoldCard";
+import { isSectionDrag, readSectionDrag } from "./sectionDrag";
+import SectionShape, { SECTION_SHAPES } from "./SectionShape";
+import SelectionCards from "./SelectionCards";
+import SelectionTooltip from "./SelectionTooltip";
 import styles from "./SelectionTray.module.css";
 import { trayTheme } from "./theme";
 
@@ -48,142 +47,153 @@ export interface BucketColumnProps {
   domainId: string;
   unit: SelectionUnit;
   captured: readonly EpisodeSelection[];
-  /** Actions in the bar apply to this bucket. */
-  target: boolean;
-  /** A held modifier would send the next click here. */
-  armed: boolean;
-  /** Whether the layout still allows dropping this bucket. */
-  removable: boolean;
+  multimodal?: boolean;
+  /** Clicks land here, and the bar's actions apply here. */
+  active: boolean;
+  /** Shapes the other sections wear, which this one cannot take. */
+  shapesTaken: readonly SelectionBucketIcon[];
   renderCard: (group: EpisodeSelection, bucketId: string) => ReactNode;
-  onTarget: (bucketId: string) => void;
+  onActivate: (bucketId: string) => void;
   onUpdate: (
     bucketId: string,
     patch: Pick<SelectionBucket, "name" | "icon">,
   ) => void;
   onClear: (bucketId: string) => void;
+  /** Takes a card dropped here from another section; Alt copies it. */
+  onReceive: (episodeId: string, from: string, copy: boolean) => void;
+  /** Fold this section into the one before it; absent for the first. */
+  onMergeBack?: () => void;
+  /** Fold this section into the one after it; absent for the last. */
+  onMergeForward?: () => void;
   onRemove: (bucketId: string) => void;
 }
 
-/** The name field keeps what is typed, including a trailing space the stored name trims. */
-function NameField({
-  bucket,
-  onUpdate,
-}: {
-  bucket: SelectionBucket;
-  onUpdate: BucketColumnProps["onUpdate"];
-}) {
-  const [draft, setDraft] = useState(bucket.name ?? "");
-  return (
-    <Input
-      size={Size.Sm}
-      aria-label="Bucket name"
-      placeholder={`Name (up to ${SELECTION_BUCKET_NAME_LENGTH} characters)`}
-      maxLength={SELECTION_BUCKET_NAME_LENGTH}
-      autoFocus
-      value={draft}
-      onChange={(event) => {
-        setDraft(event.target.value);
-        onUpdate(bucket.id, { name: event.target.value });
-      }}
-    />
-  );
-}
+/** Clicks on a section's controls, and their portaled panels, stay theirs. */
+const stop = (event: MouseEvent) => event.stopPropagation();
 
-/** Name and icon, applied as they change; the popover closes on Done or Escape. */
-function BucketEditor({
+/** The shape a section wears, and the palette of shapes it can take instead. */
+function ShapePicker({
   bucket,
   index,
-  open,
-  onOpenChange,
+  active,
+  title,
+  shapesTaken,
   onUpdate,
-  trigger,
 }: {
   bucket: SelectionBucket;
   index: number;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  active: boolean;
+  title: string;
+  shapesTaken: readonly SelectionBucketIcon[];
   onUpdate: BucketColumnProps["onUpdate"];
-  trigger: ReactNode;
 }) {
-  const iconId = `bucket-icon-${bucket.id}`;
+  const shape = selectionBucketIcon(bucket, index);
   return (
     <Popover
-      open={open}
-      onOpenChange={onOpenChange}
       anchor={PopoverAnchor.TopStart}
-      trigger={trigger}
-    >
-      {({ close }) => (
-        <div
-          className={`${styles.panel} ${styles.bucketEditor}`}
-          style={trayTheme}
-          data-bucket-editor={bucket.id}
+      trigger={
+        <button
+          type="button"
+          className={styles.sectionShape}
+          data-active={active || undefined}
+          aria-label={`Change ${title} shape`}
+          title="Change shape"
         >
-          <Text
-            variant={TextVariant.Label}
-            color={TextColor.Secondary}
-            className={styles.sheetTitle}
-          >
-            {`Bucket ${index + 1} · ${gestureLabel(selectionBucketGesture(index))}`}
-          </Text>
-          <NameField bucket={bucket} onUpdate={onUpdate} />
-          <div>
-            <Text
-              id={iconId}
-              variant={TextVariant.Xs}
-              color={TextColor.Secondary}
-            >
-              Icon
-            </Text>
-            <div
-              role="radiogroup"
-              aria-labelledby={iconId}
-              className={styles.iconPalette}
-            >
+          <SectionShape shape={shape} size={14} />
+        </button>
+      }
+    >
+      <div className={styles.shapePanel} style={trayTheme}>
+        <Text variant="body-secondary" color="text-secondary">
+          Section shape
+        </Text>
+        <div className={styles.shapePalette}>
+          {SELECTION_BUCKET_ICONS.map((choice) => {
+            const taken = shapesTaken.includes(choice);
+            const label = SECTION_SHAPES[choice].label;
+            return (
               <button
+                key={choice}
                 type="button"
-                role="radio"
-                aria-checked={!bucket.icon}
-                aria-label="No icon"
-                className={styles.iconChoice}
-                onClick={() => onUpdate(bucket.id, { icon: undefined })}
+                className={styles.shapeChoice}
+                aria-pressed={shape === choice}
+                aria-label={
+                  taken ? `${label}, used by another section` : `Use ${label}`
+                }
+                title={taken ? "Used by another section" : label}
+                disabled={taken}
+                onClick={() =>
+                  onUpdate(bucket.id, {
+                    // The position's own shape is stored as no pick.
+                    icon:
+                      choice === defaultSelectionBucketIcon(index)
+                        ? undefined
+                        : choice,
+                  })
+                }
               >
-                <BucketAvatar bucket={{ id: bucket.id }} index={index} />
+                <SectionShape shape={choice} size={14} />
               </button>
-              {SELECTION_BUCKET_ICONS.map((icon: SelectionBucketIcon) => (
-                <button
-                  key={icon}
-                  type="button"
-                  role="radio"
-                  aria-checked={bucket.icon === icon}
-                  aria-label={BUCKET_ICONS[icon].label}
-                  title={BUCKET_ICONS[icon].label}
-                  className={styles.iconChoice}
-                  onClick={() => onUpdate(bucket.id, { icon })}
-                >
-                  <BucketAvatar
-                    bucket={{ id: bucket.id, icon }}
-                    index={index}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className={styles.panelActions}>
-            <Button size={Size.Sm} variant={Variant.Secondary} onClick={close}>
-              Done
-            </Button>
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </Popover>
   );
 }
 
+/** Renames a section in place; Enter or clicking outside saves, Escape cancels. */
+function RenameField({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const name = draft.trim();
+  const container = useRef<HTMLSpanElement>(null);
+  useOutsideClick(container, () => (name ? onSave(name) : onCancel()));
+  return (
+    <span ref={container} className={styles.renameField} onClick={stop}>
+      <Input
+        size="sm"
+        aria-label="Section name"
+        maxLength={SELECTION_BUCKET_NAME_LENGTH}
+        autoFocus
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && name) onSave(name);
+          if (event.key === "Escape") onCancel();
+        }}
+      />
+      <IconAction
+        size="sm"
+        icon={CheckIcon}
+        aria-label="Save name"
+        disabled={!name}
+        onClick={() => onSave(name)}
+      />
+      <IconAction
+        size="sm"
+        icon={CloseIcon}
+        aria-label="Cancel rename"
+        onClick={onCancel}
+      />
+    </span>
+  );
+}
+
 /**
- * One bucket's column in the strip: a header naming the bucket, its count,
- * and the gesture that feeds it, then its cards. Pressing the header makes
- * the bucket the target of the bar's actions; a double press edits it.
+ * One section of the split tray: its shape, name, and number key, a count
+ * that clears it, its options, then its cards. Pressing the section makes
+ * it active, so clicks land here and the bar's actions apply here; its
+ * number key sorts the sample under the pointer into it, and a card dropped
+ * on it moves here, or with Alt is copied. Double-clicking the name renames
+ * it.
  */
 export default function BucketColumn({
   bucket,
@@ -191,150 +201,182 @@ export default function BucketColumn({
   domainId,
   unit,
   captured,
-  target,
-  armed,
-  removable,
+  multimodal,
+  active,
+  shapesTaken,
   renderCard,
-  onTarget,
+  onActivate,
   onUpdate,
   onClear,
+  onReceive,
+  onMergeBack,
+  onMergeForward,
   onRemove,
 }: BucketColumnProps) {
-  const [editing, setEditing] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [dropping, setDropping] = useState(false);
   const folding = useFoldRevealed(domainId, bucket.id);
   const fold = foldWindow(captured, folding.revealed);
   const reveal = Math.min(fold.hidden, 2 * FOLD_STEP);
   const title = selectionBucketTitle(bucket, index);
-  const gesture = gestureLabel(selectionBucketGesture(index));
-  const counts = countSelection(captured);
-  const label = compactScopeLabel(counts, unit);
+  const label = compactScopeLabel(countSelection(captured), unit);
   const count = captured.length;
-  const header = (
-    <button
-      type="button"
-      className={styles.columnTitle}
-      aria-pressed={target}
-      aria-label={`${title}, ${label}. Actions apply to this bucket when pressed.`}
-      title={
-        target
-          ? "Actions apply to this bucket"
-          : "Press to apply actions to this bucket. Double-click to rename."
-      }
-      onClick={() => onTarget(bucket.id)}
-      onDoubleClick={() => setEditing(true)}
-    >
-      <BucketAvatar bucket={bucket} index={index} />
-      <Text variant={TextVariant.Sm} className={styles.columnName}>
-        {title}
-      </Text>
-      {/* Re-keyed on change so the count bumps when a tile lands here. */}
-      <span key={count} className={styles.columnCount}>
-        <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
-          {count.toLocaleString()}
-        </Text>
-      </span>
-    </button>
-  );
+  const key = index + 1;
   return (
     <section
       className={styles.column}
       data-bucket={bucket.id}
-      data-target={target || undefined}
-      data-armed={armed || undefined}
-      aria-label={`${title}, ${label}`}
+      data-active={active || undefined}
+      data-dropping={dropping || undefined}
+      aria-label={`${title}, ${label}${active ? ", active" : ""}`}
+      onDragOver={(event) => {
+        if (!isSectionDrag(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = event.altKey ? "copy" : "move";
+        setDropping(true);
+      }}
+      onDragLeave={(event) => {
+        // Passing over the section's own children is not leaving it
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          setDropping(false);
+      }}
+      onDrop={(event) => {
+        setDropping(false);
+        const drag = readSectionDrag(event);
+        if (!drag) return;
+        event.preventDefault();
+        if (drag.from !== bucket.id)
+          onReceive(drag.episodeId, drag.from, event.altKey);
+      }}
+      onClick={(event) => {
+        // Cards and controls keep their own clicks.
+        if (
+          (event.target as HTMLElement).closest(
+            "[data-episode-id], button, input, a",
+          )
+        )
+          return;
+        onActivate(bucket.id);
+      }}
     >
       <header className={styles.columnHeader}>
-        <BucketEditor
-          bucket={bucket}
-          index={index}
-          open={editing}
-          onOpenChange={setEditing}
-          onUpdate={onUpdate}
-          trigger={header}
-        />
-        <Tooltip
-          anchor={Anchor.Top}
-          wrapperClassName={styles.tipWrap}
-          content={
-            <Text variant={TextVariant.Sm}>
-              {index === 0
-                ? `Select tiles as usual to add ${unit.many} here`
-                : `${gesture} a tile to add it here`}
-            </Text>
-          }
-        >
-          <kbd className={styles.gestureKey}>{gesture}</kbd>
-        </Tooltip>
-        <Dropdown
-          anchor={DropdownAnchor.BottomEnd}
-          trigger={
-            <Button
-              size={Size.Xs}
-              variant={Variant.Icon}
-              leadingIcon={MoreHorizontalIcon}
-              aria-label={`${title} options`}
-            />
-          }
-        >
-          <MenuIconTextItem
-            icon={<HighlightAltIcon size={Size.Sm} />}
-            text="Apply actions to this bucket"
-            disabled={target}
-            onClick={() => onTarget(bucket.id)}
+        <span onClick={stop}>
+          <ShapePicker
+            bucket={bucket}
+            index={index}
+            active={active}
+            title={title}
+            shapesTaken={shapesTaken}
+            onUpdate={onUpdate}
           />
-          <MenuIconTextItem
-            icon={<EditIcon size={Size.Sm} />}
-            text="Rename or change icon"
-            onClick={() => setEditing(true)}
+        </span>
+        {renaming ? (
+          <RenameField
+            initial={title}
+            onSave={(name) => {
+              onUpdate(bucket.id, { name });
+              setRenaming(false);
+            }}
+            onCancel={() => setRenaming(false)}
           />
-          <MenuSeparator />
-          <MenuIconTextItem
-            icon={<ClearAllIcon size={Size.Sm} />}
-            text="Clear bucket"
-            subtext={count ? label : undefined}
-            disabled={!count}
-            onClick={() => onClear(bucket.id)}
-          />
-          <MenuIconTextItem
-            icon={<DeleteOutlineIcon size={Size.Sm} />}
-            text="Remove bucket"
-            subtext={count ? `Clears ${label}` : undefined}
-            destructive
-            disabled={!removable}
-            onClick={() => onRemove(bucket.id)}
-          />
-        </Dropdown>
-      </header>
-      <div
-        role="group"
-        className={styles.columnCards}
-        aria-label={`Selected ${unit.many} in ${title}`}
-      >
-        {count === 0 ? (
-          <Text
-            variant={TextVariant.Xs}
-            color={TextColor.Secondary}
-            className={styles.columnEmpty}
-          >
-            {index === 0
-              ? `Select tiles to add ${unit.many} here`
-              : `${gesture} tiles to add ${unit.many} here`}
-          </Text>
         ) : (
           <>
-            {fold.head.map((group) => renderCard(group, bucket.id))}
-            {fold.hidden > 0 && (
-              <FoldCard
-                hidden={fold.hidden}
-                reveal={reveal}
-                unit={unit}
-                onReveal={() => folding.reveal(FOLD_STEP)}
-              />
-            )}
-            {fold.tail.map((group) => renderCard(group, bucket.id))}
+            <button
+              type="button"
+              className={styles.columnName}
+              aria-pressed={active}
+              title="Double-click to rename"
+              onClick={() => onActivate(bucket.id)}
+              onDoubleClick={() => setRenaming(true)}
+            >
+              <Text
+                variant="body-secondary"
+                color={active ? TextColor.Primary : TextColor.Secondary}
+              >
+                {title}
+              </Text>
+            </button>
+            <SelectionTooltip
+              wrapperClassName={styles.tipWrap}
+              content={
+                <Text variant="body-tertiary">
+                  {`Point at a ${unit.one} and press ${key} to sort it here`}
+                </Text>
+              }
+            >
+              <kbd className={styles.sectionKey}>{key}</kbd>
+            </SelectionTooltip>
           </>
         )}
-      </div>
+        <span className={styles.columnEnd} onClick={stop}>
+          {count > 0 && (
+            <Pill
+              size="sm"
+              backgroundColor={BackgroundColor.CardElevated}
+              color="text-secondary"
+              className={styles.sectionCount}
+            >
+              <span className={styles.countPillBody}>
+                <Text
+                  variant="body-secondary"
+                  color="text-primary"
+                  className={styles.countPillCount}
+                >
+                  {count.toLocaleString()}
+                </Text>
+                <Button
+                  size="xs"
+                  variant="icon"
+                  leadingIcon={CloseIcon}
+                  aria-label={`Clear ${count.toLocaleString()} from ${title}`}
+                  onClick={() => onClear(bucket.id)}
+                />
+              </span>
+            </Pill>
+          )}
+          <Dropdown
+            anchor={DropdownAnchor.TopEnd}
+            trigger={
+              <IconAction
+                size="sm"
+                icon={MoreHorizontalIcon}
+                aria-label={`${title} options`}
+              />
+            }
+          >
+            <MenuTextItem onClick={() => setRenaming(true)}>
+              Rename
+            </MenuTextItem>
+            {onMergeBack && (
+              <MenuTextItem onClick={onMergeBack}>Merge back</MenuTextItem>
+            )}
+            {onMergeForward && (
+              <MenuTextItem onClick={onMergeForward}>
+                Merge forward
+              </MenuTextItem>
+            )}
+            <MenuTextItem onClick={() => onRemove(bucket.id)}>
+              Remove section
+            </MenuTextItem>
+          </Dropdown>
+        </span>
+      </header>
+      <SelectionCards
+        className={styles.columnCards}
+        label={`Selected ${unit.many} in ${title}`}
+        multimodal={multimodal}
+      >
+        {fold.head.map((group) => renderCard(group, bucket.id))}
+        {fold.hidden > 0 && (
+          <FoldCard
+            hidden={fold.hidden}
+            reveal={reveal}
+            unit={unit}
+            onReveal={() => folding.reveal(FOLD_STEP)}
+          />
+        )}
+        {fold.tail.map((group) => renderCard(group, bucket.id))}
+      </SelectionCards>
     </section>
   );
 }

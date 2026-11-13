@@ -17,7 +17,7 @@
      whole tab list (a Tailwind utility class of equal specificity) — kill
      it and replace it with just the bottom edge, as the head/body divider. */
   border: 0 !important;
-  border-bottom: 1px solid var(--color-border) !important;
+  border-bottom: 1px solid var(--color-content-border-default) !important;
   flex: 0 0 auto;
   padding: 12px 16px;
 }

@@ -9,7 +9,7 @@ Auto-Labeling
     :enterprise_version: 2.14.0
 
 Auto-Labeling is a feature built into the
-:ref:`FiftyOne Enterprise App <enterprise-app>`
+:ref:`Voxel51 App <enterprise-app>`
 which allows you to automatically generate
 :ref:`classification <classification>`,
 :ref:`detection, and instance segmentation <object-detection>`

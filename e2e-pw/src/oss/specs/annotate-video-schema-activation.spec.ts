@@ -118,20 +118,36 @@ const openAnnotate = async (
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
     searchParams: new URLSearchParams({ id }),
   });
-  await modal.assert.isOpen();
-  await modal.sidebar.switchMode("annotate");
-  await modal.videoAnnotate.waitForSurface();
+  await modal.videoAnnotate.afterSurface(() =>
+    modal.sidebar.switchMode("annotate"),
+  );
 };
 
 /** Both fields painted on every surface — the seeded starting point. */
 const assertBothFieldsRendered = async (modal: ModalPom) => {
   const va = modal.videoAnnotate;
-  await va.assert.canvasRendersField(FRAME_FIELD, true);
-  await va.assert.canvasRendersField(TD_FIELD, true);
+  await modal.sampleCanvas.assert.hasMediaScreenshot("both-fields.png");
   await va.assert.objectTrackCount(1);
   await va.assert.temporalTrackCount(3);
   await va.assert.labelListed("vehicle", true);
   await va.assert.labelListed("approach", true);
+};
+
+/**
+ * Hide `field` through a fresh custom schema and view the sample through
+ * it: the dataset default shows every field, so gating is exercised via a
+ * schema that hides the field, applied as the sidebar's schema lens.
+ */
+const hideThroughSchema = async (
+  schemaManager: SchemaManagerPom,
+  schemaName: string,
+  field: string,
+) => {
+  await schemaManager.open();
+  await schemaManager.createSchema(schemaName);
+  await schemaManager.deactivateField(field);
+  await schemaManager.close();
+  await schemaManager.applyLens(schemaName);
 };
 
 test.describe.serial("video annotation schema activation gating", () => {
@@ -146,16 +162,14 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    await schemaManager.open();
-    await schemaManager.deactivateField(FRAME_FIELD);
-    await schemaManager.close();
+    await va.afterTracksChange(() =>
+      hideThroughSchema(schemaManager, "no-frame-field", FRAME_FIELD),
+    );
 
     // the frame field is gone everywhere; the TD field is untouched
-    await va.assert.canvasRendersField(FRAME_FIELD, false);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("frame-field-off.png");
     await va.assert.objectTrackCount(0);
     await va.assert.labelListed("vehicle", false);
-
-    await va.assert.canvasRendersField(TD_FIELD, true);
     await va.assert.temporalTrackCount(3);
     await va.assert.labelListed("approach", true);
   });
@@ -171,16 +185,14 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    await schemaManager.open();
-    await schemaManager.deactivateField(TD_FIELD);
-    await schemaManager.close();
+    await va.afterTracksChange(() =>
+      hideThroughSchema(schemaManager, "no-td-field", TD_FIELD),
+    );
 
     // the TD field is gone everywhere; the frame field is untouched
-    await va.assert.canvasRendersField(TD_FIELD, false);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("td-field-off.png");
     await va.assert.temporalTrackCount(0);
     await va.assert.labelListed("approach", false);
-
-    await va.assert.canvasRendersField(FRAME_FIELD, true);
     await va.assert.objectTrackCount(1);
     await va.assert.labelListed("vehicle", true);
   });
@@ -196,19 +208,22 @@ test.describe.serial("video annotation schema activation gating", () => {
 
     await assertBothFieldsRendered(modal);
 
-    // deactivate, confirm it's gone from the canvas, then reactivate
-    await schemaManager.open();
-    await schemaManager.deactivateField(FRAME_FIELD);
-    await schemaManager.close();
-    await va.assert.canvasRendersField(FRAME_FIELD, false);
+    // hide, confirm it's gone from the canvas, then show it again
+    await va.afterTracksChange(() =>
+      hideThroughSchema(schemaManager, "toggle-frame-field", FRAME_FIELD),
+    );
+    await modal.sampleCanvas.assert.hasMediaScreenshot("frame-field-off.png");
     await va.assert.objectTrackCount(0);
 
-    await schemaManager.open();
-    await schemaManager.activateField(FRAME_FIELD);
-    await schemaManager.close();
+    // the manager opens on the schema in use; closing it re-applies the lens
+    await va.afterTracksChange(async () => {
+      await schemaManager.open();
+      await schemaManager.activateField(FRAME_FIELD);
+      await schemaManager.close();
+    });
 
     // the bridge re-creates and rehydrates: overlays, tracks, and rows return
-    await va.assert.canvasRendersField(FRAME_FIELD, true);
+    await modal.sampleCanvas.assert.hasMediaScreenshot("both-fields.png");
     await va.assert.objectTrackCount(1);
     await va.assert.labelListed("vehicle", true);
   });

@@ -1,5 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { listSubsets, resolveSelection } from "./client";
+import {
+  listSubsets,
+  resolveSelection,
+  selectionTagsRequest,
+  updateSubset,
+} from "./client";
 
 const request = vi.hoisted(() => vi.fn());
 vi.mock("@fiftyone/utilities", () => ({
@@ -46,5 +51,39 @@ it("cancels again when creation finishes after the caller aborts", async () => {
   expect(request).toHaveBeenCalledTimes(3);
   expect(request).toHaveBeenLastCalledWith(
     expect.objectContaining({ body: { action: "cancel" } }),
+  );
+});
+
+it("updates metadata in the dataset-scoped subset endpoint", async () => {
+  const info = { name: "Reviewed", description: null };
+  await updateSubset("dataset/name", "subset/id", info);
+  expect(request).toHaveBeenCalledWith({
+    method: "POST",
+    path: "/dataset/dataset%2Fname/subsets/subset%2Fid",
+    body: info,
+  });
+});
+
+it("sends all tag edits together and disables automatic mutation retries", async () => {
+  const scope = { kind: "members" as const, members: [] };
+  await selectionTagsRequest("dataset", scope, {
+    changes: { train: true, test: false },
+    target: "members",
+    view: [],
+  });
+  expect(request).toHaveBeenLastCalledWith({
+    method: "POST",
+    path: "/dataset/dataset/selection/tags",
+    retries: 0,
+    body: {
+      members: [],
+      changes: { train: true, test: false },
+      target: "members",
+      view: [],
+    },
+  });
+  await selectionTagsRequest("dataset", scope);
+  expect(request).toHaveBeenLastCalledWith(
+    expect.objectContaining({ retries: undefined }),
   );
 });

@@ -13,37 +13,172 @@ const test = base.extend<{
   modal: ModalPom;
   tray: SelectionTrayPom;
   viewBar: ViewBarPom;
-  sidebar: SidebarPom;
 }>({
-  datasetName: async ({ datasetFactory, fiftyoneLoader }, use, testInfo) => {
+  datasetName: async ({ datasetFactory }, use, testInfo) => {
     const datasetName = getUniqueDatasetNameWithPrefix("selection-tray");
     await datasetFactory.createDataset({
       datasetName,
-      numSamples: testInfo.title.includes("offscreen") ? 80 : 8,
+      numSamples: testInfo.title.includes("offscreen")
+        ? 80
+        : testInfo.title.includes("view stages")
+          ? 20
+          : 8,
       numbered: true,
+      subsets: testInfo.title.includes("existing subset")
+        ? { Existing: [] }
+        : {},
     });
-    try {
-      await use(datasetName);
-    } finally {
-      await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-`);
-    }
+    await use(datasetName);
   },
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
-  viewBar: async ({ page }, use) => use(new ViewBarPom(page)),
-  sidebar: async ({ page }, use) => use(new SidebarPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
+  viewBar: async ({ page, eventUtils }, use) =>
+    use(new ViewBarPom(page, eventUtils)),
 });
 
 test.beforeAll(async ({ foWebServer }) => foWebServer.startWebServer());
 test.afterAll(async ({ foWebServer }) => foWebServer.stopWebServer());
 
-test("selection follows the grid and modal, and clear can be undone", async ({
+/** Select the grid's tiles at `indexes`, one at a time */
+const selectTiles = async (
+  grid: GridPom,
+  tray: SelectionTrayPom,
+  indexes: readonly number[],
+) => {
+  for (const [count, index] of indexes.entries())
+    await tray.afterSettled(() => grid.toggleSelectNthSample(index), {
+      cards: count + 1,
+    });
+};
+
+test("view stages: selected samples outside a new view stay in the tray", async ({
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  tray,
+  viewBar,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(viewBar.page, datasetName);
+  await selectTiles(grid, tray, [0, 2]);
+  const selected = await tray.getSelectedSampleNames();
+  const editor = await viewBar.addStage("Limit");
+  await editor.fill("limit", "1");
+  await tray.afterSettled(() => grid.run(() => editor.commit("limit")), {
+    cards: 2,
+    outside: 1,
+  });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.outsideResults(1);
+  await tray.afterSettled(() => grid.run(() => viewBar.removeStage(0)), {
+    cards: 2,
+  });
+  await tray.assert.cardsHaveNames(selected);
+  await tray.assert.selectedSamples(2);
+});
+
+for (const { name, param, value, count } of [
+  { name: "Take", param: "size", value: "10", count: 2 },
+  { name: "Limit", param: "limit", value: "1", count: 1 },
+  { name: "Skip", param: "skip", value: "2", count: 2 },
+]) {
+  test(`view stages: selections survive removing ${name}`, async ({
+    datasetName,
+    fiftyoneLoader,
+    grid,
+    tray,
+    viewBar,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(viewBar.page, datasetName);
+    const editor = await viewBar.addStage(name);
+    await editor.fill(param, value);
+    await grid.run(() => editor.commit(param));
+    await selectTiles(grid, tray, count === 2 ? [0, 2] : [0]);
+    await tray.assert.selectedSamples(count);
+    const selected = await tray.getSelectedSampleNames();
+
+    await grid.afterEntryCounts(() => grid.run(() => viewBar.removeStage(0)));
+    await grid.assert.isEntryCountTextEqualTo("20 samples");
+    // the captures never change: removing the stage leaves them as they were
+    await tray.assert.selectedSamples(count);
+    await tray.assert.cardsHaveNames(selected);
+  });
+}
+
+for (const { name, param, value, count } of [
+  { name: "Take", param: "size", value: "10", count: 2 },
+  { name: "Limit", param: "limit", value: "1", count: 1 },
+]) {
+  test(`view stages: subset created under ${name} opens and reopens`, async ({
+    datasetName,
+    fiftyoneLoader,
+    grid,
+    openFreshPage,
+    page,
+    tray,
+    viewBar,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    const editor = await viewBar.addStage(name);
+    await editor.fill(param, value);
+    await grid.run(() => editor.commit(param));
+    await selectTiles(grid, tray, count === 2 ? [0, 2] : [0]);
+    const selected = await tray.getSelectedSampleNames();
+
+    await tray.createSubset("Stage selection");
+    // the subset opens on its members alone, without the stage that found
+    // them, so the grid reloads; a Limit of one already counts its one sample
+    await grid.afterGridRefreshed(() =>
+      count === 2
+        ? grid.afterEntryCounts(() => tray.openCreatedSubset())
+        : tray.openCreatedSubset(),
+    );
+    await tray.assert.subsetScope("Stage selection", count);
+    await tray.assert.selectedSamples(count);
+    await tray.assert.cardsHaveNames(selected);
+
+    const freshPage = await openFreshPage();
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+    const freshEvents = new EventUtils(freshPage);
+    const freshGrid = new GridPom(freshPage, freshEvents);
+    const freshTray = new SelectionTrayPom(freshPage, freshEvents);
+    await freshGrid.afterEntryCounts(() =>
+      freshTray.chooseSubset("Stage selection"),
+    );
+    await freshTray.assert.subsetScope("Stage selection", count);
+    await freshGrid.afterEntryCounts(() => freshTray.chooseAllSamples());
+    await freshGrid.assert.isEntryCountTextEqualTo("20 samples");
+  });
+}
+
+test("view stages: Take selections can be added to an existing subset", async ({
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  page,
+  tray,
+  viewBar,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  const editor = await viewBar.addStage("Take");
+  await editor.fill("size", "10");
+  await grid.run(() => editor.commit("size"));
+  await selectTiles(grid, tray, [0, 2]);
+  const selected = await tray.getSelectedSampleNames();
+
+  await tray.addToSubset("Existing");
+  // the subset opens on its members alone, without the Take that found them
+  await grid.afterGridRefreshed(() =>
+    grid.afterEntryCounts(() => tray.openCreatedSubset()),
+  );
+  await tray.assert.subsetScope("Existing", 2);
+  await tray.assert.selectedSamples(2);
+  await tray.assert.cardsHaveNames(selected);
+});
+
+test("selection follows the grid and modal, and clear can be undone and redone", async ({
   datasetFactory,
   datasetName,
   fiftyoneLoader,
@@ -58,44 +193,53 @@ test("selection follows the grid and modal, and clear can be undone", async ({
     numSamples: 1,
     numbered: true,
   });
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await tray.assert.targetsAllResults();
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await tray.untilSettledEmpty();
+  await tray.assert.targetsAllResults();
 
-    await grid.toggleSelectNthSample(0);
-    await grid.toggleSelectNthSample(2);
-    await tray.assert.selectedSamples(2);
-    await tray.assert.cardsHaveNames(["0.png", "2.png"]);
+  await selectTiles(grid, tray, [0, 2]);
+  await tray.assert.selectedSamples(2);
+  await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
-    await grid.openNthSample(1);
-    await modal.toggleSelection();
-    await modal.assert.verifySelectionCount(3);
-    await modal.close();
-    await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
+  await grid.openNthSample(1);
+  // the tray behind the modal follows the modal's selection
+  await tray.afterSettled(
+    async () => {
+      await modal.toggleSelection();
+      await modal.assert.verifySelectionCount(3);
+      await modal.close();
+    },
+    { cards: 3 },
+  );
+  await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
 
-    await tray.clear();
-    await tray.assert.targetsAllResults();
-    await tray.undo();
-    await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
+  await tray.clear();
+  await tray.assert.targetsAllResults();
+  await tray.undo(3);
+  await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
+  await tray.redo(0);
+  await tray.assert.targetsAllResults();
+  await tray.undo(3);
+  await tray.assert.cardsHaveNames(["0.png", "1.png", "2.png"]);
 
-    await fiftyoneLoader.selectDatasetFromSelector(page, otherName);
-    await grid.assert.isEntryCountTextEqualTo("1 sample");
-    await tray.assert.targetsAllResults();
-    await expect(tray.cards).toHaveCount(0);
-  } finally {
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-if fo.dataset_exists("${otherName}"):
-    fo.delete_dataset("${otherName}")
-`);
-  }
+  await tray.afterSettled(
+    () =>
+      grid.afterEntryCounts(() =>
+        fiftyoneLoader.selectDatasetFromSelector(page, otherName),
+      ),
+    { cards: 0 },
+  );
+  await grid.assert.isEntryCountTextEqualTo("1 sample");
+  await tray.assert.targetsAllResults();
+  expect(await tray.cards.count()).toBe(0);
 });
 
 test("all current results include offscreen samples in a saved subset", async ({
-  browser,
   datasetName,
+  eventUtils,
   fiftyoneLoader,
   grid,
+  openFreshPage,
   page,
   tray,
   viewBar,
@@ -103,87 +247,70 @@ test("all current results include offscreen samples in a saved subset", async ({
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   const editor = await viewBar.addStage("Limit");
   await editor.fill("limit", "60");
-  await grid.run(() => editor.commit("limit"));
+  await grid.afterEntryCounts(() => grid.run(() => editor.commit("limit")));
   await grid.assert.isEntryCountTextEqualTo("60 samples");
-  await expect
-    .poll(() => grid.locator.getByTestId("looker").count())
-    .toBeLessThan(60);
+  await tray.untilSettledEmpty();
   await tray.assert.targetsAllResults();
 
+  // nothing selected: the subset captures every result, drawn or not
   const name = "First sixty";
   await tray.createSubset(name);
-  await tray.openCreatedSubset();
+  await eventUtils.after("e2e:app:page-change", () => tray.openCreatedSubset());
   await tray.assert.subsetScope(name, 60);
-  await grid.assert.isEntryCountTextEqualTo("60 samples");
+  // Opening a subset clears the Limit that found its members. Wait for that
+  // view transition before checking persistence, rather than racing it with
+  // a second removal of the outgoing stage.
+  await viewBar.assert.stageCount(0);
 
-  // View stages are shared through the server session, including with a new
-  // browser context. Clear Limit before checking the dataset-wide scope.
-  await grid.run(() => viewBar.removeStage(0));
-  await grid.assert.isEntryCountTextEqualTo("60 samples");
-
-  const context = await browser.newContext();
-  try {
-    const freshPage = await context.newPage();
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshTray = new SelectionTrayPom(freshPage);
-    await freshTray.chooseSubset(name);
-    await freshTray.assert.subsetScope(name, 60);
-    await expect(freshPage.getByTestId("entry-counts")).toContainText(
-      "60 samples",
-    );
-    await freshTray.chooseAllSamples();
-    await expect(freshPage.getByTestId("entry-counts")).toContainText(
-      "80 samples",
-    );
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+  const freshEvents = new EventUtils(freshPage);
+  const freshGrid = new GridPom(freshPage, freshEvents);
+  const freshTray = new SelectionTrayPom(freshPage, freshEvents);
+  await freshGrid.afterEntryCounts(() => freshTray.chooseSubset(name));
+  await freshTray.assert.subsetScope(name, 60);
+  await freshGrid.afterEntryCounts(() => freshTray.chooseAllSamples());
+  await freshGrid.assert.isEntryCountTextEqualTo("80 samples");
 });
 
 test("captured samples remain action targets outside the current results", async ({
-  browser,
   datasetName,
   fiftyoneLoader,
   grid,
+  openFreshPage,
   page,
   tray,
   viewBar,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(2);
+  await selectTiles(grid, tray, [0, 2]);
   await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
   const editor = await viewBar.addStage("Skip");
   await editor.fill("skip", "1");
-  await grid.run(() => editor.commit("skip"));
+  await tray.afterSettled(
+    () => grid.afterEntryCounts(() => grid.run(() => editor.commit("skip"))),
+    { cards: 2, outside: 1 },
+  );
   await grid.assert.isEntryCountTextEqualTo("7 samples");
   await tray.assert.outsideResults(1);
   await tray.assert.cardsHaveNames(["0.png", "2.png"]);
 
   await tray.tagSamples("captured");
-  await grid.run(() => viewBar.removeStage(0));
+  await grid.afterEntryCounts(() => grid.run(() => viewBar.removeStage(0)));
   await grid.assert.isEntryCountTextEqualTo("8 samples");
-  const context = await browser.newContext();
-  try {
-    const freshPage = await context.newPage();
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
-    const freshSidebar = new SidebarPom(freshPage);
-    await freshGrid.assert.isEntryCountTextEqualTo("8 samples");
-    await freshSidebar.clickFieldCheckbox("tags");
-    await expect(
-      freshGrid.getNthTile(0).getByTestId("tag-tags-captured"),
-    ).toBeVisible();
-    await expect(
-      freshGrid.getNthTile(1).getByTestId("tag-tags-captured"),
-    ).toHaveCount(0);
-    await expect(
-      freshGrid.getNthTile(2).getByTestId("tag-tags-captured"),
-    ).toBeVisible();
-  } finally {
-    await context.close();
-  }
+
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+  const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
+  await freshGrid.afterTagsRenderedNamed(["0.png", "1.png", "2.png"], () =>
+    new SidebarPom(freshPage).clickFieldCheckbox("tags"),
+  );
+  const tagged = (index: number) =>
+    freshGrid.getNthTile(index).getByTestId("tag-tags-captured").count();
+  expect(await tagged(0)).toBe(1);
+  expect(await tagged(1)).toBe(0);
+  expect(await tagged(2)).toBe(1);
 });
 
 test("a saved subset can gain and lose members and be deleted", async ({
@@ -194,48 +321,77 @@ test("a saved subset can gain and lose members and be deleted", async ({
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(2);
+  await selectTiles(grid, tray, [0, 2]);
   await tray.createSubset("Review set (v2)");
-  await tray.openCreatedSubset();
+  await grid.afterEntryCounts(() => tray.openCreatedSubset());
   await tray.assert.subsetScope("Review set (v2)", 2);
-  await grid.assert.isEntryCountTextEqualTo("2 samples");
+  await tray.assert.cardsHaveNames(["0.png", "2.png"]);
+  await tray.clear();
 
-  await grid.toggleSelectNthSample(0);
-  await tray.removeSelectedFromSubset();
+  await selectTiles(grid, tray, [0]);
+  await grid.afterEntryCounts(() => tray.removeSelectedFromSubset());
   await tray.assert.subsetScope("Review set (v2)", 1);
-  await grid.assert.isEntryCountTextEqualTo("1 sample");
-  await grid.toggleSelectNthSample(0);
+  await selectTiles(grid, tray, [0]);
   await tray.assert.cardsHaveNames(["2.png"]);
 
-  await tray.chooseAllSamples();
+  await grid.afterEntryCounts(() => tray.chooseAllSamples());
   await grid.assert.isEntryCountTextEqualTo("8 samples");
-  await tray.assert.targetsAllResults();
-  await expect(tray.cards).toHaveCount(0);
-  await grid.toggleSelectNthSample(4);
+  await tray.assert.cardsHaveNames(["2.png"]);
+  await tray.clear();
+  await selectTiles(grid, tray, [4]);
   await tray.addToSubset("Review set (v2)");
-  await tray.openCreatedSubset();
+  await grid.afterEntryCounts(() => tray.openCreatedSubset());
   await tray.assert.subsetScope("Review set (v2)", 2);
-  await grid.assert.isEntryCountTextEqualTo("2 samples");
-  await grid.toggleSelectNthSample(0);
-  await grid.toggleSelectNthSample(1);
+  await tray.clear();
+  await selectTiles(grid, tray, [0, 1]);
   await tray.assert.cardsHaveNames(["2.png", "4.png"]);
 
-  await tray.deleteSubset("Review set (v2)");
-  await tray.assert.targetsAllResults();
+  await grid.afterEntryCounts(() => tray.deleteSubset("Review set (v2)"));
   await grid.assert.isEntryCountTextEqualTo("8 samples");
+  await tray.assert.cardsHaveNames(["2.png", "4.png"]);
   await tray.openScope();
-  await expect(
-    page.getByRole("group", { name: "Subsets" }),
-  ).not.toHaveAttribute("aria-busy", "true");
-  await expect(page.getByText("No saved subsets yet")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Review set (v2)" }),
-  ).toHaveCount(0);
+  await tray.assert.listsNoSubsets();
 });
 
-test("buckets keep separate targets through tagging, clear, and undo", async ({
-  browser,
+test("sections keep separate targets through tagging, clear, and undo", async ({
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  openFreshPage,
+  page,
+  tray,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await selectTiles(grid, tray, [0]);
+  // the first section keeps the pick; the active second receives the next one
+  await tray.split();
+  await tray.activateSection("Section 2");
+  await tray.afterSettled(() => grid.toggleSelectNthSample(2), { cards: 2 });
+  await tray.assert.sectionHasCards("Section 1", ["0.png"]);
+  await tray.assert.sectionHasCards("Section 2", ["2.png"]);
+
+  // actions apply to the active section alone
+  await tray.tagSamples("second-section");
+  await tray.clearSection("Section 1", 1);
+  await tray.assert.sectionHasCards("Section 1", []);
+  await tray.assert.sectionHasCards("Section 2", ["2.png"]);
+  await tray.undo(2);
+  await tray.assert.sectionHasCards("Section 1", ["0.png"]);
+  await tray.assert.sectionHasCards("Section 2", ["2.png"]);
+
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+  const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
+  await freshGrid.afterTagsRenderedNamed(["0.png", "2.png"], () =>
+    new SidebarPom(freshPage).clickFieldCheckbox("tags"),
+  );
+  const tagged = (index: number) =>
+    freshGrid.getNthTile(index).getByTestId("tag-tags-second-section").count();
+  expect(await tagged(0)).toBe(0);
+  expect(await tagged(2)).toBe(1);
+});
+
+test("number keys sort the sample under the pointer, making sections", async ({
   datasetName,
   fiftyoneLoader,
   grid,
@@ -243,35 +399,53 @@ test("buckets keep separate targets through tagging, clear, and undo", async ({
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
-  await tray.addBucket();
-  await grid.addNthSampleToBucket(2, "Bucket 2");
-  await expect(tray.bucketCard("Bucket 1", "0.png")).toBeVisible();
-  await expect(tray.bucketCard("Bucket 2", "2.png")).toBeVisible();
+  // one strip: 1 picks
+  await tray.sortWithKey(grid.getNthTile(0), 1, 1);
+  // 3 makes the second and third sections and sorts into the third
+  await tray.sortWithKey(grid.getNthTile(1), 3, 2);
+  await tray.assert.sectionHasCards("Section 1", ["0.png"]);
+  await tray.assert.sectionHasCards("Section 2", []);
+  await tray.assert.sectionHasCards("Section 3", ["1.png"]);
+  // a sample can sit in several sections, and its number takes it back out
+  await tray.sortWithKey(grid.getNthTile(1), 2, 3);
+  await tray.sortWithKey(grid.getNthTile(1), 3, 2);
+  await tray.assert.sectionHasCards("Section 2", ["1.png"]);
+  await tray.assert.sectionHasCards("Section 3", []);
+  // a tray card sorts like its tile
+  await tray.sortWithKey(tray.section("Section 1").getByRole("article"), 3, 3);
+  await tray.assert.sectionHasCards("Section 3", ["0.png"]);
+});
 
-  await tray.targetBucket("Bucket 2");
-  await tray.tagSamples("second-bucket");
-  await tray.clearBucket("Bucket 1");
-  await expect(tray.bucket("Bucket 1").getByRole("article")).toHaveCount(0);
-  await expect(tray.bucketCard("Bucket 2", "2.png")).toBeVisible();
-  await tray.undo();
-  await expect(tray.bucketCard("Bucket 1", "0.png")).toBeVisible();
-  await expect(tray.bucketCard("Bucket 2", "2.png")).toBeVisible();
+test("cards drag between sections, Alt copying them", async ({
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  page,
+  tray,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await tray.sortWithKey(grid.getNthTile(0), 1, 1);
+  await tray.sortWithKey(grid.getNthTile(1), 2, 2);
 
-  const context = await browser.newContext();
-  try {
-    const freshPage = await context.newPage();
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshGrid = new GridPom(freshPage, new EventUtils(freshPage));
-    const sidebar = new SidebarPom(freshPage);
-    await sidebar.clickFieldCheckbox("tags");
-    await expect(
-      freshGrid.getNthTile(0).getByTestId("tag-tags-second-bucket"),
-    ).toHaveCount(0);
-    await expect(
-      freshGrid.getNthTile(2).getByTestId("tag-tags-second-bucket"),
-    ).toBeVisible();
-  } finally {
-    await context.close();
-  }
+  await tray.dragCard("0.png", "Section 1", "Section 2");
+  await tray.assert.sectionHasCards("Section 1", []);
+  await tray.assert.sectionHasCards("Section 2", ["1.png", "0.png"]);
+  await tray.dragCard("1.png", "Section 2", "Section 1", { copy: true });
+  await tray.assert.sectionHasCards("Section 1", ["1.png"]);
+  await tray.assert.sectionHasCards("Section 2", ["1.png", "0.png"]);
+});
+
+test("saving as a subset closes the open tag picker", async ({
+  datasetName,
+  fiftyoneLoader,
+  grid,
+  page,
+  tray,
+}) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await selectTiles(grid, tray, [0]);
+  await tray.openTagPicker();
+  // the picker ignores outside presses, but not another tray action
+  await tray.createSubset("Picked while tagging");
+  await tray.assert.showsNoTagPicker();
 });

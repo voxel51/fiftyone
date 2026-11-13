@@ -10,10 +10,8 @@
 interface Window {
   /** Guards the init script so it only runs once per page lifecycle. */
   __FO_PLAYWRIGHT_INIT__: boolean;
+  /** the page fixture's count of global loading screens per document */
 
-  /** Tracks the most recently observed CSS cursor value for cursor-change events. */
+  /** The CSS cursor under the pointer, updated on every pointer move. */
   __FO_PLAYWRIGHT_CURRENT_CURSOR: string;
-
-  /** Disables analytics and QA performance toast banners during test runs. */
-  IS_PLAYWRIGHT: boolean;
 }

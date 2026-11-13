@@ -32,6 +32,8 @@ export interface VideoPanelProps {
   readonly notices?: readonly PanelNotice[];
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
+  /** Reports whether a video engine or canvas error prevents drawing. */
+  readonly onUnavailableChange?: (unavailable: boolean) => void;
   readonly priority?: VideoIntentPriority;
   readonly sceneChildren?: ReactNode;
   readonly stream: string;
@@ -51,6 +53,7 @@ export function VideoPanel({
   notices = EMPTY_PANEL_NOTICES,
   onImageLoaded,
   onResetView,
+  onUnavailableChange,
   priority = "visible",
   sceneChildren,
   stream,
@@ -101,9 +104,11 @@ export function VideoPanel({
       canvasNoticeId="video-canvas"
       canvasSurface={canvasSurface}
       className={className}
+      failed={!textureHandle && snapshot.diagnostic?.severity === "error"}
       notices={panelNotices}
       noticeScope="video"
       onResetView={onResetView}
+      onUnavailableChange={onUnavailableChange}
       resetReady={Boolean(textureHandle)}
       resetTitle="Recenter the video view"
       status={

@@ -154,6 +154,8 @@ export interface UseDataStreamOptions {
   /** Stable presentation-first order for authoritative current-tick delivery. */
   settlementPriorityStreams?: readonly string[];
   source: ByteSourceDescriptor | null;
+  /** Episode-specific pixel identity when several episodes share one asset. */
+  presentationSourceKey?: string;
   allStreams: readonly string[];
   staleWarningStreams: readonly string[];
   /** Human-readable names keyed by the stream IDs used for data access. */
@@ -186,6 +188,7 @@ export function useRegisterDataStream({
   onPlayheadDataReady,
   settlementPriorityStreams = blockingStreams,
   source,
+  presentationSourceKey,
   allStreams,
   staleWarningStreams,
   streamNames,
@@ -203,8 +206,9 @@ export function useRegisterDataStream({
   );
   // Per-recording discriminator for cross-tile caches and source lifecycle.
   const sourceKey = useMemo(
-    () => (source ? episodeSourceAccessKey(source) : ""),
-    [source],
+    () =>
+      source ? (presentationSourceKey ?? episodeSourceAccessKey(source)) : "",
+    [source, presentationSourceKey],
   );
   const sourceReadProfile = source?.readProfile;
   const playbackPolicy = useMemo(() => {

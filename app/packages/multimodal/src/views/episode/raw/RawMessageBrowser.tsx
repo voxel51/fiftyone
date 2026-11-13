@@ -35,14 +35,14 @@ const RAIL_OVERSCAN = 8;
 export function RawMessageBrowser({
   anchor,
   markerOwnerId,
-  onAddNumericFieldToPlot,
+  onAddFieldToPlot,
   onExit,
   renderMeta,
   streamKey,
 }: {
   readonly anchor: RawRecordResult & { readonly cursor: RawRecordCursor };
   readonly markerOwnerId: string;
-  readonly onAddNumericFieldToPlot: (path: string) => void;
+  readonly onAddFieldToPlot: (path: string) => void;
   readonly onExit: () => void;
   readonly renderMeta: (
     result: RawRecordResult,
@@ -473,7 +473,7 @@ export function RawMessageBrowser({
           <div className={rawStyles.scroll}>
             {displayed.status === "ok" && displayed.root ? (
               <StructuredMessageTree
-                onAddNumericFieldToPlot={onAddNumericFieldToPlot}
+                onAddFieldToPlot={onAddFieldToPlot}
                 root={displayed.root}
               />
             ) : (

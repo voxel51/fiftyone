@@ -11,6 +11,40 @@ import {
 afterEach(cleanup);
 
 describe("DataStreamProvider", () => {
+  it("isolates logical sessions sharing a source and ignores an outgoing publisher", () => {
+    const callbacks: { current: ReturnType<typeof useSetDataStream> } = {
+      current: () => undefined,
+    };
+    const Publisher = () => {
+      callbacks.current = useSetDataStream();
+      return null;
+    };
+    const Consumer = () => (
+      <span data-testid="shared-source">
+        {useDataStream()?.sourceKey ?? "none"}
+      </span>
+    );
+    const view = (owner: object) => (
+      <DataStreamProvider expectedSourceKey="shared" expectedOwner={owner}>
+        <Publisher />
+        <Consumer />
+      </DataStreamProvider>
+    );
+    const a = {},
+      b = {};
+    const { rerender } = render(view(a));
+    const outgoing = callbacks.current;
+    act(() => outgoing?.(dataStream("shared")));
+    expect(screen.getByTestId("shared-source").textContent).toBe("shared");
+    rerender(view(b));
+    expect(screen.getByTestId("shared-source").textContent).toBe("none");
+    act(() => outgoing?.(dataStream("shared")));
+    expect(screen.getByTestId("shared-source").textContent).toBe("none");
+    act(() => callbacks.current(dataStream("shared")));
+    expect(screen.getByTestId("shared-source").textContent).toBe("shared");
+    act(() => outgoing?.(null));
+    expect(screen.getByTestId("shared-source").textContent).toBe("shared");
+  });
   it("hides an outgoing source synchronously without remounting consumers", () => {
     let publish: ReturnType<typeof useSetDataStream> | null = null;
     let consumerMounts = 0;

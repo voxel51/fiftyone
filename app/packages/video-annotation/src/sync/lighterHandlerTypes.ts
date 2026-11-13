@@ -4,6 +4,7 @@
 
 import type { useLighterEventHandler } from "@fiftyone/lighter";
 import type { useDetectionMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useDetectionMode";
+import type { useKeypointMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useKeypointMode";
 import type { usePolylineMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/usePolylineMode";
 import type { useSegmentationMode } from "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useSegmentationMode";
 
@@ -14,3 +15,4 @@ export type RegisterLighterHandler = ReturnType<typeof useLighterEventHandler>;
 export type DetectionMode = ReturnType<typeof useDetectionMode>;
 export type SegmentationMode = ReturnType<typeof useSegmentationMode>;
 export type PolylineMode = ReturnType<typeof usePolylineMode>;
+export type KeypointMode = ReturnType<typeof useKeypointMode>;

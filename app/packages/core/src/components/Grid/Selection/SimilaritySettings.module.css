@@ -1,0 +1,53 @@
+.divider {
+  margin: 6px 4px 0;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(300px, calc(100vw - 48px));
+  box-sizing: border-box;
+  padding: 12px 10px 8px;
+  font-family: var(--tray-font);
+}
+
+.settingRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.picker,
+.pickerTrigger {
+  min-width: 0;
+  width: 100%;
+}
+
+.pickerTrigger > div {
+  width: 100%;
+  min-width: 0;
+  justify-content: space-between;
+}
+
+.truncate {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.openPanel {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: var(--tray-text-secondary);
+}

@@ -9371,14 +9371,6 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    @property
-    def _samples_source_frames(self):
-        # Saved frame subsets render video positions dynamically. Materializing
-        # their read cache never samples files or writes source frame records.
-        return not (self._config or {}).get("_subset_id") and bool(
-            (self._config or {}).get("sample_frames")
-        )
-
     def load_view(self, sample_collection, saved_view=False, reload=False):
         subset_id = (self._config or {}).get("_subset_id")
         if subset_id is not None:

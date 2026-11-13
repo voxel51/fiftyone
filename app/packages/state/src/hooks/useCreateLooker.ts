@@ -18,6 +18,7 @@ import {
   LIST_FIELD,
   isFo3dSamplePath,
   isNullish,
+  Schema,
 } from "@fiftyone/utilities";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -41,6 +42,7 @@ export default <T extends AbstractLooker<BaseState>>(
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight?: (sample: Sample) => boolean,
   enableTimeline?: boolean,
+  sampleSchema?: Schema,
 ) => {
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
@@ -55,11 +57,14 @@ export default <T extends AbstractLooker<BaseState>>(
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
-  const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }),
+  // A caller rendering samples from outside the dataset passes their
+  // schema; the hook still runs every render
+  const datasetSchema = useRecoilValue(
+    schemaAtoms.lookerFieldSchema({ space: State.SPACE.SAMPLE }),
   );
+  const fieldSchema = sampleSchema ?? datasetSchema;
   const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME }),
+    schemaAtoms.lookerFieldSchema({ space: State.SPACE.FRAME }),
   );
 
   const shouldRenderImaVidLooker = useRecoilValue(
@@ -94,6 +99,12 @@ export default <T extends AbstractLooker<BaseState>>(
         extra: Partial<
           Omit<Parameters<T["updateOptions"]>[0], "selected">
         > = {},
+        // Captured previews render the supplied sample independently of the
+        // current view, with local errors and an optional initial video time.
+        preview?: {
+          onError: (error: unknown) => void;
+          posterSeconds?: number;
+        },
       ): T => {
         let create:
           | typeof FrameLooker
@@ -113,6 +124,7 @@ export default <T extends AbstractLooker<BaseState>>(
           mediaFieldPath,
           mimeType,
           nativeLookerType,
+          projectionField,
         } = resolveMediaFieldLooker({ mediaField, sample, urls });
 
         if (nativeLookerType === null) {
@@ -120,8 +132,8 @@ export default <T extends AbstractLooker<BaseState>>(
         } else if (nativeLookerType === "3d") {
           create = ThreeDLooker;
         } else if (nativeLookerType === "video") {
-          create = VideoLooker;
-        } else if (mimeType !== null && shouldRenderImaVidLooker) {
+          create = !preview && isFrame ? FrameLooker : VideoLooker;
+        } else if (!preview && mimeType !== null && shouldRenderImaVidLooker) {
           create = ImaVidLooker;
         }
 
@@ -139,15 +151,21 @@ export default <T extends AbstractLooker<BaseState>>(
             ...fieldSchema,
           },
           sources: urls,
-          frameNumber: create === FrameLooker ? frameNumber : undefined,
+          frameNumber:
+            create === FrameLooker
+              ? (frameNumber ?? sample.frame_number)
+              : undefined,
           frameRate,
-          isDynamicGroup,
+          ...(create === VideoLooker && {
+            posterSeconds: preview?.posterSeconds,
+          }),
+          isDynamicGroup: !preview && isDynamicGroup,
           sampleId: sample._id,
-          support: isClip ? sample.support : undefined,
+          support: !preview && isClip ? sample.support : undefined,
           dataset,
           mediaField,
           thumbnail,
-          view,
+          view: preview ? [] : view,
           shouldHandleKeyEvents: isModal,
           isModal,
         };
@@ -165,16 +183,8 @@ export default <T extends AbstractLooker<BaseState>>(
             isFo3dSamplePath(sampleFilepath) ||
             isFo3dSamplePath(sampleMediaFilePath);
 
-          const orthographicProjectionField = Object.entries(sample)
-            .find(
-              (el) =>
-                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata",
-            )
-            ?.at(0) as string | undefined;
-          if (orthographicProjectionField) {
-            sampleMediaFilePath = urls[
-              `${orthographicProjectionField}.filepath`
-            ] as string;
+          if (projectionField) {
+            sampleMediaFilePath = urls[`${projectionField}.filepath`] as string;
             config.isOpmAvailable = true;
           } else {
             config.isOpmAvailable = false;
@@ -249,7 +259,7 @@ export default <T extends AbstractLooker<BaseState>>(
           } as ImaVidConfig;
         }
 
-        const isSelected = selected.has(sample._id);
+        const isSelected = !preview && selected.has(sample._id);
         const {
           selectionType: sampleSelectionType,
           selectionIcon: sampleSelectionIcon,
@@ -271,16 +281,19 @@ export default <T extends AbstractLooker<BaseState>>(
         looker.addEventListener(
           "error",
           (event) => {
-            handleError(event.error);
+            if (preview) preview.onError(event.error);
+            else handleError(event.error);
           },
           { signal: abortControllerRef.current.signal },
         );
 
-        selectiveRenderingEventBus.on(
-          FO_LABEL_TOGGLED_EVENT,
-          (e) => getOnShiftClickLabelCallback(e),
-          abortControllerRef.current.signal,
-        );
+        if (!preview) {
+          selectiveRenderingEventBus.on(
+            FO_LABEL_TOGGLED_EVENT,
+            (e) => getOnShiftClickLabelCallback(e),
+            abortControllerRef.current.signal,
+          );
+        }
 
         return looker;
       },

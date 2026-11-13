@@ -1,4 +1,5 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import type { Primitive, Schema } from "@fiftyone/utilities";
 import {
@@ -8,7 +9,7 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-import React, { Suspense, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import {
   atomFamily,
   selectorFamily,
@@ -23,6 +24,19 @@ import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 
 const { LOADING, useActiveModalSampleValue } = fos;
+
+/** e2e specs wait on a modal sidebar entry showing its loaded value */
+type SidebarEntryE2EEvents = {
+  "e2e:modal:sidebar-entry": { path: string; text: string };
+};
+
+const useEntryShownSignal = (path: string, text: string) =>
+  useEffect(() => {
+    getEventBus<SidebarEntryE2EEvents>().dispatch("e2e:modal:sidebar-entry", {
+      path,
+      text,
+    });
+  }, [path, text]);
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -257,7 +271,12 @@ const LengthLoadable = ({ path }: { path: string }) => {
   if (data === LOADING) {
     return <LoadingDots text="" />;
   }
-  return <>{data?.length || 0}</>;
+  return <Length path={path} length={data?.length || 0} />;
+};
+
+const Length = ({ path, length }: { path: string; length: number }) => {
+  useEntryShownSignal(path, String(length));
+  return <>{length}</>;
 };
 
 const ListLoadable = ({ path }: { path: string }) => {
@@ -332,6 +351,28 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   const timeZone = useRecoilValue(fos.timeZone);
   const theme = useTheme();
   const textExpanded = useRecoilValue(expandedPathValueEntry(path));
+
+  const shown = Object.entries(values).map(([slice, value]) => {
+    const formatted =
+      value === null || value === undefined
+        ? "None"
+        : format({ ftype, value, timeZone });
+    return [
+      `${slice}-${path}`,
+      typeof formatted === "string" || typeof formatted === "number"
+        ? String(formatted)
+        : "",
+    ];
+  });
+  const shownKey = JSON.stringify(shown);
+  useEffect(() => {
+    for (const [entry, text] of JSON.parse(shownKey)) {
+      getEventBus<SidebarEntryE2EEvents>().dispatch("e2e:modal:sidebar-entry", {
+        path: entry,
+        text,
+      });
+    }
+  }, [shownKey]);
 
   return (
     <>
@@ -420,6 +461,11 @@ const LoadableValue = ({
     () => format({ fields, ftype, timeZone, value }),
     [fields, ftype, timeZone, value],
   );
+  const shown =
+    typeof formatted === "string" || typeof formatted === "number"
+      ? String(formatted)
+      : "";
+  useEntryShownSignal(path, none ? "None" : shown);
 
   return (
     <div

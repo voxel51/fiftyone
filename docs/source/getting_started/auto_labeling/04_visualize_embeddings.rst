@@ -65,7 +65,7 @@ Below we see an example of a false positive, insofar as the model incorrectly la
    :align: center
    :width: 100%
 
-After tagging at least a few incorrect samples, a good next step is to mark them for either human correction or deletion. Select your desired incorrect samples from the sample grid, then click **Tag samples or labels** in the toolbar. Give the tag a name like `needs-review`, then click **Add needs-review tag** and then finally **Apply**. The tag then becomes a saved view you can share with your team for further QA.
+After tagging at least a few incorrect samples, a good next step is to mark them for either human correction or deletion. Select your desired incorrect samples from the sample grid, then click **Tag samples or labels** in the toolbar. Give the tag a name like `needs-review`, then click **Add needs-review tag** and then finally **Apply**. The tag then becomes a saved query you can share with your team for further QA.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook4/tag_samples.webp
    :alt: VAL review interface

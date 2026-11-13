@@ -1,8 +1,11 @@
+import { getEventBus } from "@fiftyone/events";
 import { BufferRange, Buffers } from "@fiftyone/utilities";
+import type { TimelineEvents } from "./events";
 import { getTimelineNameFromSampleAndGroupId } from "./timeline-name";
 
 /**
- * Returns the event name for setting the frame number for a specific timeline.
+ * Returns the window event name a plugin may dispatch to set the frame number
+ * of a specific timeline; the timeline listens for it beside its bus event.
  *
  * @param {string} timelineName - The name of the timeline.
  */
@@ -10,9 +13,7 @@ export const getTimelineSetFrameNumberEventName = (timelineName: string) =>
   `set-frame-number-${timelineName}`;
 
 /**
- * Dispatches a custom event to set the frame number for a specific timeline.
- *
- * This function creates and dispatches a `CustomEvent` on the `#modal` DOM element.
+ * Sets the frame number of a specific timeline, through the event bus.
  *
  * If the `timelineName` is not provided, the function attempts to derive it from the URL's query
  * parameters `id` (sampleId) and `groupId` by using the `getTimelineNameFromSampleAndGroupId`
@@ -48,11 +49,10 @@ export const dispatchTimelineSetFrameNumberEvent = ({
     timelineName = mayBeTimelineName;
   }
 
-  dispatchEvent(
-    new CustomEvent(getTimelineSetFrameNumberEventName(timelineName), {
-      detail: { frameNumber: Math.max(newFrameNumber, 1) },
-    }),
-  );
+  getEventBus<TimelineEvents>().dispatch("timeline:set-frame-number", {
+    timelineName,
+    frameNumber: Math.max(newFrameNumber, 1),
+  });
 };
 
 /**

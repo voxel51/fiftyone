@@ -2,12 +2,13 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 import { createImage } from "./image";
-import { createMask } from "./mask";
+import { createMask, createMaskImage } from "./mask";
 import { createFo3d } from "./fo3d";
 import { createMcapFixture } from "./mcap";
 import { createPcd } from "./pcd";
 import { createPly } from "./ply";
 import { createScene } from "./scene";
+import { createStl } from "./stl";
 import { createVideo } from "./video";
 
 /**
@@ -24,12 +25,19 @@ import { createVideo } from "./video";
  * MediaFactory.createScene({ outputPath: "/tmp/scene" });
  * MediaFactory.createPcd({ outputPath: "/tmp/scene.pcd", numPoints: 10, shape: "diagonal" });
  */
-export type { Fo3dOptions, SceneNode } from "./fo3d";
+export type {
+  Fo3dOptions,
+  SceneCamera,
+  SceneMaterial,
+  SceneNode,
+  SceneNodeSpec,
+} from "./fo3d";
 export type { ImageOptions, ImageSpec } from "./image";
 export type { McapOptions, McapSpec } from "./mcap";
 export type { PcdOptions, PcdSpec } from "./pcd";
 export type { PlyOptions, PlySpec } from "./ply";
 export type { SceneOptions, SceneSpec } from "./scene";
+export type { StlOptions, StlSpec } from "./stl";
 export type { MediaOptions } from "./types";
 export type { VideoOptions, VideoSpec } from "./video";
 
@@ -42,11 +50,15 @@ export const MediaFactory = {
   createImage,
   /** Creates an all-ones numpy mask in FiftyOne's stored form, for a Detection `mask`. See {@link createMask}. */
   createMask,
+  /** Writes an 8-bit grayscale PNG of one value, for a label's `mask_path`. See {@link createMaskImage}. */
+  createMaskImage,
   /** Creates a PCD point cloud file with points arranged in a diagonal or cubic grid. See {@link createPcd}. */
   createPcd,
   createPly,
   /** Writes a minimal fo3d scene JSON file wrapping a single PLY mesh. See {@link createFo3d}. */
   createFo3d,
-  /** Writes a PLY cube plus the fo3d scene wrapping it. See {@link createScene}. */
+  /** Writes PLY/PCD/STL assets plus the fo3d scene placing them. See {@link createScene}. */
   createScene,
+  /** Writes an ASCII STL cube. See {@link createStl}. */
+  createStl,
 };

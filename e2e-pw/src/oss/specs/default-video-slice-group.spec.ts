@@ -11,9 +11,6 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix(
   "video-default-group-slice-regression",
 );
-const testVideoPath = `/tmp/test-video-${datasetName}.webm`;
-const testImgPath = `/tmp/test-img-${datasetName}.jpg`;
-const testImgPath2 = `/tmp/test-img-2-${datasetName}.jpg`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -28,50 +25,37 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await mediaFactory.createVideo({
-    outputPath: testVideoPath,
-    duration: 2,
-    width: 50,
-    height: 50,
-    frameRate: 5,
-    color: "#000000",
+  // the first group has a video and an image, the second only an image
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 2,
+    slices: [
+      {
+        name: "video",
+        mediaType: "video",
+        groupIndices: [0],
+        videoOptions: {
+          duration: 2,
+          width: 50,
+          height: 50,
+          frameRate: 5,
+          color: "#000000",
+        },
+      },
+      {
+        name: "image",
+        mediaType: "image",
+        imageOptions: { width: 50, height: 50 },
+      },
+    ],
+    schema: { "frames.d1": "Detection" },
+    withFrameData: (_, { label }) => ({
+      d1: label.detection({ bounding_box: [0.1, 0.1, 0.2, 0.2] }),
+    }),
   });
-
-  await mediaFactory.createImage({
-    outputPath: testImgPath,
-    width: 50,
-    height: 50,
-  });
-
-  await mediaFactory.createImage({
-    outputPath: testImgPath2,
-    width: 50,
-    height: 50,
-  });
-
-  await fiftyoneLoader.executePythonCode(`
-      import fiftyone as fo
-
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-
-      dataset.add_group_field("group", default="video")
-
-      group1 = fo.Group()
-      image_sample = fo.Sample(filepath="${testImgPath}", group=group1.element("image"))
-      video_sample = fo.Sample(filepath="${testVideoPath}", group=group1.element("video"))
-
-      group2 = fo.Group()
-      image_sample2 = fo.Sample(filepath="${testImgPath2}", group=group2.element("image"))
-
-      dataset.ensure_frames();
-      for _, frame in video_sample.frames.items():
-        d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2])
-        frame["d1"] = d1
-      dataset.add_samples([video_sample, image_sample, image_sample2])
-      `);
 });
 
 test.describe.serial("default video slice group", () => {
@@ -84,24 +68,20 @@ test.describe.serial("default video slice group", () => {
     await grid.sliceSelector.assert.verifyActiveSlice("video");
     await grid.assert.isTileCountEqualTo(1);
 
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() =>
+      modal.afterSampleLoaded(() => grid.openFirstSample()),
+    );
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
-    const promise = await grid.armGridRefresh();
     await grid.selectSlice("image");
-    await promise.received;
 
     await grid.assert.isTileCountEqualTo(2);
-    await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() =>
+      modal.afterSampleLoaded(() => grid.openFirstSample()),
+    );
     await modal.assert.verifyCarouselLength(2);
-    await modal.navigateNextSample();
-    await modal.waitForSampleLoadDomAttribute();
-    await modal.waitForCarouselToLoad();
+    await modal.afterCarouselRendered(() => modal.navigateNextSample());
     await modal.assert.verifyCarouselLength(1);
   });
 });

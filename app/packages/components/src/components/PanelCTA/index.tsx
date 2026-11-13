@@ -10,12 +10,12 @@ import {
   TypographyProps,
   useTheme,
 } from "@mui/material";
+import { Button as VoodoButton } from "@voxel51/voodo";
 import React, { FunctionComponent } from "react";
 import MuiButton from "../MuiButton";
 import MuiIconFont from "../MuiIconFont";
 
-const { IS_APP_MODE_FIFTYONE, BOOK_A_DEMO_LINK, TRY_IN_BROWSER_LINK } =
-  constants;
+const { IS_APP_MODE_FIFTYONE, LOGIN_LINK } = constants;
 
 export default function PanelCTA(props: PanelCTAProps) {
   const {
@@ -33,7 +33,6 @@ export default function PanelCTA(props: PanelCTAProps) {
     mode,
     name,
     onBack,
-    tryLink,
     demoDocCaption,
   } = props;
   const theme = useTheme();
@@ -107,24 +106,15 @@ export default function PanelCTA(props: PanelCTAProps) {
                 <Box pt={1}>{Actions && <Actions {...props} />}</Box>
               )}
               {IS_APP_MODE_FIFTYONE && (
-                <Stack direction="row" spacing={2} pt={2}>
-                  <MuiButton
-                    variant="contained"
-                    color="primary"
-                    href={BOOK_A_DEMO_LINK}
+                <Box pt={2}>
+                  <VoodoButton
+                    variant="primary"
+                    href={LOGIN_LINK}
                     target="_blank"
                   >
-                    Book a demo
-                  </MuiButton>
-                  <MuiButton
-                    variant="contained"
-                    color="primary"
-                    href={tryLink || TRY_IN_BROWSER_LINK}
-                    target="_blank"
-                  >
-                    Try in browser
-                  </MuiButton>
-                </Stack>
+                    Login
+                  </VoodoButton>
+                </Box>
               )}
             </Stack>
             {docLink && (
@@ -189,5 +179,4 @@ export type PanelCTAProps = {
   demoDescription?: string;
   demoCaption?: string;
   demoDocCaption?: string;
-  tryLink?: string;
 };

@@ -56,6 +56,45 @@ const muiPatterns = [
   },
 ];
 
+const E2E_STANDARDS = "See e2e-pw/CODING_STANDARDS.md (App events).";
+const DOM_EVENT_MESSAGE = `App code doesn't build or dispatch DOM events; send on the @fiftyone/events bus (an e2e: event for a test signal), or a LocalEventTarget for an object whose listeners attach to it alone. ${E2E_STANDARDS}`;
+const DOM_EVENT_NAME = "/^([A-Z]\\w*)?Event$/";
+const domEventSyntax = [
+  {
+    selector: `NewExpression[callee.name=${DOM_EVENT_NAME}]`,
+    message: DOM_EVENT_MESSAGE,
+  },
+  {
+    selector: `:matches(ClassDeclaration, ClassExpression)[superClass.name=${DOM_EVENT_NAME}]`,
+    message: DOM_EVENT_MESSAGE,
+  },
+  {
+    // target.dispatchEvent(event); a looker's dispatchEvent("name", detail) is
+    // its own bus
+    selector:
+      "CallExpression:matches([callee.property.name='dispatchEvent'], [callee.name='dispatchEvent'])[arguments.length=1]:not([arguments.0.type=/^(Literal|TemplateLiteral)$/])",
+    message: DOM_EVENT_MESSAGE,
+  },
+];
+const automationGuardSyntax = [
+  {
+    selector: "Identifier[name=/^(isE2E|IS_PLAYWRIGHT)$/]",
+    message: `App code doesn't branch on browser automation; dispatch e2e: events unconditionally and the bus drops them outside it. ${E2E_STANDARDS}`,
+  },
+  {
+    selector:
+      "MemberExpression[object.name='navigator'][property.name='webdriver']",
+    message: `App code doesn't branch on browser automation; dispatch e2e: events unconditionally and the bus drops them outside it. ${E2E_STANDARDS}`,
+  },
+];
+
+// The bus's own automation check: it drops e2e: events outside automation and
+// exposes its tap under it
+const automationCheckFiles = [
+  "packages/events/src/dispatch/dispatcher.ts",
+  "packages/events/src/dispatch/registry.ts",
+];
+
 module.exports = {
   env: {
     browser: true,
@@ -122,6 +161,11 @@ module.exports = {
       "warn",
       { paths: recoilPaths, patterns: muiPatterns },
     ],
+    "no-restricted-syntax": [
+      "warn",
+      ...domEventSyntax,
+      ...automationGuardSyntax,
+    ],
   },
   settings: {
     react: {
@@ -129,6 +173,32 @@ module.exports = {
     },
   },
   overrides: [
+    {
+      // the bus, and its deprecated mirror of a closed list of bus events to
+      // the DOM events main sent, pinned by e2e-pw/scripts/check-e2e-events.py
+      files: ["packages/events/src/dispatch/**"],
+      rules: {
+        "no-restricted-syntax": ["warn", ...automationGuardSyntax],
+      },
+    },
+    {
+      files: automationCheckFiles,
+      rules: {
+        "no-restricted-syntax": "off",
+      },
+    },
+    {
+      // tests stand in for the App's own events and the automation flag
+      files: [
+        "**/*.{test,spec}.{js,jsx,ts,tsx}",
+        "**/__tests__/**",
+        "**/__mocks__/**",
+        "packages/*/tests/**",
+      ],
+      rules: {
+        "no-restricted-syntax": "off",
+      },
+    },
     {
       // react-three-fiber renders three.js object properties as JSX props
       files: ["packages/looker-3d/**"],

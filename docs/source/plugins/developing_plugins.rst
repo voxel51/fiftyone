@@ -2201,7 +2201,7 @@ executed in the background while you continue to use the App.
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments
+    :ref:`Voxel51 <enterprise-delegated-operations>` deployments
     come out of the box with a connected compute cluster for executing
     delegated operations at scale.
 
@@ -2348,7 +2348,7 @@ on their execution context from within
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current
+    :ref:`Voxel51 <fiftyone-enterprise>` users can view the current
     progress of their delegated operations from the
     :ref:`Runs page <enterprise-managing-delegated-operations>`.
 
@@ -2408,14 +2408,14 @@ Distributed execution __SUB_NEW__
 
 .. versionadded:: 1.8.0
 
-In FiftyOne Enterprise, delegated operations can be
+In Voxel51, delegated operations can be
 :ref:`distributed across multiple workers <enterprise-distributed-execution>`
 to accelerate computation on large datasets.
 
 Distributed execution is not available in FiftyOne Open Source, but plugin
 authors can still utilize the distributed execution paradigm described here so
 that their operators can be executed in a distributed fashion when used in
-FiftyOne Enterprise. When an operator that supports distributed execution is
+Voxel51. When an operator that supports distributed execution is
 used in FiftyOne Open Source, its
 :meth:`execute() <fiftyone.operators.Operator.execute>` method will simply be
 called exactly once with the full target view on which the operator was invoked.
@@ -2503,7 +2503,7 @@ Operator pipelines __SUB_NEW__
 .. versionadded:: 1.10.0
 
 In addition to developing individual operators,
-:ref:`FiftyOne Enterprise <fiftyone-enterprise>` allows you to define a linear
+:ref:`Voxel51 <fiftyone-enterprise>` allows you to define a linear
 composition of regular operators into a single **operator pipeline**. An
 operator pipeline acts as a single, higher-level operation composed of
 multiple discrete **stages**, where each stage is a call to another operator.
@@ -2511,7 +2511,7 @@ multiple discrete **stages**, where each stage is a call to another operator.
 .. note::
 
     Currently, **Operator Pipelines** are only supported for **delegated**
-    **execution** within FiftyOne Enterprise. Immediate execution or use
+    **execution** within Voxel51. Immediate execution or use
     in FiftyOne Open Source is not supported for this feature.
 
 .. _pipeline-operator-interface:
@@ -4799,6 +4799,42 @@ process, a JS panel, and a JS operator.
 The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_
 package offers a utility for configuring `vite <https://vite.dev>`_ to build your
 JS plugin bundle.
+
+Theme colors
+------------
+
+The App's theme is built on the `Voodo <https://github.com/voxel51/design-system>`_
+design system. The colors returned by `useTheme()` from `@fiftyone/components`
+and the `--fo-palette-*` CSS variables are plain color values taken from
+Voodo's tokens for the active light or dark mode, so they can be used anywhere,
+including libraries that parse colors such as plotly, canvas and three.js.
+
+Voodo's own `cssVar.color.*` tokens from `@voxel51/voodo` are CSS `var()`
+references. They work in any CSS context but cannot be parsed in JavaScript.
+If you pass one to a library that parses colors, resolve it first with
+`resolveCssColor()` or `resolveCssColorsDeep()` from `@fiftyone/utilities`,
+or with the `useResolvedCssColor()` hook from `@fiftyone/components`, which
+re-resolves when the theme mode changes:
+
+.. code-block:: jsx
+    :linenos:
+
+    import { useResolvedCssColor, useTheme } from "@fiftyone/components";
+    import { cssVar } from "@voxel51/voodo";
+
+    function MyPlot({ data }) {
+      // plain colors; safe to hand straight to plotly
+      const theme = useTheme();
+      const layout = {
+        paper_bgcolor: theme.background.level1,
+        font: { color: theme.text.secondary },
+      };
+
+      // a Voodo token, resolved to a concrete color for a parser
+      const accent = useResolvedCssColor(cssVar.color.brand.primary);
+
+      // ...
+    }
 
 Component types
 ---------------

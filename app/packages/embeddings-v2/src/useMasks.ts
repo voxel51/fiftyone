@@ -23,6 +23,8 @@ export function useMasks(
    * resolves its own view/filter masks from its storage, and its points are
    * not sample-keyed, so the server cannot answer for it at all. */
   serverMasks = true,
+  /** Re-resolve when the open subset's membership changes. */
+  scopeRevision = 0,
 ): {
   visibleMask: Uint8Array | null;
   visibleCount: number | null;
@@ -56,7 +58,7 @@ export function useMasks(
     return () => {
       stale = true;
     };
-  }, [datasetName, brainKey, view, filters, serverMasks]);
+  }, [datasetName, brainKey, view, filters, serverMasks, scopeRevision]);
 
   // The endpoint early-outs each mask to null when its inputs are empty
   // (no view stages / no filters), so combining only pays when needed

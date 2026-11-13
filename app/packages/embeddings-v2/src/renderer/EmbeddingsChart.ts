@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -49,6 +50,20 @@ import type {
   Polygon,
   RenderSettings,
 } from "./types";
+
+/**
+ * e2e specs wait on a drawn frame before reading or capturing the plot.
+ * `emphasized` is null when nothing is selected (a selection of zero points
+ * dims every point); `colored` is false under the default label palette.
+ */
+type EmbeddingsChartE2EEvents = {
+  "e2e:embeddings:drawn": {
+    points: number;
+    visible: number;
+    emphasized: number | null;
+    colored: boolean;
+  };
+};
 
 export interface EmbeddingsChartCallbacks {
   /**
@@ -151,6 +166,10 @@ export class EmbeddingsChart {
   private renderQueued = false;
   private rafHandle: number | null = null;
   private disposed = false;
+  /** Distinct points the current selection emphasizes */
+  private emphasizedPoints = 0;
+  /** Host colors are set (false: the default label palette) */
+  private colored = false;
 
   constructor(
     container: HTMLElement,
@@ -167,6 +186,7 @@ export class EmbeddingsChart {
 
     // Sized by CSS; the drawing buffer follows in resize()
     this.canvas = document.createElement("canvas");
+    this.canvas.setAttribute("data-cy", "embeddings-chart-canvas");
     Object.assign(this.canvas.style, {
       position: "absolute",
       inset: "0",
@@ -289,6 +309,7 @@ export class EmbeddingsChart {
       colorsFromLabels(cols, PALETTE),
       3,
     );
+    this.colored = false;
     geometry.setAttribute("color", this.colorAttribute);
     this.emphasisMask = new Float32Array(cols.n);
     this.emphasisAttribute = new BufferAttribute(this.emphasisMask, 1).setUsage(
@@ -331,6 +352,7 @@ export class EmbeddingsChart {
     }
     (colorAttribute.array as Float32Array).set(next);
     colorAttribute.needsUpdate = true;
+    this.colored = colors !== null;
     this.requestRender();
   }
 
@@ -408,12 +430,17 @@ export class EmbeddingsChart {
     const { cols, emphasisAttribute } = this;
     if (!cols || !emphasisAttribute) return;
     this.emphasisMask.fill(0);
+    let emphasized = 0;
     if (indices) {
       for (let i = 0; i < indices.length; i++) {
         const index = indices[i];
-        if (index >= 0 && index < cols.n) this.emphasisMask[index] = 1;
+        if (index >= 0 && index < cols.n && this.emphasisMask[index] === 0) {
+          this.emphasisMask[index] = 1;
+          emphasized++;
+        }
       }
     }
+    this.emphasizedPoints = emphasized;
     this.hasSelection = indices !== null;
     this.material.uniforms.uHasSelection.value = this.hasSelection ? 1 : 0;
     emphasisAttribute.needsUpdate = true;
@@ -632,5 +659,33 @@ export class EmbeddingsChart {
       this.renderer.render(this.overlayScene, camera);
       this.renderer.autoClear = true;
     }
+    this.announceDrawn();
+  }
+
+  /**
+   * e2e readiness: every DRAWN frame says so. Handing the chart data is not
+   * enough — the chunk loads lazily and the camera frames on setData, so
+   * only a drawn frame proves points are visible and hit-testable where the
+   * camera put them. The payload names the frame, so a wait can pick the
+   * one it needs; it is built only under automation (it scans the mask).
+   */
+  private announceDrawn(): void {
+    getEventBus<EmbeddingsChartE2EEvents>().dispatch(
+      "e2e:embeddings:drawn",
+      () => {
+        const n = this.cols?.n ?? 0;
+        let visible = n;
+        if (this.visibleMask) {
+          visible = 0;
+          for (let i = 0; i < n; i++) visible += this.visibleMask[i];
+        }
+        return {
+          points: n,
+          visible,
+          emphasized: this.hasSelection ? this.emphasizedPoints : null,
+          colored: this.colored,
+        };
+      },
+    );
   }
 }

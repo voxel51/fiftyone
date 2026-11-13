@@ -183,6 +183,10 @@ export default class PolylineOverlay<
     const [w, h] = state.dimensions;
     const xy = state.pixelCoordinates;
     for (const shape of this.label.points || []) {
+      if (!shape.length) {
+        continue;
+      }
+
       // No segments to measure against for a lone vertex — measure to the point
       // itself, otherwise a single-vertex polyline can never be hovered.
       if (shape.length === 1) {
@@ -327,6 +331,10 @@ export default class PolylineOverlay<
   }
 
   private isPointInPath(state: Readonly<State>, path: Coordinates[]): boolean {
+    if (!path.length) {
+      return false;
+    }
+
     const [w, h] = state.dimensions;
     const [x, y] = state.pixelCoordinates;
 

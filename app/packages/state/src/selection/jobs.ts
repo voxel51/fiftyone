@@ -16,6 +16,24 @@ export function selectionJobActive(job: SelectionJob) {
   return job.state === "requested" || job.state === "running";
 }
 
+/**
+ * Refreshes what a finished add changed: the subset's scope and the App's
+ * counts. Every path that learns a job finished must run it, including a
+ * start or retry the server answers with a job that is already done.
+ */
+function useSettleSubsetJob(datasetId: string) {
+  const invalidate = useInvalidateSelectionScope(datasetId);
+  const refresh = useRefresh();
+  return useCallback(
+    (job: SelectionJob) => {
+      if (selectionJobActive(job)) return;
+      invalidate();
+      if (job.state === "completed") refresh();
+    },
+    [invalidate, refresh],
+  );
+}
+
 function connectionFailure(
   record: SubsetJobRecord,
   cause: unknown,
@@ -43,6 +61,7 @@ function connectionFailure(
 /** Dataset-owned operation handles survive panel closure and page reloads. */
 export function useSubsetJobs(datasetId: string) {
   const [jobs, setJobs] = useAtom(subsetJobsAtom(datasetId));
+  const settle = useSettleSubsetJob(datasetId);
   const replace = useCallback(
     (id: string, record: SubsetJobRecord) => {
       setJobs((current) =>
@@ -91,6 +110,7 @@ export function useSubsetJobs(datasetId: string) {
           id,
         );
         replace(id, { ...record, job });
+        settle(job);
         return id;
       } catch (cause) {
         // The response may have been lost after the server accepted the request.
@@ -99,7 +119,7 @@ export function useSubsetJobs(datasetId: string) {
         return id;
       }
     },
-    [datasetId, replace, setJobs],
+    [datasetId, replace, setJobs, settle],
   );
   const act = useCallback(
     async (id: string, action: "cancel" | "retry") => {
@@ -111,9 +131,10 @@ export function useSubsetJobs(datasetId: string) {
         { action },
       );
       replace(id, { ...record, job, connectionError: undefined });
+      settle(job);
       return job.id;
     },
-    [datasetId, jobs, replace],
+    [datasetId, jobs, replace, settle],
   );
   const dismiss = useCallback(
     (id: string) => {
@@ -131,8 +152,7 @@ export function useSubsetJobs(datasetId: string) {
 /** Mounted once by the tray, independent of any open action panel. */
 export function useTrackSubsetJobs(datasetId: string) {
   const [jobs, setJobs] = useAtom(subsetJobsAtom(datasetId));
-  const invalidate = useInvalidateSelectionScope(datasetId);
-  const refresh = useRefresh();
+  const settle = useSettleSubsetJob(datasetId);
   const ids = jobs
     .filter((record) => selectionJobActive(record.job))
     .map((record) => record.job.id)
@@ -159,10 +179,7 @@ export function useTrackSubsetJobs(datasetId: string) {
                   : item,
               ),
             );
-            if (!selectionJobActive(job)) {
-              invalidate();
-              if (job.state === "completed") refresh();
-            }
+            settle(job);
           } catch (cause) {
             if (active)
               setJobs((current) =>
@@ -180,5 +197,5 @@ export function useTrackSubsetJobs(datasetId: string) {
       active = false;
       clearTimeout(timer);
     };
-  }, [datasetId, ids, invalidate, refresh, setJobs]);
+  }, [datasetId, ids, settle, setJobs]);
 }

@@ -6,7 +6,6 @@ interface Props {
   /** Shared axis when several tracks must line up; defaults to this set. */
   domain?: [bigint, bigint] | null;
   tone?: "selected" | "current";
-  className?: string;
 }
 
 /**
@@ -17,7 +16,6 @@ export default function RangeTrack({
   members,
   domain,
   tone = "selected",
-  className,
 }: Props) {
   const bounds = domain ?? rangeDomain([members]);
   if (!bounds) return null;
@@ -26,11 +24,7 @@ export default function RangeTrack({
   const percent = (value: string) =>
     Number(((BigInt(value) - min) * 10_000n) / span) / 100;
   return (
-    <div
-      className={[styles.track, className].filter(Boolean).join(" ")}
-      data-tone={tone}
-      aria-hidden="true"
-    >
+    <div className={styles.track} data-tone={tone} aria-hidden="true">
       {members
         .filter(
           (member) =>

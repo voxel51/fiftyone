@@ -9,7 +9,7 @@ import {
   resetMcapGridPreviewPoolForTests,
 } from "./grid-preview-pool";
 
-vi.mock("@fiftyone/utilities", () => ({
+vi.mock("@fiftyone/utilities/src/fetch", () => ({
   getFetchParameters: () => ({
     headers: { Authorization: "token" },
     origin: "http://localhost:5151",

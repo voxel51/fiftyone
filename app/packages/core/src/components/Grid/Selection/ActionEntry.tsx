@@ -1,15 +1,6 @@
-import {
-  Anchor,
-  Button,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Tooltip,
-  Variant,
-  type IconInput,
-} from "@voxel51/voodo";
+import { Button, Text, type IconProps, type IconInput } from "@voxel51/voodo";
 import type { FC } from "react";
+import SelectionTooltip from "./SelectionTooltip";
 import styles from "./SelectionTray.module.css";
 
 export interface ActionEntryProps {
@@ -28,7 +19,7 @@ export interface ActionEntryProps {
   "aria-expanded"?: boolean;
 }
 
-type IconComponent = FC<{ size?: Size; color?: TextColor }>;
+type IconComponent = FC<IconProps>;
 
 /**
  * One contributed action. In the toolbar it is a button whose disabled reason
@@ -47,8 +38,6 @@ export default function ActionEntry({
 }: ActionEntryProps) {
   const disabled = Boolean(disabledReason) || busy;
   const text = busy ? (busyLabel ?? label) : label;
-  // An action whose panel is open reads as pressed, like a toolbar toggle.
-  const active = aria["aria-expanded"] === true;
   if (surface === "menu") {
     const Icon = typeof icon === "string" ? null : (icon as IconComponent);
     return (
@@ -56,16 +45,17 @@ export default function ActionEntry({
         type="button"
         role="menuitem"
         className={styles.menuRow}
+        data-tray-action=""
         disabled={disabled}
         aria-busy={busy || undefined}
         onClick={onClick}
         {...aria}
       >
-        {Icon && <Icon size={Size.Sm} color={TextColor.Secondary} />}
+        {Icon && <Icon size="sm" />}
         <span className={styles.menuRowText}>
-          <Text variant={TextVariant.Sm}>{text}</Text>
+          <Text variant="body-tertiary">{text}</Text>
           {disabledReason && (
-            <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+            <Text variant="caption" color="text-secondary">
               {disabledReason}
             </Text>
           )}
@@ -75,10 +65,11 @@ export default function ActionEntry({
   }
   const button = (
     <Button
-      size={Size.Sm}
-      variant={Variant.Borderless}
+      size="sm"
+      variant="borderless"
       leadingIcon={icon}
-      className={`${styles.toolbarButton} ${active ? styles.actionActive : ""}`}
+      className={styles.toolbarButton}
+      data-tray-action=""
       disabled={disabled}
       aria-busy={busy || undefined}
       onClick={onClick}
@@ -88,13 +79,12 @@ export default function ActionEntry({
     </Button>
   );
   return disabledReason ? (
-    <Tooltip
-      anchor={Anchor.Top}
+    <SelectionTooltip
       wrapperClassName={styles.tipWrap}
-      content={<Text variant={TextVariant.Sm}>{disabledReason}</Text>}
+      content={<Text variant="body-tertiary">{disabledReason}</Text>}
     >
       {button}
-    </Tooltip>
+    </SelectionTooltip>
   ) : (
     button
   );

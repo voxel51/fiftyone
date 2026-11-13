@@ -1,41 +1,17 @@
-import fs from "node:fs";
-import { expect, test as base } from "src/oss/fixtures";
-import { Renderer3dPom } from "src/oss/poms/fo3d/renderer-3d";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import {
-  compareLocatorScreenshotToBuffer,
-  getUniqueDatasetNameWithPrefix,
-} from "src/oss/utils";
+import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("modal-main-2d-slice");
-const groupSpecs = [1, 2].map((index) => ({
-  scene: `scene-${index}`,
-  img1Path: `/tmp/modal-main-2d-slice-${datasetName}-${index}-img1.png`,
-  img2Path: `/tmp/modal-main-2d-slice-${datasetName}-${index}-img2.png`,
-  pointCloudPath: `/tmp/modal-main-2d-slice-${datasetName}-${index}-3d.pcd`,
-  img1Name: `scene-${index}-img1`,
-  img2Name: `scene-${index}-img2`,
-  pointCloudName: `scene-${index}-3d`,
-}));
-const TEMP_FILE_PATHS = groupSpecs.flatMap((spec) => [
-  spec.img1Path,
-  spec.img2Path,
-  spec.pointCloudPath,
-]);
-
-const ensureMain2dCanvasReadyForScreenshot = async (modal: ModalPom) => {
-  await modal.assert.verifyPrimary2dRendererVisible();
-  await expect(modal.sampleCanvas.checkbox).toBeHidden();
-  await modal.sampleCanvas.tooltip.assert.isVisible(false);
-  await modal.sampleCanvas.toolbar.assert.isVisible(false);
-  await modal.sampleCanvas.moveMouseToViewportEdge();
-};
+const img1Name = (scene: string) => `${scene}-img1`;
+const img2Name = (scene: string) => `${scene}-img2`;
+const pointCloudName = (scene: string) => `${scene}-3d`;
+const groupSpecs = [1, 2].map((index) => ({ scene: `scene-${index}` }));
 
 const test = base.extend<{
   grid: GridPom;
   modal: ModalPom;
-  renderer3d: Renderer3dPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -43,125 +19,58 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  renderer3d: async ({ page }, use) => {
-    await use(new Renderer3dPom(page));
-  },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await Promise.all(
-    groupSpecs.flatMap((spec, index) => [
-      mediaFactory.createImage({
-        outputPath: spec.img1Path,
-        width: 320,
-        height: 240,
-        fillColor: ["#264653", "#355070"][index],
-        watermarkString: spec.img1Name,
-        hideLogs: true,
-      }),
-      mediaFactory.createImage({
-        outputPath: spec.img2Path,
-        width: 320,
-        height: 240,
-        fillColor: ["#8d5a97", "#bc6c25"][index],
-        watermarkString: spec.img2Name,
-        hideLogs: true,
-      }),
-    ]),
-  );
-
-  groupSpecs.forEach((spec, index) => {
-    mediaFactory.createPcd({
-      outputPath: spec.pointCloudPath,
-      shape: index === 0 ? "cube" : "diagonal",
-      numPoints: index === 0 ? 216 : 18,
+  const image =
+    (fillColors: string[], name: (scene: string) => string) =>
+    (groupIndex: number) => ({
+      width: 320,
+      height: 240,
+      fillColor: fillColors[groupIndex],
+      watermarkString: name(groupSpecs[groupIndex].scene),
+      hideLogs: true,
     });
-  });
-
-  await fiftyoneLoader.executePythonCode(`
-import json
-
-import fiftyone as fo
-import fiftyone.core.media as fom
-
-specs = json.loads(r'''${JSON.stringify(groupSpecs)}''')
-
-def seed_group_media_types(dataset, group_media_types):
-    current = dict(dataset._doc.group_media_types or {})
-    current.update(group_media_types)
-    dataset._doc.group_media_types = current
-    dataset.save()
-
-dataset = fo.Dataset("${datasetName}")
-dataset.add_group_field("group", default="img1")
-seed_group_media_types(
-    dataset,
-    {
-        "img1": fom.IMAGE,
-        "img2": fom.IMAGE,
-        "3d": fom.POINT_CLOUD,
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: groupSpecs.length,
+    slices: [
+      {
+        name: "img1",
+        mediaType: "image",
+        imageOptions: image(["#264653", "#355070"], img1Name),
+      },
+      {
+        name: "img2",
+        mediaType: "image",
+        imageOptions: image(["#8d5a97", "#bc6c25"], img2Name),
+      },
+      {
+        name: "3d",
+        mediaType: "point-cloud",
+        pcdOptions: (groupIndex) =>
+          groupIndex === 0
+            ? { shape: "cube", numPoints: 216 }
+            : { shape: "diagonal", numPoints: 18 },
+      },
+    ],
+    schema: { name: "StringField", scene: "StringField" },
+    withSampleData: ({ groupIndex, slice }) => {
+      const { scene } = groupSpecs[groupIndex];
+      const names: Record<string, (scene: string) => string> = {
+        img1: img1Name,
+        img2: img2Name,
+        "3d": pointCloudName,
+      };
+      return { name: names[slice](scene), scene };
     },
-)
-dataset.persistent = True
-
-samples = []
-for spec in specs:
-    group = fo.Group()
-    samples.extend(
-        [
-            fo.Sample(
-                filepath=spec["img1Path"],
-                group=group.element("img1"),
-                name=spec["img1Name"],
-                scene=spec["scene"],
-            ),
-            fo.Sample(
-                filepath=spec["img2Path"],
-                group=group.element("img2"),
-                name=spec["img2Name"],
-                scene=spec["scene"],
-            ),
-            fo.Sample(
-                filepath=spec["pointCloudPath"],
-                media_type="point-cloud",
-                group=group.element("3d"),
-                name=spec["pointCloudName"],
-                scene=spec["scene"],
-            ),
-        ]
-    )
-
-dataset.add_samples(samples)
-  `);
+  });
 });
 
-test.afterAll(async ({ fiftyoneLoader, foWebServer }) => {
-  try {
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-    `);
-  } catch (error) {
-    void error;
-  }
-
-  try {
-    await foWebServer.stopWebServer();
-  } catch (error) {
-    void error;
-  }
-
-  TEMP_FILE_PATHS.forEach((filePath) => {
-    try {
-      fs.rmSync(filePath, { force: true });
-    } catch (error) {
-      void error;
-    }
-  });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
 });
 
 test.describe.serial("navigation slice integrity", () => {
@@ -177,50 +86,52 @@ test.describe.serial("navigation slice integrity", () => {
   test("keeps the same main 2d viewer when opening from image or 3d grid slices", async ({
     grid,
     modal,
-    renderer3d,
   }) => {
     const expectedFirstGroup = groupSpecs[0];
 
-    const assertMain2dAnd3dAreVisible = async () => {
-      await modal.waitForSampleLoadDomAttribute(true);
-      await modal.looker3dControls.waitForAllAssetsLoaded();
+    /** Run `open`, then check both viewers show the group */
+    const assertMain2dAnd3dAreVisible = async (
+      open: () => Promise<unknown>,
+    ) => {
+      await modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.afterSampleLoaded(open, true),
+      );
       await modal.assert.verifyHasNoViewerError();
       await modal.assert.verifyPrimary2dRendererVisible();
       await modal.assert.verify3dRendererVisible();
-      await renderer3d.assert.expectSomethingToRender();
+      await modal.sampleCanvas3d.assert.hasScreenshot("main-3d.png");
     };
 
     await grid.sliceSelector.assert.verifyActiveSlice("img1");
-    await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+    await grid.assert.isEntryCountTextEqualTo(
+      `${groupSpecs.length} groups with slice`,
+    );
 
-    await grid.openFirstSample();
-    await assertMain2dAnd3dAreVisible();
+    const firstGroup = {
+      "group.name": "img1",
+      name: img1Name(expectedFirstGroup.scene),
+      scene: expectedFirstGroup.scene,
+    };
+    await modal.sidebar.afterEntries(firstGroup, () =>
+      assertMain2dAnd3dAreVisible(() => grid.openFirstSample()),
+    );
     await modal.assert.verifyModalSamplePluginTitle("img1", {
       pinned: true,
     });
-    await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
-      "group.name": "img1",
-      name: expectedFirstGroup.img1Name,
-      scene: expectedFirstGroup.scene,
-    });
-    const expectedMain2dCanvas = modal.groupLooker.locator("canvas");
-    await ensureMain2dCanvasReadyForScreenshot(modal);
-    const expectedMain2dScreenshot = await expectedMain2dCanvas.screenshot();
+    await modal.sidebar.assert.verifySidebarEntryTexts(firstGroup);
+    await modal.assert.verifyPrimary2dRendererVisible();
+    await modal.groupSampleCanvas.assert.hasScreenshot("main-2d.png");
 
     await modal.close();
     await grid.selectSlice("3d");
     await grid.sliceSelector.assert.verifyActiveSlice("3d");
-    await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
-
-    await grid.openFirstSample();
-    await assertMain2dAnd3dAreVisible();
-    await compareLocatorScreenshotToBuffer(
-      modal.groupLooker.locator("canvas"),
-      expectedMain2dScreenshot,
-      {
-        beforeScreenshot: async () =>
-          ensureMain2dCanvasReadyForScreenshot(modal),
-      },
+    await grid.assert.isEntryCountTextEqualTo(
+      `${groupSpecs.length} groups with slice`,
     );
+
+    await assertMain2dAnd3dAreVisible(() => grid.openFirstSample());
+    // the 2D pane shows the same image it showed with the image slice active
+    await modal.assert.verifyPrimary2dRendererVisible();
+    await modal.groupSampleCanvas.assert.hasScreenshot("main-2d.png");
   });
 });

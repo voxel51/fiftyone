@@ -1,4 +1,4 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useCurrentDatasetId,
@@ -7,6 +7,7 @@ import {
   useGridViewScope,
   useLegacySelectedSamples,
   useSampleSchema,
+  useSetSelectionBoundaries,
   useSetSelectionScopeBoundary,
 } from "../accessors/dataset";
 import {
@@ -27,21 +28,20 @@ import {
   useSelectionBucketCommands,
   useSelectionBuckets,
   useSelectionMembership,
+  useActiveSelectionBucket,
   useSelectionScopeRevision,
-  useSelectionTarget,
 } from "./hooks";
 import { foldWindow } from "./fold";
 import {
   capturedScopeSources,
   countSelection,
   hasDynamicGroups,
-  routeSelectionBucket,
   selectionDomainId,
   selectionUnit,
   viewConversion,
-  type SelectionModifiers,
 } from "./model";
 import {
+  boundariesAtom,
   bucketCommandAtom,
   captureErrorAtom,
   captureRequestsAtom,
@@ -54,9 +54,12 @@ import {
 } from "./model/atoms";
 import type {
   EpisodeSelection,
+  GridSampleNode,
   SelectionBoundary,
   SegmentConstraint,
 } from "./types";
+
+import { useSelectionRangeSource } from "./range-sources";
 
 const EMPTY_GROUPS: readonly EpisodeSelection[] = [];
 const EMPTY_CAPTURES: Captures = new Map();
@@ -89,12 +92,16 @@ export function useGridSelectionDataset() {
 export function useGridSelectionBoundary({
   rangeConstraint: withRanges = true,
 }: { readonly rangeConstraint?: boolean } = {}) {
-  const { domainId, conversion } = useGridSelectionDataset();
+  const { domainId, conversion, mediaType } = useGridSelectionDataset();
   const [boundary, setBoundary] = useSelectionBoundary(domainId);
   const { filters: currentFilters, rangeConstraint: published } =
     useGridViewScope();
   const rangeConstraint = withRanges ? published : undefined;
   const schema = useSampleSchema();
+  const captureSource = useSelectionRangeSource({
+    mediaType,
+    filters: currentFilters,
+  });
   const tags = currentFilters._temporal_tags;
   const effective = useMemo<SelectionBoundary>(() => {
     const values = Array.isArray(tags?.values)
@@ -126,16 +133,26 @@ export function useGridSelectionBoundary({
         if (!filter?.exclude && eventValues.length)
           providers.push({ kind: "events", field, values: eventValues });
       }
+    const scoped =
+      captureSource && !conversion ? { ...boundary, captureSource } : boundary;
     return providers.length
       ? {
-          ...boundary,
+          ...scoped,
           provider:
             providers.length === 1
               ? providers[0]
               : { kind: "intersection", providers },
         }
-      : boundary;
-  }, [boundary, conversion, currentFilters, rangeConstraint, schema, tags]);
+      : scoped;
+  }, [
+    boundary,
+    captureSource,
+    conversion,
+    currentFilters,
+    rangeConstraint,
+    schema,
+    tags,
+  ]);
   return [effective, setBoundary] as const;
 }
 
@@ -182,6 +199,7 @@ export function isPlainScope(request: SelectionRequest) {
   const conversion = viewConversion(request.view)?.kind;
   return (
     !request.boundary.provider &&
+    !request.boundary.captureSource &&
     !request.boundary.subsetId &&
     !request.expand &&
     conversion !== "frames" &&
@@ -209,11 +227,14 @@ function withCandidates(
  * parents, plus every bucket's captures. Clicking a tile resolves only that
  * tile; nothing enumerates the whole scope in the browser.
  *
- * `selected`, `capture`, `remove`, `clear`, `select`, and `toggle` address
- * the bucket actions apply to unless a bucket id is given. The grid decides
- * the bucket for a gesture with `route`.
+ * Everything works on the active section unless given another: `selected`
+ * is what actions apply to, and `capture`, `select`, `toggle`, `remove` and
+ * `clear` change it.
+ * Loaded grid previews can accompany a plain capture before validation returns.
  */
-export function useGridSelection() {
+export function useGridSelection(
+  getPreview?: (sampleId: string) => GridSampleNode | undefined,
+) {
   const dataset = useGridSelectionDataset();
   const { key, request } = useGridSelectionRequest();
   const { rangeConstraint } = useGridViewScope();
@@ -225,18 +246,18 @@ export function useGridSelection() {
   const buckets = useSelectionBuckets(dataset.datasetId);
   const captures = useSelectionBucketCaptures(dataset.domainId);
   const membership = useSelectionMembership(dataset.domainId);
-  const { target, setTarget } = useSelectionTarget(dataset.domainId);
+  const { active, activate } = useActiveSelectionBucket(dataset.domainId);
   const { removeEverywhere, clearAll } = useSelectionBucketCommands(
     dataset.domainId,
   );
   const clearBucket = useClearSelectionBucket(dataset.domainId);
   const dispatch = useSetAtom(bucketCommandAtom(dataset.domainId));
-  const selected = captures.get(target) ?? EMPTY_CAPTURES;
+  const selected = captures.get(active) ?? EMPTY_CAPTURES;
   const current = state.key === key && !state.loading && !state.error;
   const merged = useAtomValue(captureScopesAtom(dataset.domainId));
   const setMerged = useSetAtom(captureScopesAtom(dataset.domainId));
   const sources = capturedScopeSources([...selected.values()]);
-  const resolved = merged.get(target);
+  const resolved = merged.get(active);
   const capturedState =
     resolved?.key === JSON.stringify(sources) ? resolved : undefined;
   const selectedCounts = sources.snapshotIds.length
@@ -251,8 +272,8 @@ export function useGridSelection() {
       view: request.view,
     });
     setMerged((current) =>
-      current.get(target)?.key === JSON.stringify(sources)
-        ? new Map(current).set(target, {
+      current.get(active)?.key === JSON.stringify(sources)
+        ? new Map(current).set(active, {
             key: JSON.stringify(sources),
             counts: scope.counts,
             scope,
@@ -278,8 +299,9 @@ export function useGridSelection() {
     (
       group: EpisodeSelection,
       operation: "replace" | "add" = "replace",
-      bucketId: string = target,
+      bucketId?: string,
     ) => {
+      const into = bucketId ?? active;
       setCaptureError({ message: null });
       if (group.group && !group.group.snapshotId) {
         setPendingCaptures((count) => count + 1);
@@ -293,7 +315,7 @@ export function useGridSelection() {
             for (const captured of result.groups)
               dispatch({
                 type: "capture",
-                bucketId,
+                bucketId: into,
                 group: captured,
                 operation,
               });
@@ -302,11 +324,11 @@ export function useGridSelection() {
             setCaptureError({ message: String(error) }),
           )
           .finally(() => setPendingCaptures((count) => count - 1));
-      } else dispatch({ type: "capture", bucketId, group, operation });
+      } else dispatch({ type: "capture", bucketId: into, group, operation });
     },
     [
       dispatch,
-      target,
+      active,
       dataset.datasetId,
       request,
       key,
@@ -315,41 +337,49 @@ export function useGridSelection() {
     ],
   );
   const remove = useCallback(
-    (episodeId: string, bucketId: string = target) =>
-      dispatch({ type: "remove", bucketId, episodeId }),
-    [dispatch, target],
+    (episodeId: string, bucketId?: string) =>
+      dispatch({ type: "remove", bucketId: bucketId ?? active, episodeId }),
+    [dispatch, active],
   );
   const clear = useCallback(
-    (bucketId: string = target) => clearBucket(bucketId),
-    [clearBucket, target],
-  );
-  const resolveCandidates = useCallback(
-    async (ids: readonly string[]) => {
-      if (isPlainScope(request))
-        return new Map(ids.map((id) => [id, wholeParent(id)] as const));
-      const result = await resolveSelectionDetails(dataset.datasetId, {
-        ...request,
-        episodeIds: ids,
-        capture: true,
-      });
-      if (latestScope.current !== key)
-        return new Map<string, EpisodeSelection>();
-      return new Map(
-        result.groups.map((group) => [group.episodeId, group] as const),
-      );
-    },
-    [dataset.datasetId, request, key],
+    (bucketId?: string) => clearBucket(bucketId ?? active),
+    [clearBucket, active],
   );
   const select = useCallback(
-    async (ids: readonly string[], bucketId: string = target) => {
-      const bucket = captures.get(bucketId);
-      const fresh = ids.filter((id) => !bucket?.has(id));
+    async (ids: readonly string[], bucketId?: string) => {
+      const into = bucketId ?? active;
+      const fresh = ids.filter((id) => !captures.get(into)?.has(id));
       if (!fresh.length) return;
       setCaptureError({ message: null });
+      if (isPlainScope(request)) {
+        for (const id of fresh) {
+          // Converted views need the server's crop or source reference first.
+          const node = !dataset.conversion ? getPreview?.(id) : undefined;
+          dispatch({
+            type: "capture",
+            bucketId: into,
+            group: {
+              ...wholeParent(id),
+              ...(node && {
+                node,
+                filepath: node.sample.filepath,
+                aspectRatio: node.aspectRatio,
+              }),
+            },
+          });
+        }
+        return;
+      }
       setPendingCaptures((count) => count + 1);
       try {
-        for (const group of (await resolveCandidates(fresh)).values())
-          dispatch({ type: "capture", bucketId, group });
+        const result = await resolveSelectionDetails(dataset.datasetId, {
+          ...request,
+          episodeIds: fresh,
+          capture: true,
+        });
+        if (latestScope.current !== key) return;
+        for (const group of result.groups)
+          dispatch({ type: "capture", bucketId: into, group });
       } catch (error) {
         setCaptureError({ message: String(error) });
       } finally {
@@ -358,24 +388,26 @@ export function useGridSelection() {
     },
     [
       captures,
-      target,
-      resolveCandidates,
+      active,
+      dataset.datasetId,
+      dataset.conversion,
+      getPreview,
+      request,
+      key,
       dispatch,
       setCaptureError,
       setPendingCaptures,
     ],
   );
+  /** Puts a parent in a section, or takes it out when it is there already. */
   const toggle = useCallback(
-    async (id: string, bucketId: string = target) => {
-      if (captures.get(bucketId)?.has(id))
-        dispatch({ type: "remove", bucketId, episodeId: id });
-      else await select([id], bucketId);
+    async (id: string, bucketId?: string) => {
+      const into = bucketId ?? active;
+      if (captures.get(into)?.has(id))
+        dispatch({ type: "remove", bucketId: into, episodeId: id });
+      else await select([id], into);
     },
-    [captures, target, dispatch, select],
-  );
-  const route = useCallback(
-    (modifiers: SelectionModifiers) => routeSelectionBucket(modifiers, buckets),
-    [buckets],
+    [captures, dispatch, active, select],
   );
   const snapshot = useCallback(
     (signal?: AbortSignal) =>
@@ -386,11 +418,10 @@ export function useGridSelection() {
     ...dataset,
     scopeKey: key,
     buckets,
-    target,
-    setTarget,
+    active,
+    activate,
     captures,
     membership,
-    route,
     capture,
     remove,
     removeEverywhere,
@@ -663,19 +694,33 @@ export function reconcileSelection(
 }
 
 /**
- * Mount once in the grid. Publishes the tray's browsing boundary to the
- * legacy session so view-scoped queries (entry counts, sidebar counts)
- * describe the same scope the grid pages do.
+ * Mount once on the dataset page, outside its panels. Publishes the browsing
+ * boundary so view-scoped queries (entry counts, sidebar counts)
+ * describe the same scope the grid pages do. Every domain's boundary is
+ * mirrored too, as it is set, so counts for a view the grid is still
+ * switching to are already scoped.
  */
 export function useSyncSelectionScope() {
-  const { domainId, enabled } = useGridSelectionDataset();
+  const { datasetId, domainId, enabled } = useGridSelectionDataset();
   const [boundary] = useGridSelectionBoundary({ rangeConstraint: false });
+  const revision = useSelectionScopeRevision(datasetId);
   const setScope = useSetSelectionScopeBoundary();
-  // This effect mirrors the boundary whenever it changes.
+  const setBoundaries = useSetSelectionBoundaries();
+  const store = useStore();
+  // This effect mirrors every domain's boundary in the same update that sets
+  // it: a jotai subscription runs synchronously, so a scope switch that sets
+  // a boundary and then the view lands both together.
   useEffect(() => {
-    setScope(enabled ? { domainId, boundary } : null);
-  }, [domainId, enabled, boundary, setScope]);
-  // This effect withdraws the boundary when the grid unmounts.
+    const mirror = () => setBoundaries(store.get(boundariesAtom));
+    mirror();
+    return store.sub(boundariesAtom, mirror);
+  }, [setBoundaries, store]);
+  // This effect mirrors the boundary, and the membership revision counts key
+  // on, whenever either changes.
+  useEffect(() => {
+    setScope(enabled ? { domainId, boundary, revision } : null);
+  }, [domainId, enabled, boundary, revision, setScope]);
+  // This effect withdraws the boundary when the dataset page unmounts.
   useEffect(() => () => setScope(null), [setScope]);
 }
 

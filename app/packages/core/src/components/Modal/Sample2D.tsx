@@ -7,7 +7,14 @@ import {
   useKeyDown,
   useModalMode,
 } from "@fiftyone/state";
-import React, { MutableRefObject, useCallback, useRef, useState } from "react";
+import { getEventBus } from "@fiftyone/events";
+import React, {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   RecoilValueReadOnly,
   useRecoilValue,
@@ -17,6 +24,11 @@ import styled from "styled-components";
 import { ModalLooker } from "./ModalLooker";
 import { SelectSampleCheckbox } from "./SelectSampleCheckbox";
 import { useRetainedModalSample } from "./use-modal-sample-renderer-persistence";
+
+/** e2e specs wait on the hover checkbox showing and hiding */
+type SampleCheckboxE2EEvents = {
+  "e2e:modal:sample-checkbox": { visible: boolean };
+};
 
 const CheckboxWrapper = styled.div`
   position: absolute;
@@ -64,6 +76,14 @@ export const SampleWrapper = ({
     update,
     clear,
   });
+
+  const checkboxVisible = hovering && modalMode !== ModalMode.ANNOTATE;
+  useEffect(() => {
+    getEventBus<SampleCheckboxE2EEvents>().dispatch(
+      "e2e:modal:sample-checkbox",
+      { visible: checkboxVisible },
+    );
+  }, [checkboxVisible]);
 
   if (modalMode === ModalMode.ANNOTATE) {
     return <>{children}</>;

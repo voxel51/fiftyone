@@ -23,6 +23,7 @@ from fiftyone.core.utils import run_sync_task
 
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
+import fiftyone.server.hooks as fosh
 from fiftyone.server.scalars import BSON, JSON
 from fiftyone.server.utils import meets_type
 from fiftyone.server.view import get_view
@@ -129,6 +130,8 @@ LightningResults = t.Annotated[
 async def lightning_resolver(
     input: LightningInput, info: Info
 ) -> t.List[LightningResults]:
+    await fosh.on_graphql_request(info, input.dataset)
+    input = fosh.get().transform_lightning_input(input)
     run = lambda: get_view(input.dataset, reload=True)
     dataset = await run_sync_task(run)
     dataset = dataset._dataset

@@ -195,19 +195,18 @@ export type ColorValues =
   | { style: "categorical"; indices: Uint16Array }
   | { style: "continuous"; values: Float32Array };
 
-/** Fields eligible for color-by (via the legacy schema-only endpoint) */
+/** Fields eligible for color-by: exactly the paths `fetchColor` resolves
+ * for the run's points */
 export async function fetchColorByChoices(
   datasetName: string,
-  patchesField: string | null,
+  brainKey: string,
 ): Promise<string[]> {
   const response = await getFetchFunction()<
     Record<string, unknown>,
     { fields: string[] }
-  >("POST", "/embeddings/color-by-choices", {
+  >("POST", "/embeddings/v2/color-by-choices", {
     datasetName,
-    view: [],
-    slices: null,
-    patchesField,
+    brainKey,
   });
   return response.fields;
 }

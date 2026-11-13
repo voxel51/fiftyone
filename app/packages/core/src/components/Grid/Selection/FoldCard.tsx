@@ -1,11 +1,5 @@
 import type { SelectionUnit } from "@fiftyone/state/src/selection";
-import {
-  MoreHorizontalIcon,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-} from "@voxel51/voodo";
+import { MoreHorizontalIcon, Text } from "@voxel51/voodo";
 import { plural } from "./format";
 import styles from "./SelectionTray.module.css";
 
@@ -38,16 +32,12 @@ export default function FoldCard({
       )}`}
       onClick={onReveal}
     >
-      <MoreHorizontalIcon size={Size.Md} color={TextColor.Secondary} />
-      <Text variant={TextVariant.Sm}>{`${hidden.toLocaleString()} more`}</Text>
-      <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+      <MoreHorizontalIcon size="md" color="text-secondary" />
+      <Text variant="body-tertiary">{`${hidden.toLocaleString()} more`}</Text>
+      <Text variant="caption" color="text-secondary">
         not shown
       </Text>
-      <Text
-        variant={TextVariant.Xs}
-        color={TextColor.Accent}
-        className={styles.foldAction}
-      >
+      <Text variant="caption" color="text-accent" className={styles.foldAction}>
         {`Show ${reveal} more`}
       </Text>
     </button>

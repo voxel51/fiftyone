@@ -21,9 +21,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   orderBySearchRecency,
   readIndexUses,
-  readMatches,
   recordIndexUse,
-  recordMatches,
 } from "./searchIndexRecency";
 import { patchesFieldOfView, resolveSearchIndex } from "./searchIndexSelection";
 import { readSearchQueries, recordSearchQuery } from "./searchQueryHistory";
@@ -31,13 +29,6 @@ import type { SerializedStage } from "./state";
 import type { SearchStrategy } from "./searchStrategy";
 import { useProviderSearch } from "./useProviderSearch";
 import { useOperatorSearch } from "./useOperatorSearch";
-
-/**
- * How many samples a typed language query keeps, matching the modal
- * similarity search's default. The stage lands in the bar as a normal
- * pill, so the value is one click away from being changed.
- */
-const LANGUAGE_SEARCH_K = 25;
 
 /** What the language search field reads and drives. */
 export interface TextSearchController {
@@ -103,16 +94,7 @@ export const useTextSearch = ({
   // week (most recent first), then newest-created; an explicit pick
   // overrides. Session-local pick; per-dataset recency.
   const [explicitKey, setExplicitKey] = useState<string | null>(null);
-  const [k, setK] = useState(
-    () => (datasetName ? readMatches(datasetName) : null) ?? LANGUAGE_SEARCH_K,
-  );
-  const onChangeK = useCallback(
-    (next: number) => {
-      setK(next);
-      if (datasetName) recordMatches(datasetName, next);
-    },
-    [datasetName],
-  );
+  const [k, onChangeK] = fos.useSimilaritySearchResultCount(datasetName);
   // Bumps after every search so the ordering and history reflect the use
   // just recorded
   const [recencyStamp, setRecencyStamp] = useState(0);

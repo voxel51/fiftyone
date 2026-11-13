@@ -1073,6 +1073,194 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
 
 
+class PointScopeValidationTests(unittest.TestCase):
+    """Tests for the ``scope`` setting on keypoint attributes in
+    :func:`validate_label_schemas`."""
+
+    def _make_keypoint_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                kp_field=fo.Keypoint(
+                    label="test",
+                    points=[(0.1, 0.1), (0.2, 0.2)],
+                    confidence=[0.5, 0.9],
+                    # a value so the scalar field materializes in the schema
+                    index=0,
+                ),
+            )
+        )
+        return dataset
+
+    def _keypoint_schema(self, attributes):
+        return {
+            "type": "keypoint",
+            "component": "text",
+            "attributes": attributes,
+        }
+
+    @drop_datasets
+    def test_point_scope_on_existing_parallel_list_passes(self):
+        dataset = self._make_keypoint_dataset()
+        validate_label_schemas(
+            dataset,
+            self._keypoint_schema(
+                [
+                    {
+                        "name": "confidence",
+                        "type": "float",
+                        "component": "text",
+                        "scope": "point",
+                    }
+                ]
+            ),
+            fields="kp_field",
+        )
+
+    @drop_datasets
+    def test_point_scope_on_new_attribute_passes(self):
+        dataset = self._make_keypoint_dataset()
+        validate_label_schemas(
+            dataset,
+            self._keypoint_schema(
+                [
+                    {
+                        "name": "occluded",
+                        "type": "bool",
+                        "component": "toggle",
+                        "scope": "point",
+                    }
+                ]
+            ),
+            fields="kp_field",
+            allow_new_attrs=True,
+        )
+
+    @drop_datasets
+    def test_field_scope_passes_everywhere(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection_field=fo.Detection(label="test", confidence=0.5),
+            )
+        )
+        validate_label_schemas(
+            dataset,
+            {
+                "type": "detection",
+                "component": "text",
+                "attributes": [
+                    {
+                        "name": "confidence",
+                        "type": "float",
+                        "component": "text",
+                        "scope": "field",
+                    }
+                ],
+            },
+            fields="detection_field",
+        )
+
+    @drop_datasets
+    def test_invalid_scope_value_rejected(self):
+        dataset = self._make_keypoint_dataset()
+        with self.assertRaises(ExceptionGroup) as ctx:
+            validate_label_schemas(
+                dataset,
+                self._keypoint_schema(
+                    [
+                        {
+                            "name": "confidence",
+                            "type": "float",
+                            "component": "text",
+                            "scope": "vertex",
+                        }
+                    ]
+                ),
+                fields="kp_field",
+            )
+
+        # rule-specific message: the group must carry THIS rule's failure,
+        # not just any validation error
+        self.assertIn("invalid 'scope' setting 'vertex'", str(ctx.exception))
+
+    @drop_datasets
+    def test_point_scope_rejected_on_non_keypoint_field(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection_field=fo.Detection(label="test", confidence=0.5),
+            )
+        )
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "type": "detection",
+                    "component": "text",
+                    "attributes": [
+                        {
+                            "name": "confidence",
+                            "type": "float",
+                            "component": "text",
+                            "scope": "point",
+                        }
+                    ],
+                },
+                fields="detection_field",
+            )
+
+    @drop_datasets
+    def test_point_scope_rejected_on_scalar_attribute(self):
+        dataset = self._make_keypoint_dataset()
+        # `index` exists on the keypoint but is a scalar, not a per-point list
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                self._keypoint_schema(
+                    [
+                        {
+                            "name": "index",
+                            "type": "int",
+                            "component": "text",
+                            "scope": "point",
+                        }
+                    ]
+                ),
+                fields="kp_field",
+            )
+
+    @drop_datasets
+    def test_point_scope_new_attribute_requires_element_type(self):
+        dataset = self._make_keypoint_dataset()
+        with self.assertRaises(ExceptionGroup) as ctx:
+            validate_label_schemas(
+                dataset,
+                self._keypoint_schema(
+                    [
+                        {
+                            "name": "occluded",
+                            "type": "list<float>",
+                            "component": "text",
+                            "scope": "point",
+                        }
+                    ]
+                ),
+                fields="kp_field",
+                allow_new_attrs=True,
+            )
+
+        # rule-specific message: the group must carry THIS rule's failure,
+        # not just any validation error
+        self.assertIn(
+            "point-scoped attributes declare their element type",
+            str(ctx.exception),
+        )
+
+
 class TaxonomySettingValidationTests(unittest.TestCase):
     """Tests for the ``taxonomy`` setting on str / list<str> dropdown
     attributes in :func:`validate_label_schemas`."""

@@ -1,4 +1,5 @@
 import { CenteredStack, scrollable } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
@@ -10,13 +11,21 @@ import { Box, Typography } from "@mui/material";
 import { useEffect } from "react";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
-import { useActivePanelEventsCount } from "./hooks";
+import {
+  useActivePanelEventsCount,
+  useInFlightInvocationsCount,
+} from "./hooks";
 import { Property, type PropertyJSON } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
 import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
 import { styled } from "@mui/system";
+
+/** e2e specs wait on a Python panel's render once its events settle */
+type CustomPanelE2EEvents = {
+  "e2e:operators:panel-rendered": { panelName: string; pending: number };
+};
 
 const SpinnerContainer = styled(Box)`
   display: flex;
@@ -28,6 +37,7 @@ export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
+  const inFlight = useInFlightInvocationsCount();
   const [_, setLoading] = usePanelLoading(panelId);
   const triggerPanelEvent = usePanelEvent();
 
@@ -56,6 +66,16 @@ export function CustomPanel(props: CustomPanelProps) {
   useEffect(() => {
     setLoading(count > 0);
   }, [setLoading, count]);
+
+  // an event's count drops with its result, before the panel state updates
+  // it triggers have run
+  useEffect(() => {
+    if (!panelSchema) return;
+    getEventBus<CustomPanelE2EEvents>().dispatch(
+      "e2e:operators:panel-rendered",
+      { panelName, pending: count + inFlight },
+    );
+  }, [panelName, panelSchema, data, count, inFlight]);
 
   if (pending && !panelSchema) {
     return <PanelSkeleton />;

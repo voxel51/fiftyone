@@ -8,7 +8,7 @@
  * seeded detections carry `_cls` so the embedded mask decodes.
  */
 import fs from "node:fs";
-import { Browser, expect, test as base } from "src/oss/fixtures";
+import { expect, Page, test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
@@ -109,26 +109,23 @@ test.afterAll(async ({ foWebServer }) => {
  * `verify` against an annotate-mode modal there.
  */
 const inFreshContext = async (
-  browser: Browser,
+  openFreshPage: () => Promise<Page>,
   fiftyoneLoader: AbstractFiftyoneLoader,
   datasetName: string,
   verify: (modal: ModalPom) => Promise<void>,
 ) => {
-  const context = await browser.newContext();
-  const freshPage = await context.newPage();
+  const freshPage = await openFreshPage();
 
-  try {
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-    const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
-    await freshModal.waitForSampleLoadDomAttribute();
-    await freshModal.sidebar.switchMode("annotate");
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+    searchParams: new URLSearchParams({ id }),
+    modalSample: "loaded",
+  });
+  const freshModal = new ModalPom(freshPage, new EventUtils(freshPage));
+  await freshModal.afterLighterReady(() =>
+    freshModal.sidebar.switchMode("annotate"),
+  );
 
-    await verify(freshModal);
-  } finally {
-    await context.close();
-  }
+  await verify(freshModal);
 };
 
 for (const cfg of KINDS) {
@@ -139,10 +136,10 @@ for (const cfg of KINDS) {
       await createMaskDataset(datasetFactory, cfg);
       await fiftyoneLoader.waitUntilGridVisible(page, cfg.datasetName, {
         searchParams: new URLSearchParams({ id }),
+        modalSample: "loaded",
       });
-      await modal.waitForSampleLoadDomAttribute();
       await modal.assert.isOpen();
-      await modal.sidebar.switchMode("annotate");
+      await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
     });
 
     test("selecting a masked detection enters segmentation mode", async ({
@@ -175,12 +172,9 @@ for (const cfg of KINDS) {
       page.on("response", countPatch);
 
       try {
-        const saved = page.waitForResponse(
-          (r) =>
-            /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+        await modal.sidebar.annotate.afterSave(() =>
+          modal.sidebar.edit.removeMask(),
         );
-        await modal.sidebar.edit.removeMask();
-        await saved;
 
         await modal.sidebar.edit.assert.hasMask(false);
         expect(patches).toBe(1);
@@ -199,24 +193,20 @@ for (const cfg of KINDS) {
     });
 
     test("a mask removal persists across a fresh load", async ({
-      browser,
+      openFreshPage,
       fiftyoneLoader,
       modal,
-      page,
     }) => {
       await modal.sidebar.annotate.selectActiveLabel("cat", 0);
       await modal.sidebar.edit.assert.hasMask(true);
 
-      const saved = page.waitForResponse(
-        (r) =>
-          /\/sample\//.test(r.url()) && isSamplePatch(r.request().method()),
+      await modal.sidebar.annotate.afterSave(() =>
+        modal.sidebar.edit.removeMask(),
       );
-      await modal.sidebar.edit.removeMask();
-      await saved;
       await modal.sidebar.edit.assert.hasMask(false);
 
       await inFreshContext(
-        browser,
+        openFreshPage,
         fiftyoneLoader,
         cfg.datasetName,
         async (freshModal) => {

@@ -55,6 +55,54 @@ describe("PlanarCamera.toDataPolygon", () => {
   });
 });
 
+describe("PlanarCamera pixel grid", () => {
+  const center = (camera: PlanarCamera) => [
+    (camera.camera.left + camera.camera.right) / 2,
+    (camera.camera.bottom + camera.camera.top) / 2,
+  ];
+
+  it("leaves an even canvas's view centered on the data", () => {
+    const camera = new PlanarCamera(document.createElement("div"), vi.fn());
+    camera.setBounds(BOUNDS, 100, 100);
+
+    const [cx, cy] = center(camera);
+    expect(cx).toBeCloseTo(5, 6);
+    expect(cy).toBeCloseTo(5, 6);
+
+    camera.destroy();
+  });
+
+  it("shifts an odd canvas's view half a pixel, where the lasso agrees", () => {
+    const camera = new PlanarCamera(document.createElement("div"), vi.fn());
+    camera.setBounds(BOUNDS, 101, 101);
+
+    const perPx = (camera.camera.right - camera.camera.left) / 101;
+    const [cx, cy] = center(camera);
+    expect(cx).toBeCloseTo(5 + perPx / 2, 6);
+    expect(cy).toBeCloseTo(5 + perPx / 2, 6);
+
+    // The canvas's middle maps to the data the camera draws there
+    const [middle] = camera.toDataPolygon([[50.5, 50.5]]);
+    expect(middle[0]).toBeCloseTo(cx, 6);
+    expect(middle[1]).toBeCloseTo(cy, 6);
+
+    camera.destroy();
+  });
+
+  it("counts device pixels: an odd size at 2x needs no shift", () => {
+    vi.stubGlobal("devicePixelRatio", 2);
+    const camera = new PlanarCamera(document.createElement("div"), vi.fn());
+    camera.setBounds(BOUNDS, 101, 101);
+
+    const [cx, cy] = center(camera);
+    expect(cx).toBeCloseTo(5, 6);
+    expect(cy).toBeCloseTo(5, 6);
+
+    camera.destroy();
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("PlanarCamera default view", () => {
   // Load and reset land at DEFAULT_ZOOM, not fit: the cloud gets
   // breathing room around it and pan works immediately

@@ -13,8 +13,40 @@ import numpy as np
 import fiftyone as fo
 import fiftyone.brain as fob
 import fiftyone.operators as foo
+from fiftyone.brain.internal.core.sklearn import (
+    SklearnSimilarity,
+    SklearnSimilarityConfig,
+)
 from fiftyone.core.view import DatasetView
 from fiftyone.operators.executor import Executor
+from plugins.panels.similarity_search import SimilaritySearchPanel
+
+
+class _Ctx:
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+
+class SimilaritySearchPanelTests(unittest.TestCase):
+    def test_unready_brain_keys_are_registered_runs_without_results(self):
+        dataset = fo.Dataset()
+        self.addCleanup(dataset.delete)
+        dataset.add_samples(
+            [fo.Sample(filepath=f"image{i}.png") for i in range(4)]
+        )
+        fob.compute_similarity(
+            dataset,
+            embeddings=np.random.default_rng(0).random((4, 8)),
+            backend="sklearn",
+            brain_key="ready",
+        )
+        config = SklearnSimilarityConfig(embeddings_field="emb")
+        SklearnSimilarity(config).register_run(dataset, "computing")
+
+        panel = SimilaritySearchPanel(None)
+        keys = panel._get_unready_brain_keys(_Ctx(dataset))
+
+        self.assertEqual(keys, ["computing"])
 
 
 class SimilaritySearchOperatorTests(unittest.TestCase):

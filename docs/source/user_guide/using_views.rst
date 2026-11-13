@@ -152,7 +152,8 @@ to load the view in a future session:
 .. note::
 
     Did you know? You can also save, load, and edit saved views directly
-    :ref:`from the App <app-saving-views>`!
+    :ref:`from the App <app-saving-queries>`, where they are called saved
+    queries!
 
 Saved views have certain editable metadata such as a description that you can
 view via

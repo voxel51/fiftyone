@@ -138,7 +138,7 @@
 .rangeEpisode {
   background: color-mix(
     in srgb,
-    var(--color-voxel-secondary, #f5b700) 45%,
+    var(--color-semantic-warning) 45%,
     transparent
   );
   border-radius: 2px;
@@ -148,7 +148,7 @@
 }
 
 .rangeMean {
-  background: var(--color-voxel-secondary, #f5b700);
+  background: var(--color-semantic-warning);
   height: 8px;
   position: absolute;
   top: -2px;
@@ -202,11 +202,11 @@
     var(--color-content-text-secondary) 16%,
     transparent
   );
-  color: var(--color-voxel-secondary, #f5b700);
+  color: var(--color-semantic-warning);
 }
 
 .seekButton:focus-visible {
-  outline: 1px solid var(--color-voxel-secondary, #f5b700);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 

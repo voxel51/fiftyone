@@ -1,4 +1,7 @@
-import { useSelectionSubsetDisabledReason } from "@fiftyone/state";
+import {
+  useLoadedSavedViewName,
+  useSelectionSubsetDisabledReason,
+} from "@fiftyone/state";
 import type {
   GridSelectionAction,
   GridSelectionActionContext,
@@ -21,18 +24,16 @@ import {
   Button,
   ErrorOutlineIcon,
   FolderIcon,
+  FormField,
   GridViewIcon,
   Input,
+  LayersIcon,
   LoadingDots,
   RefreshIcon,
   ResizeBehavior,
-  Size,
   Spinner,
   Text,
   TextArea,
-  TextColor,
-  TextVariant,
-  Variant,
 } from "@voxel51/voodo";
 import { useCallback, useEffect, useState } from "react";
 import ActionEntry from "./ActionEntry";
@@ -72,7 +73,7 @@ function AddToSubset({
   const permission = useSelectionSubsetDisabledReason();
   const [capture, setCapture] = useState<Capture | null>(null);
   const scoped = Boolean(context.boundary.subsetId);
-  const label = scoped ? "Save as new subset" : "Add to subset";
+  const label = scoped ? "Save as new subset" : "Save as subset";
   const begin = () => {
     if (permission) return;
     setCapture({
@@ -103,6 +104,7 @@ function AddToSubset({
         open={Boolean(capture)}
         onClose={close}
         title={label}
+        className={styles.subsetSheet}
         surface={surface}
         trigger={
           <ActionEntry
@@ -145,6 +147,8 @@ export function SubsetPanel({
   heading?: boolean;
 }) {
   const permission = useSelectionSubsetDisabledReason();
+  // The subset records which saved query its members were picked from
+  const savedView = useLoadedSavedViewName();
   const invalidate = useInvalidateSelectionScope(capture.datasetId);
   const jobs = useSubsetJobs(capture.datasetId);
   const [jobId, setJobId] = useState<string>();
@@ -209,6 +213,7 @@ export function SubsetPanel({
         operationId: operation.operationId,
         ...scopeBody(scope),
         view: capture.view,
+        ...(savedView && { savedView }),
       });
       setJobId(id);
     } catch (cause) {
@@ -237,41 +242,48 @@ export function SubsetPanel({
         return;
       }
     }
+    if (scope.kind === "members" && scope.members.length === 0) {
+      setBusy(false);
+      close();
+      return;
+    }
     await addTo(subset, pending);
   };
 
   const title =
-    view === "form" ? `New subset from ${phrase}` : `Add ${phrase} to subset`;
+    view === "form"
+      ? counts?.episodes === 0
+        ? "New subset"
+        : `New subset from ${phrase}`
+      : `Add ${phrase} to subset`;
+  const empty = counts?.episodes === 0;
   const heading = showHeading ? (
-    <Text
-      variant={TextVariant.Label}
-      color={TextColor.Secondary}
-      className={styles.sheetTitle}
-    >
+    <Text variant="label" color="text-secondary" className={styles.sheetTitle}>
       {title}
     </Text>
   ) : null;
-  const expansionChoice = groupScope.enabled ? (
-    <Segmented<"slice" | "all">
-      label="Slices"
-      value={groupScope.choice}
-      disabled={busy || Boolean(pending)}
-      options={[
-        { value: "slice", label: "Selected samples" },
-        { value: "all", label: "All slices of these groups" },
-      ]}
-      onChange={groupScope.setChoice}
-    />
-  ) : null;
+  const expansionChoice =
+    groupScope.enabled && !empty ? (
+      <Segmented<"slice" | "all">
+        label="Slices"
+        value={groupScope.choice}
+        disabled={busy || Boolean(pending)}
+        options={[
+          { value: "slice", label: "Selected samples" },
+          { value: "all", label: "All slices of these groups" },
+        ]}
+        onChange={groupScope.setChoice}
+      />
+    ) : null;
   const captureError = groupScope.error ?? scopeError;
   const scopeStatus = scope ? null : captureError ? (
     <span className={styles.inlineAlert} role="alert">
-      <Text variant={TextVariant.Sm} color={TextColor.Failure}>
+      <Text variant="body-tertiary" color="text-failure">
         {captureError}
       </Text>
       <Button
-        size={Size.Xs}
-        variant={Variant.Borderless}
+        size="xs"
+        variant="borderless"
         leadingIcon={RefreshIcon}
         onClick={() => (groupScope.error ? groupScope.retry() : void freeze())}
       >
@@ -280,8 +292,8 @@ export function SubsetPanel({
     </span>
   ) : (
     <LoadingDots
-      variant={TextVariant.Sm}
-      color={TextColor.Secondary}
+      variant="body-tertiary"
+      color="text-secondary"
       text="Freezing scope"
     />
   );
@@ -306,20 +318,39 @@ export function SubsetPanel({
       >
         {heading}
         {scopeStatus}
+        {empty && (
+          <div className={styles.emptySubsetIntro}>
+            <span className={styles.subsetCreateIcon} aria-hidden="true">
+              <LayersIcon size="md" color="text-secondary" />
+            </span>
+            <div className={styles.emptySubsetText}>
+              <Text variant="body-secondary">Empty subset</Text>
+              <Text variant="body-tertiary" color="text-secondary">
+                No samples yet — add them from the grid later
+              </Text>
+            </div>
+          </div>
+        )}
         {expansionChoice}
-        <Input
-          size={Size.Md}
-          aria-label="New subset name"
-          placeholder="New subset name…"
-          value={pending?.subset.name ?? name}
-          disabled={busy || Boolean(pending)}
-          onChange={(event) => setName(event.target.value)}
+        <FormField
+          label={empty ? undefined : "Subset name"}
+          control={
+            <Input
+              size="md"
+              className={styles.subsetNameInput}
+              aria-label="New subset name"
+              placeholder={empty ? "Subset name" : "Enter a subset name"}
+              value={pending?.subset.name ?? name}
+              disabled={busy || Boolean(pending)}
+              onChange={(event) => setName(event.target.value)}
+            />
+          }
         />
         <TextArea
-          size={Size.Md}
+          size="md"
           aria-label="Description"
           placeholder="Description (optional)"
-          rows={3}
+          rows={2}
           resize={ResizeBehavior.None}
           value={description}
           disabled={busy || Boolean(pending)}
@@ -328,8 +359,8 @@ export function SubsetPanel({
         <div className={styles.sheetActions}>
           <Button
             type="button"
-            size={Size.Md}
-            variant={Variant.Secondary}
+            size="md"
+            variant="secondary"
             disabled={busy}
             onClick={() => (creating ? close() : setView("list"))}
           >
@@ -337,7 +368,7 @@ export function SubsetPanel({
           </Button>
           <Button
             type="submit"
-            size={Size.Md}
+            size="md"
             disabled={
               Boolean(permission) ||
               busy ||
@@ -345,7 +376,7 @@ export function SubsetPanel({
               (!pending && !name.trim())
             }
           >
-            {busy ? "Saving…" : error ? "Retry" : "Create subset"}
+            {busy ? "Saving…" : error ? "Retry" : "Save subset"}
           </Button>
         </div>
         {error && (
@@ -379,12 +410,12 @@ export function SubsetPanel({
             disabled={Boolean(permission) || busy || !scope}
             onClick={() => void addTo(subset, pending)}
           >
-            <FolderIcon size={Size.Md} color={TextColor.Secondary} />
+            <FolderIcon size="md" color="text-secondary" />
             <span className={styles.rowText}>
-              <Text variant={TextVariant.Md}>{subset.name}</Text>
+              <Text variant="body-secondary">{subset.name}</Text>
               <Text
-                variant={TextVariant.Sm}
-                color={TextColor.Secondary}
+                variant="body-tertiary"
+                color="text-secondary"
                 className={subset.description ? styles.rowClamp : undefined}
                 title={subset.description ?? undefined}
               >
@@ -392,13 +423,11 @@ export function SubsetPanel({
               </Text>
             </span>
             {subset.description && (
-              <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+              <Text variant="caption" color="text-secondary">
                 {savedSubsetLabel(subset, unit)}
               </Text>
             )}
-            {busy && pending?.subset.id === subset.id && (
-              <Spinner size={Size.Xs} />
-            )}
+            {busy && pending?.subset.id === subset.id && <Spinner size="xs" />}
           </button>
         )}
       />
@@ -409,8 +438,8 @@ export function SubsetPanel({
         disabled={busy}
         onClick={() => setView("form")}
       >
-        <AddIcon size={Size.Md} color={TextColor.Secondary} />
-        <Text variant={TextVariant.Md} className={styles.rowText}>
+        <AddIcon size="md" color="text-secondary" />
+        <Text variant="body-secondary" className={styles.rowText}>
           New subset
         </Text>
       </button>
@@ -422,8 +451,8 @@ export function SubsetPanel({
       {error && pending && (
         <div className={styles.sheetActions}>
           <Button
-            size={Size.Sm}
-            variant={Variant.Secondary}
+            size="sm"
+            variant="secondary"
             leadingIcon={RefreshIcon}
             disabled={busy}
             onClick={() => void addTo(pending.subset, pending)}
@@ -440,7 +469,7 @@ export function SubsetPanel({
 export const addToSubsetAction: GridSelectionAction = {
   id: "fiftyone:add-to-subset",
   order: 20,
-  label: "Add to subset",
+  label: "Save as subset",
   placement: "primary",
   supports: () => true,
   scope: "explicit-or-results",

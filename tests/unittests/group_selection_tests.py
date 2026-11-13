@@ -404,6 +404,41 @@ class StaticGroupScopeTests(unittest.TestCase):
         )
         self.assertEqual(set(modal.values("id")), {self.left})
 
+    def test_group_stages_stay_within_subset_membership(self):
+        other = fo.Group()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/tmp/other-%s.jpg" % name,
+                    group=other.element(name),
+                )
+                for name in ("left", "right")
+            ]
+        )
+        subset = fosub.create_subset(self.dataset, "first left")
+        fosub.prepare_add(
+            self.dataset,
+            subset["id"],
+            "first-left",
+            [{"episodeId": self.left, "kind": "episode"}],
+        )
+        fosub.apply_add(self.dataset, "first-left")
+        for stages, expected in (
+            (
+                self.dataset.select_groups([other.id, self.group.id]),
+                [self.left],
+            ),
+            (self.dataset.select_groups(other.id), []),
+            (self.dataset.exclude_groups(other.id), [self.left]),
+            (self.dataset.exclude_groups(self.group.id), []),
+        ):
+            view = fosv.get_view(
+                self.dataset,
+                stages=stages._serialize(),
+                selection_scope={"subsetId": subset["id"]},
+            )
+            self.assertEqual(view.values("id"), expected)
+
     def test_preferred_slice_is_metadata_not_membership(self):
         subset = fosub.create_subset(
             self.dataset, "view preference", preferred_group_slice="right"

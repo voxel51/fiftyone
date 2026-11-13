@@ -1,5 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { isSidebarFilterMode } from "@fiftyone/state";
+import type { MouseEventHandler } from "react";
 import { useRecoilCallback } from "recoil";
 import { Button } from "../../utils";
 
@@ -18,11 +19,22 @@ export default function (params: {
     [params.modal, params.path],
   );
 
+  return <ResetButton color={params.color} onClick={handleReset} />;
+}
+
+/** The standard categorical reset control, independent of its state source. */
+export function ResetButton({
+  color,
+  onClick,
+}: {
+  color?: string;
+  onClick: MouseEventHandler<HTMLDivElement>;
+}) {
   return (
     <Button
       text={"Reset"}
-      color={params.color}
-      onClick={handleReset}
+      color={color}
+      onClick={onClick}
       style={{
         margin: "0.25rem -0.5rem",
         height: "2rem",

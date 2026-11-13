@@ -7,6 +7,7 @@ import Group from "./Group";
 import { Sample2D } from "./Sample2D";
 import { Sample3d } from "./Sample3d";
 import { useRetainedModalSample } from "./use-modal-sample-renderer-persistence";
+import { ModalSamplePending } from "./ModalSamplePending";
 
 const ContentColumn = styled.div`
   display: flex;
@@ -36,7 +37,7 @@ export const ModalSample = React.memo(() => {
   return (
     <ContentColumn data-cy="sample-canvas">
       <ErrorBoundary onReset={() => {}}>
-        <Suspense>
+        <Suspense fallback={<ModalSamplePending fallback={null} />}>
           {isGroup ? (
             <Group />
           ) : (

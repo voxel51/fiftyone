@@ -1,4 +1,5 @@
 import { getFetchFunctionExtended } from "@fiftyone/utilities";
+import type { PaginateSamplesNode } from "@fiftyone/relay";
 import type { State } from "../recoil/types";
 import type {
   EpisodeSelection,
@@ -89,6 +90,39 @@ export async function resolveSamplePosition(
     signal,
   });
   return response.response;
+}
+
+/** An identity and direction within the request's current grid order. */
+export interface GridCursor {
+  readonly sampleId: string;
+  readonly direction: "at" | "before" | "after";
+}
+
+/** A destination window, an exact-order offset fallback, or confirmed absence. */
+export type GridLocation =
+  | { readonly kind: "missing" }
+  | { readonly kind: "offset"; readonly index: number }
+  | {
+      readonly kind: "seek";
+      readonly nodes: readonly PaginateSamplesNode[];
+      readonly previous: GridCursor | null;
+      readonly next: GridCursor | null;
+    };
+
+/** Fetch a neighborhood by identity, retaining the current grid scope. */
+export async function resolveGridLocation(
+  datasetId: string,
+  request: SelectionRequest & GridCursor,
+  signal: AbortSignal,
+): Promise<GridLocation> {
+  return (
+    await getFetchFunctionExtended()<typeof request, GridLocation>({
+      method: "POST",
+      path: `/dataset/${encodeURIComponent(datasetId)}/selection/navigation`,
+      body: request,
+      signal,
+    })
+  ).response;
 }
 
 /** A frozen server-side copy of the complete scope for one bulk action. */
@@ -182,6 +216,25 @@ export async function getSelectionProviders(datasetId: string) {
   return response.response;
 }
 
+/** One addition to a subset: when, by whom, and where its members came from. */
+export interface SubsetCapture {
+  /** The add's retry key. */
+  readonly operationId: string | null;
+  /** Capture time in UTC ISO 8601 format. */
+  readonly capturedAt: string | null;
+  readonly capturedBy: string | null;
+  /** Members this capture added that the subset did not already have. */
+  readonly added: number;
+  /** The saved query that was loaded, as it was named at capture time. */
+  readonly savedView: {
+    readonly id: string;
+    readonly name: string;
+    readonly slug: string;
+  } | null;
+  /** The view stages the capture ran against, unless too large to keep. */
+  readonly view: readonly State.Stage[] | null;
+}
+
 /** A saved subset contains references to live parent episodes. */
 export interface SavedSubset {
   readonly id: string;
@@ -204,6 +257,8 @@ export interface SavedSubset {
   readonly kinds?: readonly ("episode" | "segment")[];
   /** Conversion that gives saved entities their identity. */
   readonly view?: readonly State.Stage[] | null;
+  /** Recent additions, newest first; only single-subset reads include them. */
+  readonly captures?: readonly SubsetCapture[];
 }
 
 /** Preview and completion use the same units and immutable operation identity. */
@@ -264,6 +319,19 @@ export function getSubset(datasetId: string, subsetId: string) {
   return subsetRequest<SavedSubset>(
     datasetId,
     `/${encodeURIComponent(subsetId)}?counts=false`,
+  );
+}
+
+/** Updates editable metadata without changing membership or attribution. */
+export function updateSubset(
+  datasetId: string,
+  subsetId: string,
+  info: Partial<Pick<SavedSubset, "name" | "description">>,
+) {
+  return subsetRequest<SavedSubset>(
+    datasetId,
+    `/${encodeURIComponent(subsetId)}`,
+    info,
   );
 }
 
@@ -337,13 +405,13 @@ export async function getSelectionAvailability(
 }
 
 export interface SelectionTagOptions {
-  readonly change?: { tag: string; add: boolean };
+  readonly changes?: Readonly<Record<string, boolean>>;
   readonly target?: "members" | "labels";
   /** The serialized view the scope was captured in. */
   readonly view?: readonly unknown[];
 }
 
-/** Inspect or apply an idempotent tag change to a frozen scope. */
+/** Inspect or apply explicit tag edits to a frozen scope without write retries. */
 export async function selectionTagsRequest(
   datasetId: string,
   scope: SelectionScope,
@@ -365,9 +433,10 @@ export async function selectionTagsRequest(
     >({
       method: "POST",
       path: `/dataset/${encodeURIComponent(datasetId)}/selection/tags`,
+      retries: options.changes ? 0 : undefined,
       body: {
         ...scopeBody(scope),
-        change: options.change,
+        changes: options.changes,
         target: options.target ?? "members",
         view: options.view,
       },

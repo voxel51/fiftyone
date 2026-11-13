@@ -13,9 +13,9 @@ import {
 // of the initial bundle for non-LeRobot sessions.
 registerFormatAdapter({
   ...leRobotAdapterDescriptor,
-  load: async (options) => {
+  load: async () => {
     const [adapter] = await Promise.all([
-      leRobotAdapterDescriptor.load(options),
+      leRobotAdapterDescriptor.load(),
       loadLeRobotViewExtensions(),
     ]);
     return adapter;

@@ -13,11 +13,16 @@ import {
 } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { resolveLabelSelectionVisuals, sizeInImagePixels, t } from "./util";
+import {
+  getPointColorByValue,
+  resolveLabelSelectionVisuals,
+  sizeInImagePixels,
+  t,
+} from "./util";
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 
 interface KeypointLabel extends RegularLabel {
-  points: [NONFINITE, NONFINITE][];
+  points?: [NONFINITE, NONFINITE][];
 }
 
 export default class KeypointOverlay<
@@ -56,6 +61,11 @@ export default class KeypointOverlay<
 
     const skeleton = getSkeleton(this.field, state);
     const points = this.getFilteredPoints(state, skeleton);
+    // Without points there are no nodes and no edge endpoints to draw
+    if (!points.length) {
+      return;
+    }
+
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
         const path = skeleton.edges[i].map((index) => points[index]);
@@ -67,15 +77,34 @@ export default class KeypointOverlay<
       }
     }
 
-    const pointColor = state.options.coloring.points
-      ? (index: number) =>
-          labelVisuals?.color ||
-          getColor(
-            state.options.coloring.pool,
-            state.options.coloring.seed,
-            index,
-          )
-      : (_: number) => color;
+    const fieldSetting = state.options.customizeColorSetting.find(
+      (s) => s.path === this.field,
+    );
+    const pointColor = (index: number): string => {
+      if (labelVisuals?.color) {
+        return labelVisuals.color;
+      }
+      // Color-by-value on a per-point attribute (a list parallel to
+      // `points`) colors each point by its own entry
+      const perPoint = getPointColorByValue({
+        coloring: state.options.coloring,
+        field: fieldSetting,
+        label: this.label,
+        index,
+        numPoints: points.length,
+      });
+      if (perPoint) {
+        return perPoint;
+      }
+      if (state.options.coloring.points) {
+        return getColor(
+          state.options.coloring.pool,
+          state.options.coloring.seed,
+          index,
+        );
+      }
+      return color;
+    };
     for (let i = 0; i < points.length; i++) {
       const point = points[i];
       if (!point) {
@@ -197,7 +226,7 @@ export default class KeypointOverlay<
     state: Readonly<State>,
     skeleton?: KeypointSkeleton,
   ): (Coordinates | null)[] {
-    return this.label.points.map((p, i) => {
+    return (this.label.points ?? []).map((p, i) => {
       return p.every((c) => typeof c === "number") &&
         state.options.pointFilter(
           this.field,
@@ -239,7 +268,7 @@ export default class KeypointOverlay<
 export const getKeypointPoints = (labels: KeypointLabel[]): Coordinates[] => {
   let points = [];
   labels.forEach((label) => {
-    points = [...points, ...label.points];
+    points = [...points, ...(label.points ?? [])];
   });
   return points;
 };

@@ -1,4 +1,5 @@
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
@@ -14,6 +15,7 @@ import type {
   ReconciledPolyline3D,
 } from "../annotation/types";
 import {
+  type Looker3dEvents,
   SET_EGO_VIEW_EVENT,
   SET_TOP_VIEW_EVENT,
   SET_ZOOM_TO_SELECTED_EVENT,
@@ -269,7 +271,7 @@ export const useCameraViews = ({
           timestamp: Date.now(),
         });
         event.preventDefault();
-        window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
+        getEventBus<Looker3dEvents>().dispatch(SET_TOP_VIEW_EVENT);
         return;
       }
 
@@ -279,7 +281,7 @@ export const useCameraViews = ({
           timestamp: Date.now(),
         });
         event.preventDefault();
-        window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
+        getEventBus<Looker3dEvents>().dispatch(SET_EGO_VIEW_EVENT);
         return;
       }
 
@@ -290,7 +292,7 @@ export const useCameraViews = ({
           timestamp: Date.now(),
         });
         event.preventDefault();
-        window.dispatchEvent(new CustomEvent(SET_ZOOM_TO_SELECTED_EVENT));
+        getEventBus<Looker3dEvents>().dispatch(SET_ZOOM_TO_SELECTED_EVENT);
         return;
       }
 

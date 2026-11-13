@@ -260,6 +260,24 @@ describe("CommandContextManager text-editing guard", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it("skips commands while a control inside a modal dialog is focused", async () => {
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const checkbox = document.createElement("span");
+    checkbox.setAttribute("role", "checkbox");
+    checkbox.tabIndex = 0;
+    dialog.appendChild(checkbox);
+    document.body.appendChild(dialog);
+    checkbox.focus();
+    const execFn = bindSpace();
+    const event = spaceEvent();
+    await CommandContextManager.instance().handleKeyDown(event);
+    expect(execFn).not.toBeCalled();
+    // the control keeps its own Space activation
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("fires commands while a button is focused", async () => {
     const button = document.createElement("button");
     document.body.appendChild(button);

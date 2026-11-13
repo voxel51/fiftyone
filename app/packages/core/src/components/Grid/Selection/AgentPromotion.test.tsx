@@ -12,7 +12,7 @@ afterEach(cleanup);
 
 function open() {
   render(<AgentPromotion />);
-  fireEvent.click(screen.getByRole("button", { name: "Voxel51 Agent" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ask agent" }));
   return screen.getByRole("dialog", { name: "Voxel51 Agent" });
 }
 
@@ -48,7 +48,7 @@ it("closes from Not now", () => {
   fireEvent.click(within(dialog).getByRole("button", { name: "Not now" }));
   expect(
     screen
-      .getByRole("button", { name: "Voxel51 Agent" })
+      .getByRole("button", { name: "Ask agent" })
       .getAttribute("aria-expanded"),
   ).toBe("false");
 });

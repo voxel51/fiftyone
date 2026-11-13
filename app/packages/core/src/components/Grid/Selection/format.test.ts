@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { SavedSubset } from "@fiftyone/state/src/selection";
 import {
+  capturedFromLabel,
   episodeTitle,
   formatBound,
   formatRanges,
@@ -195,5 +197,32 @@ describe("selection display formatting", () => {
       30n,
     ]);
     expect(rangeDomain([[]])).toBeNull();
+  });
+});
+
+describe("capturedFromLabel", () => {
+  const subset = (...names: (string | null)[]) =>
+    ({
+      captures: names.map((name, index) => ({
+        operationId: String(index),
+        capturedAt: null,
+        capturedBy: null,
+        added: 1,
+        savedView: name ? { id: name, name, slug: name } : null,
+        view: null,
+      })),
+    }) as unknown as SavedSubset;
+
+  it("names the most recent saved query and counts the rest once", () => {
+    expect(capturedFromLabel(subset("Night"))).toBe("From saved query “Night”");
+    expect(capturedFromLabel(subset("Dusk", null, "Night", "Dusk"))).toBe(
+      "From saved queries “Dusk” and 1 more",
+    );
+  });
+
+  it("says nothing without captures from saved queries", () => {
+    expect(capturedFromLabel(subset())).toBeNull();
+    expect(capturedFromLabel(subset(null))).toBeNull();
+    expect(capturedFromLabel({} as SavedSubset)).toBeNull();
   });
 });

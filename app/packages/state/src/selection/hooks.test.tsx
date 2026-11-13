@@ -3,18 +3,21 @@ import { Provider, createStore } from "jotai";
 import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  useActiveSelectionBucket,
   useClearSelectionBucket,
   useEpisodeSelection,
   useEpisodeSelectionActions,
   useRefreshSelectionMetadata,
   useRemoveSelectionBucket,
   useSelectionBoundary,
+  useOpenSelectionBoundary,
   useSelectionBucketActions,
   useSelectionBucketCaptures,
   useSelectionBucketCommands,
   useSelectionBuckets,
+  useRestoreSelection,
   useSelectionMembership,
-  useSelectionTarget,
+  useSelectionSections,
 } from "./hooks";
 import type { EpisodeSelection, SelectionMember } from "./types";
 
@@ -82,6 +85,7 @@ describe("dataset-isolated captures", () => {
         selected: useEpisodeSelection(dataset),
         actions: useEpisodeSelectionActions(dataset),
         boundary: useSelectionBoundary(dataset),
+        open: useOpenSelectionBoundary(),
       }),
       { initialProps: { dataset: "a" }, wrapper },
     );
@@ -92,7 +96,7 @@ describe("dataset-isolated captures", () => {
       }),
     );
     act(() =>
-      result.current.boundary[1]({
+      result.current.open("a", {
         subsetId: "different",
         provider: { kind: "temporal-tags", values: ["review"] },
       }),
@@ -134,6 +138,11 @@ describe("session persistence", () => {
       result.current.actions.capture({
         episodeId: "second",
         members: [{ episodeId: "second", kind: "episode" }],
+        node: {
+          id: "second",
+          sample: { _id: "second", cameras: { _cls: "Group", name: "left" } },
+          urls: [{ field: "filepath", url: "https://media.example/signed" }],
+        },
       }),
     );
     expect(
@@ -143,6 +152,14 @@ describe("session persistence", () => {
         .map((entry: { episodeId: string }) => entry.episodeId)
         .sort(),
     ).toEqual(["persisted", "second"]);
+    const saved: EpisodeSelection[] = JSON.parse(
+      sessionStorage.getItem("fiftyone:grid-selection:seeded") ?? "[]",
+    );
+    expect(saved.find((capture) => capture.episodeId === "second")).toEqual({
+      episodeId: "second",
+      members: [{ episodeId: "second", kind: "episode" }],
+      groupSlice: "left",
+    });
     act(() => result.current.actions.clear());
     expect(sessionStorage.getItem("fiftyone:grid-selection:seeded")).toBeNull();
   });
@@ -166,7 +183,9 @@ describe("selection buckets", () => {
           layout: useSelectionBucketActions(dataset),
           captures: useSelectionBucketCaptures(domain),
           membership: useSelectionMembership(domain),
-          target: useSelectionTarget(domain),
+          active: useActiveSelectionBucket(domain),
+          sections: useSelectionSections(domain),
+          restore: useRestoreSelection(domain),
           commands: useSelectionBucketCommands(domain),
           clearBucket: useClearSelectionBucket(domain),
           removeBucket: useRemoveSelectionBucket(domain),
@@ -207,16 +226,21 @@ describe("selection buckets", () => {
     expect(fourth).toBeNull();
     expect(result.current.buckets).toHaveLength(3);
     act(() =>
-      result.current.layout.update(second, { name: "  Needs review  " }),
+      result.current.layout.update(second, {
+        name: "  Needs review before the next export  ",
+      }),
     );
     expect(result.current.buckets[1]).toEqual({
       id: second,
-      name: "Needs revi",
+      name: "Needs review before the",
     });
-    act(() => result.current.layout.update(second, { icon: "reject" }));
-    expect(result.current.buckets[1].icon).toBe("reject");
+    act(() => result.current.layout.update(second, { icon: "thumbsDown" }));
+    expect(result.current.buckets[1].icon).toBe("thumbsDown");
     act(() => result.current.layout.update(second, { name: "" }));
-    expect(result.current.buckets[1]).toEqual({ id: second, icon: "reject" });
+    expect(result.current.buckets[1]).toEqual({
+      id: second,
+      icon: "thumbsDown",
+    });
     expect(
       JSON.parse(
         localStorage.getItem("fiftyone:grid-selection-buckets:layout") ?? "[]",
@@ -288,24 +312,141 @@ describe("selection buckets", () => {
     );
   });
 
-  it("targets the chosen bucket while it has captures, else the first populated one", () => {
-    const { result } = harness("target");
-    act(() => {
-      result.current.layout.add();
-    });
-    const [first, second] = result.current.buckets.map((b) => b.id);
-    expect(result.current.target.target).toBe(first);
-    act(() => result.current.target.setTarget(second));
-    // An empty choice is remembered but yields to a populated bucket.
-    expect(result.current.target.target).toBe(second);
+  it("splits with the first section active, which keeps what was picked", () => {
+    const { result } = harness("active");
     act(() => {
       result.current.primary.capture(whole("a"));
     });
-    expect(result.current.target.target).toBe(first);
+    act(() => result.current.sections.split());
+    const [first, second] = result.current.buckets.map((b) => b.id);
+    expect(result.current.active.active).toBe(first);
+    expect(result.current.captures.get(first)?.has("a")).toBe(true);
+    act(() => result.current.active.activate(second));
+    expect(result.current.active.active).toBe(second);
+    // pressing the active section again keeps it active
+    act(() => result.current.active.activate(second));
+    expect(result.current.active.active).toBe(second);
+  });
+
+  it("finds a section by position, making those up to it", () => {
+    const { result } = harness("at");
+    let third: string | null = null;
     act(() => {
-      result.current.primary.clear();
+      third = result.current.sections.sectionAt(2);
     });
-    expect(result.current.target.target).toBe(second);
+    const ids = result.current.buckets.map((b) => b.id);
+    expect(ids).toHaveLength(3);
+    expect(third).toBe(ids[2]);
+    expect(result.current.sections.sectionAt(0)).toBe("primary");
+    // no fourth section
+    act(() => {
+      expect(result.current.sections.sectionAt(3)).toBeNull();
+    });
+    expect(result.current.buckets).toHaveLength(3);
+  });
+
+  it("moves a pick between sections, or copies it, in one change", () => {
+    const { result } = harness("move");
+    act(() => {
+      result.current.primary.capture(whole("a"));
+      result.current.primary.capture(whole("b"));
+    });
+    act(() => result.current.sections.split());
+    const [first, second] = result.current.buckets.map((b) => b.id);
+    const keys = (id: string) => [
+      ...(result.current.captures.get(id)?.keys() ?? []),
+    ];
+    act(() => result.current.sections.move("a", first, second));
+    expect(keys(first)).toEqual(["b"]);
+    expect(keys(second)).toEqual(["a"]);
+    act(() => result.current.sections.move("b", first, second, true));
+    expect(keys(first)).toEqual(["b"]);
+    expect(keys(second)).toEqual(["a", "b"]);
+    // a parent the section does not hold moves nowhere
+    act(() => result.current.sections.move("gone", first, second));
+    expect(keys(second)).toEqual(["a", "b"]);
+  });
+
+  it("merges sections back into one strip, keeping every pick", () => {
+    const { result } = harness("merge");
+    act(() => {
+      result.current.primary.capture(whole("a"));
+    });
+    act(() => result.current.sections.split());
+    act(() => {
+      result.current.second.capture(whole("b"));
+    });
+    act(() => result.current.sections.mergeAll());
+    expect(result.current.buckets).toEqual([{ id: "primary" }]);
+    expect([...(result.current.captures.get("primary")?.keys() ?? [])]).toEqual(
+      ["a", "b"],
+    );
+    expect(result.current.active.active).toBe("primary");
+  });
+
+  it("folds one section into a neighbor, which takes over as active", () => {
+    const { result } = harness("merge-one");
+    act(() => {
+      result.current.primary.capture(whole("a"));
+    });
+    act(() => result.current.sections.split());
+    act(() => result.current.sections.add());
+    const [first, second, third] = result.current.buckets.map((b) => b.id);
+    act(() => {
+      result.current.second.capture(whole("b"));
+      result.current.third.capture(whole("a"));
+    });
+    act(() => result.current.active.activate(second));
+    act(() => result.current.sections.mergeInto(second, third));
+    expect(result.current.buckets.map((b) => b.id)).toEqual([first, third]);
+    expect([...(result.current.captures.get(third)?.keys() ?? [])]).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(result.current.active.active).toBe(third);
+    // merging the last pair back leaves one plain strip
+    act(() => result.current.sections.mergeInto(third, first));
+    expect(result.current.buckets.map((b) => b.id)).toEqual([first]);
+    expect([...(result.current.captures.get(first)?.keys() ?? [])]).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(result.current.active.active).toBe(first);
+  });
+
+  it("drops a section, the first taking over when it was active", () => {
+    const { result } = harness("drop");
+    act(() => result.current.sections.split());
+    act(() => result.current.sections.add());
+    const [first, second, third] = result.current.buckets.map((b) => b.id);
+    act(() => result.current.active.activate(third));
+    act(() => result.current.sections.remove(third));
+    expect(result.current.active.active).toBe(first);
+    act(() => result.current.sections.remove(second));
+    expect(result.current.buckets).toEqual([{ id: first }]);
+    expect(result.current.active.active).toBe(first);
+  });
+
+  it("restores sections, captures, and the active section from a snapshot", () => {
+    const { result } = harness("restore-all");
+    act(() => {
+      result.current.primary.capture(whole("a"));
+    });
+    const before = {
+      buckets: result.current.buckets,
+      captures: result.current.captures,
+      active: result.current.active.active,
+    };
+    act(() => result.current.sections.split());
+    act(() => {
+      result.current.second.capture(whole("b"));
+    });
+    act(() => result.current.restore(before));
+    expect(result.current.buckets).toEqual([{ id: "primary" }]);
+    expect([...(result.current.captures.get("primary")?.keys() ?? [])]).toEqual(
+      ["a"],
+    );
+    expect(result.current.active.active).toBe("primary");
   });
 
   it("removes a bucket with its captures from this domain and the samples view", () => {
@@ -327,21 +468,6 @@ describe("selection buckets", () => {
     // The last bucket can never be removed.
     act(() => result.current.removeBucket("primary"));
     expect(result.current.buckets).toEqual([{ id: "primary" }]);
-  });
-
-  it("restores a removed bucket at its old position", () => {
-    const { result } = harness("restore");
-    act(() => {
-      result.current.layout.add();
-      result.current.layout.add();
-    });
-    const middle = result.current.buckets[1];
-    act(() => result.current.layout.update(middle.id, { name: "Mid" }));
-    const named = result.current.buckets[1];
-    act(() => result.current.layout.remove(middle.id));
-    expect(result.current.buckets).toHaveLength(2);
-    act(() => result.current.layout.restore(named, 1));
-    expect(result.current.buckets[1]).toEqual({ id: middle.id, name: "Mid" });
   });
 
   it("gives a copy in another bucket the metadata the first copy already has", () => {
@@ -375,6 +501,77 @@ describe("selection buckets", () => {
       result.current.captures.get(second)?.get("b")?.filepath,
     ).toBeUndefined();
   });
+
+  it.each([{}, { filepath: "/a.png" }])(
+    "copies a persisted slice into another bucket without replacing supplied metadata: %j",
+    (metadata) => {
+      sessionStorage.setItem(
+        "fiftyone:grid-selection:inherit-slice",
+        JSON.stringify([{ ...whole("a"), groupSlice: "left" }]),
+      );
+      const { result } = harness("inherit-slice");
+      act(() => result.current.layout.add());
+      act(() => result.current.second.capture({ ...whole("a"), ...metadata }));
+      const second = result.current.buckets[1].id;
+      expect(result.current.captures.get(second)?.get("a")).toEqual({
+        ...whole("a"),
+        ...metadata,
+        groupSlice: "left",
+      });
+      act(() =>
+        result.current.second.capture({
+          ...whole("a"),
+          ...metadata,
+          groupSlice: "right",
+        }),
+      );
+      expect(result.current.captures.get(second)?.get("a")?.groupSlice).toBe(
+        "right",
+      );
+    },
+  );
+
+  it("preserves an explicit slice when inheriting a known preview", () => {
+    sessionStorage.setItem(
+      "fiftyone:grid-selection:explicit-slice",
+      JSON.stringify([
+        { ...whole("a"), filepath: "/a.png", groupSlice: "left" },
+      ]),
+    );
+    const { result } = harness("explicit-slice");
+    act(() => result.current.layout.add());
+    act(() =>
+      result.current.second.capture({ ...whole("a"), groupSlice: "right" }),
+    );
+    expect(
+      result.current.captures.get(result.current.buckets[1].id)?.get("a"),
+    ).toMatchObject({ filepath: "/a.png", groupSlice: "right" });
+  });
+
+  it.each([true, false])(
+    "inherits a slice and preview from different sections, slice first: %s",
+    (sliceFirst) => {
+      const { result } = harness("combined-metadata");
+      act(() => result.current.layout.add());
+      act(() => result.current.layout.add());
+      act(() =>
+        result.current.primary.capture({
+          ...whole("a"),
+          ...(sliceFirst ? { groupSlice: "left" } : { filepath: "/a.png" }),
+        }),
+      );
+      act(() =>
+        result.current.second.capture({
+          ...whole("a"),
+          ...(sliceFirst ? { filepath: "/a.png" } : { groupSlice: "left" }),
+        }),
+      );
+      act(() => result.current.third.capture(whole("a")));
+      expect(
+        result.current.captures.get(result.current.buckets[2].id)?.get("a"),
+      ).toMatchObject({ filepath: "/a.png", groupSlice: "left" });
+    },
+  );
 
   it("refreshes metadata in every bucket that holds the parent", () => {
     const { result } = harness("metadata");

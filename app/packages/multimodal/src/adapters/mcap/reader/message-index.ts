@@ -7,6 +7,7 @@ import type {
   McapIndexedReaderLike,
   McapReadIndexedMessageTimesRequest,
   ParsedMcapMessageIndexRecord,
+  McapTopicIndexedTimeBounds,
 } from "./types";
 
 const MESSAGE_INDEX_RECORD_READER_OPTIONS: NonNullable<
@@ -254,6 +255,64 @@ export async function readChunkIndexedMessageTimes({
   readonly startTimeNs: bigint | undefined;
 }): Promise<readonly McapIndexedMessageTime[]> {
   const entries: McapIndexedMessageTime[] = [];
+  for await (const { channel, messageIndex } of readChunkMessageIndexRecords({
+    channelIds,
+    chunkIndex,
+    readExact,
+    readable,
+    reader,
+    signal,
+  })) {
+    for (const [logTimeNs, messageOffset] of messageIndex.records) {
+      if (!isWithinIndexedRange(logTimeNs, startTimeNs, endTimeNs)) continue;
+      entries.push({
+        channelId: channel.id,
+        chunkStartOffset: chunkIndex.chunkStartOffset,
+        logTimeNs,
+        messageOffset,
+        topic: channel.topic,
+      });
+    }
+  }
+  return entries.sort(compareIndexedMessageTimes);
+}
+
+/** Reduces selected channel indexes to bounds without retaining/sorting every entry. */
+export async function readChunkIndexedTimeBounds(
+  args: Parameters<typeof readChunkMessageIndexRecords>[0],
+): Promise<ReadonlyMap<number, McapTopicIndexedTimeBounds | null>> {
+  const bounds = new Map<number, McapTopicIndexedTimeBounds | null>(
+    [...args.channelIds].map((id) => [id, null]),
+  );
+  for await (const { channel, messageIndex } of readChunkMessageIndexRecords(
+    args,
+  )) {
+    let firstLogTimeNs: bigint | undefined;
+    let lastLogTimeNs: bigint | undefined;
+    for (const [time] of messageIndex.records) {
+      if (firstLogTimeNs === undefined || time < firstLogTimeNs)
+        firstLogTimeNs = time;
+      if (lastLogTimeNs === undefined || time > lastLogTimeNs)
+        lastLogTimeNs = time;
+    }
+    if (firstLogTimeNs !== undefined && lastLogTimeNs !== undefined) {
+      bounds.set(channel.id, { firstLogTimeNs, lastLogTimeNs });
+    }
+  }
+  return bounds;
+}
+
+async function* readChunkMessageIndexRecords({
+  channelIds,
+  chunkIndex,
+  readExact,
+  readable,
+  reader,
+  signal,
+}: Omit<
+  Parameters<typeof readChunkIndexedMessageTimes>[0],
+  "startTimeNs" | "endTimeNs"
+>) {
   const reads = collectMessageIndexReads({
     channelIds,
     chunkIndex,
@@ -290,23 +349,9 @@ export async function readChunkIndexedMessageTimes({
         );
       }
 
-      for (const [logTimeNs, messageOffset] of messageIndex.records) {
-        if (!isWithinIndexedRange(logTimeNs, startTimeNs, endTimeNs)) {
-          continue;
-        }
-
-        entries.push({
-          channelId: channel.id,
-          chunkStartOffset: chunkIndex.chunkStartOffset,
-          logTimeNs,
-          messageOffset,
-          topic: channel.topic,
-        });
-      }
+      yield { channel, messageIndex };
     }
   }
-
-  return entries.sort(compareIndexedMessageTimes);
 }
 
 /**
@@ -361,7 +406,7 @@ function collectMessageIndexReads({
 
 /**
  * Coalesces nearby selected MessageIndex records into bounded exact reads.
- * The MCAP footer stores these records contiguously by chunk, so this avoids
+ * MCAP stores these records together after each chunk, so this avoids
  * paying one remote round trip per active channel without turning sparse
  * selections into an unbounded footer fetch.
  */

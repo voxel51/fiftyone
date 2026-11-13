@@ -18,6 +18,7 @@
         "README.md"
     ],
     "dependencies": {
+        "@fiftyone/events": "*",
         "@ungap/event-target": "^0.2.2",
         "@voxel51/voodo": "catalog:",
         "@xmldom/xmldom": "^0.8.13",

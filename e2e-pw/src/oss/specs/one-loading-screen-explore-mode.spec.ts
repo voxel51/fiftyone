@@ -57,8 +57,7 @@ test("does not show when opening or navigating in the modal's explore mode for a
   const loadingScreens = await pagePom.armGlobalLoadingScreenCounter();
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+  await modal.afterSampleLoaded(() => grid.openFirstSample());
   await pagePom.assert.hasHadOnlyOneGlobalLoadingScreen(loadingScreens);
 
   await modal.navigateNextSample();

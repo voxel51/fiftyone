@@ -433,6 +433,155 @@ class SubsetTests(unittest.TestCase):
         )
         self.assertEqual(view.values("id"), list(reversed(self.ids[-3:])))
 
+    def test_boundary_applies_before_take_and_shuffle(self):
+        members = self.ids[35:]
+        self.add([_episode(i) for i in members])
+        boundary = {"subsetId": self.subset, "subsetScope": "episodes"}
+        for stage in (
+            fo.Take(3, seed=51),
+            fo.Take(100, seed=51),
+            fo.Take(0, seed=51),
+            fo.Shuffle(seed=51),
+        ):
+            with self.subTest(stage=stage):
+                expected = (
+                    self.dataset.select(members).add_stage(stage).values("id")
+                )
+                stages = [stage._serialize()]
+                view = get_view(
+                    self.dataset,
+                    stages=stages,
+                    selection_scope=boundary,
+                    pagination_data=True,
+                )
+                self.assertEqual(view.values("id"), expected)
+                resolved = _resolve_all(
+                    self.dataset, {"view": stages, "boundary": boundary}
+                )
+                self.assertEqual(
+                    [g["episodeId"] for g in resolved["groups"]], expected
+                )
+                self.assertEqual(
+                    fosub.member_count(self.dataset, self.subset), len(members)
+                )
+
+    def test_member_filters_and_transforms_run_within_the_subset(self):
+        members = self.ids[35:]
+        self.add([_episode(i) for i in members])
+        boundary = {"subsetId": self.subset, "subsetScope": "episodes"}
+        ranks = self.dataset.values("rank")
+        self.dataset.set_values(
+            "kind", ["odd" if rank % 2 else "even" for rank in ranks]
+        )
+        self.dataset.set_values(
+            "location", [fo.GeoLocation(point=[rank, 0]) for rank in ranks]
+        )
+        self.dataset.set_values(
+            "objects",
+            [
+                fo.Detections(
+                    detections=[
+                        fo.Detection(label="cat"),
+                        fo.Detection(label="dog"),
+                    ]
+                )
+                for _ in ranks
+            ],
+        )
+        self.dataset.set_values(
+            "points",
+            [
+                fo.Keypoints(
+                    keypoints=[
+                        fo.Keypoint(
+                            points=[[0.1, 0.1], [0.2, 0.2]],
+                            confidence=[0.9 if rank < 40 else 0.1, 0.1],
+                        )
+                    ]
+                )
+                for rank in ranks
+            ],
+        )
+        F = fo.ViewField
+        for stage, field in (
+            (fo.SelectBy("rank", [40, 2, 36], ordered=True), "rank"),
+            (fo.ExcludeBy("rank", [36, 37]), "rank"),
+            (
+                fo.GeoWithin(
+                    [
+                        [
+                            [37.5, -1],
+                            [41.5, -1],
+                            [41.5, 1],
+                            [37.5, 1],
+                            [37.5, -1],
+                        ]
+                    ]
+                ),
+                "rank",
+            ),
+            (fo.SetField("rank", F("rank") * 2), "rank"),
+            (fo.MapValues("kind", {"odd": "uneven"}), "kind"),
+            (fo.MapLabels("objects", {"cat": "feline"}), "objects.label"),
+            (fo.LimitLabels("objects", 1), "objects.label"),
+            (
+                fo.FilterKeypoints("points", filter=F("confidence") > 0.5),
+                "points.keypoints.confidence",
+            ),
+        ):
+            with self.subTest(stage=stage):
+                expected = self.dataset.select(members).add_stage(stage)
+                stages = [stage._serialize()]
+                view = get_view(
+                    self.dataset,
+                    stages=stages,
+                    selection_scope=boundary,
+                    pagination_data=True,
+                )
+                self.assertEqual(view.values("id"), expected.values("id"))
+                self.assertEqual(view.values(field), expected.values(field))
+                resolved = _resolve_all(
+                    self.dataset, {"view": stages, "boundary": boundary}
+                )
+                self.assertEqual(
+                    [g["episodeId"] for g in resolved["groups"]],
+                    expected.values("id"),
+                )
+
+    def test_similarity_ranks_only_subset_members(self):
+        import numpy as np
+
+        import fiftyone.brain as fob
+
+        members = self.ids[35:]
+        self.add([_episode(i) for i in members])
+        boundary = {"subsetId": self.subset, "subsetScope": "episodes"}
+        ranks = self.dataset.values("rank")
+        fob.compute_similarity(
+            self.dataset,
+            embeddings=np.array([[rank, 0.0] for rank in ranks]),
+            brain_key="near_zero",
+            backend="sklearn",
+            metric="euclidean",
+        )
+        stage = fo.SortBySimilarity([0.0, 0.0], k=2, brain_key="near_zero")
+        stages = [stage._serialize()]
+        # the nearest members, not the dataset's nearest samples
+        view = get_view(self.dataset, stages=stages, selection_scope=boundary)
+        self.assertEqual(view.values("id"), self.ids[35:37])
+        # details for a clicked member outside the nearest two rank it among
+        # all members, so it is not pulled into the results
+        details, _, _ = foss._scoped_view(
+            self.dataset,
+            {
+                "view": stages,
+                "boundary": boundary,
+                "detailsOnly": True,
+                "episodeIds": [self.ids[40]],
+            },
+        )
+        self.assertEqual(details.values("id"), self.ids[35:37])
+
     def test_remove_exact_members_preserves_samples_and_other_subsets(self):
         members = [
             _episode(self.ids[0]),

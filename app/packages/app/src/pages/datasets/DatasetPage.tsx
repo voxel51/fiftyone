@@ -8,6 +8,7 @@ import {
   EmptyDatasetSelection,
   DatasetGridRendererFailover,
   QueryPerformanceToast,
+  SavedQueries,
   SchemaManagerOutlet,
   Snackbar,
   Starter,
@@ -105,7 +106,6 @@ const DatasetPageQueryNode = graphql`
     ...configFragment
     ...expressionCatalogFragment
     ...stageDefinitionsFragment
-    ...viewSchemaFragment
   }
 `;
 
@@ -116,7 +116,17 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const isEmpty = count === 0;
 
   return (
-    <Nav fragment={data} hasDataset={!isEmpty}>
+    <Nav
+      fragment={data}
+      hasDataset={!isEmpty}
+      viewBarAccessory={
+        // The header sits outside the page's dataset context; the menu reads
+        // the saved views this page query already loaded
+        <datasetQueryContext.Provider value={data}>
+          <SavedQueries />
+        </datasetQueryContext.Provider>
+      }
+    >
       <div className={style.page} data-cy={"dataset-page"}>
         <DatasetGridRendererFailover />
         {/* Rendered outside the isEmpty branch so the schema manager URL

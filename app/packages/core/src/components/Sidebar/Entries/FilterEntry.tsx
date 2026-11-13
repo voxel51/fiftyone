@@ -1,15 +1,11 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
-import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
+import { FilterList, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
-import React from "react";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+import React, { useEffect } from "react";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
@@ -19,26 +15,34 @@ const Text = styled.div`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-const Filter = () => {
+/** e2e specs wait on the sidebar showing a mode */
+type SidebarModeE2EEvents = {
+  "e2e:sidebar:mode-shown": { filter: boolean };
+};
+
+/**
+ * The sidebar's mode row: the Filter / Visibility toggle on the left,
+ * the query-performance bolt on the right.
+ */
+const Filter = (_props: { modal?: boolean }) => {
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode,
   );
 
-  const setSchemaModal = useSetRecoilState(fos.settingsModal);
+  useEffect(() => {
+    getEventBus<SidebarModeE2EEvents>().dispatch("e2e:sidebar:mode-shown", {
+      filter: isFilterMode,
+    });
+  }, [isFilterMode]);
+
   const resetSelectedFieldStages = useResetRecoilState(
     fos.fieldVisibilityStage,
   );
 
-  const {
-    resetTextFilter,
-    resetExcludedPaths,
-    affectedPathCount,
-    mergedSchema,
-    isFieldVisibilityActive,
-  } = fos.useSchemaSettings();
+  const { resetExcludedPaths, affectedPathCount, isFieldVisibilityActive } =
+    fos.useSchemaSettings();
 
-  const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   return (
@@ -107,7 +111,6 @@ const Filter = () => {
               onClick={() => {
                 resetSelectedFieldStages();
                 resetExcludedPaths();
-                setSearchResults([]);
               }}
             >
               {affectedPathCount > 0 && (
@@ -132,25 +135,6 @@ const Filter = () => {
           </Tooltip>
         )}
         {queryPerformance && <QueryPerformanceIcon />}
-        <Tooltip
-          text="Change field visibility"
-          placement="bottom-center"
-          data-cy="field-visibility-toggle-tooltip"
-        >
-          <Settings
-            data-cy="field-visibility-icon"
-            onClick={() => {
-              setSchemaModal({
-                open: true,
-              });
-              resetTextFilter();
-            }}
-            sx={{
-              color: theme.text.tertiary,
-              "&:hover": { color: theme.text.primary },
-            }}
-          />
-        </Tooltip>
       </Box>
     </FilterInputDiv>
   );

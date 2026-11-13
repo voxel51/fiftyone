@@ -1,6 +1,7 @@
+import { useSavedSegmentsShown } from "@fiftyone/multimodal/extensions/episode-intervals";
 import { useScopedSegments } from "@fiftyone/state/src/selection";
 import { savedSegmentSource } from "@fiftyone/state/src/selection/segment-provenance";
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { Text, TextColor } from "@voxel51/voodo";
 import { useEffect } from "react";
 import {
   registerTileDecorator,
@@ -17,6 +18,11 @@ function SavedSegmentTile({ sample }: { sample: TileDecoratorSample }) {
   const { active, members, loading, error, filtered } = useScopedSegments(
     sample._id ?? sample.id ?? "",
   );
+  useSavedSegmentsShown("tile", {
+    active,
+    loading,
+    count: members.length,
+  });
   if (!active) return null;
   const sources = [
     ...new Set(members.map(({ range }) => savedSegmentSource(range).label)),
@@ -29,7 +35,7 @@ function SavedSegmentTile({ sample }: { sample: TileDecoratorSample }) {
       title={`${plural(members.length, filtered ? "matching segment" : "saved segment")}${sources.length ? ` — ${sources.join("; ")}` : ""}`}
     >
       <Text
-        variant={TextVariant.Xs}
+        variant="caption"
         color={error ? TextColor.Warning : TextColor.Foreground}
       >
         {error

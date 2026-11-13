@@ -1,5 +1,27 @@
-import { EventDispatcher } from "../dispatch/dispatcher";
+import { EventDispatcher, isE2E, tapAllEvents } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
+
+declare global {
+  interface Window {
+    /**
+     * E2E affordance: lets Playwright arm on any event-bus event by name, and
+     * lets plugins, which bundle their own copy of this package, send on the
+     * App's bus.
+     */
+    __FO_EVENTS__?: {
+      tap: typeof tapAllEvents;
+      dispatch: (event: string, data?: unknown) => void;
+    };
+  }
+}
+
+const dispatchOnAppBus = (event: string, data?: unknown) =>
+  getEventBus<Record<string, unknown>>().dispatch(event, data);
+
+// a plugin's bundled copy of this package must not replace the App's handle
+if (isE2E()) {
+  window.__FO_EVENTS__ ??= { tap: tapAllEvents, dispatch: dispatchOnAppBus };
+}
 
 export const DEFAULT_CHANNEL_ID = "default";
 

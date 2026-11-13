@@ -64,6 +64,10 @@ import {
 import type { Scene3dCameraNavigationMode } from "../camera/scene-3d-view-state";
 import { useHoverEcho } from "../../interaction/point-hover/hover-echo";
 import { useDataStream } from "../../playback/data-stream-context";
+import {
+  useFramePresentation,
+  useFrameUnavailable,
+} from "../../../../visualization/webgpu/FramePresentation";
 import { useDepthHover } from "../../spatial/depth-sampling";
 import { resolveDepthRay } from "../../spatial/depth-projection";
 import { resolveProjectionCorrespondence } from "../../spatial/projection-correspondence";
@@ -78,8 +82,13 @@ import {
 } from "../../settings/modal/state";
 import { usePointCloudColorCapabilities } from "./use-point-cloud-color-capabilities";
 import type { EpisodeTileProps } from "../../tiles/tile-types";
+import { usePanelUnavailable } from "../../tiles/use-panel-unavailable";
 import styles from "../../tiles/Tile.module.css";
-import { TileEmptyState, TileStatusBadge } from "../../tiles/TileStreamState";
+import {
+  TileEmptyState,
+  TileStatusBadge,
+  useTileEmptyStateFinal,
+} from "../../tiles/TileStreamState";
 import { locationHudLine, speedHudLine } from "../entities/pose-trajectory";
 import {
   useScene3dCameraTracking,
@@ -1015,6 +1024,24 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
   );
   useRegisterTileSettings(tileId, settingsRegistration);
 
+  const onFrameRendered = useFramePresentation(
+    sourceKey,
+    sceneHasRenderableContent && !sceneSnapshotSelection.heldReason,
+  );
+  const canvas = usePanelUnavailable(sourceKey);
+  const emptyStateFinal = useTileEmptyStateFinal(selectedStreams);
+  // A scene that cannot produce a frame settles the destination: no selected
+  // sources, a failed canvas, or nothing renderable once its notices or final
+  // empty state are known.
+  useFrameUnavailable(
+    sourceKey,
+    tileId,
+    selectedStreams.length === 0 ||
+      canvas.unavailable ||
+      (!sceneHasRenderableContent &&
+        !sceneSnapshotSelection.heldReason &&
+        (displayedScene.notices.length > 0 || emptyStateFinal)),
+  );
   return (
     <>
       {selectedStreams.length === 0 ? (
@@ -1024,6 +1051,8 @@ const Scene3dTile: React.FC<EpisodeTileProps> = () => {
       ) : shouldRenderPanel ? (
         <div className={styles.panelStack} {...hoverTooltipContainerProps}>
           <PointCloudPanel
+            onFrameRendered={onFrameRendered}
+            onUnavailableChange={canvas.onUnavailableChange}
             annotationLayers={displayedScene.annotationLayers}
             background={panelBackground}
             cameraPose={poseCommand}

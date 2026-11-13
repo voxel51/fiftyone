@@ -1,21 +1,21 @@
 .. _enterprise-installation:
 
-FiftyOne Enterprise Installation
-================================
+Voxel51 Installation
+====================
 
 .. default-role:: code
 
-FiftyOne Enterprise deployments come with a centralized FiftyOne Enterprise App
+Voxel51 deployments come with a centralized Voxel51 App
 and database that allows your entire team to collaborate securely on the same
-datasets. FiftyOne Enterprise is deployed entirely into your environment, either
+datasets. Voxel51 is deployed entirely into your environment, either
 on-premises or in a private cloud. Your data never leaves your environment.
 
-FiftyOne Enterprise can be deployed on a wide variety of infrastructure
+Voxel51 can be deployed on a wide variety of infrastructure
 solutions, including Kubernetes and Docker.
 
 .. note::
 
-    Detailed instructions for the initial FiftyOne Enterprise deployment, along
+    Detailed instructions for the initial Voxel51 deployment, along
     with all necessary components, are made available by your Voxel51 support
     team during the onboarding process.
 
@@ -24,12 +24,12 @@ solutions, including Kubernetes and Docker.
 Python SDK
 ----------
 
-While the :ref:`FiftyOne Enterprise App <enterprise-app>` allows for countless new
+While the :ref:`Voxel51 App <enterprise-app>` allows for countless new
 App-centric workflows, any existing Python-based workflows that you've fallen
 in love with in the open-source version of FiftyOne are still directly
 applicable!
 
-FiftyOne Enterprise requires an updated Python SDK, which is a wrapper around the
+Voxel51 requires an updated Python SDK, which is a wrapper around the
 open-source FiftyOne package that adds new functionality like support for
 cloud-backed media.
 
@@ -150,7 +150,7 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 Cloud credentials
 -----------------
 
-In order to utilize cloud-backed media functionality of FiftyOne Enterprise, at
+In order to utilize cloud-backed media functionality of Voxel51, at
 least one cloud source must be configured with proper credentials. Below are
 instructions for configuring each supported cloud provider for local SDK use
 or directly to the Enterprise containers. An admin can also :ref:`configure
@@ -172,11 +172,13 @@ multimodal (MCAP) datasets. Without CORS, these assets fail to load with a
 browser error, even when other media displays correctly in the App.
 
 When configuring CORS, set the allowed origin(s) to the URL(s) from which your
-users access the FiftyOne Enterprise App, and allow the ``GET`` and ``HEAD``
+users access the Voxel51 App, and allow the ``GET`` and ``HEAD``
 methods. For media that is read in byte ranges (such as MCAP), also allow the
 ``Range`` request header and expose the ``Content-Range``, ``Content-Length``,
-and ``Accept-Ranges`` response headers. Details are provided below for each
-cloud platform.
+and ``Accept-Ranges`` response headers. If users will use **Upload from this
+computer** to add media to a dataset, also allow the ``PUT`` method, since the
+browser uploads each file directly to your bucket via a presigned URL.
+Details are provided below for each cloud platform.
 
 Browser caching
 _______________
@@ -241,12 +243,16 @@ and the shared credentials file should use
 
 .. note::
 
-    FiftyOne Enterprise requires either the `s3:ListBucket` or
+    Voxel51 requires either the `s3:ListBucket` or
     `s3:GetBucketLocation` permission in order to access objects in S3 buckets.
 
     If you wish to use multi-account credentials, your credentials must have
     the `s3:ListBucket` permission, as `s3:GetBucketLocation` does not support
     this.
+
+    To let users **Upload from this computer** into a bucket, the credentials
+    also need the `s3:PutObject` permission on that bucket; the permissions
+    above are read-only.
 
 3. Permanently register AWS credentials on a particular machine by adding the
 following keys to your :ref:`media cache config <enterprise-media-cache-config>`:
@@ -266,12 +272,15 @@ here is an example configuration:
     [
         {
             "AllowedHeaders": ["*"],
-            "AllowedMethods": ["GET", "HEAD"],
+            "AllowedMethods": ["GET", "HEAD", "PUT"],
             "AllowedOrigins": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
             "ExposeHeaders": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "MaxAgeSeconds": 86400
         }
     ]
+
+Omit ``"PUT"`` above if you don't need **Upload from this computer** to work
+against this bucket.
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on S3 objects <https://docs.aws.amazon.com/whitepapers/latest/build-static-websites-aws/controlling-how-long-amazon-s3-content-is-cached-by-amazon-cloudfront.html#specify-cache-control-headers>`_.
@@ -317,6 +326,45 @@ In the above, the credentials file can contain any format supported by
 which includes a service account key, stored authorized user credentials, or
 external account credentials.
 
+.. note::
+
+    To let users **Upload from this computer** into a bucket, the credentials
+    also need the `storage.objects.create` permission on that bucket (included
+    in the `Storage Object Creator` and `Storage Object Admin` roles) in
+    addition to read access.
+
+.. note::
+
+    If you're relying on ambient application default credentials (option 1
+    above) rather than an explicit service account key file, the service
+    account also needs the `roles/iam.serviceAccountTokenCreator` role
+    granted on itself. This lets it sign its own short-lived URLs, which is
+    how every signed GCS media URL this deployment issues is produced,
+    including but not limited to uploads.
+
+To sign GCS media URLs locally instead, with no service account and no request
+per URL, give the deployment an
+`HMAC key <https://cloud.google.com/storage/docs/authentication/hmackeys>`_.
+Save its access ID and secret in a JSON file:
+
+.. code-block:: json
+
+    {
+        "access_id": "GOOG1E...",
+        "secret": "..."
+    }
+
+and point the ``FIFTYONE_GCS_HMAC_KEY_FILE`` environment variable, or the
+``gcs_hmac_key_file`` key of your
+:ref:`media cache config <enterprise-media-cache-config>`, at it. The key signs
+every GCS URL the deployment issues, so its account needs read access to every
+bucket the deployment serves, and delete access where uploads are cleaned up.
+Reads and uploads keep using the credentials above.
+
+A :ref:`managed GCP credential <enterprise-cloud-storage-page>` can carry its
+own key: add the same object to its JSON file under ``"hmac_key"``, and URLs for
+that credential's buckets are signed with it.
+
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
 
@@ -325,11 +373,14 @@ here is an example configuration:
     [
         {
             "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
-            "method": ["GET", "HEAD"],
+            "method": ["GET", "HEAD", "PUT"],
             "responseHeader": ["Content-Range", "Content-Length", "Accept-Ranges"],
             "maxAgeSeconds": 3600
         }
     ]
+
+Omit ``"PUT"`` above if you don't need **Upload from this computer** to work
+against this bucket.
 
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on GCP content <https://cloud.google.com/storage/docs/metadata#cache-control>`_.
@@ -463,6 +514,13 @@ alias:
     `AZURE_STORAGE_ACCOUNT_URL` environment variable or by including the
     `account_url` key in your credentials `.ini` file.
 
+.. note::
+
+    To let users **Upload from this computer** into a container, the
+    credentials also need write access, such as the `Storage Blob Data
+    Contributor` role; read-only roles like `Storage Blob Data Reader` are
+    not sufficient.
+
 If you need to configure CORS on your Azure Blob storage account, you can do so
 at the storage-account level (Blob service) via the Azure portal
 (**Settings > Resource sharing (CORS)**) or the Azure CLI:
@@ -471,12 +529,15 @@ at the storage-account level (Blob service) via the Azure portal
 
     az storage cors add \
         --services b \
-        --methods GET HEAD \
+        --methods GET HEAD PUT \
         --origins "https://fiftyone-enterprise-deployment.yourcompany.com" \
         --allowed-headers "*" \
         --exposed-headers "Content-Range" "Content-Length" "Accept-Ranges" \
         --max-age 3600 \
         --account-name "<account-name>"
+
+Omit ``PUT`` above if you don't need **Upload from this computer** to work
+against this storage account.
 
 See the
 `Azure Storage CORS documentation <https://learn.microsoft.com/en-us/rest/api/storageservices/cross-origin-resource-sharing--cors--support-for-the-azure-storage-services>`_
@@ -558,6 +619,27 @@ alias:
     # For example
     filepath = "minio://test-bucket/image.jpg"
 
+.. note::
+
+    To let users **Upload from this computer** into a bucket, the credentials
+    also need a policy granting `s3:PutObject` on that bucket; read-only
+    policies are not sufficient.
+
+If you need **Upload from this computer** to PUT directly to a MinIO bucket
+from the browser, you also need to allow your deployment's origin in MinIO's
+CORS configuration. Newer MinIO releases support per-bucket CORS
+configuration; consult your MinIO version's own documentation for the exact
+mechanism. On older releases without per-bucket CORS, set the
+``MINIO_API_CORS_ALLOW_ORIGIN`` environment variable on the MinIO server
+instead, for example:
+
+.. code-block:: shell
+
+    export MINIO_API_CORS_ALLOW_ORIGIN="https://fiftyone-enterprise-deployment.yourcompany.com"
+
+Omit this configuration if you don't need **Upload from this computer** to
+work against this bucket.
+
 If you would like to take advantage of browser caching you can
 `specify cache-control headers on MinIO content using the metadata field of the put_object API <https://min.io/docs/minio/linux/developers/python/API.html>`_.
 By default Minio does not provide cache-control headers so it will be up to your browser's
@@ -569,7 +651,7 @@ Extra client arguments
 ______________________
 
 Configuring credentials following the instructions above is almost always
-sufficient for FiftyOne Enterprise to properly utilize them. In rare cases where the
+sufficient for Voxel51 to properly utilize them. In rare cases where the
 cloud provider client needs non-default configuration, you can add extra client
 kwargs via the :ref:`media cache config <enterprise-media-cache-config>`:
 
@@ -717,7 +799,7 @@ ___________________________________
 
 If credentials are configured both on the local machine and remotely via the
 Enterprise server, the behavior is for the Enterprise SDK to use the first
-matching set of credentials found. 
+matching set of credentials found.
 
 *  When running the Enterprise SDK locally, the default is to use local
    credentials, if any exist, and otherwise to use managed credentials returned
@@ -747,6 +829,37 @@ server, and there is no need to configure credentials locally. To enable
 downloading of credentials to machines, set the environment variable
 `FEATURE_FLAG_ENABLE_CREDS_LOCAL_USE` to `True` in the `teams-api` container.
 
+.. _enterprise-managed-storage-root:
+
+Managed storage root
+--------------------
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+Voxel51 stores the files that it writes itself under one **managed storage
+root**: :ref:`robot library <multimodal-robots>` packages,
+:ref:`playback renditions <multimodal-playback-renditions>`, and
+:ref:`projection tables <multimodal-indexing>` whose manifest names no
+storage location (`sink`).
+The root is a cloud URI, such as `s3://my-bucket/fiftyone`, or an absolute
+path to a shared directory. Every Voxel51 service must be able to read and
+write files there.
+
+Set the root in one of these places:
+
+-   **Settings > Infrastructure > Storage**: an admin enters the root. Click
+    **Check storage access** to confirm that a worker can read and write
+    files there
+-   `FIFTYONE_MANAGED_STORAGE_ROOT` on the `teams-api` container: at
+    startup, the API saves the value in your organization's settings, and
+    the other services and SDK clients use it from there. The Storage page
+    then shows the root as read-only
+
+A service that has its own `FIFTYONE_MANAGED_STORAGE_ROOT` uses that value
+instead of the saved one. If you set the variable on more than one container,
+use the same value on each.
+
 .. _enterprise-ai-model-weights:
 
 AI model weights
@@ -755,7 +868,7 @@ AI model weights
 .. customavailablein::
     :enterprise_version: 2.19.0
 
-The FiftyOne Enterprise App ships with AI-assisted mask segmentation for annotation
+The Voxel51 App ships with AI-assisted mask segmentation for annotation
 workflows. By default, the required model weights are served from Voxel51's
 CDN and no configuration is required.
 

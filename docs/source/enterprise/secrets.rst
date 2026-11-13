@@ -1,21 +1,21 @@
 .. _enterprise-secrets:
 
-FiftyOne Enterprise Secrets
-===========================
+Voxel51 Secrets
+===============
 
 .. default-role:: code
 
 .. customavailablein::
     :enterprise_version: 1.4.0
 
-FiftyOne Enterprise provides a Secrets interface for storing sensitive information
+Voxel51 provides a Secrets interface for storing sensitive information
 such as API tokens and login credentials in a secure manner for use by your
 :ref:`Team's plugins <enterprise-plugins>`.
 
 Managing secrets through the Enterprise App is a straightforward and secure way to
 configure connections to and integrations with external services and APIs such
 as GCP, OpenAI, CVAT, etc without the need to change the configuration or
-environment variables of your FiftyOne Enterprise containers and restarting them.
+environment variables of your Voxel51 containers and restarting them.
 Instead, you can simply add or remove secrets using the
 :ref:`Enterprise UI <enterprise-adding-secrets>` and they will immediately be available
 to any plugins that require them.
@@ -25,7 +25,7 @@ to any plugins that require them.
 Adding secrets
 --------------
 
-Admins can add, configure, and remove secrets in the FiftyOne Enterprise App by
+Admins can add, configure, and remove secrets in the Voxel51 App by
 navigating to the Secrets Management page under Settings > Secrets:
 
 .. image:: /images/enterprise/secrets_page.png
@@ -94,8 +94,8 @@ values of any environment variables whose name matches a secret key declared
 by a plugin. Therefore, a plugin written using the above pattern can run in
 all of the following environments with no code changes:
 
--   A FiftyOne Enterprise deployment that uses the Secrets interface
--   A FiftyOne Enterprise deployment that injects secrets directly as environment
+-   A Voxel51 deployment that uses the Secrets interface
+-   A Voxel51 deployment that injects secrets directly as environment
     variables
 -   A locally launched App via the Enterprise SDK
 -   Open source FiftyOne

@@ -1,4 +1,5 @@
 import {
+  activeAtom,
   bucketsAtom,
   selectionAtom,
 } from "@fiftyone/state/src/selection/model/atoms";
@@ -13,11 +14,9 @@ import {
 import { createStore, Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { setHoveredTile } from "../gridTileRegistry";
 import { useTileDecorators } from "../tileDecorators";
-import { useTrackHeldGesture } from "./bucketGestures";
 import {
-  BucketTileChips,
+  SectionCheckbox,
   useBucketTileDecorator,
   type TileBucketController,
 } from "./bucketTileDecorator";
@@ -36,17 +35,13 @@ function Harness({
   controller: TileBucketController;
 }) {
   useBucketTileDecorator(enabled, controller);
-  useTrackHeldGesture(enabled);
   return <span data-decorators={useTileDecorators().length} />;
 }
 
-afterEach(() => {
-  cleanup();
-  setHoveredTile(null);
-});
+afterEach(cleanup);
 
-describe("bucket tile chips", () => {
-  it("registers only while several buckets exist", () => {
+describe("section checkboxes", () => {
+  it("registers only while the tray is split", () => {
     const controller: TileBucketController = {
       datasetId: "ds",
       domainId: "ds",
@@ -63,13 +58,14 @@ describe("bucket tile chips", () => {
     view.unmount();
   });
 
-  it("marks membership, offers the other buckets on hover, and never opens the tile", () => {
+  it("fills a picked tile with its sections' shapes and works like its checkbox", () => {
     const store = createStore();
     store.set(bucketsAtom("ds"), [
       { id: "primary", name: "Keep" },
-      { id: "b2", icon: "reject" },
+      { id: "b2", icon: "thumbsDown" },
       { id: "b3" },
     ]);
+    store.set(selectionAtom("ds"), new Map([["tile", whole("tile")]]));
     store.set(selectionAtom("ds#b2"), new Map([["tile", whole("tile")]]));
     const select = vi.fn();
     const controller: TileBucketController = {
@@ -86,7 +82,7 @@ describe("bucket tile chips", () => {
       <>
         <Harness enabled controller={controller} />
         <div data-tile="">
-          <BucketTileChips
+          <SectionCheckbox
             sampleId="tile"
             datasetId="ds"
             domainId="ds"
@@ -98,65 +94,45 @@ describe("bucket tile chips", () => {
     );
     // Spotlight listens for clicks on the tile element itself.
     container.querySelector("[data-tile]")?.addEventListener("click", opened);
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    const member = screen.getByRole("button", { name: "Remove from Bucket 2" });
-    expect(member.getAttribute("aria-pressed")).toBe("true");
-    act(() => setHoveredTile("tile"));
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    act(() => setHoveredTile("tile", true));
-    expect(screen.getAllByRole("button")).toHaveLength(3);
-    expect(
-      screen
-        .getByRole("button", { name: "Add to Keep" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
-    fireEvent.keyDown(window, { key: "Alt", altKey: true });
-    expect(
-      screen
-        .getByRole("button", { name: "Add to Bucket 3" })
-        .hasAttribute("data-armed"),
-    ).toBe(true);
-    expect(member.hasAttribute("data-armed")).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Add to Keep" }));
-    expect(select).toHaveBeenCalledWith("tile", "primary", false);
-    fireEvent.click(member);
-    expect(select).toHaveBeenCalledWith("tile", "b2", false);
-    fireEvent.click(member, { shiftKey: true, altKey: true });
-    expect(select).toHaveBeenLastCalledWith("tile", "b2", true);
-    expect(select).toHaveBeenCalledTimes(3);
+    const mark = screen.getByRole("button", {
+      name: "This sample is in Keep, Section 2",
+    });
+    expect(mark.getAttribute("aria-pressed")).toBe("true");
+    // one shape per section holding the tile
+    expect(mark.querySelectorAll("svg")).toHaveLength(2);
+    fireEvent.click(mark);
+    expect(select).toHaveBeenLastCalledWith("tile", false);
+    fireEvent.click(mark, { shiftKey: true });
+    expect(select).toHaveBeenLastCalledWith("tile", true);
     expect(opened).not.toHaveBeenCalled();
-    act(() => setHoveredTile("tile"));
-    expect(screen.getAllByRole("button")).toHaveLength(1);
   });
 
-  it("renders nothing for the single-bucket tray or a tile in no bucket", () => {
+  it("offers an unpicked tile the shape a pick would land in, and nothing for one strip", () => {
     const store = createStore();
     const wrapper = ({ children }: PropsWithChildren) => (
       <Provider store={store}>{children}</Provider>
     );
-    const view = render(
-      <BucketTileChips
+    const checkbox = (
+      <SectionCheckbox
         sampleId="tile"
         datasetId="ds"
         domainId="ds"
         unit={unit}
-      />,
-      { wrapper },
+      />
     );
+    const view = render(checkbox, { wrapper });
     expect(screen.queryByRole("button")).toBeNull();
-    store.set(bucketsAtom("ds"), [{ id: "primary" }, { id: "b2" }]);
-    view.rerender(
-      <BucketTileChips
-        sampleId="tile"
-        datasetId="ds"
-        domainId="ds"
-        unit={unit}
-      />,
-    );
-    expect(screen.queryByRole("button")).toBeNull();
-    act(() => setHoveredTile("tile"));
-    expect(screen.queryByRole("button")).toBeNull();
-    act(() => setHoveredTile("tile", true));
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    act(() => store.set(bucketsAtom("ds"), [{ id: "primary" }, { id: "b2" }]));
+    // picks land in the active section, the first until another is pressed
+    const pick = screen.getByRole("button", {
+      name: "Pick this sample into Section 1",
+    });
+    expect(pick.getAttribute("aria-pressed")).toBe("false");
+    expect(pick.querySelectorAll("svg")).toHaveLength(1);
+    act(() => store.set(activeAtom("ds"), "b2"));
+    expect(
+      screen.getByRole("button", { name: "Pick this sample into Section 2" }),
+    ).toBeTruthy();
+    view.unmount();
   });
 });

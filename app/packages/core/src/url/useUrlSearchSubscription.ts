@@ -2,15 +2,21 @@
  * Router-agnostic URL search-string read + write primitive.
  *
  * Monkey-patches `window.history.pushState` / `replaceState` once to
- * dispatch a `fo:url-changed` event, so subscribers (via `useUrlSearch`)
+ * dispatch a `fo:url-changed` bus event, so subscribers (via `useUrlSearch`)
  * pick up SPA navigations made through any router. Prefer
  * `writeUrlSearch(...)` over calling `replaceState` directly so the event
  * fires for subscribers.
  */
 
+import { getEventBus, useEventBus } from "@fiftyone/events";
 import { useEffect, useState } from "react";
 
 export const URL_CHANGED_EVENT = "fo:url-changed";
+
+/** A router or `writeUrlSearch` pushed or replaced the history entry */
+export type UrlEvents = {
+  [URL_CHANGED_EVENT]: undefined;
+};
 
 const PATCH_MARKER = "__foHistoryPatched__";
 
@@ -21,7 +27,7 @@ export const patchHistoryOnce = () => {
   if (w[PATCH_MARKER]) return;
   w[PATCH_MARKER] = true;
 
-  const dispatch = () => window.dispatchEvent(new Event(URL_CHANGED_EVENT));
+  const dispatch = () => getEventBus<UrlEvents>().dispatch(URL_CHANGED_EVENT);
 
   const origPush = window.history.pushState.bind(window.history);
   const origReplace = window.history.replaceState.bind(window.history);
@@ -47,6 +53,7 @@ export const useUrlSearch = (): string => {
   const [search, setSearch] = useState<string>(() =>
     typeof window === "undefined" ? "" : window.location.search,
   );
+  const bus = useEventBus<UrlEvents>();
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -54,12 +61,12 @@ export const useUrlSearch = (): string => {
 
     const update = () => setSearch(window.location.search);
     window.addEventListener("popstate", update);
-    window.addEventListener(URL_CHANGED_EVENT, update);
+    const off = bus.on(URL_CHANGED_EVENT, update);
     return () => {
       window.removeEventListener("popstate", update);
-      window.removeEventListener(URL_CHANGED_EVENT, update);
+      off();
     };
-  }, []);
+  }, [bus]);
 
   return search;
 };

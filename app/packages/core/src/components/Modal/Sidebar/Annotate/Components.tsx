@@ -25,7 +25,7 @@ const Container = styled.div`
 `;
 
 export const Round = styled(Container)`
-  border-radius: var(--radius-full);
+  border-radius: 9999px;
 
   &:hover {
     color: ${({ theme }) => theme.text.primary};

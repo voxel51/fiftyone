@@ -22,6 +22,7 @@ export const useKeyframePromotionOnEdit = (): ((
   overlayId: string,
   path: string,
   undoKey: string,
+  editedFrame?: number,
 ) => void) => {
   const engine = useAnnotationEngine();
   const sample = useActiveSampleId();
@@ -30,12 +31,13 @@ export const useKeyframePromotionOnEdit = (): ((
   const isImageDynamicGroupVideo = useIsImageDynamicGroupVideo();
 
   return useCallback(
-    (overlayId, path, undoKey) => {
+    (overlayId, path, undoKey, editedFrame) => {
       if (!isFrameScopedPath(path, isImageDynamicGroupVideo)) {
         return;
       }
 
-      const frame = getFrame();
+      // a form edit names its frame; a canvas edit is on the playhead
+      const frame = editedFrame ?? getFrame();
       const ref = { sample, path, instanceId: overlayId, frame };
       const det = engine.getLabel(ref);
 

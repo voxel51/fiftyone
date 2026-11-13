@@ -24,7 +24,7 @@ __________
      - The :ref:`provided user interface <fiftyone-app>` for graphically
        viewing, filtering, and understanding your datasets. Can be launched in
        the browser or within notebooks.
-   * - FiftyOne Enterprise
+   * - Voxel51
      - `The enterprise-grade suite <https://voxel51.com/enterprise/>`_
        built on top of FiftyOne for collaboration, permissioning, and working
        with cloud-backed media.

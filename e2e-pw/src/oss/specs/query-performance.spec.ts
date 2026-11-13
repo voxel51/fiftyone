@@ -18,140 +18,65 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+// one sample per row: non-finite values, a real maximum, a real minimum, and
+// nones; `inf`, `nan` and `ninf` hold the named value only in the first
+const NON_FINITE = {
+  inf: { $numberDouble: "Infinity" },
+  nan: { $numberDouble: "NaN" },
+  ninf: { $numberDouble: "-Infinity" },
+};
+const ROWS = [
+  { bool: false, str: "0", ...NON_FINITE },
+  { bool: false, str: "1", inf: 1.0, nan: 1.0, ninf: 1.0 },
+  { bool: true, str: "2", inf: -1.0, nan: -1.0, ninf: -1.0 },
+  { bool: null, str: null, inf: null, nan: null, ninf: null },
+];
+
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-
-    dataset = fo.Dataset("${datasetName}")
-    dataset.add_samples([fo.Sample(filepath=f"{i}.png") for i in range(0, 4)])
-    dataset.persistent = True
-
-    # NOT REAL VALUES
-
-    first = dataset.first()
-
-    first["bool"] = False
-    first["bool_list"] = [False]
-
-    first["inf"] = float("inf")
-    first["inf_list"] = [float("inf")]
-    first["inf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=float("inf"))]
-    )
-
-    first["nan"] = float("nan")
-    first["nan_list"] = [float("nan")]
-    first["nan_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=float("nan"))]
-    )
-
-    first["ninf"] = float("-inf")
-    first["ninf_list"] = [float("-inf")]
-    first["ninf_label_list"] = fo.Classifications(
-        classifications=[
-            fo.Classification(label="label", confidence=float("-inf"))
-        ]
-    )
-
-
-    first["str"] = "0"
-    first["str_list"] = ["0"]
-
-    first.save()
-
-    # REAL VALUES MAX
-
-    second = dataset.skip(1).first()
-
-    second["bool"] = False
-    second["bool_list"] = [False]
-
-    second["inf"] = 1.0
-    second["inf_list"] = [1.0]
-    second["inf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=1.0)]
-    )
-
-    second["nan"] = 1.0
-    second["nan_list"] = [1.0]
-    second["nan_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=1.0)]
-    )
-
-    second["ninf"] = 1.0
-    second["ninf_list"] = [1.0]
-    second["ninf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=float(1.0))]
-    )
-
-    second["str"] = "1"
-    second["str_list"] = ["1"]
-
-    second.save()
-
-    # REAL VALUES MIN
-
-    third = dataset.skip(2).first()
-
-    third["bool"] = True
-    third["bool_list"] = [True]
-
-    third["inf"] = -1.0
-    third["inf_list"] = [-1.0]
-    third["inf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=-1.0)]
-    )
-
-    third["nan"] = -1.0
-    third["nan_list"] = [-1.0]
-    third["nan_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=-1.0)]
-    )
-
-    third["ninf"] = -1.0
-    third["ninf_list"] = [-1.0]
-    third["ninf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=-1.0)]
-    )
-
-    third["str"] = "2"
-    third["str_list"] = ["2"]
-
-    third.save()
-
-    # NONE VALUES
-
-    fourth = dataset.skip(3).first()
-
-    fourth["bool"] = None
-    fourth["bool_list"] = None
-
-    fourth["inf"] = None
-    fourth["inf_list"] = None
-    fourth["inf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=None)]
-    )
-
-    fourth["nan"] = None
-    fourth["nan_list"] = None
-    fourth["nan_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=None)]
-    )
-
-    fourth["ninf"] = None
-    fourth["ninf_list"] = None
-    fourth["ninf_label_list"] = fo.Classifications(
-        classifications=[fo.Classification(label="label", confidence=None)]
-    )
-
-    fourth["str"] = None
-    fourth["str_list"] = None
-
-    dataset.create_index("$**")
-
-    fourth.save()`);
+  await datasetFactory.createDataset({
+    datasetName,
+    numSamples: ROWS.length,
+    schema: {
+      bool: "BooleanField",
+      bool_list: "ListField<BooleanField>",
+      str: "StringField",
+      str_list: "ListField<StringField>",
+      ...Object.fromEntries(
+        Object.keys(NON_FINITE).flatMap((key) => [
+          [key, "FloatField"],
+          [`${key}_list`, "ListField<FloatField>"],
+          [`${key}_label_list`, "Classifications"],
+        ]),
+      ),
+    },
+    withSampleData: ({ index }, { label }) => {
+      const row = ROWS[index];
+      const list = <T>(value: T) => (value === null ? null : [value]);
+      return {
+        bool: row.bool,
+        bool_list: list(row.bool),
+        str: row.str,
+        str_list: list(row.str),
+        ...Object.fromEntries(
+          Object.keys(NON_FINITE).flatMap((key) => {
+            const value = row[key as keyof typeof NON_FINITE];
+            return [
+              [key, value],
+              [`${key}_list`, list(value)],
+              [
+                `${key}_label_list`,
+                label.classifications([
+                  label.classification({ label: "label", confidence: value }),
+                ]),
+              ],
+            ];
+          }),
+        ),
+      };
+    },
+    indexes: ["$**"],
+  });
 });
 
 test.describe.serial("query performance sidebar", () => {
@@ -200,17 +125,15 @@ test.describe.serial("query performance sidebar", () => {
       await sidebar.asserter.assertFieldMissingQueryPerformance(field);
     }
 
-    let animation = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("inf_label_list");
-    await animation.received;
-
-    animation = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("nan_label_list");
-    await animation.received;
-
-    animation = await eventUtils.arm("animation-onRest");
-    await sidebar.clickFieldDropdown("ninf_label_list");
-    await animation.received;
+    for (const field of [
+      "inf_label_list",
+      "nan_label_list",
+      "ninf_label_list",
+    ]) {
+      await eventUtils.after("animation-onRest", () =>
+        sidebar.clickFieldDropdown(field),
+      );
+    }
 
     const subfieldsIndexed = ["id", "label", "tags"];
     for (const field of [

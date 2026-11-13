@@ -115,14 +115,9 @@
   background: none;
 }
 
-/* Bucket chips replace the checkbox while keeping thumbnail titles visible. */
+/* Split, each tile's section checkbox stands in for its checkbox. */
 .spotlightGrid[data-selection-buckets] [data-fo-selection-checkbox] {
-  display: none;
-}
-
-.spotlightGrid[data-selection-buckets] [data-fo-thumbnail-selector] {
-  pointer-events: none;
-  justify-content: flex-end;
+  visibility: hidden;
 }
 
 /* ---------------------------------------------------------------------------
@@ -145,6 +140,12 @@
 
 .spotlightGrid [data-fo-tile-highlight] > [data-fo-looker-host] {
   transform: scale(1.04);
+}
+
+/* An arrival cue independent of tray hover, with no motion to suppress. */
+.spotlightGrid [data-fo-tile-revealed] > [data-fo-tile-overlay] {
+  outline: 3px solid currentColor;
+  outline-offset: -3px;
 }
 
 @keyframes tileWink {

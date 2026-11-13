@@ -15,6 +15,7 @@ export {
   useEpisodeTimeRange,
 } from "./use-episode-time-range";
 export { packIntervals, UNPLACED } from "./pack-intervals";
+export { useSavedSegmentsShown } from "./saved-segments-shown";
 export {
   intervalPinnedTrackIds,
   intervalTimelineSections,

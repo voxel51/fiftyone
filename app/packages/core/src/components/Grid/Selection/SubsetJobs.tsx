@@ -3,23 +3,20 @@ import {
   useSubsetJobs,
   useTrackSubsetJobs,
 } from "@fiftyone/state/src/selection";
-import {
-  Button,
-  GridViewIcon,
-  LoadingDots,
-  Size,
-  Text,
-  TextColor,
-  TextVariant,
-  Variant,
-} from "@voxel51/voodo";
-import { useState } from "react";
+import { Button, GridViewIcon, LoadingDots, Text } from "@voxel51/voodo";
+import { getEventBus } from "@fiftyone/events";
+import { useEffect, useState } from "react";
 import { useSelectionSubsetDisabledReason } from "@fiftyone/state";
 import ActionSurface from "./ActionSurface";
 import { defaultSubsetScope, useOpenSubset } from "./useSubsetScope";
 import { Notice } from "./Notice";
 import { plural } from "./format";
 import styles from "./SelectionTray.module.css";
+
+/** e2e specs wait on an add settling before they open or read its subset */
+type SubsetJobE2EEvents = {
+  "e2e:subset-job:settled": { state: string };
+};
 
 /** A panel watches persisted work; closing it does not stop the server. */
 export function SubsetJobStatus({
@@ -42,6 +39,15 @@ export function SubsetJobStatus({
   const [error, setError] = useState<string>();
   const openSubset = useOpenSubset(datasetId);
   const current = jobs.find((item) => item.job.id === replacementId) ?? record;
+  const settledState =
+    current && !selectionJobActive(current.job) ? current.job.state : null;
+  // This effect tells e2e specs when an add has finished, failed, or stopped.
+  useEffect(() => {
+    if (!settledState) return;
+    getEventBus<SubsetJobE2EEvents>().dispatch("e2e:subset-job:settled", {
+      state: settledState,
+    });
+  }, [settledState, current?.job.id]);
   if (!current) return null;
   const { job, subsetName, subsetId, connectionError } = current;
   const running = selectionJobActive(job);
@@ -92,8 +98,8 @@ export function SubsetJobStatus({
       >
         {running && progress && (
           <LoadingDots
-            variant={TextVariant.Sm}
-            color={TextColor.Secondary}
+            variant="body-tertiary"
+            color="text-secondary"
             text={
               total
                 ? `${done} of ${total} members`
@@ -115,7 +121,7 @@ export function SubsetJobStatus({
         {running && <p>You can keep working while this finishes.</p>}
       </Notice>
       {(connectionError || error) && (
-        <Text variant={TextVariant.Sm} color={TextColor.Failure} role="alert">
+        <Text variant="body-tertiary" color="text-failure" role="alert">
           {error ?? "Connection lost. Reconnecting to the same operation…"}
         </Text>
       )}
@@ -131,8 +137,8 @@ export function SubsetJobStatus({
       )}
       <div className={styles.sheetActions}>
         <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
+          size="sm"
+          variant="borderless"
           onClick={() => {
             if (!running) dismiss(job.id);
             close();
@@ -142,8 +148,8 @@ export function SubsetJobStatus({
         </Button>
         {running && !job.cancelRequested && (
           <Button
-            size={Size.Sm}
-            variant={Variant.Secondary}
+            size="sm"
+            variant="secondary"
             disabled={busy}
             onClick={() =>
               stopping ? void perform("cancel") : setStopping(true)
@@ -154,8 +160,8 @@ export function SubsetJobStatus({
         )}
         {stopping && (
           <Button
-            size={Size.Sm}
-            variant={Variant.Borderless}
+            size="sm"
+            variant="borderless"
             onClick={() => setStopping(false)}
           >
             Continue adding
@@ -164,7 +170,7 @@ export function SubsetJobStatus({
         {!current.unavailable &&
           (job.state === "failed" || job.state === "canceled") && (
             <Button
-              size={Size.Sm}
+              size="sm"
               disabled={busy || Boolean(permission)}
               onClick={() => !permission && void perform("retry")}
             >
@@ -173,8 +179,8 @@ export function SubsetJobStatus({
           )}
         {result && (
           <Button
-            size={Size.Sm}
-            variant={Variant.Secondary}
+            size="sm"
+            variant="secondary"
             onClick={() => {
               openSubset(
                 subsetId,
@@ -199,10 +205,13 @@ export default function SubsetJobs({ datasetId }: { datasetId: string }) {
   useTrackSubsetJobs(datasetId);
   const { jobs } = useSubsetJobs(datasetId);
   const [open, setOpen] = useState<string>();
-  if (!jobs.length) return null;
+  const visible = jobs.filter(
+    ({ job, trackingId }) => job.state !== "completed" || open === trackingId,
+  );
+  if (!visible.length) return null;
   return (
     <div className={styles.sheetActions}>
-      {jobs.map(({ job, subsetName, trackingId }) => (
+      {visible.map(({ job, subsetName, trackingId }) => (
         <ActionSurface
           key={trackingId}
           open={open === trackingId}
@@ -210,18 +219,16 @@ export default function SubsetJobs({ datasetId }: { datasetId: string }) {
           title={`Save to ${subsetName}`}
           surface="toolbar"
           trigger={
-            <Button
-              size={Size.Sm}
-              variant={Variant.Borderless}
-              onClick={() => setOpen(trackingId)}
-            >
-              {selectionJobActive(job)
-                ? "Saving"
-                : job.state === "completed"
-                  ? "Saved"
-                  : "Save needs attention"}
-              : {subsetName}
-            </Button>
+            job.state === "completed" ? null : (
+              <Button
+                size="sm"
+                variant="borderless"
+                onClick={() => setOpen(trackingId)}
+              >
+                {selectionJobActive(job) ? "Saving" : "Save needs attention"}:{" "}
+                {subsetName}
+              </Button>
+            )
           }
         >
           <SubsetJobStatus

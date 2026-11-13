@@ -67,6 +67,13 @@ FLAG_ALL_MATCH = 2
 MAX_CATEGORIES = 100
 MISSING_CATEGORY = 0xFFFF
 
+_COLOR_BY_TYPES = (
+    fof.StringField,
+    fof.BooleanField,
+    fof.IntField,
+    fof.FloatField,
+)
+
 # Lasso selections at or below this size become explicit id stages
 SELECT_STAGE_MAX = 10000
 
@@ -88,8 +95,22 @@ class EmbeddingsV2RunsStatus(HTTPEndpoint):
 
     def _post_sync(self, data):
         db = foo.get_db_conn()
+        # The runs the dataset document references, exactly as the dataset
+        # query lists them: run documents a dataset no longer references
+        # still carry its id, and counting them would make the App's run
+        # list look permanently stale and refresh it on every check
+        dataset_doc = db.datasets.find_one(
+            {"_id": ObjectId(data["datasetId"])}, {"brain_methods": 1}
+        )
+        run_ids = [
+            run_id
+            for run_id in (
+                (dataset_doc or {}).get("brain_methods") or {}
+            ).values()
+            if isinstance(run_id, ObjectId)
+        ]
         run_docs = db.runs.find(
-            {"_dataset_id": ObjectId(data["datasetId"])},
+            {"_id": {"$in": run_ids}},
             {"key": 1, "config": 1, "results": 1},
         )
 
@@ -247,6 +268,23 @@ class EmbeddingsV2Color(HTTPEndpoint):
             _color_cache_put(key, body)
 
         return Response(content=body, media_type="application/octet-stream")
+
+
+class EmbeddingsV2ColorByChoices(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """The field paths a run's points can be colored by: exactly the
+        paths ``/v2/color`` resolves, in schema order.
+
+        Reads the run's config only, never its results blob.
+        """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        dataset = fosu.load_and_cache_dataset(data["datasetName"])
+        config = dataset.get_brain_info(data["brainKey"]).config
+        choices = _color_by_choices(_all_slices(dataset), config.patches_field)
+        return {"fields": choices}
 
 
 class EmbeddingsV2Masks(HTTPEndpoint):
@@ -478,6 +516,7 @@ EmbeddingsV2Routes = [
     ("/embeddings/v2/geometry", EmbeddingsV2Geometry),
     ("/embeddings/v2/ids", EmbeddingsV2Ids),
     ("/embeddings/v2/color", EmbeddingsV2Color),
+    ("/embeddings/v2/color-by-choices", EmbeddingsV2ColorByChoices),
     ("/embeddings/v2/masks", EmbeddingsV2Masks),
     ("/embeddings/v2/lasso-stage", EmbeddingsV2LassoStage),
     ("/embeddings/v2/sample-info", EmbeddingsV2SampleInfo),
@@ -618,6 +657,19 @@ def _first_value(value):
     return value
 
 
+def _all_slices(dataset):
+    """The samples a run's points can come from.
+
+    A grouped dataset covers only its default slice, but a run can be
+    computed on any slice, so grouped datasets are flattened across all of
+    them.
+    """
+    if dataset.media_type == fom.GROUP:
+        return dataset.select_group_slices(_allow_mixed=True)
+
+    return dataset
+
+
 def _color_data(dataset, results, field_path):
     """Resolves per-point color-by values (wire order) and the style
     decision.
@@ -640,13 +692,14 @@ def _color_data(dataset, results, field_path):
     patches_field = results.config.patches_field
     is_patches = patches_field is not None
 
+    samples = _all_slices(dataset)
     ids = results.label_ids if is_patches else results.sample_ids
-    values = dataset._get_values_by_id(
+    values = samples._get_values_by_id(
         field_path, _as_list(ids), link_field=patches_field
     )
 
     exact = True
-    field = dataset.get_field(field_path)
+    field = samples.get_field(field_path)
     if isinstance(field, fof.ListField):
         field = field.field
 
@@ -680,6 +733,51 @@ def _color_data(dataset, results, field_path):
     return "categorical", values, classes, truncated, exact
 
 
+def _color_by_choices(samples, patches_field):
+    """The field paths ``/v2/color`` can resolve for a run's points.
+
+    A color column holds one value per point and collapses at most one
+    list level to its first element (see ``_color_data``). So a path
+    qualifies when its leaf is a ``_COLOR_BY_TYPES`` field, or a list of
+    one, and it crosses at most one list in total. That admits paths
+    through label lists such as ``ground_truth.detections.label``.
+
+    A patches run's points are its labels, so only paths within the label
+    qualify. ``_get_values_by_id`` already unwinds the label list for each
+    point, so that list does not count.
+    """
+    schema = samples.get_field_schema(flat=True)
+    list_paths = {
+        path
+        for path, field in schema.items()
+        if isinstance(field, fof.ListField)
+    }
+
+    prefix = ""
+    if patches_field is not None:
+        _, label_path = samples._get_label_field_path(patches_field)
+        list_paths.discard(label_path)
+        prefix = label_path + "."
+
+    choices = []
+    for path, field in schema.items():
+        if not path.startswith(prefix):
+            continue
+
+        is_list = isinstance(field, fof.ListField)
+        leaf = field.field if is_list else field
+        if not isinstance(leaf, _COLOR_BY_TYPES):
+            continue
+
+        keys = path.split(".")
+        parents = (".".join(keys[:i]) for i in range(1, len(keys)))
+        depth = int(is_list) + sum(p in list_paths for p in parents)
+        if depth <= 1:
+            choices.append(path)
+
+    return choices
+
+
 def _match_mask(
     dataset_name,
     results,
@@ -696,12 +794,8 @@ def _match_mask(
 
     matched_ids = None
     if filters or extended_stages:
-        extended_view = fosv.get_view(
-            dataset_name,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended_stages,
-            sample_filter=get_sample_filter(slices),
+        extended_view = _match_view(
+            dataset_name, stages, filters, slices, extended_stages
         )
         is_patches_view = extended_view._is_patches
 
@@ -730,6 +824,35 @@ def _match_mask(
     return np.fromiter(
         (str(_id) in matched_ids for _id in _as_list(ids)), bool, count=n
     )
+
+
+def _match_view(dataset_name, stages, filters, slices, extended_stages):
+    """The filtered/extended view that run points are matched against.
+
+    A grouped view evaluates filters against its default slice only, but a
+    run can be computed on any slice. When the view is still grouped, it is
+    rebuilt flattened across its slices so each point is matched against
+    its own sample. The flattening must precede the filters: a flat
+    ``select_group_slices()`` emits unfiltered samples.
+    """
+
+    def build(sample_filter):
+        return fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            # get_view() pops SortBy out of the extended stages
+            extended_stages=(
+                dict(extended_stages) if extended_stages else None
+            ),
+            sample_filter=sample_filter,
+        )
+
+    view = build(get_sample_filter(slices))
+    if view.media_type != fom.GROUP:
+        return view
+
+    return build(get_sample_filter(view.group_slices))
 
 
 def _hover_media(sample):

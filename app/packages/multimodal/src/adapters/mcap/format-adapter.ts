@@ -434,6 +434,7 @@ export function createMcapNumericSeriesCapability({
           preferredTimeNs: request.preferredTimeNs,
           selections: request.selections.map((selection) => ({
             fieldPaths: selection.fields,
+            ...(selection.includePrior ? { includePrior: true } : {}),
             topic: topicsByStream.get(selection.stream) ?? selection.stream,
           })),
           source,

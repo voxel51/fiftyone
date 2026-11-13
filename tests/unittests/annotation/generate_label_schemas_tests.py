@@ -14,7 +14,7 @@ from fiftyone.core.annotation.generate_label_schemas import (
     generate_label_schemas,
 )
 
-from decorators import drop_datasets
+from decorators import drop_datasets  # pylint: disable=import-error
 
 
 class GenerateLabelSchemaTests(unittest.TestCase):
@@ -196,6 +196,40 @@ class GenerateLabelSchemaTests(unittest.TestCase):
                 "type": "detections",
             },
         )
+
+    @drop_datasets
+    def test_generate_keypoint_point_scoped_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                kp_field=fo.Keypoint(
+                    label="test",
+                    points=[(0.1, 0.1), (0.2, 0.2)],
+                    confidence=[0.5, 0.9],
+                    tags=["a"],
+                ),
+            )
+        )
+        # a customer-defined per-point attribute (list parallel to `points`)
+        dataset.add_sample_field(
+            "kp_field.occluded", fo.ListField, subfield=fo.BooleanField
+        )
+
+        schema = generate_label_schemas(dataset, "kp_field")
+        attrs = {a["name"]: a for a in schema["attributes"]}
+
+        # per-point parallel lists generate as point-scoped attributes of
+        # their ELEMENT type
+        self.assertEqual(attrs["confidence"]["type"], "float")
+        self.assertEqual(attrs["confidence"]["scope"], "point")
+        self.assertEqual(attrs["occluded"]["type"], "bool")
+        self.assertEqual(attrs["occluded"]["scope"], "point")
+        self.assertEqual(attrs["occluded"]["component"], "toggle")
+
+        # `tags` is the one label-level list every label carries
+        self.assertEqual(attrs["tags"]["type"], "list<str>")
+        self.assertNotIn("scope", attrs["tags"])
 
     @drop_datasets
     def test_preserves_applied_ontology_on_regeneration(self):

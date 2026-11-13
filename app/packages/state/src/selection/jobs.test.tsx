@@ -164,3 +164,21 @@ it("does not replace completed progress with a delayed start response", async ()
   });
   expect(view.result.current.jobs[0].job.state).toBe("completed");
 });
+
+it("refreshes counts when the server finishes an add before answering", async () => {
+  mocks.start.mockImplementation(async (_dataset, _kind, _request, id) =>
+    job(id, "completed"),
+  );
+  const datasetId = crypto.randomUUID();
+  const { result } = renderHook(() => useJobs(datasetId), {
+    wrapper: wrapper(),
+  });
+
+  await act(async () => {
+    await result.current.start(subset, { subsetId: subset.id });
+  });
+
+  expect(result.current.jobs[0].job.state).toBe("completed");
+  expect(mocks.refresh).toHaveBeenCalledOnce();
+  expect(mocks.request).not.toHaveBeenCalled();
+});

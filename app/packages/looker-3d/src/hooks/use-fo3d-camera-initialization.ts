@@ -121,6 +121,9 @@ export const useFo3dCameraInitialization = ({
   // This effect restores camera state and advances camera lifecycle readiness.
   useEffect(() => {
     if (!foScene) {
+      // the canvas and its camera unmount with the scene (say, a slice
+      // toggle), so the next scene's new camera needs the saved pose again
+      restoredRenderPathRef.current = null;
       dispatchCameraLifecycle({
         type: FO3D_CAMERA_LIFECYCLE_ACTION.WAIT_FOR_SCENE,
       });

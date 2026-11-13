@@ -365,34 +365,44 @@ export function hasDynamicGroups(stages: readonly unknown[]) {
  * Selection buckets
  * ------------------------------------------------------------------------- */
 
-/** Up to this many working selections sit side by side in the tray. */
+/** Up to this many sections sit side by side in the tray. */
 export const MAX_SELECTION_BUCKETS = 3;
-/** Bucket names stay short enough to read as a pill. */
-export const SELECTION_BUCKET_NAME_LENGTH = 10;
+/** Section names stay short enough to read in a section header. */
+export const SELECTION_BUCKET_NAME_LENGTH = 24;
 /**
  * The bucket every dataset starts with. Its captures keep the storage key
  * the single-bucket tray always used, so enabling buckets later loses nothing.
  */
 export const PRIMARY_SELECTION_BUCKET = "primary";
 
-/** The small icon palette a bucket can wear instead of its position number. */
+/** The shapes a section can wear; each section's shape is its own. */
 export const SELECTION_BUCKET_ICONS = [
-  "approve",
-  "reject",
-  "neutral",
-  "question",
+  "check",
+  "x",
+  "minus",
   "star",
-  "flag",
-  "bookmark",
-  "idea",
+  "triangle",
+  "square",
+  "circle",
+  "diamond",
+  "thumbsUp",
+  "thumbsDown",
 ] as const;
 export type SelectionBucketIcon = (typeof SELECTION_BUCKET_ICONS)[number];
 
-/** One working selection. Position in the list decides which gesture feeds it. */
+/** The shapes sections wear by position until someone picks another. */
+const DEFAULT_SELECTION_BUCKET_ICONS: readonly SelectionBucketIcon[] = [
+  "star",
+  "triangle",
+  "square",
+];
+
+/** One section of the tray, a working selection of its own. */
 export interface SelectionBucket {
   readonly id: string;
   /** Short display name, at most SELECTION_BUCKET_NAME_LENGTH characters. */
   readonly name?: string;
+  /** A picked shape; without one the section wears its position's default. */
   readonly icon?: SelectionBucketIcon;
 }
 
@@ -470,39 +480,61 @@ export function selectionDomainDataset(domainId: string) {
   return domainId.split("|")[0];
 }
 
-/** "Bucket 2" when a bucket has no name of its own. */
+/** "Section 2" when a section has no name of its own. */
 export function selectionBucketTitle(bucket: SelectionBucket, index: number) {
-  return bucket.name ?? `Bucket ${index + 1}`;
+  return bucket.name ?? `Section ${index + 1}`;
 }
 
-/** The gesture that feeds a bucket, by its position. */
-export type SelectionGesture = "click" | "command" | "option";
-
-export function selectionBucketGesture(index: number): SelectionGesture {
-  return index === 0 ? "click" : index === 1 ? "command" : "option";
+/** The shape a section wears for its position. */
+export function defaultSelectionBucketIcon(index: number): SelectionBucketIcon {
+  return DEFAULT_SELECTION_BUCKET_ICONS[index] ?? "circle";
 }
 
-/** The modifier flags a pointer event carries. */
-export interface SelectionModifiers {
-  readonly metaKey?: boolean;
-  readonly ctrlKey?: boolean;
-  readonly altKey?: boolean;
+/** The shape a section wears: its pick, or its position's default. */
+export function selectionBucketIcon(
+  bucket: SelectionBucket,
+  index: number,
+): SelectionBucketIcon {
+  return bucket.icon ?? defaultSelectionBucketIcon(index);
 }
 
 /**
- * The bucket a click feeds. Option/Alt reaches the third bucket, the command
- * modifier (⌘ on macOS, Ctrl elsewhere; both are honored everywhere) the
- * second, and anything else the first. A modifier with no bucket behind it
- * is treated as a plain click, so a two-bucket setup never swallows Alt.
+ * The active section: where clicks land and what the bar's actions apply
+ * to. Unset, or gone with a removed section, it is the first.
  */
-export function routeSelectionBucket(
-  modifiers: SelectionModifiers,
+export function activeBucketId(
   buckets: readonly SelectionBucket[],
-): SelectionBucket {
-  if (modifiers.altKey && buckets.length > 2) return buckets[2];
-  if ((modifiers.metaKey || modifiers.ctrlKey) && buckets.length > 1)
-    return buckets[1];
-  return buckets[0];
+  active: string,
+): string {
+  return (buckets.find((bucket) => bucket.id === active) ?? buckets[0]).id;
+}
+
+/**
+ * One map of every parent several sections hold. A parent in more than one
+ * keeps its broadest capture: the whole parent over its segments, otherwise
+ * the segments of each.
+ */
+export function unionCaptures(
+  maps: readonly ReadonlyMap<string, EpisodeSelection>[],
+): ReadonlyMap<string, EpisodeSelection> {
+  if (maps.length === 1) return maps[0];
+  const union = new Map<string, EpisodeSelection>();
+  for (const map of maps)
+    for (const [id, group] of map) {
+      const current = union.get(id);
+      if (!current) union.set(id, group);
+      else if (
+        !current.group &&
+        !current.members.some((member) => member.kind === "episode")
+      )
+        union.set(
+          id,
+          group.group || group.members.some((m) => m.kind === "episode")
+            ? group
+            : updateEpisodeSelection(current, group, "add"),
+        );
+    }
+  return union;
 }
 
 /** "12 samples · 3 segments": the short form a bucket pill carries. */

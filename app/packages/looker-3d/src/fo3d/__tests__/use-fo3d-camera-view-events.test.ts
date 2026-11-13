@@ -14,11 +14,11 @@ const hookState = vi.hoisted(() => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
-  useEventHandler: (
-    _target: EventTarget | undefined,
-    eventType: string,
-    handler: () => void,
-  ) => {
+  useEventHandler: () => undefined,
+}));
+
+vi.mock("../../hooks/use-looker3d-event-handler", () => ({
+  useLooker3dEventHandler: (eventType: string, handler: () => void) => {
     hookState.handlers.set(eventType, handler);
   },
 }));

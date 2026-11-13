@@ -19,10 +19,16 @@ import {
 } from "../map/tile/tile-state";
 import { sanitizeTimelineSamplingRateHz } from "../playback/timeline-sampling";
 import { TILE_TYPE } from "../tiles/tile-types";
+import { getEventBus } from "@fiftyone/events";
+
+/** e2e specs wait on a specific layout field's save */
+type LayoutE2EEvents = {
+  "e2e:multimodal:layout-saved": { fields: string };
+};
 
 /**
- * Persistence for the episode modal's chrome: sidebar visibility, sidebar
- * width, the mosaic tile arrangement, and the currently expanded tile.
+ * Persistence for the episode modal's chrome: sidebar/track visibility,
+ * sidebar width, the mosaic tile arrangement, and the currently expanded tile.
  *
  * One localStorage key holding scoped entries plus a browser-wide fallback
  * for callers that do not provide a scope. Samples in a dataset are
@@ -88,6 +94,8 @@ export interface PersistedModalLayout {
   defaultCameraPreferences?: PersistedCameraPreferences;
   /** Left sidebar width in px; the shell clamps it on restore. */
   sidebarWidthPx?: number;
+  /** Whether the bottom Tracks drawer was last open. */
+  timelineTracksOpen?: boolean;
   /** Episode data-sampling cadence. Dataset/source-scoped only. */
   timelineSamplingRateHz?: number;
 }
@@ -242,6 +250,10 @@ export function sanitizeModalLayout(
         ? candidate.sidebarWidthPx
         : undefined,
     tileTitles: sanitizeTileTitles(candidate.tileTitles),
+    timelineTracksOpen:
+      typeof candidate.timelineTracksOpen === "boolean"
+        ? candidate.timelineTracksOpen
+        : undefined,
     timelineSamplingRateHz: sanitizeTimelineSamplingRateHz(
       candidate.timelineSamplingRateHz,
     ),
@@ -667,11 +679,15 @@ export function writeModalLayout(
       ...current,
       ...patch,
     }));
-    return;
+  } else {
+    modalLayoutStore.updateFallback((current) =>
+      stripDatasetScopedLayoutFields({ ...current, ...patch }),
+    );
   }
-  modalLayoutStore.updateFallback((current) =>
-    stripDatasetScopedLayoutFields({ ...current, ...patch }),
-  );
+
+  getEventBus<LayoutE2EEvents>().dispatch("e2e:multimodal:layout-saved", {
+    fields: Object.keys(patch).join(","),
+  });
 }
 
 /** Reads durable 3D conventions for a media field or standalone source. */

@@ -9,6 +9,8 @@ import {
   selectionCaptureKey,
   selectionDomainDataset,
   selectionMemberKey,
+  activeBucketId,
+  unionCaptures,
   updateEpisodeSelection,
   type SelectionBucket,
 } from "../model";
@@ -85,15 +87,30 @@ function readCaptures(datasetId: string): Captures {
   }
 }
 
+function persistedCapture({ node, ...capture }: EpisodeSelection) {
+  // A dataset has one Group field, whose name may be customized. Keep its
+  // slice even though renderer nodes and signed URLs are not persisted.
+  for (const field of Object.values(node?.sample ?? {})) {
+    if (
+      field &&
+      typeof field === "object" &&
+      "_cls" in field &&
+      field._cls === "Group" &&
+      "name" in field &&
+      typeof field.name === "string"
+    )
+      return { ...capture, groupSlice: field.name };
+  }
+  return capture;
+}
+
 function writeCaptures(datasetId: string, value: Captures) {
   try {
     const key = STORAGE_PREFIX + datasetId;
     if (value.size)
       storage()?.setItem(
         key,
-        JSON.stringify(
-          [...value.values()].map(({ node: _node, ...capture }) => capture),
-        ),
+        JSON.stringify([...value.values()].map(persistedCapture)),
       );
     else storage()?.removeItem(key);
   } catch {
@@ -119,8 +136,31 @@ export const selectionAtom = atomFamily((captureKey: string) => {
     },
   );
 });
-export const boundaryAtom = atomFamily((_datasetId: string) =>
-  atom<SelectionBoundary>({}),
+/**
+ * Every domain's browsing boundary, in one value so the legacy session can
+ * mirror each as it is set; see `useSyncSelectionScope`.
+ */
+export const boundariesAtom = atom<Readonly<Record<string, SelectionBoundary>>>(
+  {},
+);
+
+const NO_BOUNDARY: SelectionBoundary = {};
+
+/** One domain's browsing boundary: the subset and ranges its grid browses. */
+export const boundaryAtom = atomFamily((domainId: string) =>
+  atom(
+    (get) => get(boundariesAtom)[domainId] ?? NO_BOUNDARY,
+    (get, set, update: SetStateAction<SelectionBoundary>) => {
+      const boundaries = get(boundariesAtom);
+      set(boundariesAtom, {
+        ...boundaries,
+        [domainId]:
+          typeof update === "function"
+            ? update(boundaries[domainId] ?? NO_BOUNDARY)
+            : update,
+      });
+    },
+  ),
 );
 export const scopeRevisionAtom = atomFamily((_datasetId: string) => atom(0));
 /** In-flight selection captures; actions must not freeze an older selection. */
@@ -172,11 +212,10 @@ export const bucketsAtom = atomFamily((datasetId: string) => {
 });
 
 /**
- * The bucket the user chose for actions, or "" to fall back to the default
- * rule. (An empty string rather than null: without strict null checks, a
- * null initial value resolves to jotai's read-only overload.)
+ * The section the user made active; empty until one is pressed, which
+ * means the first. See {@link activeBucketId}.
  */
-export const targetBucketAtom = atomFamily((_domainId: string) => atom(""));
+export const activeAtom = atomFamily((_domainId: string) => atom(""));
 
 /** Every configured bucket's captures in one domain. */
 export const bucketCapturesAtom = atomFamily((domainId: string) =>
@@ -239,22 +278,14 @@ export const membershipAtom = atomFamily((domainId: string) =>
   }),
 );
 
-/**
- * The bucket actions apply to: the user's choice while it holds captures,
- * otherwise the first bucket that does, otherwise the first bucket.
- */
-export const resolvedTargetAtom = atomFamily((domainId: string) =>
-  atom((get) => {
-    const buckets = get(bucketsAtom(selectionDomainDataset(domainId)));
-    const captures = get(bucketCapturesAtom(domainId));
-    const explicit = get(targetBucketAtom(domainId));
-    if (explicit && captures.get(explicit)?.size) return explicit;
-    const populated = buckets.find((bucket) => captures.get(bucket.id)?.size);
-    if (populated) return populated.id;
-    return explicit && buckets.some((bucket) => bucket.id === explicit)
-      ? explicit
-      : buckets[0].id;
-  }),
+/** The active section: where clicks land and what actions apply to. */
+export const activeBucketAtom = atomFamily((domainId: string) =>
+  atom((get) =>
+    activeBucketId(
+      get(bucketsAtom(selectionDomainDataset(domainId))),
+      get(activeAtom(domainId)),
+    ),
+  ),
 );
 
 type Metadata = Record<
@@ -316,21 +347,31 @@ export const renderedCaptureIdsAtom = atomFamily((domainId: string) =>
 );
 
 /**
- * A bare capture of a parent another bucket already describes takes that
- * bucket's display metadata. The details loader only refetches when the set
- * of captured parents changes, and a second copy does not change it.
+ * Fill a capture's missing preview and group slice from existing buckets.
+ * The details loader only refetches when the set of captured parents changes,
+ * and a second copy does not change it.
  */
 function withKnownMetadata(
   get: Getter,
   domainId: string,
   group: EpisodeSelection,
 ): EpisodeSelection {
-  if (group.filepath || group.node) return group;
+  if ((group.filepath || group.node) && group.groupSlice !== undefined)
+    return group;
+  let capture = group;
   for (const bucket of get(bucketsAtom(selectionDomainDataset(domainId)))) {
     const known = get(
       selectionAtom(selectionCaptureKey(domainId, bucket.id)),
     ).get(group.episodeId);
-    if (!known || (!known.filepath && !known.node)) continue;
+    if (!known) continue;
+    if (capture.groupSlice === undefined && known.groupSlice !== undefined) {
+      capture = { ...capture, groupSlice: known.groupSlice };
+    }
+    if (capture.filepath || capture.node) {
+      if (capture.groupSlice !== undefined) return capture;
+      continue;
+    }
+    if (!known.filepath && !known.node) continue;
     const {
       filepath,
       previewStart,
@@ -340,8 +381,8 @@ function withKnownMetadata(
       aspectRatio,
       crop,
     } = known;
-    return {
-      ...group,
+    capture = {
+      ...capture,
       ...(filepath !== undefined && { filepath }),
       ...(previewStart !== undefined && { previewStart }),
       ...(unavailable !== undefined && { unavailable }),
@@ -350,8 +391,9 @@ function withKnownMetadata(
       ...(aspectRatio !== undefined && { aspectRatio }),
       ...(crop !== undefined && { crop }),
     };
+    if (capture.groupSlice !== undefined) return capture;
   }
-  return group;
+  return capture;
 }
 
 /** Commands that touch captures in one bucket or across every bucket. */
@@ -450,6 +492,139 @@ export const bucketCommandAtom = atomFamily((domainId: string) =>
       }
       if (changed) set(target, next);
     }
-    if (command.type === "clear-all") set(targetBucketAtom(domainId), "");
+    if (command.type === "clear-all") set(activeAtom(domainId), "");
+  }),
+);
+
+/**
+ * Fold every section back into the first, keeping each picked parent at its
+ * broadest capture, so the tray returns to one strip.
+ */
+export const mergeSelectionBucketsAtom = atomFamily((domainId: string) =>
+  atom(null, (get, set) => {
+    const datasetId = selectionDomainDataset(domainId);
+    const buckets = get(bucketsAtom(datasetId));
+    if (buckets.length < 2) return;
+    const [first, ...rest] = buckets;
+    set(
+      selectionAtom(selectionCaptureKey(domainId, first.id)),
+      unionCaptures(
+        buckets.map((bucket) =>
+          get(selectionAtom(selectionCaptureKey(domainId, bucket.id))),
+        ),
+      ),
+    );
+    for (const bucket of rest) {
+      const key = selectionCaptureKey(domainId, bucket.id);
+      set(selectionAtom(key), new Map());
+      set(foldRevealedAtom(key), 0);
+    }
+    set(bucketsAtom(datasetId), [first]);
+    set(activeAtom(domainId), "");
+  }),
+);
+
+/**
+ * Fold one section into a neighbor, keeping each picked parent at its
+ * broadest capture; an active section hands that to the neighbor. One
+ * section left is the plain strip again.
+ */
+export const mergeSelectionBucketIntoAtom = atomFamily((domainId: string) =>
+  atom(null, (get, set, { from, into }: { from: string; into: string }) => {
+    const datasetId = selectionDomainDataset(domainId);
+    const buckets = get(bucketsAtom(datasetId));
+    if (
+      from === into ||
+      !buckets.some((bucket) => bucket.id === from) ||
+      !buckets.some((bucket) => bucket.id === into)
+    )
+      return;
+    const fromKey = selectionCaptureKey(domainId, from);
+    const intoKey = selectionCaptureKey(domainId, into);
+    set(
+      selectionAtom(intoKey),
+      unionCaptures([get(selectionAtom(intoKey)), get(selectionAtom(fromKey))]),
+    );
+    set(selectionAtom(fromKey), new Map());
+    set(foldRevealedAtom(fromKey), 0);
+    const rest = buckets.filter((bucket) => bucket.id !== from);
+    set(bucketsAtom(datasetId), rest);
+    set(activeAtom(domainId), (current) => (current === from ? into : current));
+  }),
+);
+
+/**
+ * Move one picked parent from a section into another, or copy it. It keeps
+ * its exact capture; a section holding it already keeps the broader one.
+ */
+export const moveSelectionCaptureAtom = atomFamily((domainId: string) =>
+  atom(
+    null,
+    (
+      get,
+      set,
+      {
+        episodeId,
+        from,
+        into,
+        copy,
+      }: { episodeId: string; from: string; into: string; copy: boolean },
+    ) => {
+      const fromKey = selectionCaptureKey(domainId, from);
+      const intoKey = selectionCaptureKey(domainId, into);
+      const group = get(selectionAtom(fromKey)).get(episodeId);
+      if (from === into || !group) return;
+      set(
+        selectionAtom(intoKey),
+        unionCaptures([
+          get(selectionAtom(intoKey)),
+          new Map([[episodeId, group]]),
+        ]),
+      );
+      if (copy) return;
+      const rest = new Map(get(selectionAtom(fromKey)));
+      rest.delete(episodeId);
+      set(selectionAtom(fromKey), rest);
+    },
+  ),
+);
+
+/** The tray's sections, their captures, and the active one in one domain. */
+export interface SelectionTraySnapshot {
+  readonly buckets: readonly SelectionBucket[];
+  readonly captures: ReadonlyMap<string, Captures>;
+  readonly active: string;
+}
+
+/** Put a domain's sections, captures, and active one back as a snapshot had them. */
+export const restoreSelectionAtom = atomFamily((domainId: string) =>
+  atom(null, (get, set, snapshot: SelectionTraySnapshot) => {
+    const datasetId = selectionDomainDataset(domainId);
+    const ids = new Set([
+      ...get(bucketsAtom(datasetId)).map((bucket) => bucket.id),
+      ...snapshot.buckets.map((bucket) => bucket.id),
+    ]);
+    // A snapshot can predate the details its cards have since loaded; reuse
+    // what the current captures know before they are replaced.
+    const restored = new Map(
+      [...ids].map((id) => {
+        const captures = snapshot.captures.get(id);
+        return [
+          id,
+          captures
+            ? new Map(
+                [...captures].map(([episodeId, group]) => [
+                  episodeId,
+                  withKnownMetadata(get, domainId, group),
+                ]),
+              )
+            : new Map<string, EpisodeSelection>(),
+        ] as const;
+      }),
+    );
+    set(bucketsAtom(datasetId), snapshot.buckets);
+    for (const [id, captures] of restored)
+      set(selectionAtom(selectionCaptureKey(domainId, id)), captures);
+    set(activeAtom(domainId), snapshot.active);
   }),
 );

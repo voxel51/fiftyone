@@ -49,7 +49,7 @@ SCENARIO_BUILDING_CHOICES = [
     },
     {
         "type": ScenarioType.VIEW,
-        "label": "Select saved views",
+        "label": "Select saved queries",
         "icon": "folder_special_rounded",
     },
     {

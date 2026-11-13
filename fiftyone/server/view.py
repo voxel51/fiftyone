@@ -24,6 +24,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.hooks as fosh
 from fiftyone.server.scalars import BSONArray, JSON
 
 _LABEL_TAGS = "_label_tags"
@@ -39,6 +40,40 @@ def _make_group_field_stage(view):
     return fosg.Mongo(
         [{"$addFields": {"_group": group_by._get_group_expr(view)[0]}}]
     )
+
+
+def load_saved_view_by_slug(dataset, slug):
+    """Loads the saved view with the given slug, if the dataset has one.
+
+    A slug that no longer matches a saved view, such as an old link, returns
+    ``None`` so the caller can fall back to its unsaved view. A saved view
+    that exists but cannot be built raises instead, so its definition is
+    never silently replaced by the full dataset.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        slug: the slug of a saved view
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`, or ``None``
+
+    Raises:
+        ValueError: if the saved view exists but cannot be loaded
+    """
+    if slug is None:
+        return None
+
+    try:
+        view_doc = dataset._get_saved_view_doc(slug, slug=True)
+    except ValueError:
+        return None
+
+    try:
+        return dataset.load_saved_view(view_doc.name)
+    except Exception as e:
+        raise ValueError(
+            "Saved query '%s' could not be loaded: %s" % (view_doc.name, e)
+        ) from e
 
 
 @gql.input
@@ -157,7 +192,7 @@ def get_view(
 
             if view_name is not None:
                 raise ValueError(
-                    "Open the saved view pipeline explicitly within this subset"
+                    "Open the saved query explicitly within this subset"
                 )
             import fiftyone.core.subsets as fosub
 
@@ -177,7 +212,9 @@ def get_view(
                     view, fosg.ViewStage._from_dict(stage), selection_scope
                 )
         elif view_name is not None:
-            return dataset.load_saved_view(view_name)
+            return fosh.get().transform_view(
+                dataset.load_saved_view(view_name)
+            )
         elif stages and selection_scope and selection_scope.get("provider"):
             view = dataset.view()
             for stage in stages:
@@ -242,7 +279,7 @@ def get_view(
 
             view = constrain_view(view, selection_scope)
 
-        return view
+        return fosh.get().transform_view(view)
 
     if awaitable:
         return fou.run_sync_task(run, dataset, stages)
@@ -546,6 +583,12 @@ def _project_pagination_paths(
         # include instance, even it is missing from schema
         if field.document_type in fol._INSTANCE_FIELDS:
             selected_fields.append(f"{path}.instance")
+
+        # include a detection's rotation, even if it is missing from schema:
+        # it is a dynamic attribute, and the grid needs it to draw rotated
+        # boxes
+        if issubclass(field.document_type, fol.Detection):
+            selected_fields.append(f"{path}.rotation")
 
     return view.add_stage(
         fosg.SelectFields(

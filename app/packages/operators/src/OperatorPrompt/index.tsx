@@ -5,6 +5,7 @@ import { BaseStylesProvider } from "../styled-components";
 import { OperatorPromptType } from "../types";
 import OperatorModalPrompt from "./OperatorModalPrompt";
 import OperatorDrawerPrompt from "./OperatorDrawerPrompt";
+import { usePromptLifecycleSignal } from "./usePromptLifecycleSignal";
 import { OPERATOR_PROMPT_AREAS } from "../constants";
 
 export default function OperatorPrompt() {
@@ -22,6 +23,7 @@ export default function OperatorPrompt() {
 
 function DynamicOperatorPrompt() {
   const prompt = useOperatorPrompt();
+  usePromptLifecycleSignal(prompt);
   const target = getPromptTarget(prompt);
   const Component = getPromptComponent(prompt);
 

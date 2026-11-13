@@ -3,6 +3,7 @@ import { useScopedSegments } from "@fiftyone/state/src/selection/segment-hooks";
 import { savedSegmentSource } from "@fiftyone/state/src/selection/segment-provenance";
 import { cssVar } from "@voxel51/voodo";
 import { useMemo } from "react";
+import { useSavedSegmentsShown } from "./saved-segments-shown";
 import type {
   EpisodeInterval,
   EpisodeIntervalContribution,
@@ -17,6 +18,12 @@ function SavedSegments({ ctx, children }: EpisodeIntervalSourceProps) {
   const id = ctx.sample.sample._id;
   const { active, members, loading } = useScopedSegments(id);
   const timeRange = useEpisodeTimeRange(id);
+  // The grid's badge reports the tile; this lane reports the modal timeline
+  useSavedSegmentsShown("timeline", {
+    active: active && ctx.surface === "modal",
+    loading: loading || !timeRange,
+    count: members.length,
+  });
   const contribution = useMemo<EpisodeIntervalContribution>(() => {
     const intervals: EpisodeInterval[] = [];
     let first: bigint | undefined;

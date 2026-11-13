@@ -1,3 +1,11 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ---------------------------------------------------------------------------
  * Tray shell
  * ------------------------------------------------------------------------- */
@@ -136,8 +144,7 @@
  * The count reads in the primary color, the rest recedes, and the clear sits
  * flush with the pill's rounded end. */
 .bar .countPill {
-  border: 1px solid var(--tray-border);
-  padding: 4px 6px 4px 14px;
+  padding: 4px 4px 4px 10px;
   white-space: nowrap;
 }
 
@@ -148,7 +155,8 @@
 }
 
 .countPillCount {
-  font-weight: 600;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .bar .countPillClear {
@@ -161,6 +169,23 @@
   gap: var(--tray-space-xs);
   margin-left: auto;
   flex: 0 0 auto;
+}
+
+.bar button,
+.menuRow {
+  color: var(--tray-text-secondary);
+}
+
+.bar button:enabled:is(:hover, :focus-visible, [aria-expanded="true"]),
+.menuRow:enabled:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  color: var(--tray-text-primary);
+}
+
+/* Keep unavailable actions readable instead of applying VOODO's opacity fade. */
+.bar button:disabled,
+.menuRow:disabled {
+  color: var(--tray-text-secondary);
+  opacity: 1;
 }
 
 /* Match text and icon-only controls, with room for the larger tray icons. */
@@ -186,19 +211,19 @@
   opacity: 0.5;
 }
 
-/* The action whose panel is open stays lit, like a pressed toolbar toggle. */
-.bar .actionActive,
-.bar .actionActive:hover {
-  background: var(--tray-accent-soft);
-  color: var(--tray-accent-text);
+/* An action whose panel is open holds its hover look, the way a button
+   stays lit while its menu is open. */
+.bar .toolbarButton:enabled[aria-expanded="true"] {
+  background: var(--tray-control-hover);
 }
 
-.bar .actionActive svg {
-  color: inherit;
+.menuRow:enabled[aria-expanded="true"] {
+  background: var(--tray-raised);
 }
 
-.menuRow[aria-expanded="true"] {
-  background: var(--tray-accent-soft);
+/* Marks a panel's own button for it without adding a box around it. */
+.surfaceTrigger {
+  display: contents;
 }
 
 .truncate {
@@ -212,6 +237,26 @@
 
 .tipWrap {
   display: inline-flex;
+}
+
+.shortcutTooltip {
+  display: flex;
+  align-items: center;
+  gap: var(--tray-space-sm);
+}
+
+.shortcutKeys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tray-space-xs);
+}
+
+/* Long hints wrap; panels shift inward at either viewport edge. */
+.tooltip {
+  box-sizing: border-box;
+  max-width: min(500px, calc(100vw - 16px));
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .inlineAlert {
@@ -370,11 +415,6 @@
   transition: opacity var(--tray-duration-fast) var(--tray-easing);
 }
 
-.imageFrame {
-  width: 100%;
-  height: 100%;
-}
-
 .crop {
   position: relative;
   flex: none;
@@ -412,6 +452,13 @@
 }
 
 /* Card tools (locate in grid, remove) show on hover or focus. */
+.locateStatus {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
 .tools {
   position: absolute;
   top: 4px;
@@ -436,14 +483,22 @@
   opacity: 0.5;
 }
 
-.flags {
+.footer {
   position: absolute;
-  left: 6px;
-  right: 6px;
-  bottom: 6px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.flags {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  margin: 0 6px 6px;
   pointer-events: none;
 }
 
@@ -461,31 +516,6 @@
 /* ---------------------------------------------------------------------------
  * Range track
  * ------------------------------------------------------------------------- */
-
-/* Segment cards draw their ranges along the media's bottom edge, so the
- * card reads as "this part of the episode" without a caption. */
-.segmentTrack {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 10px;
-  padding: 3px 0;
-  box-sizing: border-box;
-  background: linear-gradient(to top, var(--tray-overlay), transparent);
-  pointer-events: auto;
-}
-
-.segmentBars {
-  height: 4px;
-  border-radius: 0;
-  background: color-mix(in srgb, var(--tray-text) 25%, transparent);
-}
-
-/* Flags sit above the track when a card has both. */
-.segmentTrack ~ .flags {
-  bottom: 14px;
-}
 
 .track {
   position: relative;
@@ -664,6 +694,48 @@
   color: var(--tray-text);
 }
 
+.subsetSheet {
+  width: min(240px, calc(100vw - 24px));
+}
+
+.subsetFormSheet {
+  width: min(324px, calc(100vw - 24px));
+}
+
+.subsetFormSheet .sheetBody {
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.subsetNameInput {
+  border-color: var(--tray-border-strong);
+  background: var(--tray-card-bg);
+}
+
+.subsetCreateIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.emptySubsetIntro {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.emptySubsetText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 /* The same panel inside a modal takes the modal's width, not its own. */
 .modalSheet {
   box-sizing: border-box;
@@ -684,6 +756,14 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1.45;
+}
+
+.scopeTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-left: 10px;
 }
 
 .scopeStagesLink {
@@ -757,7 +837,14 @@
 
 /* The scope panel is narrower than the action sheets. */
 .scopeSheet {
-  width: min(360px, calc(100vw - 24px));
+  width: min(288px, calc(100vw - 24px));
+}
+
+/* A rule between the picker's groups. VOODO's horizontal divider grows along
+   a row; in this column, growing would take its 1px height, so it keeps its
+   own size. The double class outranks the flex utility. */
+.rule.rule {
+  flex: none;
 }
 
 /* Descriptions wrap to two lines, then trail off; the title holds the rest. */
@@ -786,12 +873,22 @@
   min-width: 0;
 }
 
-.subsetDelete {
-  flex-shrink: 0;
-  margin-right: 6px;
+.subsetEdit {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
-  color: var(--tray-destructive);
+}
+
+.subsetEditIcon {
+  color: var(--tray-text-secondary);
+}
+
+.subsetEdit:hover .subsetEditIcon,
+.subsetEdit:focus-visible .subsetEditIcon {
+  color: var(--tray-accent);
 }
 
 .subsetCount {
@@ -799,27 +896,23 @@
   white-space: nowrap;
 }
 
-.subsetRow:hover .subsetDelete,
-.subsetRow:focus-within .subsetDelete {
+.subsetRow:hover .subsetEdit,
+.subsetRow:focus-within .subsetEdit {
   opacity: 1;
   pointer-events: auto;
 }
 
-.subsetDelete:hover {
-  background: color-mix(in srgb, var(--tray-destructive) 12%, transparent);
+.subsetRow:hover .subsetCount,
+.subsetRow:focus-within .subsetCount {
+  opacity: 0;
 }
 
 @media (hover: none) {
-  .subsetChoice {
-    padding-right: 44px;
+  .subsetCount {
+    opacity: 0;
   }
 
-  .subsetRow:hover .subsetCount,
-  .subsetRow:focus-within .subsetCount {
-    opacity: 1;
-  }
-
-  .subsetDelete {
+  .subsetEdit {
     opacity: 1;
     pointer-events: auto;
   }
@@ -878,7 +971,7 @@
   border: 1px solid var(--tray-border);
   border-radius: 8px;
   background: var(--tray-popover);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px var(--tray-shadow);
   font-family: var(--tray-font);
   color: var(--tray-text);
 }
@@ -902,12 +995,11 @@
   cursor: pointer;
 }
 
-.menuRow:hover {
+.menuRow:enabled:hover {
   background: var(--tray-raised);
 }
 
 .menuRow:disabled {
-  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -923,31 +1015,6 @@
 }
 
 /* Count pill and its Clear control stay on one line when the bar wraps */
-/* Hover affordance that the card body opens the viewer */
-.openHint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--tray-duration-fast) var(--tray-easing);
-}
-
-.openHint > span {
-  display: inline-flex;
-  padding: 6px;
-  border-radius: 999px;
-  background: var(--tray-overlay);
-  color: white;
-}
-
-.open:hover .openHint,
-.open:focus-visible .openHint {
-  opacity: 1;
-}
-
 /* Read-only result unit when there is nothing to switch to */
 /* The samples tab's scope trigger sits inline with the panel icon. */
 .scopeTrigger {
@@ -1034,211 +1101,247 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Buckets: several working selections side by side
+ * Sections: the split tray's working selections side by side
  * ------------------------------------------------------------------------- */
 
-/* A bucket's mark: its icon, or its position number. */
-.bucketAvatar {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--tray-raised);
-  color: var(--tray-text);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.bucketAvatar[data-size="xs"] {
-  width: 16px;
-  height: 16px;
-  font-size: 10px;
-}
-
-.bucketAvatar svg {
-  width: 14px;
-  height: 14px;
-}
-
-/* Bar pills, one per populated bucket. The pressed one is the action target. */
-.bucketPills {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--tray-space-xs);
-}
-
-.bar .bucketPill {
-  padding: 3px 6px 3px 4px;
-  border-color: var(--tray-border);
-  transition:
-    border-color var(--tray-duration-fast) var(--tray-easing),
-    box-shadow var(--tray-duration-fast) var(--tray-easing);
-}
-
-.bar .bucketPill[data-target="true"] {
-  border-color: var(--tray-accent);
-  box-shadow: inset 0 0 0 1px var(--tray-accent);
-}
-
-.bucketPillBody {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 1px 2px 1px 1px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.bucketPillBody:hover {
-  background: var(--tray-accent-soft);
-}
-
-.bucketPillBody:focus-visible {
-  outline: 2px solid var(--tray-focus);
-  outline-offset: 1px;
-}
-
-.bucketPillName {
-  max-width: 12ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.armedHint {
-  white-space: nowrap;
-}
-
-/* Strip columns */
 .columns {
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
+  gap: 6px;
   height: 100%;
-  padding: var(--tray-strip-pad-top) var(--tray-space-xs)
-    var(--tray-strip-pad-bottom);
+  padding: var(--tray-strip-pad-top) 8px 8px;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
+/* A section reads as a quiet panel; the active one is outlined and lit. */
 .column {
+  box-sizing: border-box;
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
   min-width: 168px;
   min-height: 0;
-  border-radius: 8px;
-  transition: box-shadow var(--tray-duration-fast) var(--tray-easing);
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tray-section-bg) 30%, transparent);
+  opacity: 0.7;
+  cursor: pointer;
+  transition:
+    background var(--tray-duration-fast) var(--tray-easing),
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    opacity var(--tray-duration-fast) var(--tray-easing);
 }
 
-.column[data-armed="true"] {
-  box-shadow: inset 0 0 0 2px var(--tray-accent);
-  background: color-mix(in srgb, var(--tray-accent) 8%, transparent);
+.column:hover {
+  background: color-mix(in srgb, var(--tray-section-bg) 60%, transparent);
+  opacity: 1;
 }
 
-.columnDivider {
-  flex: none;
-  align-self: stretch;
-  margin: 4px var(--tray-space-xs);
+.column[data-active="true"] {
+  border-color: var(--tray-border-strong);
+  background: var(--tray-section-bg);
+  opacity: 1;
+}
+
+/* A card dragged over a section lights it as the place it will land. */
+.column[data-dropping="true"] {
+  border-color: var(--tray-accent);
+  background: color-mix(
+    in srgb,
+    var(--tray-accent) 10%,
+    var(--tray-section-bg)
+  );
+  opacity: 1;
+}
+
+.card[draggable="true"] {
+  cursor: grab;
 }
 
 .columnHeader {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--tray-space-xs);
+  gap: 6px;
+  height: 24px;
   min-width: 0;
-  padding: 0 var(--tray-space-xs) 4px;
 }
 
-.columnTitle {
+/* The section's shape, round; lit in the accent while active. */
+.sectionShape {
   display: inline-flex;
-  flex: 0 1 auto;
+  flex: none;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   margin: 0;
-  padding: 2px 8px 2px 3px;
-  border: 1px solid transparent;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+  color: var(--tray-icon);
   cursor: pointer;
   transition:
     background var(--tray-duration-fast) var(--tray-easing),
-    border-color var(--tray-duration-fast) var(--tray-easing);
+    color var(--tray-duration-fast) var(--tray-easing);
 }
 
-.columnTitle:hover {
+.sectionShape:hover {
   background: var(--tray-raised);
+  color: var(--tray-text);
 }
 
-.columnTitle[aria-pressed="true"] {
-  border-color: var(--tray-accent);
-  background: var(--tray-accent-soft);
+.sectionShape[data-active="true"] {
+  background: color-mix(in srgb, var(--tray-accent) 15%, transparent);
+  color: var(--tray-icon-decorative);
 }
 
-.columnTitle:focus-visible {
+.sectionShape:focus-visible,
+.shapeChoice:focus-visible {
   outline: 2px solid var(--tray-focus);
   outline-offset: 1px;
 }
 
+.sectionShape span,
+.shapeChoice span,
+.tileSelect span {
+  display: inline-flex;
+}
+
+.shapePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--tray-border);
+  border-radius: 8px;
+  background: var(--tray-popover);
+}
+
+.shapePalette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 216px;
+}
+
+.shapeChoice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--tray-border-input);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tray-icon);
+  cursor: pointer;
+  transition:
+    border-color var(--tray-duration-fast) var(--tray-easing),
+    color var(--tray-duration-fast) var(--tray-easing);
+}
+
+.shapeChoice:enabled:hover {
+  border-color: var(--tray-border-hover);
+  color: var(--tray-text);
+}
+
+.shapeChoice[aria-pressed="true"] {
+  border-color: var(--tray-accent);
+  background: color-mix(in srgb, var(--tray-accent) 10%, transparent);
+  color: var(--tray-accent);
+}
+
+.shapeChoice:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* The name doubles as the section's button, so a keyboard can make it
+   active too. */
 .columnName {
   min-width: 0;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-/* Re-keyed when the count changes, so a landing tile bumps the number. */
-.columnCount {
+.columnName:focus-visible {
+  outline: 2px solid var(--tray-focus);
+  outline-offset: 1px;
+}
+
+.column[data-active="true"] .columnName > * {
+  font-weight: 500;
+}
+
+/* Keycaps share a raised bottom edge across section headers and tooltips. */
+.sectionKey,
+.shortcutKey {
+  box-sizing: border-box;
   display: inline-flex;
-  animation: countBump var(--tray-duration) var(--tray-easing);
-}
-
-@keyframes countBump {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.35);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* The gesture that feeds a column, drawn as a key. */
-.gestureKey {
   flex: none;
-  margin-left: auto;
-  padding: 1px 6px;
-  border: 1px solid var(--tray-border);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--tray-strip-bg);
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  border: 1px solid var(--tray-border-strong);
+  border-bottom-width: 3px;
+  border-radius: 3px;
+  background: var(--tray-raised);
   color: var(--tray-text-secondary);
-  font-family: var(--tray-font);
-  font-size: var(--tray-font-xs);
-  line-height: 16px;
-  white-space: nowrap;
+  font-family: var(--tray-font-mono);
+  font-size: 12px;
+  line-height: 1;
 }
 
-.column[data-armed="true"] .gestureKey {
-  border-color: var(--tray-accent);
-  color: var(--tray-accent-text);
+.sectionKey {
+  width: 20px;
+  margin-top: 2px;
+  margin-left: 10px;
+  padding: 0;
+}
+
+.shortcutKey {
+  min-width: 20px;
+  padding: 0 var(--tray-space-xs);
+}
+
+.renameField {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.renameField input {
+  width: 144px;
+}
+
+.columnEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.sectionCount {
+  padding: 0 2px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--tray-border) 60%, transparent);
 }
 
 .columnCards {
@@ -1248,121 +1351,60 @@
   flex-wrap: wrap;
   align-items: flex-start;
   align-content: flex-start;
-  gap: var(--tray-strip-gap);
+  gap: 6px;
   min-height: 0;
-  padding: 2px var(--tray-space-xs) 0;
+  margin-top: 8px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
-.columnEmpty {
-  padding: 6px 4px;
-}
-
-/* Name and icon editor */
-.bucketEditor {
-  width: min(300px, calc(100vw - 24px));
-}
-
-.iconPalette {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.iconChoice {
+/* The bar's history: split, undo, and redo. */
+.history {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  justify-content: center;
-  padding: 3px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  cursor: pointer;
+  gap: 2px;
 }
 
-.iconChoice:hover {
-  background: var(--tray-raised);
-}
-
-.iconChoice[aria-checked="true"] {
-  border-color: var(--tray-accent);
-  background: var(--tray-accent-soft);
-}
-
-.iconChoice:focus-visible {
-  outline: 2px solid var(--tray-focus);
-  outline-offset: 1px;
-}
-
-/* Tile chips: membership marks and one-click destinations on grid tiles. */
-.tileChips {
+/* The split tray's checkbox: the shape a pick would land in, where the
+ * checkbox sits and at its size; picked, it fills with every section's shape.
+ * Like the checkbox, an unpicked one shows only over the tile's top. */
+.tileSelect {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  display: flex;
-  gap: 3px;
-  pointer-events: auto;
-  font-family: var(--tray-font);
-}
-
-.tileChip {
+  top: 10px;
+  left: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  gap: 2px;
+  box-sizing: border-box;
+  height: 18px;
+  min-width: 18px;
   margin: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, white 45%, transparent);
-  border-radius: 999px;
-  background: var(--tray-overlay);
-  color: white;
-  cursor: pointer;
-  opacity: 0.75;
-  transition:
-    opacity var(--tray-duration-fast) var(--tray-easing),
-    transform var(--tray-duration-fast) var(--tray-easing),
-    background-color var(--tray-duration-fast) var(--tray-easing);
-}
-
-.tileChip .bucketAvatar {
+  border: 0;
+  border-radius: 3px;
   background: transparent;
-  color: inherit;
+  color: var(--tray-accent);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
-.tileChip:hover {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.tileChip[data-member="true"] {
-  border-color: var(--tray-accent);
+.tileSelect[data-picked="true"] {
+  padding: 0 2px;
   background: var(--tray-accent);
-  opacity: 1;
+  color: var(--tray-text-on-color);
 }
 
-.tileChip[data-armed="true"] {
-  opacity: 1;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tray-accent) 70%, transparent);
-  animation: chipPulse 900ms var(--tray-easing) infinite;
+[data-fo-selection-hover="false"]
+  .tileSelect:not([data-picked="true"]):not(:focus-visible) {
+  visibility: hidden;
 }
 
-.tileChip:focus-visible {
+.tileSelect:focus-visible {
   outline: 2px solid var(--tray-focus);
   outline-offset: 1px;
-}
-
-@keyframes chipPulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.15);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1373,9 +1415,9 @@
   .media,
   .grip,
   .segment,
-  .columnCount,
-  .tileChip,
-  .column {
+  .column,
+  .sectionShape,
+  .shapeChoice {
     transition: none;
     animation: none;
   }
@@ -1392,4 +1434,20 @@
   border-radius: 4px;
   background: var(--tray-overlay);
   pointer-events: auto;
+}
+
+.scopeSheet .sheetBody,
+.subsetSheet .sheetBody {
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.scopeSheet .row,
+.subsetSheet .row {
+  min-height: 36px;
+  gap: 8px;
+}
+
+.scopeSheet .list:empty {
+  display: none;
 }

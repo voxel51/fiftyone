@@ -1,6 +1,5 @@
 import { executeOperator } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { useBrowserStorage } from "@fiftyone/state";
 import { useCallback, useMemo, useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
@@ -16,8 +15,6 @@ import {
   sortType,
   type QueryIds,
 } from "./utils";
-
-const DEFAULT_K = 25;
 
 type UseSimilarityPopoverProps = {
   modal: boolean;
@@ -61,16 +58,27 @@ export default function useSimilarityPopover({
 
   const type = useRecoilValue(sortType(modal));
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
-  const [lastUsedBrainKeys, setLastUsedBrainKeys] = useBrowserStorage<
-    Record<string, string>
-  >("lastUsedBrainKeys", {});
+  const [storedBrainKey, setBrainKey] =
+    fos.useSimilaritySearchIndexPreference(datasetId);
+  const [k, setK] = fos.useSimilaritySearchResultCount(
+    fos.useCurrentDatasetName(),
+  );
+  const brainMethods = useRecoilValue(fos.dataset)?.brainMethods;
+  const indexes = useMemo(
+    () =>
+      keys.map((key) => {
+        const model = brainMethods?.find((method) => method.key === key)?.config
+          .model;
+        return { key, label: model ? `${key} · ${model}` : key };
+      }),
+    [keys, brainMethods],
+  );
 
   const resolvedBrainKey = useMemo(() => {
     if (keys.length === 0) return undefined;
-    const stored = lastUsedBrainKeys?.[datasetId];
-    if (stored && keys.includes(stored)) return stored;
+    if (storedBrainKey && keys.includes(storedBrainKey)) return storedBrainKey;
     return keys[0];
-  }, [keys, lastUsedBrainKeys, datasetId]);
+  }, [keys, storedBrainKey]);
 
   const resolvePatchesField = useRecoilCallback(
     ({ snapshot }) =>
@@ -122,7 +130,7 @@ export default function useSimilarityPopover({
           query_type: isImageSearch ? QUERY_TYPE_IMAGE : QUERY_TYPE_TEXT,
           query: isImageSearch ? queryIds : textQuery.trim(),
           reverse: false,
-          k: DEFAULT_K,
+          k,
           run_name: runName,
           view_target: "CURRENT_VIEW",
         };
@@ -133,10 +141,7 @@ export default function useSimilarityPopover({
           params.negative_query_ids = negativeQueryIds;
         }
 
-        setLastUsedBrainKeys({
-          ...(lastUsedBrainKeys || {}),
-          [datasetId]: resolvedBrainKey,
-        });
+        setBrainKey(resolvedBrainKey);
 
         close();
 
@@ -192,9 +197,8 @@ export default function useSimilarityPopover({
       close,
       openPanel,
       modal,
-      lastUsedBrainKeys,
-      setLastUsedBrainKeys,
-      datasetId,
+      setBrainKey,
+      k,
       onSearchStart,
       onSearchEnd,
       query,
@@ -224,6 +228,11 @@ export default function useSimilarityPopover({
       : "Show similar samples";
 
   return {
+    indexes,
+    resolvedBrainKey,
+    setBrainKey,
+    k,
+    setK,
     textQuery,
     setTextQuery,
     type,

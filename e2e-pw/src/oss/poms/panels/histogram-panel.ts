@@ -1,6 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { expectScreenshot } from "src/oss/utils/screenshot";
 import { EventUtils } from "src/shared/event-utils";
 import { SelectorPom } from "../selector";
+
+/** A hover tooltip is DOM drawn over the chart, not part of it */
+const CHART_ONLY =
+  ".recharts-tooltip-wrapper { visibility: hidden !important; }";
 
 export class HistogramPom {
   readonly assert: HistogramAsserter;
@@ -17,20 +22,27 @@ export class HistogramPom {
     this.selector = new SelectorPom(this.locator, eventUtils, "histograms");
   }
 
-  async selectField(field: string) {
-    const promise = await this.eventUtils.arm(`histogram-${field}`);
-    await this.selector.selectResult(field);
-    await promise.received;
+  /** Select `field`; resolves once its histogram has drawn */
+  selectField(field: string): Promise<void> {
+    return this.afterLoad(() => this.selector.selectResult(field), field);
   }
 
-  // arm BEFORE the action that reloads the histogram (mode switch, panel
-  // foreground); the app fires histograms-loaded on every completed draw.
-  // Pass a path to ignore sibling histograms' draws.
-  async armLoad(path?: string) {
-    return this.eventUtils.arm(
-      "histograms-loaded",
+  /**
+   * Run the action that (re)draws a histogram (opening the panel, a mode
+   * switch, a field choice) and resolve once it has drawn; pass a path to
+   * ignore sibling histograms' draws
+   */
+  async afterLoad(action: () => Promise<unknown>, path?: string) {
+    await this.eventUtils.after(
+      "e2e:histograms:loaded",
+      action,
       (e) => !path || (e.detail as { path?: string })?.path === path,
     );
+  }
+
+  /** The drawn chart of `path`'s histogram */
+  chart(path: string): Locator {
+    return this.page.locator(`[id="histogram-${path}"] svg.recharts-surface`);
   }
 }
 
@@ -38,7 +50,7 @@ class HistogramAsserter {
   constructor(private readonly histogramPom: HistogramPom) {}
 
   async isLoaded() {
-    await expect(this.histogramPom.locator).toBeVisible();
+    expect(await this.histogramPom.locator.isVisible()).toBe(true);
   }
 
   async verifyField(field: string) {
@@ -47,5 +59,15 @@ class HistogramAsserter {
 
   async verifyFields(fields: string[]) {
     await this.histogramPom.selector.assert.verifyResults(fields);
+  }
+
+  /**
+   * The chart `path`'s histogram drew (its bars and axes) matches the `name`
+   * baseline; draw it first with {@link HistogramPom.afterLoad}
+   */
+  async hasScreenshot(path: string, name: string) {
+    await expectScreenshot(this.histogramPom.chart(path), name, {
+      style: CHART_ONLY,
+    });
   }
 }

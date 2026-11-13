@@ -23,25 +23,28 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 
-  await fiftyoneLoader.executePythonCode(
-    `
-    import fiftyone.zoo as foz
+  // video datasets compute metadata, so metadata.size_bytes is populated
+  for (const datasetName of [
+    datasetNameFilteringEnabled,
+    datasetNameFilteringDisabled,
+  ]) {
+    await datasetFactory.createDataset({
+      mediaType: "video",
+      datasetName,
+      schema: { "frames.detections": "Detections" },
+    });
+  }
 
-    datasets = [
-      ("${datasetNameFilteringEnabled}", False),
-      ("${datasetNameFilteringDisabled}", True),
-    ]
-    
-    for name, disable in datasets:
-      dataset = foz.load_zoo_dataset("quickstart-video", dataset_name=name, max_samples=1)
-      dataset.app_config.disable_frame_filtering = disable
-      dataset.persistent = True
-      dataset.save()
-    `,
-  );
+  await fiftyoneLoader.executePythonCode(`
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("${datasetNameFilteringDisabled}")
+    dataset.app_config.disable_frame_filtering = True
+    dataset.save()
+  `);
 });
 
 test.describe.serial("frame filtering", () => {

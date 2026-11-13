@@ -119,7 +119,6 @@ describe("SharedSessionBanner", () => {
   it.each([
     ["the stateless App", () => (mode.stateless = true)],
     ["a polling event source", () => (mode.polling = true)],
-    ["e2e runs", () => vi.stubGlobal("IS_PLAYWRIGHT", true)],
   ])("never shows for %s", (_, configure) => {
     configure();
     setup(2);

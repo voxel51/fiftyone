@@ -3,6 +3,7 @@ import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
 import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { GROUP_SLICES } from "./detections-data";
 
 const test = base.extend<{
   actionsRow: GridActionsRowPom;
@@ -20,16 +21,19 @@ const test = base.extend<{
   },
 });
 
-const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("groups");
 
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-    max_samples: 12,
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: 4,
+    slices: GROUP_SLICES,
   });
 });
 
@@ -46,10 +50,10 @@ test.describe.serial("Display Options", () => {
     await panel.open("Histograms");
     await panel.bringPanelToForeground("Samples");
     await actionsRow.toggleDisplayOptions();
-    const histogramLoaded = await histogram.armLoad();
-    await actionsRow.displayActions.setSidebarStatisticsMode("group");
-    await panel.bringPanelToForeground("Histograms");
-    await histogramLoaded.received;
+    await histogram.afterLoad(async () => {
+      await actionsRow.displayActions.setSidebarStatisticsMode("group");
+      await panel.bringPanelToForeground("Histograms");
+    });
 
     await histogram.assert.isLoaded();
     await panel.bringPanelToForeground("Samples");

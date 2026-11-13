@@ -1,4 +1,5 @@
 import { PillButton } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { Check } from "@mui/icons-material";
@@ -9,6 +10,15 @@ import { ActionDiv, getStringAndNumberProps } from "../utils";
 import Grid from "./Grid";
 import Modal from "./Modal";
 import { useSelectionSummary } from "./hooks";
+
+/** e2e specs read the selected counts once they have rendered */
+type SelectedE2EEvents = {
+  "e2e:actions:selected-shown": {
+    modal: boolean;
+    samples: number;
+    labels: number;
+  };
+};
 
 export default ({
   modal,
@@ -42,6 +52,14 @@ export default ({
     // Remeasure the toolbar item when either count changes its width.
     refresh?.();
   }, [text, refresh]);
+
+  useEffect(() => {
+    getEventBus<SelectedE2EEvents>().dispatch("e2e:actions:selected-shown", {
+      modal,
+      samples: sampleCount,
+      labels: labelCount,
+    });
+  }, [modal, sampleCount, labelCount]);
 
   if (sampleCount < 1 && labelCount < 1 && !modal) {
     return null;

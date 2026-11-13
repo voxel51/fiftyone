@@ -240,10 +240,13 @@ describe("GridCustomRendererItem", () => {
     expect(hostClickSpy).not.toHaveBeenCalled();
     expect(hostContextMenuSpy).not.toHaveBeenCalled();
 
-    // `ctx.openModal` reaches the modal the same way a click on an ordinary
-    // tile does: by activating the mounted element.
+    // `ctx.openModal` runs the grid's own open path for the tile, without
+    // faking a click on it
+    const open = vi.fn();
+    looker.setOpen(open);
     (ctx.openModal as () => void)();
-    expect(hostClickSpy).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(hostClickSpy).not.toHaveBeenCalled();
 
     fireEvent.mouseEnter(wrapper);
 

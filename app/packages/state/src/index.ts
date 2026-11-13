@@ -1,4 +1,6 @@
 export * from "./accessors";
+export * from "./event-facets/identity";
+export * from "./bounding-boxes";
 export * as constants from "./constants";
 export * from "./contextManager";
 export * from "./gridCustomRendererFailover";
@@ -6,6 +8,9 @@ export * from "./hooks";
 export * from "./jotai";
 export * from "./recoil";
 export * from "./session";
+export * from "./similarity-search/hooks";
+export * from "./similarity-search/limits";
+export * from "./sidebar-facets";
 export * from "./temporal-tags";
 export * from "./utils";
 export * from "./utils-types";

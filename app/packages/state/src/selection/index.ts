@@ -8,3 +8,5 @@ export * from "./types";
 export * from "./jobs";
 export * from "./segment-hooks";
 export * from "./segment-time";
+
+export { registerSelectionRangeSource } from "./range-sources";

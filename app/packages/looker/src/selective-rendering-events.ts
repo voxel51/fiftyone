@@ -2,6 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { EventDispatcher } from "@fiftyone/events";
+
 /**
  * Event name when a label is hovered.
  */
@@ -55,113 +57,126 @@ export interface LabelToggledEventData {
   sourceLabelId: LabelId;
 }
 
+/** What the selective rendering bus sends, by event name */
+export type SelectiveRenderingEvents = {
+  [FO_LABEL_HOVERED_EVENT]: LabelHoveredEventData;
+  [FO_LABEL_UNHOVERED_EVENT]: null;
+  [FO_LABEL_TOGGLED_EVENT]: LabelToggledEventData;
+};
+
+type SelectiveRenderingEventName = keyof SelectiveRenderingEvents;
+
 /**
- * Custom event representing a label hovered action.
+ * A label hovered action, as listeners receive it.
+ * @deprecated to send one, `dispatch` {@link FO_LABEL_HOVERED_EVENT}
  */
-export class LabelHoveredEvent extends CustomEvent<LabelHoveredEventData> {
-  /**
-   * Creates a new LabelHoveredEvent.
-   * @param detail - The data associated with the label hover event.
-   */
-  constructor(detail: LabelHoveredEventData) {
-    super(FO_LABEL_HOVERED_EVENT, { detail });
-  }
+export class LabelHoveredEvent {
+  readonly type = FO_LABEL_HOVERED_EVENT;
+  /** keeps the listeners after this one from receiving the event */
+  declare readonly stopImmediatePropagation: () => void;
+
+  constructor(readonly detail: LabelHoveredEventData) {}
 }
 
 /**
- * Custom event representing a label unhovered action.
+ * A label unhovered action, as listeners receive it.
+ * @deprecated to send one, `dispatch` {@link FO_LABEL_UNHOVERED_EVENT}
  */
-export class LabelUnhoveredEvent extends CustomEvent<null> {
-  /**
-   * Creates a new LabelUnhoveredEvent.
-   */
-  constructor() {
-    super(FO_LABEL_UNHOVERED_EVENT);
-  }
+export class LabelUnhoveredEvent {
+  readonly type = FO_LABEL_UNHOVERED_EVENT;
+  readonly detail = null;
+  /** keeps the listeners after this one from receiving the event */
+  declare readonly stopImmediatePropagation: () => void;
 }
 
 /**
- * Custom event representing a label toggled action.
+ * A label toggled action, as listeners receive it.
+ * @deprecated to send one, `dispatch` {@link FO_LABEL_TOGGLED_EVENT}
  */
-export class LabelToggledEvent extends CustomEvent<LabelToggledEventData> {
-  /**
-   * Creates a new LabelToggledEvent.
-   * @param detail - The data associated with the label toggle event.
-   */
-  constructor(detail: LabelToggledEventData) {
-    super(FO_LABEL_TOGGLED_EVENT, { detail });
-  }
+export class LabelToggledEvent {
+  readonly type = FO_LABEL_TOGGLED_EVENT;
+  /** keeps the listeners after this one from receiving the event */
+  declare readonly stopImmediatePropagation: () => void;
+
+  constructor(readonly detail: LabelToggledEventData) {}
 }
+
+type SelectiveRenderingEvent =
+  | LabelHoveredEvent
+  | LabelUnhoveredEvent
+  | LabelToggledEvent;
 
 /**
  * Callback type for event handlers.
  */
-export type EventCallback = (
-  event: LabelHoveredEvent | LabelUnhoveredEvent | LabelToggledEvent,
-) => void;
+export type EventCallback = (event: SelectiveRenderingEvent) => void;
 
 /**
- * A centralized event bus for selective rendering events.
+ * A centralized event bus for selective rendering events. Listeners run in
+ * the order they were added.
  */
-export class SelectiveRenderingEventBus extends EventTarget {
-  /**
-   * Abort controller to manage event listeners.
-   */
-  #abortController = new AbortController();
+type Delivered = {
+  readonly type: SelectiveRenderingEventName;
+  readonly detail: unknown;
+  readonly stopImmediatePropagation: () => void;
+};
+
+export class SelectiveRenderingEventBus {
+  #bus = new EventDispatcher<Record<SelectiveRenderingEventName, Delivered>>();
+  readonly #stopped = new WeakSet<Delivered>();
 
   /**
-   * Emits one of the following events:
-   * - LabelHoveredEvent
-   * - LabelUnhoveredEvent
-   * - LabelToggledEvent
-   *
-   * @param event - The event to emit.
+   * Sends `event` to its listeners, which receive `{ type, detail }`.
    */
-  emit(
-    event: LabelHoveredEvent | LabelUnhoveredEvent | LabelToggledEvent,
+  dispatch<E extends SelectiveRenderingEventName>(
+    event: E,
+    detail: SelectiveRenderingEvents[E],
   ): void {
-    this.dispatchEvent(event);
+    const delivered: Delivered = {
+      type: event,
+      detail,
+      stopImmediatePropagation: () => this.#stopped.add(delivered),
+    };
+    this.#bus.dispatch<SelectiveRenderingEventName>(event, delivered);
+  }
+
+  /**
+   * Sends one of the label events built by its class.
+   * @deprecated use {@link SelectiveRenderingEventBus.dispatch}
+   */
+  emit(event: SelectiveRenderingEvent): void {
+    this.dispatch(event.type, event.detail as never);
   }
 
   /**
    * Registers an event listener for a specific event.
    * @param eventName - The name of the event to listen for.
    * @param callback - The callback to invoke when the event is fired.
+   * @param signal - Removes the listener when aborted.
    */
   on(
-    eventName:
-      | typeof FO_LABEL_HOVERED_EVENT
-      | typeof FO_LABEL_UNHOVERED_EVENT
-      | typeof FO_LABEL_TOGGLED_EVENT,
+    eventName: SelectiveRenderingEventName,
     callback: EventCallback,
     signal?: AbortSignal,
   ): () => void {
-    this.addEventListener(eventName, callback as EventListener, {
-      signal: this.#abortController.signal,
-    });
-
-    if (signal) {
-      signal.addEventListener(
-        "abort",
-        () => {
-          this.removeEventListener(eventName, callback);
-        },
-        { once: true },
-      );
+    if (signal?.aborted) {
+      return () => undefined;
     }
 
-    return () => {
-      this.removeEventListener(eventName, callback);
-    };
+    const off = this.#bus.on(eventName, (event) => {
+      if (!this.#stopped.has(event)) {
+        callback(event as SelectiveRenderingEvent);
+      }
+    });
+    signal?.addEventListener("abort", off, { once: true });
+    return off;
   }
 
   /**
    * Removes all event listeners registered via this bus.
    */
   removeAllListeners(): void {
-    this.#abortController.abort();
-    // Reset the abort controller so new listeners can be registered.
-    this.#abortController = new AbortController();
+    this.#bus.clearAll();
   }
 }
 

@@ -2,7 +2,7 @@ import {
   getFetchFunctionExtended,
   type FetchFunctionConfig,
   type FetchFunctionResult,
-} from "@fiftyone/utilities";
+} from "@fiftyone/utilities/src/fetch";
 import { createAbortError } from "../../utils/cancellation";
 import { safeNumber } from "./bigint-utils";
 import { parseByteSize } from "./byte-size";

@@ -46,16 +46,27 @@ const App: React.FC = () => {
   );
 };
 
-createRoot(document.getElementById("root") as HTMLDivElement).render(
-  <RecoilRoot>
-    <ThemeProvider>
-      <ErrorBoundary>
-        <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
-          <SnackbarProvider>
-            <App />
-          </SnackbarProvider>
-        </BeforeScreenshotContext.Provider>
-      </ErrorBoundary>
-    </ThemeProvider>
-  </RecoilRoot>,
-);
+// Render once the web font is in: text laid out in the fallback font keeps
+// its metrics after the swap. A font that fails to load, or is slow to,
+// renders the fallback rather than holding a blank page.
+const FONT_WAIT_MS = 1500;
+
+Promise.race([
+  document.fonts.load('1em "Palanquin"').catch(() => undefined),
+  new Promise((resolve) => setTimeout(resolve, FONT_WAIT_MS)),
+]).then(() => renderApp());
+
+const renderApp = () =>
+  createRoot(document.getElementById("root") as HTMLDivElement).render(
+    <RecoilRoot>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
+            <SnackbarProvider>
+              <App />
+            </SnackbarProvider>
+          </BeforeScreenshotContext.Provider>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </RecoilRoot>,
+  );

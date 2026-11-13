@@ -15,6 +15,7 @@ import type { TileDecoratorSample } from "./tileDecorators";
 
 const TILE_HIGHLIGHT_ATTR = "data-fo-tile-highlight";
 const TILE_SELECTION_HOVER_ATTR = "data-fo-selection-hover";
+const TILE_REVEALED_ATTR = "data-fo-tile-revealed";
 
 export interface GridTileEntry {
   /** Stable id for the tile — used as React key and registry key. */
@@ -67,6 +68,7 @@ export const unregisterTile = (id: string): void => {
   // highlight meant for this one follow it there.
   entry.overlayEl.parentElement?.removeAttribute(TILE_HIGHLIGHT_ATTR);
   entry.overlayEl.parentElement?.removeAttribute(TILE_SELECTION_HOVER_ATTR);
+  entry.overlayEl.parentElement?.removeAttribute(TILE_REVEALED_ATTR);
   tiles.delete(id);
   notify();
 };
@@ -82,6 +84,40 @@ export const setTileHighlight = (id: string, on: boolean): void => {
   if (on) tile.setAttribute(TILE_HIGHLIGHT_ATTR, "");
   else tile.removeAttribute(TILE_HIGHLIGHT_ATTR);
 };
+
+/** Highlight the destination once its renderer has registered the tile. */
+export async function highlightRevealedTile(id: string, signal: AbortSignal) {
+  signal.throwIfAborted();
+  const tile = await new Promise<HTMLElement>((resolve, reject) => {
+    const cleanup = () => {
+      listeners.delete(check);
+      signal.removeEventListener("abort", abort);
+    };
+    const abort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const check = () => {
+      const element = tiles.get(id)?.overlayEl.parentElement;
+      if (element) {
+        cleanup();
+        resolve(element);
+      }
+    };
+    listeners.add(check);
+    signal.addEventListener("abort", abort, { once: true });
+    check();
+  });
+  signal.throwIfAborted();
+  tile.setAttribute(TILE_REVEALED_ATTR, "");
+  const cleanup = () => {
+    clearTimeout(timeout);
+    tile.removeAttribute(TILE_REVEALED_ATTR);
+    signal.removeEventListener("abort", cleanup);
+  };
+  const timeout = setTimeout(cleanup, 900);
+  signal.addEventListener("abort", cleanup, { once: true });
+}
 
 // External-store snapshot. Returns a stable array reference between
 // changes so portal renders aren't churned.
@@ -161,16 +197,9 @@ const subscribeHover = (listener: () => void): (() => void) => {
   return () => hoverListeners.delete(listener);
 };
 
-const getHoveredTile = () => hoveredTile;
+/** The tile under the pointer now, for a key press to act on. */
+export const getHoveredTile = (): string | null => hoveredTile;
 
 /** Reads the grid tile whose selection card should mirror its hover. */
 export const useHoveredTile = (): string | null =>
   useSyncExternalStore(subscribeHover, getHoveredTile, getHoveredTile);
-
-/** Whether the pointer is in this tile's selection controls' hover region. */
-export const useIsTileSelectionHovered = (id: string): boolean =>
-  useSyncExternalStore(
-    subscribeHover,
-    () => selectionHoveredTile === id,
-    () => false,
-  );

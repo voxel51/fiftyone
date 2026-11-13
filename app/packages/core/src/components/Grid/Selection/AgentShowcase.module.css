@@ -18,10 +18,13 @@
   min-width: 0;
 }
 
-/* "Only in Voxel51": a hairline brand-gradient pill, the same gradient as the
- * header's Enterprise call to action. Brand color, not a theme token. */
+/* A hairline pill in the design system's brand gradient. */
 .exclusive {
-  --agent-brand-gradient: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%);
+  --agent-brand-gradient: linear-gradient(
+    45deg,
+    var(--agent-brand-primary) 0%,
+    var(--agent-brand-accent) 100%
+  );
   position: relative;
   display: inline-flex;
   flex: none;
@@ -112,7 +115,7 @@
   border-radius: 10px;
   overflow: hidden;
   background: var(--agent-stage);
-  box-shadow: 0 24px 48px -28px rgb(0 0 0 / 0.6);
+  box-shadow: 0 24px 48px -28px var(--agent-overlay);
 }
 
 .video {

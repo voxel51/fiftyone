@@ -34,7 +34,9 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
             currentSearch: router.location.search,
           }),
           {
-            ...router.get().state,
+            // A hard refresh may still be loading the entry. History keeps
+            // the route state, including the view and schema policy.
+            ...router.location.state,
             event: "fieldVisibility",
             fieldVisibility: stage,
           },

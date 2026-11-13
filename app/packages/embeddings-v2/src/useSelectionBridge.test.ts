@@ -91,6 +91,7 @@ const options = (
   selectedSamples: new Map<string, SelectionType>(),
   setSelectedSamples: vi.fn(),
   foreignSelection: null,
+  ownStage: null,
   // Off by default: most tests never touch the owning-sample fetch
   serverIds: false,
   isPatchesView: false,
@@ -358,6 +359,28 @@ describe("useSelectionBridge", () => {
     });
     // The newer selection stands: the late loser publishes nothing
     expect(opts.publishSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a lasso response that arrives after unmount", async () => {
+    const stage = { _cls: "S", kwargs: { n: 1 }, count: 1 };
+    let resolveLasso: (v: typeof stage) => void = () => undefined;
+    vi.mocked(fetchLassoStage)
+      .mockClear()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveLasso = resolve)),
+      );
+    // Partially loaded, so the gesture resolves server-side
+    const opts = options({ loaded: { ...LOADED, total: 5 } });
+    const { result, unmount } = renderHook(() => useSelectionBridge(opts));
+
+    act(() => result.current.handleSelection([0], null));
+    unmount();
+    await act(async () => {
+      resolveLasso(stage);
+    });
+    // The plot is gone (a tab switch, or a close whose effect just cleared
+    // the grid); the late response must not narrow it again
+    expect(opts.publishSelection).not.toHaveBeenCalled();
   });
 
   // A failure banner describes the gesture that failed; it must not
@@ -1095,6 +1118,47 @@ describe("useSelectionBridge", () => {
     expect(opts.resetExtended).toHaveBeenCalled();
     expect(opts.setSelectedSamples).toHaveBeenCalledWith(new Map());
     expect(opts.chart.current?.clearSelection).toHaveBeenCalled();
+  });
+
+  it("drops its own layers when the App clears its stage", () => {
+    const opts = options();
+    const initialProps: { ownStage: unknown } = { ownStage: null };
+    const { result, rerender } = renderHook(
+      ({ ownStage }) => useSelectionBridge({ ...opts, ownStage }),
+      { initialProps },
+    );
+    act(() => result.current.handleSelection([0, 1]));
+    rerender({ ownStage: { "fiftyone.core.stages.Select": {} } });
+    expect(result.current.lassoIndices).not.toBeNull();
+
+    // A view change resets the extended selection outside the panel
+    rerender({ ownStage: null });
+
+    expect(result.current.lassoIndices).toBeNull();
+    expect(opts.chart.current?.clearSelection).toHaveBeenCalled();
+    expect(opts.publishSelection).toHaveBeenLastCalledWith({
+      count: null,
+      sampleCount: null,
+      decorate: null,
+    });
+    // The grid's checkboxes are the reader's, and the App already reset
+    expect(opts.setSelectedSamples).not.toHaveBeenCalled();
+    expect(opts.resetExtended).not.toHaveBeenCalled();
+  });
+
+  it("keeps a lasso whose stage has not arrived yet", () => {
+    const opts = options();
+    const initialProps: { ownStage: unknown } = { ownStage: null };
+    const { result, rerender } = renderHook(
+      ({ ownStage }) => useSelectionBridge({ ...opts, ownStage }),
+      { initialProps },
+    );
+
+    act(() => result.current.handleSelection([0, 1]));
+    rerender({ ownStage: null });
+
+    expect(Array.from(result.current.lassoIndices ?? [])).toEqual([0, 1]);
+    expect(opts.chart.current?.clearSelection).not.toHaveBeenCalled();
   });
 });
 

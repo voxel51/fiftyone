@@ -23,13 +23,25 @@ lets you visualize, play back, tag, and query all of them in lockstep.
 .. note::
 
     Multimodal visualization is available to all FiftyOne users. With
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can additionally
+    :ref:`Voxel51 <fiftyone-enterprise>` you can additionally
     :ref:`index your MCAP data <multimodal-indexing>` (currently in beta)
     into columnar tables that power scalable search, filtering, and event
     mining across your entire fleet of recordings, and compute
     :ref:`segment embeddings <multimodal-segment-embeddings>` (also in beta)
     to visually explore, find similar moments in, and semantically search
     your recordings.
+
+.. _multimodal-installation:
+
+Installation
+____________
+
+Working with multimodal datasets in Python requires some additional
+dependencies, which you can install via FiftyOne's `multimodal` extra:
+
+.. code-block:: shell
+
+    pip install "fiftyone[multimodal]"
 
 .. _multimodal-overview:
 
@@ -90,6 +102,15 @@ is automatically inferred as `"multimodal"`:
     )
 
     print(dataset.media_type)  # multimodal
+
+Custom MCAP messages can also become signals, event tracks, and scene geometry
+through :ref:`MCAP scripts <multimodal-mcap-scripts>`, an Enterprise
+feature that saves JavaScript or TypeScript transformations with your dataset.
+
+.. toctree::
+   :maxdepth: 1
+
+   multimodal/mcap_scripts
 
 .. _multimodal-lerobot-datasets:
 
@@ -161,7 +182,7 @@ from one of its streams, and you can use the stream selector to choose which
 stream is used for grid previews. Camera streams are preferred by default,
 and your stream selection persists across episodes.
 
-In :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, grids over indexed MCAP
+In :ref:`Voxel51 <fiftyone-enterprise>`, grids over indexed MCAP
 datasets load instantly from
 :ref:`automatic thumbnails <multimodal-auto-thumbnails>` generated during
 indexing.
@@ -200,7 +221,7 @@ least one stream it can display:
       -
     * - :ref:`3D <multimodal-3d-tile>`
       - ✓
-      -
+      - ✓
     * - :ref:`Map <multimodal-map-tile>`
       - ✓
       -
@@ -268,6 +289,14 @@ trajectories, and camera frustums. Coordinate frame transforms from the
 recording are used to place everything correctly, and you can select the
 reference frame, track a moving frame with the camera, measure distances, and
 inspect points via hover tooltips.
+The 3D tile can also show :ref:`robots <multimodal-robots>` from URDF
+models.
+
+.. note::
+
+    This is the multimodal 3D tile. To view and annotate point clouds,
+    cuboids and tracks in grouped datasets, see
+    :ref:`3D Annotation <annotation-3d>`.
 
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/3d-panel.webp
    :alt: multimodal-3d-tile
@@ -297,6 +326,11 @@ the recording — IMU rates, vehicle speed, steering angle, diagnostics
 values, robot state and action dimensions, etc. — over the full duration of
 the recording. A playhead marks the current playback position, and clicking
 anywhere in the plot seeks the shared clock to that time.
+
+Text fields, such as a drive mode, a gear, or a decoded CAN signal like a
+road condition, are plotted as state lanes beneath any numeric series. Each
+lane shows when the value changed and how long each state held, and the
+legend reads out the state at the hovered time.
 
 .. image:: https://cdn.voxel51.com/fundamentals/fiftyone_multimodal/plot-panel.webp
    :alt: multimodal-plot-tile
@@ -398,7 +432,7 @@ tile is showing. It contains the following tabs:
     tile appears with its specific options — for example, which streams and
     overlays an image tile displays, the 3D tile's colormaps and camera
     behavior, the topic/field series charted by a plot tile, or the topic
-    shown in a message tile
+    shown in a message tile. Clicking a tile opens its tab
 
 .. _multimodal-inspector-sidebar:
 
@@ -423,6 +457,48 @@ and action data per dimension: the dataset's declared statistics (from
 `meta/stats.json`), this episode's computed statistics — including seekable
 extremes that jump the playhead to where a min/max occurred — recorded
 cadence, out-of-declared-range counts, and action-vs-state tracking error.
+
+.. _multimodal-robots:
+
+Robots
+______
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+The :ref:`3D tile <multimodal-3d-tile>` shows robots from
+`URDF <https://wiki.ros.org/urdf>`_ models. Links follow their recorded
+frames, and a `JointState` topic or a LeRobot `state` or `action` feature
+moves the joints.
+
+URDFs come from the recording (`*.urdf` attachments and `robot_description`
+topics) or from the robot library, which every dataset in your deployment
+shares. Until you save a setup, the 3D tile shows a recording's robot when the
+recording has exactly one URDF.
+
+To set up robots, open the **Robots** group in the 3D tile's settings.
+**Add robot** adds a URDF from the recording or the library, or imports a URDF
+with its meshes, a ZIP, or a USD/USDZ file. A robot's **Placement and
+joints…** menu item sets where it attaches and what moves its joints.
+**Save for all episodes** saves the setup to the dataset.
+
+You can do the same in Python:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.robots as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    arm = fomr.import_robot_model("/path/to/arm.zip", "urdf/arm.urdf")
+    dataset.save_robot_configuration(
+        [fomr.robot_instance(arm, joint_stream="/joint_states")]
+    )
+
+Importing a robot, or saving one from a recording, requires a
+:ref:`managed storage root <enterprise-managed-storage-root>`.
 
 .. _multimodal-timeline-tracks:
 
@@ -452,7 +528,7 @@ organized into sections that only appear when they have content:
 .. note::
 
     Event, label, and embedding window tracks are only available in
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`; event tracks
+    :ref:`Voxel51 <fiftyone-enterprise>`; event tracks
     additionally require :ref:`MCAP indexing <multimodal-indexing>` and
     embedding window tracks require
     :ref:`segment embeddings <multimodal-segment-embeddings>`.
@@ -822,7 +898,7 @@ _______________________________
 .. note::
 
     MCAP indexing is only available in
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`. It is currently in
+    :ref:`Voxel51 <fiftyone-enterprise>`. It is currently in
     **beta** and is disabled by default; contact your deployment
     administrator or Voxel51 support to enable the feature for your
     deployment.
@@ -832,7 +908,7 @@ queries. Questions like *"find every episode where a pedestrian was visible
 while the vehicle was moving faster than 5 m/s"* would otherwise require
 scanning and decoding every file in your fleet.
 
-FiftyOne Enterprise solves this by **indexing** your MCAP data: a projection
+Voxel51 solves this by **indexing** your MCAP data: a projection
 pipeline reads each recording once, decodes the channels you declare, and
 writes the results to columnar **Parquet** tables (managed via `Apache
 Iceberg <https://iceberg.apache.org>`_) called **projections**. These tables
@@ -850,9 +926,9 @@ projections are supported:
 
 -   **labels**: per-message rows extracted from annotation streams, e.g. the
     text and geometry of every image annotation
--   **signals**: numeric time series sampled from message fields, e.g.
-    vehicle speed, steering angle, or IMU rates, with configurable sampling
-    strategies
+-   **signals**: time series sampled from message fields, e.g. vehicle
+    speed, steering angle, or IMU rates, or discrete states such as a drive
+    mode or road condition, with configurable sampling strategies
 -   **events**: derived time intervals computed from other projections using
     :ref:`expressions <multimodal-expressions>`, e.g. "windows of high
     steering lasting at least 500ms"
@@ -1161,6 +1237,10 @@ The supported syntax is as follows.
     changed(path)                         # instant events when a value changes;
                                           # may be &&-chained with filter
                                           # predicates
+    rising(pred)                          # instant events when pred changes
+                                          # from false to true
+    falling(pred)                         # instant events when pred changes
+                                          # from true to false
     unique(path)                          # distinct values
     any(pred)                             # true if pred holds anywhere
     max(path), max(abs(path))             # maximum (absolute) value
@@ -1178,9 +1258,19 @@ The supported syntax is as follows.
     path == "string"
     !path                       # boolean NOT
     changed(path)
+    rising(pred)
+    falling(pred)
     path                        # bare path; truthy check
     pred1 && pred2 [&& ...]     # logical AND
     pred1 || pred2 [|| ...]     # logical OR
+
+`rising` and `falling` compare consecutive boolean results of their predicate.
+The first result does not produce an edge. For example,
+`rising(vehicle_speed_signals.speed > speed_threshold)` emits one instant
+event when speed crosses above the threshold; further numeric changes above
+the threshold do not emit more events. Like `changed`, edge predicates may be
+combined with filter predicates using `&&`. Transition predicates cannot be
+used as inputs to `contiguous` or `overlaps`, which require state predicates.
 
 .. note::
 
@@ -1195,7 +1285,7 @@ Automatic thumbnails
 
 By default, :ref:`grid previews <multimodal-grid-previews>` are rendered
 live in your browser by reading and decoding each episode's source data. In
-FiftyOne Enterprise, indexing additionally generates **thumbnails** for your
+Voxel51, indexing additionally generates **thumbnails** for your
 episodes automatically: while each recording is being indexed, FiftyOne
 samples one representative visual from every previewable stream — camera
 images, compressed video (decoded server-side, so it isn't limited to
@@ -1223,6 +1313,57 @@ tables, as immutable, content-addressed objects under the dataset's
 `artifacts/grid/` prefix, and are served to the App through authorized
 endpoints.
 
+.. _multimodal-playback-renditions:
+
+Playback renditions
+___________________
+
+Recordings with several JPEG cameras often need more bandwidth to play in
+real time than a cloud bucket or a remote link delivers, so playback stalls
+to buffer. A **playback rendition** is a smaller copy of an MCAP recording
+for streaming playback. It keeps the timestamps and message order of every
+topic you don't drop, re-encodes `foxglove.CompressedImage` cameras as H.264
+`foxglove.CompressedVideo`, and stores point cloud intensities that are whole
+numbers in `[0, 255]` as one byte.
+
+Use
+:func:`generate_renditions() <fiftyone.multimodal.renditions.generate_renditions>`
+to write a rendition for each MCAP sample. Each rendition's path is stored in
+a new media field, which `make_default=True` makes the default for the grid
+and the modal. Samples without a rendition still show `filepath`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.multimodal.renditions as fomr
+
+    dataset = fo.load_dataset("robot-teleop-episodes")
+
+    config = fomr.RenditionConfig(
+        max_image_width=800,  # downscale wider camera frames
+        drop_topics=["/CAM_*/lidar"],  # leave out derived topics
+    )
+
+    fomr.generate_renditions(
+        dataset,
+        config=config,
+        output_field="playback_filepath",
+        make_default=True,
+    )
+
+Renditions are written to `datasets/<dataset ID>/renditions/` under the
+`managed_storage_root` in your :ref:`FiftyOne config <configuring-fiftyone>`,
+which FiftyOne Enterprise admins can also set in Settings > Infrastructure >
+Storage. Pass `output_dir` to write them to another directory or bucket.
+
+Renditions trade fidelity for bytes: camera frames are downscaled and
+lossy-compressed, and options like `point_fields` and `point_stride` drop
+point cloud data. The source recording is never modified: choose `filepath`
+under Display options > Media field to inspect full-fidelity data. Writing renditions
+requires `PyAV <https://github.com/PyAV-Org/PyAV>`_ with an FFmpeg build that
+includes `libx264`.
+
 .. _multimodal-segment-embeddings:
 
 Segment embeddings __SUB_BETA__
@@ -1234,7 +1375,7 @@ _______________________________
 .. note::
 
     Segment embeddings are only available in
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` for multimodal (MCAP)
+    :ref:`Voxel51 <fiftyone-enterprise>` for multimodal (MCAP)
     datasets. By default they are stored alongside your dataset's
     :ref:`MCAP indexing <multimodal-indexing>` tables, but you can also
     provide your own storage location. The feature is currently in **beta**;

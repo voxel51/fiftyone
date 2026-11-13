@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getRotatedBoxCorners,
+  getRotatedBoxNorthwestCorner,
   getRotation2d,
   isPointInRotatedBox,
   lerpRotation,
@@ -64,6 +65,48 @@ describe("getRotatedBoxCorners", () => {
     const corners = getRotatedBoxCorners(BOX, 2 * Math.PI, DIMS);
     expect(corners[0][0]).toBeCloseTo(0.4);
     expect(corners[0][1]).toBeCloseTo(0.4);
+  });
+});
+
+describe("getRotatedBoxNorthwestCorner", () => {
+  const DEG = Math.PI / 180;
+
+  it("returns the stored top-left corner exactly for rotation 0", () => {
+    expect(getRotatedBoxNorthwestCorner(BOX, 0, DIMS)).toEqual([0.4, 0.4]);
+  });
+
+  it("keeps the stored top-left corner for small turns either way", () => {
+    for (const rotation of [10 * DEG, -10 * DEG]) {
+      const [x, y] = getRotatedBoxNorthwestCorner(BOX, rotation, DIMS);
+      const [tl] = getRotatedBoxCorners(BOX, rotation, DIMS);
+      expect(x).toBeCloseTo(tl[0]);
+      expect(y).toBeCloseTo(tl[1]);
+    }
+  });
+
+  it("returns the visible top-left corner for a quarter turn", () => {
+    // the 200x100px box stands 100px wide and 200px tall around its
+    // (500, 250) px center, so its visible top-left is (450, 150) px
+    const [x, y] = getRotatedBoxNorthwestCorner(BOX, Math.PI / 2, DIMS);
+    expect(x * DIMS[0]).toBeCloseTo(450);
+    expect(y * DIMS[1]).toBeCloseTo(150);
+  });
+
+  it("returns the unrotated position for a half turn", () => {
+    const [x, y] = getRotatedBoxNorthwestCorner(BOX, Math.PI, DIMS);
+    expect(x).toBeCloseTo(0.4);
+    expect(y).toBeCloseTo(0.4);
+  });
+
+  it("compares corners in pixel space, not normalized space", () => {
+    // at 55deg on 1000x500px media, the stored bottom-left corner is further
+    // northwest in pixels; normalized coordinates would overweight y and
+    // pick the stored top-left instead
+    const rotation = 55 * DEG;
+    const [x, y] = getRotatedBoxNorthwestCorner(BOX, rotation, DIMS);
+    const bl = getRotatedBoxCorners(BOX, rotation, DIMS)[3];
+    expect(x).toBeCloseTo(bl[0]);
+    expect(y).toBeCloseTo(bl[1]);
   });
 });
 

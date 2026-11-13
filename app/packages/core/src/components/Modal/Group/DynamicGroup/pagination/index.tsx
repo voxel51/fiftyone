@@ -1,3 +1,4 @@
+import { getEventBus } from "@fiftyone/events";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { modalSelector } from "@fiftyone/state";
@@ -38,6 +39,11 @@ const BarContainer = styled.div`
     content: none;
   }
 `;
+
+/** e2e specs wait on the bar showing its pages */
+type PaginationE2EEvents = {
+  "e2e:modal:dynamic-group-pagination": { page: number; count: number };
+};
 
 type OnPageChange = (
   e: React.ChangeEvent<HTMLInputElement>,
@@ -130,6 +136,13 @@ const PaginationBarContent = ({
       setCursor(deferred - 5);
     }
   }, [map, setCursor, deferred, setSample, isPaginationChangeRef]);
+
+  useEffect(() => {
+    getEventBus<PaginationE2EEvents>().dispatch(
+      "e2e:modal:dynamic-group-pagination",
+      { page: deferred, count: elementsCount },
+    );
+  }, [deferred, elementsCount]);
 
   return (
     <>

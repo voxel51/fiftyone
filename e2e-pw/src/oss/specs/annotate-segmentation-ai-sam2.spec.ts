@@ -4,9 +4,8 @@
  * AI-assisted segmentation (SAM2) round-trip: pick the AI tool, place a
  * positive point, let the mocked worker return a deterministic mask, await its
  * autosave, and verify from a fresh browser context that the persisted
- * detection renders a non-empty mask. The worker is swapped in through the
- * `window.__FO_TEST_SAM2_WORKER_FACTORY` seam, so no weights download and no
- * inference runs.
+ * detection renders a non-empty mask. The mock is served in place of the
+ * worker script, so no weights download and no inference runs.
  */
 
 import { expect, test as base } from "src/oss/fixtures";
@@ -66,14 +65,12 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test.describe.serial("segmentation AI (SAM2) round-trip", () => {
   test("placing a positive point persists a Detection with a mask", async ({
-    browser,
     fiftyoneLoader,
     modal,
+    openFreshPage,
   }) => {
     // ── 1. Enter annotate → segmentation → AI ───────────────────────────────
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await modal.waitForLighterReady();
+    await modal.afterLighterReady(() => modal.sidebar.switchMode("annotate"));
 
     await modal.sidebar.annotate.segmentationMode();
     await modal.sidebar.annotate.assert.segmentationModeIsActive();
@@ -83,40 +80,36 @@ test.describe.serial("segmentation AI (SAM2) round-trip", () => {
 
     // ── 2. Place a positive point — inference auto-fires on context change ──
     // inference runs in a worker: settlement alone reads "settled" before
-    // the label exists, so arm the autosave response that will carry it
-    const saved = modal.sidebar.annotate.waitForPatch();
-    await modal.sampleCanvas.click(0.5, 0.5);
-
+    // the label exists, so wait on the save that carries it
     // ── 3. Wait for the inferred detection to persist ───────────────────────
-    await saved;
+    await modal.sidebar.annotate.afterSave(() =>
+      modal.sampleCanvas.click(0.5, 0.5),
+    );
 
     // The inferred detection is left selected; the create toolbar is hidden
     // while editing, so exit via the edit form rather than the toolbar.
     await modal.sidebar.edit.exitToList();
 
     // ── 4. A fresh browser context must show the persisted Detection ────────
-    const context = await browser.newContext();
-    try {
-      await installSam2MockWorker(context);
-      const freshPage = await context.newPage();
-      await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
-        searchParams: new URLSearchParams({ id: sampleId }),
-      });
-      const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
-      await fresh.waitForSampleLoadDomAttribute();
-      await fresh.sidebar.switchMode("annotate");
-      const rows = fresh.sidebar.annotate.labelRowsFor("instances");
-      expect(await rows.count()).toBeGreaterThanOrEqual(1);
+    const freshPage = await openFreshPage();
+    await installSam2MockWorker(freshPage);
+    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName, {
+      searchParams: new URLSearchParams({ id: sampleId }),
+      modalSample: "loaded",
+    });
+    const fresh = new ModalPom(freshPage, new EventUtils(freshPage));
+    await fresh.afterLighterReady(() =>
+      fresh.sidebar.annotate.afterLabelList(() =>
+        fresh.sidebar.switchMode("annotate"),
+      ),
+    );
+    const rows = fresh.sidebar.annotate.labelRowsFor("instances");
+    expect(await rows.count()).toBe(1);
 
-      // Mock worker's 8x8 all-foreground mask → a non-empty rendered mask.
-      // Loose lower bound catches "field saved but mask empty".
-      await rows.first().click();
-      await fresh.sidebar.edit.assert.hasMaskPreview();
-      await expect
-        .poll(() => fresh.sidebar.edit.maskPreviewPixels())
-        .toBeGreaterThan(0);
-    } finally {
-      await context.close();
-    }
+    // the mock worker answers with an 8x8 all-foreground mask at box
+    // {0.4, 0.4, 0.2, 0.2}; that is what the fresh canvas must render
+    await rows.click();
+    await fresh.sidebar.edit.assert.hasMaskPreview();
+    await fresh.sampleCanvas.assert.hasMediaScreenshot("seg-ai-persisted.png");
   });
 });

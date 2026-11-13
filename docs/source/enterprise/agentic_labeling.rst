@@ -12,7 +12,7 @@ Agentic Labeling labels your images with a prompt-driven vision-language
 model (VLM). You describe what you want in plain language, optionally show
 the model a few examples, and it produces labels like classifications,
 detections, captions, or per-region labels across your dataset for review.
-Agentic Labeling is available as a panel in the FiftyOne Enterprise App.
+Agentic Labeling is available as a panel in the Voxel51 App.
 
 .. _agentic-labeling-vs-auto-labeling:
 
@@ -271,7 +271,7 @@ If a run fails, a red banner shows the error and a collapsible **Stack trace**.
 
 When the run completes, its labels are written to your chosen field, ready to
 review in the grid. Consider creating an
-:ref:`annotation workflow <enterprise-workflows>` for your annotators to
+:ref:`project <enterprise-projects>` for your annotators to
 review the results.
 
 .. _agentic-labeling-tasks:

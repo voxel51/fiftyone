@@ -38,7 +38,7 @@ Kubernetes 1.30
 *Support ended July 11, 2025*
 
 `Kubernetes 1.30 <https://kubernetes.io/releases/>`_
-transitioned to `end-of-life` effective June of 2025. FiftyOne Enterprise
+transitioned to `end-of-life` effective June of 2025. Voxel51
 releases after July 11, 2025 might no longer be compatible with
 Kubernetes 1.30 and older.
 
@@ -60,7 +60,7 @@ Kubernetes 1.29
 *Support ended June 1, 2025*
 
 `Kubernetes 1.29 <https://kubernetes.io/releases/>`_
-transitioned to `end-of-life` effective February of 2025. FiftyOne Enterprise
+transitioned to `end-of-life` effective February of 2025. Voxel51
 releases after June 1, 2025 might no longer be compatible with
 Kubernetes 1.29 and older.
 
@@ -82,7 +82,7 @@ Kubernetes 1.27
 *Support ended November 1, 2024*
 
 `Kubernetes 1.27 <https://kubernetes.io/releases/>`_
-transitioned to `end-of-life` effective July of 2024. FiftyOne Enterprise
+transitioned to `end-of-life` effective July of 2024. Voxel51
 releases after October 31, 2024 might no longer be compatible with
 Kubernetes 1.27 and older.
 

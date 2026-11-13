@@ -29,7 +29,7 @@ export interface ScrollLocation {
 export default function useScrollLocation(pageReset: string) {
   const getPage = useRecoilTransaction_UNSTABLE(
     ({ get }) =>
-      (ref: { current: number | null }) => {
+      (ref: { current: number | null | undefined }) => {
         ref.current = get(gridPage);
       },
     [],
@@ -37,10 +37,10 @@ export default function useScrollLocation(pageReset: string) {
 
   const getKey = useMemo(() => {
     pageReset;
-    const ref: { current: number | null } = { current: -1 };
+    const ref: { current: number | null | undefined } = { current: undefined };
 
     return () => {
-      if (ref.current === -1) {
+      if (ref.current === undefined) {
         ref.current = null;
         return "reset";
       }
@@ -87,7 +87,7 @@ export default function useScrollLocation(pageReset: string) {
   // the jump and rebuilds the grid there, as it does after the modal closes.
   const jump = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      ({ page, at }: { page: number; at: string }) => {
+      ({ page, at }: { page: number; at: string | null }) => {
         set(gridPage, page);
         set(gridAt, at);
         set(gridOffset, 0);

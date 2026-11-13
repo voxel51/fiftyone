@@ -30,6 +30,15 @@ FiftyOne
     "softwareHelp": { "@type": "CreativeWork", "url": "https://docs.voxel51.com" }
   }
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "FiftyOne Docs",
+    "alternateName": "FiftyOne",
+    "url": "https://docs.voxel51.com/"
+  }
+  </script>
 
 .. raw:: html
 
@@ -67,7 +76,7 @@ FiftyOne
     </a>
     <a href="enterprise/index.html" class="nav-pill nav-pill-filled">
       <img alt="Voxel51" src="_static/images/icons/voxel51-166px.png" width="18" height="18">
-      FiftyOne Enterprise
+      Voxel51
     </a>
   </div>
 
@@ -564,7 +573,7 @@ _________
    FiftyOne Concepts <user_guide/index>
    FiftyOne Datasets <user_guide/using_datasets>
    FiftyOne App <user_guide/app>
-   FiftyOne Enterprise 🚀 <enterprise/index>
+   Voxel51 🚀 <enterprise/index>
    FiftyOne Brain <brain/index>
    FiftyOne Multimodal __SUB_NEW__ <user_guide/multimodal>
 

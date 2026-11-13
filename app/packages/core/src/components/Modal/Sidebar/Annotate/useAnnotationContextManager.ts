@@ -17,7 +17,12 @@ import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
-import { useAnnotationSchemaContext } from "./state";
+import {
+  activeLabelSchemas,
+  labelSchemasData,
+  schemaDatasetName,
+  useAnnotationSchemaContext,
+} from "./state";
 import useCanManageSchema from "./useCanManageSchema";
 import { useDeactivateAllModes } from "./useDeactivateAllModes";
 import {
@@ -76,7 +81,12 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // activate only the specified field
       setActiveFields([field]);
 
-      // clear annotation state
+      // clear annotation state, keeping what was loaded so a failure can
+      // put it back: nothing else refills the atoms once they are cleared
+      // on this dataset (useEnsureSchemasLoaded fetches once per dataset)
+      const previousDataset = jotaiStore.get(schemaDatasetName);
+      const previousSchema = jotaiStore.get(labelSchemasData);
+      const previousActivePaths = jotaiStore.get(activeLabelSchemas);
       setLabelSchema(null);
       setActiveSchemaPaths(null);
 
@@ -111,6 +121,12 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         };
       } catch (error) {
         console.error(`Error initializing schema for field ${field}`, error);
+        // the atoms are scoped to the dataset they're written under: after
+        // a dataset switch, the previous schemas belong to another dataset
+        if (jotaiStore.get(schemaDatasetName) === previousDataset) {
+          setLabelSchema(previousSchema);
+          setActiveSchemaPaths(previousActivePaths);
+        }
         return {
           status: InitializationStatus.ServerError,
           message: error instanceof Error ? error.message : `${error}`,

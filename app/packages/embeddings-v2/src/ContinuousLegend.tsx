@@ -67,7 +67,7 @@ export function ContinuousLegend({
       title={<TextBadge color={TextColor.Secondary}>{field}</TextBadge>}
       titleText={field}
     >
-      <div className="emb-legend-ramp">
+      <div className="emb-legend-ramp" data-cy="embeddings-legend-ramp">
         <div
           className="emb-legend-ramp-track"
           style={{

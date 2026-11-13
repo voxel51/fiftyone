@@ -1,32 +1,32 @@
 import { cssVar } from "@voxel51/voodo";
 import type { CSSProperties } from "react";
 
-/** Fixed card geometry, shared by the stylesheet and the resize math. */
+/** Minimum card geometry, shared by the stylesheet and the resize math. */
 export const CARD_WIDTH = 208;
 export const CARD_PREVIEW_HEIGHT = 106;
 /** A card is its media plus two 1px borders; nothing is captioned. */
 export const CARD_HEIGHT = CARD_PREVIEW_HEIGHT + 2;
-/** Cards keep one height; their width follows the media, within reason. */
+/** Fold cards retain enough width for their controls. */
 export const CARD_MIN_WIDTH = 106;
-export const CARD_MAX_WIDTH = 320;
 /** Multimodal previews are square. */
 export const MULTIMODAL_CARD_WIDTH = 144;
 export const MULTIMODAL_CARD_HEIGHT = MULTIMODAL_CARD_WIDTH;
 
 /**
- * The card width that shows the whole media at the fixed preview height.
- * Unknown or degenerate ratios fall back to the default width, where the
- * preview letterboxes instead.
+ * The card width that shows the whole media at the requested height.
+ * Known ratios are never clamped. Include the borders so the media itself
+ * fills the card exactly; only unknown ratios use the default proportions.
  */
-export function cardWidth(aspectRatio: number | null | undefined) {
-  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0)
-    return CARD_WIDTH;
-  return Math.round(
-    Math.min(
-      CARD_MAX_WIDTH,
-      Math.max(CARD_MIN_WIDTH, CARD_PREVIEW_HEIGHT * aspectRatio),
-    ),
-  );
+export function cardWidth(
+  aspectRatio: number | null | undefined,
+  height = CARD_HEIGHT,
+) {
+  const previewHeight = Math.max(0, height - 2);
+  const ratio =
+    aspectRatio && Number.isFinite(aspectRatio) && aspectRatio > 0
+      ? aspectRatio
+      : (CARD_WIDTH - 2) / CARD_PREVIEW_HEIGHT;
+  return previewHeight * ratio + 2;
 }
 export const STRIP_GAP = 8;
 export const STRIP_PADDING_TOP = 14;
@@ -46,13 +46,20 @@ export const trayTheme = {
   "--tray-raised": cssVar.color.bg["card-elevated"],
   "--tray-popover": cssVar.color.bg.popover,
   "--tray-overlay": cssVar.color.scrim.heavy,
+  "--tray-shadow": cssVar.color.scrim.light,
+  "--tray-text-on-color": cssVar.color.text.foreground,
   "--tray-border": cssVar.color.border.default,
   "--tray-border-strong": cssVar.color.border.strong,
   "--tray-border-subtle": cssVar.color.border.subtle,
+  "--tray-border-input": cssVar.color.border.input,
+  "--tray-border-hover": cssVar.color.border.hover,
+  "--tray-section-bg": cssVar.color.bg["card-nested"],
+  "--tray-icon": cssVar.color.icon.default,
+  "--tray-icon-decorative": cssVar.color.icon.decorative,
   "--tray-accent": cssVar.color.brand.primary,
-  "--tray-accent-soft": cssVar.color.bg.selected,
-  "--tray-accent-text": cssVar.color.text.accent,
-  "--tray-text": cssVar.color.text.primary,
+  "--tray-control-hover": cssVar.color.interactive["secondary-hover"],
+  "--tray-text": cssVar.color.text.secondary,
+  "--tray-text-primary": cssVar.color.text.primary,
   "--tray-text-secondary": cssVar.color.text.secondary,
   "--tray-text-muted": cssVar.color.text.muted,
   "--tray-info": cssVar.color.semantic.info,
@@ -61,6 +68,7 @@ export const trayTheme = {
   "--tray-success": cssVar.color.semantic.success,
   "--tray-focus": cssVar.color.focus.ring,
   "--tray-font": cssVar.fontFamily.sans,
+  "--tray-font-mono": cssVar.fontFamily.mono,
   "--tray-font-xs": cssVar.text.xs,
   "--tray-font-sm": cssVar.text.sm,
   "--tray-font-md": cssVar.text.md,

@@ -449,6 +449,36 @@ from the `Sort by` dropdown in the upper right corner of the Samples panel.
     When :ref:`Query Performance <app-optimizing-query-performance>` is
     enabled, only fields that are indexed can be sorted on.
 
+.. note::
+
+    For datasets with more than 10,000 samples, the `Sort by` dropdown lists
+    only fields with their own index, and a note at the bottom of the dropdown
+    says so. Wildcard indexes such as `$**` do not count. For
+    :ref:`grouped datasets <groups>`, sort on a single-value field with a
+    compound index that ends with the group slice name:
+
+    .. code-block:: python
+
+        dataset.create_index([("captured_at", 1), ("group.name", 1)])
+
+    If the grid is already sorted by an unindexed field, for example from a
+    saved workspace, the sort stays in place and the dropdown marks the field
+    as not indexed. The grid scrolls through such a sort in order, but cannot
+    jump to a position in it. Add an index on the field to jump through it.
+
+When the grid holds more than a few pages of samples, a scroll rail replaces
+its scrollbar. Drag the rail to jump through the view; its labels show where
+you are:
+
+-   For datasets with at most 10,000 samples, and for unsorted patches, clips
+    and frames views with fewer than 100,000 samples, the sample's position
+-   For larger datasets sorted by a numeric or datetime field, the field's
+    value
+-   For larger unsorted datasets, the date samples were added
+
+Unsorted patches, clips and frames views with 100,000 or more samples, and
+sorts that cannot jump, show a normal scrollbar instead.
+
 .. _app-managing-grid-memory:
 
 Managing grid memory usage
@@ -530,7 +560,7 @@ datasets:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can manage
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can manage
     indexes natively in the App via the
     :ref:`Query Performance panel <query-performance>`.
 
@@ -622,6 +652,27 @@ field:
 .. note::
 
     Numeric field filters are not supported by wildcard indexes.
+
+.. _app-query-time-limit:
+
+While Query Performance is enabled, each query that the sidebar and grid run
+is limited to the `max_query_time` of your
+:ref:`App config <configuring-fiftyone-app>`, in seconds. Without Query
+Performance, they have no time limit. You can change the limit for a session
+like so:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    app_config = fo.app_config.copy()
+    app_config.max_query_time = 120
+
+    session = fo.launch_app(dataset, config=app_config)
 
 .. _app-compound-indexes-for-query-performance:
 
@@ -789,6 +840,37 @@ the following indexes:
 
     For example, a `("created_at", "ground_truth.label")` compound index
     provides indexed sidebar results for the `created_at` field.
+
+.. _app-sidebar-size-tiers:
+
+Sidebar size tiers
+------------------
+
+For your dataset, and for views that
+:ref:`Query Performance <app-optimizing-query-performance>` can serve, the grid
+sidebar loads its fields according to the size of your dataset:
+
+-   **Fewer than 1,000 samples**: every field's values and counts load up
+    front in a single request, so expanding a field shows them instantly
+-   **Up to 10,000 samples**: every field, indexed or not, is fully
+    searchable with counts when you expand it
+
+In both, fields with fewer than 25 values list them as checkboxes.
+-   **More than 10,000 samples**: the sidebar uses
+    :ref:`Query Performance <app-optimizing-query-performance>`, and indexed
+    fields show lightning bolt icons
+
+Other views, such as patches, clips and frames views, load each field when you
+expand it, with counts. Frame fields are sized by the dataset's number of
+frames. Sizes come from the
+collections' estimated counts, so picking a tier never counts or scans your
+data.
+
+Query Performance, and its setting in the gear menu, is only available for
+datasets with more than 10,000 samples. You can customize the first limit and
+the checkbox limit via the `sidebar_full_aggregation_limit` and
+`sidebar_checkbox_limit` settings of your
+:ref:`App config <configuring-fiftyone-app>`.
 
 .. _app-disabling-query-performance:
 
@@ -979,9 +1061,57 @@ elements of the group as a video.
    :alt: dynamic-groups
    :align: center
 
+On a :ref:`grouped dataset <groups>`, the dataset's
+:ref:`default group slice <groups-dynamic-scenes>` decides the elements of a
+dynamic group: each group with a sample on the default slice is one element,
+whichever slice the grid shows, and the modal opens on the first.
+
+Playing a group on the timeline requires a compound index that starts with the
+``group_by`` field(s) followed by the ``order_by`` field. With it, ordered
+groups open on the timeline by default. Without it, they are shown with
+pagination, and the timeline option in the display options is disabled and
+names the index it needs:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("my-scenes")
+    dataset.create_index([("scene_id", 1), ("frame_number", 1)])
+
+    view = dataset.group_by("scene_id", order_by="frame_number")
+    session = fo.launch_app(view)
+
 Ordered groups of images can also be annotated as a video, with object tracks
 that span the group's samples. See
 :ref:`Annotating dynamic groups as video <dynamic-group-video-annotation>`.
+
+.. _app-dynamic-groups-plot:
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+When a group plays on the timeline, you can plot its numeric fields over its
+elements. Open the **Layout** menu in the header of the expanded sample view
+and choose **Plot** under **Add tile**. With the plot in focus, the left
+sidebar's **Tile** tab lists the sample fields that hold one number per
+sample: ints, floats and booleans, including fields of embedded documents such
+as ``metadata.width``, but not fields inside lists. Check a field to plot it:
+
+-   The x axis is the group's elements in order, the same frames that the
+    timeline plays. Booleans are drawn as 0 and 1, and an element with no value
+    leaves a gap in its line
+-   Each field is drawn in the color that the dataset's
+    :ref:`color scheme <app-color-schemes>` gives it
+-   The playhead follows the timeline, and the legend shows each field's value
+    at the current frame. Click or drag on the plot to move the timeline there
+-   The zoom controls work as in the multimodal
+    :ref:`Plot tile <multimodal-plot-tile>`
+
+You can open more than one plot, and each plot's fields are saved with the
+layout. A plot draws at most the first 20,000 elements of a group, and says so
+when the group is longer.
 
 .. _app-field-visibility:
 
@@ -1050,7 +1180,7 @@ your selection by clicking this icon or reopening the modal and pressing the
 
     If your dataset has many fields and you frequently work with different
     subsets of them, you can persist/reload field selections by
-    :ref:`saving views <app-saving-views>`.
+    :ref:`saving queries <app-saving-queries>`.
 
 .. _app-field-visibility-filter-rules:
 
@@ -1064,9 +1194,10 @@ determine which fields to include in the sidebar.
 
 .. note::
 
-    Filter rules are dynamic. If you :ref:`save a view <app-saving-views>` that
-    contains a filter rule, the matching fields may increase or decrease over
-    time as you modify the dataset's schema.
+    Filter rules are dynamic. If you
+    :ref:`save a query <app-saving-queries>` that contains a filter rule, the
+    matching fields may increase or decrease over time as you modify the
+    dataset's schema.
 
 Filter rules provide a simple syntax with different options for matching
 fields:
@@ -1159,7 +1290,7 @@ in detail:
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Label Opacity                 | Color opacity of annotations                                  |
     +-----------------+-------------------------------+---------------------------------------------------------------+
-    | Global settings | Multicolor keypoints          | Whether to independently coloy keypoint points by their index |
+    | Global settings | Multicolor keypoints          | Whether to independently color keypoint points by their index |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Show keypoints skeletons      | Whether to show keypoint skeletons, if available              |
     +-----------------+-------------------------------+---------------------------------------------------------------+
@@ -1302,27 +1433,30 @@ You can also dynamically edit your current color scheme by modifying it:
     Did you know? You can also configure default color schemes for
     :ref:`individual datasets <dataset-app-config-color-scheme>` via Python!
 
+.. _app-saving-queries:
+
 .. _app-saving-views:
 
-Saving views
-____________
+Saving queries
+______________
 
 .. customavailablein::
     :oss_version: 0.19.0
     :enterprise_version: 1.1
 
-You can use the menu in the upper-left of the App to record the current state
-of the App's view bar and filters sidebar as a **saved view** into your
-dataset:
+You can save the current state of the App's view bar and filters sidebar as a
+**saved query** on your dataset. Click the bookmark icon in the view bar's
+search row (or press `Cmd+S`/`Ctrl+S`), give the query a name, and click
+`Save`. The new query is loaded immediately, and the bookmark shows its name.
 
-.. image:: /images/app/app-save-view.gif
-    :alt: app-save-view
-    :align: center
+When you save a query, the App records the complete view definition: the
+stages in the view bar plus any sidebar filters, sorting, field visibility
+settings, and selections made in plots, all compiled into view stages. Samples
+selected in the grid are included only if you choose
+`Limit to the N selected samples`, which saves their IDs as a
+:class:`Select <fiftyone.core.stages.Select>` stage.
 
-Saved views are persisted on your dataset under a name of your choice so that
-you can quickly load them in a future session via this UI.
-
-Saved views are a convenient way to record semantically relevant subsets of a
+Saved queries are a convenient way to record semantically relevant slices of a
 dataset, such as:
 
 -   Samples in a particular state, eg with certain tag(s)
@@ -1332,31 +1466,50 @@ dataset, such as:
 
 .. note::
 
-    Saved views only store the rule(s) used to extract content from the
-    underlying dataset, not the actual content itself. Saving views is cheap.
-    Don't worry about storage space!
+    Saved queries were previously called *saved views*. Saved views you
+    created before appear in the Saved queries menu automatically, and the
+    :ref:`saved view methods <saving-views>` in Python, such as
+    :meth:`save_view() <fiftyone.core.dataset.Dataset.save_view>`
+    and
+    :meth:`load_saved_view() <fiftyone.core.dataset.Dataset.load_saved_view>`,
+    work with the same records. Existing links to saved views keep working.
 
-    Keep in mind, though, that the contents of a saved view may change as the
-    underlying dataset is modified. For example, if a save view contains
-    samples with a certain tag, the view's contents will change as you
-    add/remove this tag from samples.
+.. note::
 
-You can load a saved view at any time by selecting it from the saved view menu:
+    Saved queries store how to find content in the underlying dataset, not the
+    content itself. Saving queries is cheap. Don't worry about storage space!
 
-.. image:: /images/app/app-load-saved-view.gif
-    :alt: app-load-saved-view
-    :align: center
+    Keep in mind, though, that the contents of a saved query may change as the
+    underlying dataset is modified. For example, if a saved query matches
+    samples with a certain tag, its contents will change as you add/remove
+    this tag from samples.
 
-You can also edit or delete saved views by clicking on their pencil icon:
+    To keep a particular set of samples regardless of later changes, save them
+    as a **subset** from the grid's selection tray instead. Subsets you create
+    from a query's results keep their members even if the query changes or is
+    deleted.
 
-.. image:: /images/app/app-edit-saved-view.gif
-    :alt: app-edit-saved-view
-    :align: center
+You can load a saved query at any time by selecting it from the bookmark menu.
+Loading a query replaces the stages in the view bar with the query's
+definition; editing the view afterwards does not change the saved query.
+
+If a subset is open in the grid, loading a query runs it within that subset.
+Saving a query while a subset is open saves only the query's stages, not the
+subset, so loading it later runs on whatever scope is open at the time.
+
+To rename a saved query or change its description or color, hover over it in
+the menu and click its pencil icon. To change what a query finds, load it,
+adjust the view, and save the result under a new name. Click a query's trash
+icon to delete it; subsets created from its results are not affected.
+
+If a saved query can no longer be loaded, for example because it uses a field
+that has since been deleted, the App shows an error and keeps your current
+view. The saved query itself is left unchanged.
 
 .. note::
 
     Did you know? You can also programmatically create, modify, and delete
-    saved views :ref:`via Python <saving-views>`!
+    saved queries :ref:`via Python <saving-views>`!
 
 .. _app-sample-view:
 
@@ -1448,6 +1601,10 @@ to show frame numbers rather than timestamp in the HUD. The default settings
 for all such parameters can be configured via the
 :ref:`App config <app-config>`.
 
+The timeline below a video reads in the same units in both Inspect and
+Annotate. Click its clock to switch between timestamps and frame numbers; the
+choice is the same `use_frame_number` setting.
+
 Playback rate and volume are also available in the video controls HUD.
 Clicking on one of the icons resets the setting to the default. And when
 hovering, a slider appears to adjust the setting manually.
@@ -1469,276 +1626,21 @@ hovering, a slider appears to adjust the setting manually.
     navigate between samples/labels to restrict your inputs to the App and thus
     prevent them from also affecting your browser window.
 
-.. _app-3d-visualizer:
+.. Keep old links to the 3D sections that moved to annotation_3d.rst working.
 
-Using the 3D visualizer
-_______________________
+.. raw:: html
 
-.. customavailablein::
-    :oss_version: 0.17.0
-    :enterprise_version: 1.0
+   <span id="app-3d-visualizer"></span>
+   <span id="app-3d-dynamic-coloring"></span>
+   <span id="app-3d-orthographic-projections"></span>
+   <span id="app-3d-visualizer-config"></span>
 
-The 3D visualizer allows you to interactively visualize
-:ref:`3D samples <3d-datasets>` or
-:ref:`point cloud samples <point-cloud-datasets>`
-along with any associated
-:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
+Viewing 3D samples
+__________________
 
-.. image:: /images/app/app-new-3d-visualizer.gif
-   :alt: 3d-visualizer
-   :align: center
-
-The table below summarizes the mouse/keyboard controls that the 3D visualizer
-supports:
-
-.. table::
-    :widths: 30 30 40
-
-    +--------------+----------------+-------------------------------+
-    | Input        | Action         | Description                   |
-    +==============+================+===============================+
-    | Wheel        | Zoom           | Zoom in and out               |
-    +--------------+----------------+-------------------------------+
-    | Drag         | Rotate         | Rotate the camera             |
-    +--------------+----------------+-------------------------------+
-    | Shift + drag | Translate      | Translate the camera          |
-    +--------------+----------------+-------------------------------+
-    | B            | Background     | Toggle background on/off      |
-    +--------------+----------------+-------------------------------+
-    | F            | Fullscreen     | Toggle fullscreen             |
-    +--------------+----------------+-------------------------------+
-    | G            | Grid           | Toggle the grid on/off        |
-    +--------------+----------------+-------------------------------+
-    | T            | Top-down       | Reset camera to top-down view |
-    +--------------+----------------+-------------------------------+
-    | E            | Ego-view       | Reset the camera to ego view  |
-    +--------------+----------------+-------------------------------+
-    | R            | Render         | Toggle render preferences     |
-    +--------------+----------------+-------------------------------+
-    | ESC          | Escape context | Escape the current context    |
-    +--------------+----------------+-------------------------------+
-
-A variety of context-specific options are available in a draggable
-panel in the 3D visualizer that let you configure lights, as well as
-material and visibility of the 3D objects in the scene.
-
-In addition, the HUD at the bottom of the 3D visualizer provides the following
-controls:
-
--   Click the grid icon to toggle the grid on/off
--   Click the `T` to reset the camera to top-down view
--   Click the `E` to reset the camera to ego-view
-
-For point clouds, when coloring by intensity, the color of each point is
-computed by mapping the `r` channel of the `rgb` field of the
-`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
-onto a fixed colormap, which is scaled so that the full colormap is matched to
-the observed dynamic range of `r` values for each sample.
-
-Similarly, when coloring by height, the `z` value of each point is mapped to
-the full colormap using the same strategy.
-
-.. _app-3d-dynamic-coloring:
-
-Dynamic point cloud coloring
-----------------------------
-
-.. customavailablein::
-    :oss_version: 1.7.0
-    :enterprise_version: 2.10.0
-
-FiftyOne supports dynamic coloring of point clouds based on any attribute
-in your PCD file. This allows you to visualize and analyze point cloud data in
-powerful ways, such as:
-
--   Working with semantic segmentation data where different classes need
-    distinct colors
--   Analyzing LIDAR data where you want to visualize intensity values to
-    identify reflective surfaces
--   Inspecting custom attributes like confidence scores or prediction errors
--   Comparing multiple attributes by quickly switching between different color
-    schemes
-
-.. image:: /images/app/pcd-dynamic-coloring.gif
-   :alt: pcd-dynamic-coloring
-   :align: center
-
-To use dynamic coloring:
-
-1.  Press `R` or click the render preferences icon in the 3D visualizer menu
-2.  Select the attribute to color by from the "Shade by" dropdown
-3.  Optionally, override the colormap from the available options by clicking
-    the "Override" button
-
-|br|
-Colormap selection follows this precedence order:
-
-1.  Colormap from browser storage (if previously overridden)
-2.  Colormap defined in the `colorscales` property of the
-    :ref:`dataset's App config <dataset-app-config>` for the specific attribute
-3.  Colormap defined in the `default_colorscale` property of the dataset's App
-    config
-4.  Default colormap (red-to-blue gradient)
-
-|br|
-You can override the colormap for any attribute by clicking the "Override"
-button in the render preferences panel. This will open a new UI where you can:
-
--   Add or remove color stops
--   Preview the gradient
--   Reset to the app config or default colormap
-
-.. note::
-
-    Colormap overrides are persisted in your browser's local storage, so they
-    will be remembered across sessions.
-
-You can define default colormaps for point cloud attributes of a dataset by
-configuring them in the :ref:`dataset's App config <dataset-app-config>`.
-You must use the prefix `::fo3d::pcd::` followed by the attribute name in the
-`path` field. For example, to define a colormap for the `lidar_id` attribute,
-the path should be `::fo3d::pcd::lidar_id`:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    dataset = fo.load_dataset(...)
-
-    # Configure colormaps for point cloud attributes
-    dataset.app_config.color_scheme = fo.ColorScheme(
-        colorscales=[
-            {
-                "path": "::fo3d::pcd::lidar_id",
-                "name": "viridis",  # use a named colormap
-            },
-            {
-                "path": "::fo3d::pcd::intensity",
-                "list": [  # or define a custom colormap
-                    {"value": 0, "color": "rgb(0, 0, 255)"},
-                    {"value": 1, "color": "rgb(0, 255, 255)"},
-                ],
-            },
-        ],
-        default_colorscale={"name": "jet"},  # default for other attributes
-    )
-    dataset.save()
-
-When visualizing point clouds with dynamic attributes, you can apply
-thresholding to focus on specific value ranges. This is particularly useful
-for:
-
--   Filtering out noise or outliers in your data
--   Isolating points of interest based on their attribute values
--   Analyzing specific ranges of values in your point cloud
-
-To use thresholding:
-
-1.  Press `R` or click the render preferences icon in the 3D visualizer menu
-2.  Select the attribute to color by from the "Shade by" dropdown
-3.  Use the threshold slider that appears below the colormap controls
-4.  Adjust the minimum and maximum values to show only points within that range
-
-|br|
-The threshold slider shows the full range of values for the selected attribute,
-and points outside the selected range will be hidden from view.
-
-.. image:: /images/app/pcd-thresholding.gif
-   :alt: thresholding
-   :align: center
-
-.. note::
-
-    Thresholding is available for all numeric attributes except height and RGB
-    values. The threshold range is automatically adjusted based on the data
-    type of the attribute (integer or float).
-
-.. _app-3d-orthographic-projections:
-
-Viewing 3D samples in the grid
-------------------------------
-
-When you load 3D collections in the App, any
-:ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`
-fields will be visualized in the grid using an orthographic projection
-(onto the xy plane by default).
-
-In addition, if you have populated
-:ref:`orthographic projection images <orthographic-projection-images>` on your
-dataset, the projection images will be rendered for each sample in the grid:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-    import fiftyone.zoo as foz
-
-    # Load an example 3D dataset
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
-    )
-
-    # Populate orthographic projections
-    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
-
-    session = fo.launch_app(dataset)
-
-.. image:: /images/app/app-orthographic-projections.gif
-    :alt: orthographic-projections
-    :align: center
-
-.. _app-3d-visualizer-config:
-
-Configuring the 3D visualizer
------------------------------
-
-The 3D visualizer can be configured by including any subset of the settings
-shown below under the `plugins.3d` key of your
-:ref:`App config <configuring-fiftyone-app>`:
-
-.. code-block:: json
-
-    // The default values are shown below
-    {
-        "plugins": {
-            "3d": {
-                // Whether to show the 3D visualizer
-                "enabled": true,
-
-                // The initial camera position in the 3D scene
-                "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
-
-                // The default up direction for the scene
-                "defaultUp": [0, 0, 1],
-
-                "pointCloud": {
-                    // Don't render points below this z value
-                    "minZ": null
-                }
-            }
-        }
-    }
-
-You can also store dataset-specific plugin settings by storing any subset of
-the above values on a :ref:`dataset's App config <dataset-app-config>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Configure the 3D visualizer for a dataset's PCD/Label data
-    dataset.app_config.plugins["3d"] = {
-        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
-    }
-    dataset.save()
-
-.. note::
-
-    Dataset-specific plugin settings will override any settings from your
-    :ref:`global App config <configuring-fiftyone-app>`.
+In FiftyOne Enterprise, 3D samples open in the 3D tile, where you can view
+point clouds, cuboids and polylines, look through calibrated cameras, and
+annotate tracks on the timeline. See :ref:`3D Annotation <annotation-3d>`.
 
 .. _app-linking-labels:
 
@@ -1763,7 +1665,7 @@ You can also create new fields on your dataset via the Schema Manager, as well.
 
 .. note::
 
-    In FiftyOne Enterprise, only users with
+    In Voxel51, only users with
     :ref:`Can manage <enterprise-can-manage>` dataset access can access the
     Schema Manager.
 
@@ -2033,7 +1935,8 @@ _________________
 
 If you find yourself frequently using/recreating a certain
 :ref:`spaces layout <app-spaces>`, you can save it as a workspace with a name
-of your choice and then load it later via the App or programmatically!
+of your choice and then load it later via the App or programmatically! A
+workspace saved in the App also keeps the grid's current filters and sort.
 
 .. _app-saving-workspaces:
 
@@ -2041,38 +1944,34 @@ Saving workspaces in the App
 ----------------------------
 
 Continuing from the :ref:`example above <app-spaces-layout>`, once you've
-configured a spaces layout of interest, click the "Unsaved workspace" icon in
-the upper right corner to open the workspaces menu and save your current
-workspace with a name and optional description/color of your choice:
-
-.. image:: /images/app/app-save-workspace.gif
-    :alt: app-save-workspace
-    :align: center
+configured a spaces layout of interest, click "Save layout" at the right end of
+the tab row and save it with a name and an optional description. In the App,
+saved workspaces are called layouts.
 
 .. note::
 
-    Saved workspaces include all aspects of your current spaces layout,
-    including panel types, layouts, sizes, and even the current state of each
-    panel!
+    Layouts saved in the App include your open panels, splits, active tabs
+    and pinned panels, as well as the grid's current filters and sort.
 
-You can load saved workspaces at any time later via this same menu:
+Once a layout is active, the tab row shows its name. Click it to open the
+layout menu, where you can:
 
-.. image:: /images/app/app-load-workspace.gif
-    :alt: app-load-workspace
-    :align: center
+-   Choose any saved layout to apply its panels, then its filters, then its
+    sort
+-   Search your layouts, when the dataset has more than five
+-   Click "Clear layout", or the "x" beside its name, to stop following the
+    active layout without changing your panels, filters or sort
+-   Click "Edit layout name" to change the active layout's name or description
+-   Click "Delete layout" to delete the active layout, which you can undo from
+    the notification that follows
+-   Click "Save as new layout" to save your current panels, filters and sort
+    under a new name
 
-You can also edit the details of an existing saved workspace at any time by
-clicking on its pencil icon in the workspace menu:
-
-.. image:: /images/app/app-update-workspace.gif
-    :alt: app-update-workspace
-    :align: center
-
-.. note::
-
-    If you want to modify the layout of an existing saved workspace, you must
-    delete the existing workspace and then re-save it under the same name after
-    modifying the layout in the App.
+Saved layouts are never overwritten from the App. When your panels, splits,
+active tabs, filters or sort differ from what the active layout saved, the tab
+row shows "Unsaved layout"; save the changes as a new layout, or choose the
+layout again to return to it. Resizing panels or changing a panel's own state
+does not count as a change.
 
 .. _app-saving-workspaces-python:
 
@@ -2123,6 +2022,7 @@ to create a new saved workspace with a name of your choice:
         workspace,
         description="Samples, embeddings, histograms, oh my!",
         color="#FF6D04",
+        sort={"field": "uniqueness", "descending": True},
     )
 
 .. note::
@@ -2152,6 +2052,11 @@ Then in a future session you can load the workspace by name with
     # Or, load a workspace on an existing session
     session.spaces = workspace
 
+.. note::
+
+    Loading a workspace in Python sets its spaces layout. The App applies a
+    workspace's filters and sort when you choose it from the workspace menu.
+
 Saved workspaces have certain editable metadata such as a name, description,
 and color that you can view via
 :meth:`get_workspace_info() <fiftyone.core.dataset.Dataset.get_workspace_info>`
@@ -2176,7 +2081,9 @@ and update via
     # {
     #   'name': 'still-my-workspace',
     #   'description': 'Samples, embeddings, histograms, oh my oh my!!',
-    #   'color': None
+    #   'color': '#FF6D04',
+    #   'filters': None,
+    #   'sort': {'field': 'uniqueness', 'descending': True}
     # }
 
 You can also use
@@ -2256,7 +2163,7 @@ samples/patches in the Samples panel:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can generate
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can generate
     embeddings visualizations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
@@ -2570,7 +2477,7 @@ that dives into various aspects of the model's performance:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
+    Did you know? With :ref:`Voxel51 <fiftyone-enterprise>` you can execute
     model evaluations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
@@ -2732,7 +2639,7 @@ The rest of the content in this section is applied to the following dataset:
     )
     dataset.apply_model(model, label_field="scene")
 
-    # Create some saved views
+    # Create some saved queries
     dataset.save_view("indoor scenes", dataset.match(F("scene.label") == "indoor"))
     dataset.save_view("outdoor scenes", dataset.match(F("scene.label") == "outdoor"))
 
@@ -2762,8 +2669,8 @@ meaningful sets of interest. FiftyOne supports four methods to define subsets:
     on the values that a particular sample field takes
 -   **Label attribute:** partition at the label-level by defining subsets based
     on the values that a particular attribute of the ground truth labels takes
--   **Saved views:** define subsets based on the ground truth labels in a list
-    of saved views
+-   **Saved queries:** define subsets based on the ground truth labels in a
+    list of saved queries
 -   **Custom code:** use custom code to define subsets based on arbitrary
     Python expressions and/or combinations of the above methods
 
@@ -2843,25 +2750,25 @@ based on the field value that its member labels take.
 
 .. _app-scenario-analysis-saved-views:
 
-Select saved views
-~~~~~~~~~~~~~~~~~~
+Select saved queries
+~~~~~~~~~~~~~~~~~~~~
 
-Selecting saved views allows you to define a scenario where each subset
+Selecting saved queries allows you to define a scenario where each subset
 contains the ground truth labels in a specified
-:ref:`saved view <saving-views>`.
+:ref:`saved query <app-saving-queries>`.
 
 For example, in the example below we define a scenario that contains two
 subsets:
 
--   Samples in the `indoor scenes` saved view
--   Samples in the `outdoor scenes` saved view
+-   Samples in the `indoor scenes` saved query
+-   Samples in the `outdoor scenes` saved query
 
 .. image:: /images/app/scenario-analysis-create-saved-views.gif
     :alt: scenario-analysis-create-saved-views
     :align: center
 
 As you can see in the Distribution preview above, each subset is assigned the
-name of the saved view that defines it.
+name of the saved query that defines it.
 
 .. _app-scenario-analysis-custom-code:
 
@@ -3386,6 +3293,28 @@ segmentations, and keypoints can be selected as well.
 When you have selected labels in the App, you can use the selected labels
 options in the upper-right (the orange checkmark button) to hide these labels
 from view or exclude all other labels.
+
+.. _app-hidden-labels:
+
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
+In the expanded sample view, hidden labels leave the sample's sidebars and
+timeline, not only its media. So do the fields that you uncheck in the left
+sidebar's **Tile** tab, which sets the fields of the tile in focus:
+
+-   In Annotate mode, the right sidebar's label list leaves them out
+-   In Inspect mode, the right sidebar drops a selected label's details while
+    it is hidden. The label stays selected, and its details return when you
+    show it again
+-   For videos and :ref:`dynamic groups <app-dynamic-groups>` played on the
+    timeline, the timeline follows the tile in focus and drops the rows of
+    hidden fields, hidden events and hidden untracked labels. A hidden object
+    track keeps its row, since the tile still draws the track on its other
+    frames
+
+The eye icon in the header of the sample view counts the hidden labels; click
+it to show them all again.
 
 You can also access the
 :meth:`Session.selected_labels <fiftyone.core.session.Session.selected_labels>`

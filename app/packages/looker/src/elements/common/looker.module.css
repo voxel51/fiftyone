@@ -2,8 +2,6 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
-
 @keyframes lookerSpin {
   to {
     transform: rotate(360deg);

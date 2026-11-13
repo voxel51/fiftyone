@@ -6,11 +6,7 @@ import {
   Modal,
   ModalSize,
   RemoveCircleOutlineIcon,
-  Size,
   Text,
-  TextColor,
-  TextVariant,
-  Variant,
 } from "@voxel51/voodo";
 import { useState } from "react";
 import { Notice } from "./Notice";
@@ -53,16 +49,16 @@ export default function SubsetConfirmationDialog({
       footer={
         <div className={styles.footerActions}>
           <Button
-            size={Size.Sm}
-            variant={Variant.Borderless}
+            size="sm"
+            variant="borderless"
             onClick={close}
             disabled={busy}
           >
             Cancel
           </Button>
           <Button
-            size={Size.Sm}
-            variant={Variant.Danger}
+            size="sm"
+            variant="danger"
             leadingIcon={deleting ? DeleteOutlineIcon : RemoveCircleOutlineIcon}
             disabled={busy}
             onClick={() => confirm(remember)}
@@ -79,7 +75,7 @@ export default function SubsetConfirmationDialog({
       }
     >
       <div className={styles.dialogBody} style={trayTheme}>
-        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+        <Text variant="body-tertiary" color="text-secondary">
           {deleting
             ? `This removes the saved selection${scopeLabel ? ` of ${scopeLabel}` : ""}. Samples, media, annotations, and tags stay.`
             : `Remove ${scopeLabel} from this subset and your selection. Samples, media, annotations, and tags stay.`}

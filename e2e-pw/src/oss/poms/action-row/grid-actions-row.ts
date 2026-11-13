@@ -35,20 +35,8 @@ export class GridActionsRowPom {
     return this.openAction("action-display-options");
   }
 
-  async toggleBrowseOperations() {
-    return this.openAction("action-browse-operations");
-  }
-
-  async toggleCreateDynamicGroups() {
-    return this.openAction("action-create-dynamic-groups");
-  }
-
   async toggleToClipsOrPatches() {
     return this.openAction("action-clips-patches");
-  }
-
-  async toggleTagSamplesOrLabels() {
-    return this.openAction("action-tag-sample-labels");
   }
 
   async toggleColorSettings() {
@@ -68,6 +56,6 @@ class GridActionsRowAsserter {
   constructor(private readonly gridPom: GridActionsRowPom) {}
 
   async hasFiltersBookmark() {
-    await expect(this.gridPom.filtersBookmark).toBeVisible();
+    expect(await this.gridPom.filtersBookmark.isVisible()).toBe(true);
   }
 }

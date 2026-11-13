@@ -12,6 +12,7 @@ import {
   buildTileEmptyStateModel,
   buildTileStreamNotice,
   createNoticeStabilizer,
+  isTileEmptyStateFinal,
   useStabilizedNotices,
   type HealthNotice,
 } from "./health";
@@ -656,6 +657,76 @@ describe("buildTileEmptyStateModel", () => {
       message: "No data at this time",
       startSec: null,
     });
+  });
+});
+
+describe("isTileEmptyStateFinal", () => {
+  it("settles sourceless and failed tiles but not loading or ready streams", () => {
+    expect(
+      isTileEmptyStateFinal({ playheadSec: 0, startTimes: [], statuses: [] }),
+    ).toBe(true);
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [null, null],
+        statuses: ["failed", "failed"],
+      }),
+    ).toBe(true);
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [null, null],
+        statuses: ["failed", "loading"],
+      }),
+    ).toBe(false);
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [null],
+        statuses: ["ready"],
+      }),
+    ).toBe(false);
+  });
+
+  it("waits for the first-data seek before settling a short or unknown gap", () => {
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [0.2],
+        statuses: ["gap"],
+      }),
+    ).toBe(false);
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [null],
+        statuses: ["gap"],
+      }),
+    ).toBe(false);
+  });
+
+  it("settles long gaps and gaps after a stream has started", () => {
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [12],
+        statuses: ["gap"],
+      }),
+    ).toBe(true);
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 30.5,
+        startTimes: [0.2],
+        statuses: ["gap"],
+      }),
+    ).toBe(true);
+    expect(
+      isTileEmptyStateFinal({
+        playheadSec: 0,
+        startTimes: [12, null],
+        statuses: ["gap", "failed"],
+      }),
+    ).toBe(true);
   });
 });
 

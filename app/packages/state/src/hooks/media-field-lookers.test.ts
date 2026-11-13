@@ -113,6 +113,28 @@ describe("resolveMediaFieldLooker", () => {
     video_path: "/media?filepath=%2Ftmp%2Fpreview.mp4",
   };
 
+  it("uses projection metadata only when the selected media is 3D", () => {
+    const projectedSample = {
+      filepath: "/tmp/scene.fo3d",
+      _media_type: "3d",
+      projection: { _cls: "OrthographicProjectionMetadata" },
+    };
+    expect(
+      resolveMediaFieldLooker({
+        mediaField: "filepath",
+        sample: projectedSample,
+        urls: { filepath: "/tmp/scene.fo3d" },
+      }).projectionField,
+    ).toBe("projection");
+    expect(
+      resolveMediaFieldLooker({
+        mediaField: "thumbnail_path",
+        sample: projectedSample,
+        urls,
+      }).projectionField,
+    ).toBeUndefined();
+  });
+
   it("keeps the MCAP filepath on the custom-renderer path", () => {
     expect(
       resolveMediaFieldLooker({ mediaField: "filepath", sample, urls }),

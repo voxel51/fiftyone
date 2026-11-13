@@ -10,7 +10,7 @@ your data through annotation tools like :doc:`CVAT <../integrations/cvat>`,
 <../integrations/labelbox>`, and :doc:`V7 <../integrations/v7>`.
 
 For a step-by-step introduction, follow the :ref:`Annotation getting started
-guide <annotation_guide>`. FiftyOne Enterprise adds team-scale annotation
+guide <annotation_guide>`. Voxel51 adds team-scale annotation
 workflows 🚀 with task assignment and review stages, and Verified
 Auto-Labeling 🚀 to generate high-quality labels automatically.
 
@@ -19,7 +19,8 @@ Auto-Labeling 🚀 to generate high-quality labels automatically.
    :hidden:
 
    Annotating datasets <../user_guide/annotation>
-   Annotation Workflows 🚀 __SUB_NEW__ <../enterprise/workflows>
+   3D Annotation 🚀 __SUB_NEW__ <../user_guide/annotation_3d>
+   Projects 🚀 __SUB_NEW__ <../enterprise/projects>
    Agentic Labeling 🚀 __SUB_NEW__ <../enterprise/agentic_labeling>
    Auto-Labeling 🚀 <../enterprise/verified_auto_labeling>
    Building Annotation Workflows and Ontologies __SUB_NEW__ <../tutorials/fiftyone_annotation_workflows.ipynb>

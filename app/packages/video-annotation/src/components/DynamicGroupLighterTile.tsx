@@ -119,7 +119,7 @@ export const DynamicGroupLighterTile: React.FC<{
   }, [revealed, onRevealChange]);
 
   return (
-    <div className={styles.body}>
+    <div className={styles.body} data-lighter-surface>
       <canvas
         ref={frameCanvasRef}
         className={styles.frame}

@@ -18,6 +18,10 @@ export const addRange = (
   const reverse = Object.fromEntries(
     Array.from(records.entries()).map(([k, v]) => [v, k]),
   );
+  // A bounded cache can have evicted every earlier selection's location.
+  // Without a retained anchor, Shift-click adds only the clicked sample.
+  if (!items.length)
+    return new Set([...selected, ...[reverse[index]].filter(Boolean)]);
   const min = argMin(items.map((id) => Math.abs(get(records, id) - index)));
 
   const close = get(records, items[min]);
@@ -26,7 +30,8 @@ export const addRange = (
 
   const added = new Array(end - start + 1)
     .fill(0)
-    .map((_, i) => reverse[i + start]);
+    .map((_, i) => reverse[i + start])
+    .filter(Boolean);
 
   return new Set([...selected, ...added]);
 };
@@ -92,7 +97,7 @@ export const removeRange = (
   return next;
 };
 
-export default (records: Records, selectBucket: GridSelectionClick) => {
+export default (records: Records, pickTile: GridSelectionClick) => {
   const selection = useGridSelection();
   const ref =
     useRef<(params: ThumbnailSelectionDetail<Sample>) => Promise<void>>();
@@ -102,9 +107,8 @@ export default (records: Records, selectBucket: GridSelectionClick) => {
         const { shiftKey, altKey, id: sampleId, sample, symbol } = params;
 
         if (selection.enabled) {
-          // The modifiers pick the bucket; Shift then ranges within it.
-          const bucket = selection.route(params).id;
-          await selectBucket(sampleId, bucket, shiftKey);
+          // Picks land in the focused sections; Shift ranges within them.
+          await pickTile(sampleId, shiftKey);
           return;
         }
 
@@ -157,7 +161,7 @@ export default (records: Records, selectBucket: GridSelectionClick) => {
         set(selectedSamples, current);
         set(selectedSampleObjects, currentObjects);
       },
-    [records, selection, selectBucket],
+    [records, selection, pickTile],
   );
   return ref;
 };

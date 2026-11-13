@@ -2,6 +2,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import json
 import asyncio
+import time
 from bson import json_util
 
 
@@ -21,6 +22,47 @@ class E2ESetView(foo.Operator):
     def execute(self, ctx):
         view = ctx.dataset.limit(3)
         ctx.trigger("set_view", {"view": serialize_view(view)})
+        return {}
+
+
+class E2ESetExtendedSelection(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="e2e_set_extended_selection",
+            label="E2E: Set extended selection",
+            risk_level=types.RiskLevel.LOW,
+        )
+
+    def execute(self, ctx):
+        # What another panel writes, e.g. the Map panel's lasso: sample ids
+        ids = ctx.dataset.limit(3).values("id")
+        ctx.ops.set_extended_selection(selection=ids)
+        return {}
+
+
+class E2EComputeVisualization(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="e2e_compute_visualization",
+            label="E2E: Compute visualization",
+            risk_level=types.RiskLevel.LOW,
+        )
+
+    def execute(self, ctx):
+        # A run that appears after the page loaded, as one computed from the
+        # SDK or by another user would. Precomputed points on a plain grid:
+        # no model, no UMAP, and where they land doesn't matter
+        import numpy as np
+        import fiftyone.brain as fob
+
+        points = np.array(
+            [[i % 10, i // 10] for i in range(len(ctx.dataset))], dtype=float
+        )
+        fob.compute_visualization(
+            ctx.dataset, points=points, brain_key="e2e_late_viz"
+        )
         return {}
 
 
@@ -72,6 +114,23 @@ class E2ESayHelloInDrawer(foo.Operator):
         return types.Property(outputs)
 
 
+# The Prompt: Progress spec writes a step number under its dataset name here to
+# release E2EProgress past that step
+PROGRESS_RELEASE_STORE = "e2e_progress_release"
+PROGRESS_RELEASE_TIMEOUT_SECONDS = 60
+
+
+async def _wait_for_progress_release(store, key, step):
+    deadline = time.monotonic() + PROGRESS_RELEASE_TIMEOUT_SECONDS
+    while (store.get(key) or 0) < step:
+        if time.monotonic() > deadline:
+            raise TimeoutError(
+                f"Progress step {step} was not released within "
+                f"{PROGRESS_RELEASE_TIMEOUT_SECONDS}s"
+            )
+        await asyncio.sleep(0.1)
+
+
 class E2EProgress(foo.Operator):
     @property
     def config(self):
@@ -84,6 +143,9 @@ class E2EProgress(foo.Operator):
 
     async def execute(self, ctx):
         MAX = 2
+        release_store = foo.ExecutionStore.create(PROGRESS_RELEASE_STORE)
+        # a release left by an earlier run on this dataset would skip the gate
+        release_store.delete(ctx.dataset_name)
         for i in range(MAX + 1):
             progress_label = f"Loading {i} of {MAX}"
             progress_view = types.ProgressView(label=progress_label)
@@ -94,6 +156,12 @@ class E2EProgress(foo.Operator):
                 "results": {"percent_complete": i / MAX},
             }
             yield ctx.trigger("show_output", show_output_params)
+            # a timed step can come and go between two polls of the spec's
+            # assertion, so intermediate steps wait for the spec's release
+            if 0 < i < MAX:
+                await _wait_for_progress_release(
+                    release_store, ctx.dataset_name, i
+                )
             # simulate computation
             await asyncio.sleep(0.5)
 
@@ -131,6 +199,8 @@ class E2ECounterPythonPanel(foo.Panel):
 
 def register(p):
     p.register(E2ESetView)
+    p.register(E2ESetExtendedSelection)
+    p.register(E2EComputeVisualization)
     p.register(E2ESayHelloInModal)
     p.register(E2ESayHelloInDrawer)
     p.register(E2EProgress)

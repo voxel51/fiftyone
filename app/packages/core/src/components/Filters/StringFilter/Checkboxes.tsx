@@ -1,5 +1,7 @@
 import { LoadingDots } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import * as fos from "@fiftyone/state";
+import { useEffect } from "react";
 import type { RecoilState } from "recoil";
 import {
   selectorFamily,
@@ -14,6 +16,16 @@ import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import type { Result } from "./Result";
 import { pathSearchCount } from "./state";
+
+/** e2e specs wait on a filter list showing its loaded values and counts */
+type CheckboxesE2EEvents = {
+  "e2e:filters:checkboxes-shown": {
+    path: string;
+    modal: boolean;
+    /** `value:count` per row, newline separated */
+    values: string;
+  };
+};
 
 interface CheckboxesProps {
   color: string;
@@ -180,6 +192,18 @@ const Checkboxes = ({
 
   const show = useRecoilValue(fos.isObjectIdField(path));
   const getCount = useGetCount(modal, path);
+  const settled = !loading && (show || results !== null);
+  const shownValues = values
+    .map(({ count, value }) => `${value}:${count ?? ""}`)
+    .join("\n");
+  // This effect signals e2e specs once the list shows loaded values.
+  useEffect(() => {
+    if (!settled) return;
+    getEventBus<CheckboxesE2EEvents>().dispatch(
+      "e2e:filters:checkboxes-shown",
+      { path, modal, values: shownValues },
+    );
+  }, [modal, path, settled, shownValues]);
 
   if (!modal && queryPerformance && !skeleton && values.length === 0) {
     return null;

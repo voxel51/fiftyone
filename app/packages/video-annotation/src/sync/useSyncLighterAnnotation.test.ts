@@ -28,6 +28,10 @@ const hoisted = vi.hoisted(() => ({
     polylineModeActive: false,
     deactivatePolylineMode: vi.fn(),
   },
+  keypoint: {
+    keypointModeActive: false,
+    deactivateKeypointMode: vi.fn(),
+  },
 }));
 
 vi.mock("@fiftyone/annotation", () => ({
@@ -67,6 +71,13 @@ vi.mock(
   () => ({
     usePolylineMode: () => hoisted.polyline,
     usePolylineModeInstaller: () => undefined,
+  }),
+);
+vi.mock(
+  "../../../core/src/components/Modal/Sidebar/Annotate/Edit/useKeypointMode",
+  () => ({
+    useKeypointMode: () => hoisted.keypoint,
+    useKeypointModeInstaller: () => undefined,
   }),
 );
 vi.mock(

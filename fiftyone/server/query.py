@@ -37,6 +37,7 @@ import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
+import fiftyone.server.hooks as fosh
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
@@ -56,6 +57,7 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.exceptions import QueryTimeout
 from fiftyone.server.utils import from_dict
+from fiftyone.server.view import load_saved_view_by_slug
 from fiftyone.server.workspace import Workspace
 
 DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
@@ -431,6 +433,7 @@ class Dataset:
         saved_view_slug: t.Optional[str] = gql.UNSET,
         view: t.Optional[BSONArray] = None,
     ) -> t.Optional["Dataset"]:
+        await fosh.on_graphql_request(info, name)
         return await serialize_dataset(
             dataset_name=name,
             serialized_view=view,
@@ -542,10 +545,12 @@ class Query(fosa.AggregateQuery):
         hint: t.Optional[str] = None,
         max_query_time: t.Optional[int] = None,
         dynamic_group: t.Optional[BSON] = None,
+        info: Info = None,
     ) -> t.Annotated[
         t.Union[Connection[SampleItem, str], QueryTimeout],
         gql.union("PaginateSamplesResponse"),
     ]:
+        await fosh.on_graphql_request(info, dataset)
         try:
             return await paginate_samples(
                 dataset,
@@ -572,7 +577,9 @@ class Query(fosa.AggregateQuery):
         view: BSONArray,
         filter: SampleFilter,
         filters: t.Optional[JSON] = None,
+        info: Info = None,
     ) -> t.Optional[SampleItem]:
+        await fosh.on_graphql_request(info, dataset)
         samples = await paginate_samples(
             dataset,
             view,
@@ -701,18 +708,15 @@ async def serialize_dataset(
         except fod.DatasetNotFoundError:
             return None
 
-        view_name = None
-        try:
-            doc = dataset._get_saved_view_doc(saved_view_slug, slug=True)
-            view = dataset.load_saved_view(doc.name)
-            view_name = view.name
-            if serialized_view:
-                for stage in serialized_view:
-                    view = view.add_stage(fosg.ViewStage._from_dict(stage))
-        except:
-            view: fov.DatasetView = fov.DatasetView._build(
-                dataset, serialized_view or []
-            )
+        # A saved view that exists but fails to build raises rather than
+        # loading the full dataset in its place
+        view = load_saved_view_by_slug(dataset, saved_view_slug)
+        view_name = view.name if view is not None else None
+        if view is None:
+            view = fov.DatasetView._build(dataset, serialized_view or [])
+        elif serialized_view:
+            for stage in serialized_view:
+                view = view.add_stage(fosg.ViewStage._from_dict(stage))
 
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
@@ -744,6 +748,9 @@ async def serialize_dataset(
             data.media_type = view.media_type
 
             collection = view
+
+        # the field lists reflect what the request's views can return
+        collection = fosh.get().transform_view(collection)
 
         data.sample_fields = serialize_fields(
             collection.get_field_schema(flat=True)

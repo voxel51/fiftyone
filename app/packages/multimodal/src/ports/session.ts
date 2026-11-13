@@ -396,6 +396,13 @@ export interface NumericSeriesCapability {
 /** Numeric fields projected for one stream during a shared slice read. */
 export interface NumericSeriesSliceSelection {
   readonly fields: readonly string[];
+
+  /**
+   * On a slice's first page, also project the stream's newest record before
+   * the window, so a held state (e.g. a text field published only on change)
+   * is known at the window start. That sample precedes the window.
+   */
+  readonly includePrior?: boolean;
   readonly stream: StreamId;
 }
 

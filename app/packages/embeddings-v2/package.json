@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@fiftyone/components": "*",
+        "@fiftyone/events": "*",
         "@fiftyone/operators": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/spaces": "*",

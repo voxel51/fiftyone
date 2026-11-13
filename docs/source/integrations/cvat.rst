@@ -1941,7 +1941,7 @@ back into FiftyOne.
 
 .. note::
 
-    Prior to FiftyOne 1.23 (FiftyOne Enterprise 2.26), the CVAT integration
+    Prior to FiftyOne 1.23 (Voxel51 2.26), the CVAT integration
     stored rotations loaded from CVAT verbatim, in **degrees**. If you have
     rotated boxes that were loaded from CVAT with an earlier version, convert
     them to radians once using

@@ -48,6 +48,7 @@ vi.mock("@fiftyone/plugins", () => ({
 }));
 
 vi.mock("@fiftyone/state", () => ({
+  useNullableModalSampleId: () => "sample-id",
   useCurrentDataset: (...args: unknown[]) => useCurrentDataset(...args),
   useGridCustomRendererFailover: (...args: unknown[]) =>
     useGridCustomRendererFailover(...args),

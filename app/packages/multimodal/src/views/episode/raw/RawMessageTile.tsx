@@ -33,6 +33,7 @@ import { errorMessage } from "../../../utils/errors";
 import { RawMessageBrowser } from "./RawMessageBrowser";
 import { formatRawMessageTime } from "./raw-message-time";
 import { usePublishVisibleStreams } from "../stream-discovery/visible-streams";
+import { ShownSignal } from "../../../visualization/ShownSignal";
 
 /**
  * Raw message tile: the escape hatch that makes every stream at least
@@ -183,6 +184,19 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
   return (
     <div className={rawStyles.body} data-cy="episode-raw-tile">
       {!streamKey ? (
+        <ShownSignal event="e2e:multimodal:raw-shown" detail={{ stream: "" }} />
+      ) : result && state?.status !== "loading" ? (
+        <ShownSignal
+          event="e2e:multimodal:raw-shown"
+          detail={{
+            stream: selectedSourceName ?? streamKey,
+            validFromNs: String(result.validFromNs),
+            targetNs: String(state?.targetNs ?? ""),
+            status: state?.status ?? "",
+          }}
+        />
+      ) : null}
+      {!streamKey ? (
         <div className={styles.loading}>
           <span className={styles.emptyText}>
             Choose a stream in the panel settings
@@ -208,7 +222,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
         <RawMessageBrowser
           anchor={browseAnchor}
           markerOwnerId={`raw-message-browser:${tileId ?? "unknown"}`}
-          onAddNumericFieldToPlot={handleAddFieldToPlot}
+          onAddFieldToPlot={handleAddFieldToPlot}
           onExit={() => setBrowseAnchor(null)}
           renderMeta={(record, options) => (
             <MetaRow
@@ -265,7 +279,7 @@ const RawMessageTile: React.FC<EpisodeTileProps> = () => {
               </div>
             ) : null}
             <RecordBody
-              onAddNumericFieldToPlot={handleAddFieldToPlot}
+              onAddFieldToPlot={handleAddFieldToPlot}
               result={result}
             />
           </div>
@@ -465,17 +479,17 @@ function MetaRow({
 }
 
 function RecordBody({
-  onAddNumericFieldToPlot,
+  onAddFieldToPlot,
   result,
 }: {
-  readonly onAddNumericFieldToPlot: (path: string) => void;
+  readonly onAddFieldToPlot: (path: string) => void;
   readonly result: RawRecordResult;
 }) {
   if (result.status === "ok" && result.root) {
     return (
       <div className={rawStyles.scroll}>
         <StructuredMessageTree
-          onAddNumericFieldToPlot={onAddNumericFieldToPlot}
+          onAddFieldToPlot={onAddFieldToPlot}
           root={result.root}
         />
       </div>

@@ -15,12 +15,7 @@ import {
   type SelectionScope,
   type SelectionMember,
 } from "@fiftyone/state/src/selection";
-import {
-  RemoveCircleOutlineIcon,
-  Text,
-  TextColor,
-  TextVariant,
-} from "@voxel51/voodo";
+import { RemoveCircleOutlineIcon, Text } from "@voxel51/voodo";
 import { useState } from "react";
 import ActionEntry from "./ActionEntry";
 import SubsetConfirmationDialog from "./SubsetConfirmationDialog";
@@ -149,11 +144,7 @@ function RemoveFromSubset({
             aria-expanded={confirming}
           />
           {error && !confirming && (
-            <Text
-              role="alert"
-              variant={TextVariant.Xs}
-              color={TextColor.Failure}
-            >
+            <Text role="alert" variant="caption" color="text-failure">
               {error}
             </Text>
           )}

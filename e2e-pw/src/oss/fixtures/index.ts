@@ -1,11 +1,10 @@
-import { test as base } from "@playwright/test";
+import { test as base, type BrowserContext, type Page } from "@playwright/test";
 import { DatasetFactory } from "src/shared/dataset-factory";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { reserveWorkerPort } from "src/shared/network-utils/port";
 import { installSam2MockWorker } from "src/shared/sam2-mock-worker";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
-import { AggregationWatcher } from "./aggregation-watcher";
 import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
 
@@ -23,7 +22,13 @@ export type CustomFixturesWithoutPage = {
 // these fixtures have access to the {page} fixture
 export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
-  aggregationWatcher: AggregationWatcher;
+  /**
+   * Opens a page in a fresh browser context, for checking what persisted
+   * through a true server round-trip. Every page the test opened before it
+   * closes first: an App open alongside would share the server's session and
+   * sync its state into the check.
+   */
+  openFreshPage: () => Promise<Page>;
   /**
    * Installs a deterministic mock SAM2 worker via `page.addInitScript` so
    * the page's `BrowserAnnotationProvider` constructs the mock instead of
@@ -83,11 +88,46 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     });
     await use(page);
   },
-  eventUtils: async ({ page }, use) => {
-    await use(new EventUtils(page));
-  },
-  aggregationWatcher: async ({ page }, use) => {
-    await use(new AggregationWatcher(page));
+  eventUtils: [
+    async ({ page }, use, testInfo) => {
+      const eventUtils = new EventUtils(page);
+      await eventUtils.recordLoads();
+      // each document shows the global loading screen at most once
+      const loadingScreens = await eventUtils.countPerDocument(
+        "e2e:app:global-loading-screen",
+      );
+      await use(eventUtils);
+      if (Math.max(0, ...loadingScreens()) > 1) {
+        throw new Error(
+          "the top-level Suspense boundary re-activated after the page loaded",
+        );
+      }
+      // a missing event fails as a bare timeout; say which events were expected
+      if (testInfo.status !== testInfo.expectedStatus) {
+        const report = await eventUtils.describePending();
+        if (report) {
+          console.log(`pending events:\n${report}`);
+          await testInfo.attach("pending events", {
+            body: report,
+            contentType: "text/plain",
+          });
+        }
+      }
+    },
+    { auto: true },
+  ],
+  openFreshPage: async ({ browser, page }, use) => {
+    const pages: Page[] = [page];
+    const contexts: BrowserContext[] = [];
+    await use(async () => {
+      for (const open of pages) await open.close();
+      const context = await browser.newContext();
+      contexts.push(context);
+      const fresh = await context.newPage();
+      pages.push(fresh);
+      return fresh;
+    });
+    for (const context of contexts) await context.close();
   },
   mockSam2Worker: async ({ page }, use) => {
     await installSam2MockWorker(page);

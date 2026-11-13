@@ -1,9 +1,18 @@
 import { DetectionLabel } from "@fiftyone/looker";
-import { useClearModal } from "@fiftyone/state";
+import { useClearModal, useGetKeypointSkeleton } from "@fiftyone/state";
 import { DETECTION, KEYPOINT, POLYLINE } from "@fiftyone/utilities";
-import { useEffect } from "react";
+import {
+  Heading,
+  HeadingLevel,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
+import { ReactNode, useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
+import { isFieldBboxLocked, labelSchemaData } from "../state";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Header from "./Header";
@@ -15,6 +24,7 @@ import Position from "./Position";
 import Position3d from "./Position3d";
 import TemporalDetectionDetails from "./TemporalDetectionDetails";
 import { useAnnotationContext } from "./useAnnotationContext";
+import { skeletonNodeCount } from "./useAnnotationContext/createNew";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
@@ -42,6 +52,35 @@ const Content = styled.div`
   row-gap: 0.5rem;
 `;
 
+const Section = styled.section`
+  border-top: 1px solid ${({ theme }) => theme.neutral.softBorder};
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+`;
+
+const SectionHeading = styled(Heading)`
+  margin: 0 0 0.75rem;
+`;
+
+/**
+ * Headlined attribute-scope group. Keypoints carry attributes at two scopes —
+ * the whole label (e.g. `label`) and the individual point (e.g. per-point
+ * `confidence`) — and their form fields look alike, so each scope's block
+ * sits under its own ruled-off headline.
+ */
+const ScopeSection = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <Section>
+    <SectionHeading level={HeadingLevel.H4}>{title}</SectionHeading>
+    {children}
+  </Section>
+);
+
 export default function Edit() {
   const { selected } = useAnnotationContext();
   const field = selected?.field ?? null;
@@ -49,6 +88,12 @@ export default function Edit() {
   const type = selected?.type ?? null;
   const data = selected?.data;
   const isReadOnly = selected?.isFieldReadOnly ?? false;
+  // Stage-policy bbox lock: freezes the coordinate inputs
+  // (Position/Position3d) while the attribute form stays live —
+  // field-level read-only already implies it via `isFieldReadOnly`.
+  const isBboxLocked = isFieldBboxLocked(
+    useAtomValue(labelSchemaData(field ?? "")),
+  );
   const { isEditingMask } = useSegmentationMode();
   // `mask` and `mask_path` exist only on DetectionLabel; the union narrows
   // them out. Cast at the access site rather than type-guarding the whole
@@ -91,6 +136,10 @@ export default function Edit() {
     };
   }, [exit, clear]);
 
+  const getSkeleton = useGetKeypointSkeleton();
+  const skeletonNodes =
+    type === KEYPOINT && field ? skeletonNodeCount(getSkeleton(field)) : 0;
+
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
   const isTemporalDetection =
@@ -103,19 +152,35 @@ export default function Edit() {
       <Content>
         <Id />
         {!primitiveEditingActive && <Field />}
+        {!primitiveEditingActive && skeletonNodes > 0 && (
+          <Text color={TextColor.Secondary} variant={TextVariant.Sm}>
+            {skeletonNodes}-point skeleton
+          </Text>
+        )}
         {primitiveEditingActive && <PrimitiveWrapper />}
         {type === DETECTION && overlay && !is3dDetection && (
-          <Position readOnly={isReadOnly || isMaskDetection} />
+          <Position readOnly={isBboxLocked || isMaskDetection} />
         )}
         {type === DETECTION && overlay && is3dDetection && (
-          <Position3d readOnly={isReadOnly} />
+          <Position3d readOnly={isBboxLocked} />
         )}
         {type === POLYLINE && <PolylineDetails />}
-        {type === KEYPOINT && <KeypointDetails />}
-        {isTemporalDetection && (
-          <TemporalDetectionDetails readOnly={isReadOnly} />
+        {type === KEYPOINT && (
+          <ScopeSection title="Points">
+            <KeypointDetails />
+          </ScopeSection>
         )}
-        {field && <AnnotationSchema readOnly={isReadOnly} />}
+        {isTemporalDetection && (
+          <TemporalDetectionDetails readOnly={isBboxLocked} />
+        )}
+        {field &&
+          (type === KEYPOINT ? (
+            <ScopeSection title="Label attributes">
+              <AnnotationSchema readOnly={isReadOnly} />
+            </ScopeSection>
+          ) : (
+            <AnnotationSchema readOnly={isReadOnly} />
+          ))}
         {isMaskDetection && <MaskPreview />}
       </Content>
     </ContentContainer>

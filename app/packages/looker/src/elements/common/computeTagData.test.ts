@@ -309,6 +309,27 @@ describe("computeTagData", () => {
       expect(result.map((item) => item.value)).toEqual(["null"]);
     });
   });
+
+  describe("regressions", () => {
+    const schema: Schema = {
+      score: makeField("score", {
+        embeddedDocType: "fiftyone.core.labels.Regression",
+        ftype: EMBEDDED_DOCUMENT_FIELD,
+      }),
+    };
+
+    it.each([null, undefined])("render a %s value as null", (value) => {
+      const result = computeTagData(
+        makeInput({
+          activePaths: ["score"],
+          fieldSchema: schema,
+          sample: { score: { _cls: "Regression", value, confidence: 0.5 } },
+        }),
+      );
+
+      expect(result.map((item) => item.value)).toEqual(["null"]);
+    });
+  });
 });
 
 describe("computeLabelTagCounts", () => {

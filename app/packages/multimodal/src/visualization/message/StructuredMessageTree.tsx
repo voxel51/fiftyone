@@ -30,9 +30,9 @@ interface CopyFeedback {
 
 const IDLE_COPY_FEEDBACK: CopyFeedback = { path: null, status: "idle" };
 
-/** Structured record and optional numeric-field interactions shown by the tree. */
+/** Structured record and optional plot-field interactions shown by the tree. */
 export interface StructuredMessageTreeProps {
-  readonly onAddNumericFieldToPlot?: (path: string) => void;
+  readonly onAddFieldToPlot?: (path: string) => void;
   readonly root: RawObjectNode;
 }
 
@@ -44,7 +44,7 @@ export interface StructuredMessageTreeProps {
  * must not re-fold the tree every message.
  */
 const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
-  onAddNumericFieldToPlot,
+  onAddFieldToPlot,
   root,
 }) => {
   const [expandedOverrides, setExpandedOverrides] = useState<
@@ -112,15 +112,15 @@ const StructuredMessageTree: React.FC<StructuredMessageTreeProps> = ({
 
   const addToPlot = useCallback(
     (path: string) => {
-      if (!onAddNumericFieldToPlot) {
+      if (!onAddFieldToPlot) {
         return;
       }
-      onAddNumericFieldToPlot(path);
+      onAddFieldToPlot(path);
       showPlottedPath(path);
     },
-    [onAddNumericFieldToPlot, showPlottedPath],
+    [onAddFieldToPlot, showPlottedPath],
   );
-  const effectiveAddToPlot = onAddNumericFieldToPlot ? addToPlot : undefined;
+  const effectiveAddToPlot = onAddFieldToPlot ? addToPlot : undefined;
   const visibleRootEntries =
     visibleObjectEntries.get(ROOT_NODE_KEY) ?? OBJECT_ENTRY_PAGE_SIZE;
   const hiddenRootEntries = Math.max(
@@ -396,11 +396,22 @@ function isExpandable(node: RawValueNode): boolean {
   );
 }
 
+/**
+ * Numbers and booleans plot as lines, text as states. Text the inspector had
+ * to truncate is payload rather than a state, so it is not offered.
+ */
 function isPlottableScalar(node: RawValueNode): boolean {
-  return (
-    node.kind === "scalar" &&
-    (node.valueType === "number" || node.valueType === "bigint")
-  );
+  if (node.kind !== "scalar") return false;
+  switch (node.valueType) {
+    case "bigint":
+    case "boolean":
+    case "number":
+      return true;
+    case "string":
+      return !node.truncated;
+    default:
+      return false;
+  }
 }
 
 function nodePreview(node: RawValueNode): string {

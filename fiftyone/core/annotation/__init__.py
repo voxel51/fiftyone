@@ -22,6 +22,10 @@ from .hydrate_label_schemas import (
     inline_applied_ontology,
 )
 from .validate_label_schemas import validate_label_schemas
+from .utils import (
+    declare_label_schema_attributes,
+    list_undeclared_label_schema_attributes,
+)
 
 
 class AnnotationInfo(BaseRunInfo):

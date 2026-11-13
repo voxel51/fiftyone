@@ -2,47 +2,35 @@
 
 # Pluggable Authentication
 
-FiftyOne Enterprise v1.6.0 introduces Pluggable Authentication that provides
-the Central Authentication Service (CAS). CAS is a self-contained
-authentication system with two modes (`legacy` and `internal`). Legacy mode
-uses Auth0. Internal mode eliminates the Auth0 external dependency and may run
-in environments without egress to the internet. CAS provides a UI, REST API,
-and JavaScript (JS) Hook mechanism to manage FiftyOne Enterprise user data and
-authentication.
+Voxel51 v1.6.0 introduces Pluggable Authentication that provides the Central
+Authentication Service (CAS). CAS is a self-contained authentication system
+that stores users, organizations, and memberships in MongoDB, so user data is
+immediately consistent across Voxel51, and it may run in environments without
+egress to the internet. CAS provides a UI, REST API, and JavaScript (JS) Hook
+mechanism to manage Voxel51 user data and authentication.
 
-## FiftyOne Authentication Modes
-
-The setting `FIFTYONE_AUTH_MODE` specifies the authentication mode `legacy` or
-`internal`.
-
-(legacy-mode)=
-
-### Legacy Mode
-
-In legacy mode, FiftyOne Enterprise uses Auth0 for user authentication and
-authorization. This mode requires an external connection to Auth0 endpoints.
-User data is eventually consistent (where changes are reflected across FiftyOne
-Enterprise eventually). Auth0 contains the configuration for identity providers
-and the persistence of user data. Auth0 supports multiple providers (including
-SAML). For the supported IdPs, see
-[Auth0 Enterprise Identity Providers](https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers).
-
-(internal-mode)=
-
-### Internal Mode
-
-In internal mode of FiftyOne Enterprise, the CAS replaces Auth0. FiftyOne
-Enterprise will not require network egress to external services. User data is
-immediately consistent (where changes are reflected across FiftyOne Enterprise
-instantly). Directory data is immediately written to MongoDB, and organizations
-have the autonomy to manage their Identity Provider Configuration. Internal
-mode supports
+CAS authenticates users through an identity provider. Unless the deployment is
+air-gapped, users sign in through the Auth0 provider Voxel51 configures for it,
+which connects to SAML and other
+[enterprise identity providers](https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers).
+Air-gapped deployments configure their own
 [OpenID Connect (OIDC)](https://openid.net/developers/discover-openid-and-openid-connect/)
-and [OAuth2](https://oauth.net/2/).
+or [OAuth2](https://oauth.net/2/) identity provider in CAS, as described in
+[Identity Providers](#custom-identity-providers).
 
-> **NOTE**: SAML is not supported in [internal mode](#internal-mode)
+(upgrading-from-legacy-mode)=
 
-<!-- TODO: Enumerate what connection types are supported. -->
+## Upgrading From Legacy Mode
+
+Voxel51 v2.26.0 removes `legacy` authentication mode, in which Auth0 stored
+users and organization membership, along with the `FIFTYONE_AUTH_MODE` setting,
+which is now ignored. On its first start after the upgrade, CAS imports the
+organization's Auth0 members, with their roles and groups, into MongoDB. Users
+keep signing in through Auth0.
+
+When several Auth0 accounts share an email address, CAS imports one of them and
+saves the others in the `users.legacy_migration_duplicates` collection of the
+CAS database.
 
 (super-admin-ui)=
 
@@ -50,20 +38,17 @@ and [OAuth2](https://oauth.net/2/).
 
 ![Super Admin UI](/images/enterprise/cas/cas_api_docs.png)
 
-The Super Admin UI contains FiftyOne Enterprise deployment wide configurations.
-When logging into FiftyOne Enterprise as an admin, you are in the context of an
-organization. Settings are scoped by organization and only apply to that
-organization. The Super Admin UI allows you to administer all organizations and
-global configurations (Identity Providers, Session timeouts, and JS hooks).
-
-> **NOTE**: In v1.6.0, the Super Admin UI is only available in
-> [internal mode](#internal-mode)
+The Super Admin UI contains Voxel51 deployment wide configurations. When
+logging into Voxel51 as an admin, you are in the context of an organization.
+Settings are scoped by organization and only apply to that organization. The
+Super Admin UI allows you to administer all organizations and global
+configurations (Identity Providers, Session timeouts, and JS hooks).
 
 ![Sign In to CAS](/images/enterprise/cas/cas_sign_in.png)
 
-To login to this application navigate to
-`https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations`. In the top right of the
-screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
+To log in to this application, navigate to
+`https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and enter the
+`FIFTYONE_AUTH_SECRET` in the top right of the page.
 
 > **NOTE**: The value of `FIFTYONE_AUTH_SECRET` should be set prior to
 > installation or upgrade.
@@ -72,25 +57,24 @@ screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
 
 ### New User Invitations
 
-As of FiftyOne Enterprise 2.1.0, onboarding new users can be done via
-invitation links. To do so, "Enable invitation" must be toggled on in the
-Organizations section of the [Super Admin UI](#super-admin-ui).
+As of Voxel51 2.1.0, onboarding new users can be done via invitation links. As
+of Voxel51 2.26.0, invitations are enabled by default. To turn them off, toggle
+"Enable invitation" off in the Organizations section of the
+[Super Admin UI](#super-admin-ui).
 
 ![Enable Invitations](/images/enterprise/cas/org_enable_invitations.png)
 
-This allows creating invitation links in [internal mode](#internal-mode) that
-can be manually sent to users. When those users click the links, they will be
-added to the Organization and prompted to log in.
+This allows creating invitation links that can be manually sent to users. When
+those users click the links, they will be added to the Organization and
+prompted to log in.
 
-As of FiftyOne Enterprise 2.2.0, these invitation links can be automatically
-sent via an email through a configured SMTP server. This provides similar
-functionality to [legacy mode](#legacy-mode) email invitations, but without the
-need for Auth0 or any other external connections beyond the SMTP server itself.
+As of Voxel51 2.2.0, these invitation links can be automatically sent via an
+email through a configured SMTP server, without the need for any external
+connection beyond the SMTP server itself.
 
 > **NOTE:** Unless the deployment is a Managed Deployment, users must provide
-> their own SMTP server to use in [internal mode](#internal-mode). This new
-> functionality provides a way to authenticate and communicate with your
-> existing mail server.
+> their own SMTP server. This functionality provides a way to authenticate and
+> communicate with your existing mail server.
 
 To do so, "Send email invitations" must be toggled on in the Organizations
 section of the [Super Admin UI](#super-admin-ui)
@@ -107,9 +91,9 @@ already saved. Currently, only one SMTP configuration can be saved per
 Organization.
 
 Select the appropriate type of authentication for your SMTP server and fill out
-the associated fields. When you save the configuration, FiftyOne Enterprise
-will do a preliminary check to ensure that the SMTP server is reachable at the
-host provided. The configuration will not save otherwise.
+the associated fields. When you save the configuration, Voxel51 will do a
+preliminary check to ensure that the SMTP server is reachable at the host
+provided. The configuration will not save otherwise.
 
 Additionally, users can enter a valid email address and click Send Test Email
 to test the connection.
@@ -120,12 +104,14 @@ to test the connection.
 > Invitation links can still be generated and manually distributed without an
 > SMTP configuration.
 
+(custom-identity-providers)=
+
 ## Identity Providers (IdP)
 
-In [internal mode](#internal-mode), use the CAS REST API or Super Admin UI to
-configure FiftyOne Enterprise to authenticate users via OIDC or OAuth2
-compatible Identity Providers. Below is an example configuration for KeyCloak
-as an Identity Provider.
+Custom identity providers are supported in air-gapped deployments only. Use the
+CAS REST API or Super Admin UI to configure Voxel51 to authenticate users via
+OIDC-compatible or OAuth2-compatible Identity Providers. Below is an example
+configuration for KeyCloak as an Identity Provider.
 
 ```json
 {
@@ -136,7 +122,7 @@ as an Identity Provider.
     "authorization": {
         "url": "https://keycloak.acme.ai/auth/realms/acme/protocol/openid-connect/auth",
         "params": {
-            "scope": "openid email profile"
+            "scope": "openid email profile offline_access"
         }
     },
     "clientId": "...",
@@ -159,67 +145,49 @@ as an Identity Provider.
 }
 ```
 
-<!--
-**Migrating from Legacy to internal mode**
+## Getting Started
 
-The migration from Legacy to internal mode begins with configuring an
-authentication provider through CAS (UI or REST). Following this, all existing
-user data must be migrated from Auth0, utilizing the management SDK or Auth0
-API to ensure a comprehensive transfer of information.
+Follow the steps below to add your first admin and sign in to the app.
 
-For each user, the migration involves several steps:
-
-1. Creating a FiftyOne Enterprise user profile via `POST /cas/api/users`.
-1. Assigning the user to the default organization through a membership entry.
-1. Linking the user's account to the new authentication provider by creating an
-   account reference via `POST /cas/api/accounts`.
-
-The final step in the migration involves changing the `FIFTYONE_AUTH_MODE`
-setting from legacy to internal. This change officially activates Internal
-Mode, completing the migration process.
--->
-
-## Getting Started with Internal Mode
-
-These steps are only required to run FiftyOne Enterprise in
-[internal mode](#internal-mode). Please skip when using Auth0 in
-[legacy mode](#legacy-mode).
-
-1. Configure your Identity Provider
-1. Login to the SuperUser UI by navigating to
-   `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and in the top right,
-   and provide the `FIFTYONE_AUTH_SECRET` to login.
-1. Create an Admin
-    1. Click on the “Admins” tab
-    1. Click “Add admin” in the bottom left
-    1. Set the name and email address (as it appears in your Identity Provider)
-       and click “Add”
-1. Add your Identity Provider
-    1. Click on the “Identity Providers” tab at the top of the screen and click
+1. Log in to the [Super Admin UI](#super-admin-ui) by navigating to
+   `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations` and entering the
+   `FIFTYONE_AUTH_SECRET` in the top right of the page.
+1. (Air-gapped only) Add your identity provider
+    1. Click the “Identity Providers” tab at the top of the page, then click
        “Add provider”
-    1. Fill out the “Add identity provider”
-        1. You can also click “Switch to advanced editor” to provide the full
-           configuration as a JSON object
-    1. In the “Profile callback” field, set the mapping that your Identity
-       Provider expects
-1. Login with the admin user
-    1. Navigate to `https://<YOUR_FIFTYONE_TEAMS_URL>/datasets`
-    1. You should see the login screen for your newly configured authentication
-       provider
-    1. Before logging in, set the admin user (in step 5). Otherwise, you will
-       need to remove this user from the database and try again.
-    1. Click the login button and provide the credentials of the Admin user
-       (set in step 3)
-    1. Click on the icon in the top right corner then click “Settings”
-    1. Click “Users” on the left side
-    1. Validate the user is listed as an admin
+    1. Fill out the “Add identity provider” form, or click “Switch to advanced
+       editor” to provide the full configuration as a JSON object
+    1. In the “Profile callback” field, map the user info your identity
+       provider returns to the Voxel51 user's `id`, `name`, `email`, and
+       `image`, as the `profile` of the
+       [example configuration](#custom-identity-providers) does
+1. Add an admin
+    1. Click the “Admins” tab
+    1. Click “Add admin” in the bottom left
+    1. Enter the user's name and the email address they have in your identity
+       provider, then click “Add”
+1. Sign in to the app with that email address
+    1. Navigate to `https://<YOUR_FIFTYONE_TEAMS_URL>/datasets`, which
+       redirects you to the sign-in page
+    1. Click the button for your identity provider, or, outside air-gapped
+       deployments, the provider Voxel51 configured for you, and sign in
+    1. Click the icon in the top right corner, then click “Settings”
+    1. Click “Users” on the left side and check that the user is listed as an
+       admin
+
+> **NOTE:** Steps 3 and 4 can be done in either order when the user is able to
+> sign in before being added: with an invitation, or when “Allow auto join” is
+> checked on the identity provider, which gives them the organization's default
+> role. Adding a user who has already signed in as an admin changes their role
+> to admin. Otherwise, a user who is not a member of the organization cannot
+> sign in, so add the admin first.
 
 ## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
 
-Below is an example of how to use JavaScript hooks to sync FiftyOne Enterprise
-with a corporate directory (such as Open Directory, LDAP, or Active Directory)
-via an intermediary REST API or Identity Provider. The recommended setup is
-with OAuth/OIDC claims, however the example below illustrates a more intricate
+Below is an example of how to use JavaScript hooks to sync Voxel51 with a
+corporate directory (such as Open Directory, LDAP, or Active Directory) via an
+intermediary REST API or Identity Provider. The recommended setup is with
+OAuth/OIDC claims, however the example below illustrates a more intricate
 integration.
 
 This example specifically addresses a scenario in which additional actions are
@@ -401,7 +369,7 @@ above) or by directly visiting `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/api-doc`
    </td>
    <td><code>false</code>
    </td>
-   <td>When set to True, sign in page with identity provider choices will be skipped when there is only one identity provider is configured
+   <td>When set to True, sign in page with identity provider choices will be skipped when only one identity provider is configured
    </td>
   </tr>
 </table>
@@ -444,9 +412,9 @@ async function Hook(context) {
             // returning or throwing here does not affect the sign out flow
             break;
 
-        // user is being redirected on sign in our sign out
+        // user is being redirected on sign in or sign out
         case "redirect":
-            // user will be redirected to this URL on sign in our sign out
+            // user will be redirected to this URL on sign in or sign out
             return "/settings/accounts";
     }
 }

@@ -271,17 +271,17 @@ export interface McapEnumerateNumericFieldsRequest {
 }
 
 /**
- * One numeric leaf field of a topic's message schema, addressed by a
- * dotted path (e.g. `twist.linear.x`). Numeric segments address array
+ * One plottable scalar leaf field of a topic's message schema, addressed by
+ * a dotted path (e.g. `twist.linear.x`). Numeric segments address array
  * elements (e.g. `position.0`).
  */
 export interface McapNumericFieldDescriptor {
   readonly path: string;
 
   /**
-   * Schema-level value type ("double", "int64", "bool", "enum", …).
-   * Informational: 64-bit integer types lose precision beyond 2^53
-   * when projected to chart values.
+   * Schema-level value type ("double", "int64", "bool", "enum", "string",
+   * …). "string" fields plot as discrete states. 64-bit integer types lose
+   * precision beyond 2^53 when projected to chart values.
    */
   readonly valueType: string;
 }
@@ -374,7 +374,7 @@ export interface McapReadNumericSeriesRequest {
 /**
  * Packed series for one requested field path. Parallel arrays; times
  * are seconds relative to the result's `baseTimeNs`. `NaN` values mark
- * messages where the field was missing or non-numeric so charts can
+ * messages where the field was missing or unplottable so charts can
  * render gaps.
  */
 export interface McapNumericSeriesField {
@@ -382,6 +382,12 @@ export interface McapNumericSeriesField {
   readonly bucketIndexes?: BigInt64Array;
   /** Per-decimation-bucket discontinuity bits, when decimation was applied. */
   readonly bucketGapMask?: Uint8Array;
+
+  /**
+   * Present when the field holds text: each finite value is an index into
+   * these labels, local to this result.
+   */
+  readonly labels?: readonly string[];
   readonly path: string;
   readonly timesSec: Float64Array;
   readonly values: Float64Array;
@@ -412,6 +418,13 @@ export interface McapNumericSeriesResult {
 /** Numeric field projection requested for one MCAP topic in a shared slice. */
 export interface McapNumericSeriesSelection {
   readonly fieldPaths: readonly string[];
+
+  /**
+   * On a slice's first page, also project the topic's newest message before
+   * `startTimeNs`, so a state published only on change is known at the
+   * window start. That sample precedes the window in the result.
+   */
+  readonly includePrior?: boolean;
   readonly topic: string;
 }
 

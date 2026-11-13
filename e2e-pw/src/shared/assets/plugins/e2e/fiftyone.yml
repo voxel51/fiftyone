@@ -5,6 +5,8 @@ version: "1.0.0"
 description: "Operators for E2E tests"
 operators:
   - e2e_set_view
+  - e2e_set_extended_selection
+  - e2e_compute_visualization
   - e2e_say_hello_in_modal
   - e2e_say_hello_in_drawer
   - e2e_progress

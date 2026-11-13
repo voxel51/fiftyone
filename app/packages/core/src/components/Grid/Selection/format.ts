@@ -24,6 +24,24 @@ export function savedSubsetLabel(subset: SavedSubset, unit: SelectionUnit) {
   return `${plural(fullEpisodes, unit.one, unit.many)} and ${plural(segments, "segment")}`;
 }
 
+/**
+ * Names the saved queries a subset's members were captured from, most
+ * recent first: "From saved query “Night”", or "From saved queries “Night”
+ * and 2 more". Null when no capture came from a saved query.
+ */
+export function capturedFromLabel(subset: SavedSubset): string | null {
+  const names = new Map<string, string>();
+  for (const { savedView } of subset.captures ?? []) {
+    if (savedView && !names.has(savedView.id))
+      names.set(savedView.id, savedView.name);
+  }
+  const [latest, ...rest] = names.values();
+  if (latest === undefined) return null;
+  return rest.length
+    ? `From saved queries “${latest}” and ${plural(rest.length, "more", "more")}`
+    : `From saved query “${latest}”`;
+}
+
 /** "Episode", "Sample", "Patch": the unit for titles and menu copy. */
 export function unitTitle(unit: SelectionUnit) {
   return unit.one.charAt(0).toUpperCase() + unit.one.slice(1);

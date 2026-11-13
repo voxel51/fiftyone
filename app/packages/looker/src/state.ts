@@ -199,6 +199,8 @@ export interface BaseOptions {
   showOverlays: boolean;
   showPatchLabels: boolean;
   shownLabelAttributes: { [path: string]: string[] };
+  // label fields whose detection box outlines are not drawn
+  hiddenBoundingBoxes: readonly string[];
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
@@ -266,6 +268,8 @@ export interface VideoConfig extends BaseConfig {
   enableTimeline: boolean;
   frameRate: number;
   support?: [number, number];
+  /** Initial thumbnail time in seconds; omitted to use the clip's start. */
+  posterSeconds?: number;
 }
 
 export interface ImaVidConfig extends BaseConfig {
@@ -478,6 +482,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showHelp: false,
   showPatchLabels: false,
   shownLabelAttributes: {},
+  hiddenBoundingBoxes: [],
   showTooltip: false,
   onlyShowHoveredLabel: false,
   filter: null,

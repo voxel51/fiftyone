@@ -22,23 +22,26 @@ import type { ModalSample } from "../../recoil";
 import type { Sample } from "@fiftyone/looker";
 import {
   State,
-  activeFields,
+  _activeFields,
   activeModalSample,
   currentSampleId,
   fieldSchema,
   lookerOptions,
   modalSample,
+  nullableModalSampleId,
   selectedLabelMap,
   selectedMediaField,
 } from "../../recoil";
 import { GroupSampleNotFound } from "../../recoil/modal";
 
 /**
- * Hook which provides the modal's current active paths,
- * and a setter to update the paths.
+ * Hook which provides the modal's stored active-field choice, and a setter
+ * to update it. `null` is the default: every field the current schema
+ * shows. Unlike the resolved paths, the choice is not filtered by the
+ * schema, so restoring it brings back fields a schema switch showed again.
  */
 export const useActiveModalFields = () =>
-  useRecoilState(activeFields({ modal: true }));
+  useRecoilState(_activeFields({ modal: true }));
 
 /**
  * Manager which supports switching modal modes.
@@ -174,6 +177,10 @@ export const useCurrentSampleId = () => {
 
   return loadable.state === "hasValue" ? loadable.contents : null;
 };
+
+/** Reads the selected grid sample ID without suspending on the sample query. */
+export const useNullableModalSampleId = (): string | null =>
+  useRecoilValue(nullableModalSampleId);
 
 /**
  * Gets the saved modal viewport (zoom/pan) state.

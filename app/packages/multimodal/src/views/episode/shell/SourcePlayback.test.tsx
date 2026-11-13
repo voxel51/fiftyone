@@ -50,6 +50,8 @@ const playbackHarness = vi.hoisted(() => {
       initialLayout: undefined as unknown,
       initialTiles: {} as Record<string, unknown>,
       onLeftOpenChange: vi.fn(),
+      defaultTimelineTracksOpen: false,
+      onTimelineTracksOpenChange: vi.fn(),
       onLeftSidebarWidthChange: vi.fn(),
       onSceneUpAxisChange: vi.fn(),
       onTimelineSamplingRateChange: vi.fn(),
@@ -71,6 +73,10 @@ const sourceFactsHarness = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../runtime/source-facts-service", () => sourceFactsHarness);
+
+vi.mock("../loading/ModalLoadingOverlay", () => ({
+  ModalLoadingOverlay: () => null,
+}));
 
 vi.mock("./PlaybackShell", () => {
   const MockPlaybackShell = ({
@@ -221,6 +227,8 @@ describe("SourcePlayback", () => {
       initialLayout: undefined,
       initialTiles: {},
       onLeftOpenChange: vi.fn(),
+      defaultTimelineTracksOpen: false,
+      onTimelineTracksOpenChange: vi.fn(),
       onLeftSidebarWidthChange: vi.fn(),
       onSceneUpAxisChange: vi.fn(),
       onTimelineSamplingRateChange: vi.fn(),

@@ -1,7 +1,7 @@
-import { useTheme } from "@fiftyone/components";
 import type { ImageLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { VideoAnnotationSurface } from "@fiftyone/video-annotation";
+import { BackgroundColor, getColorCssVar } from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
 import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -37,7 +37,6 @@ type NativeLookerProps = LookerProps & { sample: fos.ModalSample };
 
 const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
   const { id, ref, looker } = useLooker<ImageLooker>(props);
-  const theme = useTheme();
 
   useImageModalSelectiveRendering(id, looker);
 
@@ -50,7 +49,7 @@ const ModalLookerNoTimeline = React.memo((props: NativeLookerProps) => {
         width: "100%",
         height: "100%",
         minHeight: 0,
-        background: theme.background.level2,
+        background: getColorCssVar(BackgroundColor.Card),
         position: "relative",
       }}
     />
@@ -89,6 +88,7 @@ const ModalLookerContent = React.memo(
       fos.shouldRenderImaVidLooker(true),
     );
     const isAnnotate = mode === fos.ModalMode.ANNOTATE;
+    const isFramesView = fos.useIsFramesView();
 
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
     const selectedMedia = fos.resolveMediaFieldLooker({
@@ -116,6 +116,11 @@ const ModalLookerContent = React.memo(
     }
 
     if (isVideo) {
+      // Dynamic frame views use a video filepath for a single frozen frame.
+      // Their documents contain frame fields directly, not a video's frames
+      // collection, so they cannot supply the playback timeline's label stream.
+      if (isFramesView)
+        return <ModalLookerNoTimeline sample={sample} showControls />;
       if (isAnnotate) {
         return <VideoAnnotationSurface sample={sample} />;
       }

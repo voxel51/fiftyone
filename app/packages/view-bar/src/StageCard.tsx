@@ -28,6 +28,7 @@ import React from "react";
 
 import type { Kind, Operator } from "./builder/catalog";
 import { ParamInput } from "./controls";
+import { previewValue } from "./preview";
 import {
   blockedBy,
   expressionScope,
@@ -88,23 +89,6 @@ interface StageCardProps {
   /** The stage is done being described; close it and move on. */
   onCommit: () => void;
 }
-
-/**
- * Render a kwarg value as a short preview string for the collapsed
- * stage card. Keeps strings under ~24 chars; lists show the first item
- * with a `+N` tail; numbers/booleans show as-is.
- */
-const previewValue = (value: unknown): string => {
-  if (value == null || value === "") return "—";
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "number") return String(value);
-  if (Array.isArray(value)) {
-    const head = String(value[0] ?? "");
-    return value.length > 1 ? `${head} +${value.length - 1}` : head;
-  }
-  const s = String(value);
-  return s.length > 24 ? `${s.slice(0, 21)}…` : s;
-};
 
 export const StageCard: React.FC<StageCardProps> = ({
   stage,

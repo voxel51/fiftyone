@@ -4,8 +4,11 @@
 
 .lookerTags {
   position: absolute;
-  bottom: 0;
-  max-height: 100%;
+  /* Set by the grid on video tiles to the height of the timeline footer pinned
+     to the tile bottom, so the tags sit above it; 0 when nothing renders
+     there. */
+  bottom: var(--tile-lanes-height, 0px);
+  max-height: calc(100% - var(--tile-lanes-height, 0px));
   overflow-y: auto;
   scrollbar-width: none;
   width: 100%;

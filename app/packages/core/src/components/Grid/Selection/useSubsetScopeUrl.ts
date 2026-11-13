@@ -174,13 +174,10 @@ export function useSubsetScopeUrl() {
         preferredGroupSlice?: string | null,
       ) => {
         if (revision.current !== request) return;
-        const targetDomain =
-          view === undefined
-            ? domainId
-            : selectionDomainId(
-                datasetId,
-                viewConversion(view ?? [])?.key ?? null,
-              );
+        const targetDomain = selectionDomainId(
+          datasetId,
+          viewConversion(view ?? [])?.key ?? null,
+        );
         previous.current = {
           ...next,
           domainId: targetDomain,
@@ -197,7 +194,7 @@ export function useSubsetScopeUrl() {
         }
         persist(datasetId, desired);
         // Reloading the same scope must retain its session-stored captures.
-        // Actual scope navigation still goes through the command that clears them.
+        // Actual scope navigation also updates the view and query constraints.
         if (restoring && targetDomain === domainId) setBoundary(desired);
         else
           openSubset(

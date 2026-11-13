@@ -25,6 +25,8 @@ export interface GridSelectionActionContext {
   readonly loading: boolean;
   readonly error: string | null;
   readonly boundary: SelectionBoundary;
+  /** Changes with the grid's filters, slice, or refreshed scope. */
+  readonly scopeKey?: string;
   /** Vocabulary for the parent unit in the current view. */
   readonly unit: SelectionUnit;
   /** The converted view kind, or null in the samples view. */

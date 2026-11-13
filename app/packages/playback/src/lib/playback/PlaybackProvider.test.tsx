@@ -364,6 +364,36 @@ describe("PlaybackProvider engine actions", () => {
       expect(result.current.isPlaying).toBe(false);
     });
 
+    it.each(["first Play", "pending Play"])(
+      "starts %s when prefetch satisfies readiness synchronously",
+      (phase) => {
+        let ready = false;
+        let canWarm = phase === "first Play";
+        const { result } = renderEngine({ duration: 10 });
+        act(() => {
+          result.current.api.registerStream({
+            id: "cached-mask",
+            blocking: true,
+            bufferState: () => (ready ? "ready" : "missing"),
+            prefetch: () => {
+              if (canWarm) ready = true;
+            },
+          });
+          result.current.api.subscribeStream("cached-mask");
+          result.current.api.play();
+        });
+        if (phase === "pending Play") {
+          expect(result.current.isPlayPending).toBe(true);
+          act(() => {
+            canWarm = true;
+            bumpStreamRangesVersion(result.current.store);
+          });
+        }
+        expect(result.current.isPlaying).toBe(true);
+        expect(result.current.isPlayPending).toBe(false);
+      },
+    );
+
     it("play resets the playhead to loopStart when it sits outside the loop", () => {
       const { result } = renderEngine({
         duration: 10,

@@ -554,7 +554,7 @@ environments.
     not recommended or officially supported. It is useful only for prototyping.
 
     Our recommended, scalable approach to work with cloud-backed data is
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, an enterprise deployment of
+    :ref:`Voxel51 <fiftyone-enterprise>`, an enterprise deployment of
     FiftyOne with multiuser collaboration features, native cloud dataset
     support, and much more!
 

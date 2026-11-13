@@ -1,5 +1,6 @@
-import { Tooltip, Text, TextVariant, Anchor } from "@voxel51/voodo";
+import { Text } from "@voxel51/voodo";
 import { useRef, type KeyboardEvent } from "react";
+import SelectionTooltip from "./SelectionTooltip";
 import styles from "./SelectionTray.module.css";
 
 export interface SegmentOption<T extends string> {
@@ -30,6 +31,7 @@ export default function Segmented<T extends string>({
 }: Props<T>) {
   const root = useRef<HTMLDivElement>(null);
   const move = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const enabled = options.filter((option) => !option.disabledReason);
@@ -78,16 +80,15 @@ export default function Segmented<T extends string>({
           </button>
         );
         return option.disabledReason ? (
-          <Tooltip
+          <SelectionTooltip
             key={option.value}
-            anchor={Anchor.Top}
             wrapperClassName={styles.tipWrap}
             content={
-              <Text variant={TextVariant.Sm}>{option.disabledReason}</Text>
+              <Text variant="body-tertiary">{option.disabledReason}</Text>
             }
           >
             {button}
-          </Tooltip>
+          </SelectionTooltip>
         ) : (
           button
         );

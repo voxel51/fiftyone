@@ -1,4 +1,4 @@
-import { setFetchFunction } from "@fiftyone/utilities";
+import { setFetchFunction } from "@fiftyone/utilities/src/fetch";
 import { LRUCache } from "lru-cache";
 import { throwIfAborted } from "../../../utils/cancellation";
 import { errorMessage } from "../../../utils/errors";

@@ -38,6 +38,39 @@ def resolve_filters(dataset, filters):
     return _filter_resolver(dataset, filters)
 
 
+_stream_resolver = None
+
+
+def register_selection_stream_resolver(resolver):
+    """Registers a resolver for a sample's complete stream inventory.
+
+    The callable receives a sample, its dataset and an optional request-local
+    cache. It returns a list of stream IDs, or ``None`` to use the built-in
+    resolvers. Resolution errors must propagate rather than return a partial
+    inventory. Temporal tag resolution supplies the sample's metadata.
+
+    Returns:
+        a function that restores the previous resolver
+    """
+    global _stream_resolver
+    previous = _stream_resolver
+    _stream_resolver = resolver
+
+    def unregister():
+        global _stream_resolver
+        if _stream_resolver is resolver:
+            _stream_resolver = previous
+
+    return unregister
+
+
+def resolve_streams(sample, dataset, cache=None):
+    """Returns provider stream IDs, or ``None`` for built-in resolution."""
+    if _stream_resolver is None:
+        return None
+    return _stream_resolver(sample, dataset, cache)
+
+
 _sample_builder = None
 
 
@@ -78,7 +111,7 @@ async def build_sample_items(view, samples):
     )
     return await asyncio.gather(
         *[
-            _create_sample_item(
+            _create_sample_item(  # pylint: disable=no-value-for-parameter
                 view,
                 sample,
                 metadata_cache,
@@ -89,3 +122,35 @@ async def build_sample_items(view, samples):
             for sample in samples
         ]
     )
+
+
+_range_source_resolver = None
+
+
+def register_selection_range_source_resolver(resolver):
+    """Registers source-owned ranges for captures of filtered parent samples.
+
+    The callable receives a view, a source descriptor and a request-local
+    cache. It must return complete members or raise if resolution is partial.
+    It does not change which parents the grid's filters show.
+
+    Returns:
+        a function that restores the previous resolver
+    """
+    global _range_source_resolver
+    previous = _range_source_resolver
+    _range_source_resolver = resolver
+
+    def unregister():
+        global _range_source_resolver
+        if _range_source_resolver is resolver:
+            _range_source_resolver = previous
+
+    return unregister
+
+
+def resolve_range_source(view, source, cache=None):
+    """Resolves a registered capture source, rejecting unsupported sources."""
+    if _range_source_resolver is None:
+        raise ValueError("No resolver is registered for this capture source")
+    return _range_source_resolver(view, source, cache)

@@ -1,6 +1,7 @@
 /**
  * Copyright 2017-2026, Voxel51, Inc.
  */
+import { getEventBus } from "@fiftyone/events";
 import copy from "copy-to-clipboard";
 
 import { BaseState } from "../../state";
@@ -10,6 +11,11 @@ import { AppError } from "@fiftyone/utilities";
 import errorIcon from "../../icons/error.svg";
 import refreshIcon from "../../icons/refresh.svg";
 import { lookerErrorPage } from "./error.module.css";
+
+/** e2e specs wait on a looker showing its load error */
+type ErrorE2EEvents = {
+  "e2e:looker:error-shown": { thumbnail: boolean };
+};
 
 export class ErrorElement<State extends BaseState> extends BaseElement<State> {
   private errorElement: HTMLDivElement = null;
@@ -103,6 +109,10 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
         a.title = "copy error info";
         this.errorElement.appendChild(a);
       }
+
+      getEventBus<ErrorE2EEvents>().dispatch("e2e:looker:error-shown", {
+        thumbnail,
+      });
     }
 
     if (!error && this.errorElement) {

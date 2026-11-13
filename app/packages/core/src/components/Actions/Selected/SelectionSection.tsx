@@ -1,4 +1,4 @@
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { Text } from "@voxel51/voodo";
 import { ActionOption, type ActionOptionProps } from "../Common";
 
 type SelectionSectionProps = {
@@ -19,8 +19,8 @@ export default function SelectionSection({
   return (
     <div role="group" aria-label={label} style={{ padding: "0.25rem 0" }}>
       <Text
-        variant={TextVariant.Xs}
-        color={TextColor.Secondary}
+        variant="caption"
+        color="text-secondary"
         style={{ display: "block", textTransform: "capitalize" }}
       >
         {label}

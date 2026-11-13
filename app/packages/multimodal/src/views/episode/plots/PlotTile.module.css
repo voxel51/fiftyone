@@ -1,6 +1,6 @@
 /* Plot tile body: chart surface matches sibling visualization panels. */
 .body {
-  background: var(--plot-surface, #050b12);
+  background: var(--color-content-bg-popover);
   height: 100%;
   position: relative;
   width: 100%;
@@ -11,4 +11,12 @@
   flex: none;
   height: 10px;
   width: 10px;
+}
+
+/* Trailing field-row metadata: the text-field marker and series swatch. */
+.fieldMeta {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 6px;
 }

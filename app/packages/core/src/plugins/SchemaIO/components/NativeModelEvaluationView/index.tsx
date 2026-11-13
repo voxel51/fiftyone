@@ -10,8 +10,6 @@ import Evaluation from "./Evaluation";
 import Overview from "./Overview";
 import { openModelEvalDialog, selectedModelEvaluation } from "./utils";
 
-const TRY_LINK = "http://voxel51.com/try-evaluation";
-
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange } = props;
   const [openDialog, setOpenDialog] = useRecoilState(openModelEvalDialog);
@@ -189,7 +187,7 @@ export default function NativeModelEvaluationView(props) {
         (showEmptyOverview || showCTA ? (
           <PanelCTA
             label="Create your first model evaluation"
-            demoLabel="Upgrade to FiftyOne Enterprise to Evaluate Models"
+            demoLabel="Upgrade to Voxel51 to Evaluate Models"
             description="Analyze and improve models collaboratively with your team"
             docLink="https://docs.voxel51.com/user_guide/evaluation.html"
             docCaption="Learn how to evaluate models via code."
@@ -209,7 +207,6 @@ export default function NativeModelEvaluationView(props) {
               setShowCTA(false);
             }}
             mode={showCTA ? "default" : "onboarding"}
-            tryLink={TRY_LINK}
           />
         ) : (
           <Overview

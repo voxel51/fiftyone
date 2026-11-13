@@ -5,6 +5,7 @@
  * provides. Deleting a run is a two-step confirmation handled inline
  * on the card.
  */
+import { getEventBus } from "@fiftyone/events";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import {
@@ -21,12 +22,22 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
+import { PendingRunCard, RunScreen } from "@fiftyone/components";
+import {
+  usePendingRunScreen,
+  type PendingRunWithView,
+} from "@fiftyone/operators";
 import { useEffect, useState } from "react";
 import { LandingCTA } from "./LandingCTA";
 import "./panel.css";
 import type { VisualizationRun } from "./protocol";
 import { RunCard } from "./RunCard";
 import { UpsellBanner } from "./UpsellBanner";
+
+/** e2e specs wait for the list to render a run count before reading it */
+type RunsListE2EEvents = {
+  "e2e:embeddings:runs-listed": { count: number };
+};
 
 // MM/DD/YYYY per the card spec — a fixed format, not the viewer locale
 const formatTimestamp = (timestamp: string | null): string | null => {
@@ -61,6 +72,7 @@ const lastUpdated = (timestamp: string | null): string | null => {
 
 export default function RunsList({
   runs,
+  pendingRuns = [],
   actionError = null,
   showUpsell = true,
   onCreate,
@@ -68,6 +80,8 @@ export default function RunsList({
   onDelete,
 }: {
   runs: VisualizationRun[] | null;
+  /** Delegated runs not yet registered as runs, shown above them */
+  pendingRuns?: PendingRunWithView[];
   /** A failed mutation (e.g. delete); shown without replacing the list */
   actionError?: string | null;
   /** Advertise capabilities this build lacks; off where they exist */
@@ -103,6 +117,16 @@ export default function RunsList({
     if (menu && !isActionable(menu.key)) setMenu(null);
     if (confirmKey && !isActionable(confirmKey)) setConfirmKey(null);
   }, [runs, menu, confirmKey]);
+
+  // The list renders from the page's data: a run computed or deleted
+  // elsewhere arrives with a page refresh, which e2e specs wait out
+  const count = runs?.length ?? null;
+  useEffect(() => {
+    if (count === null) return;
+    getEventBus<RunsListE2EEvents>().dispatch("e2e:embeddings:runs-listed", {
+      count,
+    });
+  }, [count]);
 
   const runActions = (run: VisualizationRun) => {
     // No actions on pending runs: Refresh needs results, and Delete
@@ -149,6 +173,33 @@ export default function RunsList({
     );
   };
 
+  const isSettled = (key: string | null) =>
+    Boolean(runs?.some((r) => r.brainKey === key && (r.ready || r.error)));
+  const delegated = pendingRuns.filter((p) => !isSettled(p.brain_key));
+  const inProgress: PendingRunWithView[] = (runs ?? [])
+    .filter(
+      (r) =>
+        !r.ready &&
+        !r.error &&
+        !delegated.some((p) => p.brain_key === r.brainKey),
+    )
+    .map((r) => ({
+      id: `registered:${r.brainKey}`,
+      operator: "",
+      run_state: "in_progress",
+      label: null,
+      brain_key: r.brainKey,
+    }));
+  const unregistered = [...delegated, ...inProgress];
+  const settledRuns = runs?.filter((r) => r.ready || r.error) ?? [];
+
+  const { open: openPending, screen: pendingScreen } = usePendingRunScreen(
+    unregistered,
+    "Your embeddings are being computed. You can leave this panel; the run will be listed here when it finishes.",
+  );
+
+  if (pendingScreen) return <RunScreen {...pendingScreen} />;
+
   if (!runs) {
     return (
       <div className="emb-runs-page">
@@ -163,7 +214,11 @@ export default function RunsList({
     <div className="emb-runs-page" data-cy="embeddings-runs-page">
       {runs.length > 0 && (
         <div className="emb-runs-header">
-          <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            data-cy="embeddings-runs-count"
+          >
             {runs.length} visualization{runs.length === 1 ? "" : "s"}
           </Text>
           {onCreate && (
@@ -191,7 +246,7 @@ export default function RunsList({
             </Text>
           </div>
         )}
-        {runs.length === 0 ? (
+        {settledRuns.length === 0 && unregistered.length === 0 ? (
           showUpsell ? (
             // Builds that can't compute in-app show the enterprise
             // landing instead of a dead-end empty state (FOEPD-4369)
@@ -222,9 +277,19 @@ export default function RunsList({
           )
         ) : (
           <div className="emb-runs-stack">
-            {runs.map((run) => (
+            {unregistered.map((pending) => (
+              <PendingRunCard
+                key={pending.id}
+                title={pending.brain_key ?? pending.label ?? pending.operator}
+                runState={pending.run_state}
+                onOpen={() => openPending(pending.id)}
+                onViewRun={pending.onView}
+              />
+            ))}
+            {settledRuns.map((run) => (
               <RunCard
                 key={run.brainKey}
+                testId={`embeddings-run-${run.brainKey}`}
                 icon={IconName.Embeddings}
                 title={run.brainKey}
                 badge={run.dims ? `${run.dims}D` : undefined}

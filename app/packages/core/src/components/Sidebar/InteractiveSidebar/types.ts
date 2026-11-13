@@ -21,3 +21,8 @@ export type RenderEntry = (
     cb: () => void,
   ) => void,
 ) => { children: React.ReactNode; disabled?: boolean };
+
+/** A sidebar's entries finished animating into place, in `container` */
+export type SidebarEvents = {
+  "animation-onRest": { container: HTMLElement };
+};

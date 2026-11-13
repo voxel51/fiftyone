@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeBucketId,
   countSelection,
   capturedScopeSources,
   normalizeSelectionMembers,
@@ -20,9 +21,9 @@ import {
   newSelectionBucketId,
   normalizeSelectionBucketName,
   normalizeSelectionBuckets,
-  routeSelectionBucket,
-  selectionBucketGesture,
+  selectionBucketIcon,
   selectionBucketTitle,
+  unionCaptures,
   selectionCaptureKey,
   selectionDomainDataset,
 } from "./model";
@@ -214,25 +215,47 @@ describe("scope helpers", () => {
 });
 
 describe("selection buckets", () => {
-  it("routes clicks by bucket position and treats unbound modifiers as plain clicks", () => {
-    const one = [{ id: "primary" }];
-    const two = [{ id: "primary" }, { id: "b" }];
-    const three = [...two, { id: "c" }];
-    expect(routeSelectionBucket({}, three).id).toBe("primary");
-    expect(routeSelectionBucket({ metaKey: true }, three).id).toBe("b");
-    expect(routeSelectionBucket({ ctrlKey: true }, three).id).toBe("b");
-    expect(routeSelectionBucket({ altKey: true }, three).id).toBe("c");
-    expect(
-      routeSelectionBucket({ altKey: true, metaKey: true }, three).id,
-    ).toBe("c");
-    expect(routeSelectionBucket({ altKey: true }, two).id).toBe("primary");
-    expect(routeSelectionBucket({ altKey: true, metaKey: true }, two).id).toBe(
-      "b",
+  it("keeps one section active, the first unless another was pressed", () => {
+    const three = [{ id: "primary" }, { id: "b" }, { id: "c" }];
+    expect(activeBucketId(three, "")).toBe("primary");
+    expect(activeBucketId(three, "c")).toBe("c");
+    // an active section that was removed falls back to the first
+    expect(activeBucketId(three, "gone")).toBe("primary");
+  });
+
+  it("unions sections, keeping each parent's broadest capture", () => {
+    const whole: EpisodeSelection = {
+      episodeId: "a",
+      members: [{ episodeId: "a", kind: "episode" }],
+    };
+    const early: EpisodeSelection = {
+      episodeId: "a",
+      members: [segment("0", "10")],
+    };
+    const late: EpisodeSelection = {
+      episodeId: "a",
+      members: [segment("20", "30")],
+    };
+    const one = new Map([["a", early]]);
+    expect(unionCaptures([one])).toBe(one);
+    expect(unionCaptures([one, new Map([["a", whole]])]).get("a")).toEqual(
+      whole,
     );
-    expect(routeSelectionBucket({ metaKey: true }, one).id).toBe("primary");
-    expect(selectionBucketGesture(0)).toBe("click");
-    expect(selectionBucketGesture(1)).toBe("command");
-    expect(selectionBucketGesture(2)).toBe("option");
+    expect(unionCaptures([new Map([["a", whole]]), one]).get("a")).toEqual(
+      whole,
+    );
+    expect(
+      unionCaptures([one, new Map([["a", late]])]).get("a")?.members,
+    ).toEqual([segment("0", "10"), segment("20", "30")]);
+  });
+
+  it("wears a shape by position until one is picked", () => {
+    expect(selectionBucketIcon({ id: "a" }, 0)).toBe("star");
+    expect(selectionBucketIcon({ id: "b" }, 1)).toBe("triangle");
+    expect(selectionBucketIcon({ id: "c" }, 2)).toBe("square");
+    expect(selectionBucketIcon({ id: "c", icon: "thumbsUp" }, 2)).toBe(
+      "thumbsUp",
+    );
   });
 
   it("normalizes stored layouts: junk, duplicates, long names, unknown icons, and the cap", () => {
@@ -240,7 +263,7 @@ describe("selection buckets", () => {
     expect(normalizeSelectionBuckets([])).toEqual([{ id: "primary" }]);
     expect(
       normalizeSelectionBuckets([
-        { id: "primary", name: "  Definitely keep  ", icon: "approve" },
+        { id: "primary", name: "  Definitely keep these  ", icon: "check" },
         { id: "primary" },
         { id: "bad|id" },
         { id: "b", icon: "sparkles", name: 3 },
@@ -249,7 +272,7 @@ describe("selection buckets", () => {
         { id: "d" },
       ]),
     ).toEqual([
-      { id: "primary", name: "Definitely", icon: "approve" },
+      { id: "primary", name: "Definitely keep these", icon: "check" },
       { id: "b" },
       { id: "c" },
     ]);
@@ -267,7 +290,7 @@ describe("selection buckets", () => {
     expect(isPersistentDomain("ds|conv#b1")).toBe(false);
     expect(selectionDomainDataset("ds|conv")).toBe("ds");
     expect(selectionDomainDataset("ds")).toBe("ds");
-    expect(selectionBucketTitle({ id: "x" }, 1)).toBe("Bucket 2");
+    expect(selectionBucketTitle({ id: "x" }, 1)).toBe("Section 2");
     expect(selectionBucketTitle({ id: "x", name: "Keep" }, 1)).toBe("Keep");
     expect(newSelectionBucketId()).toMatch(/^b[a-z0-9]+$/);
   });

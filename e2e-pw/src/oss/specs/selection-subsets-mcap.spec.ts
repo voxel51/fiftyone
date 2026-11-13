@@ -1,16 +1,20 @@
-import { promises as fs } from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import { savedSegmentsShown } from "src/oss/poms/saved-segments";
 import { SelectionTrayPom } from "src/oss/poms/selection-tray";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { ViewBarPom } from "src/oss/poms/viewbar/viewbar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { EventUtils } from "src/shared/event-utils";
 import { MCAP_FIXTURE_CONTRACT } from "src/shared/media-factory/mcap";
 
-type McapMedia = { readonly episodeA: string; readonly episodeB: string };
+const { tinyA, tinyB } = MCAP_FIXTURE_CONTRACT;
+const EPISODES = [tinyA, tinyB];
+const MS = 1_000_000;
+/** The fixture seeks on a 30 Hz display clock, so 200 ms lands at 233 ms */
+const BRAKING_START = "2024-01-01 00:00:00.233";
+
 const test = base.extend<
   {
     datasetName: string;
@@ -20,83 +24,91 @@ const test = base.extend<
     tray: SelectionTrayPom;
     viewBar: ViewBarPom;
   },
-  { mcapMedia: McapMedia }
+  { multimodalServer: void }
 >({
-  mcapMedia: [
-    async ({ foWebServer, mediaFactory }, use) => {
+  multimodalServer: [
+    async ({ foWebServer }, use) => {
       const previous = process.env.VFF_MULTIMODAL;
       process.env.VFF_MULTIMODAL = "1";
-      const directory = await fs.mkdtemp(
-        path.join(os.tmpdir(), "selection-mcap-"),
-      );
-      const episodeA = path.join(
-        directory,
-        MCAP_FIXTURE_CONTRACT.tinyA.fileName,
-      );
-      const episodeB = path.join(
-        directory,
-        MCAP_FIXTURE_CONTRACT.tinyB.fileName,
-      );
       try {
         await foWebServer.startWebServer();
-        await Promise.all([
-          mediaFactory.createMcapFixture({
-            kind: MCAP_FIXTURE_CONTRACT.tinyA.kind,
-            outputPath: episodeA,
-          }),
-          mediaFactory.createMcapFixture({
-            kind: MCAP_FIXTURE_CONTRACT.tinyB.kind,
-            outputPath: episodeB,
-          }),
-        ]);
-        await use({ episodeA, episodeB });
+        await use();
       } finally {
         await foWebServer.stopWebServer();
-        await fs.rm(directory, { recursive: true, force: true });
         if (previous === undefined) delete process.env.VFF_MULTIMODAL;
         else process.env.VFF_MULTIMODAL = previous;
       }
     },
     { scope: "worker", auto: true },
   ],
-  datasetName: async ({ fiftyoneLoader, mcapMedia }, use) => {
+  datasetName: async ({ datasetFactory }, use) => {
     const datasetName = getUniqueDatasetNameWithPrefix("selection-mcap");
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-import fiftyone.core.tags as fot
-
-dataset = fo.Dataset("${datasetName}")
-dataset.persistent = True
-dataset.add_samples([
-    fo.Sample(filepath=r"${mcapMedia.episodeA}", name="first-episode"),
-    fo.Sample(filepath=r"${mcapMedia.episodeB}", name="second-episode"),
-])
-first, second = list(dataset)
-fot.add_temporal_tags(dataset, [
-    fot.TemporalTag(first.id, 200_000_000, 500_000_000, "braking", anchor="/camera/front"),
-    fot.TemporalTag(first.id, 1_000_000_000, 1_300_000_000, "turning", anchor="/points"),
-    fot.TemporalTag(second.id, 300_000_000, 600_000_000, "braking", anchor="/camera/rear"),
-    fot.TemporalTag(first.id, 300_000_000, 400_000_000, "focus", anchor="/camera/front"),
-    fot.TemporalTag(first.id, 250_000_000, 350_000_000, "focus", anchor="/points"),
-])
-`);
-    try {
-      await use(datasetName);
-    } finally {
-      await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-`);
-    }
+    await datasetFactory.createDataset({
+      datasetName,
+      mediaType: "multimodal",
+      numSamples: EPISODES.length,
+      mcapOptions: (index) => ({ kind: EPISODES[index].kind }),
+      fileNames: (index) => EPISODES[index].fileName.replace(/\.mcap$/, ""),
+      temporalTags: [
+        {
+          sample: 0,
+          start: 200 * MS,
+          end: 500 * MS,
+          tag: "braking",
+          anchor: "/camera/front",
+        },
+        {
+          sample: 0,
+          start: 1000 * MS,
+          end: 1300 * MS,
+          tag: "turning",
+          anchor: "/points",
+        },
+        {
+          sample: 1,
+          start: 300 * MS,
+          end: 600 * MS,
+          tag: "braking",
+          anchor: "/camera/rear",
+        },
+        {
+          sample: 0,
+          start: 300 * MS,
+          end: 400 * MS,
+          tag: "focus",
+          anchor: "/camera/front",
+        },
+        {
+          sample: 0,
+          start: 250 * MS,
+          end: 350 * MS,
+          tag: "focus",
+          anchor: "/points",
+        },
+      ],
+    });
+    await use(datasetName);
   },
   grid: async ({ page, eventUtils }, use) => use(new GridPom(page, eventUtils)),
   modal: async ({ page, eventUtils }, use) =>
     use(new ModalPom(page, eventUtils)),
   sidebar: async ({ page }, use) => use(new SidebarPom(page)),
-  tray: async ({ page }, use) => use(new SelectionTrayPom(page)),
-  viewBar: async ({ page }, use) => use(new ViewBarPom(page)),
+  tray: async ({ page, eventUtils }, use) =>
+    use(new SelectionTrayPom(page, eventUtils)),
+  viewBar: async ({ page, eventUtils }, use) =>
+    use(new ViewBarPom(page, eventUtils)),
 });
+
+/** Filter the grid to the braking and turning ranges: 3 across both episodes */
+async function filterDrivingMoments(
+  sidebar: SidebarPom,
+  tray: SelectionTrayPom,
+) {
+  await sidebar.clickFieldDropdown("_temporal_tags");
+  await sidebar.applyFilter("braking");
+  await sidebar.applyFilter("turning");
+  await tray.untilSettledEmpty("Act on 3 segments across 2 episodes");
+}
 
 test("saved MCAP segments reopen as parent episodes on existing tracks", async ({
   datasetName,
@@ -108,58 +120,58 @@ test("saved MCAP segments reopen as parent episodes on existing tracks", async (
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldDropdown("_temporal_tags");
-  await sidebar.applyFilter("braking");
-  await sidebar.applyFilter("turning");
-  await expect(tray.locator).toContainText("3 segments across 2 episodes");
+  await filterDrivingMoments(sidebar, tray);
 
   await tray.createSubset("Driving moments");
-  await tray.openCreatedSubset();
-  await expect(tray.scope).toContainText("Driving moments");
-  await expect(tray.scope).toContainText("2 episodes · 3 segments");
+  await grid.afterSavedSegmentsShown(() => tray.openCreatedSubset(), 2);
+  await tray.assert.describesScope(
+    "Browsing saved segments in Driving moments. Filters narrow episodes; temporal filters narrow ranges. 3 segments saved in this subset.",
+  );
   await grid.assert.isTileCountEqualTo(2);
-  const savedBadges = grid.locator.getByTestId("saved-segment-tile");
-  await expect(savedBadges).toHaveCount(2);
-  await expect(savedBadges.nth(0)).toContainText("2 segments");
-  await expect(savedBadges.nth(1)).toContainText("1 segment");
+  await grid.assert.savedSegmentCounts(["2 segments", "1 segment"]);
 
-  await grid.openNthSample(0);
-  await modal.episode.waitForReady(MCAP_FIXTURE_CONTRACT.tinyA.fileName);
+  await modal.afterSavedRangesShown(
+    () => modal.episode.afterReady(tinyA.fileName, () => grid.openNthSample(0)),
+    modal.episode.utcTime(BRAKING_START),
+  );
   await modal.episode.expectTileTitles(["camera/front", "points"]);
-  await expect(
-    modal.savedRangeBarsFor("Temporal tag: braking"),
-  ).toHaveAttribute("title", /Temporal tag: braking.*\(0\.20-0\.50s\)/);
-  await expect(
-    modal.savedRangeBarsFor("Temporal tag: turning"),
-  ).toHaveAttribute("title", /Temporal tag: turning.*\(1\.00-1\.30s\)/);
-  // The fixture seeks on a 30 Hz display clock, so 200 ms lands at 233 ms.
-  await modal.episode.expectUtcTime("2024-01-01 00:00:00.233");
-  await modal.episode.navigateDatasetSample(
-    "forward",
-    MCAP_FIXTURE_CONTRACT.tinyB.fileName,
-  );
-  await expect(modal.savedRangeBarsFor("Temporal tag: turning")).toHaveCount(0);
-  await expect(
-    modal.savedRangeBarsFor("Temporal tag: braking"),
-  ).toHaveAttribute("title", /Temporal tag: braking.*\(0\.30-0\.60s\)/);
-  await modal.episode.navigateDatasetSample(
-    "backward",
-    MCAP_FIXTURE_CONTRACT.tinyA.fileName,
-  );
-  await expect(
-    modal.savedRangeBarsFor("Temporal tag: turning"),
-  ).toHaveAttribute("title", /Temporal tag: turning.*\(1\.00-1\.30s\)/);
+  await modal.assert.showsSavedRangesFor("Temporal tag: braking", [
+    "Temporal tag: braking  (0.20-0.50s)",
+  ]);
+  await modal.assert.showsSavedRangesFor("Temporal tag: turning", [
+    "Temporal tag: turning  (1.00-1.30s)",
+  ]);
+  await modal.episode.expectUtcTime(BRAKING_START);
+  await modal.episode.navigateDatasetSample("forward", tinyB.fileName, [
+    savedSegmentsShown("timeline"),
+  ]);
+  await modal.assert.showsSavedRangesFor("Temporal tag: turning", []);
+  await modal.assert.showsSavedRangesFor("Temporal tag: braking", [
+    "Temporal tag: braking  (0.30-0.60s)",
+  ]);
+  await modal.episode.navigateDatasetSample("backward", tinyA.fileName, [
+    savedSegmentsShown("timeline"),
+  ]);
+  await modal.assert.showsSavedRangesFor("Temporal tag: turning", [
+    "Temporal tag: turning  (1.00-1.30s)",
+  ]);
+
+  // a saved range's track starts pinned; unpinning it lasts across reopening
   await modal.episode.toggleTracksDrawer();
   const turningPin = modal.episode.savedRangePin("Temporal tag: turning");
+  // component-only: the pin's pressed state is the toggle's own
   await expect(turningPin).toHaveAttribute("aria-pressed", "true");
   await turningPin.click();
+  // component-only: the pin's pressed state is the toggle's own
   await expect(turningPin).toHaveAttribute("aria-pressed", "false");
   await modal.episode.toggleTracksDrawer();
   await modal.close();
-  await grid.openNthSample(0);
-  await modal.episode.waitForReady(MCAP_FIXTURE_CONTRACT.tinyA.fileName);
-  await modal.episode.expectUtcTime("2024-01-01 00:00:00.233");
+  await modal.afterSavedRangesShown(
+    () => modal.episode.afterReady(tinyA.fileName, () => grid.openNthSample(0)),
+    modal.episode.utcTime(BRAKING_START),
+  );
   await modal.episode.toggleTracksDrawer();
+  // component-only: the reopened toggle shows the pin state it restored
   await expect(
     modal.episode.savedRangePin("Temporal tag: turning"),
   ).toHaveAttribute("aria-pressed", "false");
@@ -177,36 +189,42 @@ test("whole episodes and segments retain separate action scopes", async ({
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.toggleSelectNthSample(0);
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
   await sidebar.clickFieldDropdown("_temporal_tags");
-  await sidebar.applyFilter("braking");
-  await grid.toggleSelectNthSample(1);
-  await expect(tray.locator).toContainText(/1\s*episode selected/);
-  await expect(tray.locator).toContainText(/1\s*segment selected/);
+  // both episodes have a braking range, so each tile remounts as a range
+  await grid.afterCustomTilesMounted(2, () => sidebar.applyFilter("braking"));
+  await tray.afterSettled(() => grid.toggleSelectNthSample(1), { cards: 2 });
+  await tray.assert.pills(["1 episode selected", "1 segment selected"]);
 
+  // the subset opens on its whole episodes; its segments are a second scope
   await tray.createSubset("Mixed drive");
-  await tray.openCreatedSubset();
-  await tray.chooseSubset("Mixed drive", "Whole episodes");
+  await grid.afterCustomTilesMounted(1, () => tray.openCreatedSubset());
   await grid.assert.isTileCountEqualTo(1);
-  await expect(tray.locator).toContainText("Act on all episodes in the grid");
-  await grid.openFirstSample();
-  await modal.episode.waitForReady(MCAP_FIXTURE_CONTRACT.tinyA.fileName);
+  await tray.assert.pills(["1 episode selected", "1 segment selected"]);
+  // The retained segment belongs to the other episode, outside this scope.
+  await tray.clearKind("episode", 1, 1);
+  await tray.assert.cardLabels([`${tinyB.fileName}, 1 segment, not in view`]);
+  await tray.clear();
+  await tray.assert.targetsAllResults();
+  await modal.episode.afterReady(tinyA.fileName, () => grid.openFirstSample());
   await modal.close();
 
-  await tray.chooseSubset("Mixed drive", "Segments");
+  await grid.afterSavedSegmentsShown(() =>
+    tray.chooseSubset("Mixed drive", "Segments"),
+  );
   await grid.assert.isTileCountEqualTo(1);
-  await expect(tray.locator).toContainText("Act on 1 segment across 1 episode");
-  await grid.openFirstSample();
-  await modal.episode.waitForReady(MCAP_FIXTURE_CONTRACT.tinyB.fileName);
+  await tray.untilSettledEmpty("Act on 1 segment across 1 episode");
+  await modal.episode.afterReady(tinyB.fileName, () => grid.openFirstSample());
   await modal.close();
-  await grid.toggleSelectNthSample(0);
-  await expect(tray.locator).toContainText(/1\s*segment selected/);
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
+  await tray.assert.pills(["1 segment selected"]);
   await tray.createSubset("Second range only");
-  await tray.openCreatedSubset();
-  await expect(tray.scope).toContainText(/1 episode\s*·\s*1 segment/);
+  await grid.afterSavedSegmentsShown(() => tray.openCreatedSubset());
+  await tray.assert.describesScope(
+    "Browsing saved segments in Second range only. Filters narrow episodes; temporal filters narrow ranges. 1 segment saved in this subset.",
+  );
   await grid.assert.isTileCountEqualTo(1);
-  await grid.openFirstSample();
-  await modal.episode.waitForReady(MCAP_FIXTURE_CONTRACT.tinyB.fileName);
+  await modal.episode.afterReady(tinyB.fileName, () => grid.openFirstSample());
   await modal.close();
 });
 
@@ -221,107 +239,92 @@ test("filters narrow saved MCAP ranges without changing stored membership", asyn
   viewBar,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldDropdown("_temporal_tags");
-  await sidebar.applyFilter("braking");
-  await sidebar.applyFilter("turning");
+  await filterDrivingMoments(sidebar, tray);
   await tray.createSubset("Filterable moments");
-  await tray.openCreatedSubset();
-  await expect(tray.scope).toContainText(/2 episodes\s*·\s*3 segments/);
+  await grid.afterSavedSegmentsShown(() => tray.openCreatedSubset(), 2);
+  await grid.assert.savedSegmentCounts(["2 segments", "1 segment"]);
 
   const editor = await viewBar.addStage("Limit");
   await editor.fill("limit", "1");
-  await grid.run(() => editor.commit("limit"));
+  await grid.afterSavedSegmentsShown(() =>
+    grid.run(() => editor.commit("limit")),
+  );
   await grid.assert.isTileCountEqualTo(1);
-  await expect(tray.scope).toContainText(/1 episode\s*·\s*2 segments/);
+  await grid.assert.savedSegmentCounts(["2 segments"]);
+  // the stored subset keeps all three
   await page.keyboard.press("Escape");
   await tray.openScope();
-  await expect(tray.subsetChoices("Filterable moments")).toContainText(
-    "3 segments",
+  await tray.assert.subsetChoiceReads(
+    "Filterable moments",
+    "Filterable moments 3 segments",
   );
   await page.keyboard.press("Escape");
 
-  await viewBar.expand();
-  await viewBar.viewStages
-    .first()
-    .getByRole("button", { name: "Remove stage" })
-    .click();
-  await grid.assert.isTileCountEqualTo(2);
-  await expect(tray.scope).toContainText(/2 episodes\s*·\s*3 segments/);
-
-  await sidebar.applyFilter("focus");
-  await grid.assert.isTileCountEqualTo(1);
-  await expect(tray.scope).toContainText(/1 episode\s*·\s*1 segment/);
-  await expect(grid.locator.getByTestId("saved-segment-tile")).toHaveAttribute(
-    "title",
-    /Temporal tag: braking.*Temporal tag: focus/,
+  await grid.afterSavedSegmentsShown(
+    () => grid.run(() => viewBar.removeStage(0)),
+    2,
   );
-  await grid.openFirstSample();
-  await modal.episode.waitForReady(MCAP_FIXTURE_CONTRACT.tinyA.fileName);
-  await expect(
-    modal.savedRangeBarsFor("Temporal tag: braking"),
-  ).toHaveAttribute("title", /Temporal tag: braking.*\(0\.30-0\.40s\)/);
-  await modal.close();
-  await sidebar.applyFilter("focus");
   await grid.assert.isTileCountEqualTo(2);
-  await expect(tray.scope).toContainText(/2 episodes\s*·\s*3 segments/);
+  await grid.assert.savedSegmentCounts(["2 segments", "1 segment"]);
+
+  // a temporal filter narrows the saved ranges to where it overlaps them
+  await grid.afterSavedSegmentsShown(() =>
+    grid.afterEntryCounts(() => sidebar.applyFilter("focus")),
+  );
+  await grid.assert.isTileCountEqualTo(1);
+  await grid.assert.describesSavedSegments(
+    "1 matching segment — Temporal tag: braking · Temporal tag: focus",
+  );
+  await modal.afterSavedRangesShown(() =>
+    modal.episode.afterReady(tinyA.fileName, () => grid.openFirstSample()),
+  );
+  await modal.assert.showsSavedRangesFor("Temporal tag: braking", [
+    "Temporal tag: braking · Temporal tag: focus  (0.30-0.40s)",
+  ]);
+  await modal.close();
+  await grid.afterSavedSegmentsShown(
+    () => grid.afterEntryCounts(() => sidebar.applyFilter("focus")),
+    2,
+  );
+  await grid.assert.isTileCountEqualTo(2);
+  await grid.assert.savedSegmentCounts(["2 segments", "1 segment"]);
 });
 
 test("tagging saved segments writes temporal ranges, not whole episodes", async ({
-  browser,
   datasetName,
   fiftyoneLoader,
   grid,
+  openFreshPage,
   page,
   sidebar,
   tray,
 }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldDropdown("_temporal_tags");
-  await sidebar.applyFilter("braking");
-  await sidebar.applyFilter("turning");
+  await filterDrivingMoments(sidebar, tray);
   await tray.createSubset("Moments to tag");
-  await tray.openCreatedSubset();
-  await grid.toggleSelectNthSample(0);
-  await expect(tray.locator).toContainText(/2\s*segments selected/);
+  await grid.afterSavedSegmentsShown(() => tray.openCreatedSubset(), 2);
+  await tray.afterSettled(() => grid.toggleSelectNthSample(0), { cards: 1 });
+  await tray.assert.pills(["2 segments selected"]);
 
-  const tagTrigger = tray.locator.getByRole("button", {
-    name: "Tag",
-    exact: true,
-  });
-  await tagTrigger.click();
+  // segments carry no labels of their own to tag
+  await tray.openTagPicker();
   await expect(page.getByRole("radio", { name: "Labels" })).toBeDisabled();
-  await tagTrigger.click();
+  await tray.closeTagPicker();
   await tray.tagSamples("reviewed-range");
 
-  await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-import fiftyone.core.tags as fot
-
-dataset = fo.load_dataset("${datasetName}")
-first, second = list(dataset)
-assert not first.tags and not second.tags
-reviewed = [tag for tag in fot.list_temporal_tags(dataset) if tag.tag == "reviewed-range"]
-assert sorted((tag.sample_id, tag.start, tag.end, tag.anchor) for tag in reviewed) == sorted([
-    (first.id, 200_000_000, 500_000_000, "/camera/front"),
-    (first.id, 1_000_000_000, 1_300_000_000, "/points"),
-])
-`);
-
-  const context = await browser.newContext();
-  try {
-    const freshPage = await context.newPage();
-    await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
-    const freshSidebar = new SidebarPom(freshPage);
-    const freshTray = new SelectionTrayPom(freshPage);
-    // The server session may still be browsing the saved subset. Start from
-    // the full dataset so this checks the temporal tag filter itself.
-    await freshTray.chooseAllSamples();
-    await freshSidebar.clickFieldDropdown("_temporal_tags");
-    await freshSidebar.applyFilter("reviewed-range");
-    await expect(freshTray.locator).toContainText(
-      /2 segments across 1 episode/,
-    );
-  } finally {
-    await context.close();
-  }
+  const freshPage = await openFreshPage();
+  await fiftyoneLoader.waitUntilGridVisible(freshPage, datasetName);
+  const freshSidebar = new SidebarPom(freshPage);
+  const freshEvents = new EventUtils(freshPage);
+  const freshGrid = new GridPom(freshPage, freshEvents);
+  const freshTray = new SelectionTrayPom(freshPage, freshEvents);
+  // Captures are shared with the server session. Clear the restored pick so
+  // this check acts on the tagged ranges it filters, not that explicit pick.
+  await freshTray.clear();
+  // a fresh page browses every episode
+  await freshSidebar.clickFieldDropdown("_temporal_tags");
+  await freshGrid.afterEntryCounts(() =>
+    freshSidebar.applyFilter("reviewed-range"),
+  );
+  await freshTray.untilSettledEmpty("Act on 2 segments across 1 episode");
 });

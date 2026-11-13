@@ -654,3 +654,125 @@ class ConvertedSubsetSDKTests(unittest.TestCase):
             )
         finally:
             dataset.delete()
+
+
+class SubsetCaptureTests(unittest.TestCase):
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(filepath="/tmp/subset-capture-%s.jpg" % i, rank=i)
+                for i in range(4)
+            ]
+        )
+        self.dataset.save_view(
+            "low", self.dataset.match(fo.ViewField("rank") < 2)
+        )
+        self.dataset.save_view(
+            "high", self.dataset.match(fo.ViewField("rank") >= 2)
+        )
+
+    def tearDown(self):
+        self.dataset.delete()
+
+    def _saved_view(self, name):
+        doc = self.dataset._get_saved_view_doc(name)
+        return {"id": str(doc.id), "name": doc.name, "slug": doc.slug}
+
+    def test_saved_view_captures_record_the_query_and_its_definition(self):
+        low = self.dataset.load_saved_view("low")
+        subset = self.dataset.create_subset("Low", low)
+
+        [capture] = self.dataset.get_subset_info(subset["id"])["captures"]
+
+        self.assertEqual(capture["savedView"], self._saved_view("low"))
+        self.assertEqual(capture["view"], low._serialize(include_uuids=False))
+        self.assertEqual(capture["added"], 2)
+        self.assertIsInstance(capture["operationId"], str)
+        self.assertTrue(capture["capturedAt"].endswith("+00:00"))
+        self.assertEqual(subset["captures"], [capture])
+
+    def test_captures_accumulate_and_outlive_their_saved_views(self):
+        subset_id = self.dataset.create_subset(
+            "Mixed", self.dataset.load_saved_view("low")
+        )["id"]
+        self.dataset.add_subset_members(
+            subset_id, self.dataset.load_saved_view("high")
+        )
+        low = self._saved_view("low")
+
+        self.dataset.delete_saved_view("low")
+        self.dataset.update_saved_view_info("high", {"name": "top"})
+
+        captures = self.dataset.get_subset_info(subset_id)["captures"]
+        self.assertEqual(
+            [c["savedView"]["name"] for c in captures], ["high", "low"]
+        )
+        self.assertEqual(captures[1]["savedView"], low)
+        self.assertEqual(self.dataset.load_subset(subset_id).count(), 4)
+
+    def test_a_retried_add_is_one_capture(self):
+        subset_id = self.dataset.create_subset("Retried")["id"]
+        high = self.dataset.load_saved_view("high")
+        for _ in range(2):
+            self.dataset.add_subset_members(
+                subset_id, high, operation_id="same-add"
+            )
+
+        captures = self.dataset.get_subset_info(subset_id)["captures"]
+        self.assertEqual(len(captures), 1)
+        self.assertEqual(captures[0]["operationId"], "same-add")
+
+    def test_explicit_ids_have_no_definition_and_duplicates_no_capture(self):
+        ids = self.dataset.values("id")
+        subset_id = self.dataset.create_subset("Picked", ids[:1])["id"]
+        self.dataset.add_subset_members(subset_id, ids[:1])
+
+        [capture] = self.dataset.get_subset_info(subset_id)["captures"]
+        self.assertIsNone(capture["savedView"])
+        self.assertIsNone(capture["view"])
+        self.assertEqual(capture["added"], 1)
+
+    def test_large_definitions_are_left_out(self):
+        unrelated = [str(ObjectId()) for _ in range(1000)]
+        subset = self.dataset.create_subset(
+            "Wide", self.dataset.exclude(unrelated)
+        )
+
+        [capture] = subset["captures"]
+        self.assertIsNone(capture["view"])
+        self.assertEqual(capture["added"], 4)
+
+    def test_captures_are_listed_only_with_metadata(self):
+        subset = self.dataset.create_subset(
+            "Low", self.dataset.load_saved_view("low")
+        )
+
+        [plain] = fosub.browse_subsets(self.dataset)["subsets"]
+        [full] = self.dataset.list_subsets(info=True)
+        self.assertNotIn("captures", plain)
+        self.assertEqual(full["captures"], subset["captures"])
+
+    def test_app_captures_name_the_loaded_saved_view(self):
+        import fiftyone.server.selection as foss
+
+        low = self.dataset.load_saved_view("low")
+        subset_id = fosub.create_subset(self.dataset, "From the App")["id"]
+        foss.prepare_subset_add(
+            self.dataset,
+            {
+                "subsetId": subset_id,
+                "operationId": "app-add",
+                "view": low._serialize(),
+                "members": list(
+                    {"episodeId": i, "kind": "episode"}
+                    for i in low.values("id")
+                ),
+                "savedView": "low",
+            },
+        )
+        fosub.apply_add(self.dataset, "app-add")
+
+        [capture] = self.dataset.get_subset_info(subset_id)["captures"]
+        self.assertEqual(capture["savedView"], self._saved_view("low"))
+        self.assertEqual(len(capture["view"]), 1)

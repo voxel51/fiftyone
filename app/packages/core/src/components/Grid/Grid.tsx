@@ -6,7 +6,6 @@ import {
   useGridSelection,
   useLoadGridSelection,
   useSyncLegacySelection,
-  useSyncSelectionScope,
 } from "@fiftyone/state/src/selection";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
@@ -37,6 +36,7 @@ import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
 import useUpdates from "./useUpdates";
 import useZoomSetting from "./useZoomSetting";
+import { SelectionTrayPortal } from "./Selection/SelectionTrayPortal";
 import SelectionTray from "./Selection/SelectionTray";
 import { useSavedSegmentTileDecorator } from "./Selection/savedSegmentTileDecorator";
 import { useGroupMatchTileDecorator } from "./GroupMatchPills";
@@ -47,16 +47,6 @@ const MAX_ROWS = 200;
 function Grid() {
   useLoadGridSelection();
   useSyncLegacySelection();
-  useSyncSelectionScope();
-  const selection = useGridSelection();
-  useSavedSegmentTileDecorator(
-    Boolean(
-      selection.request.boundary.subsetId &&
-      selection.request.boundary.subsetScope === "segments" &&
-      !selection.conversion,
-    ),
-  );
-  useGroupMatchTileDecorator();
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
@@ -67,6 +57,11 @@ function Grid() {
   useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
+  const { get, set, jump: anchor } = useScrollLocation(pageReset);
+  const resetLocation = React.useCallback(
+    () => anchor({ page: 0, at: null }),
+    [anchor],
+  );
 
   // divide by two, half for the hidden cache and half for max shown
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
@@ -77,35 +72,38 @@ function Grid() {
     ...useLabelVisibility(),
   });
 
-  const { page, store } = useSpotlightPager({
+  const { page, store, getPreview, prepare } = useSpotlightPager({
     clearRecords: reset,
+    scopeKey: pageReset,
     pageSelector: pageParameters,
     records,
+    resetLocation,
     zoomSelector: gridCrop,
   });
 
-  const selectBucket = useGridSelectionClick({ records, selection, page });
+  const selection = useGridSelection(getPreview);
+  useSavedSegmentTileDecorator(
+    Boolean(
+      selection.request.boundary.subsetId &&
+      selection.request.boundary.subsetScope === "segments" &&
+      !selection.conversion,
+    ),
+  );
+  useGroupMatchTileDecorator();
+  const pickTile = useGridSelectionClick({ records, selection, page });
   useBucketTileDecorator(selection.enabled && selection.buckets.length > 1, {
     datasetId: selection.datasetId,
     domainId: selection.domainId,
     unit: selection.unit,
-    select: selectBucket,
+    select: pickTile,
   });
   const { getFontSize, lookerOptions, renderer } = useRenderer({
     cache,
     id,
     records,
     store,
-    selectBucket,
+    pickTile,
   });
-  const { get, set, jump: anchor } = useScrollLocation(pageReset);
-  const jump = useGridJump({
-    records,
-    datasetId: selection.datasetId,
-    request: selection.request,
-    anchor,
-  });
-
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
 
@@ -119,9 +117,9 @@ function Grid() {
     renderer,
     setSample,
     selection,
-    selectBucket,
+    pickTile,
   });
-  refs.current = { get, page, renderer, setSample, selection, selectBucket };
+  refs.current = { get, page, renderer, setSample, selection, pickTile };
 
   const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
@@ -146,35 +144,30 @@ function Grid() {
       scrollbar: true,
       spacing,
 
-      get: (next) => refs.current.page(next),
+      get: (next) => refs.current.page(next, reset),
       onItemClick: (item) => {
         const { selection } = refs.current;
-        const { ctrlKey, metaKey, altKey, shiftKey } = item.event;
-        // Command/Ctrl-click toggles the tile in its routed bucket (the
-        // second when one exists, else the first). Option/Alt-click toggles
-        // the third bucket, and without one stays what it always was: a
-        // plain open. Shift adds a range in that same bucket.
-        if (selection.enabled && (ctrlKey || metaKey || altKey || shiftKey)) {
-          const bucket = selection.route(item.event);
-          if (
-            shiftKey ||
-            ctrlKey ||
-            metaKey ||
-            bucket !== selection.buckets[0]
-          ) {
-            void refs.current.selectBucket(
-              item.item.id.description,
-              bucket.id,
-              shiftKey,
-            );
-            return undefined;
-          }
+        const { ctrlKey, metaKey, shiftKey } = item.event;
+        // Command/Ctrl-click picks the tile into the focused sections, and
+        // Shift-click picks the range up to it; a plain click opens it.
+        if (selection.enabled && (ctrlKey || metaKey || shiftKey)) {
+          void refs.current.pickTile(item.item.id.description, shiftKey);
+          return undefined;
         }
         return shiftKey ? undefined : refs.current.setSample(item);
       },
       rowAspectRatioThreshold: zoom,
     });
   }, [cache, autosizing, maxBytes, reset, resizing, spacing, zoom]);
+
+  const jump = useGridJump({
+    scopeKey: pageReset,
+    datasetId: selection.datasetId,
+    request: selection.request,
+    anchor,
+    prepare,
+    spotlight,
+  });
 
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
@@ -201,7 +194,13 @@ function Grid() {
         <TileDecoratorPortals />
       </div>
       {selection.enabled && (
-        <SelectionTray key={selection.domainId} locate={jump} />
+        <SelectionTrayPortal>
+          <SelectionTray
+            key={selection.domainId}
+            locate={jump}
+            getPreview={getPreview}
+          />
+        </SelectionTrayPortal>
       )}
     </div>
   );

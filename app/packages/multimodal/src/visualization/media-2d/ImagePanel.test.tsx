@@ -182,6 +182,39 @@ describe("ImagePanel", () => {
     expect(screen.getByTestId("image-texture-plane")).toBeTruthy();
   });
 
+  it("reports a failed decode as unavailable until a later frame draws", async () => {
+    const onUnavailableChange = vi.fn();
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(async () => {
+        throw new Error("corrupt image");
+      }),
+    );
+    const { rerender } = render(
+      <ImagePanel
+        frame={loadedFrame()}
+        onUnavailableChange={onUnavailableChange}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(onUnavailableChange).toHaveBeenLastCalledWith(true),
+    );
+
+    const onImageLoaded = vi.fn();
+    mockImageBitmap();
+    rerender(
+      <ImagePanel
+        frame={{ ...loadedFrame(), bytes: new Uint8Array([2]) }}
+        onImageLoaded={onImageLoaded}
+        onUnavailableChange={onUnavailableChange}
+      />,
+    );
+
+    await waitFor(() => expect(onImageLoaded).toHaveBeenCalled());
+    expect(onUnavailableChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("shares one raw texture decode between panels rendering the same texture key", async () => {
     render(
       <>

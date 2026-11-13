@@ -10,11 +10,11 @@ from the :doc:`Dataset Zoo <../dataset_zoo/index>` and the
 :doc:`Hugging Face integration <../integrations/huggingface>`.
 
 New to FiftyOne? The :doc:`Getting Started guides <../getting_started/index>`
-walk through loading data for common use cases, and FiftyOne Enterprise users
+walk through loading data for common use cases, and Voxel51 users
 can follow the :doc:`Enterprise getting started guide
 <../enterprise/getting_started>` to connect to their deployment.
 
-In FiftyOne Enterprise, you can also query your data lake directly with
+In Voxel51, you can also query your data lake directly with
 Data Lens 🚀 and work with cloud-backed media 🚀 stored in S3, GCS, MinIO, or
 Azure.
 

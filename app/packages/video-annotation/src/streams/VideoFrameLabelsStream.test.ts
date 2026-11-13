@@ -284,6 +284,24 @@ describe("VideoFrameLabelsStream mask gate", () => {
     expect(stream.bufferState(timeOfFrame(10, 30))).toBe("ready");
   });
 
+  it.each([false, true])(
+    "notifies readiness after asynchronous mask decoding with failure=%s",
+    async (fails) => {
+      const stream = buildStream();
+      seedFrame(stream, 10, ["mask-a"]);
+      if (fails) maskCache.undecodable.add("mask-a");
+      const observed: string[] = [];
+      const unsubscribe = stream.subscribeToBufferChanges(() => {
+        observed.push(stream.bufferState(timeOfFrame(10, 30)));
+      });
+      stream.prefetch([timeOfFrame(10, 30), timeOfFrame(10, 30)]);
+      expect(observed).toEqual([]);
+      await flush();
+      expect(observed).toEqual(["ready"]);
+      unsubscribe();
+    },
+  );
+
   it("prefetch decodes masks ahead of the playhead", async () => {
     const stream = buildStream();
     seedFrame(stream, 10, ["mask-a"]);
@@ -376,6 +394,10 @@ describe("VideoFrameLabelsStream mask gate", () => {
   it("does not hold stale masks when the document is replaced mid-decode", async () => {
     const stream = buildStream();
     seedFrame(stream, 10, ["mask-a"]);
+    const observed: string[] = [];
+    const unsubscribe = stream.subscribeToBufferChanges(() => {
+      observed.push(stream.bufferState(timeOfFrame(10, 30)));
+    });
 
     stream.prefetch([timeOfFrame(10, 30), timeOfFrame(10, 30)]);
 
@@ -392,6 +414,11 @@ describe("VideoFrameLabelsStream mask gate", () => {
     // ready while mask-c is undecoded.
     expect(maskCache.borrows("mask-a")).toBe(0);
     expect(stream.bufferState(timeOfFrame(10, 30))).toBe("missing");
+    expect(observed).toEqual(["missing"]);
+    stream.prefetch([timeOfFrame(10, 30), timeOfFrame(10, 30)]);
+    await flush();
+    expect(observed).toEqual(["missing", "ready"]);
+    unsubscribe();
   });
 
   it("re-gates a frame whose document is replaced", async () => {

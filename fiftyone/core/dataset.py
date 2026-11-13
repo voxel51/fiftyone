@@ -1959,6 +1959,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=field,
         )
         self._doc.set_stored_label_schema(field, copy.deepcopy(label_schema))
+
+        # Attributes the schema adds must exist on the field schema too, or
+        # the App's sidebar, filters and aggregations never see them
+        try:
+            foa.declare_label_schema_attributes(self, {field: label_schema})
+        except Exception:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to declare label schema attributes of '%s'",
+                field,
+                exc_info=True,
+            )
+
         self.save()
 
     def delete_label_schemas(self, fields=None):
@@ -5505,7 +5517,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Provenance and lineage are creation-time-only through this API. They
         preserve original attribution, not a complete audit history of later
-        membership additions or removals.
+        membership additions or removals. Each addition, including the one
+        that fills a new subset, is recorded in the subset's ``captures``:
+        when and by whom it happened, how many members it added, the view
+        stages it ran against, and the saved view it came from, if any. Pass
+        a saved view, e.g. ``dataset.load_saved_view("night")``, as
+        ``samples`` to record it.
 
         Examples::
 
@@ -5551,7 +5568,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a metadata dict including ``id``, ``name``, ``memberCount``,
             ``memberCounts``, ``created_by``, ``created_at``, ``provenance``,
-            and ``lineage``
+            ``lineage``, and ``captures``
         """
         return fosub.save_subset(
             self,
@@ -5586,7 +5603,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :meth:`update_subset_info`. ``created_by`` is the original creator
         ID (or None), and ``created_at`` is a UTC ISO 8601 timestamp (or None
         for older records). These fields, provenance, and lineage retain the
-        original attribution; they are not a complete membership audit history.
+        original attribution. ``captures`` lists the subset's most recent 100
+        additions, newest first, each with ``operationId``, ``capturedAt``,
+        ``capturedBy``, ``added``, ``savedView`` (``id``, ``name``, and
+        ``slug`` as of the capture, or None), and ``view`` (the serialized
+        stages it ran against, or None when too large to keep).
 
         Args:
             subset_id: the subset ID, scoped to this dataset
@@ -5680,7 +5701,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         must match the subset's source-reference domain.
 
         Inputs are captured in client memory; use bounded batches for large
-        selections.
+        selections. A collection is recorded in the subset's ``captures``
+        with its view stages and, for a saved view, the saved view itself.
 
         Args:
             subset_id: the subset ID, scoped to this dataset

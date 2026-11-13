@@ -26,14 +26,19 @@ const mocks = vi.hoisted(() => ({
   start: vi.fn(),
   job: vi.fn(),
   permission: null as string | null,
+  savedView: null as string | null,
 }));
 vi.mock("@fiftyone/state", () => ({
   useSetGroupSlice: () => vi.fn(),
   useGroupSlices: () => ["left", "right"],
   useSelectionSubsetDisabledReason: () => mocks.permission,
-  useClearTemporalTagConstraint: () => vi.fn(),
+  useLoadedSavedViewName: () => mocks.savedView,
+  useClearGridViewConstraints: () => vi.fn(),
+  useHoldScopedCountsUntilNextPage: () => vi.fn(),
   useGridViewScope: () => ({ refresh: 0 }),
+  useSavedViewTransientState: () => ({ fieldVisibility: null }),
   useSetView: () => mocks.setView,
+  useView: () => [],
 }));
 vi.mock("@fiftyone/state/src/selection", async () => ({
   ...(await import("@fiftyone/state/src/selection/model")),
@@ -147,6 +152,7 @@ function Host({
 beforeEach(() => {
   sessionStorage.clear();
   mocks.permission = null;
+  mocks.savedView = null;
   mocks.start
     .mockReset()
     .mockImplementation(async (_dataset, _kind, request, id) =>
@@ -193,7 +199,7 @@ it("creates a subset of exact patches with its captured view", async () => {
     view: stages,
   });
   render(<Host context={value} />);
-  fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
   await screen.findByText("No saved subsets yet");
   expect(mocks.list).toHaveBeenLastCalledWith(
     "dataset",
@@ -204,7 +210,7 @@ it("creates a subset of exact patches with its captured view", async () => {
   fireEvent.change(screen.getByLabelText("New subset name"), {
     target: { value: "Birds" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await screen.findByText("1 member added to Birds");
   expect(mocks.request).toHaveBeenCalledWith("dataset", "", {
     name: "Birds",
@@ -240,7 +246,7 @@ it("keeps the captured scope and retries the same background operation", async (
   mocks.job.mockResolvedValue(completed({}, "retried"));
   const value = context();
   const view = render(<Host context={value} />);
-  fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
   await screen.findByText("Add 1 selected episode to subset");
   expect(mocks.list).toHaveBeenLastCalledWith(
     "dataset",
@@ -283,7 +289,9 @@ it("adds all results from a snapshot token instead of member ids", async () => {
     })),
   });
   const view = render(<Host context={value} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Save as subset" }),
+  );
   await screen.findByText("Add all 120 episodes in view to subset");
   fireEvent.click(await screen.findByRole("button", { name: /^Review/ }));
   await waitFor(() =>
@@ -294,6 +302,20 @@ it("adds all results from a snapshot token instead of member ids", async () => {
   const prepare = mocks.start.mock.calls[0];
   expect(prepare?.[2]).toMatchObject({ snapshotId: "snap" });
   expect(prepare?.[2].members).toBeUndefined();
+  expect(prepare?.[2]).not.toHaveProperty("savedView");
+  act(() => view.unmount());
+});
+
+it("names the loaded saved query so the subset records its source", async () => {
+  mocks.savedView = "Night scenes";
+  const view = render(<Host context={context()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Review/ }));
+  await screen.findByText("1 member added to Review");
+  expect(mocks.start.mock.calls[0][2]).toMatchObject({
+    members: original,
+    savedView: "Night scenes",
+  });
   act(() => view.unmount());
 });
 
@@ -313,7 +335,9 @@ it("creates a subset with a description from the form and can open it", async ()
     },
   );
   const view = render(<Host context={context()} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Save as subset" }),
+  );
   await screen.findByText("No saved subsets yet");
   fireEvent.click(screen.getByRole("button", { name: "New subset" }));
   await screen.findByText("New subset from 1 selected episode");
@@ -323,7 +347,7 @@ it("creates a subset with a description from the form and can open it", async ()
   fireEvent.change(screen.getByLabelText("Description"), {
     target: { value: " After dusk " },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await screen.findByRole("status");
   expect(screen.getByRole("status").textContent).toContain(
     "1 member added to Night drives",
@@ -366,13 +390,13 @@ it("saves a new subset instead of changing the open one", async () => {
   expect(screen.queryByRole("button", { name: "New subset" })).toBeNull();
   expect(
     screen
-      .getByRole("button", { name: "Create subset" })
+      .getByRole("button", { name: "Save subset" })
       .hasAttribute("disabled"),
   ).toBe(true);
   fireEvent.change(screen.getByLabelText("New subset name"), {
     target: { value: "Night drives" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await screen.findByRole("status");
   expect(screen.getByRole("status").textContent).toContain(
     "1 member added to Night drives",
@@ -388,7 +412,9 @@ it("says so when everything was already in the subset", async () => {
     completed(request, id, "subset", { added: 0, duplicates: 1 }),
   );
   const view = render(<Host context={context()} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Add to subset" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Save as subset" }),
+  );
   fireEvent.click(await screen.findByRole("button", { name: /^Review/ }));
   await waitFor(() =>
     expect(screen.getByRole("status").textContent).toContain(
@@ -403,7 +429,7 @@ it("disables subset writes when the dataset cannot be edited", async () => {
   render(<Host context={context()} />);
   expect(
     screen
-      .getByRole("button", { name: "Add to subset" })
+      .getByRole("button", { name: "Save as subset" })
       .hasAttribute("disabled"),
   ).toBe(true);
   expect(mocks.start).not.toHaveBeenCalled();
@@ -416,7 +442,7 @@ it("opens a closable panel while a large result scope is being captured", async 
     resolve: () => new Promise(() => {}),
   });
   render(<Host context={value} />);
-  fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
   await screen.findByText("Freezing scope");
   expect(
     screen.getByRole("button", { name: /^Review/ }).hasAttribute("disabled"),
@@ -443,7 +469,7 @@ it("keeps a save reachable after closing the panel and stops without promising r
     state: body?.action === "cancel" ? "canceled" : "running",
   }));
   render(<Host context={context()} track />);
-  fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
   await screen.findByText("Add 1 selected episode to subset");
   fireEvent.click(screen.getByRole("button", { name: /^Review/ }));
   await screen.findByText("3 of 10 members");
@@ -477,7 +503,7 @@ it("saves a frozen all-slices scope with an optional opening slice", async () =>
       })}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Add to subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save as subset" }));
   fireEvent.click(
     await screen.findByRole("radio", { name: "All slices of these groups" }),
   );
@@ -486,7 +512,7 @@ it("saves a frozen all-slices scope with an optional opening slice", async () =>
   fireEvent.change(screen.getByLabelText("New subset name"), {
     target: { value: "Stereo" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Create subset" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save subset" }));
   await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
   expect(mocks.request).toHaveBeenCalledWith(
     "dataset",

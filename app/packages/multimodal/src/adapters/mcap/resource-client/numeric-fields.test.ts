@@ -56,6 +56,7 @@ describe("protobuf numeric schema enumeration", () => {
       { path: "linear.x", valueType: "double" },
       { path: "linear.y", valueType: "double" },
       { path: "linear.z", valueType: "double" },
+      { path: "frameId", valueType: "string" },
       { path: "valid", valueType: "bool" },
       { path: "sequence", valueType: "uint64" },
     ]);
@@ -81,7 +82,7 @@ describe("protobuf numeric schema enumeration", () => {
     ]);
   });
 
-  it("includes enums as numeric leaves", async () => {
+  it("includes enums as numeric leaves and text as states", async () => {
     const root = Root.fromJSON({
       nested: {
         Level: { values: { INFO: 0, WARN: 1 } },
@@ -89,6 +90,7 @@ describe("protobuf numeric schema enumeration", () => {
           fields: {
             level: { id: 1, type: "Level" },
             message: { id: 2, type: "string" },
+            payload: { id: 3, type: "bytes" },
           },
         },
       },
@@ -96,6 +98,7 @@ describe("protobuf numeric schema enumeration", () => {
 
     expect(await enumerateProtobufNumericFields(root, "Log")).toEqual([
       { path: "level", valueType: "enum" },
+      { path: "message", valueType: "string" },
     ]);
   });
 
@@ -133,7 +136,7 @@ describe("protobuf numeric schema enumeration", () => {
 });
 
 describe("numericFieldsFromSamples", () => {
-  it("unions numeric and boolean leaves across samples", () => {
+  it("unions numeric, boolean, and text leaves across samples", () => {
     const fields = numericFieldsFromSamples([
       { speed: 1.5, pose: { x: 1, name: "a" }, ok: true },
       { speed: 2.5, battery: 88 },
@@ -141,15 +144,16 @@ describe("numericFieldsFromSamples", () => {
     expect(fields).toEqual([
       { path: "speed", valueType: "number" },
       { path: "pose.x", valueType: "number" },
+      { path: "pose.name", valueType: "string" },
       { path: "ok", valueType: "bool" },
       { path: "battery", valueType: "number" },
     ]);
   });
 
-  it("bounds indexed array leaves and skips strings and nulls", () => {
+  it("bounds indexed array leaves and skips payload text and nulls", () => {
     const fields = numericFieldsFromSamples([
       { ranges: Array.from({ length: 55 }, (_, index) => index) },
-      { label: "x", missing: null },
+      { blob: "x".repeat(257), missing: null },
     ]);
 
     expect(fields).toHaveLength(50);
@@ -162,13 +166,14 @@ describe("numericFieldsFromSamples", () => {
 });
 
 describe("ROS numeric schema enumeration", () => {
-  it("collects numeric scalar leaves through nested ROS message definitions", async () => {
+  it("collects scalar leaves through nested ROS message definitions", async () => {
     expect(await enumerateRosNumericFields(ROS_TELEMETRY_SCHEMA)).toEqual([
       { path: "speed", valueType: "float64" },
       { path: "armed", valueType: "bool" },
       { path: "linear.x", valueType: "float64" },
       { path: "linear.y", valueType: "float64" },
       { path: "linear.z", valueType: "float64" },
+      { path: "label", valueType: "string" },
     ]);
   });
 
@@ -400,6 +405,7 @@ describe("enumerateMcapNumericFields", () => {
         encoding: "json",
         fields: [
           { path: "speed", valueType: "number" },
+          { path: "mode", valueType: "string" },
           { path: "battery", valueType: "number" },
         ],
         sampled: true,
@@ -510,7 +516,7 @@ describe("enumerateMcapNumericFields", () => {
     ]);
   });
 
-  it("marks decodable schemas with no numeric leaves", async () => {
+  it("marks decodable schemas with no plottable leaves", async () => {
     const reader = createReader({
       channelsById: new Map([
         [
@@ -518,7 +524,7 @@ describe("enumerateMcapNumericFields", () => {
           createChannel({
             id: 1,
             messageEncoding: "protobuf",
-            topic: "/proto-text",
+            topic: "/proto-bytes",
           }),
         ],
         [
@@ -527,7 +533,7 @@ describe("enumerateMcapNumericFields", () => {
             id: 2,
             messageEncoding: "ros1",
             schemaId: 4,
-            topic: "/ros-text",
+            topic: "/ros-time",
           }),
         ],
       ]),
@@ -540,23 +546,23 @@ describe("enumerateMcapNumericFields", () => {
                 nested: {
                   test: {
                     nested: {
-                      TextOnly: {
-                        fields: { label: { id: 1, type: "string" } },
+                      BytesOnly: {
+                        fields: { payload: { id: 1, type: "bytes" } },
                       },
                     },
                   },
                 },
               }),
             ),
-            { name: "test.TextOnly" },
+            { name: "test.BytesOnly" },
           ),
         ],
         [
           4,
-          createSchema(new TextEncoder().encode("string label"), {
+          createSchema(new TextEncoder().encode("time stamp"), {
             encoding: "ros1msg",
             id: 4,
-            name: "test_msgs/TextOnly",
+            name: "test_msgs/TimeOnly",
           }),
         ],
       ]),
@@ -567,13 +573,13 @@ describe("enumerateMcapNumericFields", () => {
         availability: "no-numeric-fields",
         encoding: "protobuf",
         fields: [],
-        topic: "/proto-text",
+        topic: "/proto-bytes",
       },
       {
         availability: "no-numeric-fields",
         encoding: "ros1",
         fields: [],
-        topic: "/ros-text",
+        topic: "/ros-time",
       },
     ]);
   });
@@ -661,6 +667,7 @@ describe("enumerateMcapNumericFields", () => {
           { path: "linear.x", valueType: "float64" },
           { path: "linear.y", valueType: "float64" },
           { path: "linear.z", valueType: "float64" },
+          { path: "label", valueType: "string" },
         ],
         sampled: true,
         topic: "/ros1",
@@ -674,6 +681,7 @@ describe("enumerateMcapNumericFields", () => {
           { path: "linear.x", valueType: "float64" },
           { path: "linear.y", valueType: "float64" },
           { path: "linear.z", valueType: "float64" },
+          { path: "label", valueType: "string" },
         ],
         sampled: true,
         topic: "/ros2",
@@ -708,7 +716,7 @@ describe("enumerateMcapNumericFields", () => {
     ]);
   });
 
-  it("marks sampled JSON topics with no numeric values", async () => {
+  it("lists text fields of a text-only JSON topic as plottable", async () => {
     const reader = createReader({
       channelsById: new Map([
         [
@@ -728,11 +736,42 @@ describe("enumerateMcapNumericFields", () => {
 
     expect(await enumerateMcapNumericFields(reader)).toEqual([
       {
+        availability: "ready",
+        encoding: "json",
+        fields: [{ path: "label", valueType: "string" }],
+        sampled: true,
+        topic: "/labels",
+      },
+    ]);
+  });
+
+  it("marks sampled JSON topics with no plottable values", async () => {
+    const reader = createReader({
+      channelsById: new Map([
+        [
+          1,
+          createChannel({
+            id: 1,
+            messageEncoding: "json",
+            topic: "/blobs",
+          }),
+        ],
+      ]),
+      indexedMessages: [
+        createMessage(jsonBytes({ data: "x".repeat(300), note: null }), {
+          channelId: 1,
+        }),
+      ],
+      schemasById: new Map(),
+    });
+
+    expect(await enumerateMcapNumericFields(reader)).toEqual([
+      {
         availability: "no-numeric-fields",
         encoding: "json",
         fields: [],
         sampled: true,
-        topic: "/labels",
+        topic: "/blobs",
       },
     ]);
   });

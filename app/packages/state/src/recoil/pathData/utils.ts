@@ -10,6 +10,10 @@ export const gatherPaths = (
 
   const recurseFields = (path) => {
     const field = get(fieldAtom(path));
+    if (!field) {
+      // Not in the (possibly exclusion-filtered) client schema.
+      return;
+    }
 
     if (get(meetsType({ path, ftype, embeddedDocType }))) {
       paths.push(path);

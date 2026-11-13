@@ -107,6 +107,7 @@ export type CloneConfig = {
 export type SimilaritySearchPanelData = {
   runs?: SimilarityRun[];
   brain_keys?: BrainKeyConfig[];
+  unready_brain_keys?: string[];
   clone_config?: CloneConfig;
   current_user?: string;
   can_manage?: boolean;

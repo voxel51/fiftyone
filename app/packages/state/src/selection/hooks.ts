@@ -11,6 +11,9 @@ import {
   type SelectionBucket,
 } from "./model";
 import {
+  activeAtom,
+  activeBucketAtom,
+  boundariesAtom,
   boundaryAtom,
   bucketCapturesAtom,
   bucketCommandAtom,
@@ -18,11 +21,14 @@ import {
   clearBucketAtom,
   foldRevealedAtom,
   membershipAtom,
+  mergeSelectionBucketIntoAtom,
+  mergeSelectionBucketsAtom,
+  moveSelectionCaptureAtom,
   refreshMetadataAtom,
-  resolvedTargetAtom,
+  restoreSelectionAtom,
   selectionAtom,
   scopeRevisionAtom,
-  targetBucketAtom,
+  type SelectionTraySnapshot,
 } from "./model/atoms";
 import type {
   EpisodeSelection,
@@ -96,14 +102,33 @@ export function useSelectionBoundary(datasetId: string) {
   ] as const;
 }
 
-/** Prepares an empty selection in a domain before switching the grid to it. */
+/** Sets a domain's browsing boundary without changing its captured choices. */
 export function useOpenSelectionBoundary() {
   const store = useStore();
   return useCallback(
     (domainId: string, boundary: SelectionBoundary) => {
-      store.set(bucketCommandAtom(domainId), { type: "clear-all" });
       store.set(boundaryAtom(domainId), boundary);
     },
+    [store],
+  );
+}
+
+/**
+ * Clears the browsing boundary every kind of view of a dataset holds, as
+ * opening the whole dataset does: no subset stays behind to come back with a
+ * later patches, frames, or clips view.
+ */
+export function useResetSelectionBoundaries() {
+  const store = useStore();
+  return useCallback(
+    (datasetId: string) =>
+      store.set(boundariesAtom, (current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([domainId]) => selectionDomainDataset(domainId) !== datasetId,
+          ),
+        ),
+      ),
     [store],
   );
 }
@@ -190,21 +215,7 @@ export function useSelectionBucketActions(datasetId: string) {
       ),
     [set],
   );
-  const restore = useCallback(
-    (bucket: SelectionBucket, index: number) =>
-      set((current) => {
-        if (
-          current.length >= MAX_SELECTION_BUCKETS ||
-          current.some((entry) => entry.id === bucket.id)
-        )
-          return current;
-        const next = [...current];
-        next.splice(Math.min(index, next.length), 0, bucket);
-        return next;
-      }),
-    [set],
-  );
-  return { add, update, remove, restore };
+  return { add, update, remove };
 }
 
 /** Every configured bucket's captures in the domain, keyed by bucket id. */
@@ -217,16 +228,67 @@ export function useSelectionMembership(datasetId: string) {
   return useAtomValue(membershipAtom(datasetId));
 }
 
-/** The bucket actions apply to, and a way to choose another. */
-export function useSelectionTarget(datasetId: string) {
-  const target = useAtomValue(resolvedTargetAtom(datasetId));
-  const set = useSetAtom(targetBucketAtom(datasetId));
-  const setTarget = useCallback(
-    (bucketId: string | null) => set(bucketId ?? ""),
-    [set],
-  );
-  return { target, setTarget };
+/**
+ * The active section, where clicks land and what the bar's actions apply
+ * to, and the press that makes a section active.
+ */
+export function useActiveSelectionBucket(domainId: string) {
+  const active = useAtomValue(activeBucketAtom(domainId));
+  const activate = useSetAtom(activeAtom(domainId));
+  return { active, activate };
 }
+
+/**
+ * Split the tray into sections, add one, fold one into a neighbor or all
+ * back into one strip, or drop one. Splitting leaves the first section
+ * active, holding what was already picked. `sectionAt` finds a section by
+ * position, adding sections up to it, so a number key always means the
+ * section it names. `move` takes a parent from one section to another, or
+ * copies it there.
+ */
+export function useSelectionSections(domainId: string) {
+  const datasetId = selectionDomainDataset(domainId);
+  const { add } = useSelectionBucketActions(datasetId);
+  const setActive = useSetAtom(activeAtom(domainId));
+  const mergeAll = useSetAtom(mergeSelectionBucketsAtom(domainId));
+  const mergeOne = useSetAtom(mergeSelectionBucketIntoAtom(domainId));
+  const moveOne = useSetAtom(moveSelectionCaptureAtom(domainId));
+  const move = useCallback(
+    (episodeId: string, from: string, into: string, copy = false) =>
+      moveOne({ episodeId, from, into, copy }),
+    [moveOne],
+  );
+  const mergeInto = useCallback(
+    (from: string, into: string) => mergeOne({ from, into }),
+    [mergeOne],
+  );
+  const remove = useRemoveSelectionBucket(domainId);
+  const store = useStore();
+  const split = useCallback(() => {
+    if (add()) setActive("");
+  }, [add, setActive]);
+  const sectionAt = useCallback(
+    (index: number) => {
+      const ids = store.get(bucketsAtom(datasetId)).map((bucket) => bucket.id);
+      while (ids.length <= index) {
+        const id = add();
+        // Past the most sections there can be
+        if (!id) return null;
+        ids.push(id);
+      }
+      return ids[index];
+    },
+    [add, datasetId, store],
+  );
+  return { split, add, sectionAt, mergeAll, mergeInto, move, remove };
+}
+
+/** Put the tray back as a snapshot had it; the undo history replays these. */
+export function useRestoreSelection(domainId: string) {
+  return useSetAtom(restoreSelectionAtom(domainId));
+}
+
+export type { SelectionTraySnapshot };
 
 /** Commands that reach across every bucket in the domain. */
 export function useSelectionBucketCommands(datasetId: string) {

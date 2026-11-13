@@ -4,34 +4,39 @@
 
 import type { ID } from "./types";
 
-export class Load<K> extends Event {
-  constructor(readonly page: K) {
-    super("load");
-  }
+export class Load<K> {
+  readonly type = "load";
+
+  constructor(readonly page: K) {}
 }
 
-export class Rejected extends Event {
-  constructor(readonly recommendedRowAspectRatioThreshold: number) {
-    super("rejected");
-  }
+export class Rejected {
+  readonly type = "rejected";
+
+  constructor(readonly recommendedRowAspectRatioThreshold: number) {}
 }
 
-export class RowChange<K> extends Event {
+export class RowChange<K> {
+  readonly type = "rowchange";
+
   constructor(
     readonly at: ID,
     readonly page: K,
     readonly offset: number,
-  ) {
-    super("rowchange");
-  }
+  ) {}
 }
 
-type EventListener<E extends Event> = (evt: E) => void;
+/** What a {@link Spotlight} sends its listeners, by event name */
+export type SpotlightEvents<K> = {
+  load: Load<K>;
+  rejected: Rejected;
+  rowchange: RowChange<K>;
+};
 
-interface EventListenerObject<E extends Event> {
+type EventListener<E> = (evt: E) => void;
+
+interface EventListenerObject<E> {
   handleEvent(object: E): void;
 }
 
-export type EventCallback<E extends Event> =
-  | EventListener<E>
-  | EventListenerObject<E>;
+export type EventCallback<E> = EventListener<E> | EventListenerObject<E>;

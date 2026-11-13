@@ -20,8 +20,8 @@ import {
 
 import { getHashLabelColorByInstance } from "../../overlays/util";
 import {
-  LabelHoveredEvent,
-  LabelUnhoveredEvent,
+  FO_LABEL_HOVERED_EVENT,
+  FO_LABEL_UNHOVERED_EVENT,
   selectiveRenderingEventBus,
 } from "../../selective-rendering-events";
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
@@ -47,16 +47,14 @@ export const dispatchTooltipEvent = <State extends BaseState>(
         : null;
 
     if (detail?.label?.instance) {
-      selectiveRenderingEventBus.emit(
-        new LabelHoveredEvent({
-          sampleId: state.config.sampleId,
-          labelId: detail.label.id,
-          instanceId: detail.label.instance?._id,
-          field: detail.label.field,
-        }),
-      );
+      selectiveRenderingEventBus.dispatch(FO_LABEL_HOVERED_EVENT, {
+        sampleId: state.config.sampleId,
+        labelId: detail.label.id,
+        instanceId: detail.label.instance?._id,
+        field: detail.label.field,
+      });
     } else {
-      selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
+      selectiveRenderingEventBus.dispatch(FO_LABEL_UNHOVERED_EVENT, null);
     }
 
     if (state.frameNumber && detail) {

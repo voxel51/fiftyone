@@ -1,3 +1,8 @@
+import {
+  createUseEventHandler,
+  getEventBus,
+  isLegacyDomMirror,
+} from "@fiftyone/events";
 import { Optional, useEventHandler, useKeydownHandler } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
@@ -22,8 +27,16 @@ import {
   PLAYHEAD_STATE_PLAYING,
   PLAYHEAD_STATE_WAITING_TO_PAUSE,
 } from "../constants";
+import type { TimelineEvents } from "./events";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { getTimelineSetFrameNumberEventName } from "./utils";
+
+const useTimelineEventHandler = createUseEventHandler<TimelineEvents>();
+
+/** e2e specs read the frame a pause lands on once its in-flight draw commits */
+type TimelineE2EEvents = {
+  "e2e:playback:paused": { timelineName: string };
+};
 
 /**
  * This hook creates a new timeline with the given configuration.
@@ -149,6 +162,7 @@ export const useCreateTimeline = (
   const configRef = useRef(config);
   const isAnimationActiveRef = useRef(false);
   const isLastDrawFinishedRef = useRef(true);
+  const lastDrawRef = useRef<Promise<void>>(Promise.resolve());
   const frameNumberRef = useRef(frameNumber);
   const onAnimationStutterRef = useRef(newTimelineProps.onAnimationStutter);
   const onPlayListenerRef = useRef<() => void>();
@@ -179,45 +193,44 @@ export const useCreateTimeline = (
     if (onPauseListenerRef.current) {
       onPauseListenerRef.current();
     }
+    lastDrawRef.current.then(() =>
+      getEventBus<TimelineE2EEvents>().dispatch("e2e:playback:paused", {
+        timelineName,
+      }),
+    );
   }, [timelineName]);
 
   const onPlayEvent = useCallback(
-    (e: CustomEvent) => {
-      if (e.detail.timelineName !== timelineName) {
-        return;
+    (detail: TimelineEvents["timeline:play"]) => {
+      if (detail.timelineName === timelineName) {
+        play();
       }
-      play();
-      e.stopPropagation();
     },
     [timelineName, play],
   );
 
   const onPauseEvent = useCallback(
-    (e: CustomEvent) => {
-      if (e.detail.timelineName !== timelineName) {
-        return;
+    (detail: TimelineEvents["timeline:pause"]) => {
+      if (detail.timelineName === timelineName) {
+        pause();
       }
-
-      pause();
-      e.stopPropagation();
     },
     [timelineName, pause],
   );
 
   const onSeek = useCallback(
-    (e: CustomEvent) => {
-      if (e.detail.timelineName !== timelineName) {
+    (detail: TimelineEvents["timeline:seek"]) => {
+      if (detail.timelineName !== timelineName) {
         return;
       }
 
       if (onSeekCallbackRefs.current) {
-        if (e.detail.start) {
+        if (detail.start) {
           onSeekCallbackRefs.current.start();
         } else {
           onSeekCallbackRefs.current.end();
         }
       }
-      e.stopPropagation();
     },
     [timelineName],
   );
@@ -294,7 +307,7 @@ export const useCreateTimeline = (
       // we don't increase frame number until the draw is complete
       isLastDrawFinishedRef.current = false;
 
-      setFrameNumber({
+      lastDrawRef.current = setFrameNumber({
         name: timelineName,
         newFrameNumber: targetFrameNumber,
       })
@@ -331,9 +344,26 @@ export const useCreateTimeline = (
     lastDrawTime.current = -1;
   }, []);
 
-  useEventHandler(window, "play", onPlayEvent);
-  useEventHandler(window, "pause", onPauseEvent);
-  useEventHandler(window, "seek", onSeek);
+  useTimelineEventHandler("timeline:play", onPlayEvent);
+  useTimelineEventHandler("timeline:pause", onPauseEvent);
+  useTimelineEventHandler("timeline:seek", onSeek);
+  // plugins may still command a timeline with the window events it used to
+  // send itself; the App's own mirrors of its bus events are skipped
+  useEventHandler(
+    window,
+    "play",
+    (e: CustomEvent) => !isLegacyDomMirror(e) && onPlayEvent(e.detail),
+  );
+  useEventHandler(
+    window,
+    "pause",
+    (e: CustomEvent) => !isLegacyDomMirror(e) && onPauseEvent(e.detail),
+  );
+  useEventHandler(
+    window,
+    "seek",
+    (e: CustomEvent) => !isLegacyDomMirror(e) && onSeek(e.detail),
+  );
 
   const subscribe = useCallback(
     (subscription: SequenceTimelineSubscription) => {
@@ -426,23 +456,37 @@ export const useCreateTimeline = (
 
   useKeydownHandler(keyDownHandler);
 
-  const setFrameEventName = useMemo(
-    () => getTimelineSetFrameNumberEventName(timelineName),
-    [timelineName],
-  );
-
   const setFrameNumberFromEventHandler = useCallback(
-    (e: CustomEvent) => {
+    (detail: TimelineEvents["timeline:set-frame-number"]) => {
+      if (detail.timelineName !== timelineName) {
+        return;
+      }
       pause();
       setFrameNumber({
         name: timelineName,
-        newFrameNumber: e.detail.frameNumber,
+        newFrameNumber: detail.frameNumber,
       });
     },
     [timelineName, pause, setFrameNumber],
   );
 
-  useEventHandler(window, setFrameEventName, setFrameNumberFromEventHandler);
+  useTimelineEventHandler(
+    "timeline:set-frame-number",
+    setFrameNumberFromEventHandler,
+  );
+  useEventHandler(
+    window,
+    useMemo(
+      () => getTimelineSetFrameNumberEventName(timelineName),
+      [timelineName],
+    ),
+    (e: CustomEvent) =>
+      !isLegacyDomMirror(e) &&
+      setFrameNumberFromEventHandler({
+        timelineName,
+        frameNumber: e.detail.frameNumber,
+      }),
+  );
 
   const registerOnPlayCallback = useCallback((listener: () => void) => {
     onPlayListenerRef.current = listener;

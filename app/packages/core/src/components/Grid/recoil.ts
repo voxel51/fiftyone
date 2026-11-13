@@ -191,9 +191,11 @@ export const pageParameters = selector({
     const slice = get(fos.groupSlice);
     const queryPerformance = get(fos.queryPerformance);
 
+    // Without the Explore lens: the grid fetches lens-hidden fields and
+    // leaves them out of what it draws, so a lens switch refetches nothing
     const extendedStages = queryPerformance
-      ? get(fos.extendedStagesNoSort)
-      : get(fos.extendedStages);
+      ? get(fos.gridExtendedStagesNoSort)
+      : get(fos.gridExtendedStages);
 
     const extra =
       queryPerformance &&

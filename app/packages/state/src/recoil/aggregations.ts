@@ -3,6 +3,7 @@ import type { VariablesOf } from "react-relay";
 import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
+import { EVENTS_FIELD } from "../event-facets/identity";
 import type { ResponseFrom } from "../utils";
 import type { SelectionBoundary } from "../selection/types";
 import { refresher } from "./atoms";
@@ -20,7 +21,10 @@ import { activeIndex, queryPerformance } from "./queryPerformance";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-import { selectionScopeBoundary } from "./selectionScope";
+import {
+  selectionScopeBoundary,
+  selectionScopeRevision,
+} from "./selectionScope";
 import { TEMPORAL_TAGS_FIELD } from "./sidebar";
 import { temporalTagsRevision } from "./temporalTags";
 import { State } from "./types";
@@ -71,6 +75,8 @@ export const aggregationQuery = graphQLSelectorFamily<
     paths: string[];
     root?: boolean;
     useSelection?: boolean;
+    eventSearch?: string;
+    eventOffset?: number;
   },
   Aggregation[] | null
 >({
@@ -89,6 +95,8 @@ export const aggregationQuery = graphQLSelectorFamily<
       paths,
       root = false,
       useSelection = true,
+      eventSearch,
+      eventOffset = 0,
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
@@ -106,15 +114,30 @@ export const aggregationQuery = graphQLSelectorFamily<
         (mixed || get(groupStatistics(modal)) === "group") && useSelection;
 
       const aggForm = {
+        // Monotonic counters: any of them moving makes a new request
         index:
           get(refresher) +
+          (root || modal ? 0 : get(selectionScopeRevision)) +
           (paths.includes(TEMPORAL_TAGS_FIELD) ? get(temporalTagsRevision) : 0),
         dataset,
+        eventSearch,
+        eventOffset,
         dynamicGroup,
         extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
         filters: withSelectionScope(
           extended && !root
-            ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
+            ? Object.fromEntries(
+                Object.entries(
+                  get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
+                ).filter(
+                  ([path]) =>
+                    !(
+                      path === EVENTS_FIELD &&
+                      (modal ||
+                        (paths.length === 1 && paths[0] === EVENTS_FIELD))
+                    ),
+                ),
+              )
             : null,
           root || modal ? null : get(selectionScopeBoundary),
         ),

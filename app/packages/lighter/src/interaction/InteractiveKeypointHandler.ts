@@ -55,6 +55,13 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     private readonly resolvePointHit?: (
       ctx: KeypointPointHitContext,
     ) => KeypointPointHitAction | undefined,
+    /**
+     * When `true`, point adds/removes (and their undo/redo) emit no events
+     * and never commit. Creation drafts place silently and persist once, on
+     * the double-click finish (`lighter:overlay-establish`); a draft
+     * abandoned mid-placement is discarded, never half-saved.
+     */
+    private readonly silent = false,
   ) {}
 
   containsPoint(): boolean {
@@ -97,7 +104,11 @@ export class InteractiveKeypointHandler implements InteractionHandler {
       });
 
       if (action === KeypointPointHitAction.DELETE) {
-        const command = new RemoveKeypointPointCommand(this.overlay, hitId);
+        const command = new RemoveKeypointPointCommand(
+          this.overlay,
+          hitId,
+          this.silent,
+        );
 
         command.execute();
 
@@ -119,13 +130,17 @@ export class InteractiveKeypointHandler implements InteractionHandler {
     }
 
     const variant = this.resolveVariant?.({ x: rp[0], y: rp[1] }, modifiers);
-    const pointId = this.overlay.addPoint(worldPoint, { variant });
+    const pointId = this.overlay.addPoint(worldPoint, {
+      variant,
+      silent: this.silent,
+    });
 
     const command = new AddKeypointPointCommand(
       this.overlay,
       pointId,
       rp,
       variant,
+      this.silent,
     );
 
     CommandContextManager.instance().getActiveContext().pushUndoable(command);
@@ -142,6 +157,12 @@ export class InteractiveKeypointHandler implements InteractionHandler {
   onPointerUp(): boolean {
     // No-op — points are placed on pointer down, not release
     return true;
+  }
+
+  onCanvasLeave(): void {
+    // Hide the preview line while the pointer is off the canvas; the next
+    // move back in redraws it (cf. InteractivePolylineHandler)
+    this.overlay.setPreviewPoint(null);
   }
 
   onDoubleClick(_point: Point, _event: PointerEvent): boolean {

@@ -1,3 +1,4 @@
+import { useSavedSegmentsShown } from "@fiftyone/multimodal/extensions/episode-intervals";
 import type { Track } from "@fiftyone/playback";
 import {
   segmentTimeNs,
@@ -13,6 +14,12 @@ const TRACK_ID = "fiftyone:saved-segments";
 export function useSavedVideoSegments(sampleId: string, frameRate?: number) {
   const { members, active, loading, error, scopeId, pinScopeKey } =
     useScopedSegments(sampleId);
+  // The tracks render beneath the surface that calls this, before it fires
+  useSavedSegmentsShown("timeline", {
+    active,
+    loading,
+    count: members.length,
+  });
   const tracks = useMemo<Track[]>(() => {
     const rows = new Map<string, Track>();
     for (const { range } of members) {

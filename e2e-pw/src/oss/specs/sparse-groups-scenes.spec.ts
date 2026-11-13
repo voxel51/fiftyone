@@ -13,45 +13,30 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
+// group i (from 1) has an "ego" sample when i % 2, a "left" one when i % 3
+// and a "right" one when i % 5
+const NUM_GROUPS = 10;
+const inGroups = (divisor: number) =>
+  Array.from({ length: NUM_GROUPS }, (_, index) => index).filter(
+    (index) => (index + 1) % divisor !== 0,
+  );
+
 test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.add_group_field("group", default="ego")
-    dataset.persistent = True
-
-
-    samples = []
-    for i in range(1, 101):
-        group = fo.Group()
-    
-        if i % 2:
-            samples.append(
-                fo.Sample(
-                    filepath=f"ego-{i}.pcd", group=group.element("ego"), dynamic=i % 10
-                )
-            )
-    
-        if i % 3:
-            samples.append(
-                fo.Sample(
-                    filepath=f"left-{i}.png", group=group.element("left"), dynamic=i % 10
-                )
-            )
-    
-        if i % 5:
-            samples.append(
-                fo.Sample(
-                    filepath=f"right-{i}.png", group=group.element("right"), dynamic=i % 10
-                )
-            )
-    dataset.add_samples(samples)
-    dataset.save_view("dynamic", dataset.group_by("dynamic", order_by="id"))`);
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: NUM_GROUPS,
+    slices: [
+      { name: "ego", mediaType: "point-cloud", groupIndices: inGroups(2) },
+      { name: "left", mediaType: "image", groupIndices: inGroups(3) },
+      { name: "right", mediaType: "image", groupIndices: inGroups(5) },
+    ],
+  });
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -59,24 +44,30 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 });
 
 test(`ego default group slice transitions`, async ({ grid, modal }) => {
-  await grid.assert.isEntryCountTextEqualTo("50 groups with slice");
-  await grid.openFirstSample();
+  await grid.assert.isEntryCountTextEqualTo(
+    `${inGroups(2).length} groups with slice`,
+  );
+  await modal.afterGroupSampleLoaded(() => grid.openFirstSample());
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.groupLooker.click();
+  await modal.sidebar.afterEntryChanged("group.name", "ego", () =>
+    modal.groupSampleCanvas.click(0.5, 0.5),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.navigateSlice("group.name", "right", true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
-  await modal.clickOnLooker3d();
+  await modal.sidebar.afterEntryChanged("group.name", "right", () =>
+    modal.sampleCanvas3d.click(0.5, 0.5),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.navigateNextSample(true);
-  await modal.waitForCarouselToLoad();
+  await modal.afterCarouselRendered(() => modal.navigateNextSample(true));
   await modal.assert.verifyCarouselLength(1);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.groupLooker.click();
+  await modal.sidebar.afterEntryChanged("group.name", "ego", () =>
+    modal.groupSampleCanvas.click(0.5, 0.5),
+  );
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
-  await modal.navigateNextSample(true);
-  await modal.waitForCarouselToLoad();
+  await modal.afterCarouselRendered(() => modal.navigateNextSample(true));
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.assert.verifyCarouselLength(1);
   await modal.close();

@@ -79,7 +79,8 @@ export interface AdapterDescriptor {
     sample: SampleDescriptor,
     options?: EpisodeOpenOptions,
   ): boolean | Promise<boolean>;
-  load(options?: EpisodeOpenOptions): Promise<FormatAdapter>;
+  /** Loads reusable code only; source IO and ownership belong to open(). */
+  load(): Promise<FormatAdapter>;
 }
 
 /** One lightweight poster request made before a full episode session opens. */

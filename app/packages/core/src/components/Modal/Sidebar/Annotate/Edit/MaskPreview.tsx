@@ -1,4 +1,5 @@
 import { useTheme } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import {
   DetectionOverlay,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -36,6 +37,11 @@ const StyledCanvas = styled.canvas`
 `;
 
 const PREVIEW_SIZE = 256;
+
+/** e2e specs wait on the preview's first real draw before reading it */
+type MaskPreviewE2EEvents = {
+  "e2e:annotate:mask-preview-drawn": undefined;
+};
 
 /**
  * Draws a {@link CanvasImageSource} to the preview canvas as a monochrome mask.
@@ -80,6 +86,9 @@ function drawPreview(
   }
 
   ctx.putImageData(imageData, offsetX, offsetY);
+  getEventBus<MaskPreviewE2EEvents>().dispatch(
+    "e2e:annotate:mask-preview-drawn",
+  );
 }
 
 /**

@@ -23,12 +23,15 @@ import useExit from "./useExit";
 interface KeypointVertexSelection {
   getSelectedPointIndex(): number | null;
   getRelativePoints(): [number, number][];
+  getDeletable?(): boolean;
 }
 
 /**
- * True while a canvas vertex is sub-selected and removing it would leave
- * geometry behind. Removing the only point removes the label, so Delete
- * falls through to the whole-label delete.
+ * True while a canvas vertex is sub-selected and the canvas keydown handler
+ * would remove it, leaving geometry behind. Removing the only point removes
+ * the label, and a skeleton keypoint's vertices are never removable (node
+ * index is identity — the overlay refuses), so both fall through to the
+ * whole-label delete rather than deferring to a removal that never happens.
  */
 const isVertexSubSelected = (overlay: unknown): boolean => {
   const selection = overlay as KeypointVertexSelection;
@@ -37,6 +40,10 @@ const isVertexSubSelected = (overlay: unknown): boolean => {
     typeof selection.getSelectedPointIndex !== "function" ||
     typeof selection.getRelativePoints !== "function"
   ) {
+    return false;
+  }
+
+  if (selection.getDeletable?.() === false) {
     return false;
   }
 

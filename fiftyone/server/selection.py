@@ -32,11 +32,20 @@ import fiftyone.core.utils as fou
 import fiftyone.core.selection_context as fosc
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fostag
+import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
-from fiftyone.server.selection_extensions import resolve_filters
+from fiftyone.server.selection_extensions import (
+    resolve_filters,
+    resolve_range_source,
+    resolve_streams,
+)
 
 SNAPSHOT_TTL = timedelta(hours=1)
 SNAPSHOT_CHUNK = 5000
+
+
+class SelectionCaptureUnavailableError(ValueError):
+    """The captured membership cannot be used; the action must be reopened."""
 
 
 def _scoped_view(dataset, request):
@@ -52,10 +61,11 @@ def _scoped_view(dataset, request):
     stages = request.get("view")
     # Identity restriction commutes with supported filters and sort stages,
     # but must remain after a window that changes membership by position.
+    # A similarity sort is one: its ``k`` keeps the nearest results.
     detail_ids = None
     if request.get("detailsOnly") and not any(
         stage.get("_cls", "").rsplit(".", 1)[-1]
-        in {"Skip", "Limit", "Take", "GroupBy", "Flatten"}
+        in {"Skip", "Limit", "Take", "GroupBy", "Flatten", "SortBySimilarity"}
         for stage in [
             *(stages or []),
             *({"_cls": cls} for cls in request.get("extendedStages", {})),
@@ -86,8 +96,20 @@ def _scoped_view(dataset, request):
     )
     view = constrain_view(view)
     converted = view._dataset is not dataset
-    if converted and boundary.get("provider"):
+    source = boundary.get("captureSource")
+    if converted and (boundary.get("provider") or source):
         raise ValueError("Segment sources are available in the samples view")
+    if source:
+        capture = {"kind": "source", "descriptor": source}
+        provider = boundary.get("provider")
+        boundary = {
+            **boundary,
+            "provider": (
+                {"kind": "intersection", "providers": [provider, capture]}
+                if provider
+                else capture
+            ),
+        }
     return view, boundary, converted
 
 
@@ -120,10 +142,12 @@ def _final_sort(pipeline):
 def _before_sorted(sort, target):
     """Matches documents the sort places before ``target``.
 
-    Ties on every sort key fall back to ``_id`` order, which is the best a
-    caller can do when the sort itself does not break them.
+    Only sorts with an explicit identity key have a reproducible order for
+    ties. Other sorts must walk the grid pipeline rather than invent one.
     """
     keys = list(sort.items())
+    if "_id" not in sort:
+        return None
     if any(
         target.get(key) is None or isinstance(target.get(key), (list, dict))
         for key, _ in keys
@@ -142,9 +166,6 @@ def _before_sorted(sort, target):
             ]
         }
         clauses.append({"$and": prefix + [comparison]})
-    tie = [{"$eq": ["$" + key, {"$literal": target[key]}]} for key, _ in keys]
-    tie.append({"$lt": ["$_id", {"$literal": target["_id"]}]})
-    clauses.append({"$and": tie})
     return {"$expr": {"$or": clauses}}
 
 
@@ -175,7 +196,18 @@ def sample_position(dataset, request):
         return {"index": None}
     collection = view._dataset._sample_collection
     max_time = request.get("maxQueryTime")
-    max_time_ms = int(max_time) * 1000 if max_time else None
+    max_time_ms = None
+    if max_time is not None:
+        try:
+            max_time = float(max_time)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "Query time must be a finite nonnegative number"
+            ) from None
+        if not math.isfinite(max_time) or max_time < 0:
+            raise ValueError("Query time must be a finite nonnegative number")
+        if max_time:
+            max_time_ms = max(1, int(max_time * 1000))
     pipeline = view._pipeline()
     sort_index = _final_sort(pipeline)
     if sort_index is not None:
@@ -1052,12 +1084,14 @@ def _expired(doc):
 def snapshot_info(dataset, snapshot_id):
     """Checks a snapshot's dataset, expiry, and complete chunk count."""
     if not ObjectId.is_valid(snapshot_id):
-        raise ValueError("Unknown capture")
+        raise SelectionCaptureUnavailableError("Unknown capture")
     doc = _collection("selection_snapshots").find_one(
         {"_id": ObjectId(snapshot_id), "_dataset_id": dataset._doc.id}
     )
     if doc is None or _expired(doc):
-        raise ValueError("This capture has expired; open the action again")
+        raise SelectionCaptureUnavailableError(
+            "This capture has expired; open the action again"
+        )
     chunks = _collection("selection_snapshot_members")
     result = next(
         chunks.aggregate(
@@ -1070,7 +1104,9 @@ def snapshot_info(dataset, snapshot_id):
         {"count": 0},
     )
     if result["count"] != doc["count"]:
-        raise ValueError("This capture is incomplete; open the action again")
+        raise SelectionCaptureUnavailableError(
+            "This capture is incomplete; open the action again"
+        )
     return doc
 
 
@@ -1102,12 +1138,18 @@ def load_snapshot(dataset, snapshot_id):
     doc = snapshot_info(dataset, snapshot_id)
     members = list(iter_snapshot(doc))
     if len(members) != doc["count"]:
-        raise ValueError("This capture is incomplete; open the action again")
+        raise SelectionCaptureUnavailableError(
+            "This capture is incomplete; open the action again"
+        )
     return members, doc
 
 
 def prepare_subset_add(dataset, data, progress=None, preview=True):
-    """Validates source identity and streams server captures into an add."""
+    """Validates source identity and streams server captures into an add.
+
+    ``savedView`` names the saved view loaded when the members were picked;
+    the subset records it, with the stages the capture ran against.
+    """
     snapshot = (
         snapshot_info(dataset, data["snapshotId"])
         if data.get("snapshotId")
@@ -1125,6 +1167,9 @@ def prepare_subset_add(dataset, data, progress=None, preview=True):
         snapshot=snapshot,
         progress=progress,
         preview=preview,
+        source=fosub.capture_source(
+            dataset, stages, saved_view=data.get("savedView")
+        ),
     )
 
 
@@ -1144,18 +1189,23 @@ def remove_captured_members(dataset, subset_id, data):
 
 def tag_captured_members(dataset, data):
     """Validate a complete capture, then tag in bounded, idempotent batches."""
+    changes = _tag_changes(data.get("change"), data.get("changes"))
+    if changes is not None:
+        fosc.check_access(dataset, "tag")
     if not data.get("snapshotId"):
         return tag_selection(
             dataset,
             data["members"],
-            data.get("change"),
-            data.get("target", "members"),
-            data.get("view"),
+            target=data.get("target", "members"),
+            stages=data.get("view"),
+            changes=changes,
         )
+    if changes is not None:
+        retain_snapshot(dataset, data["snapshotId"])
     snapshot = snapshot_info(dataset, data["snapshotId"])
     stages = snapshot.get("view") or None
+    scope = _tag_scope(dataset, stages)
     target = data.get("target", "members")
-    change = data.get("change")
     first = None
     labels_per_batch = []
     result = {
@@ -1173,37 +1223,49 @@ def tag_captured_members(dataset, data):
         for tag, count in batch_result["applied"].items():
             result["applied"][tag] = result["applied"].get(tag, 0) + count
 
+    inspected_count = 0
     for batch in fou.iter_batches(iter_snapshot(snapshot), SNAPSHOT_CHUNK):
+        inspected_count += len(batch)
         first = first or batch
         inspected = tag_selection(
-            dataset, batch, target=target, stages=stages, _include_values=False
+            dataset, batch, target=target, _include_values=False, _scope=scope
         )
         if inspected.get("disabledReason"):
-            if change is not None:
+            if changes is not None:
                 raise ValueError(inspected["disabledReason"])
             return {**inspected, "counts": snapshot["counts"]}
         labels_per_batch.append(inspected["labels"])
-        if change is None:
+        if changes is None:
             include(inspected)
+    if inspected_count != snapshot["count"]:
+        raise SelectionCaptureUnavailableError(
+            "This capture is incomplete; open the action again"
+        )
     if first is None:
         raise ValueError("Choose samples or segments to tag")
-    if change is not None:
+    if changes is not None:
         if target == "labels" and not any(labels_per_batch):
             raise ValueError("No labels in these items")
+        processed_count = 0
         for index, batch in enumerate(
             fou.iter_batches(iter_snapshot(snapshot), SNAPSHOT_CHUNK)
         ):
+            processed_count += len(batch)
             if target == "labels" and not labels_per_batch[index]:
                 continue
             include(
                 tag_selection(
                     dataset,
                     batch,
-                    change,
-                    target,
-                    stages,
+                    target=target,
+                    changes=changes,
                     _include_values=False,
+                    _scope=scope,
                 )
+            )
+        if processed_count != snapshot["count"]:
+            raise SelectionCaptureUnavailableError(
+                "This capture is incomplete; open the action again"
             )
     # Available tag values are dataset-wide. Fetch once after all changes,
     # rather than repeating that dataset scan for every capture chunk.
@@ -1216,7 +1278,7 @@ def tag_captured_members(dataset, data):
         )
     else:
         result["tags"] = tag_selection(
-            dataset, first, target=target, stages=stages
+            dataset, first, target=target, _scope=scope
         )["tags"]
     return result
 
@@ -1445,6 +1507,16 @@ def candidate_members(view, provider=None, streams_cache=None):
         for constraint in providers[1:]:
             members = fosel.intersect_members(
                 members, candidate_members(view, constraint, streams_cache)
+            )
+        return members
+    if kind == "source":
+        allowed_ids = set(view.values("id"))
+        members = fosel.normalize_members(
+            resolve_range_source(view, provider["descriptor"], streams_cache)
+        )
+        if any(m["episodeId"] not in allowed_ids for m in members):
+            raise ValueError(
+                "A capture source returned parents outside its view"
             )
         return members
     if kind == "events":
@@ -1937,18 +2009,37 @@ def _provider_member_batches(view, boundary):
 
 
 def validate_subset_stages(stages, extended_stages):
-    """Fails closed for pipelines not yet supported inside a saved subset."""
+    """Fails closed for pipelines not yet supported inside a saved subset.
+
+    Membership is selected first, so a stage that only filters, orders, or
+    reshapes the documents it is given stays within the subset. Not
+    supported: stages that bring in documents from elsewhere (``Concat``,
+    ``Mongo``), that must open the pipeline (``GeoNear``), or whose frames
+    have no defined meaning within saved segments yet (``MatchFrames``,
+    ``SelectFrames``, ``ExcludeFrames``).
+    """
     supported = {
         "Match",
         "MatchTags",
         "Exists",
         "Select",
         "Exclude",
+        "SelectBy",
+        "ExcludeBy",
+        "GeoWithin",
         "SortBy",
+        "SortBySimilarity",
+        "Shuffle",
+        "Take",
         "Limit",
         "Skip",
         "FilterLabels",
         "FilterField",
+        "FilterKeypoints",
+        "LimitLabels",
+        "MapLabels",
+        "MapValues",
+        "SetField",
         "SelectFields",
         "ExcludeFields",
         "SelectLabels",
@@ -1956,6 +2047,8 @@ def validate_subset_stages(stages, extended_stages):
         "MatchLabels",
         "GroupBy",
         "Flatten",
+        "SelectGroups",
+        "ExcludeGroups",
         "SelectGroupSlices",
         "ExcludeGroupSlices",
     }
@@ -2037,14 +2130,13 @@ def _tag_members(view, provider, streams_cache=None):
         view, filter=fot.TemporalTagFilter(tags=values)
     )
     references = view._dataset._contains_media_references()
+    multimodal = view._dataset.media_type == "multimodal"
+    fields = ["media_reference"] if references else []
+    if multimodal:
+        fields.append("metadata")
     samples = (
-        {
-            sample.id: sample
-            for sample in view.select_fields(
-                "media_reference" if references else []
-            )
-        }
-        if references or view._dataset.media_type == "group"
+        {sample.id: sample for sample in view.select_fields(fields)}
+        if references or multimodal or view._dataset.media_type == "group"
         else {}
     )
     result = []
@@ -2090,11 +2182,31 @@ def _tag_members(view, provider, streams_cache=None):
     return fosel.normalize_members(result)
 
 
+def _tag_anchors(dataset, tag, cache):
+    if tag.anchor:
+        return {tag.anchor}
+    if dataset.media_type == "video":
+        return set(_sample_streams(None, dataset, cache))
+    sample_id = str(tag.sample_id)
+    key = ("tag-sample", sample_id)
+    if key not in cache:
+        fields = [
+            name
+            for name in ("media_reference", "metadata")
+            if dataset.has_sample_field(name)
+        ]
+        cache[key] = dataset.select_fields(fields)[sample_id]
+    return set(_sample_streams(cache[key], dataset, cache))
+
+
 def _sample_streams(sample, dataset, cache=None):
     if dataset.media_type == "video" or (
         sample is not None and sample.media_type == "video"
     ):
         return ["filepath"]
+    streams = resolve_streams(sample, dataset, cache)
+    if streams is not None:
+        return streams
     from fiftyone.multimodal.media_reference.field_model import (
         addressable_media_sources,
     )
@@ -2135,6 +2247,36 @@ def _sample_streams(sample, dataset, cache=None):
 _TAG_INDEX_TYPES = {"sequence": 1, "duration-ns": 2, "timestamp-ns": 3}
 
 
+def _tag_changes(change=None, changes=None):
+    """Validates every edit before any tags are written."""
+    if change is not None:
+        if changes is not None or not isinstance(change, dict):
+            raise ValueError("Provide either change or changes")
+        changes = {change.get("tag"): change.get("add")}
+    if changes is None:
+        return None
+    if not isinstance(changes, dict) or not changes:
+        raise ValueError("Provide a nonempty map of tag changes")
+    normalized = {}
+    for tag, add in changes.items():
+        if (
+            not isinstance(tag, str)
+            or not tag.strip()
+            or not isinstance(add, bool)
+        ):
+            raise ValueError("Provide nonempty tags and add booleans")
+        tag = tag.strip()
+        if tag in normalized:
+            raise ValueError("Provide each tag only once")
+        normalized[tag] = add
+    return normalized
+
+
+def _tag_scope(dataset, stages):
+    prefix, _ = fosub.split_subset_view(stages)
+    return fosv.get_view(dataset, stages=prefix) if prefix else dataset
+
+
 def tag_selection(
     dataset,
     members,
@@ -2142,6 +2284,8 @@ def tag_selection(
     target="members",
     stages=None,
     _include_values=True,
+    changes=None,
+    _scope=None,
 ):
     """Inspects or tags frozen episode and segment membership.
 
@@ -2157,11 +2301,14 @@ def tag_selection(
         target ("members"): ``members`` or ``labels`` in whole episodes
         stages (None): the serialized view stages the members were captured
             in; generated entities support only durable source label tags
+        changes (None): optional mapping of tag names to add booleans;
+            mutually exclusive with ``change``
 
     Returns:
         scope counts and the existing tag values on the captured targets
     """
-    if change is not None:
+    changes = _tag_changes(change, changes)
+    if changes is not None:
         fosc.check_access(dataset, "tag")
     if target not in ("members", "labels"):
         raise ValueError("Choose members or labels to tag")
@@ -2171,12 +2318,11 @@ def tag_selection(
     if not members:
         raise ValueError("Choose samples or segments to tag")
     sample_ids = {member["episodeId"] for member in members}
-    prefix, _ = fosub.split_subset_view(stages)
-    scope = fosv.get_view(dataset, stages=prefix) if prefix else dataset
+    scope = _scope if _scope is not None else _tag_scope(dataset, stages)
     if scope._dataset is not dataset:
         if any(m["kind"] == "segment" for m in members):
             raise ValueError("Segments are tagged in the samples view")
-        return _tag_converted(scope, members, change, target, _include_values)
+        return _tag_converted(scope, members, changes, target, _include_values)
     view = fosel.select_parents(dataset, sample_ids)
     if set(view.values("id")) != sample_ids:
         raise ValueError("Remove unavailable episodes before tagging")
@@ -2208,15 +2354,7 @@ def tag_selection(
             )
             if streams is None:
                 continue
-            anchors = (
-                {tag.anchor}
-                if tag.anchor
-                else set(
-                    _sample_streams(
-                        dataset[str(tag.sample_id)], dataset, streams_cache
-                    )
-                )
-            )
+            anchors = _tag_anchors(dataset, tag, streams_cache)
             if anchors <= streams:
                 existing.append(tag)
 
@@ -2225,25 +2363,15 @@ def tag_selection(
     if target == "labels":
         counts, _ = fostag.build_label_tag_aggregations(full_view)
         label_count = sum(full_view.aggregate(counts)) if counts else 0
-    if change is not None:
-        tag_value = change.get("tag")
-        add = change.get("add")
-        if (
-            not isinstance(tag_value, str)
-            or not tag_value.strip()
-            or not isinstance(add, bool)
-        ):
-            raise ValueError("Provide a nonempty tag and an add boolean")
-        tag_value = tag_value.strip()
+    if changes is not None:
         if target == "labels":
             if not label_count:
                 raise ValueError("No labels in these episodes")
-            if add:
-                full_view.tag_labels(tag_value)
-            else:
-                full_view.untag_labels(tag_value)
+            fosu.change_label_tags(full_view, changes)
+        additions = [tag for tag, add in changes.items() if add]
+        removals = {tag for tag, add in changes.items() if not add}
         if targets:
-            if add:
+            if additions:
                 fot.add_temporal_tags(
                     view,
                     [
@@ -2262,17 +2390,15 @@ def tag_selection(
                             end,
                         ), streams in targets.items()
                         for stream in streams
+                        for tag_value in additions
                     ],
                 )
-            else:
-                ids = [tag.id for tag in existing if tag.tag == tag_value]
+            if removals:
+                ids = [tag.id for tag in existing if tag.tag in removals]
                 if ids:
                     fot.delete_temporal_tags(view, ids=ids)
         if full and target == "members":
-            if add:
-                full_view.tag_samples(tag_value)
-            else:
-                full_view.untag_samples(tag_value)
+            fosu.change_sample_tags(full_view, changes)
 
     return {
         "counts": fosel.count_members(members),
@@ -2312,27 +2438,26 @@ def _applied_tags(dataset, view, full_view, full, targets, target):
     applied = dict(full_view.count_values("tags")) if full else {}
     streams_cache = {}
     if targets:
+        # Unanchored and per-stream records may cover the same target.
+        covered = {}
         for tag in fot.list_temporal_tags(view):
             streams = targets.get(
                 (str(tag.sample_id), tag.index_type, tag.start, tag.end)
             )
             if streams is None:
                 continue
-            anchors = (
-                {tag.anchor}
-                if tag.anchor
-                else set(
-                    _sample_streams(
-                        dataset[str(tag.sample_id)], dataset, streams_cache
-                    )
-                )
-            )
+            anchors = _tag_anchors(dataset, tag, streams_cache)
             if anchors <= streams:
-                applied[tag.tag] = applied.get(tag.tag, 0) + len(anchors)
+                key = (str(tag.sample_id), tag.index_type, tag.start, tag.end)
+                covered.setdefault(tag.tag, set()).update(
+                    (*key, anchor) for anchor in anchors
+                )
+        for value, tagged_targets in covered.items():
+            applied[value] = applied.get(value, 0) + len(tagged_targets)
     return applied
 
 
-def _tag_converted(scope, members, change, target, include_values=True):
+def _tag_converted(scope, members, changes, target, include_values=True):
     """Tags only labels that the converted view writes back to its source."""
     sample_ids = {m["episodeId"] for m in members}
     if target != "labels":
@@ -2342,7 +2467,7 @@ def _tag_converted(scope, members, change, target, include_values=True):
             "These clips have no single source label to tag. "
             "Save them to a subset, or tag labels in the source view."
         )
-        if change is not None:
+        if changes is not None:
             raise ValueError(reason)
         return {
             "counts": _whole_counts(len(sample_ids)),
@@ -2387,21 +2512,10 @@ def _tag_converted(scope, members, change, target, include_values=True):
             raise ValueError("Remove unavailable items before tagging")
     counts, _ = fostag.build_label_tag_aggregations(full_view)
     label_count = sum(full_view.aggregate(counts)) if counts else 0
-    if change is not None:
-        tag_value = change.get("tag")
-        add = change.get("add")
-        if (
-            not isinstance(tag_value, str)
-            or not tag_value.strip()
-            or not isinstance(add, bool)
-        ):
-            raise ValueError("Provide a nonempty tag and an add boolean")
+    if changes is not None:
         if not label_count:
             raise ValueError("No labels in these items")
-        if add:
-            full_view.tag_labels(tag_value.strip())
-        else:
-            full_view.untag_labels(tag_value.strip())
+        fosu.change_label_tags(full_view, changes)
     dataset = full_view._dataset
     return {
         "counts": fosel.count_members(members),

@@ -37,7 +37,7 @@ Prerequisites
 
 .. note::
       Auto Labeling is available in
-      :ref:`FiftyOne Enterprise <fiftyone-enterprise>`.
+      :ref:`Voxel51 <fiftyone-enterprise>`.
       If you are using open source FiftyOne and are
       interested in this feature, please reach out to
       `Voxel51 sales <https://voxel51.com/sales>`_.
@@ -49,13 +49,13 @@ This guide is designed for machine learning practitioners and data scientists wh
 
 **Required Knowledge**
 
-- Familiarity with the FiftyOne Enterprise App interface and basic operations
+- Familiarity with the Voxel51 App interface and basic operations
 - Understanding of your target task (detection, classification, segmentation)
 - Basic knowledge of machine learning models and confidence thresholds
 
 **System Requirements**
 
-- **FiftyOne Enterprise:** This feature requires FiftyOne Enterprise with delegated operations
+- **Voxel51:** This feature requires Voxel51 with delegated operations
 - **GPU Access:** Orchestrator must have GPU resources for model inference
 - **Storage:** Sufficient object storage space for dataset media and label fields
 

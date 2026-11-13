@@ -34,13 +34,13 @@ afterEach(() => {
 });
 
 describe("PlotTileSettings", () => {
-  it("renders distinct disabled rows for unavailable numeric fields", () => {
+  it("renders distinct disabled rows for unavailable fields", () => {
     mockState.enumeration = {
       status: "ready",
       streams: [
         stream("/speed", "ready", [{ path: "speed", valueType: "float64" }]),
         stream("/bad-ros", "schema-unavailable"),
-        stream("/text", "no-numeric-fields"),
+        stream("/blobs", "no-numeric-fields"),
         {
           availability: "unsupported-encoding",
           encoding: "unsupported",
@@ -56,15 +56,33 @@ describe("PlotTileSettings", () => {
     fireEvent.click(screen.getByRole("button", { name: /\/speed/ }));
     expect(screen.getByLabelText("speed")).toBeTruthy();
     expect(screen.getByText("schema unavailable")).toBeTruthy();
-    expect(screen.getByText("no numeric fields")).toBeTruthy();
+    expect(screen.getByText("no plottable fields")).toBeTruthy();
     expect(screen.getByText("encoding unsupported")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /\/bad-ros/ }));
     expect(
       screen.getByText(
-        "This stream's schema could not be read, so numeric fields cannot be listed",
+        "This stream's schema could not be read, so its fields cannot be listed",
       ),
     ).toBeTruthy();
+  });
+
+  it("marks text fields, which plot as states", () => {
+    mockState.enumeration = {
+      status: "ready",
+      streams: [
+        stream("/vehicle", "ready", [
+          { path: "speed", valueType: "float64" },
+          { path: "road_condition", valueType: "string" },
+        ]),
+      ],
+    };
+
+    render(<PlotTileSettings />);
+
+    fireEvent.click(screen.getByRole("button", { name: /\/vehicle/ }));
+    expect(screen.getByLabelText("road_condition")).toBeTruthy();
+    expect(screen.getAllByText("text")).toHaveLength(1);
   });
 });
 

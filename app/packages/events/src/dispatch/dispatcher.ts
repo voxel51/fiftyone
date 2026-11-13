@@ -1,12 +1,45 @@
 import type { EventGroup, EventHandler } from "../types";
 
-type DispatchData<T> = T extends undefined | null ? [data?: T] : [data: T];
+/** Whether the App is driven by browser automation (e2e), not a real user */
+export const isE2E = (): boolean =>
+  typeof navigator !== "undefined" && navigator.webdriver === true;
+
+/**
+ * An `e2e:` event's payload may be passed as a function, which the bus calls
+ * only when it keeps the event (under browser automation)
+ */
+type Payload<E, T> = E extends `e2e:${string}` ? T | (() => T) : T;
+
+type DispatchData<E, T> = T extends undefined | null
+  ? [data?: Payload<E, T>]
+  : [data: Payload<E, T>];
 
 /**
  * Map from event types to their registered handlers.
  */
 type HandlerMap<T extends EventGroup> = {
   [E in keyof T]?: EventHandler<T[E]>[];
+};
+
+type EventTap = (event: string, data: unknown) => void;
+
+/**
+ * Events named `e2e:*` are signals for browser automation (e2e specs); the
+ * bus drops them everywhere else, so call sites dispatch them unconditionally
+ */
+export const E2E_EVENT_PREFIX = "e2e:";
+
+const taps = new Set<EventTap>();
+
+/**
+ * Observe every dispatch on every channel, including events with no handlers.
+ * Returns a function that removes the tap.
+ */
+export const tapAllEvents = (tap: EventTap): (() => void) => {
+  taps.add(tap);
+  return () => {
+    taps.delete(tap);
+  };
 };
 
 /**
@@ -195,7 +228,8 @@ export class EventDispatcher<T extends EventGroup> {
    *
    * @template E - Event type key
    * @param event - Event type name
-   * @param args - Event payload (optional if event type is undefined/null)
+   * @param args - Event payload (optional if event type is undefined/null);
+   *   for an `e2e:` event, a function returning it builds it only when kept
    *
    * @example
    * ```typescript
@@ -214,9 +248,24 @@ export class EventDispatcher<T extends EventGroup> {
    */
   public dispatch<E extends keyof T>(
     event: E,
-    ...args: DispatchData<T[E]>
+    ...args: DispatchData<E, T[E]>
   ): void {
-    const data = args[0] as T[E];
+    const isE2EEvent = String(event).startsWith(E2E_EVENT_PREFIX);
+    if (isE2EEvent && !isE2E()) {
+      return;
+    }
+    const data = (
+      isE2EEvent && typeof args[0] === "function"
+        ? (args[0] as () => T[E])()
+        : args[0]
+    ) as T[E];
+    for (const tap of taps) {
+      try {
+        tap(event as string, data);
+      } catch (error) {
+        console.error(`error handling event '${String(event)}' in tap`, error);
+      }
+    }
     if (!this.handlers[event]?.length) {
       return;
     }

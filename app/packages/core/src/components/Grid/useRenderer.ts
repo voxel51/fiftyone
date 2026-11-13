@@ -2,6 +2,7 @@ import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useGridSelection } from "@fiftyone/state/src/selection";
 import { useCallback, useMemo, useRef } from "react";
+import { GridCustomRendererItem } from "./GridCustomRendererItem";
 import { registerTile, unregisterTile } from "./gridTileRegistry";
 import type { TileDecoratorSample } from "./tileDecorators";
 import type { LookerCache } from "./types";
@@ -63,6 +64,13 @@ const ensureTileWrapping = (
   return { innerHost, overlayHost };
 };
 
+/** A custom-rendered tile opens through the grid's own click path */
+const setItemOpen = (item: unknown, open: (() => void) | undefined) => {
+  if (item instanceof GridCustomRendererItem) {
+    item.setOpen(open);
+  }
+};
+
 /** Extract a stable sample-id from whatever payload `store.get` returned. */
 const sampleIdFromResult = (result: unknown): string | null => {
   const r = result as { sample?: Record<string, unknown> } & Record<
@@ -83,18 +91,18 @@ export default function useRenderer({
   id,
   records,
   store,
-  selectBucket,
+  pickTile,
 }: {
   cache: LookerCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;
-  selectBucket: GridSelectionClick;
+  pickTile: GridSelectionClick;
 }) {
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
-  const selectSample = useSelectSample(records, selectBucket);
+  const selectSample = useSelectSample(records, pickTile);
   const selection = useGridSelection();
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
@@ -128,7 +136,7 @@ export default function useRenderer({
   );
 
   const showItem = useCallback<Show<number, fos.Sample>>(
-    ({ id, element, dimensions, spotlight, zooming }) => {
+    ({ id, element, dimensions, open, spotlight, zooming }) => {
       const key = id.description;
 
       // Wrap the tile element so the looker has a host of its own (which
@@ -160,6 +168,7 @@ export default function useRenderer({
 
       const instance = cache.get(key);
       if (instance) {
+        setItemOpen(instance, open);
         instance.attach(innerHost, dimensions, getFontSize());
         cache.show(key);
         // Re-register so the overlay div (potentially recreated on a
@@ -206,6 +215,7 @@ export default function useRenderer({
         }
       });
 
+      setItemOpen(item, open);
       cache.set(key, item);
       item.attach(innerHost, dimensions);
       registerWithSample(result);

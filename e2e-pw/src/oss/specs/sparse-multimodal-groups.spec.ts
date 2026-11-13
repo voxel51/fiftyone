@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
@@ -6,47 +5,23 @@ import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("sparse-multimodal-groups");
-const sharedMeshPath = `/tmp/sparse-multimodal-groups-${datasetName}-mesh.ply`;
 const groupSpecs = [
-  {
-    scene: "scene-1",
-    slices: ["pcd"],
-  },
-  {
-    scene: "scene-2",
-    slices: ["left", "pcd"],
-  },
-  {
-    scene: "scene-3",
-    slices: ["right", "pcd"],
-  },
-  {
-    scene: "scene-4",
-    slices: ["left", "right", "pcd"],
-  },
+  { scene: "scene-1", slices: ["pcd"] },
+  { scene: "scene-2", slices: ["left", "pcd"] },
+  { scene: "scene-3", slices: ["right", "pcd"] },
+  { scene: "scene-4", slices: ["left", "right", "pcd"] },
 ].map((spec, index) => ({
   ...spec,
-  leftPath: spec.slices.includes("left")
-    ? `/tmp/sparse-multimodal-groups-${datasetName}-${spec.scene}-left.png`
-    : null,
-  rightPath: spec.slices.includes("right")
-    ? `/tmp/sparse-multimodal-groups-${datasetName}-${spec.scene}-right.png`
-    : null,
-  pcdPath: spec.slices.includes("pcd")
-    ? `/tmp/sparse-multimodal-groups-${datasetName}-${spec.scene}-pcd.fo3d`
-    : null,
   leftName: `${spec.scene}-left`,
   rightName: `${spec.scene}-right`,
   pcdName: `${spec.scene}-pcd`,
   offset: index * 0.3,
 }));
-
-const TEMP_FILE_PATHS = [
-  sharedMeshPath,
-  ...groupSpecs.flatMap((spec) =>
-    [spec.leftPath, spec.rightPath, spec.pcdPath].filter(Boolean),
-  ),
-];
+const IMAGE_FILL_COLORS = ["#264653", "#3d405b", "#6d597a", "#355070"];
+const groupsWith = (slice: string) =>
+  groupSpecs.flatMap(({ slices }, index) =>
+    slices.includes(slice) ? [index] : [],
+  );
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
@@ -57,142 +32,79 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+test.beforeAll(async ({ datasetFactory, foWebServer }) => {
   await foWebServer.startWebServer();
-
-  mediaFactory.createPly({
-    outputPath: sharedMeshPath,
-    shape: "cube",
-    color: [255, 196, 96],
-  });
-
-  await Promise.all(
-    groupSpecs.flatMap((spec, index) => {
-      const imageFillColors = ["#264653", "#3d405b", "#6d597a", "#355070"];
-
-      return [
-        spec.leftPath &&
-          mediaFactory.createImage({
-            outputPath: spec.leftPath,
-            width: 320,
-            height: 240,
-            fillColor: imageFillColors[index],
-            watermarkString: spec.leftName,
-            hideLogs: true,
-          }),
-        spec.rightPath &&
-          mediaFactory.createImage({
-            outputPath: spec.rightPath,
-            width: 320,
-            height: 240,
-            fillColor: imageFillColors[(index + 1) % imageFillColors.length],
-            watermarkString: spec.rightName,
-            hideLogs: true,
-          }),
-      ].filter(Boolean);
-    }),
-  );
-
-  await fiftyoneLoader.executePythonCode(`
-import json
-
-import fiftyone as fo
-import fiftyone.core.media as fom
-
-specs = json.loads(r'''${JSON.stringify(groupSpecs)}''')
-
-def seed_group_media_types(dataset, group_media_types):
-    current = dict(dataset._doc.group_media_types or {})
-    current.update(group_media_types)
-    dataset._doc.group_media_types = current
-    dataset.save()
-
-dataset = fo.Dataset("${datasetName}")
-dataset.add_group_field("group", default="left")
-seed_group_media_types(
-    dataset,
-    {
-        "left": fom.IMAGE,
-        "right": fom.IMAGE,
-        "pcd": fom.THREE_D,
+  const image =
+    (fillColor: (index: number) => string, name: (index: number) => string) =>
+    (groupIndex: number) => ({
+      width: 320,
+      height: 240,
+      fillColor: fillColor(groupIndex),
+      watermarkString: name(groupIndex),
+      hideLogs: true,
+    });
+  await datasetFactory.createDataset({
+    mediaType: "group",
+    datasetName,
+    numGroups: groupSpecs.length,
+    slices: [
+      {
+        name: "left",
+        mediaType: "image",
+        groupIndices: groupsWith("left"),
+        imageOptions: image(
+          (index) => IMAGE_FILL_COLORS[index],
+          (index) => groupSpecs[index].leftName,
+        ),
+      },
+      {
+        name: "right",
+        mediaType: "image",
+        groupIndices: groupsWith("right"),
+        imageOptions: image(
+          (index) => IMAGE_FILL_COLORS[(index + 1) % IMAGE_FILL_COLORS.length],
+          (index) => groupSpecs[index].rightName,
+        ),
+      },
+      {
+        name: "pcd",
+        mediaType: "3d",
+        groupIndices: groupsWith("pcd"),
+        sceneOptions: (index) => ({
+          meshes: [
+            {
+              color: [255, 196, 96],
+              name: groupSpecs[index].pcdName,
+              position: [groupSpecs[index].offset, 0.0, 0.1],
+              scale: 0.9,
+            },
+          ],
+        }),
+      },
+    ],
+    schema: { name: "StringField", scene: "StringField" },
+    withSampleData: ({ groupIndex, slice }) => {
+      const spec = groupSpecs[groupIndex];
+      const names: Record<string, string> = {
+        left: spec.leftName,
+        right: spec.rightName,
+        pcd: spec.pcdName,
+      };
+      return { name: names[slice], scene: spec.scene };
     },
-)
-dataset.persistent = True
-
-samples = []
-for spec in specs:
-    group = fo.Group()
-
-    if spec["leftPath"]:
-        samples.append(
-            fo.Sample(
-                filepath=spec["leftPath"],
-                group=group.element("left"),
-                name=spec["leftName"],
-                scene=spec["scene"],
-            )
-        )
-
-    if spec["rightPath"]:
-        samples.append(
-            fo.Sample(
-                filepath=spec["rightPath"],
-                group=group.element("right"),
-                name=spec["rightName"],
-                scene=spec["scene"],
-            )
-        )
-
-    if spec["pcdPath"]:
-        scene = fo.Scene()
-        mesh = fo.PlyMesh(spec["pcdName"], "${sharedMeshPath}")
-        mesh.position = [spec["offset"], 0.0, 0.1]
-        mesh.scale = 0.9
-        scene.add(mesh)
-        scene.write(spec["pcdPath"])
-
-        samples.append(
-            fo.Sample(
-                filepath=spec["pcdPath"],
-                media_type="3d",
-                group=group.element("pcd"),
-                name=spec["pcdName"],
-                scene=spec["scene"],
-            )
-        )
-
-dataset.add_samples(samples)
-  `);
+  });
 });
 
-test.afterAll(async ({ fiftyoneLoader, foWebServer }) => {
-  try {
-    await fiftyoneLoader.executePythonCode(`
-import fiftyone as fo
-
-if fo.dataset_exists("${datasetName}"):
-    fo.delete_dataset("${datasetName}")
-    `);
-  } catch (error) {
-    void error;
-  }
-
-  try {
-    await foWebServer.stopWebServer();
-  } catch (error) {
-    void error;
-  }
-
-  TEMP_FILE_PATHS.forEach((filePath) => {
-    try {
-      fs.rmSync(filePath, { force: true });
-    } catch (error) {
-      void error;
-    }
-  });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
 });
 
 test.describe.serial("sparse multimodal groups", () => {
+  // the session restores an open modal into the next test's page
+  test.afterEach(async ({ modal }) => {
+    await modal.close({ ignoreError: true });
+  });
+
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
@@ -203,46 +115,58 @@ test.describe.serial("sparse multimodal groups", () => {
   }) => {
     await grid.selectSlice("pcd");
     await grid.sliceSelector.assert.verifyActiveSlice("pcd");
-    await grid.assert.isEntryCountTextEqualTo("4 groups with slice");
+    await grid.assert.isEntryCountTextEqualTo(
+      `${groupsWith("pcd").length} groups with slice`,
+    );
 
-    await grid.openFirstSample();
-    await modal.assert.verify3dRendererVisible();
-    await modal.looker3dControls.waitForAllAssetsLoaded();
-    await modal.assert.verifyHasNoViewerError();
-    await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    const first = {
       "group.name": "pcd",
       name: groupSpecs[0].pcdName,
       scene: groupSpecs[0].scene,
-    });
-
-    await modal.navigateNextSample(true);
-    await modal.looker3dControls.waitForAllAssetsLoaded();
+    };
+    await modal.sidebar.afterEntries(first, () =>
+      modal.looker3dControls.afterAllAssetsLoaded(() => grid.openFirstSample()),
+    );
+    await modal.assert.verify3dRendererVisible();
     await modal.assert.verifyHasNoViewerError();
-    await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    await modal.sidebar.assert.verifySidebarEntryTexts(first);
+
+    const second = {
       "group.name": "pcd",
       name: groupSpecs[1].pcdName,
       scene: groupSpecs[1].scene,
-    });
+    };
+    await modal.sidebar.afterEntries(second, () =>
+      modal.looker3dControls.afterAllAssetsLoaded(() =>
+        modal.navigateNextSample(true),
+      ),
+    );
+    await modal.assert.verifyHasNoViewerError();
+    await modal.sidebar.assert.verifySidebarEntryTexts(second);
   });
 
   test("opens the first modal cleanly from every grid slice", async ({
     grid,
     modal,
   }) => {
-    const assertModalHasNoViewerError = async ({
-      is3dSlice,
-      mode,
-    }: {
-      is3dSlice: boolean;
-      mode: "annotate" | "explore";
-    }) => {
+    type Viewer = { is3dSlice: boolean; mode: "annotate" | "explore" };
+
+    /** Run `step` and resolve once the viewer it shows has loaded */
+    const afterViewer = (
+      { is3dSlice, mode }: Viewer,
+      step: () => Promise<unknown>,
+    ) =>
+      is3dSlice
+        ? modal.looker3dControls.afterAllAssetsLoaded(step)
+        : mode === "annotate"
+          ? modal.afterLighterReady(step)
+          : modal.afterSampleLoaded(step, true);
+
+    const assertModalHasNoViewerError = async ({ is3dSlice, mode }: Viewer) => {
       if (is3dSlice) {
         await modal.assert.verify3dRendererVisible();
-        await modal.looker3dControls.waitForAllAssetsLoaded();
       } else if (mode === "annotate") {
         await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-      } else {
-        await modal.waitForSampleLoadDomAttribute(true);
       }
 
       await modal.assert.verifyHasNoViewerError();
@@ -250,21 +174,21 @@ test.describe.serial("sparse multimodal groups", () => {
     const sliceExpectations = [
       {
         slice: "left",
-        entryCount: "2 groups with slice",
+        entryCount: `${groupsWith("left").length} groups with slice`,
         expectedName: groupSpecs[1].leftName,
         expectedScene: groupSpecs[1].scene,
         expectedAnnotationSlices: ["left", "pcd"],
       },
       {
         slice: "right",
-        entryCount: "2 groups with slice",
+        entryCount: `${groupsWith("right").length} groups with slice`,
         expectedName: groupSpecs[2].rightName,
         expectedScene: groupSpecs[2].scene,
         expectedAnnotationSlices: ["right", "pcd"],
       },
       {
         slice: "pcd",
-        entryCount: "4 groups with slice",
+        entryCount: `${groupsWith("pcd").length} groups with slice`,
         expectedName: groupSpecs[0].pcdName,
         expectedScene: groupSpecs[0].scene,
         expectedAnnotationSlices: ["pcd"],
@@ -282,56 +206,37 @@ test.describe.serial("sparse multimodal groups", () => {
       await grid.sliceSelector.assert.verifyActiveSlice(slice);
       await grid.assert.isEntryCountTextEqualTo(entryCount);
 
-      await grid.openFirstSample();
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "explore",
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+      const is3dSlice = slice === "pcd";
+      const explore: Viewer = { is3dSlice, mode: "explore" };
+      const annotate: Viewer = { is3dSlice, mode: "annotate" };
+      const opened = {
         "group.name": slice,
         name: expectedName,
         scene: expectedScene,
-      });
+      };
 
-      await modal.sidebar.switchMode("annotate");
-      await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
-        expectedAnnotationSlices,
+      await modal.sidebar.afterEntries(opened, () =>
+        afterViewer(explore, () => grid.openFirstSample()),
       );
-      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "annotate",
-      });
+      await assertModalHasNoViewerError(explore);
+      await modal.sidebar.assert.verifySidebarEntryTexts(opened);
 
-      await modal.sidebar.switchMode("explore");
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "explore",
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
-        "group.name",
-        slice,
-      );
+      for (let round = 0; round < 2; round++) {
+        await afterViewer(annotate, () => modal.sidebar.switchMode("annotate"));
+        await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
+          expectedAnnotationSlices,
+        );
+        await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(
+          slice,
+        );
+        await assertModalHasNoViewerError(annotate);
 
-      await modal.sidebar.switchMode("annotate");
-      await modal.sidebar.annotate.assert.verifyAvailableAnnotationSlices(
-        expectedAnnotationSlices,
-      );
-      await modal.sidebar.annotate.assert.verifySelectedAnnotationSlice(slice);
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "annotate",
-      });
-
-      await modal.sidebar.switchMode("explore");
-      await assertModalHasNoViewerError({
-        is3dSlice: slice === "pcd",
-        mode: "explore",
-      });
-      await modal.sidebar.assert.waitUntilSidebarEntryTextEquals(
-        "group.name",
-        slice,
-      );
+        await modal.sidebar.afterEntries({ "group.name": slice }, () =>
+          afterViewer(explore, () => modal.sidebar.switchMode("explore")),
+        );
+        await assertModalHasNoViewerError(explore);
+        await modal.sidebar.assert.verifySidebarEntryText("group.name", slice);
+      }
 
       await modal.close();
       await modal.assert.isClosed();

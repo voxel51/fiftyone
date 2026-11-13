@@ -36,6 +36,8 @@ export interface ImagePanelProps {
   readonly notices?: readonly PanelNotice[];
   readonly onImageLoaded?: (width: number, height: number) => void;
   readonly onResetView?: () => void;
+  /** Reports whether a decode or canvas failure prevents drawing `frame`. */
+  readonly onUnavailableChange?: (unavailable: boolean) => void;
   /** R3F scene content rendered in normalized image coordinates. */
   readonly sceneChildren?: ReactNode;
   readonly style?: CSSProperties;
@@ -66,6 +68,7 @@ export function ImagePanel({
   notices = EMPTY_PANEL_NOTICES,
   onImageLoaded,
   onResetView,
+  onUnavailableChange,
   sceneChildren,
   style,
   textureMesh,
@@ -122,8 +125,10 @@ export function ImagePanel({
       canvasNoticeId="image-canvas"
       canvasSurface={canvasSurface}
       className={className}
+      failed={status === "error"}
       notices={panelNotices}
       onResetView={onResetView}
+      onUnavailableChange={onUnavailableChange}
       resetReady={status === "loaded"}
       resetTitle="Recenter the image view"
       status={

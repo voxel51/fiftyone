@@ -11,6 +11,8 @@ from enum import Enum
 import json
 from typing import Optional, Any, Dict
 
+import fiftyone.core.json as foj
+
 
 class MessageType(Enum):
     """Message types."""
@@ -97,4 +99,4 @@ class MessageData:
         Returns:
             JSON string representation
         """
-        return json.dumps(self.to_dict())
+        return json.dumps(foj.stringify(self.to_dict()))

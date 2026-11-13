@@ -37,7 +37,7 @@ from fiftyone.server.query import (
     SavedView,
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON
-from fiftyone.server.view import get_view
+from fiftyone.server.view import get_view, load_saved_view_by_slug
 
 _CONVERSION_STAGES = {
     fos.ToClips,
@@ -282,17 +282,13 @@ class Mutation(SetColorScheme):
             await dispatch_event(subscription, fose.StateUpdate(state=state))
             return None
 
-        result_view = None
         ds = fod.load_dataset(dataset_name, reload=True)
         state.dataset = ds
 
-        # Create the view using the saved view doc if loading a saved view
-        if saved_view_slug is not None:
-            try:
-                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
-                result_view = ds.load_saved_view(doc.name)
-            except:
-                pass
+        # Create the view using the saved view doc if loading a saved view. A
+        # saved view that fails to build raises rather than loading the full
+        # dataset in its place
+        result_view = load_saved_view_by_slug(ds, saved_view_slug)
 
         # Otherwise, build the view using the params
         if result_view is None:
@@ -359,9 +355,7 @@ class Mutation(SetColorScheme):
 
         if dataset is None:
             raise ValueError(
-                "[mutation: saved_view] Missing dataset "
-                "reference for creating saved view with name = "
-                "{}".format(view_name)
+                f"Saved query '{view_name}' needs a dataset to be saved on"
             )
 
         dataset_view = await get_view(
@@ -372,7 +366,7 @@ class Mutation(SetColorScheme):
             awaitable=True,
         )
 
-        result_view = _build_result_view(dataset_view, form)
+        result_view = _build_result_view(dataset_view, form, keep_stages=True)
 
         dataset.save_view(
             view_name, result_view, description=description, color=color
@@ -400,9 +394,7 @@ class Mutation(SetColorScheme):
     ) -> t.Optional[str]:
         if not dataset_name:
             raise ValueError(
-                "Attempting to delete a saved view (%s) without a "
-                "dataset reference.",
-                view_name,
+                f"Saved query '{view_name}' needs a dataset to be deleted from"
             )
 
         dataset = fod.load_dataset(dataset_name, reload=True)
@@ -412,10 +404,7 @@ class Mutation(SetColorScheme):
         if dataset.has_saved_view(view_name):
             deleted_view_id = dataset._delete_saved_view(view_name)
         else:
-            raise ValueError(
-                "Attempting to delete non-existent saved view: %s",
-                view_name,
-            )
+            raise ValueError(f"Saved query '{view_name}' does not exist")
 
         # If the current view is deleted, set the view state to the full
         # dataset view
@@ -461,11 +450,7 @@ class Mutation(SetColorScheme):
         if dataset.has_saved_view(view_name):
             dataset.update_saved_view_info(view_name, updated_info)
         else:
-            raise ValueError(
-                "Attempting to update fields on non-existent saved view: "
-                "%s",
-                view_name,
-            )
+            raise ValueError(f"Saved query '{view_name}' does not exist")
 
         current_name = (
             updated_info["name"]
@@ -495,45 +480,18 @@ class Mutation(SetColorScheme):
         await dispatch_event(subscription, fose.SetSpaces(spaces=spaces))
         return True
 
-    @gql.mutation
-    def search_select_fields(
-        self, dataset_name: str, meta_filter: t.Optional[JSON]
-    ) -> t.List[str]:
-        if not meta_filter:
-            return []
 
-        state = get_state()
-        dataset = state.dataset
-        if dataset is None:
-            dataset = fod.load_dataset(dataset_name, reload=True)
+def _build_result_view(view, form, keep_stages=False):
+    if form and form.sample_ids:
+        if keep_stages:
+            # A saved view keeps every stage of its definition: selected
+            # samples are appended as their own stage rather than optimized
+            # into a select that drops the matching and sorting before it
+            view = view.select(form.sample_ids)
+        else:
+            view = fov.make_optimized_select_view(view, form.sample_ids)
 
-        try:
-            view = dataset.select_fields(meta_filter=meta_filter)
-        except Exception:
-            try:
-                view = dataset.select_fields(meta_filter)
-            except Exception:
-                view = dataset
-
-        res = []
-        try:
-            is_video = dataset.media_type == "video"
-            for stage in view._stages:
-                res += [
-                    st
-                    for st in stage.get_selected_fields(view, frames=is_video)
-                ]
-        except Exception:
-            res = []
-
-        return res
-
-
-def _build_result_view(view, form):
-    if form.sample_ids:
-        view = fov.make_optimized_select_view(view, form.sample_ids)
-
-    if form.add_stages:
+    if form and form.add_stages:
         for d in form.add_stages:
             stage = fos.ViewStage._from_dict(d)
             view = view.add_stage(stage)

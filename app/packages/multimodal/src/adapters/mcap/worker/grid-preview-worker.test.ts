@@ -13,7 +13,7 @@ const gridPreviewHarness = vi.hoisted(() => ({
   readSignals: [] as Array<{ current: AbortSignal | null }>,
 }));
 
-vi.mock("@fiftyone/utilities", () => ({
+vi.mock("@fiftyone/utilities/src/fetch", () => ({
   setFetchFunction: vi.fn(),
 }));
 

@@ -10,6 +10,7 @@ import {
   LIST_TYPES,
   NO_DEFAULT_TYPES,
   NUMERIC_TYPES,
+  POINT_SCOPE_TYPES,
   componentNeedsRange,
   componentNeedsValues,
   getDefaultComponent,
@@ -35,6 +36,7 @@ interface UseAttributeFormResult {
   isIntegerType: boolean;
   isListType: boolean;
   isFromOntology: boolean;
+  isPointScope: boolean;
   isTaxonomyEligible: boolean;
   whenPreview: { condition: string; suffix: string | null } | null;
   supportsDefault: boolean;
@@ -61,6 +63,7 @@ interface UseAttributeFormResult {
   handleListDefaultChange: (values: (string | number)[]) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
   handleDynamicChange: (dynamic: boolean) => void;
+  handleScopeChange: (pointScope: boolean) => void;
   handleValuesModeChange: (mode: ValuesMode) => void;
   handleTaxonomyChange: (taxonomy: string) => void;
 }
@@ -75,6 +78,7 @@ export default function useAttributeForm({
     formState.type === "int" || formState.type === "list<int>";
   const isListType = LIST_TYPES.includes(formState.type);
   const isFromOntology = !!formState._source;
+  const isPointScope = formState.scope === "point";
   const whenPreview = useMemo(() => {
     const when = formState.when;
     if (!when) return null;
@@ -119,7 +123,10 @@ export default function useAttributeForm({
     formState.component === "dropdown";
   const supportsDefault =
     !NO_DEFAULT_TYPES.includes(formState.type) &&
-    formState.valuesMode === VALUES_MODE.simple;
+    formState.valuesMode === VALUES_MODE.simple &&
+    // No defaults for point scope: label-creation defaults apply scalar
+    // values, and a per-point list has no meaningful scalar default
+    !isPointScope;
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
   // Visibility flags
@@ -230,6 +237,45 @@ export default function useAttributeForm({
     [formState, onFormStateChange],
   );
 
+  const handleScopeChange = useCallback(
+    (pointScope: boolean) => {
+      if (!pointScope) {
+        onFormStateChange({ ...formState, scope: "field" });
+        return;
+      }
+
+      // Point scope declares the ELEMENT type (storage is a parallel list),
+      // so a list type collapses to its element and unsupported types fall
+      // back to str; the component and dependent settings reset with it
+      let type = formState.type;
+      if (LIST_TYPES.includes(type)) {
+        type = type.slice(5, -1);
+      }
+      if (!POINT_SCOPE_TYPES.includes(type)) {
+        type = "str";
+      }
+
+      if (type === formState.type) {
+        onFormStateChange({ ...formState, scope: "point", default: "" });
+        return;
+      }
+
+      onFormStateChange({
+        ...formState,
+        scope: "point",
+        type,
+        component: getDefaultComponent(type),
+        values: [],
+        range: null,
+        default: "",
+        listDefault: [],
+        valuesMode: VALUES_MODE.simple,
+        taxonomy: undefined,
+      });
+    },
+    [formState, onFormStateChange],
+  );
+
   const handleValuesModeChange = useCallback(
     (mode: ValuesMode) => {
       if (mode === VALUES_MODE.taxonomy) {
@@ -258,6 +304,7 @@ export default function useAttributeForm({
     isIntegerType,
     isListType,
     isFromOntology,
+    isPointScope,
     isTaxonomyEligible,
     whenPreview,
     supportsDefault,
@@ -284,6 +331,7 @@ export default function useAttributeForm({
     handleListDefaultChange,
     handleReadOnlyChange,
     handleDynamicChange,
+    handleScopeChange,
     handleValuesModeChange,
     handleTaxonomyChange,
   };

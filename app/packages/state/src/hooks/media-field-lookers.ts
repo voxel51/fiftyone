@@ -67,6 +67,16 @@ export const resolveMediaFieldLooker = ({
         mimeType,
         sampleMediaType,
       });
+  const projectionField =
+    nativeLookerType === "3d"
+      ? Object.entries(sample).find(
+          ([, value]) =>
+            value &&
+            typeof value === "object" &&
+            "_cls" in value &&
+            value._cls === "OrthographicProjectionMetadata",
+        )?.[0]
+      : undefined;
 
   return {
     hasAlternateMediaPath,
@@ -77,6 +87,7 @@ export const resolveMediaFieldLooker = ({
     mimeType,
     nativeLookerType,
     selectedMediaPath,
+    projectionField,
   };
 };
 

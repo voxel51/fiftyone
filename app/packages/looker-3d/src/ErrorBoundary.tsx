@@ -1,7 +1,19 @@
 import { Loading } from "@fiftyone/components";
+import { getEventBus } from "@fiftyone/events";
 import React, { useEffect } from "react";
 import { useSetRecoilState } from "recoil";
+import { ERROR_SHOWN_EVENT, type Looker3dE2EEvents } from "./constants";
 import { fo3dAssetsParseStatusThisSample } from "./state";
+
+/** Signals the `looker-error-info` it is rendered beside, as a 2D looker does */
+export const LookerErrorShown = () => {
+  useEffect(() => {
+    getEventBus<Looker3dE2EEvents>().dispatch(ERROR_SHOWN_EVENT, {
+      thumbnail: false,
+    });
+  }, []);
+  return null;
+};
 
 /**
  * This is to be used in conjunction with `Fo3dErrorBoundary` to add uncaught error logs to
@@ -63,6 +75,7 @@ export class Fo3dErrorBoundary extends React.Component<
             error={this.state.error}
             boundaryName={this.props.boundaryName}
           />
+          <LookerErrorShown />
           <div data-cy="looker-error-info">
             {this.state.error instanceof Error
               ? this.state.error.message

@@ -5,6 +5,8 @@ import * as filters from "../../../Filters";
 interface FilterItem {
   color: string;
   ftype: string;
+  // the owning label field's sidebar path, for rows that act on the field
+  labelPath?: string;
   listField: boolean;
   modal: boolean;
   named?: boolean;
@@ -22,6 +24,7 @@ export const FILTERS = {
   [fou.INT_FIELD]: filters.NumericFieldFilter,
   [fou.OBJECT_ID_FIELD]: filters.StringFieldFilter,
   [fou.STRING_FIELD]: filters.StringFieldFilter,
+  _BOUNDING_BOX: filters.BoundingBoxFilter,
   _LABEL_TAGS: filters.LabelFieldFilter,
   _TEMPORAL_TAGS: filters.TemporalTagsFilter,
 };

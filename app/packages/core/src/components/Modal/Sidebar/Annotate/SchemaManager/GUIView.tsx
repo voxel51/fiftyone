@@ -1,23 +1,14 @@
 /**
  * GUIView Component
  *
- * Main view for the Schema Manager with GUI and JSON tabs.
+ * The Schema Manager's main view: the unified schema overview (one
+ * layout for the dataset default and every custom schema, with its
+ * own GUI/JSON switch in the header bar).
  */
 
-import { Code, scrollable } from "@fiftyone/components";
-import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
-import { useCallback } from "react";
-import ActiveFieldsSection from "./ActiveFieldsSection";
-import { Container, Item } from "./Components";
-import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
-import HiddenFieldsSection from "./HiddenFieldsSection";
-import {
-  useFullSchemaEditor,
-  useLabelSchemasData,
-  useSchemaEditorGUIJSONToggle,
-  useSelectionCleanup,
-} from "./hooks";
-import { ContentArea } from "./styled";
+import { scrollable } from "@fiftyone/components";
+import SchemaOverview from "./SchemaOverview";
+import { Container } from "./Components";
 
 // =============================================================================
 // Re-exports for backwards compatibility
@@ -26,107 +17,10 @@ import { ContentArea } from "./styled";
 export { useActivateFields, useDeactivateFields } from "./hooks";
 export { selectedActiveFields, selectedHiddenFields } from "./state";
 
-// =============================================================================
-// Content Components
-// =============================================================================
-
-/**
- * GUI content - field list with drag-drop
- */
-const GUIContent = () => {
-  // Reset selection when switching away from GUI tab
-  useSelectionCleanup();
-
-  return (
-    <>
-      <ActiveFieldsSection />
-      <HiddenFieldsSection />
-    </>
-  );
-};
-
-/**
- * JSON content - raw schema view (read-only)
- */
-const JSONContent = () => {
-  const schemasData = useLabelSchemasData();
-  const { currentJson } = useFullSchemaEditor();
-
-  if (!schemasData) {
-    return (
-      <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-        <Text color={TextColor.Secondary}>No schema data available</Text>
-      </Item>
-    );
-  }
-
-  return (
-    <ContentArea
-      className={scrollable}
-      style={{
-        position: "absolute",
-        top: "50px",
-        left: "2rem",
-        right: "2rem",
-        bottom: 0,
-      }}
-    >
-      <Code
-        value={currentJson}
-        language="json"
-        height="100%"
-        width="100%"
-        readOnly
-      />
-    </ContentArea>
-  );
-};
-
-// =============================================================================
-// Main Component
-// =============================================================================
-
 const GUIView = () => {
-  const { tab: activeTab, setTab: setActiveTab } =
-    useSchemaEditorGUIJSONToggle();
-
-  // Guard against invalid activeTab values (indexOf returns -1 for unknown values)
-  const tabIndex = TAB_IDS.indexOf(activeTab);
-  const defaultIndex = tabIndex === -1 ? 0 : tabIndex;
-
-  const handleTabChange = useCallback(
-    (index: number) => {
-      const tabId = TAB_IDS[index];
-      if (tabId) {
-        setActiveTab(tabId);
-      }
-    },
-    [setActiveTab],
-  );
-
   return (
     <Container className={scrollable} style={{ marginTop: "1.5rem" }}>
-      <ToggleSwitch
-        size={Size.Md}
-        defaultIndex={defaultIndex}
-        onChange={handleTabChange}
-        tabs={[
-          {
-            id: TAB_GUI,
-            data: {
-              label: "GUI",
-              content: <GUIContent />,
-            },
-          },
-          {
-            id: TAB_JSON,
-            data: {
-              label: "JSON",
-              content: <JSONContent />,
-            },
-          },
-        ]}
-      />
+      <SchemaOverview />
     </Container>
   );
 };

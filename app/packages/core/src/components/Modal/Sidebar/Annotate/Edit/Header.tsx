@@ -1,8 +1,9 @@
+import { getEventBus } from "@fiftyone/events";
 import { useAtomValue } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
-import { DetectionOverlay } from "@fiftyone/lighter";
+import { DetectionOverlay, KeypointOverlay } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem } from "@mui/material";
 import {
@@ -165,7 +166,16 @@ const LabelHamburgerMenu = () => {
         )}
         {showDelete && (
           <MenuItem
-            onClick={deleteCommand.callback}
+            onClick={() => {
+              // A sub-selected vertex makes the delete command defer to the
+              // canvas vertex-removal keydown — which a menu click never
+              // produces. The menu means the LABEL: drop the sub-selection
+              // first (synchronous) so the command falls through to it.
+              if (overlay instanceof KeypointOverlay) {
+                overlay.selectPoint(null);
+              }
+              deleteCommand.callback();
+            }}
             data-cy="label-menu-delete"
           >
             <Stack
@@ -188,10 +198,21 @@ const LabelHamburgerMenu = () => {
   );
 };
 
+/** e2e specs wait on the edit form's header naming the label it edits */
+type EditHeaderE2EEvents = {
+  "e2e:annotate:edit-header": { type: string | null };
+};
+
 const Header = () => {
   const annotationContext = useAnnotationContext();
   const { selected } = annotationContext;
   const type = selected?.type ?? null;
+
+  useEffect(() => {
+    getEventBus<EditHeaderE2EEvents>().dispatch("e2e:annotate:edit-header", {
+      type,
+    });
+  }, [type]);
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(selected?.overlay ?? undefined);
 
@@ -224,7 +245,9 @@ const Header = () => {
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
-        <div style={{ marginRight: "0.75rem" }}>Edit {type}</div>
+        <div style={{ marginRight: "0.75rem" }} data-cy="annotate-edit-title">
+          Edit {type}
+        </div>
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>

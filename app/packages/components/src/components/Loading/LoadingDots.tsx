@@ -11,7 +11,7 @@ const LoadingDots = ({
   style?: React.CSSProperties;
 }) => {
   return (
-    <span style={style ?? {}}>
+    <span data-cy="loading-dots" style={style ?? {}}>
       {text}
       <span className={styles.loading} />
     </span>

@@ -136,6 +136,7 @@ const EpisodeModal: React.FC<
             decorateTrack={decorateTrack}
             timelineRulerOverlay={rulerOverlay}
             episodeContext={{ datasetId, sampleId }}
+            destinationSampleId={ctx.destinationSampleId ?? sampleId}
             fileName={fileName}
             initialSeekTimeNs={
               opening?.initialSeekTimeNs ?? focus?.startNs ?? null

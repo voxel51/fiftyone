@@ -32,7 +32,7 @@ interface Warmupable {
  */
 export function useWarmupThenSeek(
   stream: Warmupable | null,
-  time?: number | null,
+  time?: number | null | (() => number),
 ): void {
   const { seek } = usePlayback();
   const store = usePlaybackStore();
@@ -45,18 +45,20 @@ export function useWarmupThenSeek(
       return undefined;
     }
 
+    const read = typeof time === "function" ? time : () => time;
     let cancelled = false;
-    const target = time ?? 0;
+    const target = read() ?? 0;
     void stream.warmup(target).then(() => {
       // Late scope/label data must not undo a scrub or a press of Play.
       if (
         !cancelled &&
-        (time === undefined || !hasSought.current) &&
-        getPlayhead(store) === 0 &&
-        !getIsPlaying(store) &&
-        !getIsPlayPending(store)
+        (typeof time === "function" ||
+          ((time === undefined || !hasSought.current) &&
+            getPlayhead(store) === 0 &&
+            !getIsPlaying(store) &&
+            !getIsPlayPending(store)))
       ) {
-        seek(target);
+        seek(read() ?? 0);
       }
     });
 

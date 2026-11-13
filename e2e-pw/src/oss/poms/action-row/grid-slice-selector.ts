@@ -48,15 +48,17 @@ class GridSliceSelectorAsserter {
   constructor(private readonly gridSliceSelectorPom: GridSliceSelectorPom) {}
 
   async verifySliceSelectorIsAvailable() {
-    await expect(
-      this.gridSliceSelectorPom.page.getByTestId(SLICE_SELECTOR_TEST_ID),
-    ).toBeVisible();
+    expect(
+      await this.gridSliceSelectorPom.page
+        .getByTestId(SLICE_SELECTOR_TEST_ID)
+        .isVisible(),
+    ).toBe(true);
   }
 
   async verifyActiveSlice(expectedActiveSlice: string) {
-    await expect(
-      this.gridSliceSelectorPom.page.getByTestId(SLICE_SELECTOR_TEST_ID),
-    ).toHaveValue(expectedActiveSlice);
+    expect(await this.gridSliceSelectorPom.activeSlice()).toBe(
+      expectedActiveSlice,
+    );
   }
 
   async verifyHasSlices(expectedSlices: string[]) {

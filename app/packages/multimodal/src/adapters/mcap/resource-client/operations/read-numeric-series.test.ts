@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { McapIndexedReaderLike, McapReadContinuation } from "../../reader";
 import { resolveMcapTimelineStrategy } from "../timeline";
 import {
-  projectNumericField,
+  projectSeriesValue,
   readMcapNumericSeries,
   readMcapNumericSeriesSlice,
 } from "./read-numeric-series";
@@ -56,7 +56,7 @@ const TELEMETRY_SCHEMA_DATA: Uint8Array = descriptor.FileDescriptorSet.encode(
   ).toDescriptor("proto3"),
 ).finish();
 
-describe("projectNumericField", () => {
+describe("projectSeriesValue", () => {
   it("walks nested records and coerces numerics", () => {
     const record = {
       speed: 3.5,
@@ -66,26 +66,26 @@ describe("projectNumericField", () => {
       name: "ego",
       ranges: [1, 2],
     };
-    expect(projectNumericField(record, ["speed"])).toBe(3.5);
-    expect(projectNumericField(record, ["linear", "x"])).toBe(1.25);
-    expect(projectNumericField(record, ["armed"])).toBe(1);
-    expect(projectNumericField(record, ["count"])).toBe(7);
-    expect(projectNumericField(record, ["name"])).toBeUndefined();
-    expect(projectNumericField(record, ["ranges", "0"])).toBe(1);
-    expect(projectNumericField(record, ["ranges", "1.5"])).toBeUndefined();
-    expect(projectNumericField(record, ["ranges", "9"])).toBeUndefined();
-    expect(projectNumericField(record, ["missing", "leaf"])).toBeUndefined();
+    expect(projectSeriesValue(record, ["speed"])).toBe(3.5);
+    expect(projectSeriesValue(record, ["linear", "x"])).toBe(1.25);
+    expect(projectSeriesValue(record, ["armed"])).toBe(1);
+    expect(projectSeriesValue(record, ["count"])).toBe(7);
+    expect(projectSeriesValue(record, ["name"])).toBe("ego");
+    expect(projectSeriesValue(record, ["ranges", "0"])).toBe(1);
+    expect(projectSeriesValue(record, ["ranges", "1.5"])).toBeUndefined();
+    expect(projectSeriesValue(record, ["ranges", "9"])).toBeUndefined();
+    expect(projectSeriesValue(record, ["missing", "leaf"])).toBeUndefined();
   });
 
   it("coerces Long-like objects via toNumber", () => {
     expect(
-      projectNumericField({ ticks: { toNumber: () => 42 } }, ["ticks"]),
+      projectSeriesValue({ ticks: { toNumber: () => 42 } }, ["ticks"]),
     ).toBe(42);
   });
 
   it("rejects non-finite numbers", () => {
     expect(
-      projectNumericField({ v: Number.POSITIVE_INFINITY }, ["v"]),
+      projectSeriesValue({ v: Number.POSITIVE_INFINITY }, ["v"]),
     ).toBeUndefined();
   });
 });
@@ -176,6 +176,57 @@ describe("readMcapNumericSeries", () => {
     // undefined → NaN gap.
     expect([...result.fields[1].values.slice(0, 2)]).toEqual([10, 20]);
     expect([...result.fields[2].values].every(Number.isNaN)).toBe(true);
+  });
+
+  it("codes text fields as categories with a label table", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [
+        jsonMessage({ road: "dry", speed: 3 }, 1_000_000_000n),
+        jsonMessage({ road: "wet", speed: 4 }, 2_000_000_000n),
+        jsonMessage({ speed: 5 }, 3_000_000_000n),
+        jsonMessage({ road: "dry", speed: 6 }, 4_000_000_000n),
+      ],
+    });
+
+    const result = await readMcapNumericSeries({
+      reader,
+      request: {
+        fieldPaths: ["road", "speed"],
+        source: createSource(),
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.fields[0].labels).toEqual(["dry", "wet"]);
+    expect([...result.fields[0].values]).toEqual([0, 1, Number.NaN, 0]);
+    expect(result.fields[1].labels).toBeUndefined();
+    expect([...result.fields[1].values]).toEqual([3, 4, 5, 6]);
+  });
+
+  it("codes every value of a field once it yields text", async () => {
+    const reader = createReader({
+      channel: createChannel({ messageEncoding: "json", topic: "/state" }),
+      messages: [
+        jsonMessage({ gear: 1 }, 1_000_000_000n),
+        jsonMessage({ gear: "R" }, 2_000_000_000n),
+        jsonMessage({ gear: 1 }, 3_000_000_000n),
+      ],
+    });
+
+    const result = await readMcapNumericSeries({
+      reader,
+      request: {
+        fieldPaths: ["gear"],
+        source: createSource(),
+        topic: "/state",
+      },
+      timeline,
+    });
+
+    expect(result.fields[0].labels).toEqual(["1", "R"]);
+    expect([...result.fields[0].values]).toEqual([0, 1, 0]);
   });
 
   it("extracts from JSON messages including booleans", async () => {
@@ -630,7 +681,9 @@ describe("readMcapNumericSeriesSlice", () => {
       ]),
       messages: [
         createMessage(
-          new TextEncoder().encode(JSON.stringify({ speed: 3, armed: true })),
+          new TextEncoder().encode(
+            JSON.stringify({ speed: 3, armed: true, mode: "auto" }),
+          ),
           { channelId: 1, logTime: 1_000_000_000n },
         ),
         createMessage(new TextEncoder().encode(JSON.stringify({ x: 9 })), {
@@ -667,7 +720,7 @@ describe("readMcapNumericSeriesSlice", () => {
         maxChunks: 2,
         preferredTimeNs: 1_500_000_000n,
         selections: [
-          { fieldPaths: ["speed", "armed"], topic: "/state" },
+          { fieldPaths: ["speed", "armed", "mode"], topic: "/state" },
           { fieldPaths: ["x"], topic: "/pose" },
         ],
         source: createSource(),
@@ -691,8 +744,100 @@ describe("readMcapNumericSeriesSlice", () => {
     ]);
     expect([...result.series[0].fields[0].values]).toEqual([3]);
     expect([...result.series[0].fields[1].values]).toEqual([1]);
+    expect(result.series[0].fields[2].labels).toEqual(["auto"]);
+    expect([...result.series[0].fields[2].values]).toEqual([0]);
     expect([...result.series[1].fields[0].values]).toEqual([9]);
     expect(result.usage.messagesDecoded).toBe(2);
+  });
+
+  it("projects the newest message before a first page for held states", async () => {
+    const channel = createChannel({
+      messageEncoding: "json",
+      schemaId: 0,
+      topic: "/drive",
+    });
+    const prior = createMessage(
+      new TextEncoder().encode(JSON.stringify({ mode: "SPORT" })),
+      { logTime: 5_000_000_000n },
+    );
+    const inWindow = createMessage(
+      new TextEncoder().encode(JSON.stringify({ mode: "DRIVE" })),
+      { logTime: 40_000_000_000n },
+    );
+    const readLatestIndexedMessageTimes = vi.fn(async () => {
+      return new Map([
+        [
+          "/drive",
+          [
+            {
+              channelId: 1,
+              chunkStartOffset: 0n,
+              logTimeNs: 5_000_000_000n,
+              messageOffset: 0n,
+              topic: "/drive",
+            },
+          ],
+        ],
+      ]);
+    });
+    const readIndexedMessages = vi.fn(async () => [prior]);
+    const reader = {
+      ...createReader({
+        channel,
+        messages: [],
+        schema: createSchema(new Uint8Array(), { id: 0 }),
+      }),
+      readBoundedMessages: vi.fn(async () => ({
+        coverageByTopic: new Map([
+          ["/drive", [{ endNs: 60_000_000_000n, startNs: 30_000_000_000n }]],
+        ]),
+        messages: [inWindow],
+        stopReason: "source-exhausted" as const,
+        usage: createUsage({ chunksOpened: 1, messagesDecoded: 1 }),
+      })),
+      readIndexedMessages,
+      readLatestIndexedMessageTimes,
+    };
+    const request = {
+      absoluteBudget: budget,
+      absoluteMaxChunks: 4,
+      bucketDurationNs: 1_000_000_000n,
+      budget,
+      endTimeNs: 60_000_000_000n,
+      maxChunks: 2,
+      selections: [
+        { fieldPaths: ["mode"], includePrior: true, topic: "/drive" },
+      ],
+      source: createSource(),
+      startTimeNs: 30_000_000_000n,
+    };
+
+    const result = await readMcapNumericSeriesSlice({
+      reader,
+      request,
+      timeline,
+    });
+
+    expect(readLatestIndexedMessageTimes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limitPerTopic: 1,
+        timeNs: 29_999_999_999n,
+        topics: ["/drive"],
+      }),
+    );
+    const [field] = result.series[0].fields;
+    expect(field.labels).toEqual(["SPORT", "DRIVE"]);
+    expect([...field.values]).toEqual([0, 1]);
+    expect(field.timesSec[0]).toBeLessThan(30);
+
+    // Continuation pages resume inside the window; their prior is known.
+    readLatestIndexedMessageTimes.mockClear();
+    await readMcapNumericSeriesSlice({
+      reader,
+      request: { ...request, continuation: {} as McapReadContinuation },
+      timeline,
+    });
+    expect(readLatestIndexedMessageTimes).not.toHaveBeenCalled();
   });
 
   it("escalates exactly one indivisible group after a zero-progress grant", async () => {

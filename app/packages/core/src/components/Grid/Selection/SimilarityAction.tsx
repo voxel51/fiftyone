@@ -7,6 +7,7 @@ import { useState } from "react";
 import useSimilarityPopover from "../../Actions/Similarity/useSimilarityPopover";
 import { useAvailableSimilarityKeys } from "../../Actions/Similarity/utils";
 import ActionEntry from "./ActionEntry";
+import SimilaritySettings from "./SimilaritySettings";
 
 const noop = () => undefined;
 
@@ -15,7 +16,7 @@ function SimilaritySelection(props: GridSelectionActionProps) {
   if (!keys?.length) {
     return (
       <ActionEntry
-        label="Find Similar"
+        label="Find similar"
         icon={SearchIcon}
         surface={props.surface}
         disabledReason={
@@ -36,7 +37,7 @@ function AvailableSimilaritySelection({
   surface,
 }: GridSelectionActionProps) {
   const [searching, setSearching] = useState(false);
-  const { handleSearch, handleOpenPanel } = useSimilarityPopover({
+  const { handleSearch, resolvedBrainKey } = useSimilarityPopover({
     modal: false,
     isImageSearch: true,
     close: noop,
@@ -49,25 +50,55 @@ function AvailableSimilaritySelection({
 
   return (
     <ActionEntry
-      label="Find Similar"
+      label="Find similar"
       icon={SearchIcon}
       surface={surface}
-      disabledReason={disabledReason}
+      disabledReason={
+        disabledReason ??
+        (!resolvedBrainKey ? "No similarity index is available" : null)
+      }
       busy={searching}
       busyLabel="Finding similar…"
-      onClick={context.source === "explicit" ? handleSearch : handleOpenPanel}
+      onClick={handleSearch}
     />
   );
 }
 
-/** Search captured samples, or open search setup for the current grid. */
+/** Settings live below the overflow actions, independent of selection scope. */
+export function SelectionSimilaritySettings({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  const keys = useAvailableSimilarityKeys(false, true);
+  return keys?.length ? (
+    <AvailableSimilaritySettings onClose={onClose} />
+  ) : null;
+}
+
+function AvailableSimilaritySettings({ onClose }: { onClose: () => void }) {
+  const { indexes, resolvedBrainKey, setBrainKey, k, setK, handleOpenPanel } =
+    useSimilarityPopover({ modal: false, isImageSearch: true, close: onClose });
+  return (
+    <SimilaritySettings
+      indexes={indexes}
+      selectedKey={resolvedBrainKey}
+      onSelectKey={setBrainKey}
+      k={k}
+      onChangeK={setK}
+      onOpenPanel={handleOpenPanel}
+    />
+  );
+}
+
+/** Search captured samples with an available similarity index. */
 export const similaritySelectionAction: GridSelectionAction = {
   id: "fiftyone:find-similar",
   order: 15,
-  label: "Find Similar",
+  label: "Find similar",
   placement: "primary",
   supports: () => true,
-  scope: "explicit-or-results",
+  scope: "explicit",
   memberKinds: ["episode"],
   unavailable: (context) => {
     if (context.counts.unavailable)

@@ -48,7 +48,18 @@ export class FoWebServer {
 
       console.log(procString);
 
-      const proc = spawn(procString, { shell: true });
+      // the App hands out pool colors in first-request order, so one color
+      // (the design system's brand orange) keeps screenshots independent of
+      // render order; test runs never track, so the App shows no analytics
+      // consent prompt
+      const proc = spawn(procString, {
+        shell: true,
+        env: {
+          ...process.env,
+          FIFTYONE_APP_COLOR_POOL: "#FA5300",
+          FIFTYONE_DO_NOT_TRACK: "true",
+        },
+      });
       let startupComplete = false;
       const stderrTail: string[] = [];
 

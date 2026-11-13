@@ -40,7 +40,7 @@
 
 .toolbarButton:focus-visible {
   color: var(--color-content-text-primary);
-  outline: 1px solid var(--color-voxel-secondary, #ff8d00);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: 1px;
 }
 
@@ -68,7 +68,7 @@
 }
 
 .rail:focus-visible {
-  outline: 1px solid var(--color-voxel-secondary, #ff8d00);
+  outline: 1px solid var(--color-semantic-warning);
   outline-offset: -1px;
 }
 
@@ -120,9 +120,9 @@
 .selectedRow {
   background: color-mix(
     in srgb,
-    var(--color-voxel-secondary, #ff8d00) 16%,
+    var(--color-semantic-warning) 16%,
     transparent
   );
   color: var(--color-content-text-primary);
-  box-shadow: inset 3px 0 var(--color-voxel-secondary, #ff8d00);
+  box-shadow: inset 3px 0 var(--color-semantic-warning);
 }

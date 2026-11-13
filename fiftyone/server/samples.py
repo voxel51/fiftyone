@@ -218,7 +218,7 @@ async def paginate_samples(
     )
 
 
-async def sample_nodes_for_ids(view, sample_ids):
+async def sample_nodes_for_ids(view, sample_ids, max_time_ms=None):
     """Builds grid-identical sample nodes for a few ids.
 
     The selection tray previews a captured sample with the same renderer and
@@ -237,6 +237,7 @@ async def sample_nodes_for_ids(view, sample_ids):
     samples = await foo.aggregate(
         foo.get_async_db_conn()[selected._dataset._sample_collection_name],
         pipeline,
+        maxTimeMS=max_time_ms,
     ).to_list(len(sample_ids))
     from fiftyone.server.selection_extensions import build_sample_items
 

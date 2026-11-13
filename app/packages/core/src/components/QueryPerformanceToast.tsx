@@ -1,6 +1,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { Toast, useTheme } from "@fiftyone/components";
 import { OPTIMIZING_QUERY_PERFORMANCE, SUMMARY_FIELDS } from "../utils/links";
+import { useEventBus } from "@fiftyone/events";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
@@ -12,22 +13,15 @@ const SHOWN_FOR = 10000;
 
 export const QP_WAIT = 5151;
 
-declare global {
-  interface WindowEventMap
-    extends GlobalEventHandlersEventMap, WindowEventHandlersEventMap {
-    queryperformance: QueryPerformanceToastEvent;
-  }
-}
-export class QueryPerformanceToastEvent extends Event {
-  isFrameField: boolean;
+export type QueryPerformanceDetail = {
   path: string;
+  isFrameField: boolean;
+};
 
-  constructor(path: string, isFrameField: boolean) {
-    super("queryperformance");
-    this.path = path;
-    this.isFrameField = isFrameField;
-  }
-}
+/** A query on `path` ran long enough that an index or summary field helps */
+export type QueryPerformanceEvents = {
+  "query-performance:slow": QueryPerformanceDetail;
+};
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -45,44 +39,33 @@ const QueryPerformanceToast = ({
     const link = isFrameFilter ? SUMMARY_FIELDS : OPTIMIZING_QUERY_PERFORMANCE;
     window.open(link, "_blank")?.focus();
   },
-  onDispatch = (event) => {
-    console.debug(event);
+  onDispatch = (detail: QueryPerformanceDetail) => {
+    console.debug(detail);
   },
   text = "View Documentation",
 }) => {
-  const [data, setData] = useState<{
-    path: string;
-    isFrameField: boolean;
-  } | null>(null);
+  const [data, setData] = useState<QueryPerformanceDetail | null>(null);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const trackEvent = useTrackEvent();
 
-  useEffect(() => {
-    const listen = (event: QueryPerformanceToastEvent) => {
-      onDispatch(event);
-      setData({ path: event.path, isFrameField: event.isFrameField });
-    };
-    window.addEventListener("queryperformance", listen);
-    return () => window.removeEventListener("queryperformance", listen);
-  }, [onDispatch]);
+  const bus = useEventBus<QueryPerformanceEvents>();
+
+  useEffect(
+    () =>
+      bus.on("query-performance:slow", (detail) => {
+        onDispatch(detail);
+        setData(detail);
+      }),
+    [bus, onDispatch],
+  );
 
   if (!element) {
     throw new Error("no query performance element");
   }
 
   if (!data || disabled) {
-    return null;
-  }
-
-  // NOTE: this is a one-off case where we disable the component in playwright
-  // so that this banner doesn't interfere with the tests.
-  // waiting for analytics to show up before we can dismiss it is a pain
-  // and adds significant time to the tests.
-  // we should usually _never_ have any divergence between tests and prod.
-  if (window.IS_PLAYWRIGHT) {
-    console.log("Query performance toast is disabled in playwright");
     return null;
   }
 

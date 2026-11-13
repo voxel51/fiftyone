@@ -1,15 +1,8 @@
-import {
-  Anchor,
-  Button,
-  Size,
-  Text,
-  TextVariant,
-  Tooltip,
-  Variant,
-} from "@voxel51/voodo";
+import { Button, Text } from "@voxel51/voodo";
 import { useState } from "react";
 import AgentGlyph from "./AgentGlyph";
 import AgentShowcase from "./AgentShowcase";
+import SelectionTooltip from "./SelectionTooltip";
 
 /**
  * The tray's agent entry where no assistant is installed. It opens a tour of
@@ -19,23 +12,22 @@ export default function AgentPromotion() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Tooltip
-        anchor={Anchor.Top}
-        content={<Text variant={TextVariant.Sm}>Voxel51 Agent</Text>}
+      <SelectionTooltip
+        content={<Text variant="body-tertiary">Voxel51 Agent</Text>}
       >
         <Button
-          size={Size.Sm}
-          variant={Variant.Borderless}
-          aria-label="Voxel51 Agent"
+          size="sm"
+          variant="borderless"
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => setOpen(true)}
-          style={{ minHeight: 32 }}
+          style={{ minHeight: 32, gap: 6 }}
           data-cy="fiftyone-agent-promotion"
         >
           <AgentGlyph />
+          Ask agent
         </Button>
-      </Tooltip>
+      </SelectionTooltip>
       <AgentShowcase open={open} onClose={() => setOpen(false)} />
     </>
   );

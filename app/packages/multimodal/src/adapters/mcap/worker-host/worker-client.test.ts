@@ -13,7 +13,7 @@ import { dehydrateMcapFrameTransformSet } from "../transforms/wire";
 import type { McapFrameTransformSet } from "../transforms/types";
 import { EPISODE_READ_CANCELLED_MESSAGE } from "../../../ports";
 
-vi.mock("@fiftyone/utilities", () => ({
+vi.mock("@fiftyone/utilities/src/fetch", () => ({
   getFetchParameters: () => ({
     headers: { Authorization: "token" },
     origin: "http://localhost:5151",

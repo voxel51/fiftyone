@@ -1851,7 +1851,7 @@ function getWidth(props) {
 }
 
 const X_AXIS_TITLES = {
-  view: "Saved view",
+  view: "Saved query",
   label_attribute: "Attribute value",
   sample_field: "Field value",
   custom_code: "Subset",

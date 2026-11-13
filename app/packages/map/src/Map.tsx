@@ -75,7 +75,7 @@ const Panel: React.FC<{}> = () => {
   const theme = foc.useTheme();
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
-  const filters = useRecoilValue(fos.filters);
+  const { filters, revision } = fos.useScopedGridFilters();
   const unFilteredExtended = useRecoilValue(fos.extendedStages);
 
   const extended = React.useMemo(() => {
@@ -96,6 +96,7 @@ const Panel: React.FC<{}> = () => {
   const { loading } = useFetchGeoLocations({
     dataset,
     filters,
+    revision,
     view,
     extended,
     path: currentField,

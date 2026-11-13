@@ -9,7 +9,7 @@ FiftyOne Installation
 
 .. note::
 
-    Did you know? :ref:`FiftyOne Enterprise <fiftyone-enterprise>` is an open
+    Did you know? :ref:`Voxel51 <fiftyone-enterprise>` is an open
     source-compatible deployment of FiftyOne that supports multiuser
     collaboration, cloud data, on-demand compute, and much more 🚀
 

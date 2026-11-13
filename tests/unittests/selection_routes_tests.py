@@ -6,10 +6,11 @@
 """
 
 import asyncio
+import json
 import threading
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -50,7 +51,12 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(identifier, "dataset")
         return self.dataset
 
-    async def call(self, endpoint, method="post", data=None, query=""):
+    async def call(
+        self, endpoint, method="post", data=None, query="", receive=None
+    ):
+        async def connected():
+            await asyncio.Future()
+
         request = Request(
             {
                 "type": "http",
@@ -63,12 +69,167 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
                 },
                 "query_string": query.encode(),
                 "headers": [],
-            }
+            },
+            receive=receive or connected,
         )
         args = (data or {},) if method == "post" else ()
         return await getattr(endpoint, method).__wrapped__(
             endpoint.__new__(endpoint), request, *args
         )
+
+    async def test_navigation_hydrates_nodes_in_cursor_order(self):
+        ids = ["second", "first"]
+        nodes = {
+            sample_id: routes.foses.ImageSample(
+                id=sample_id,
+                sample={"_id": sample_id},
+                urls=[],
+                aspect_ratio=1,
+            )
+            for sample_id in reversed(ids)
+        }
+        result = {"kind": "seek", "ids": ids, "previous": None, "next": None}
+        with patch.object(
+            routes.fosn,
+            "sample_neighborhood",
+            return_value=(self.dataset, result),
+        ), patch.object(
+            routes.foses,
+            "sample_nodes_for_ids",
+            new=AsyncMock(return_value=nodes),
+        ):
+            response = await self.call(
+                routes.SelectionNavigation, data={"sampleId": "second"}
+            )
+        self.assertEqual([node["id"] for node in response["nodes"]], ids)
+        self.assertEqual(response["nodes"][0]["__typename"], "ImageSample")
+        self.assertEqual(response["nodes"][0]["aspectRatio"], 1)
+
+    async def test_navigation_timeout_is_retryable_not_a_missing_sample(self):
+        from pymongo.errors import ExecutionTimeout
+
+        with patch.object(
+            routes.fosn,
+            "sample_neighborhood",
+            side_effect=ExecutionTimeout("deadline"),
+        ):
+            with self.assertRaises(HTTPException) as caught:
+                await self.call(routes.SelectionNavigation)
+        self.assertEqual(caught.exception.status_code, 408)
+
+    async def test_navigation_queue_has_a_deadline(self):
+        with patch.object(
+            routes, "_navigation_workers", asyncio.Semaphore(0)
+        ), patch.object(routes.fosn, "QUERY_SECONDS", 0.01), patch.object(
+            routes.fosn, "sample_neighborhood"
+        ) as locate:
+            with self.assertRaises(HTTPException) as caught:
+                await self.call(routes.SelectionNavigation)
+        self.assertEqual(caught.exception.status_code, 408)
+        locate.assert_not_called()
+
+    async def test_disconnected_navigation_skips_work_when_a_slot_opens(self):
+        workers = asyncio.Semaphore(0)
+
+        async def receive():
+            return {"type": "http.disconnect"}
+
+        with patch.object(
+            routes, "_navigation_workers", workers
+        ), patch.object(routes.fosn, "sample_neighborhood") as locate:
+            task = asyncio.create_task(
+                self.call(routes.SelectionNavigation, receive=receive)
+            )
+            await asyncio.sleep(0)
+            workers.release()
+            response = await task
+            self.assertEqual(response.status_code, 499)
+            locate.assert_not_called()
+            await asyncio.wait_for(workers.acquire(), timeout=1)
+
+    async def test_disconnection_after_lookup_skips_hydration(self):
+        completed = threading.Event()
+
+        def locate(*args):
+            completed.set()
+            return self.dataset, {"kind": "seek", "ids": ["sample"]}
+
+        async def receive():
+            if completed.is_set():
+                return {"type": "http.disconnect"}
+            await asyncio.Future()
+
+        with patch.object(
+            routes.fosn, "sample_neighborhood", side_effect=locate
+        ), patch.object(
+            routes.foses, "sample_nodes_for_ids", new=AsyncMock()
+        ) as hydrate:
+            response = await self.call(
+                routes.SelectionNavigation, receive=receive
+            )
+        self.assertEqual(response.status_code, 499)
+        hydrate.assert_not_called()
+
+    async def test_node_hydration_does_not_hold_a_lookup_slot(self):
+        hydrating = asyncio.Event()
+        finish = asyncio.Event()
+
+        async def hydrate(*args, **kwargs):
+            hydrating.set()
+            await finish.wait()
+            return {}
+
+        with patch.object(
+            routes, "_navigation_workers", asyncio.Semaphore(1)
+        ), patch.object(
+            routes.fosn,
+            "sample_neighborhood",
+            side_effect=[
+                (self.dataset, {"kind": "seek", "ids": []}),
+                (self.dataset, {"kind": "offset", "index": 1}),
+            ],
+        ), patch.object(
+            routes.foses, "sample_nodes_for_ids", side_effect=hydrate
+        ):
+            first = asyncio.create_task(self.call(routes.SelectionNavigation))
+            try:
+                await asyncio.wait_for(hydrating.wait(), timeout=1)
+                second = await asyncio.wait_for(
+                    self.call(routes.SelectionNavigation), timeout=1
+                )
+                self.assertEqual(second, {"kind": "offset", "index": 1})
+            finally:
+                finish.set()
+                await first
+
+    async def test_cancelled_request_keeps_its_running_worker_slot(self):
+        started = asyncio.Event()
+        finish = threading.Event()
+        loop = asyncio.get_running_loop()
+        workers = asyncio.Semaphore(1)
+
+        def locate(*args):
+            loop.call_soon_threadsafe(started.set)
+            finish.wait(timeout=2)
+            return self.dataset, {"kind": "offset", "index": 1}
+
+        with patch.object(
+            routes, "_navigation_workers", workers
+        ), patch.object(
+            routes.fosn, "sample_neighborhood", side_effect=locate
+        ):
+            request = asyncio.create_task(
+                self.call(routes.SelectionNavigation)
+            )
+            try:
+                await asyncio.wait_for(started.wait(), timeout=1)
+                request.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await request
+                self.assertTrue(workers.locked())
+            finally:
+                finish.set()
+                await asyncio.wait_for(workers.acquire(), timeout=1)
 
     async def test_subset_creation_forwards_optional_metadata(self):
         provenance = {"agent": "curation-agent"}
@@ -87,6 +248,47 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
         create.assert_called_once_with(
             self.dataset, "Review", None, None, None, provenance, lineage
         )
+
+    async def test_subset_edit_updates_metadata_in_the_actor_worker(self):
+        info = {"name": "Reviewed", "description": None}
+        summary = {"id": "subset", **info}
+
+        def update(dataset, subset_id, changes):
+            self.assert_worker()
+            self.assertIs(dataset, self.dataset)
+            self.assertEqual(subset_id, "subset")
+            self.assertEqual(changes, info)
+
+        def read(dataset, subset_id):
+            self.assert_worker()
+            self.assertIs(dataset, self.dataset)
+            self.assertEqual(subset_id, "subset")
+            return summary
+
+        with patch.object(
+            routes.fosub, "update_subset_info", side_effect=update
+        ) as write, patch.object(
+            routes.fosub, "subset_summary", side_effect=read
+        ):
+            self.assertEqual(
+                await self.call(routes.Subset, data=info), summary
+            )
+        write.assert_called_once()
+
+    async def test_subset_edit_maps_access_and_validation_errors(self):
+        for error, status in (
+            (PermissionError("Denied"), 403),
+            (ValueError("Invalid subset name"), 400),
+            (routes.InvalidId("Invalid subset ID"), 400),
+        ):
+            with self.subTest(error=error):
+                with patch.object(
+                    routes.fosub, "update_subset_info", side_effect=error
+                ), patch.object(routes.fosub, "subset_summary") as read:
+                    with self.assertRaises(HTTPException) as caught:
+                        await self.call(routes.Subset, data={"name": "Edit"})
+                self.assertEqual(caught.exception.status_code, status)
+                read.assert_not_called()
 
     async def test_sync_routes_offload_dataset_loading_and_operations(self):
         cases = [
@@ -172,6 +374,28 @@ class SelectionRouteTests(unittest.IsolatedAsyncioTestCase):
                         endpoint, method, data, query="counts=true"
                     )
                 self.assertEqual(result, {"completed": True})
+
+    async def test_tag_errors_preserve_messages_and_identify_lost_captures(
+        self,
+    ):
+        for error, code in (
+            (
+                routes.foss.SelectionCaptureUnavailableError(
+                    "Capture expired"
+                ),
+                410,
+            ),
+            (PermissionError("Cannot tag this dataset"), 403),
+            (ValueError("Invalid tag"), 400),
+        ):
+            with self.subTest(code=code), patch.object(
+                routes.foss, "tag_captured_members", side_effect=error
+            ):
+                response = await self.call(routes.SelectionTags)
+            self.assertEqual(response.status_code, code)
+            self.assertEqual(
+                json.loads(response.body), {"message": str(error)}
+            )
 
     async def test_capture_actions_run_in_a_worker(self):
         def mutate(dataset, *args):

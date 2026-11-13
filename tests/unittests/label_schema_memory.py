@@ -1,0 +1,140 @@
+"""
+In-memory stand-in for the ``label_schemas`` collection.
+
+``fiftyone.core.label_schema_docs`` only needs equality filters,
+``$set``/``$unset``/``$inc`` updates and single-document deletes, so a
+dict-backed collection is enough to run its suites (and, in FiftyOne
+Enterprise, the workflows plugin's, which creates docs for stage tests)
+without Mongo. Test modules import the ``memory_db`` fixture below, or
+call :func:`install` from their own fixtures.
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from __future__ import annotations
+
+import copy
+from types import SimpleNamespace
+from typing import Optional
+
+import pytest
+from bson import ObjectId
+
+#: The scope the suites create docs under.
+DATASET_ID = ObjectId("000000000000000000000001")
+
+
+class MemoryCollection:
+    def __init__(self):
+        self._docs: list[dict] = []
+
+    # -- pymongo surface the module uses -------------------------------
+
+    def list_indexes(self):
+        return []
+
+    def create_indexes(self, _models):
+        return None
+
+    def drop_index(self, _name):
+        return None
+
+    def insert_one(self, doc: dict) -> None:
+        self._docs.append(copy.deepcopy(doc))
+
+    def find(
+        self, flt: Optional[dict] = None, projection: Optional[dict] = None
+    ):
+        return [
+            _project(d, projection) for d in self._docs if _matches(d, flt)
+        ]
+
+    def find_one(
+        self, flt: Optional[dict] = None, projection: Optional[dict] = None
+    ):
+        for d in self._docs:
+            if _matches(d, flt):
+                return _project(d, projection)
+        return None
+
+    def update_one(self, flt: dict, update: dict):
+        for d in self._docs:
+            if not _matches(d, flt):
+                continue
+            for k, v in (update.get("$set") or {}).items():
+                d[k] = copy.deepcopy(v)
+            for k in update.get("$unset") or {}:
+                d.pop(k, None)
+            for k, v in (update.get("$inc") or {}).items():
+                d[k] = d.get(k, 0) + v
+            return SimpleNamespace(matched_count=1, modified_count=1)
+        return SimpleNamespace(matched_count=0, modified_count=0)
+
+    def delete_one(self, flt: dict):
+        for i, d in enumerate(self._docs):
+            if _matches(d, flt):
+                del self._docs[i]
+                return SimpleNamespace(deleted_count=1)
+        return SimpleNamespace(deleted_count=0)
+
+    def bulk_write(self, ops, ordered: bool = True):
+        """Applies ``pymongo.UpdateOne`` operations."""
+        modified = 0
+        for op in ops:
+            # pylint: disable=protected-access
+            modified += self.update_one(op._filter, op._doc).modified_count
+        return SimpleNamespace(modified_count=modified)
+
+
+class MemoryDatabase:
+    def __init__(self):
+        self._colls: dict[str, MemoryCollection] = {}
+
+    def __getitem__(self, name: str) -> MemoryCollection:
+        return self._colls.setdefault(name, MemoryCollection())
+
+
+def _matches(doc: dict, flt: Optional[dict]) -> bool:
+    return all(doc.get(k) == v for k, v in (flt or {}).items())
+
+
+def _project(doc: dict, projection: Optional[dict]) -> dict:
+    """A copy of ``doc`` honoring an exclusion (``{field: 0}``) or
+    inclusion (``{field: 1}``) projection."""
+    out = copy.deepcopy(doc)
+    if not projection:
+        return out
+    if any(v for v in projection.values()):
+        keep = {k for k, v in projection.items() if v} | {"_id"}
+        return {k: v for k, v in out.items() if k in keep}
+    for k, v in projection.items():
+        if not v:
+            out.pop(k, None)
+    return out
+
+
+def install(monkeypatch) -> MemoryDatabase:
+    """Points :mod:`fiftyone.core.label_schema_docs` at a fresh memory
+    database for the test; returns it."""
+    import fiftyone.core.label_schema_docs as docs
+
+    db = MemoryDatabase()
+    monkeypatch.setattr(docs, "_db", lambda: db)
+    return db
+
+
+@pytest.fixture
+def memory_db(monkeypatch):
+    """Points the core module at a fresh memory database for the test."""
+    yield install(monkeypatch)
+
+
+__all__ = [
+    "DATASET_ID",
+    "MemoryCollection",
+    "MemoryDatabase",
+    "install",
+    "memory_db",
+]

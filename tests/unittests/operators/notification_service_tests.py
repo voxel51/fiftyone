@@ -8,6 +8,7 @@ Unit tests for the notification service.
 
 import asyncio
 import datetime
+import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -42,6 +43,21 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
 
     def tearDown(self):
         self.loop.close()
+
+    def test_notifications_serialize_nested_job_dates_without_mutation(self):
+        requested_at = datetime.datetime(2026, 1, 1)
+        job = {"progress": {"requested_at": requested_at}}
+        message = MessageData(key="job", value=job, metadata=MessageMetadata())
+        self.loop.run_until_complete(
+            self.notification_service.notify("selection_jobs", message)
+        )
+        self.loop.run_until_complete(asyncio.sleep(0))
+        store, payload = self.remote_notifier.broadcast_to_store.call_args.args
+        self.assertEqual(store, "selection_jobs")
+        value = json.loads(payload)["value"]["progress"]["requested_at"]
+        self.assertEqual(value["_cls"], "DateTime")
+        self.assertEqual(value["datetime"], 1767225600000)
+        self.assertIs(job["progress"]["requested_at"], requested_at)
 
     def test_subscribe(self):
         callback = MagicMock()

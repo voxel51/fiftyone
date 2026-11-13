@@ -566,7 +566,12 @@ export function usePlaybackEngine({
   const requestOrStartPlayback = useCallback(
     (time: number) => {
       pendingPlayStartedAtMsRef.current ??= performance.now();
-      if (evaluatePlaybackStart(time, true)) {
+      // A prefetch may satisfy readiness synchronously, for example by
+      // borrowing a decoded mask. Re-read it before leaving Play pending.
+      if (
+        evaluatePlaybackStart(time, true) ||
+        evaluatePlaybackStart(time, false)
+      ) {
         startPlayback();
         return;
       }
@@ -593,6 +598,10 @@ export function usePlaybackEngine({
     }
 
     evaluatePlaybackStart(time, true);
+    if (evaluatePlaybackStart(time, false)) {
+      startPlayback();
+      return;
+    }
     schedulePendingPlayTimeout();
   }, [
     clearPendingPlay,

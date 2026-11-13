@@ -1230,15 +1230,26 @@ class TestPrepareVideoTensor:
         assert isinstance(processor.videos[0], torch.Tensor)
         assert processor.videos[0] is segment
 
-    def test_the_processor_is_left_to_choose_frames(self):
+    def test_the_processor_embeds_every_frame_given(self):
         processor = StubTensorProcessor()
         model = self._model_with(processor)
 
         model.prepare_video_tensor(self._segment(9), fps=9.0)
 
-        # Suppressing its sampling would override the checkpoint's own
-        # video policy with whatever the segment happened to hold
-        assert "do_sample_frames" not in processor.calls[0]
+        assert processor.calls[0]["do_sample_frames"] is False
+
+    def test_each_frames_capture_time_reaches_the_processor(self):
+        pytest.importorskip("transformers.video_utils")
+        processor = StubTensorProcessor()
+        model = self._model_with(processor)
+        # Unevenly spaced, so one rate over positions cannot reproduce them
+        ts_us = [1_000_000, 1_300_000, 1_350_000, 2_000_000]
+
+        model.prepare_video_tensor(self._segment(4), fps=3.0, ts_us=ts_us)
+
+        metadata = processor.calls[0]["video_metadata"][0]
+        seconds = [i / _fps_of(metadata) for i in _frames_indices_of(metadata)]
+        assert seconds == pytest.approx([0.0, 0.3, 0.35, 1.0])
 
     def test_a_segment_with_no_rate_reports_the_configured_one(self):
         processor = StubTensorProcessor()

@@ -14,8 +14,6 @@ import {
   MenuSectionTitle,
   MenuSeparator,
   MenuTextItem,
-  Size,
-  Variant,
   WarningAmberIcon,
 } from "@voxel51/voodo";
 import { useState } from "react";
@@ -68,11 +66,7 @@ export default function UnavailableReferences({
     <Dropdown
       anchor={DropdownAnchor.TopStart}
       trigger={
-        <Button
-          size={Size.Xs}
-          variant={Variant.Borderless}
-          leadingIcon={WarningAmberIcon}
-        >
+        <Button size="xs" variant="borderless" leadingIcon={WarningAmberIcon}>
           {plural(total ?? shown.length, `unavailable saved ${unit.one}`)}
         </Button>
       }
@@ -81,7 +75,7 @@ export default function UnavailableReferences({
       {shown.map((group) => (
         <MenuIconTextItem
           key={group.episodeId}
-          icon={<FolderOffIcon size={Size.Sm} />}
+          icon={<FolderOffIcon size="sm" />}
           text={`${unitTitle(unit)} …${group.episodeId.slice(-6)}`}
           subtext={selectionScopeLabel(countSelection([group]), unit)}
           disabled={selected.has(group.episodeId)}

@@ -1,8 +1,9 @@
 .page {
   position: relative;
   width: 100%;
-  height: calc(100% - 74px);
   flex: 1;
+  /* Let the page shrink when view stages or banners grow above it. */
+  min-height: 0;
 }
 
 .rest {

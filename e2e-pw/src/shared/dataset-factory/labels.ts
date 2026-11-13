@@ -30,6 +30,10 @@ export interface LabelBuilders {
   polyline(fields: JSONObject): JSONObject;
   /** A `Polylines` list field holding `items`. */
   polylines(items: JSONObject[]): JSONObject;
+  /** A `Keypoint`; a `null` entry in `points` is a hole, stored as `[NaN, NaN]`. */
+  keypoint(fields: JSONObject): JSONObject;
+  /** A `Keypoints` list field holding `items`. */
+  keypoints(items: JSONObject[]): JSONObject;
   /** A `Classification`. */
   classification(fields: JSONObject): JSONObject;
   /** A `Classifications` list field holding `items`. */
@@ -58,6 +62,23 @@ const list = (cls: string, field: string, items: JSONObject[]): JSONObject => ({
   [field]: items,
 });
 
+/**
+ * `bson.json_util.loads` reads this back as `float("nan")`, the same extended
+ * JSON path `createId`'s `{ $oid }` takes.
+ */
+const NAN = { $numberDouble: "NaN" };
+
+/** Replaces every `null` entry of a keypoint's `points` with a `[NaN, NaN]` hole. */
+const punchHoles = (fields: JSONObject): JSONObject =>
+  Array.isArray(fields.points)
+    ? {
+        ...fields,
+        points: fields.points.map((point) =>
+          point === null ? [NAN, NAN] : point,
+        ),
+      }
+    : fields;
+
 /** Builders whose `instance` identities live for one dataset build. */
 export const makeLabelBuilders = (): LabelBuilders => {
   const instances = new Map<string, JSONObject>();
@@ -67,6 +88,8 @@ export const makeLabelBuilders = (): LabelBuilders => {
     detections: (items) => list("Detections", "detections", items),
     polyline: (fields) => document("Polyline", fields),
     polylines: (items) => list("Polylines", "polylines", items),
+    keypoint: (fields) => document("Keypoint", punchHoles(fields)),
+    keypoints: (items) => list("Keypoints", "keypoints", items),
     classification: (fields) => document("Classification", fields),
     classifications: (items) =>
       list("Classifications", "classifications", items),
