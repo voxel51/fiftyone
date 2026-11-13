@@ -124,7 +124,9 @@ Agent
   maximum FPS, and search existing embeddings indexes in natural language
 - Every member's Agent follows the organization's default model and
   auto-run setting
-- On-prem admins can manage LLM provider connections from Agent Settings
+- LLM provider connections for the Agent are now stored in a shared,
+  organization-level service instead of the Agent's own settings, so the
+  Agent can be used in other parts of the platform in future releases
 - More built-in operators are available to agents through MCP
 - The Agent always works on the dataset, view, and selection of the tab
   you are chatting in
@@ -166,6 +168,11 @@ Upgrade notes
   as described in the upgrade guide. This release adds sample attribution
   fields to existing datasets, and datasets that are not migrated cannot be
   read by older SDK versions once they are edited in 2.26.0
+- LLM provider connections for the Agent moved out of the Agent's own
+  settings into a shared, organization-level service. Connections created
+  before 2.26.0 are not carried over automatically. If the Agent reports
+  that no model or API key is configured after upgrading, an admin must add
+  each connection again, including its API key
 - Legacy authentication mode and `FIFTYONE_AUTH_MODE` are removed. On
   first start after the upgrade, CAS imports remaining Auth0 members,
   roles, and groups. Invitations are enabled by default
