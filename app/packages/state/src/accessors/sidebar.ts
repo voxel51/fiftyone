@@ -1,4 +1,5 @@
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { count } from "../recoil/pathData";
 import { disabledCheckboxPaths } from "../recoil/sidebar";
 import { sidebarExpanded } from "../recoil/sidebarExpanded";
 
@@ -48,3 +49,16 @@ export const useSidebarExpandedState = (
   params: SidebarExpandedParams,
 ): [boolean, (value: boolean | ((prev: boolean) => boolean)) => void] =>
   useRecoilState(sidebarExpanded(params));
+
+/**
+ * Returns the sidebar's count for a path, before sidebar filters apply: for
+ * the current sample in the modal, for the view in the grid. To count a label
+ * list's labels, pass its expanded path, e.g. `"ground_truth.detections"`,
+ * as the field's count badge does. Suspends while it loads.
+ */
+export const useSidebarPathCount = (params: {
+  /** The dot-notation path, e.g. `"ground_truth.detections"`. */
+  path: string;
+  /** Whether the sidebar is in modal context (`true`) or grid context (`false`). */
+  modal: boolean;
+}): number => useRecoilValue(count({ ...params, extended: false }));
