@@ -782,6 +782,49 @@
             "date_added": "2026-01-30"
         },
         {
+            "base_name": "falcon-perception-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Falcon Perception, a 0.6B early-fusion vision-language model that segments every instance matching a text query, with a full-resolution mask for each",
+            "source": "https://huggingface.co/tiiuae/Falcon-Perception",
+            "author": "Technology Innovation Institute",
+            "license": "Apache 2.0",
+            "size_bytes": 2534675493,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.falcon_perception.FalconPerceptionModel",
+                "config": {
+                    "name_or_path": "tiiuae/Falcon-Perception",
+                    "revision": "54916b3dec58565fafc6d82eb3051fe7246ab666"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=2.9",
+                    "torchvision",
+                    "transformers>=4.56",
+                    "pycocotools",
+                    "einops"
+                ],
+                "cpu": {
+                    "support": false
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "detection",
+                "instances",
+                "segmentation",
+                "vlm",
+                "torch",
+                "transformer",
+                "zero-shot"
+            ],
+            "training_data": [],
+            "date_added": "2026-10-15 12:00:00"
+        },
+        {
             "base_name": "fc-clip-coco-instance-torch",
             "base_filename": null,
             "version": null,
