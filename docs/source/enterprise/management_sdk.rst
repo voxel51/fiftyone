@@ -10,7 +10,7 @@ everything *programmatically* if you want.
 
 To this end, the `fiftyone.management` module provides Enterprise-specific
 methods for managing users, invitations, dataset permissions, plugins, API
-keys, and more.
+keys, audit logs, and more.
 
 .. note::
 
@@ -38,6 +38,84 @@ API keys
 .. autoapimodule:: fiftyone.management.api_key
    :members:
    :undoc-members:
+
+.. _enterprise-sdk-audit-log:
+
+Audit log and activity history
+------------------------------
+
+The audit log is the organization-wide record of who did what. You can list,
+summarize, and export it programmatically, and you can read the activity
+history of an individual sample or label.
+
+.. note::
+
+   Only admins can access the audit log. Reading a sample's activity history
+   requires view access to its dataset. These methods require that activity
+   tracking is enabled for your deployment.
+
+.. code-block:: python
+
+   import datetime
+
+   import fiftyone.management as fom
+
+   # The event types that the audit log can be filtered by
+   for event_type in fom.list_audit_event_types():
+       print(event_type.event_type, event_type.description)
+
+   # The 100 most recent events
+   events = fom.list_audit_events()
+
+   # Every dataset deletion in the past week
+   since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+       days=7
+   )
+   events = fom.list_audit_events(
+       event_type="dataset.deleted", since=since, limit=None
+   )
+
+   # Everything a given user did in a dataset
+   events = fom.list_audit_events(
+       actor="user@company.com", dataset_name="quickstart"
+   )
+
+   # Read a large time range without holding every event in memory
+   for event in fom.iter_audit_events(since=since):
+       print(event.timestamp, event.actor, event.event_type)
+
+   # A summary that groups bursts of related events into sentences
+   for item in fom.get_audit_summary(dataset_name="quickstart"):
+       print(item.ended, item.text)
+
+   # Export the audit log to a CSV file
+   fom.export_audit_log("/tmp/audit.csv", since=since)
+
+The activity history of a sample, or of a single label, can be retrieved by
+anyone with view access to the dataset:
+
+.. code-block:: python
+
+   import fiftyone as fo
+   import fiftyone.management as fom
+
+   dataset = fo.load_dataset("quickstart")
+   sample = dataset.first()
+
+   # A sample's history
+   events = fom.list_sample_activity("quickstart", sample_id=sample.id)
+
+   # One label's history
+   events = fom.list_sample_activity(
+       "quickstart",
+       label_id=sample.ground_truth.detections[0].id,
+   )
+
+.. autoapimodule:: fiftyone.management.audit
+   :members: AuditEvent, AuditEventType, AuditSummaryItem,
+       list_audit_event_types, list_audit_events, iter_audit_events,
+       get_audit_summary, export_audit_log, list_sample_activity,
+       iter_sample_activity
 
 .. _enterprise-sdk-cloud-credentials:
 
