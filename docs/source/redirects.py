@@ -230,6 +230,61 @@ def _process_evaluation_redirects(app):
     )
 
 
+_WORKFLOWS_ANCHOR_MAP = {
+    "enterprise-workflows": "projects.html",
+    "annotation-workflows": "projects.html",
+    "the-annotate-tab": "projects.html#how-projects-work",
+    "enterprise-workflows-annotate-tab": "projects.html#how-projects-work",
+    "how-to-create-a-workflow": "projects.html#how-to-create-and-start-a-batch",
+    "building-the-pipeline-on-the-canvas": "projects.html#editing-the-workflow",
+    "using-a-template": "projects.html#workflow-templates",
+    "configuring-stages": "projects.html#editing-the-workflow",
+    "handing-out-tasks": "projects.html#splitting-and-assigning-tasks",
+    "enterprise-workflows-assignment": (
+        "projects.html#splitting-and-assigning-tasks"
+    ),
+    "starting-a-workflow": "projects.html#how-to-create-and-start-a-batch",
+    "cloning-and-deleting": "projects.html#how-to-create-and-start-a-batch",
+    "viewing-tasks": "projects.html#the-tasks-tab",
+    "how-to-work-on-tasks": "projects.html#how-to-work-on-tasks",
+    "task-mode": "projects.html#opening-a-task",
+    "enterprise-workflows-task-mode": "projects.html#opening-a-task",
+    "annotate": "projects.html#annotate",
+    "review": "projects.html#review",
+    "leaving-comments": "projects.html#leaving-comments",
+    "how-to-understand-metrics": "projects.html#how-to-understand-metrics",
+    "enterprise-workflows-metrics": "projects.html#how-to-understand-metrics",
+    "choosing-a-scope": "projects.html#filtering-the-board",
+    "reading-the-board": "projects.html#reading-the-board",
+    "the-per-person-table": "projects.html#reading-the-board",
+    "quality-first-pass-approval-and-rejection-rate": (
+        "projects.html#quality-first-pass-approval-and-rejection-rate"
+    ),
+    "who-reviews-what-in-longer-pipelines": (
+        "projects.html#who-reviews-what-in-longer-pipelines"
+    ),
+    "how-time-is-measured": "projects.html#how-time-is-measured",
+    "what-counts-and-what-doesn-t": "projects.html#what-counts-and-what-doesn-t",
+    "writing-an-assignment-policy": (
+        "projects.html#writing-a-custom-assignment-policy"
+    ),
+    "enterprise-workflows-assignment-policies": (
+        "projects.html#writing-a-custom-assignment-policy"
+    ),
+}
+
+
+def _process_workflows_redirects(app):
+    """Process the hash-based redirect for the workflows page that Projects
+    replaced."""
+    _write_hash_redirect(
+        app,
+        "enterprise/workflows.html",
+        _WORKFLOWS_ANCHOR_MAP,
+        "projects.html",
+    )
+
+
 _MOVED_ANCHOR_PAGES = {"brain/index": _SIMILARITY_ANCHOR_MAP}
 
 
@@ -273,6 +328,7 @@ def generate_redirects(app):
     _process_static_redirects(app)
     _process_zoo_redirects(app)
     _process_evaluation_redirects(app)
+    _process_workflows_redirects(app)
 
 
 def generate_api_redirects(app, exception):
