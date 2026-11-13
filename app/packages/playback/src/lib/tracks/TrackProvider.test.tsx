@@ -364,3 +364,97 @@ describe("TrackProvider late pinning", () => {
     expect(pinned).toEqual([]);
   });
 });
+
+describe("TrackProvider reveals", () => {
+  const KEY = "episode-pins:test";
+
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
+
+  const revealWrap =
+    (revealedIds?: string[], persistKey?: string) =>
+    ({ children }: { children: React.ReactNode }) => (
+      <TrackProvider
+        tracks={TRACKS}
+        revealedIds={revealedIds}
+        autoPinNewTracks={false}
+        persistKey={persistKey}
+      >
+        {children}
+      </TrackProvider>
+    );
+
+  it("reveal shows a track without pinning it", () => {
+    const { result } = renderHook(() => useTrackPinning(), {
+      wrapper: revealWrap(),
+    });
+    act(() => result.current.reveal("dog"));
+    expect(Array.from(result.current.revealedIds)).toEqual(["dog"]);
+    expect(result.current.pinnedIds.size).toBe(0);
+  });
+
+  it("never writes reveals to storage, so a remount drops them", () => {
+    const first = renderHook(() => useTrackPinning(), {
+      wrapper: revealWrap(undefined, KEY),
+    });
+    act(() => first.result.current.reveal("dog"));
+    expect(window.localStorage.getItem(KEY)).toBe("[]");
+    first.unmount();
+
+    const second = renderHook(() => useTrackPinning(), {
+      wrapper: revealWrap(undefined, KEY),
+    });
+    expect(second.result.current.revealedIds.size).toBe(0);
+    expect(second.result.current.pinnedIds.size).toBe(0);
+  });
+
+  it("unpinning a revealed track also drops its reveal", () => {
+    const { result } = renderHook(() => useTrackPinning(), {
+      wrapper: revealWrap(),
+    });
+    act(() => result.current.reveal("dog"));
+    act(() => result.current.togglePin("dog"));
+    expect(result.current.pinnedIds.has("dog")).toBe(true);
+    act(() => result.current.togglePin("dog"));
+    expect(result.current.pinnedIds.has("dog")).toBe(false);
+    expect(result.current.revealedIds.has("dog")).toBe(false);
+  });
+
+  it("caller revealedIds show alongside a stored pin set instead of being overridden by it", () => {
+    window.localStorage.setItem(KEY, JSON.stringify(["cat"]));
+    const { result } = renderHook(() => useTrackPinning(), {
+      wrapper: revealWrap(["person"], KEY),
+    });
+    expect(Array.from(result.current.pinnedIds)).toEqual(["cat"]);
+    expect(Array.from(result.current.revealedIds)).toEqual(["person"]);
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual(["cat"]);
+  });
+
+  it("caller revealedIds follow the current value", () => {
+    let captured: ReadonlySet<string> = new Set();
+    const Probe = () => {
+      captured = useTrackPinning().revealedIds;
+      return null;
+    };
+    const { rerender } = render(
+      <TrackProvider tracks={TRACKS} revealedIds={["cat"]}>
+        <Probe />
+      </TrackProvider>,
+    );
+    expect(Array.from(captured)).toEqual(["cat"]);
+    rerender(
+      <TrackProvider tracks={TRACKS} revealedIds={["dog"]}>
+        <Probe />
+      </TrackProvider>,
+    );
+    expect(Array.from(captured)).toEqual(["dog"]);
+    rerender(
+      <TrackProvider tracks={TRACKS}>
+        <Probe />
+      </TrackProvider>,
+    );
+    expect(captured.size).toBe(0);
+  });
+});

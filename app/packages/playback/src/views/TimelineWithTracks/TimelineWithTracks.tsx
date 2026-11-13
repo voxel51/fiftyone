@@ -207,7 +207,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const tracks = useTracks();
-  const { pinnedIds, togglePin } = useTrackPinning();
+  const { pinnedIds, revealedIds, togglePin } = useTrackPinning();
   const { seekSnapped } = usePlayback();
   // Uncontrolled open state, seeded once from `defaultDrawerOpen`.
   // User-initiated collapses/expands persist until the next remount.
@@ -254,12 +254,20 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     draggedLabelWidth ?? requestedLabelWidth,
   );
 
-  // Sub-rows follow their parent's pin state via `parentId` so a partial pin
+  // The tray holds pinned rows plus revealed ones (shown for context, not
+  // pinned). Sub-rows follow their parent via `parentId` so a partial pin
   // doesn't strand attribute children above unrelated parents — see
   // {@link partitionTracksByPin}.
+  const trayIds = useMemo<ReadonlySet<string>>(
+    () =>
+      revealedIds.size === 0
+        ? pinnedIds
+        : new Set([...pinnedIds, ...revealedIds]),
+    [pinnedIds, revealedIds],
+  );
   const { pinned, unpinned } = useMemo(
-    () => partitionTracksByPin(tracks, pinnedIds),
-    [tracks, pinnedIds],
+    () => partitionTracksByPin(tracks, trayIds),
+    [tracks, trayIds],
   );
 
   const labelWidth =
@@ -324,7 +332,7 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
     });
 
     setMaxLabelWidth((prev) => Math.max(requestedLabelWidth, widest, prev));
-  }, [tracks, drawerOpen, pinnedIds, requestedLabelWidth, renderedRange]);
+  }, [tracks, drawerOpen, trayIds, requestedLabelWidth, renderedRange]);
 
   // A narrower caller request is the one thing that legitimately lowers the
   // ceiling; drop the accumulated maximum so it can be rebuilt against it.
@@ -431,7 +439,8 @@ const TimelineWithTracks: React.FC<TimelineWithTracksProps> = ({
       color={track.color}
       events={track.events}
       labelWidth={labelWidth}
-      pinned
+      // A revealed row sits in the tray but isn't pinned; its button says so.
+      pinned={pinnedIds.has(track.parentId ?? track.id)}
       onPinClick={handlePinClick}
       onEventClick={handleEventClick}
       eventMenuItems={eventMenuItems}
