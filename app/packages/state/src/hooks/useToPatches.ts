@@ -1,7 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import { useRecoilCallback } from "recoil";
 import {
-  _activeFields,
+  activeFieldsChoice,
   extendedStages,
   filters,
   patching,
@@ -41,9 +41,12 @@ export default function useToPatches() {
           reset(viewStateForm_INTERNAL);
           set(patching, false);
           // Ensure patched field is added to active fields
-          const currentFields = get(_activeFields({ modal: false })) ?? [];
+          const currentFields = get(activeFieldsChoice({ modal: false })) ?? [];
           if (!currentFields.includes(field)) {
-            set(_activeFields({ modal: false }), [field, ...currentFields]);
+            set(activeFieldsChoice({ modal: false }), [
+              field,
+              ...currentFields,
+            ]);
           }
           unsubscribe();
         });

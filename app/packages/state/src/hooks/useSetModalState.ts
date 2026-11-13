@@ -59,8 +59,8 @@ export default () => {
         // list leaves out the fields the current schema hides, which then
         // stayed inactive in the modal once a schema switch showed them
         [
-          schemaAtoms._activeFields({ modal: true }),
-          schemaAtoms._activeFields({ modal: false }),
+          schemaAtoms.activeFieldsChoice({ modal: true }),
+          schemaAtoms.activeFieldsChoice({ modal: false }),
         ],
         [
           sidebarAtoms.sidebarGroupsDefinition(true),
