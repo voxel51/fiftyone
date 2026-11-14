@@ -2781,12 +2781,21 @@ def from_image_classification_dir_tree(dataset_dir):
     return torchvision.datasets.ImageFolder(dataset_dir)
 
 
+def _imread(image_path, flag):
+    if os.name == "nt" and not image_path.isascii():
+        # On Windows, OpenCV cannot open paths that contain non-ASCII
+        # characters, so read the bytes ourselves
+        return cv2.imdecode(np.fromfile(image_path, dtype=np.uint8), flag)
+
+    return cv2.imread(image_path, flag)
+
+
 def _load_image(image_path, use_numpy, force_rgb):
     if use_numpy:
         if force_rgb:
-            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            img = _imread(image_path, cv2.IMREAD_COLOR)
             return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        return _imread(image_path, cv2.IMREAD_UNCHANGED)
 
     # Use context manager to prevent leaked file descriptors
     with open(image_path, "rb") as f:
