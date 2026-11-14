@@ -407,7 +407,13 @@ def _to_polylines(
     track_ids = _extract_track_ids(result)
 
     if tolerance > 1:
-        masks = result.masks.data.detach().cpu().numpy() > 0.5
+        # scale to original image size, expects 4 dim input
+        masks = ultralytics.utils.ops.scale_masks(
+            result.masks.data[None], result.orig_img.shape[:2]
+        )
+        masks = (  # return to [N, H, W], to bool array
+            masks.squeeze(0) if masks.ndim > 3 else masks
+        ).detach().cpu().numpy() > 0.5
         points = itertools.repeat(None)
     else:
         masks = itertools.repeat(None)
