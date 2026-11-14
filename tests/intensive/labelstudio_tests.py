@@ -499,6 +499,43 @@ def test_export_labels(label_mappings):
             _assert_predictions_equal(ls_prediction, expected["value"])
 
 
+def test_export_keypoints_full_result():
+    keypoints = fol.Keypoints(
+        keypoints=[
+            fol.Keypoint(
+                label="LEye",
+                points=[(0.39, 0.81), (0.333, 0.771), (0.2, 0.3)],
+            ),
+            fol.Keypoint(label="REye", points=[(0.424, 0.894), (0.424, 0.745)]),
+        ]
+    )
+    full_result = {
+        "from_name": "keypoints",
+        "to_name": "image",
+        "original_width": 600,
+        "original_height": 403,
+        "image_rotation": 0,
+    }
+
+    results = fouls.export_label_to_label_studio(
+        keypoints, full_result=full_result
+    )
+
+    # every point is exported, each as its own region
+    assert len(results) == 5
+    assert len(set(r["id"] for r in results)) == 5
+    assert [r["value"]["keypointlabels"][0] for r in results] == [
+        "LEye",
+        "LEye",
+        "LEye",
+        "REye",
+        "REye",
+    ]
+
+    label = fouls.import_label_studio_annotation(results)[1]
+    _assert_labels_equal(label, keypoints)
+
+
 @pytest.fixture()
 def setup(backend_config):
     dataset = foz.load_zoo_dataset("quickstart").take(3).clone()
