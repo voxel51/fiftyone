@@ -400,7 +400,7 @@ def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
         extra_attrs = set(extra_attrs)
 
     detections = []
-    with open(txt_path) as f:
+    with open(txt_path, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter=" ")
         for row in reader:
             detections.append(
