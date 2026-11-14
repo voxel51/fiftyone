@@ -2061,6 +2061,23 @@ class DetectionsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             foui.compute_ious(preds, gts, keypoint_sigmas=[1])
 
+    def test_compute_ious_iscrowd_attribute(self):
+        preds = [fo.Detection(label="cat", bounding_box=[0.0, 0.0, 0.5, 0.5])]
+        gts = [
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.0, 0.0, 1.0, 1.0],
+                iscrowd=True,
+            ),
+            fo.Detection(label="cat", bounding_box=[0.0, 0.0, 1.0, 1.0]),
+        ]
+
+        ious = foui.compute_ious(preds, gts, iscrowd="iscrowd")
+
+        # Crowd IoU is the fraction of the prediction inside the crowd
+        self.assertAlmostEqual(ious[0, 0], 1.0)
+        self.assertAlmostEqual(ious[0, 1], 0.25)
+
     def test_compute_ious_degenerate_mask_box(self):
         # a detection whose box has zero width or height has no area to
         # overlap, so its mask IoU is 0 rather than a ZeroDivisionError
