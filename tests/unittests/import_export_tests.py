@@ -1957,6 +1957,34 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         self.assertEqual(len(relpath.split(os.path.sep)), 3)
 
     @drop_datasets
+    def test_yolov5_dataset_no_objects(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=self._new_image(),
+                ground_truth=fo.Detections(),
+            )
+        )
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field="ground_truth",
+        )
+
+        # The exported YAML has no class names
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            include_all_data=True,
+        )
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("ground_truth.detections"), 0)
+
+    @drop_datasets
     def test_yolov5_dataset(self):
         dataset = self._make_dataset()
 
