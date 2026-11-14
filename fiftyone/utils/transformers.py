@@ -143,6 +143,40 @@ def get_model_type(model, task=None):
     return task
 
 
+def to_classification(results, id2label):
+    """Converts the Transformers classification results to FiftyOne format.
+
+    Args:
+        results: Transformers classification results
+        id2label: Transformers ID to label mapping
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Classification`
+    """
+    logits = results.logits
+    predicted_labels = logits.argmax(-1)
+
+    logits = logits.cpu().numpy()
+    label_classes = [id2label[int(i)] for i in predicted_labels]
+
+    odds = np.exp(logits)
+    confidences = np.max(odds, axis=1) / np.sum(odds, axis=1)
+
+    if logits.shape[0] == 1:
+        return fol.Classification(
+            label=label_classes[0], confidence=confidences[0], logits=logits[0]
+        )
+
+    return [
+        fol.Classification(
+            label=label_classes[i],
+            confidence=confidences[i],
+            logits=logits[i],
+        )
+        for i in range(logits.shape[0])
+    ]
+
+
 def to_segmentation(results):
     """Converts the Transformers semantic segmentation results to FiftyOne
     format.
