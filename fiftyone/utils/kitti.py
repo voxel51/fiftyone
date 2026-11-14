@@ -765,10 +765,15 @@ def _parse_kitti_detection_row(row, frame_size, extra_attrs):
 
 
 def _make_kitti_detection_row(detection, frame_size):
+    truncated = detection.get_attribute_value("truncated", 0)
+    if isinstance(truncated, bool):
+        truncated = int(truncated)
+
     cols = [
         detection.label.replace(" ", "_"),
-        detection.get_attribute_value("truncated", 0),
-        detection.get_attribute_value("occluded", 0),
+        truncated,
+        # KITTI stores occlusion as an integer state
+        int(detection.get_attribute_value("occluded", 0)),
         detection.get_attribute_value("alpha", 0),
     ]
 
