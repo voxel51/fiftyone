@@ -305,8 +305,6 @@ _MODEL_TEMPLATE = """
 {% elif 'twelvelabs' in name and 'embeddings' in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
-    dataset.apply_model(model, label_field="predictions")
-
     dataset.compute_embeddings(model, embeddings_field="twelvelabs")
 
     # Text-to-video search
@@ -336,6 +334,31 @@ _MODEL_TEMPLATE = """
     )
 
     dataset.apply_model(model, label_field="caption")
+
+    session = fo.launch_app(dataset)
+{% elif 'twelvelabs' in name and 'segmentation' in tags %}
+    # Default configuration: segment videos into described scenes
+    model = foz.load_zoo_model("{{ name }}")
+
+    # Custom segment definitions
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        segment_definitions=[
+            {
+                "id": "action",
+                "description": "Each distinct action a person performs",
+                "fields": [
+                    {
+                        "name": "action",
+                        "type": "string",
+                        "description": "The action being performed",
+                    },
+                ],
+            }
+        ],
+    )
+
+    dataset.apply_model(model, label_field="segments")
 
     session = fo.launch_app(dataset)
 {% else %}
