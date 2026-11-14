@@ -1212,5 +1212,32 @@ class TestYOLO26DepthZooEntries:
             assert "depth" in entry["tags"]
 
 
+class TestToKeypoints:
+    def test_confidence_thresh_without_keypoint_confidences(self):
+        torch = pytest.importorskip("torch")
+
+        from fiftyone.utils.ultralytics import to_keypoints
+
+        # a pose model with two values per keypoint has no confidences
+        result = SimpleNamespace(
+            keypoints=SimpleNamespace(
+                xyn=torch.tensor([[[0.1, 0.2], [0.3, 0.4]]]), conf=None
+            ),
+            boxes=SimpleNamespace(
+                cls=torch.tensor([0.0]),
+                conf=torch.tensor([0.9]),
+                is_track=False,
+            ),
+            names={0: "tiger"},
+        )
+
+        keypoints = to_keypoints(result, confidence_thresh=0.5)
+
+        keypoint = keypoints.keypoints[0]
+        assert keypoint.label == "tiger"
+        assert keypoint.confidence is None
+        assert np.allclose(keypoint.points, [[0.1, 0.2], [0.3, 0.4]])
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
