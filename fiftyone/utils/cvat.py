@@ -7546,7 +7546,7 @@ def load_cvat_image_annotations(xml_path):
 
     # Load task labels
     task = meta.get("task", {})
-    labels_dict = task.get("labels", {})
+    labels_dict = task.get("labels", None) or {}
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
 
     # Load annotations
@@ -7601,7 +7601,7 @@ def load_cvat_video_annotations(xml_path):
 
     # Load task labels
     task = meta.get("task", {})
-    labels_dict = task.get("labels", {})
+    labels_dict = task.get("labels", None) or {}
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
 
     # Load annotations
