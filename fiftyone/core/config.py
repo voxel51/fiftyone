@@ -403,10 +403,19 @@ class FiftyOneConfigError(etac.EnvConfigError):
     pass
 
 
+def _warn_removed_app_config_option(name):
+    logger.warning(
+        "The `%s` App config option has been removed and no "
+        "longer has any effect. Label attribute visibility is "
+        "controlled per attribute in the App's sidebar",
+        name,
+    )
+
+
 class AppConfig(EnvConfig):
     """FiftyOne App configuration settings."""
 
-    def __init__(self, d=None):
+    def __init__(self, d=None, *, _warn_removed_options=True):
         if d is None:
             d = {}
 
@@ -491,36 +500,45 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_PROXY_URL",
             default=None,
         )
-        self.show_confidence = self.parse_bool(
-            d,
+        # Constructor warnings below depend on input presence, not assignment.
+        object.__setattr__(
+            self,
             "show_confidence",
-            env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
-            default=True,
+            self.parse_bool(
+                d,
+                "show_confidence",
+                env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
+                default=True,
+            ),
         )
-        self.show_index = self.parse_bool(
-            d,
+        object.__setattr__(
+            self,
             "show_index",
-            env_var="FIFTYONE_APP_SHOW_INDEX",
-            default=True,
+            self.parse_bool(
+                d,
+                "show_index",
+                env_var="FIFTYONE_APP_SHOW_INDEX",
+                default=True,
+            ),
         )
-        self.show_label = self.parse_bool(
-            d,
+        object.__setattr__(
+            self,
             "show_label",
-            env_var="FIFTYONE_APP_SHOW_LABEL",
-            default=True,
+            self.parse_bool(
+                d,
+                "show_label",
+                env_var="FIFTYONE_APP_SHOW_LABEL",
+                default=True,
+            ),
         )
-        for key, env_var in (
-            ("show_confidence", "FIFTYONE_APP_SHOW_CONFIDENCE"),
-            ("show_index", "FIFTYONE_APP_SHOW_INDEX"),
-            ("show_label", "FIFTYONE_APP_SHOW_LABEL"),
-        ):
-            if key in d or env_var in os.environ:
-                logger.warning(
-                    "The `%s` App config option has been removed and no "
-                    "longer has any effect. Label attribute visibility is "
-                    "controlled per attribute in the App's sidebar",
-                    key,
-                )
+        if _warn_removed_options:
+            for key, env_var in (
+                ("show_confidence", "FIFTYONE_APP_SHOW_CONFIDENCE"),
+                ("show_index", "FIFTYONE_APP_SHOW_INDEX"),
+                ("show_label", "FIFTYONE_APP_SHOW_LABEL"),
+            ):
+                if key in d or env_var in os.environ:
+                    _warn_removed_app_config_option(key)
 
         self.show_skeletons = self.parse_bool(
             d,
@@ -549,6 +567,12 @@ class AppConfig(EnvConfig):
         self.plugins = d.get("plugins", {})
 
         self._init()
+
+    def __setattr__(self, name, value):
+        if name in ("show_confidence", "show_index", "show_label"):
+            _warn_removed_app_config_option(name)
+
+        super().__setattr__(name, value)
 
     def get_colormap(self, colorscale=None, n=256, hex_strs=False):
         """Generates a continuous colormap with the specified number of colors
