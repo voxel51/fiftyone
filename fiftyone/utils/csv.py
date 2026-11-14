@@ -179,7 +179,7 @@ class CSVDatasetImporter(
 
         media_field = self.media_field
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            with open(self.labels_path, "r") as f:
+            with open(self.labels_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 if media_field not in reader.fieldnames:
                     raise ValueError(
@@ -367,7 +367,7 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
         )
 
         etau.ensure_basedir(self.labels_path)
-        f = open(self.labels_path, "w", newline="")
+        f = open(self.labels_path, "w", newline="", encoding="utf-8")
 
         # QUOTE_MINIMAL ensures that list fields are handled properly
         csv_writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
