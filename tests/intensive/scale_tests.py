@@ -10,8 +10,12 @@ You must run these tests interactively as follows::
 |
 """
 
+import os
 import unittest
 
+import numpy as np
+
+import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -35,6 +39,48 @@ def test_scale_image():
     ]
 
     _test_scale_image(dataset, label_field)
+
+
+def test_scale_image_multilabel_classifications():
+    with etau.TempDir() as tmp_dir:
+        filepath = os.path.join(tmp_dir, "image.jpg")
+        etai.write(np.zeros((32, 48, 3), dtype=np.uint8), filepath)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath=filepath,
+                weather=fo.Classification(label="sunny"),
+                tags_field=fo.Classifications(
+                    classifications=[
+                        fo.Classification(label="urban"),
+                        fo.Classification(label="daytime"),
+                    ]
+                ),
+            )
+        )
+
+        export_path = os.path.join(tmp_dir, "export.json")
+        import_path = os.path.join(tmp_dir, "import.json")
+
+        fous.export_to_scale(
+            dataset, export_path, label_field=["weather", "tags_field"]
+        )
+        id_map = fous.convert_scale_export_to_import(export_path, import_path)
+
+        dataset2 = dataset.select_fields().clone()
+        for sample in dataset2:
+            sample["scale_id"] = id_map[dataset.first().id]
+            sample.save()
+
+        fous.import_from_scale(dataset2, import_path)
+
+        sample = dataset2.first()
+        assert sample["weather"].label == "sunny"
+        assert [c.label for c in sample["tags_field"].classifications] == [
+            "urban",
+            "daytime",
+        ]
 
 
 def test_scale_video_objects():
