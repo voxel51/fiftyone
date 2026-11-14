@@ -2038,6 +2038,74 @@ class DetectionsTests(unittest.TestCase):
         self.assertListEqual(dataset.values("strict_fp"), [1])
         self.assertListEqual(dataset.values("strict_fn"), [1])
 
+    @drop_datasets
+    def test_evaluate_detections_iou_equal_to_thresh(self):
+        # In pixels, the prediction is exactly half of the ground truth box,
+        # so the IoU is exactly 0.5, but it is computed as
+        # 0.49999999999999944 from relative coordinates
+        w, h = 640, 480
+        gt = fo.Detection(
+            label="cat", bounding_box=[92 / w, 12 / h, 24 / w, 13 / h]
+        )
+        pred = fo.Detection(
+            label="cat",
+            bounding_box=[92 / w, 12 / h, 12 / w, 13 / h],
+            confidence=0.9,
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.jpg",
+                gt=fo.Detections(detections=[gt]),
+                pred=fo.Detections(detections=[pred]),
+            )
+        )
+
+        for method, eval_key in (("coco", "coco"), ("open-images", "oi")):
+            dataset.evaluate_detections(
+                "pred",
+                gt_field="gt",
+                eval_key=eval_key,
+                method=method,
+                iou=0.5,
+            )
+            self.assertListEqual(
+                dataset.values("pred.detections.%s" % eval_key), [["tp"]]
+            )
+            self.assertListEqual(
+                dataset.values("gt.detections.%s" % eval_key), [["tp"]]
+            )
+
+    @drop_datasets
+    def test_evaluate_polygons_iou_equal_to_thresh(self):
+        w, h = 640, 480
+
+        # pixel box [26, 258, 14, 112] vs its left half: IoU exactly 0.5,
+        # computed as 0.4999999999999999 by the polygon IoU on base
+        def rect(bw, **kwargs):
+            x1, y1, x2, y2 = 26 / w, 258 / h, (26 + bw) / w, 370 / h
+            return fo.Polyline(
+                label="cat",
+                points=[[(x1, y1), (x2, y1), (x2, y2), (x1, y2)]],
+                closed=True,
+                filled=True,
+                **kwargs,
+            )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.jpg",
+                gt=fo.Polylines(polylines=[rect(14)]),
+                pred=fo.Polylines(polylines=[rect(7, confidence=0.9)]),
+            )
+        )
+        dataset.evaluate_detections(
+            "pred", gt_field="gt", eval_key="coco", iou=0.5
+        )
+        self.assertListEqual(dataset.values("pred.polylines.coco"), [["tp"]])
+
     def test_compute_ious_with_custom_keypoint_sigmas(self):
         gts = [
             fo.Keypoint(
