@@ -144,7 +144,10 @@ def weighted_sample(
     rs = np.random.RandomState(seed=seed)  # pylint: disable=no-member
     rands = rs.rand(len(sample_collection))
 
-    if exact:
+    if exact and k >= len(rands):
+        # Selecting everything; `np.argpartition()` requires `k < len`
+        inds = np.arange(len(rands))
+    elif exact:
         inds = np.argpartition(rands - probs, k)[:k]
     else:
         inds = rands < probs
