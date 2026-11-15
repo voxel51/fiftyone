@@ -1510,7 +1510,7 @@ class ExcludeGroups(ViewStage):
         assert len(set(group_ids) & set(other_groups.values("group.id"))) == 0
 
     Args:
-        groups_ids: the groups to select. Can be any of the following:
+        group_ids: the groups to select. Can be any of the following:
 
             -   a group ID
             -   an iterable of group IDs
@@ -7200,7 +7200,7 @@ class SelectGroups(ViewStage):
         assert view.values("group.id") == group_ids
 
     Args:
-        groups_ids: the groups to select. Can be any of the following:
+        group_ids: the groups to select. Can be any of the following:
 
             -   a group ID
             -   an iterable of group IDs

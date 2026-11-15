@@ -4843,7 +4843,7 @@ class SampleCollection(object):
 
         Args:
             eval_key: an evaluation key
-            new_anno_key: a new evaluation key
+            new_eval_key: a new evaluation key
         """
         return foev.EvaluationMethod.update_run_key(
             self, eval_key, new_eval_key
@@ -5539,7 +5539,7 @@ class SampleCollection(object):
             assert len(set(group_ids) & set(other_groups.values("group.id"))) == 0
 
         Args:
-            groups_ids: the groups to exclude. Can be any of the following:
+            group_ids: the groups to exclude. Can be any of the following:
 
                 -   a group ID
                 -   an iterable of group IDs
@@ -7750,7 +7750,7 @@ class SampleCollection(object):
             assert view.values("group.id") == group_ids
 
         Args:
-            groups_ids: the groups to select. Can be any of the following:
+            group_ids: the groups to select. Can be any of the following:
 
                 -   a group ID
                 -   an iterable of group IDs
