@@ -9,20 +9,26 @@ Voxel51 2.26.0
 --------------
 *Released November 11, 2026*
 
-- **Annotation Projects**: a new top-level Projects page replaces the
-  dataset Annotate tab. A project holds batches of annotation work across
-  datasets; each batch starts from a workflow template on the whole dataset,
-  a subset, or a saved query. My work lists every task assigned to you,
-  available to pick up, or completed, and projects and batches have their
-  own Metrics tabs
-- **Benchmarks and consensus**: run a benchmark batch that scores
-  labelers against ground truth on a copy of the dataset, or a consensus
-  batch that has several labelers annotate the same samples. Boxes are
-  scored on same-class IoU and attributes are scored against their label
-  schema, with support for custom scoring plugins
+- **Annotation Projects**: a new top-level
+  :ref:`Projects <enterprise-projects>` page replaces the dataset Annotate
+  tab. A project holds batches of annotation work across datasets; each
+  batch :ref:`starts from a workflow template <enterprise-projects-setup>`
+  on the whole dataset, a subset, or a saved query.
+  :ref:`My work <enterprise-projects-labelers>` lists every task assigned to
+  you, available to pick up, or completed, and projects and batches have
+  their own :ref:`Metrics tabs <enterprise-projects-metrics>`
+- **Benchmarks and consensus**: run a
+  :ref:`benchmark batch <enterprise-projects-benchmarks>` that scores
+  labelers against ground truth on a copy of the dataset, or a
+  :ref:`consensus batch <enterprise-projects-consensus>` that has several
+  labelers annotate the same samples. Boxes are
+  :ref:`scored <enterprise-projects-scoring>` on same-class IoU and
+  attributes are scored against their label schema, with support for
+  :ref:`custom scoring plugins <enterprise-projects-scoring-policies>`
 - **Task assignment**: workflow stages have an assignee pool of people and
-  groups. Tasks can be split by size or count, claimed from the pool,
-  assigned manually or automatically, and prioritized
+  groups. Tasks can be :ref:`split by size or count, claimed from the pool,
+  assigned manually or automatically <enterprise-projects-assignment>`, and
+  prioritized
 - **Activity and audit logs**: see who did what at every level of your
   deployment. Every sample has a history panel of its edits, reviews, tags,
   and comments. Every dataset has an Activity tab that lists each change
@@ -31,11 +37,13 @@ Voxel51 2.26.0
   filterable by person, dataset, and event type, and downloadable as CSV
 - **Multisensor temporal 3D annotation**: play every camera and LiDAR slice
   of a grouped scene in sync on one timeline, in both Inspect and Annotate,
-  and label cuboid and polyline tracks across the whole sequence in the new
-  3D viewer. Edit cuboid tracks on the timeline (resize, move, split,
-  merge, interpolate, keyframes), with ego and top camera presets and a
-  draggable heading arrow. The timeline index for groups of up to 100,000
-  samples is created automatically
+  and :ref:`label cuboid and polyline tracks <annotation-3d-sequences>`
+  across the whole sequence in the new :ref:`3D viewer <annotation-3d>`.
+  Edit cuboid tracks on the timeline (resize, move, split, merge,
+  interpolate, keyframes), with ego and top camera presets and a draggable
+  heading arrow. The
+  :ref:`timeline index <annotation-3d-sequences-setup>` for groups of up to
+  100,000 samples is created automatically
 - **Keypoint and skeleton annotation**: create and edit keypoints in the
   App with guided skeleton placement, per-point attributes, and keypoint
   tracks on video datasets
@@ -80,8 +88,9 @@ App
 Annotation
 ^^^^^^^^^^
 
-- Label schemas can define field visibility and attributes per field, and
-  are now enforced server-side by default. To turn enforcement off, set
+- :ref:`Label schemas <enterprise-projects-schemas>` can define field
+  visibility and attributes per field, and are now enforced server-side by
+  default. To turn enforcement off, set
   `VFF_SCHEMA_ENFORCEMENT=false` on the `fiftyone-app` container, and on
   `teams-plugins` if your deployment runs a dedicated plugins container
 - Add selected samples, or all matching results, to a running batch from
