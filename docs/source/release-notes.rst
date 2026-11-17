@@ -3,6 +3,111 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _fiftyone-enterprise-2-27-0:
+
+Voxel51 2.27.0
+--------------
+*Released November 18, 2026*
+
+- **Query multimodal projections**: query projected fields from the view
+  bar, combine a server-side text search with a query, and run SQL over a
+  multimodal dataset's projected tables from the query bar or the Agent,
+  including saving a SQL result as a field computed for every episode.
+  `compute_embeddings()` can embed only the segments a query or temporal
+  tag selects
+- **3D grid tiles**: point cloud tiles in the grid render in 3D from the
+  proxies `fiftyone.utils.thumbnails.generate_thumbnails()` writes, and 3D
+  dynamic groups play on hover. The 3D tile labels cuboids the way 2D
+  tiles label boxes, and Configure 3D dataset also sets which slices each
+  label field is annotated on
+- **One sample page for every media type**: the multimodal
+  sample page has the same header, sidebars, and timeline as image, video,
+  and grouped samples, and plugin panels appear in its Layout menu. Its
+  left sidebar filters labels by class
+- **Start an annotation task from the selection tray**: one click creates a
+  project and a single-task batch for the selected samples or the current
+  view, assigns it to you, and opens it
+- **Project priority**: projects have their own priority, set in
+  Create and Edit project. New batches and benchmarks start at it, and the
+  Projects list groups by it
+
+App
+^^^
+
+- Grid sidebar label fields have Show all, Show matching only, Hide
+  matching only, and Hide all. Changing visibility no longer reloads the
+  grid, and expanded fields and scroll position persist across a reload
+- Label filters select the same samples in the grid, the sidebar counts,
+  operators (`ctx.view`), and saved queries: a sample is kept when one of
+  its labels passes every filter
+- A short product tour shows first-time visitors around the dataset page
+- URL values in the Inspect panel are clickable links again
+- When a view fails to load, the App keeps the current view instead of
+  silently showing the whole dataset
+- Tagging large views no longer times out while the tags are still
+  written, or blocks other users' requests while it runs
+- Faster label loading for videos with many labels per frame
+- Opening and scrolling the grid is fast again on datasets
+  created before FiftyOne 1.0
+- Datasets with more than 2,147,483,647 samples or frames open in
+  the App
+- Assets in `.fo3d` scenes at Azure `https://` and MinIO endpoint
+  paths load again
+- A new empty dataset's page no longer shows an error on load
+
+Annotation
+^^^^^^^^^^
+
+- Classification tasks keep the form open from sample to sample and frame
+  to frame
+- Annotate locks a sample for every user who opens it, including
+  from a dynamic group, so two people can no longer annotate the same
+  sample at once
+- Class and static attribute edits on a 3D cuboid track apply to every
+  frame, and a dynamic attribute edit carries forward to the next change
+- Brush, pen, and merge edits save instance masks at the mask's own
+  resolution instead of the on-screen size
+- Click-to-segment draws its mask on videos and dynamic groups with a
+  timeline
+- Workflows created before 2.26 appear in a read-only
+  "Pre-v2.26.0 project", with their metrics and batch pages
+- A batch created with its workflow set up later keeps the
+  priority picked for it, and stages added later start at that priority,
+  instead of P3
+- Assigning a benchmark to one labeler no longer starts it for
+  the whole pool
+
+Multimodal
+^^^^^^^^^^
+
+- Multimodal datasets projected in an earlier format can be updated from
+  the dataset page, and failing projection runs can be stopped and
+  retried
+- Find similar in the selection tray works on multimodal datasets
+
+Agent
+^^^^^
+
+- 121 more built-in operators are available to agents through MCP
+
+Administration
+^^^^^^^^^^^^^^
+
+- A saved AWS cloud credential can be an IAM role with a web identity
+  token file instead of access keys
+- Storage settings show the last successful storage access check and when
+  it ran
+- Self-hosted deployments prefer GPU orchestrators for runs that declare a
+  GPU instead of requiring one, so zoo-model runs keep working without GPU
+  orchestrators
+- Opening a dataset or switching views no longer fails with "You have not
+  defined a default connection" after a database connection problem, and
+  the App reconnects instead of needing a restart
+- Fixed stale dataset counts in Settings > Users, the empty access dialog,
+  and the share dialog's default access row
+- The file browser operators no longer list the server's local disk on
+  deployed services
+
 .. _fiftyone-enterprise-2-26-0:
 
 Voxel51 2.26.0
