@@ -48,7 +48,8 @@ App
 - Videos with many labels per frame load faster
 - The grid opens and scrolls quickly again on datasets created before
   FiftyOne 1.0
-- Very large datasets, with billions of samples or frames, open in the App
+- Fixed an error that kept datasets with more than about 2 billion frames
+  from opening in the App
 - 3D scenes with assets stored at Azure or MinIO URLs load again
 - New, empty datasets no longer show an error when opened
 
