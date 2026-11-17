@@ -9,104 +9,103 @@ Voxel51 2.27.0
 --------------
 *Released November 18, 2026*
 
-- **Query multimodal projections**: query projected fields from the view
-  bar, combine a server-side text search with a query, and run SQL over a
-  multimodal dataset's projected tables from the query bar or the Agent,
-  including saving a SQL result as a field computed for every episode.
-  `compute_embeddings()` can embed only the segments a query or temporal
+- **Query multimodal data**: ask questions about the signals in your
+  recordings from the view bar, such as "a pedestrian ahead within 20 m
+  while the car is above 20 m/s". Combine a query with a text search,
+  write SQL for anything a query can't express, from the view bar or the
+  Agent, and save a SQL result as a field on every episode.
+  `compute_embeddings()` can embed only the moments a query or temporal
   tag selects
-- **3D grid tiles**: point cloud tiles in the grid render in 3D from the
-  proxies `fiftyone.utils.thumbnails.generate_thumbnails()` writes, and 3D
-  dynamic groups play on hover. The 3D tile labels cuboids the way 2D
-  tiles label boxes, and Configure 3D dataset also sets which slices each
-  label field is annotated on
-- **One sample page for every media type**: the multimodal
-  sample page has the same header, sidebars, and timeline as image, video,
-  and grouped samples, and plugin panels appear in its Layout menu. Its
-  left sidebar filters labels by class
-- **Start an annotation task from the selection tray**: one click creates a
-  project and a single-task batch for the selected samples or the current
-  view, assigns it to you, and opens it
-- **Project priority**: projects have their own priority, set in
-  Create and Edit project. New batches and benchmarks start at it, and the
-  Projects list groups by it
+- **3D previews in the grid**: point cloud samples in the grid show a 3D
+  preview with their cuboids instead of a flat image, and hovering over a
+  3D group plays through it like a video
+- **One sample page for every media type**: multimodal samples open in the
+  same sample page as images, videos, and groups, with the same header,
+  sidebars, and timeline, and your plugin panels are available from its
+  Layout menu. Filter labels by class from the sidebar
+- **Start annotating from the selection tray**: one click turns the
+  selected samples, or the current view, into an annotation task that is
+  assigned to you and opens right away
+- **Project priority**: set a priority on a project, and its new batches
+  and benchmarks start at that priority. Group the Projects list by
+  priority
 
 App
 ^^^
 
-- Grid sidebar label fields have Show all, Show matching only, Hide
-  matching only, and Hide all. Changing visibility no longer reloads the
-  grid, and expanded fields and scroll position persist across a reload
-- Label filters select the same samples in the grid, the sidebar counts,
-  operators (`ctx.view`), and saved queries: a sample is kept when one of
-  its labels passes every filter
-- A short product tour shows first-time visitors around the dataset page
-- URL values in the Inspect panel are clickable links again
-- When a view fails to load, the App keeps the current view instead of
+- Each label field in the grid sidebar has Show all, Show matching only,
+  Hide matching only, and Hide all options. Changing them no longer
+  reloads the grid, and the sidebar remembers which fields are expanded
+  and where you scrolled
+- Label filters select the same samples everywhere: in the grid, in the
+  sidebar counts, in operators, and in saved queries
+- A short tour shows first-time visitors around the dataset page
+- Links in the Inspect panel are clickable again
+- If a view fails to load, the App keeps your current view instead of
   silently showing the whole dataset
-- Tagging large views no longer times out while the tags are still
-  written, or blocks other users' requests while it runs
-- Faster label loading for videos with many labels per frame
-- Opening and scrolling the grid is fast again on datasets
-  created before FiftyOne 1.0
-- Datasets with more than 2,147,483,647 samples or frames open in
-  the App
-- Assets in `.fo3d` scenes at Azure `https://` and MinIO endpoint
-  paths load again
-- A new empty dataset's page no longer shows an error on load
+- Tagging large views no longer times out or slows the App down for other
+  users while it runs
+- Videos with many labels per frame load faster
+- The grid opens and scrolls quickly again on datasets created before
+  FiftyOne 1.0
+- Datasets with more than 2.1 billion samples or frames open in the App
+- 3D scenes with assets stored at Azure or MinIO URLs load again
+- New, empty datasets no longer show an error when opened
 
 Annotation
 ^^^^^^^^^^
 
-- Classification tasks keep the form open from sample to sample and frame
-  to frame
-- Annotate locks a sample for every user who opens it, including
-  from a dynamic group, so two people can no longer annotate the same
-  sample at once
-- Class and static attribute edits on a 3D cuboid track apply to every
-  frame, and a dynamic attribute edit carries forward to the next change
-- Brush, pen, and merge edits save instance masks at the mask's own
-  resolution instead of the on-screen size
-- Click-to-segment draws its mask on videos and dynamic groups with a
+- A classification stays open as you move between samples and frames, so
+  you don't have to reopen it each time
+- When you open a 3D sample, its cuboids show their class and attributes,
+  like boxes on images
+- Configure 3D dataset now sets your dataset up for annotation as well as
+  viewing
+- Only one person at a time can annotate a sample, including samples
+  opened from a dynamic group
+- Changing the class or a static attribute of a 3D cuboid track updates
+  every frame, and changing a dynamic attribute updates it from that frame
+  until its next change
+- Editing a mask with the brush, pen, or merge tools keeps the mask's
+  original resolution
+- Click-to-segment shows its mask on videos and on dynamic groups with a
   timeline
-- Workflows created before 2.26 appear in a read-only
-  "Pre-v2.26.0 project", with their metrics and batch pages
-- A batch created with its workflow set up later keeps the
-  priority picked for it, and stages added later start at that priority,
-  instead of P3
-- Assigning a benchmark to one labeler no longer starts it for
-  the whole pool
+- Workflows created before 2.26 appear in a read-only "Pre-v2.26.0
+  project", along with their metrics and batches
+- A batch created with "Set up later" keeps the priority you picked
+  instead of resetting to P3
+- Assigning a benchmark to one labeler no longer assigns it to everyone in
+  the pool
 
 Multimodal
 ^^^^^^^^^^
 
-- Multimodal datasets projected in an earlier format can be updated from
-  the dataset page, and failing projection runs can be stopped and
-  retried
+- Datasets whose projections were computed by an earlier version can be
+  updated from the dataset page, and failed projection runs can be stopped
+  and retried
 - Find similar in the selection tray works on multimodal datasets
 
 Agent
 ^^^^^
 
-- 121 more built-in operators are available to agents through MCP
+- Agents can use 121 more built-in operators through MCP
 
 Administration
 ^^^^^^^^^^^^^^
 
-- A saved AWS cloud credential can be an IAM role with a web identity
-  token file instead of access keys
-- Storage settings show the last successful storage access check and when
-  it ran
-- Self-hosted deployments prefer GPU orchestrators for runs that declare a
-  GPU instead of requiring one, so zoo-model runs keep working without GPU
-  orchestrators
+- AWS cloud credentials can use an IAM role with a web identity token file
+  instead of access keys
+- Storage settings show when storage access was last checked successfully
+- On self-hosted deployments, runs that request a GPU use a GPU
+  orchestrator when one is available instead of requiring one, so
+  zoo-model runs work without GPU orchestrators
 - Opening a dataset or switching views no longer fails with "You have not
   defined a default connection" after a database connection problem, and
-  the App reconnects instead of needing a restart
-- Fixed stale dataset counts in Settings > Users, the empty access dialog,
-  and the share dialog's default access row
-- The file browser operators no longer list the server's local disk on
-  deployed services
+  the App reconnects on its own instead of needing a restart
+- Dataset counts in Settings > Users stay up to date, and the access and
+  share dialogs show the right access
+- The file browser no longer lists the server's own files on deployed
+  services
 
 .. _fiftyone-enterprise-2-26-0:
 
