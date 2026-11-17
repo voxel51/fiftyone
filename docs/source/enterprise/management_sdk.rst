@@ -44,6 +44,9 @@ API keys
 Audit log and activity history
 ------------------------------
 
+.. customavailablein::
+    :enterprise_version: 2.26.0
+
 The audit log is the organization-wide record of who did what. You can list,
 summarize, and export it programmatically, and you can read the activity
 history of an individual sample or label.
@@ -77,7 +80,7 @@ history of an individual sample or label.
 
    # Everything a given user did in a dataset
    events = fom.list_audit_events(
-       actor="user@company.com", dataset_name="quickstart"
+       actor="user@company.com", dataset_name="quickstart", limit=None
    )
 
    # Read a large time range without holding every event in memory
