@@ -16,9 +16,11 @@ Voxel51 2.27.0
   Agent, and save a SQL result as a field on every episode.
   `compute_embeddings()` can embed only the moments a query or temporal
   tag selects
-- **3D previews in the grid**: point cloud samples in the grid show a 3D
-  preview with their cuboids instead of a flat image, and hovering over a
-  3D group plays through it like a video
+- **3D previews in the grid**: once you generate point cloud previews with
+  ``fiftyone.utils.thumbnails.generate_thumbnails()``, point cloud samples
+  in the grid show a 3D preview with their cuboids, and hovering over a 3D
+  dynamic group plays through it like a video. Samples with an
+  orthographic projection keep showing it
 - **One sample page for every media type**: multimodal samples open in the
   same sample page as images, videos, and groups, with the same header,
   sidebars, and timeline, and your plugin panels are available from its
@@ -66,7 +68,8 @@ App
   FiftyOne 1.0
 - Fixed an error that kept datasets with more than about 2 billion frames
   from opening in the App
-- 3D scenes with assets stored at Azure or MinIO URLs load again
+- 3D scenes with assets at Azure or MinIO URLs, or at relative paths in
+  scenes stored there, load again
 - New, empty datasets no longer show an error when opened
 
 Annotation
