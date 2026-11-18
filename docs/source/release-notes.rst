@@ -41,6 +41,10 @@ App
   sidebar counts, in operators, and in saved queries
 - A short tour shows first-time visitors around the dataset page
 - Links in the Inspect panel are clickable again
+- The eye icons in the sample sidebar choose which attributes show as
+  text on labels in Annotate as well as Inspect, and can be set per tile
+- Opening a sample from a workflow task or with a schema lens loads its
+  fields right away instead of loading the page twice
 - If a view fails to load, the App keeps your current view instead of
   silently showing the whole dataset
 - Tagging large views no longer times out or slows the App down for other
@@ -56,6 +60,15 @@ App
 Annotation
 ^^^^^^^^^^
 
+- Split a new batch into several batches, randomly, in order, or by the
+  values of a field
+- Choose a default label schema for a new batch, and its annotate and
+  review steps start with it
+- The workflow editor has a new design: add a stage from any output or
+  connection, see warnings on stages that need attention, and edit a stage
+  in a tabbed panel, with a built-in guide
+- Dynamic groups of images and 3D samples play on a single timeline, and
+  saving annotations on them no longer fails
 - A classification stays open as you move between samples and frames, so
   you don't have to reopen it each time
 - When you open a 3D sample, its cuboids show their class and attributes,
@@ -77,6 +90,7 @@ Annotation
   instead of resetting to P3
 - Assigning a benchmark to one labeler no longer assigns it to everyone in
   the pool
+- Annotation and review submitted in workflows show up in Metrics
 
 Multimodal
 ^^^^^^^^^^
