@@ -3,32 +3,175 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _fiftyone-enterprise-2-27-0:
+
+Voxel51 2.27.0
+--------------
+*Released November 18, 2026*
+
+- **Query multimodal data**: ask questions about the signals in your
+  recordings from the view bar, such as "a pedestrian ahead within 20 m
+  while the car is above 20 m/s". Combine a query with a text search,
+  write SQL for anything a query can't express, from the view bar or the
+  Agent, and save a SQL result as a field on every episode.
+  `compute_embeddings()` can embed only the moments a query or temporal
+  tag selects
+- **3D previews in the grid**: once you generate point cloud previews with
+  ``fiftyone.utils.thumbnails.generate_thumbnails()``, point cloud samples
+  in the grid show a 3D preview with their cuboids, and hovering over a 3D
+  dynamic group plays through it like a video. Samples with an
+  orthographic projection keep showing it
+- **One sample page for every media type**: multimodal samples open in the
+  same sample page as images, videos, and groups, with the same header,
+  sidebars, and timeline, and your plugin panels are available from its
+  Layout menu. Filter labels by class from the sidebar
+- **Start annotating from the selection tray**: one click turns the
+  selected samples, or the current view, into an annotation task that is
+  assigned to you and opens right away
+- **Project priority**: set a priority on a project, and its new batches
+  and benchmarks start at that priority. Group the Projects list by
+  priority
+- **Saved sample layouts**: save the tiles on a sample page, with their
+  slices, 3D cameras, and settings, as a layout you can reuse on any
+  sample of the dataset. Layouts are kept when you export and import a
+  dataset
+
+App
+^^^
+
+- Each label field in the grid sidebar has Show all, Show matching only,
+  Hide matching only, and Hide all options. Changing them no longer
+  reloads the grid, and the sidebar remembers which fields are expanded
+  and where you scrolled for each dataset
+- Label filters select the same samples everywhere: in the grid, in the
+  sidebar counts, in operators, and in saved queries
+- A short tour shows first-time visitors around the dataset page
+- Links in the Inspect panel are clickable again
+- The eye icons in the sample sidebar choose which attributes show as
+  text on labels in Annotate as well as Inspect, and can be set per tile
+- Opening a sample from a workflow task or with a schema lens loads its
+  fields right away instead of loading the page twice
+- If a view fails to load, the App keeps your current view instead of
+  silently showing the whole dataset
+- Tagging large views no longer times out or slows the App down for other
+  users while it runs
+- Videos with many labels per frame load faster, and the App no longer
+  downloads label fields you've hidden
+- The grid's toolbar no longer flickers when you resize it, and its
+  buttons shrink to icons one at a time as space runs out
+- With several 3D tiles on a sample page, choose their source and shared
+  scene settings in the Scene tab
+- The grid opens and scrolls quickly again on datasets created before
+  FiftyOne 1.0
+- Fixed an error that kept datasets with more than about 2 billion frames
+  from opening in the App
+- 3D scenes with assets at Azure or MinIO URLs, or at relative paths in
+  scenes stored there, load again
+- New, empty datasets no longer show an error when opened
+
+Annotation
+^^^^^^^^^^
+
+- Split a new batch into several batches, randomly, in order, or by the
+  values of a field
+- Choose a default label schema for a new batch, and its annotate and
+  review steps start with it
+- The workflow editor has a new design: add a stage from any output or
+  connection, see warnings on stages that need attention, and edit a stage
+  in a tabbed panel, with a built-in guide
+- Dynamic groups of images and 3D samples play on a single timeline, and
+  saving annotations on them no longer fails
+- A classification stays open as you move between samples and frames, so
+  you don't have to reopen it each time
+- When you open a 3D sample, its cuboids show their class and attributes,
+  like boxes on images
+- Configure 3D dataset now sets your dataset up for annotation as well as
+  viewing
+- Only one person at a time can annotate a sample, including samples
+  opened from a dynamic group
+- Changing the class or a static attribute of a 3D cuboid track updates
+  every frame, and changing a dynamic attribute updates it from that frame
+  until its next change
+- Editing a mask with the brush, pen, or merge tools keeps the mask's
+  original resolution
+- Click-to-segment shows its mask on videos and on dynamic groups with a
+  timeline
+- AI tracking is offered only on video samples, instead of failing on
+  dynamic groups
+- Workflows created before 2.26 appear in a read-only "Pre-v2.26.0
+  project", along with their metrics and batches
+- A batch created with "Set up later" keeps the priority you picked
+  instead of resetting to P3
+- Assigning a benchmark to one labeler no longer assigns it to everyone in
+  the pool
+- Annotation and review submitted in workflows show up in Metrics
+
+Multimodal
+^^^^^^^^^^
+
+- Set up projections and track their runs from a new Projections page in
+  the dataset's Manage tab. Datasets whose projections were computed by
+  an earlier version can be updated there, and failed projection runs can
+  be stopped and retried
+- Projections and embeddings on cloud storage recover from temporary
+  storage errors
+- Find similar in the selection tray works on multimodal datasets
+
+Agent
+^^^^^
+
+- Agents can use 121 more built-in operators through MCP
+- Panels the Agent builds for you use the App's own design system, so
+  they look like the rest of the App
+
+Core
+^^^^
+
+- ``fo.delete_dataset()`` no longer fails with "Access to the subsets
+  collection is not allowed"
+
+Administration
+^^^^^^^^^^^^^^
+
+- AWS cloud credentials can use an IAM role with a web identity token file
+  instead of access keys
+- Storage settings show when storage access was last checked successfully
+- Monitoring > Activity shows the number of users in each role per day,
+  and counts service accounts in their own row instead of in the user
+  count
+- Saved views, layouts, and runs can only be read or changed through the
+  SDK by users with access to their dataset
+- On self-hosted deployments, runs that request a GPU use a GPU
+  orchestrator when one is available instead of requiring one, so
+  zoo-model runs work without GPU orchestrators
+- Opening a dataset or switching views no longer fails with "You have not
+  defined a default connection" after a database connection problem, and
+  the App reconnects on its own instead of needing a restart
+- Dataset counts in Settings > Users stay up to date, and the access and
+  share dialogs show the right access
+- The file browser no longer lists the server's own files on deployed
+  services
+
 .. _fiftyone-enterprise-2-26-0:
 
 Voxel51 2.26.0
 --------------
 *Released November 11, 2026*
 
-- **Annotation Projects**: a new top-level
-  :ref:`Projects <enterprise-projects>` page replaces the dataset Annotate
-  tab. A project holds batches of annotation work across datasets; each
-  batch :ref:`starts from a workflow template <enterprise-projects-setup>`
-  on the whole dataset, a subset, or a saved query.
-  :ref:`My work <enterprise-projects-labelers>` lists every task assigned to
-  you, available to pick up, or completed, and projects and batches have
-  their own :ref:`Metrics tabs <enterprise-projects-metrics>`
-- **Benchmarks and consensus**: run a
-  :ref:`benchmark batch <enterprise-projects-benchmarks>` that scores
-  labelers against ground truth on a copy of the dataset, or a
-  :ref:`consensus batch <enterprise-projects-consensus>` that has several
-  labelers annotate the same samples. Boxes are
-  :ref:`scored <enterprise-projects-scoring>` on same-class IoU and
-  attributes are scored against their label schema, with support for
-  :ref:`custom scoring plugins <enterprise-projects-scoring-policies>`
+- **Annotation Projects**: a new top-level Projects page replaces the
+  dataset Annotate tab. A project holds batches of annotation work across
+  datasets; each batch starts from a workflow template on the whole dataset,
+  a subset, or a saved query. My work lists every task assigned to you,
+  available to pick up, or completed, and projects and batches have their
+  own Metrics tabs
+- **Benchmarks and consensus**: run a benchmark batch that scores
+  labelers against ground truth on a copy of the dataset, or a consensus
+  batch that has several labelers annotate the same samples. Boxes are
+  scored on same-class IoU and attributes are scored against their label
+  schema, with support for custom scoring plugins
 - **Task assignment**: workflow stages have an assignee pool of people and
-  groups. Tasks can be :ref:`split by size or count, claimed from the pool,
-  assigned manually or automatically <enterprise-projects-assignment>`, and
-  prioritized
+  groups. Tasks can be split by size or count, claimed from the pool,
+  assigned manually or automatically, and prioritized
 - **Activity and audit logs**: see who did what at every level of your
   deployment. Every sample has a history panel of its edits, reviews, tags,
   and comments. Every dataset has an Activity tab that lists each change
@@ -37,13 +180,11 @@ Voxel51 2.26.0
   filterable by person, dataset, and event type, and downloadable as CSV
 - **Multisensor temporal 3D annotation**: play every camera and LiDAR slice
   of a grouped scene in sync on one timeline, in both Inspect and Annotate,
-  and :ref:`label cuboid and polyline tracks <annotation-3d-sequences>`
-  across the whole sequence in the new :ref:`3D viewer <annotation-3d>`.
-  Edit cuboid tracks on the timeline (resize, move, split, merge,
-  interpolate, keyframes), with ego and top camera presets and a draggable
-  heading arrow. The
-  :ref:`timeline index <annotation-3d-sequences-setup>` for groups of up to
-  100,000 samples is created automatically
+  and label cuboid and polyline tracks across the whole sequence in the new
+  3D viewer. Edit cuboid tracks on the timeline (resize, move, split,
+  merge, interpolate, keyframes), with ego and top camera presets and a
+  draggable heading arrow. The timeline index for groups of up to 100,000
+  samples is created automatically
 - **Keypoint and skeleton annotation**: create and edit keypoints in the
   App with guided skeleton placement, per-point attributes, and keypoint
   tracks on video datasets
@@ -88,9 +229,8 @@ App
 Annotation
 ^^^^^^^^^^
 
-- :ref:`Label schemas <enterprise-projects-schemas>` can define field
-  visibility and attributes per field, and are now enforced server-side by
-  default. To turn enforcement off, set
+- Label schemas can define field visibility and attributes per field, and
+  are now enforced server-side by default. To turn enforcement off, set
   `VFF_SCHEMA_ENFORCEMENT=false` on the `fiftyone-app` container, and on
   `teams-plugins` if your deployment runs a dedicated plugins container
 - Add selected samples, or all matching results, to a running batch from
@@ -133,7 +273,9 @@ Agent
   maximum FPS, and search existing embeddings indexes in natural language
 - Every member's Agent follows the organization's default model and
   auto-run setting
-- On-prem admins can manage LLM provider connections from Agent Settings
+- LLM provider connections for the Agent are now stored in a shared,
+  organization-level service instead of the Agent's own settings, so the
+  Agent can be used in other parts of the platform in future releases
 - More built-in operators are available to agents through MCP
 - The Agent always works on the dataset, view, and selection of the tab
   you are chatting in
@@ -175,6 +317,11 @@ Upgrade notes
   as described in the upgrade guide. This release adds sample attribution
   fields to existing datasets, and datasets that are not migrated cannot be
   read by older SDK versions once they are edited in 2.26.0
+- LLM provider connections for the Agent moved out of the Agent's own
+  settings into a shared, organization-level service. Connections created
+  before 2.26.0 are not carried over automatically. If the Agent reports
+  that no model or API key is configured after upgrading, an admin must add
+  each connection again, including its API key
 - Legacy authentication mode and `FIFTYONE_AUTH_MODE` are removed. On
   first start after the upgrade, CAS imports remaining Auth0 members,
   roles, and groups. Invitations are enabled by default

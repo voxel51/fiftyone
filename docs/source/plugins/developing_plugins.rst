@@ -791,6 +791,13 @@ subsequent sections.
                 # Set this to True if the operator is only for internal use
                 unlisted=True/False,  # default False
 
+                # Whether to expose this operator to AI agents (Enterprise only)
+                mcp_enabled=True/False,  # default False
+
+                # How risky it is for an agent to run this operator
+                # Can be LOW, MEDIUM, HIGH or DANGEROUS
+                risk_level=types.RiskLevel.LOW,  # default DANGEROUS
+
                 # Whether the operator should be executed every time a new App
                 # session starts
                 on_startup=True/False,  # default False
@@ -991,6 +998,13 @@ execution:
             # Whether to hide this operator from the App's operator browser
             # Set this to True if the operator is only for internal use
             unlisted=True/False,  # default False
+
+            # Whether to expose this operator to AI agents (Enterprise only)
+            mcp_enabled=True/False,  # default False
+
+            # How risky it is for an agent to run this operator
+            # Can be LOW, MEDIUM, HIGH or DANGEROUS
+            risk_level=types.RiskLevel.LOW,  # default DANGEROUS
 
             # Whether the operator should be executed every time a new App
             # session starts
