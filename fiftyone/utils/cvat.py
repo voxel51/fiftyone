@@ -6212,6 +6212,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             return
 
+        if label.id in results:
+            label.id = str(ObjectId())
+
         results[label.id] = label
 
     def _parse_arg(self, arg, config_arg):
