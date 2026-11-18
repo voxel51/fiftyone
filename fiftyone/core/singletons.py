@@ -31,6 +31,17 @@ class DatasetSingleton(type):
         return cls
 
     def _make_instance(cls, name, _create, *args, **kwargs):
+        media_type = kwargs.get("media_type")
+        if media_type is None and (
+            not _create or kwargs.get("persistent") or kwargs.get("_head_name")
+        ):
+            try:
+                media_type = fo.core.dataset._get_dataset_media_type(name)
+            except fo.core.dataset.DatasetNotFoundError:
+                pass
+            else:
+                kwargs["media_type"] = media_type
+
         instance = cls.__new__(cls)
         instance.__init__(name=name, _create=_create, *args, **kwargs)
         return instance
