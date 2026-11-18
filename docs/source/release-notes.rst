@@ -43,9 +43,6 @@ App
   Hide matching only, and Hide all options. Changing them no longer
   reloads the grid, and the sidebar remembers which fields are expanded
   and where you scrolled for each dataset
-- String fields with only a few values list them in the grid sidebar
-  again, so you can pick one in a single click, and each value's count
-  reflects your current filters
 - Label filters select the same samples everywhere: in the grid, in the
   sidebar counts, in operators, and in saved queries
 - A short tour shows first-time visitors around the dataset page
