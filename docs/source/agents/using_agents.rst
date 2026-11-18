@@ -139,12 +139,48 @@ Substitute whichever applies in the examples below.
 
       1. Go to **Settings > Connectors**.
       2. Click **Add**, then **Add custom connector**.
+
+         .. image:: https://cdn.voxel51.com/voxel-agent/mcp-server/claude_desktop_add_custom_connector.webp
+            :alt: Claude Desktop's Add menu, with Add custom connector highlighted
+            :align: center
+
       3. Enter a name and the gateway URL.
+
+         .. image:: https://cdn.voxel51.com/voxel-agent/mcp-server/claude_desktop_connector_details.webp
+            :alt: Add custom connector dialog with a name and the gateway URL filled in
+            :align: center
+
       4. Under **OAuth client**, choose **Use your own OAuth client** (not
          *Register automatically*, which attempts Dynamic Client
          Registration and fails against this deployment) and enter
          ``voxel51-agent-mcp``.
+
+         .. image:: https://cdn.voxel51.com/voxel-agent/mcp-server/claude_desktop_oauth_client.webp
+            :alt: OAuth client section with Use your own OAuth client selected and the client ID filled in
+            :align: center
+
       5. Click **Add**, then sign in when prompted.
+
+   .. tab:: Antigravity
+
+      Add to ``~/.gemini/config/mcp_config.json`` (global) or
+      ``<workspace>/.agents/mcp_config.json`` (workspace-scoped):
+
+      .. code-block:: json
+
+          {
+            "mcpServers": {
+              "voxel51-agent-gateway": {
+                "serverUrl": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "oauth": {
+                  "clientId": "voxel51-agent-mcp"
+                }
+              }
+            }
+          }
+
+      Remote servers use ``serverUrl``, not ``url``. Restart Antigravity (or
+      reload the window) after editing the file.
 
    .. tab:: Cursor
 
@@ -187,6 +223,32 @@ Substitute whichever applies in the examples below.
       Add to ``.vscode/mcp.json`` in your workspace (create if it doesn't
       exist), same shape as the VS Code tab (including the ``oauth``
       block), then enable **Agent mode** in Copilot Chat.
+
+   .. tab:: OpenAI Codex
+
+      Add to ``~/.codex/config.toml`` (or ``.codex/config.toml`` in a
+      trusted project):
+
+      .. code-block:: toml
+
+          [mcp_servers.voxel51-agent-gateway]
+          url = "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
+
+          [mcp_servers.voxel51-agent-gateway.oauth]
+          client_id = "voxel51-agent-mcp"
+
+      Or from the CLI:
+
+      .. code-block:: bash
+
+          codex mcp add voxel51-agent-gateway \
+            --url https://<your-deployment>/api/proxy/fiftyone-teams/mcp
+          codex mcp login voxel51-agent-gateway
+
+      Then edit the generated entry to add the ``oauth.client_id`` shown
+      above; ``codex mcp add`` alone doesn't accept a client id and falls
+      back to Dynamic Client Registration, which this deployment doesn't
+      support.
 
 Restart your agent after adding the server; new MCP servers only attach on
 the next session. Then trigger the connection (e.g. by trying to use one of
