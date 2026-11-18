@@ -330,6 +330,37 @@ def _skip_hidden_from_docs(_app, _what, _name, obj, _skip, _options):
     return None
 
 
+def _skip_documented_attributes(app, _what, _name, obj, skip, _options):
+    """Skips autoapi class attributes that the class docstring already
+    documents in an ``Attributes:`` section.
+
+    Napoleon renders that section as attribute entries, and autoapi then
+    lists the same attributes again (e.g. dataclass fields), so without this
+    every attribute appears twice and Sphinx warns about duplicate object
+    descriptions.
+    """
+    if skip or getattr(obj, "type", None) != "attribute":
+        return None
+
+    obj_id = getattr(obj, "id", None)
+    if not isinstance(obj_id, str) or "." not in obj_id:
+        return None
+
+    parent_name, attr_name = obj_id.rsplit(".", 1)
+    all_objects = getattr(app.env, "autoapi_all_objects", {})
+    parent = all_objects.get(parent_name)
+    if parent is None or parent.type != "class":
+        return None
+
+    # By the time members are filtered, napoleon has already rewritten the
+    # parent's `Attributes:` section into `.. attribute::` directives
+    pattern = rf"^\s*\.\. attribute:: {re.escape(attr_name)}\s*$"
+    if re.search(pattern, parent.docstring or "", flags=re.MULTILINE):
+        return True
+
+    return None
+
+
 def _inject_page_meta(app, pagename, templatename, context, doctree):
     """Fixes the canonical URL and supplies a description for extrahead.
 
@@ -366,6 +397,10 @@ def setup(app):
     app.connect("html-page-context", _inject_page_meta)
     # See https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#event-autodoc-skip-member
     app.connect("autodoc-skip-member", _skip_hidden_from_docs)
+    if teams_dir:
+        # `autoapimodule` directives document members through autodoc, so
+        # this is where autoapi attributes can be skipped
+        app.connect("autodoc-skip-member", _skip_documented_attributes)
 
     # Custom directives
     app.add_directive("custombutton", CustomButtonDirective)
