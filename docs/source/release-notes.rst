@@ -29,6 +29,10 @@ Voxel51 2.27.0
 - **Project priority**: set a priority on a project, and its new batches
   and benchmarks start at that priority. Group the Projects list by
   priority
+- **Saved sample layouts**: save the tiles on a sample page, with their
+  slices, 3D cameras, and settings, as a layout you can reuse on any
+  sample of the dataset. Layouts are kept when you export and import a
+  dataset
 
 App
 ^^^
@@ -36,7 +40,10 @@ App
 - Each label field in the grid sidebar has Show all, Show matching only,
   Hide matching only, and Hide all options. Changing them no longer
   reloads the grid, and the sidebar remembers which fields are expanded
-  and where you scrolled
+  and where you scrolled for each dataset
+- String fields with only a few values list them in the grid sidebar
+  again, so you can pick one in a single click, and each value's count
+  reflects your current filters
 - Label filters select the same samples everywhere: in the grid, in the
   sidebar counts, in operators, and in saved queries
 - A short tour shows first-time visitors around the dataset page
@@ -49,7 +56,12 @@ App
   silently showing the whole dataset
 - Tagging large views no longer times out or slows the App down for other
   users while it runs
-- Videos with many labels per frame load faster
+- Videos with many labels per frame load faster, and the App no longer
+  downloads label fields you've hidden
+- The grid's toolbar no longer flickers when you resize it, and its
+  buttons shrink to icons one at a time as space runs out
+- With several 3D tiles on a sample page, choose their source and shared
+  scene settings in the Scene tab
 - The grid opens and scrolls quickly again on datasets created before
   FiftyOne 1.0
 - Fixed an error that kept datasets with more than about 2 billion frames
@@ -84,6 +96,8 @@ Annotation
   original resolution
 - Click-to-segment shows its mask on videos and on dynamic groups with a
   timeline
+- AI tracking is offered only on video samples, instead of failing on
+  dynamic groups
 - Workflows created before 2.26 appear in a read-only "Pre-v2.26.0
   project", along with their metrics and batches
 - A batch created with "Set up later" keeps the priority you picked
@@ -95,15 +109,26 @@ Annotation
 Multimodal
 ^^^^^^^^^^
 
-- Datasets whose projections were computed by an earlier version can be
-  updated from the dataset page, and failed projection runs can be stopped
-  and retried
+- Set up projections and track their runs from a new Projections page in
+  the dataset's Manage tab. Datasets whose projections were computed by
+  an earlier version can be updated there, and failed projection runs can
+  be stopped and retried
+- Projections and embeddings on cloud storage recover from temporary
+  storage errors
 - Find similar in the selection tray works on multimodal datasets
 
 Agent
 ^^^^^
 
 - Agents can use 121 more built-in operators through MCP
+- Panels the Agent builds for you use the App's own design system, so
+  they look like the rest of the App
+
+Core
+^^^^
+
+- ``fo.delete_dataset()`` no longer fails with "Access to the subsets
+  collection is not allowed"
 
 Administration
 ^^^^^^^^^^^^^^
@@ -111,6 +136,11 @@ Administration
 - AWS cloud credentials can use an IAM role with a web identity token file
   instead of access keys
 - Storage settings show when storage access was last checked successfully
+- Monitoring > Activity shows the number of users in each role per day,
+  and counts service accounts in their own row instead of in the user
+  count
+- Saved views, layouts, and runs can only be read or changed through the
+  SDK by users with access to their dataset
 - On self-hosted deployments, runs that request a GPU use a GPU
   orchestrator when one is available instead of requiring one, so
   zoo-model runs work without GPU orchestrators
