@@ -9,13 +9,13 @@ Voxel51 2.27.0
 --------------
 *Released November 18, 2026*
 
-- **Query multimodal data**: ask questions about the signals in your
-  recordings from the view bar, such as "a pedestrian ahead within 20 m
-  while the car is above 20 m/s". Combine a query with a text search,
-  write SQL for anything a query can't express, from the view bar or the
-  Agent, and save a SQL result as a field on every episode.
-  `compute_embeddings()` can embed only the moments a query or temporal
-  tag selects
+- **Hybrid search for multimodal data**: an improved query engine
+  supports custom SQL and expressions that combine with text search, so
+  you can ask the Agent for things like "pedestrians ahead within 20 m of
+  ego while driving above 20 m/s". Save a complex query as a projected
+  field to filter the entire dataset quickly, and use
+  `compute_embeddings()` to embed custom, irregular intervals defined by
+  temporal tags or query expressions instead of fixed windows
 - **3D previews in the grid**: once you generate point cloud previews with
   ``fiftyone.utils.thumbnails.generate_thumbnails()``, point cloud samples
   in the grid show a 3D preview with their cuboids, and hovering over a 3D
