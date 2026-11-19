@@ -13,8 +13,8 @@ Voxel51 2.27.0
   your recordings in natural language, such as "a pedestrian ahead within
   20 m while the car is above 20 m/s", and it combines text search with
   complex expressions it derives over signals and other projected data.
-  For anything a query can't express, write SQL from the view bar or the
-  Agent, and save a SQL result as a field on every episode.
+  Keep exploring by tweaking the SQL or expressions yourself, and save a
+  SQL result as a field on every episode.
   `compute_embeddings()` can embed only the moments a query or temporal
   tag selects
 - **3D previews in the grid**: once you generate point cloud previews with
