@@ -9,11 +9,11 @@ Voxel51 2.27.0
 --------------
 *Released November 18, 2026*
 
-- **Query multimodal data**: ask the Agent a question, such as "a
-  pedestrian ahead within 20 m while the car is above 20 m/s", and it
-  answers with text search and expressions over signals and other
-  projected data. Tweak the SQL or expressions yourself, and save a SQL
-  result as a field on every episode.
+- **Query multimodal data**: ask questions about the signals in your
+  recordings to the Agent, such as "a pedestrian ahead within 20 m while
+  the car is above 20 m/s". Combine a query with a text search, write SQL
+  for anything a query can't express, from the view bar or the Agent, and
+  save a SQL result as a field on every episode.
   `compute_embeddings()` can embed only the moments a query or temporal
   tag selects
 - **3D previews in the grid**: once you generate point cloud previews with
