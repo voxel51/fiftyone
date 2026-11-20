@@ -402,7 +402,7 @@ describe("task field exclusions and label enumeration", () => {
 
   it("activeFields leaves out the hidden fields", () => {
     setMockAtoms({
-      _activeFields: () => ["ground_truth", "clip2", "clip2.label"],
+      activeFieldsChoice: () => ["ground_truth", "clip2", "clip2.label"],
       sampleFields: [
         labelField("ground_truth", DETECTIONS),
         {
