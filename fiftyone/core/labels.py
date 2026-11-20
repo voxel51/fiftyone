@@ -443,7 +443,9 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
     -   For :ref:`2D objects <object-detection>`, you must provide the
         ``bounding_box`` parameter, and you can also provide the optional
         ``mask`` or ``mask_path`` parameters to represent
-        :ref:`instance segmentations <instance-segmentation>`
+        :ref:`instance segmentations <instance-segmentation>`, or a scalar
+        ``rotation`` attribute to represent
+        :ref:`rotated bounding boxes <rotated-bounding-boxes>`
     -   For :ref:`3D objects <3d-detections>`, you must instead provide the
         ``location``, ``dimensions``, and ``rotation`` parameters
 
@@ -464,8 +466,11 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
             (3D only)
         dimensions (None): the object size ``[x, y, z]`` in scene units
             (3D only)
-        rotation (None): the object rotation ``[x, y, z]`` around its center,
-            in ``[-pi, pi]`` (3D only)
+        rotation (None): the object's rotation around its center. For 2D
+            objects, a scalar rotation in radians in ``[0, 2 * pi)``, applied
+            in pixel space, where positive values rotate clockwise as
+            displayed; ignored when the detection has an instance mask. For
+            3D objects, an ``[x, y, z]`` rotation in ``[-pi, pi]``
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         instance (None): an instance of :class:`Instance` to link this
