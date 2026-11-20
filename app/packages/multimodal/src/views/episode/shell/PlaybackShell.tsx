@@ -76,7 +76,11 @@ export interface PlaybackShellProps {
 
   /** Tracks broadcast through the embedded TrackProvider. */
   tracks?: Track[];
-  /** Track ids that should start pinned to the timeline. */
+  /**
+   * Track ids shown in the timeline tray for context (the grid filter's
+   * matches). Revealed, not pinned: follows the current value and is never
+   * written to the stored pin set.
+   */
   defaultPinnedTrackIds?: string[];
   /** Scope under which the user's pin choices survive closing the modal. */
   pinPersistKey?: string;
@@ -285,12 +289,13 @@ const PlaybackShell: React.FC<PlaybackShellProps> = ({
 }) => {
   return (
     <PlaybackProvider mode={mode}>
-      {/* Only the grid-filtered tags (initialPinnedIds) start pinned. Auto-pin
-          is off so tracks arriving in async batches don't each pin themselves,
-          which would pin everything as the batches land. */}
+      {/* Grid-filtered rows are revealed, not pinned, so the tray tracks the
+          current filter and stored pins hold only explicit user choices.
+          Auto-pin is off so tracks arriving in async batches don't each pin
+          themselves, which would pin everything as the batches land. */}
       <TrackProvider
         tracks={tracks}
-        initialPinnedIds={defaultPinnedTrackIds}
+        revealedIds={defaultPinnedTrackIds}
         autoPinNewTracks={false}
         persistKey={pinPersistKey}
       >

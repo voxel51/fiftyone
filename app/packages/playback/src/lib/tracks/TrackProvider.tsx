@@ -69,6 +69,18 @@ export interface TrackContextValue {
   togglePin: (id: string) => void;
   /** Imperative set for a single track. */
   setPinned: (id: string, pinned: boolean) => void;
+  /**
+   * Track ids shown in the pinned tray without being pinned: the caller's
+   * `revealedIds` plus anything passed to {@link reveal}. Never persisted, and
+   * a revealed row's pin button stays unpressed — pinning it is still the
+   * user's call.
+   */
+  revealedIds: ReadonlySet<string>;
+  /**
+   * Show a track in the tray for the life of this provider (e.g. a tag the
+   * user just created). Not persisted: the next mount starts without it.
+   */
+  reveal: (id: string) => void;
 }
 
 const TrackContext = createContext<TrackContextValue | null>(null);
@@ -101,6 +113,13 @@ export interface TrackProviderProps {
    * explicit user action.
    */
   autoPinNewTracks?: boolean;
+  /**
+   * Track ids to show in the tray for context rather than as pins — e.g. the
+   * rows the grid is currently filtered by. Reactive (the tray follows the
+   * current value), never persisted, and independent of the stored pin set, so
+   * a remembered pin choice can't hide them.
+   */
+  revealedIds?: readonly string[];
   /**
    * When set, the pinned-id set is persisted client-side under this
    * `localStorage` key: it hydrates the initial pin state (falling back to
@@ -157,6 +176,7 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
   tracks = [],
   initialPinnedIds = [],
   autoPinNewTracks = true,
+  revealedIds: callerRevealedIds,
   persistKey,
   children,
 }) => {
@@ -249,26 +269,66 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
     });
   }, [tracks, autoPinNewTracks]);
 
-  const togglePin = useCallback((id: string) => {
-    setPinnedSet((prev) => {
+  // Imperative, session-only reveals. Unpinning a row drops its reveal too, so
+  // pin → unpin on a just-created tag actually takes it out of the tray.
+  const [localRevealedIds, setLocalRevealedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const reveal = useCallback((id: string) => {
+    setLocalRevealedIds((prev) => {
+      if (prev.has(id)) return prev;
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.add(id);
+      return next;
+    });
+  }, []);
+  const unreveal = useCallback((id: string) => {
+    setLocalRevealedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
       return next;
     });
   }, []);
 
-  const setPinned = useCallback((id: string, pinned: boolean) => {
-    setPinnedSet((prev) => {
-      // No-op when the requested state already matches — saves a context
-      // re-render that would otherwise propagate to every track row.
-      if (prev.has(id) === pinned) return prev;
-      const next = new Set(prev);
-      if (pinned) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  }, []);
+  // Key on contents, not identity: callers commonly pass a fresh array.
+  const callerRevealedKey = (callerRevealedIds ?? []).join("\u0000");
+  const revealedIds = useMemo<ReadonlySet<string>>(() => {
+    const caller = callerRevealedKey ? callerRevealedKey.split("\u0000") : [];
+    if (caller.length === 0) return localRevealedIds;
+    return new Set([...caller, ...localRevealedIds]);
+  }, [callerRevealedKey, localRevealedIds]);
+
+  const togglePin = useCallback(
+    (id: string) => {
+      setPinnedSet((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      // On unpin this takes the row out of the tray; on pin the pin now holds
+      // it, so dropping the reveal is harmless.
+      unreveal(id);
+    },
+    [unreveal],
+  );
+
+  const setPinned = useCallback(
+    (id: string, pinned: boolean) => {
+      if (!pinned) unreveal(id);
+      setPinnedSet((prev) => {
+        // No-op when the requested state already matches — saves a context
+        // re-render that would otherwise propagate to every track row.
+        if (prev.has(id) === pinned) return prev;
+        const next = new Set(prev);
+        if (pinned) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+    },
+    [unreveal],
+  );
 
   const value = useMemo<TrackContextValue>(
     () => ({
@@ -276,8 +336,10 @@ export const TrackProvider: React.FC<TrackProviderProps> = ({
       pinnedIds,
       togglePin,
       setPinned,
+      revealedIds,
+      reveal,
     }),
-    [tracks, pinnedIds, togglePin, setPinned],
+    [tracks, pinnedIds, togglePin, setPinned, revealedIds, reveal],
   );
 
   return (
@@ -301,7 +363,7 @@ export function useTracks(): Track[] {
   return useTrackContext().tracks;
 }
 
-/** Just the tracks the user has pinned to the timeline. */
+/** Just the tracks the user has pinned to the timeline (excludes reveals). */
 export function usePinnedTracks(): Track[] {
   const { tracks, pinnedIds } = useTrackContext();
   return useMemo(
@@ -313,8 +375,9 @@ export function usePinnedTracks(): Track[] {
 /** The pin state + setters; use for building pin-toggle UI. */
 export function useTrackPinning(): Pick<
   TrackContextValue,
-  "pinnedIds" | "togglePin" | "setPinned"
+  "pinnedIds" | "togglePin" | "setPinned" | "revealedIds" | "reveal"
 > {
-  const { pinnedIds, togglePin, setPinned } = useTrackContext();
-  return { pinnedIds, togglePin, setPinned };
+  const { pinnedIds, togglePin, setPinned, revealedIds, reveal } =
+    useTrackContext();
+  return { pinnedIds, togglePin, setPinned, revealedIds, reveal };
 }

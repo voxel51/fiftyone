@@ -131,6 +131,25 @@ describe("TimelineWithTracks", () => {
       expect(screen.getByText("Track A")).toBeTruthy();
     });
 
+    it("puts a revealed track in the tray with its pin button unpressed", () => {
+      const { container } = render(
+        <PlaybackProvider duration={10} stepInterval={1 / 30}>
+          <TrackProvider
+            tracks={[TRACK_A, TRACK_B]}
+            initialPinnedIds={["track-b"]}
+            revealedIds={["track-a"]}
+          >
+            <TimelineWithTracks />
+          </TrackProvider>
+        </PlaybackProvider>,
+      );
+      const tray = container.querySelector(`.${styles.pinnedOverlayHost}`)!;
+      const pinButton = (id: string) =>
+        tray.querySelector(`[data-testid="timeline-track-pin-${id}"]`);
+      expect(pinButton("track-a")?.getAttribute("aria-pressed")).toBe("false");
+      expect(pinButton("track-b")?.getAttribute("aria-pressed")).toBe("true");
+    });
+
     it("renders rows for both pinned and unpinned tracks", () => {
       renderTimeline({
         tracks: [TRACK_A, TRACK_B],
