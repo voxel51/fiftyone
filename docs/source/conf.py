@@ -87,6 +87,7 @@ extensions = [
     "sphinx_remove_toctrees",
     "sphinx_markdown_builder",
     "sphinx_sitemap",
+    "static_sidebar_nav",
 ]
 
 teams_dir = os.environ.get("FIFTYONE_TEAMS_DIR")

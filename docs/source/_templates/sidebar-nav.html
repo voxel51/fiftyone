@@ -1,10 +1,8 @@
-{# Displays the TOC-subtree for pages nested under the currently active top-level TOCtree element. #}
+{# Displays the whole-site TOC. It is rendered once per build (see docs/extensions/static_sidebar_nav.py); the script below marks this page's entry. #}
 <nav class="bd-docs-nav bd-links"
       aria-label="{{ _('Section Navigation') }}">
   <div class="bd-toc-item navbar-nav">
-    {{- generate_toctree_html(
-      "sidebar",
-      startdepth=0,
+    {{- static_sidebar_nav(
       show_nav_level=theme_show_nav_level | int,
       maxdepth=theme_navigation_depth | int,
       collapse=theme_collapse_navigation | tobool,
@@ -14,3 +12,31 @@
     -}}
   </div>
 </nav>
+{%- if static_sidebar_nav_current_hrefs %}
+<script>
+  {# Mirrors the markers pydata-sphinx-theme sets server-side (toctree._set_current_chain). hrefs holds this page, then its toctree ancestors: a page deeper than the nav has no entry, so its nearest listed ancestor's branch is marked instead, leaving that ancestor's link as is. #}
+  ((nav, hrefs) => {
+    const links = [...nav.querySelectorAll("a.reference.internal")];
+    for (const [i, href] of hrefs.entries()) {
+      const matches = links.filter((link) => link.getAttribute("href") === href);
+      for (const link of matches) {
+        if (i === 0) {
+          link.setAttribute("href", "#");
+          link.setAttribute("aria-current", "page");
+          link.classList.add("current");
+        }
+        for (let el = link.parentElement; el !== nav; el = el.parentElement) {
+          if (el.tagName === "LI") {
+            el.classList.add("current", "active");
+            const details = el.querySelector(":scope > details");
+            if (details) details.open = true;
+          } else if (el.tagName === "UL") {
+            el.classList.add("current");
+          }
+        }
+      }
+      if (matches.length) break;
+    }
+  })(document.currentScript.previousElementSibling, {{ static_sidebar_nav_current_hrefs | tojson }});
+</script>
+{%- endif %}
