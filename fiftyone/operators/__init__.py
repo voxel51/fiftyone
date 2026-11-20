@@ -19,6 +19,7 @@ from .executor import (
     execute_operator,
     ExecutionContext,
     ExecutionOptions,
+    OperationTerminated,
 )
 from .utils import ProgressHandler, is_new
 from .panel import Panel, PanelConfig
