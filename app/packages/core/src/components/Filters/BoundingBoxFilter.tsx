@@ -23,14 +23,21 @@ type Props = {
 
 /**
  * A detection field's `bounding_box` sidebar row: a header whose eyeball
- * shows or hides the field's box outlines. It has no filter.
+ * shows or hides the field's box outlines. It has no filter. Like the other
+ * attribute rows, it hides when the sample has no labels in the field.
  */
-const BoundingBoxFilter = ({ color, labelPath, path }: Props) => {
+const BoundingBoxFilter = ({ color, labelPath, modal, path }: Props) => {
   const field = fos.useField(path);
   const isShown = fos.useBoundingBoxVisibility(labelPath ?? "");
   const toggle = fos.useToggleBoundingBoxVisibility(labelPath ?? "");
+  // count labels like the field's badge does: at the expanded path this row
+  // sits under, e.g. "ground_truth.detections"
+  const labelCount = fos.useSidebarPathCount({
+    path: path.split(".").slice(0, -1).join("."),
+    modal,
+  });
 
-  if (!field || !labelPath) {
+  if (!field || !labelPath || !labelCount) {
     return null;
   }
 

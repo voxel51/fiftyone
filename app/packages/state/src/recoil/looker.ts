@@ -117,6 +117,8 @@ export const lookerOptions = selectorFamily<
     },
 });
 
+const NO_HIDDEN_BOUNDING_BOXES: readonly string[] = [];
+
 export const useLookerOptions = (
   modal: boolean,
 ): Partial<Omit<FrameOptions | ImageOptions | VideoOptions, "selected">> => {
@@ -128,9 +130,11 @@ export const useLookerOptions = (
   const options =
     loaded.contents instanceof Promise ? loading : loaded.contents;
 
-  // box visibility lives in Jotai, outside the Recoil selector; memoized so
-  // the merged options keep their identity until either input changes
-  const hiddenBoundingBoxes = useHiddenBoundingBoxes();
+  // box visibility lives in Jotai, outside the Recoil selector. It applies to
+  // the modal only: the grid has no toggle, so it always draws boxes.
+  // Memoized so the merged options keep their identity until an input changes
+  const hidden = useHiddenBoundingBoxes();
+  const hiddenBoundingBoxes = modal ? hidden : NO_HIDDEN_BOUNDING_BOXES;
 
   return useMemo(
     () => ({ ...options, hiddenBoundingBoxes }),
