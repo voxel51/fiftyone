@@ -84,6 +84,12 @@ async function loadConfig() {
       alias: {
         path: "path-browserify",
         fs: path.resolve(__dirname, "fs-stub.js"),
+        // The "browser" entry of decimal.js-light (used by recharts' tick
+        // math) is a UMD build that registers itself with a global AMD
+        // `define` when one exists instead of exporting the class. Monaco's
+        // loader installs one, after which the Histograms panel throws
+        // "Decimal is not a constructor". The ESM build has no UMD wrapper.
+        "decimal.js-light": require.resolve("decimal.js-light/decimal.mjs"),
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
