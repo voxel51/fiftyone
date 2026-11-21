@@ -104,7 +104,8 @@ def compute_ious(
             return np.zeros((len(preds or []), len(gts or [])))
 
     if etau.is_str(iscrowd):
-        iscrowd = lambda l: bool(l.get_attribute_value(iscrowd, False))
+        iscrowd_attr = iscrowd
+        iscrowd = lambda l: bool(l.get_attribute_value(iscrowd_attr, False))
 
     if isinstance(gts[0], fol.Polyline):
         if use_boxes:
