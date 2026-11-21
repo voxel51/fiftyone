@@ -622,6 +622,9 @@ def _compute_matches(
                 best_match = None
                 best_match_iou = iou_thresh
                 for gt_id, iou in pred_ious[pred.id]:
+                    # Like Open Images matching, round away float error so
+                    # that IoUs equal to the threshold are not missed
+                    iou = round(iou, 10)
                     gt = gt_map[gt_id]
                     gt_iscrowd = iscrowd(gt)
 
