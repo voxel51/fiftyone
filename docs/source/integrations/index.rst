@@ -173,7 +173,7 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: TwelveLabs
-    :description: Use our TwelveLabs integration to embed and caption videos with the Marengo and Pegasus foundation models for video dataset curation.
+    :description: Use our TwelveLabs integration to embed, caption, and segment videos with the Marengo and Pegasus foundation models for video dataset curation.
     :link: twelvelabs.html
     :image: ../_images/brain-image-visualization.gif
     :tags: Brain,Embeddings,Models

@@ -1,6 +1,29 @@
 {
     "models": [
         {
+            "base_name": "twelvelabs-marengo3.5",
+            "base_filename": null,
+            "version": null,
+            "description": "A multimodal embedding model that generates vector representations of video, audio, images, text, and documents, with fused multi-modality video embeddings, composed text and media queries, and configurable embedding dimensions, for similarity search, clustering, and other machine learning tasks",
+            "source": "https://www.twelvelabs.io",
+            "author": "Twelve Labs, Inc.",
+            "license": "https://www.twelvelabs.io/legal/tos",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.twelvelabs.TwelveLabsModel",
+                "config": {
+                    "operation": "embed",
+                    "embedding_model": "marengo3.5"
+                }
+            },
+            "requirements": {
+                "packages": ["twelvelabs>=1.3.5"]
+            },
+            "tags": ["video", "embeddings", "official"],
+            "training_data": null,
+            "date_added": "2026-11-03 10:00:00"
+        },
+        {
             "base_name": "twelvelabs-marengo3.0",
             "base_filename": null,
             "version": null,
@@ -17,17 +40,17 @@
                 }
             },
             "requirements": {
-                "packages": ["twelvelabs>=1.2.8"]
+                "packages": ["twelvelabs>=1.3.5"]
             },
             "tags": ["video", "embeddings", "official"],
             "training_data": null,
             "date_added": "2026-06-25 10:31:00"
         },
         {
-            "base_name": "twelvelabs-pegasus1.2",
+            "base_name": "twelvelabs-pegasus1.6",
             "base_filename": null,
             "version": null,
-            "description": "A multimodal model that provides comprehensive video understanding and analysis capabilities, including content recognition, scene detection, and contextual understanding",
+            "description": "A multimodal model that provides comprehensive video and image understanding and analysis capabilities, including video-to-text generation, egocentric video understanding, entity recognition, and timestamp-level temporal grounding",
             "source": "https://www.twelvelabs.io",
             "author": "Twelve Labs, Inc.",
             "license": "https://www.twelvelabs.io/legal/tos",
@@ -36,17 +59,40 @@
                 "type": "fiftyone.utils.twelvelabs.TwelveLabsModel",
                 "config": {
                     "operation": "caption",
-                    "analysis_model": "pegasus1.2",
+                    "analysis_model": "pegasus1.6",
                     "prompt": "Describe what happens in this video.",
                     "max_tokens": 512
                 }
             },
             "requirements": {
-                "packages": ["twelvelabs>=1.2.8"]
+                "packages": ["twelvelabs>=1.3.5"]
             },
             "tags": ["video", "caption", "official"],
             "training_data": null,
-            "date_added": "2026-06-25 10:31:00"
+            "date_added": "2026-11-03 10:00:00"
+        },
+        {
+            "base_name": "twelvelabs-pegasus1.6-segment",
+            "base_filename": null,
+            "version": null,
+            "description": "Pegasus 1.6 video segmentation, which splits videos into timestamped segments based on natural language segment definitions and extracts custom metadata, including in-segment events, for each segment",
+            "source": "https://www.twelvelabs.io",
+            "author": "Twelve Labs, Inc.",
+            "license": "https://www.twelvelabs.io/legal/tos",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.twelvelabs.TwelveLabsModel",
+                "config": {
+                    "operation": "segment",
+                    "analysis_model": "pegasus1.6"
+                }
+            },
+            "requirements": {
+                "packages": ["twelvelabs>=1.3.5"]
+            },
+            "tags": ["video", "segmentation", "official"],
+            "training_data": null,
+            "date_added": "2026-11-03 10:00:00"
         },
         {
             "base_name": "twelvelabs-pegasus1.5",
@@ -67,7 +113,7 @@
                 }
             },
             "requirements": {
-                "packages": ["twelvelabs>=1.2.8"]
+                "packages": ["twelvelabs>=1.3.5"]
             },
             "tags": ["video", "caption", "official"],
             "training_data": null,
