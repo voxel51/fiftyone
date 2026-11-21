@@ -593,6 +593,10 @@ class VOCObject(object):
 
         attributes = _get_attributes(detection, extra_attrs)
 
+        # Custom attributes cannot override the VOC object's own fields
+        attributes.pop("name", None)
+        attributes.pop("bndbox", None)
+
         return cls(name, bndbox, **attributes)
 
     def to_detection(self, frame_size, extra_attrs=True):
