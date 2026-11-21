@@ -680,8 +680,12 @@ def concat_videos(input_paths, output_path, verbose=False):
     """
     with etau.TempDir() as tmp_dir:
         input_list_path = os.path.join(tmp_dir, "input_list.txt")
-        with open(input_list_path, "w") as f:
-            f.write("\n".join(["file '%s'" % path for path in input_paths]))
+        # ffmpeg reads the list as UTF-8 and needs single quotes escaped
+        lines = [
+            "file '%s'" % path.replace("'", "'\\''") for path in input_paths
+        ]
+        with open(input_list_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
 
         in_opts = ["-f", "concat", "-safe", "0"]
         out_opts = ["-c", "copy"]
