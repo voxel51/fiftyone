@@ -1632,6 +1632,50 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
 
     @drop_datasets
+    def test_xml_detection_datasets_special_characters(self):
+        for dataset_type, label_field in (
+            (fo.types.VOCDetectionDataset, "ground_truth"),
+            (fo.types.CVATImageDataset, "detections"),
+        ):
+            dataset = fo.Dataset()
+            dataset.add_sample(
+                fo.Sample(
+                    filepath=self._new_image(name="tom&jerry"),
+                    ground_truth=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="salt & pepper",
+                                bounding_box=[0.1, 0.1, 0.4, 0.4],
+                                note='<R&D> "team"',
+                            ),
+                        ]
+                    ),
+                )
+            )
+
+            export_dir = self._new_dir()
+
+            dataset.export(
+                export_dir=export_dir,
+                dataset_type=dataset_type,
+                label_field="ground_truth",
+            )
+
+            dataset2 = fo.Dataset.from_dir(
+                dataset_dir=export_dir,
+                dataset_type=dataset_type,
+            )
+
+            sample = dataset2.first()
+            detection = sample[label_field].detections[0]
+
+            self.assertEqual(
+                os.path.basename(sample.filepath), "tom&jerry.jpg"
+            )
+            self.assertEqual(detection.label, "salt & pepper")
+            self.assertEqual(detection.note, '<R&D> "team"')
+
+    @drop_datasets
     def test_voc_detection_dataset(self):
         dataset = self._make_dataset()
 
