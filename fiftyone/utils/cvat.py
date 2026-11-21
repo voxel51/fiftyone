@@ -7671,7 +7671,10 @@ def _frames_to_cvat_tracks(frames, frame_size):
 
     def process_label(label, frame_number):
         if label.index is not None:
-            labels_map[label.index][type(label)][frame_number] = label
+            # A CVAT track has one label, and FiftyOne trajectories are
+            # identified by their `(label, index)`
+            key = (type(label), label.label)
+            labels_map[label.index][key][frame_number] = label
         else:
             no_index_map[frame_number].append(label)
 
@@ -7706,7 +7709,7 @@ def _frames_to_cvat_tracks(frames, frame_size):
     max_index = -1
     used_indices = set()
     for index in sorted(labels_map):
-        for label_type, labels in labels_map[index].items():
+        for labels in labels_map[index].values():
             _index = index if index not in used_indices else max_index + 1
             used_indices.add(_index)
             max_index = max(_index, max_index)
