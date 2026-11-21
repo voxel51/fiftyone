@@ -1212,5 +1212,36 @@ class TestYOLO26DepthZooEntries:
             assert "depth" in entry["tags"]
 
 
+class TestToPolylines:
+    def test_polylines_use_original_image_coordinates(self):
+        torch = pytest.importorskip("torch")
+        pytest.importorskip("ultralytics.utils.ops")
+
+        from fiftyone.utils.ultralytics import to_polylines
+
+        # a 400x100 image fills rows 240-400 of the 640x640 model input, so
+        # the object on its rows 25-75 and columns 100-300 lands here
+        masks = torch.zeros((1, 640, 640))
+        masks[0, 280:360, 160:480] = 1
+        result = SimpleNamespace(
+            masks=SimpleNamespace(data=masks),
+            boxes=SimpleNamespace(
+                cls=torch.tensor([0.0]),
+                conf=torch.tensor([0.9]),
+                is_track=False,
+            ),
+            names={0: "object"},
+            orig_img=np.zeros((100, 400, 3), dtype=np.uint8),
+        )
+
+        polylines = to_polylines(result)
+
+        points = np.array(polylines.polylines[0].points[0])
+        assert points[:, 0].min() == pytest.approx(0.25, abs=0.02)
+        assert points[:, 0].max() == pytest.approx(0.75, abs=0.02)
+        assert points[:, 1].min() == pytest.approx(0.25, abs=0.02)
+        assert points[:, 1].max() == pytest.approx(0.75, abs=0.02)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
