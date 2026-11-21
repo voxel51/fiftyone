@@ -1365,7 +1365,7 @@ def _make_yolo_rows(label, target, confidence=None):
 def _parse_yolo_classes(classes):
     # Convert from {0: class0, ...} to [class0, ...]
     if isinstance(classes, dict):
-        nc = max(classes.keys()) + 1
+        nc = max(classes.keys(), default=-1) + 1
         classes = [classes.get(i, str(i)) for i in range(nc)]
 
     return classes
