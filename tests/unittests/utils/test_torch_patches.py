@@ -75,3 +75,36 @@ class TestIterSlicesMapping:
         ]
         out = fout._stack_transformed_patches(patches, use_numpy=True)
         assert out["pixel_values"].shape == (2, 4, 4, 3)
+
+
+class TestPatchesFromNonAsciiPaths:
+    @pytest.mark.parametrize("force_rgb", [True, False])
+    def test_extract_patches(self, tmp_path, force_rgb):
+        # On Windows, OpenCV cannot open paths with non-ASCII characters
+        import cv2
+
+        import fiftyone.core.labels as fol
+
+        img = np.random.default_rng(51).integers(
+            0, 256, (40, 60, 3), dtype=np.uint8
+        )
+        image_dir = tmp_path / "donn\u00e9es_\u30c7\u30fc\u30bf"
+        image_dir.mkdir()
+        image_path = str(image_dir / "image.png")
+        cv2.imencode(".png", img)[1].tofile(image_path)
+
+        patches = fol.Detections(
+            detections=[fol.Detection(bounding_box=[0.5, 0.5, 0.5, 0.5])]
+        )
+        dataset = fout.TorchImagePatchesDataset(
+            image_paths=[image_path],
+            patches=[patches],
+            force_rgb=force_rgb,
+            ragged_batches=True,
+        )
+
+        expected = img[20:, 30:]
+        if force_rgb:
+            expected = expected[..., ::-1]
+
+        np.testing.assert_array_equal(np.asarray(dataset[0][0]), expected)
