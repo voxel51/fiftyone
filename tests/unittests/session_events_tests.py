@@ -6,10 +6,19 @@ FiftyOne session events-related unit tests.
 |
 """
 
+import asyncio
+import copy
 from dataclasses import asdict
+import json
+import os
+import tempfile
 import unittest
+from unittest import mock
 
 from dacite import from_dict
+
+import fiftyone as fo
+from fiftyone.core.session import events
 
 # pylint: disable=no-name-in-module,import-error
 from fiftyone.core.session.constants import (
@@ -17,6 +26,7 @@ from fiftyone.core.session.constants import (
     VALID_ICON_STYLES,
 )
 from fiftyone.core.session.session import (
+    Session,
     _normalize_selected_labels,
     _on_select_labels,
     _resolve_label_selection_style,
@@ -33,6 +43,353 @@ from fiftyone.core.session.events import (
 from fiftyone.core.state import StateDescription
 
 from decorators import drop_datasets
+
+
+class AppConfigStateRestoreTests(unittest.TestCase):
+    _FIELDS = {
+        "show_confidence": "FIFTYONE_APP_SHOW_CONFIDENCE",
+        "show_index": "FIFTYONE_APP_SHOW_INDEX",
+        "show_label": "FIFTYONE_APP_SHOW_LABEL",
+    }
+
+    def setUp(self):
+        self._env = mock.patch.dict(os.environ, {}, clear=False)
+        self._env.start()
+        self.addCleanup(self._env.stop)
+
+        timezone = fo.config.timezone
+        self.addCleanup(setattr, fo.config, "timezone", timezone)
+
+        for name in (
+            "FIFTYONE_APP_SHOW_CONFIDENCE",
+            "FIFTYONE_APP_SHOW_INDEX",
+            "FIFTYONE_APP_SHOW_LABEL",
+        ):
+            os.environ.pop(name, None)
+
+    def test_state_config_roundtrip_does_not_emit_removed_option_warnings(
+        self,
+    ):
+        app_config = fo.AppConfig()
+        app_config.show_confidence = False
+        app_config.show_index = False
+        app_config.show_label = False
+        payload = {"config": app_config.serialize()}
+
+        with self.assertNoLogs("fiftyone.core.config", level="WARNING"):
+            state = StateDescription.from_dict(payload)
+
+        self.assertFalse(state.config.show_confidence)
+        self.assertFalse(state.config.show_index)
+        self.assertFalse(state.config.show_label)
+
+    def test_direct_legacy_assignment_warns(self):
+        session = Session.__new__(Session)
+        session._disable_wait_warning = True
+        session._state = StateDescription(config=fo.AppConfig())
+
+        with self.assertLogs(
+            "fiftyone.core.config", level="WARNING"
+        ) as captured:
+            session.config.show_confidence = False
+
+        self.assertFalse(session.config.show_confidence)
+        self.assertEqual(1, len(captured.records))
+        self.assertIn("show_confidence", captured.output[0])
+
+    def test_public_config_sources_warn_once_per_legacy_field_value(self):
+        for field, env_name in self._FIELDS.items():
+            for value in (True, False):
+                for source in (
+                    "dict",
+                    "from_dict",
+                    "json_file",
+                    "env_only",
+                    "dict_and_env",
+                ):
+                    with self.subTest(field=field, value=value, source=source):
+                        env_value = str(value).lower()
+
+                        def load():
+                            if source == "dict":
+                                return fo.AppConfig({field: value})
+                            if source == "from_dict":
+                                return fo.AppConfig.from_dict({field: value})
+                            if source == "json_file":
+                                with tempfile.TemporaryDirectory() as directory:
+                                    path = os.path.join(
+                                        directory, "app-config.json"
+                                    )
+                                    with open(
+                                        path, "w", encoding="utf-8"
+                                    ) as stream:
+                                        json.dump({field: value}, stream)
+                                    return fo.AppConfig.from_json(path)
+                            if source == "env_only":
+                                return fo.AppConfig()
+                            return fo.AppConfig({field: value})
+
+                        if source in ("env_only", "dict_and_env"):
+                            with mock.patch.dict(
+                                os.environ, {env_name: env_value}
+                            ):
+                                with self.assertLogs(
+                                    "fiftyone.core.config", level="WARNING"
+                                ) as captured:
+                                    config = load()
+                        else:
+                            with self.assertLogs(
+                                "fiftyone.core.config", level="WARNING"
+                            ) as captured:
+                                config = load()
+
+                        self.assertEqual(1, len(captured.records))
+                        self.assertIn(field, captured.output[0])
+                        self.assertIs(getattr(config, field), value)
+
+    def test_defaults_and_unrelated_or_dynamic_fields_are_quiet(self):
+        with self.assertNoLogs("fiftyone.core.config", level="WARNING"):
+            config = fo.AppConfig()
+            config.theme = "dark"
+            config.runtime_extension_option = {"enabled": True}
+            state = StateDescription.from_dict(
+                {
+                    "config": {
+                        "theme": "light",
+                        "runtime_extension_option": {"enabled": False},
+                    }
+                }
+            )
+
+        self.assertTrue(config.show_confidence)
+        self.assertTrue(config.show_index)
+        self.assertTrue(config.show_label)
+        self.assertEqual("light", state.config.theme)
+        self.assertEqual(
+            {"enabled": False}, state.config.runtime_extension_option
+        )
+
+    def test_session_getter_direct_and_same_value_assignments_warn_once(self):
+        for field in self._FIELDS:
+            session = Session.__new__(Session)
+            session._disable_wait_warning = True
+            session._state = StateDescription(config=fo.AppConfig())
+
+            for value in (True, False):
+                with self.subTest(field=field, value=value):
+                    config = session.config
+                    with self.assertLogs(
+                        "fiftyone.core.config", level="WARNING"
+                    ) as direct:
+                        setattr(config, field, value)
+                    self.assertEqual(1, len(direct.records))
+                    self.assertIn(field, direct.output[0])
+                    self.assertIs(getattr(session.config, field), value)
+
+                    with self.assertLogs(
+                        "fiftyone.core.config", level="WARNING"
+                    ) as repeated:
+                        setattr(session.config, field, value)
+                    self.assertEqual(1, len(repeated.records))
+                    self.assertIn(field, repeated.output[0])
+                    self.assertIs(getattr(session.config, field), value)
+
+    def test_direct_assignment_preserves_an_optional_raw_sentinel(self):
+        config = fo.AppConfig()
+        sentinel = object()
+
+        with self.assertLogs(
+            "fiftyone.core.config", level="WARNING"
+        ) as captured:
+            config.show_label = sentinel
+
+        self.assertEqual(1, len(captured.records))
+        self.assertIs(config.show_label, sentinel)
+
+    def test_full_and_partial_internal_state_restore_is_quiet_and_nonmutating(
+        self,
+    ):
+        full = fo.AppConfig().serialize()
+        full.update(
+            show_confidence=False,
+            show_index=True,
+            show_label=False,
+            theme="dark",
+            timezone="UTC",
+            runtime_extension_option={"items": [1, 2]},
+        )
+        cases = (
+            full,
+            {
+                "show_index": False,
+                "theme": "light",
+                "runtime_extension_option": "preserve",
+            },
+        )
+        for index, config_data in enumerate(cases):
+            with self.subTest(config_data=config_data):
+                payload = {"config": copy.deepcopy(config_data)}
+                original = copy.deepcopy(payload)
+                with self.assertNoLogs(
+                    "fiftyone.core.config", level="WARNING"
+                ):
+                    state = StateDescription.from_dict(payload)
+                self.assertEqual(original, payload)
+                for name, value in config_data.items():
+                    self.assertEqual(value, getattr(state.config, name))
+                self.assertNotIn("_warn_removed_options", vars(state.config))
+                if index == 0:
+                    self.assertEqual(config_data, state.config.serialize())
+                    self.assertEqual("UTC", fo.config.timezone)
+
+    def test_missing_or_empty_config_copies_global_app_config_even_with_legacy_env(
+        self,
+    ):
+        baseline = copy.deepcopy(vars(fo.app_config))
+        for field, env_name in self._FIELDS.items():
+            alternate = str(not getattr(fo.app_config, field)).lower()
+            with mock.patch.dict(os.environ, {env_name: alternate}):
+                for payload in ({}, {"config": {}}):
+                    with self.subTest(field=field, payload=payload):
+                        original = copy.deepcopy(payload)
+                        with self.assertNoLogs(
+                            "fiftyone.core.config", level="WARNING"
+                        ):
+                            state = StateDescription.from_dict(payload)
+                        self.assertIsNot(state.config, fo.app_config)
+                        self.assertEqual(baseline, vars(state.config))
+                        self.assertEqual(original, payload)
+
+    def test_nonempty_partial_config_reads_legacy_env_quietly(self):
+        for field, env_name in self._FIELDS.items():
+            for value in (True, False):
+                with self.subTest(field=field, value=value):
+                    payload = {"config": {"theme": "dark"}}
+                    with mock.patch.dict(
+                        os.environ, {env_name: str(value).lower()}
+                    ):
+                        with self.assertNoLogs(
+                            "fiftyone.core.config", level="WARNING"
+                        ):
+                            state = StateDescription.from_dict(payload)
+                    self.assertIs(getattr(state.config, field), value)
+                    self.assertEqual("dark", state.config.theme)
+                    self.assertEqual({"config": {"theme": "dark"}}, payload)
+
+    def test_repeated_real_async_state_loads_are_quiet(self):
+        payload = {
+            "config": {
+                "show_confidence": False,
+                "show_index": True,
+                "show_label": False,
+                "runtime_extension_option": {"source": "async-load"},
+            }
+        }
+        original = copy.deepcopy(payload)
+
+        async def load_repeatedly():
+            states = []
+            for _ in range(3):
+                with self.assertNoLogs(
+                    "fiftyone.core.config", level="WARNING"
+                ):
+                    states.append(await events._load_state(payload))
+            return states
+
+        env = {
+            env_name: str(not payload["config"][field]).lower()
+            for field, env_name in self._FIELDS.items()
+        }
+        with mock.patch.dict(os.environ, env):
+            states = asyncio.run(load_repeatedly())
+        self.assertEqual(original, payload)
+        self.assertEqual(3, len(states))
+        for state in states:
+            for field in self._FIELDS:
+                self.assertIs(
+                    getattr(state.config, field), payload["config"][field]
+                )
+            self.assertEqual(
+                {"source": "async-load"}, state.config.runtime_extension_option
+            )
+
+    def test_copy_deepcopy_and_serialize_are_quiet_and_keep_compat_values(
+        self,
+    ):
+        config = fo.AppConfig()
+        expected = dict.fromkeys(self._FIELDS, False)
+        for field, value in expected.items():
+            with self.assertLogs("fiftyone.core.config", level="WARNING"):
+                setattr(config, field, value)
+        with self.assertNoLogs("fiftyone.core.config", level="WARNING"):
+            clones = (copy.copy(config), copy.deepcopy(config), config.copy())
+            serialized = config.serialize()
+        for clone in (config, *clones):
+            self.assertNotIn("_warn_removed_options", vars(clone))
+            for field, value in expected.items():
+                self.assertIs(getattr(clone, field), value)
+        for field, value in expected.items():
+            self.assertIs(serialized[field], value)
+        private_keys = {key for key in vars(config) if key.startswith("_")}
+        self.assertTrue(private_keys.isdisjoint(serialized))
+
+    def test_constructor_bypasses_legacy_setattr_hook_but_direct_writes_do_not(
+        self,
+    ):
+        fields = set(self._FIELDS)
+
+        class TrackingAppConfig(fo.AppConfig):
+            writes = []
+
+            def __setattr__(self, name, value):
+                type(self).writes.append(name)
+                super().__setattr__(name, value)
+
+        TrackingAppConfig.writes = []
+        values = {
+            "show_confidence": False,
+            "show_index": True,
+            "show_label": False,
+        }
+        with self.assertLogs(
+            "fiftyone.core.config", level="WARNING"
+        ) as captured:
+            config = TrackingAppConfig(values)
+
+        self.assertEqual(3, len(captured.records))
+        for field in fields:
+            self.assertTrue(
+                any(field in output for output in captured.output),
+                msg=f"Missing warning for {field}",
+            )
+        self.assertTrue(fields.isdisjoint(TrackingAppConfig.writes))
+
+        with self.assertNoLogs("fiftyone.core.config", level="WARNING"):
+            config.theme = "dark"
+        self.assertIn("theme", TrackingAppConfig.writes)
+
+        with self.assertLogs(
+            "fiftyone.core.config", level="WARNING"
+        ) as direct:
+            config.show_label = True
+        self.assertEqual(1, len(direct.records))
+        self.assertIn("show_label", direct.output[0])
+        self.assertIn("show_label", TrackingAppConfig.writes)
+        self.assertEqual("dark", config.theme)
+
+    def test_explicit_none_config_keeps_existing_attribute_error(self):
+        with self.assertRaises(AttributeError):
+            StateDescription.from_dict({"config": None})
+
+    def test_internal_timezone_and_unrelated_defaults_are_preserved(self):
+        with self.assertNoLogs("fiftyone.core.config", level="WARNING"):
+            state = StateDescription.from_dict(
+                {"config": {"timezone": "UTC", "theme": "dark"}}
+            )
+        self.assertEqual("UTC", fo.config.timezone)
+        self.assertEqual("UTC", state.config.timezone)
+        self.assertEqual("dark", state.config.theme)
+        self.assertEqual(fo.AppConfig().color_pool, state.config.color_pool)
 
 
 class SessionTests(unittest.TestCase):
