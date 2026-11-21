@@ -854,18 +854,15 @@ def _to_polyline(label):
 def _to_keypoint(label):
     ls_type = "keypointlabels"
 
-    if isinstance(label, list):
-        return (
-            sum([_to_keypoint(l)[0] for l in label], []),
-            ls_type,
-            [l.id for l in label],
-        )
-
     if isinstance(label, fol.Keypoints):
+        label = label.keypoints
+
+    if isinstance(label, list):
+        results = [_to_keypoint(l) for l in label]
         return (
-            sum([_to_keypoint(l)[0] for l in label.keypoints], []),
+            sum([r[0] for r in results], []),
             ls_type,
-            [l.id for l in label.keypoints],
+            sum([r[2] for r in results], []),
         )
 
     points = _denormalize_values(label.points)
@@ -878,7 +875,11 @@ def _to_keypoint(label):
         }
         for p in points
     ]
-    return results, ls_type, label.id
+
+    # Each point is its own Label Studio region, so it needs its own ID
+    ids = ["%s-%d" % (label.id, i) for i in range(len(results))]
+
+    return results, ls_type, ids
 
 
 def _to_segmentation(label):
