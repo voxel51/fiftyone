@@ -20,6 +20,7 @@ import fiftyone.constants as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.utils.random as four
 from fiftyone.migrations.runner import MigrationRunner
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
@@ -1146,6 +1147,37 @@ class ResponseStreamTests(unittest.TestCase):
         stream.read(100)
         size = stream.consume_size()
         self.assertEqual(size, len(data))
+
+
+class RandomUtilsTests(unittest.TestCase):
+    @drop_datasets
+    def test_sample_entire_collection(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image%d.jpg" % i,
+                    ground_truth=fo.Classification(
+                        label="cat" if i < 4 else "dog"
+                    ),
+                )
+                for i in range(5)
+            ]
+        )
+        weights = [1, 2, 3, 4, 5]
+
+        view = four.weighted_sample(dataset, 3, weights, seed=51)
+        self.assertEqual(len(view), 3)
+
+        # Requesting as many samples as the collection has selects them all
+        view = four.weighted_sample(dataset, 5, weights, seed=51)
+        self.assertEqual(len(view), 5)
+
+        view = four.balanced_sample(dataset, 5, "ground_truth.label", seed=51)
+        self.assertEqual(len(view), 5)
+
+        view = four.weighted_sample(dataset, 7, weights, seed=51)
+        self.assertEqual(len(view), 5)
 
 
 if __name__ == "__main__":
