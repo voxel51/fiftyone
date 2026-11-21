@@ -658,10 +658,10 @@ class VOCBoundingBox(object):
             a :class:`VOCBoundingBox`
         """
         return cls(
-            int(float(d["xmin"])),
-            int(float(d["ymin"])),
-            int(float(d["xmax"])),
-            int(float(d["ymax"])),
+            int(round(float(d["xmin"]))),
+            int(round(float(d["ymin"]))),
+            int(round(float(d["xmax"]))),
+            int(round(float(d["ymax"]))),
         )
 
     @classmethod
@@ -679,10 +679,10 @@ class VOCBoundingBox(object):
         x, y, w, h = bounding_box
         width, height = frame_size
         return cls(
-            int(width * x),
-            int(height * y),
-            int(width * (x + w)),
-            int(height * (y + h)),
+            int(round(width * x)),
+            int(round(height * y)),
+            int(round(width * (x + w))),
+            int(round(height * (y + h))),
         )
 
     def to_detection_format(self, frame_size):
