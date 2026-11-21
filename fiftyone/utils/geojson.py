@@ -736,6 +736,17 @@ def _parse_geometries(geometries):
 
     for d in geometries:
         _type = d["type"]
+
+        if _type == "GeometryCollection":
+            # eg a feature whose geometry is a collection
+            _points, _lines, _polygons = _parse_geometries(
+                d.get("geometries", [])
+            )
+            points.extend(_points)
+            lines.extend(_lines)
+            polygons.extend(_polygons)
+            continue
+
         _coords = d["coordinates"]
 
         if _type == "Point":
