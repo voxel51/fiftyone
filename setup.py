@@ -56,7 +56,7 @@ setup(
         "async_lru>=2,<3",
         "beautifulsoup4>=2,<5",  # BS4 will only have 4.x versions
         "boto3>=1,<2",
-        "cachetools>=5,<8",
+        "cachetools>=5,<9",
         "dacite>=1.6.0,<2",
         "dill>=0.1,<0.5",
         "exceptiongroup>=1,<2",
