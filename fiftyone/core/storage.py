@@ -1049,8 +1049,11 @@ def _do_read_file(arg):
 
 
 def _read_file(filepath, binary=False):
-    mode = "rb" if binary else "r"
-    with open(filepath, mode) as f:
+    if binary:
+        with open(filepath, "rb") as f:
+            return f.read()
+
+    with open(filepath, "r", encoding="utf-8") as f:
         return f.read()
 
 

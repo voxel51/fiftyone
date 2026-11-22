@@ -625,6 +625,15 @@ class TestLocalFileOperations:
 
         assert read_content == content
 
+    def test_write_and_read_file_non_ascii(self, temp_dir):
+        path = os.path.join(temp_dir, "test.txt")
+        content = "café 椅子\n"
+
+        fos.write_file(content, path)
+        read_content = fos.read_file(path)
+
+        assert read_content == content
+
 
 class TestMoveDir:
     """Test move_dir() function."""
