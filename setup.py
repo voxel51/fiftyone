@@ -77,7 +77,7 @@ setup(
         "PyYAML>=4,<7",
         "regex",  # Doesn't follow semver, keep unconstrained
         "retrying>=1,<2",
-        "sseclient-py>=1.7.2,<2",
+        "sseclient-py>=1.7.2,<3",
         "sse-starlette>=0.10.3,<4",
         "starlette>=1.3.1,<1.4",
         "strawberry-graphql>=0.327.7,<0.328",
