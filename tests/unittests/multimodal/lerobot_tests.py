@@ -17,6 +17,7 @@ import tempfile
 import uuid
 from unittest import mock
 
+import numpy as np
 import pytest
 
 import fiftyone as fo
@@ -353,6 +354,17 @@ class TestLeRobotImporter:
                 lerobot_import(root, name=name)
 
             assert fo.dataset_exists(name)
+
+    def test_numpy_integer_episode_selection(self, lerobot_import):
+        with tempfile.TemporaryDirectory() as root:
+            _write_v3_source(root)
+
+            dataset = lerobot_import(root, episodes=np.array([7, 2]))
+            assert sorted(dataset.values("episode_index")) == [2, 7]
+
+            for bad in (np.int64(-1), np.float64(1.0), np.bool_(True)):
+                with pytest.raises(ValueError):
+                    lerobot_import(root, episodes=[bad])
 
     def test_multishard_ten_episode_import_and_relocation(
         self, lerobot_import
