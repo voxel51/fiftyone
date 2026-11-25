@@ -172,13 +172,15 @@ ____________________
     across projects. Skills built for a specific dataset, model, or internal
     workflow are better kept in your own plugin.
 
-To add a skill to the `voxel51/fiftyone-skills
-<https://github.com/voxel51/fiftyone-skills>`_ repository:
+Skills for working with a Voxel51 deployment belong in the `voxel51/voxel51-skills
+<https://github.com/voxel51/voxel51-skills>`_ repository. Skills for building
+FiftyOne plugins belong in `voxel51/fiftyone-skills
+<https://github.com/voxel51/fiftyone-skills>`_. To add a skill:
 
 1. **Fork** the repository
-2. **Copy** an existing skill folder as a starting point (e.g., ``skills/fiftyone-find-duplicates/``)
-3. **Update** ``SKILL.md`` with your workflow
-4. **Add** your skill to ``.claude-plugin/marketplace.json``
+2. **Copy** an existing skill folder as a starting point (e.g., ``skills/voxel51-data-quality/``)
+3. **Update** ``SKILL.md`` with your workflow, and set ``metadata.interface``
+4. **Run** the repository checks described in ``CONTRIBUTING.md``
 5. **Test** it with your AI assistant
 6. **Submit** a Pull Request
 
@@ -193,12 +195,14 @@ _________
 
    * - Resource
      - Description
+   * - `Voxel51 Skills <https://github.com/voxel51/voxel51-skills>`_
+     - Skills for the Voxel51 platform and contributing guide
    * - `FiftyOne Skills <https://github.com/voxel51/fiftyone-skills>`_
-     - Skills repository and contributing guide
+     - Skills for building FiftyOne plugins
    * - :ref:`Developing plugins <developing-plugins>`
      - Full operator and panel API reference
-   * - `FiftyOne MCP Server <https://github.com/voxel51/fiftyone-mcp-server>`_
-     - MCP server for AI integration
+   * - :ref:`Using agents <agents-using-agents>`
+     - Connect an agent to the Voxel51 agent gateway
    * - `Agent Skills Spec <https://agentskills.io>`_
      - SKILL.md format specification
    * - `Discord Community <https://discord.gg/fiftyone-community>`_

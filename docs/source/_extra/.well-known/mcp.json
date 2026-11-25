@@ -1,20 +1,17 @@
 {
-    "description": "MCP server for working with FiftyOne. See https://docs.voxel51.com/agents/using_agents.html for full setup instructions.",
+    "description": "Voxel51 Agent Gateway, a remote MCP server for working with Voxel51 datasets. See https://docs.voxel51.com/agents/using_agents.html for full setup instructions.",
     "servers": [
         {
-            "name": "io.github.voxel51/fiftyone-mcp-server",
-            "description": "Control FiftyOne computer vision datasets through AI assistants using 80+ operators: load datasets, run model inference, evaluate predictions, find duplicates, and drive the FiftyOne App.",
+            "name": "com.voxel51/agent-gateway",
+            "description": "Run Voxel51 operators on your datasets with your own account permissions: search operators, read their schemas, execute them and track background runs.",
             "repository": {
-                "url": "https://github.com/voxel51/fiftyone-mcp-server",
+                "url": "https://github.com/voxel51/voxel51-skills",
                 "source": "github"
             },
-            "packages": [
+            "remotes": [
                 {
-                    "registryType": "pypi",
-                    "identifier": "fiftyone-mcp-server",
-                    "transport": {
-                        "type": "stdio"
-                    }
+                    "type": "streamable-http",
+                    "url": "https://app.voxel51.com/api/proxy/fiftyone-teams/mcp"
                 }
             ],
             "documentation": "https://docs.voxel51.com/agents/using_agents.html"
