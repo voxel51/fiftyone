@@ -84,7 +84,7 @@ agent gateway connection and the skills that teach your agent to use it, the
 
       .. code-block:: bash
 
-          npx skills add voxel51/voxel51-skills
+          curl -sL skil.sh | sh -s -- voxel51/voxel51-skills
 
 Then paste this into your agent's chat:
 
