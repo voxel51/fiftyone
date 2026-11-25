@@ -80,7 +80,12 @@ agent gateway connection and the skills that teach your agent to use it, the
       Install ``voxel51`` from the client's plugin marketplace, or add
       ``voxel51/voxel51-skills`` as a marketplace.
 
-   .. tab:: Any other agent
+   .. tab:: Other agents
+
+      The installer supports Claude Code, Cursor, Codex, OpenCode, GitHub
+      Copilot, Amp, Antigravity, Roo Code, Kilo Code and Goose. When it asks
+      which skills to install, press ``a`` for all of them, or include
+      ``voxel51-setup``, because the next step needs the setup skill.
 
       .. code-block:: bash
 

@@ -13,7 +13,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import requests
 import yaml
@@ -60,7 +60,8 @@ INTERNAL_SKILLS_GITHUB_BASE = (
 )
 
 _FRONTMATTER_RE = re.compile(
-    r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)(.*)", re.DOTALL
+    r"\A\ufeff?---[ \t]*\r?\n(?:(.*?)\r?\n)??---[ \t]*(?:\r?\n|\Z)(.*)",
+    re.DOTALL,
 )
 _SAFE_SKILL_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
@@ -93,7 +94,7 @@ def _fetch(url: str, parse_json: bool = False, token: Optional[str] = None):
     return None
 
 
-def _split_frontmatter(content: str) -> tuple:
+def _split_frontmatter(content: str) -> Tuple[str, str]:
     """Split a SKILL.md into its YAML frontmatter and its body.
 
     Only a ``---`` block that opens the file counts as frontmatter. A document
@@ -102,7 +103,7 @@ def _split_frontmatter(content: str) -> tuple:
     match = _FRONTMATTER_RE.match(content)
     if match is None:
         return "", content
-    return match.group(1), match.group(2)
+    return match.group(1) or "", match.group(2)
 
 
 def _parse_skill_frontmatter(content: str) -> dict:
@@ -140,7 +141,7 @@ def _fetch_voxel51_skills() -> List[Skill]:
     entries = _fetch(
         VOXEL51_SKILLS_API_BASE + "skills", parse_json=True, token=token
     )
-    if not entries:
+    if not isinstance(entries, list) or not entries:
         logger.warning("Could not list skills in voxel51-skills")
         return []
 
@@ -166,7 +167,9 @@ def _fetch_voxel51_skills() -> List[Skill]:
             Skill(
                 name=frontmatter.get("name", skill_name),
                 description=" ".join(
-                    str(frontmatter.get("description", "")).split()
+                    str(frontmatter.get("description", ""))
+                    .replace("`", "")
+                    .split()
                 ),
                 github_url=(
                     VOXEL51_SKILLS_GITHUB_BASE
