@@ -528,10 +528,12 @@ def _select_episodes(shards, root, info, episodes, preprocess):
         for value in episodes:
             if (
                 isinstance(value, bool)
-                or not isinstance(value, int)
+                or not isinstance(value, (int, np.integer))
                 or value < 0
             ):
                 raise ValueError("Episode selections must be nonnegative ints")
+
+            value = int(value)
             if value in seen:
                 raise ValueError("Duplicate selected episode %d" % value)
             if value not in located:
