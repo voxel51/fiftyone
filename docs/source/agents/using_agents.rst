@@ -148,6 +148,11 @@ gateway as a remote MCP server using your deployment's gateway URL:
 
 Substitute whichever applies in the examples below.
 
+The gateway's authorization server has one fixed public client,
+``voxel51-agent-mcp``, and does not support Dynamic Client Registration. A
+client that tries to register itself, or that sends another client id, is
+refused, so every configuration below pins this id. It is not a secret.
+
 .. tabs::
 
    .. tab:: Claude Code
@@ -155,7 +160,8 @@ Substitute whichever applies in the examples below.
       .. code-block:: bash
 
           claude mcp add --transport http --scope user voxel51-agent-gateway \
-            https://<your-deployment>/api/proxy/fiftyone-teams/mcp
+            https://<your-deployment>/api/proxy/fiftyone-teams/mcp \
+            --client-id voxel51-agent-mcp
 
    .. tab:: Claude Desktop
 
@@ -175,7 +181,16 @@ Substitute whichever applies in the examples below.
             :alt: Add custom connector dialog with a name and the gateway URL filled in
             :align: center
 
-      4. Click **Add**, then sign in when prompted.
+      4. Under **OAuth client**, choose **Use your own OAuth client** (not
+         *Register automatically*, which attempts Dynamic Client
+         Registration and fails against this deployment) and enter
+         ``voxel51-agent-mcp``.
+
+         .. image:: https://cdn.voxel51.com/voxel-agent/mcp-server/claude_desktop_oauth_client.webp
+            :alt: OAuth client section with Use your own OAuth client selected and the client ID filled in
+            :align: center
+
+      5. Click **Add**, then sign in when prompted.
 
    .. tab:: Antigravity
 
@@ -187,7 +202,10 @@ Substitute whichever applies in the examples below.
           {
             "mcpServers": {
               "voxel51-agent-gateway": {
-                "serverUrl": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
+                "serverUrl": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "oauth": {
+                  "clientId": "voxel51-agent-mcp"
+                }
               }
             }
           }
@@ -205,7 +223,10 @@ Substitute whichever applies in the examples below.
           {
             "mcpServers": {
               "voxel51-agent-gateway": {
-                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
+                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "auth": {
+                  "CLIENT_ID": "voxel51-agent-mcp"
+                }
               }
             }
           }
@@ -220,7 +241,10 @@ Substitute whichever applies in the examples below.
             "servers": {
               "voxel51-agent-gateway": {
                 "type": "http",
-                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
+                "url": "https://<your-deployment>/api/proxy/fiftyone-teams/mcp",
+                "oauth": {
+                  "clientId": "voxel51-agent-mcp"
+                }
               }
             }
           }
@@ -228,7 +252,8 @@ Substitute whichever applies in the examples below.
    .. tab:: GitHub Copilot
 
       Add to ``.vscode/mcp.json`` in your workspace (create if it doesn't
-      exist), same shape as the VS Code tab, then enable **Agent mode** in Copilot Chat.
+      exist), same shape as the VS Code tab (including the ``oauth``
+      block), then enable **Agent mode** in Copilot Chat.
 
    .. tab:: OpenAI Codex
 
@@ -240,6 +265,9 @@ Substitute whichever applies in the examples below.
           [mcp_servers.voxel51-agent-gateway]
           url = "https://<your-deployment>/api/proxy/fiftyone-teams/mcp"
 
+          [mcp_servers.voxel51-agent-gateway.oauth]
+          client_id = "voxel51-agent-mcp"
+
       Or from the CLI:
 
       .. code-block:: bash
@@ -248,11 +276,17 @@ Substitute whichever applies in the examples below.
             --url https://<your-deployment>/api/proxy/fiftyone-teams/mcp
           codex mcp login voxel51-agent-gateway
 
+      Then edit the generated entry to add the ``oauth.client_id`` shown
+      above; ``codex mcp add`` alone doesn't accept a client id and falls
+      back to Dynamic Client Registration, which this deployment doesn't
+      support.
+
 Restart your agent after adding the server; new MCP servers only attach on
 the next session. Then trigger the connection (e.g. by trying to use one of
 the new tools): your agent opens a browser for a one-time OAuth consent
-screen. Sign in and approve, no API key needed. Client registration is
-automatic.
+screen. Sign in and approve, no API key needed. If your client's config has
+no way to pin a client id, install the plugin instead (Step 1), which ships the
+configuration.
 
 .. _using-agents-step4:
 
