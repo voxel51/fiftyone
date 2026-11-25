@@ -84,7 +84,7 @@ agent gateway connection and the skills that teach your agent to use it, the
 
       .. code-block:: bash
 
-          curl -sL skil.sh | sh -s -- voxel51/voxel51-skills
+          curl --proto '=https' --tlsv1.2 -fsSL https://skil.sh | sh -s -- voxel51/voxel51-skills
 
 Then paste this into your agent's chat:
 

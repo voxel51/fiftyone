@@ -59,7 +59,9 @@ INTERNAL_SKILLS_GITHUB_BASE = (
     "https://github.com/voxel51/fiftyone-internal-skills/blob/main/"
 )
 
-_FRONTMATTER_RE = re.compile(r"^---\s*$", re.MULTILINE)
+_FRONTMATTER_RE = re.compile(
+    r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)(.*)", re.DOTALL
+)
 _SAFE_SKILL_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
@@ -91,13 +93,25 @@ def _fetch(url: str, parse_json: bool = False, token: Optional[str] = None):
     return None
 
 
+def _split_frontmatter(content: str) -> tuple:
+    """Split a SKILL.md into its YAML frontmatter and its body.
+
+    Only a ``---`` block that opens the file counts as frontmatter. A document
+    without one is returned whole, so horizontal rules in its body are kept.
+    """
+    match = _FRONTMATTER_RE.match(content)
+    if match is None:
+        return "", content
+    return match.group(1), match.group(2)
+
+
 def _parse_skill_frontmatter(content: str) -> dict:
     """Parse YAML frontmatter from a SKILL.md file."""
-    parts = _FRONTMATTER_RE.split(content, maxsplit=2)
-    if len(parts) < 3:
+    frontmatter, _ = _split_frontmatter(content)
+    if not frontmatter:
         return {}
     try:
-        result = yaml.safe_load(parts[1])
+        result = yaml.safe_load(frontmatter)
         return result if isinstance(result, dict) else {}
     except yaml.YAMLError:
         return {}
@@ -105,8 +119,7 @@ def _parse_skill_frontmatter(content: str) -> dict:
 
 def _skill_body(content: str) -> str:
     """Return a SKILL.md without its YAML frontmatter."""
-    parts = _FRONTMATTER_RE.split(content, maxsplit=2)
-    return parts[2].strip() if len(parts) >= 3 else content.strip()
+    return _split_frontmatter(content)[1].strip()
 
 
 def _interface_tags(interface: str) -> List[str]:
