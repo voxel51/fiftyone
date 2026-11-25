@@ -8,6 +8,10 @@
 import json
 import unittest
 
+from starlette.applications import Starlette
+from starlette.routing import Route
+from starlette.testclient import TestClient
+
 import fiftyone as fo
 import fiftyone.core.subsets as fosub
 import fiftyone.server.routes.geo as geo
@@ -56,6 +60,36 @@ class GeoSubsetTests(unittest.IsolatedAsyncioTestCase):
                 {ids[0]: [0, 0], ids[1]: [1, 1]},
             )
             self.assertEqual(set(await points(None)), set(ids))
+        finally:
+            geo._fetch_geo_points.cache_clear()
+            dataset.delete()
+
+    def test_empty_subset_without_modification_time(self):
+        dataset = fo.Dataset()
+        try:
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="/tmp/0.png",
+                    location=fo.GeoLocation(point=[0, 0]),
+                )
+            )
+            subset = fosub.save_subset(dataset, "empty", samples=[])
+            client = TestClient(
+                Starlette(routes=[Route("/geo", geo.GeoPoints)])
+            )
+
+            response = client.post(
+                "/geo",
+                json={
+                    "dataset": dataset.name,
+                    "path": "location",
+                    "filters": {
+                        "_selection_scope": {"subsetId": subset["id"]}
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 200)
         finally:
             geo._fetch_geo_points.cache_clear()
             dataset.delete()

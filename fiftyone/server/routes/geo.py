@@ -116,7 +116,7 @@ class GeoPoints(HTTPEndpoint):
                 subset = await fou.run_sync_task(
                     fosub.get_subset, dataset, subset_id
                 )
-                subset_modified_at = str(subset["last_modified_at"])
+                subset_modified_at = str(subset.get("last_modified_at"))
 
             filters_key = (
                 json_util.dumps(filters, sort_keys=True) if filters else None
