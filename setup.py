@@ -56,7 +56,7 @@ setup(
         "async_lru>=2,<3",
         "beautifulsoup4>=2,<5",  # BS4 will only have 4.x versions
         "boto3>=1,<2",
-        "cachetools>=5,<8",
+        "cachetools>=8,<9",
         "dacite>=1.6.0,<2",
         "dill>=0.1,<0.5",
         "exceptiongroup>=1,<2",
@@ -68,7 +68,7 @@ setup(
         "mongoengine~=0.29.1",  # Keep small bounds on mongo-related libraries
         "motor~=3.6.0",  # Keep small bounds on mongo-related libraries
         "Pillow>=12.2",
-        "plotly>=6.1.1,<7",
+        "plotly>=7.2,<8",
         "pprintpp>=0.1,<0.5",
         "psutil>=5,<8",
         "pydash>=6,<9",
@@ -77,7 +77,7 @@ setup(
         "PyYAML>=4,<7",
         "regex",  # Doesn't follow semver, keep unconstrained
         "retrying>=1,<2",
-        "sseclient-py>=1.7.2,<2",
+        "sseclient-py>=2.1,<3",
         "sse-starlette>=0.10.3,<4",
         "starlette>=1.3.1,<1.4",
         "strawberry-graphql>=0.327.7,<0.328",
@@ -88,7 +88,7 @@ setup(
         # ML Libraries
         "matplotlib<4",
         "numpy<3",
-        "opencv-python-headless<5",
+        "opencv-python-headless<6",
         "pandas<4",
         "pypcd4>=1.4,<2",
         "rtree<2",
@@ -124,7 +124,7 @@ setup(
     python_requires=">=3.10",
     extras_require={
         "multimodal-mcap": [
-            "protobuf==6.33.6",
+            "protobuf==7.36.2",
         ],
         "multimodal": ["fiftyone[multimodal-mcap]"],
     },
