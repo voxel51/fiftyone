@@ -30,6 +30,28 @@ MARKETPLACE_URL = (
     ".claude-plugin/marketplace.json"
 )
 
+VOXEL51_SKILLS_API_BASE = (
+    "https://api.github.com/repos/voxel51/voxel51-skills/contents/"
+)
+VOXEL51_SKILLS_GITHUB_BASE = (
+    "https://github.com/voxel51/voxel51-skills/blob/main/"
+)
+VOXEL51_SKILLS_RAW_BASE = (
+    "https://raw.githubusercontent.com/voxel51/voxel51-skills/main/"
+)
+
+# Skills from fiftyone-skills that stay in the docs. The rest overlap with the
+# skills in voxel51-skills and describe a local setup, so they are dropped.
+PLUGIN_DEVELOPMENT_SKILLS = {
+    "fiftyone-develop-plugin",
+    "fiftyone-voodo-design",
+    "fiftyone-zoo-remote-model",
+    "fiftyone-eval-plugin",
+    "fiftyone-app-playwright",
+}
+
+INTERFACE_TAGS = {"gateway": "Gateway", "cli": "CLI", "sdk": "SDK"}
+
 INTERNAL_SKILLS_API_BASE = (
     "https://api.github.com/repos/voxel51/fiftyone-internal-skills/contents/"
 )
@@ -79,6 +101,74 @@ def _parse_skill_frontmatter(content: str) -> dict:
         return result if isinstance(result, dict) else {}
     except yaml.YAMLError:
         return {}
+
+
+def _skill_body(content: str) -> str:
+    """Return a SKILL.md without its YAML frontmatter."""
+    parts = _FRONTMATTER_RE.split(content, maxsplit=2)
+    return parts[2].strip() if len(parts) >= 3 else content.strip()
+
+
+def _interface_tags(interface: str) -> List[str]:
+    return [
+        INTERFACE_TAGS[part]
+        for part in re.split(r"[+,]", interface or "")
+        if part in INTERFACE_TAGS
+    ]
+
+
+def _fetch_voxel51_skills() -> List[Skill]:
+    """Fetch skills from the voxel51-skills repository.
+
+    Each skill's page is its own SKILL.md body, and its category and emoji
+    come from the ``metadata`` of its frontmatter.
+    """
+    token = os.getenv("GITHUB_TOKEN")
+    entries = _fetch(
+        VOXEL51_SKILLS_API_BASE + "skills", parse_json=True, token=token
+    )
+    if not entries:
+        logger.warning("Could not list skills in voxel51-skills")
+        return []
+
+    skills = []
+    for entry in sorted(entries, key=lambda e: e.get("name", "")):
+        skill_name = entry.get("name", "")
+        if entry.get("type") != "dir" or not _SAFE_SKILL_NAME_RE.match(
+            skill_name
+        ):
+            continue
+
+        skill_md = _fetch(
+            f"{VOXEL51_SKILLS_RAW_BASE}skills/{skill_name}/SKILL.md"
+        )
+        if not skill_md:
+            logger.warning(f"No SKILL.md for '{skill_name}', skipping")
+            continue
+
+        frontmatter = _parse_skill_frontmatter(skill_md)
+        metadata = frontmatter.get("metadata") or {}
+
+        skills.append(
+            Skill(
+                name=frontmatter.get("name", skill_name),
+                description=" ".join(
+                    str(frontmatter.get("description", "")).split()
+                ),
+                github_url=(
+                    VOXEL51_SKILLS_GITHUB_BASE
+                    + f"skills/{skill_name}/SKILL.md"
+                ),
+                slug=skill_name,
+                category=metadata.get("category", "General"),
+                emoji=metadata.get("emoji", "🤖"),
+                extra_tags=_interface_tags(metadata.get("interface", "")),
+                prefetched_readme=_skill_body(skill_md),
+            )
+        )
+
+    logger.info(f"Loaded {len(skills)} voxel51 skills")
+    return skills
 
 
 def _fetch_internal_file(path: str, token: str) -> Optional[str]:
@@ -220,6 +310,7 @@ def generate_skill_cards_rst(skills: List[Skill]) -> str:
 
 def _generate_skill_page(skill: Skill, readme_content: str) -> str:
     """Return the content of an individual skill page."""
+    description = skill.description.replace("\\", "\\\\").replace('"', '\\"')
     if "Enterprise" in skill.extra_tags:
         badge = "![Enterprise Skill](https://img.shields.io/badge/Enterprise-Skill-orange)"
     else:
@@ -232,10 +323,10 @@ def _generate_skill_page(skill: Skill, readme_content: str) -> str:
     return f"""---
 myst:
   html_meta:
-    "description": "{skill.description}"
+    "description": "{description}"
     "keywords": "FiftyOne, skill, agent, computer vision, {skill.name}"
     "og:title": "{skill.name} Skill for FiftyOne"
-    "og:description": "{skill.description}"
+    "og:description": "{description}"
 ---
 
 
@@ -251,14 +342,21 @@ def main():
     skills_ecosystem_dir = docs_source / "agents" / "skills_ecosystem"
     skills_ecosystem_dir.mkdir(parents=True, exist_ok=True)
 
+    logger.info("Fetching voxel51-skills...")
+    skills = _fetch_voxel51_skills()
+
     logger.info("Fetching marketplace.json...")
     marketplace = _fetch(MARKETPLACE_URL, parse_json=True)
     if marketplace is not None:
-        skills = _skills_from_marketplace(marketplace)
-        logger.info(f"Found {len(skills)} public skills")
+        plugin_skills = [
+            skill
+            for skill in _skills_from_marketplace(marketplace)
+            if skill.slug in PLUGIN_DEVELOPMENT_SKILLS
+        ]
+        logger.info(f"Found {len(plugin_skills)} plugin development skills")
+        skills += plugin_skills
     else:
         logger.warning("Could not fetch marketplace.json")
-        skills = []
 
     logger.info("Fetching enterprise skills...")
     enterprise_skills = _fetch_enterprise_skills()
