@@ -1,0 +1,13 @@
+@keyframes arrow-through
+  0%
+    background-position: 50% 50%
+  44%
+    background-position: 200% 50%
+  45%
+    background-position: -100% 50%
+  100%
+    background-position: 50% 50%
+
+@media (prefers-reduced-motion: no-preference)
+  .quick-link-item:hover .quick-link-icon
+    animation: arrow-through 0.42s cubic-bezier(0.55, 0, 0.25, 1)

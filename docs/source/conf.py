@@ -206,10 +206,15 @@ intersphinx_mapping = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_logo = "_static/images/voxel51-logo.svg"
+html_logo = "_static/images/brand/voxel51-logo-light.svg"
 
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/images/brand/voxel51-logo-light.svg",
+        "image_dark": "_static/images/brand/voxel51-logo-dark.svg",
+        "alt_text": "Voxel51",
+    },
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-links"],
     "navbar_end": ["book-a-demo"],
@@ -242,7 +247,7 @@ html_extra_path = ["404.html", "robots.txt", "_extra"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
-html_css_files = ["css/voxel51-website.css", "css/custom.css"]
+html_css_files = ["css/custom.css"]
 html_js_files = [
     "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
     "js/custom.js",

@@ -139,8 +139,13 @@ rst_prolog = """
 ${NBSPHINX_CONF}
 
 html_theme = "pydata_sphinx_theme"
-html_logo = "_static/images/voxel51-logo.svg"
+html_logo = "_static/images/brand/voxel51-logo-light.svg"
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/images/brand/voxel51-logo-light.svg",
+        "image_dark": "_static/images/brand/voxel51-logo-dark.svg",
+        "alt_text": "Voxel51",
+    },
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-links"],
     "navbar_end": ["book-a-demo"],
@@ -152,7 +157,7 @@ html_theme_options = {
 html_sidebars = {"**": ["sidebar-nav"]}
 html_favicon = "_static/favicon/favicon.ico"
 html_static_path = ["_static"]
-html_css_files = ["css/voxel51-website.css", "css/custom.css"]
+html_css_files = ["css/custom.css"]
 html_js_files = ["js/custom.js"]
 html_copy_source = False
 html_context = {"default_mode": "light"}
