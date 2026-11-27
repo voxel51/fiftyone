@@ -46,6 +46,7 @@ vi.mock("../../Actions/Tag", () => ({ default: () => null }));
 vi.mock("../../Actions/ToggleSidebar", () => ({ default: () => null }));
 vi.mock("./Patches", () => ({ default: () => null }));
 vi.mock("./SaveFilters", () => ({ default: () => null }));
+vi.mock("./SelectAll", () => ({ default: () => null }));
 
 import GridActions from "./index";
 
@@ -68,6 +69,7 @@ describe("grid actions row", () => {
       "save-filters",
       "browse-operations",
       "options",
+      "select-all",
     ]);
   });
 });

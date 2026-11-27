@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import Popout from "../Popout";
 import SelectionSection from "./SelectionSection";
-import { useClearSampleSelection, useClearSelectedLabels } from "./hooks";
+import { useClearSampleSelection, useClearSelectedLabels, useSelectAllSamples } from "./hooks";
 
 export default ({
   anchorRef,
@@ -15,6 +15,7 @@ export default ({
 }) => {
   const elementNames = useRecoilValue(fos.elementNames);
   const clearSelection = useClearSampleSelection(close);
+  const { selectAll } = useSelectAllSamples(close);
   const setView = fos.useSetView();
   const selected = useRecoilValue(fos.selectedSamples);
   const addStage = useCallback(
@@ -45,6 +46,12 @@ export default ({
       <SelectionSection
         label={elementNames.plural}
         items={[
+          {
+            key: "select-all",
+            onClick: () => void selectAll(),
+            text: `Select all ${elementNames.plural}`,
+            title: `Select all ${elementNames.plural} in view`,
+          },
           {
             key: "clear",
             onClick: clearSelection,
