@@ -3,8 +3,9 @@ import type { Lookers } from "@fiftyone/looker";
 import { useCurrentPublishedFrame } from "@fiftyone/playback";
 import type { State } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import type { MutableRefObject } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { toLabelMap } from "./utils";
@@ -69,6 +70,71 @@ export const useClearSampleSelection = (close) => {
     setSelected(new Map());
     close();
   }, [close, setSelected]);
+};
+
+type AggregateResponse = {
+  aggregate?: Array<unknown>;
+};
+
+/**
+ * Fetch all sample IDs in the current view (respecting stages, filters,
+ * extended stages, and active group slice) and select them.
+ */
+export const useSelectAllSamples = (close?: () => void) => {
+  const [loading, setLoading] = useState(false);
+
+  const selectAll = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async () => {
+        setLoading(true);
+        try {
+          const dataset = await snapshot.getPromise(fos.datasetName);
+          if (!dataset) {
+            return;
+          }
+
+          const view = await snapshot.getPromise(fos.view);
+          const filters = await snapshot.getPromise(fos.filters);
+          const extended = await snapshot.getPromise(fos.extendedStages);
+          const isGroup = await snapshot.getPromise(fos.isGroup);
+          const slice = isGroup
+            ? await snapshot.getPromise(fos.groupSlice)
+            : undefined;
+
+          const response = (await getFetchFunction()("POST", "/aggregate", {
+            dataset,
+            view,
+            filters,
+            extended,
+            slice,
+            aggregations: [
+              {
+                _cls: "fiftyone.core.aggregations.Values",
+                kwargs: [["field_or_expr", "id"]],
+              },
+            ],
+          })) as AggregateResponse;
+
+          const rawIds = response?.aggregate?.[0];
+          if (Array.isArray(rawIds)) {
+            const next = new Map<string, fos.SelectionType>();
+            for (const id of rawIds) {
+              if (typeof id === "string") {
+                next.set(id, "default");
+              }
+            }
+            set(fos.selectedSamples, next);
+          }
+
+          close?.();
+        } finally {
+          setLoading(false);
+        }
+      },
+    [close],
+  );
+
+  return { selectAll, loading };
 };
 
 export const useHideOthers = (

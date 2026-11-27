@@ -17,6 +17,7 @@ import TagAction from "../../Actions/Tag";
 import ToggleSidebarAction from "../../Actions/ToggleSidebar";
 import PatchesAction from "./Patches";
 import SaveFiltersAction from "./SaveFilters";
+import SelectAllAction from "./SelectAll";
 
 /** Global scope so React can cache component state */
 const ToggleSidebar = (props: AdaptiveMenuItemComponentPropsType) => (
@@ -37,6 +38,10 @@ const Patches = (props: AdaptiveMenuItemComponentPropsType) => (
 
 const SaveFilters = (props: AdaptiveMenuItemComponentPropsType) => (
   <SaveFiltersAction adaptiveMenuItemProps={props} />
+);
+
+const SelectAll = (props: AdaptiveMenuItemComponentPropsType) => (
+  <SelectAllAction adaptiveMenuItemProps={props} />
 );
 
 const Selected = (props: AdaptiveMenuItemComponentPropsType) => (
@@ -122,6 +127,10 @@ export default () => {
           },
         };
       }),
+      {
+        id: "select-all",
+        Component: SelectAll,
+      },
     ].filter(
       (item) => !episodeSelection || !["tag", "selected"].includes(item.id),
     );
