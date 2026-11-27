@@ -510,7 +510,7 @@ function initMobileNavDropdown() {
 /* KAPA AI Integration */
 const initKapaAI = () => {
   const logo =
-    "https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png";
+    "https://cdn.voxel51.com/brand/voxel51-icon-256px.png";
   const script = document.createElement("script");
   Object.assign(script, {
     src: "https://widget.kapa.ai/kapa-widget.bundle.js",
@@ -535,8 +535,8 @@ const initKapaAI = () => {
     handoffButtonText: "Get enterprise",
     handoffTriggers: "conversation-length",
     handoffConversationLengthThreshold: "1",
-    handoffButtonBackgroundColor: "#ff6d04",
-    handoffButtonHoverBackgroundColor: "#e85a00",
+    handoffButtonBackgroundColor: "#FA5300",
+    handoffButtonHoverBackgroundColor: "#EB580F",
     handoffButtonColor: "#ffffff",
     handoffButtonHoverColor: "#ffffff",
   });
@@ -572,8 +572,9 @@ const initKapaAI = () => {
 
   const floatingButton = Object.assign(document.createElement("button"), {
     className: "kapa-ai-button",
-    innerHTML: `<span class="kapa-text">Ask AI</span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`,
+    innerHTML: `<span class="kapa-logo" aria-hidden="true"></span><span class="kapa-text">AMA</span>`,
   });
+  floatingButton.setAttribute("aria-label", "AMA, Ask AI");
   floatingButton.addEventListener("click", () => {
     if (window.Kapa) {
       window.Kapa.open();
@@ -584,7 +585,7 @@ const initKapaAI = () => {
   const createAskAIButton = (query) => {
     const button = Object.assign(document.createElement("button"), {
       className: "kapa-ask-ai-button",
-      innerHTML: `<span class="kapa-text"></span><div class="kapa-logo"><img src="${logo}" alt="FiftyOne Logo" /></div>`,
+      innerHTML: `<span class="kapa-text"></span><span class="kapa-logo" aria-hidden="true"></span>`,
     });
     button.querySelector(".kapa-text").textContent = `Ask AI about "${query}"`;
 
