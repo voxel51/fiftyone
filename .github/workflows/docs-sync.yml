@@ -1,0 +1,140 @@
+name: Sync Docs to Voxel51 Docs
+
+# Opens a draft PR in voxel51/voxel51-sdk (the new Voxel51 docs) with the docs
+# changes of a merged main PR, while both docs sites are published. Same shape
+# as cherry-pick.yml: label a main PR 'sync-sdk-docs' (before or after it
+# merges) and the PR opens when it merges, or dispatch with a PR number.
+#
+# Docs only. docs/scripts/docs_sync.py diffs docs/source only, and only syncs
+# documentation pages and their images (never styles, templates, conf.py,
+# redirects, release notes), then this workflow refuses to commit anything
+# outside docs/ in voxel51-sdk. Nothing is merged: the PR is a draft and pages
+# that do not merge cleanly are listed in its body for a person to port.
+#
+# Runs as voxel51-bot (FIFTYONE_GITHUB_TOKEN) so the PR it opens triggers CI.
+# That token needs write access to voxel51-sdk; if it does not have it, add a
+# SDK_DOCS_SYNC_TOKEN secret (a PAT limited to voxel51-sdk) and it is used first.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Merged main PR number to sync"
+        required: true
+  pull_request:
+    types: [closed, labeled]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-sync-sdk-${{ inputs.pr_number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync-sdk-docs:
+    if: >-
+      github.repository == 'voxel51/fiftyone' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.pull_request.merged == true &&
+          (github.event.action != 'labeled' || github.event.label.name == 'sync-sdk-docs') &&
+          contains(github.event.pull_request.labels.*.name, 'sync-sdk-docs')
+        )
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out FiftyOne
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+          token: ${{ secrets.SDK_DOCS_SYNC_TOKEN || secrets.FIFTYONE_GITHUB_TOKEN }}
+
+      - name: Check out the Voxel51 docs
+        uses: actions/checkout@v7
+        with:
+          repository: voxel51/voxel51-sdk
+          path: sdk
+          fetch-depth: 0
+          token: ${{ secrets.SDK_DOCS_SYNC_TOKEN || secrets.FIFTYONE_GITHUB_TOKEN }}
+
+      - name: Sync the docs and open the PR
+        env:
+          GH_TOKEN: ${{ secrets.SDK_DOCS_SYNC_TOKEN || secrets.FIFTYONE_GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || { echo "::error::bad PR number"; exit 1; }
+
+          fields=$(gh pr view "$PR_NUMBER" --repo "$REPO" \
+            --json state,baseRefName,mergeCommit,author,url \
+            --jq '[.state, .baseRefName, .mergeCommit.oid, .author.login, .url] | @tsv')
+          IFS=$'\t' read -r state base sha author url <<< "$fields"
+          title=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title --jq .title | tr '\n' ' ' | cut -c1-120)
+
+          if [ "$state" != "MERGED" ] || [ "$base" != "main" ]; then
+            echo "::error::PR #$PR_NUMBER must be a merged main PR (state=$state, base=$base)."
+            exit 1
+          fi
+          parent=$(git rev-parse "$sha^1")
+
+          branch="docs-sync/pr-$PR_NUMBER"
+          cd sdk
+          git config user.name "voxel51-bot"
+          git config user.email "voxel51-bot@users.noreply.github.com"
+          git checkout -B "$branch" origin/main
+
+          python "$GITHUB_WORKSPACE/docs/scripts/docs_sync.py" \
+            --upstream "$GITHUB_WORKSPACE" \
+            --base "$parent" \
+            --head "$sha" \
+            --docs "$GITHUB_WORKSPACE/sdk/docs" \
+            --report-json "$RUNNER_TEMP/report.json" \
+            --markdown "$RUNNER_TEMP/body.md"
+
+          has_changes=$(jq -r '.has_changes' "$RUNNER_TEMP/report.json")
+          has_conflicts=$(jq -r '.has_conflicts' "$RUNNER_TEMP/report.json")
+
+          if [ "$has_changes" != "true" ] && [ "$has_conflicts" != "true" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "docs-sync: nothing in this PR applies to the Voxel51 docs (release notes and design files are not synced)."
+            exit 0
+          fi
+
+          git add -A docs
+          outside=$(git diff --cached --name-only | grep -v '^docs/' || true)
+          if [ -n "$outside" ]; then
+            echo "::error::refusing to commit files outside docs/:"; echo "$outside"; exit 1
+          fi
+          {
+            printf 'docs: sync fiftyone#%s\n\n%s\n\n%s\n' "$PR_NUMBER" "$title" "$url"
+          } > "$RUNNER_TEMP/message.txt"
+          git commit --allow-empty --quiet -F "$RUNNER_TEMP/message.txt"
+          git push --force origin "HEAD:refs/heads/$branch"
+
+          {
+            printf 'Mirrors %s by @%s.\n\n' "$url" "$author"
+            cat "$RUNNER_TEMP/body.md"
+            printf '\nOpened by docs-sync. Release notes are not synced.\n'
+          } > "$RUNNER_TEMP/pr.md"
+
+          sdk_repo=voxel51/voxel51-sdk
+          gh label create docs-sync --repo "$sdk_repo" --color 0E8A16 --description "Mirrored from the FiftyOne docs" --force > /dev/null
+          gh label create needs-manual-port --repo "$sdk_repo" --color D93F0B --description "Part of the FiftyOne change did not apply cleanly" --force > /dev/null
+          num=$(gh pr list --repo "$sdk_repo" --head "$branch" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$num" ]; then
+            pr_url=$(gh pr create --repo "$sdk_repo" --draft --base main --head "$branch" \
+              --title "docs: sync fiftyone#$PR_NUMBER $title" --body-file "$RUNNER_TEMP/pr.md" --label docs-sync)
+          else
+            gh pr edit "$num" --repo "$sdk_repo" --title "docs: sync fiftyone#$PR_NUMBER $title" --body-file "$RUNNER_TEMP/pr.md"
+            pr_url="https://github.com/$sdk_repo/pull/$num"
+          fi
+          if [ "$has_conflicts" = "true" ]; then
+            gh pr edit "$pr_url" --add-label needs-manual-port
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "docs-sync: opened $pr_url for the Voxel51 docs."
