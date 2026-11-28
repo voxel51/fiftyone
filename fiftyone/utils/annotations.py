@@ -1260,6 +1260,7 @@ def _prompt_field(
     if not new_field:
         return None
 
+    fo_label_type = None
     if label_type != "scalar":
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
@@ -1484,6 +1485,7 @@ def _merge_labels(
         _label_field = label_field
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
+    list_field = None
     if issubclass(fo_label_type, fol._HasLabelList):
         is_list = True
         list_field = fo_label_type._LABEL_LIST_FIELD
@@ -1670,6 +1672,7 @@ def _merge_labels(
                     labels = [image_label]
 
                 # Merge labels that existed before and after annotation
+                merged_keys = set()
                 for label in labels:
                     label_id = label.id
                     if is_clips_view:
@@ -1694,8 +1697,10 @@ def _merge_labels(
                             allow_spatial_edits=allow_spatial_edits,
                             only_keyframes=only_keyframes,
                         )
+                        merged_keys.add(key)
 
-                # Add new labels to label list fields
+                # Add new labels to label list fields, plus any merge IDs
+                # that never matched a physically present label
                 if is_list and allow_additions:
                     for label_id, anno_label in image_annos.items():
                         if is_clips_view:
@@ -1707,7 +1712,10 @@ def _merge_labels(
                         else:
                             key = (sample_id, label_id)
 
-                        if key not in new_ids:
+                        is_stale_merge_id = (
+                            key in merge_ids and key not in merged_keys
+                        )
+                        if key not in new_ids and not is_stale_merge_id:
                             continue
 
                         labels.append(anno_label)
