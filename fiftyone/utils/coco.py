@@ -1524,8 +1524,9 @@ def download_coco_dataset_split(
         year ("2017"): the dataset year to download. Supported values are
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
-            supported values are ``("detections", "segmentations")``. By
-            default, all label types are loaded
+            supported values are
+            ``("detections", "segmentations", "keypoints")``. By default,
+            all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -1575,6 +1576,8 @@ def download_coco_dataset_split(
             % (split, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
         )
 
+    label_types = _parse_label_types(label_types)
+
     if classes is not None and split == "test":
         logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
@@ -1601,12 +1604,22 @@ def download_coco_dataset_split(
 
     if split != "test":
         src_path = _ANNOTATION_DOWNLOAD_LINKS[year]
-        rel_path = _ANNOTATION_PATHS[year][split]
+        if label_types == ["keypoints"]:
+            rel_path = _KEYPOINTS_PATHS[year][split]
+            keypoints_rel_path = None
+        else:
+            rel_path = _ANNOTATION_PATHS[year][split]
+            if "keypoints" in label_types:
+                keypoints_rel_path = _KEYPOINTS_PATHS[year][split]
+            else:
+                keypoints_rel_path = None
+
         subdir = "trainval"
         anno_type = "annotations"
     else:
         src_path = _TEST_INFO_DOWNLOAD_LINKS[year]
         rel_path = _TEST_INFO_PATHS[year]
+        keypoints_rel_path = None
         subdir = "test"
         anno_type = "test info"
 
@@ -1614,8 +1627,18 @@ def download_coco_dataset_split(
     unzip_dir = os.path.join(scratch_dir, subdir)
     content_dir = os.path.join(unzip_dir, os.path.dirname(rel_path))
     full_anno_path = os.path.join(raw_dir, os.path.basename(rel_path))
+    if keypoints_rel_path is not None:
+        full_keypoints_path = os.path.join(
+            raw_dir, os.path.basename(keypoints_rel_path)
+        )
+    else:
+        full_keypoints_path = None
 
-    if not os.path.isfile(full_anno_path):
+    required_paths = [full_anno_path]
+    if full_keypoints_path is not None:
+        required_paths.append(full_keypoints_path)
+
+    if not all(os.path.isfile(path) for path in required_paths):
         logger.info("Downloading %s to '%s'", anno_type, zip_path)
         etaw.download_file(src_path, path=zip_path)
 
@@ -1665,7 +1688,7 @@ def download_coco_dataset_split(
         # Partial image download
 
         # Load annotations to use to determine what images to use
-        d = etas.load_json(full_anno_path)
+        d = _load_coco_annotations(full_anno_path, full_keypoints_path)
         (
             _,
             all_classes_map,
@@ -1761,7 +1784,7 @@ def download_coco_dataset_split(
 
     if did_download:
         if d is None:
-            d = etas.load_json(full_anno_path)
+            d = _load_coco_annotations(full_anno_path, full_keypoints_path)
 
             categories = d.get("categories", None)
             if categories is not None:
@@ -1772,7 +1795,10 @@ def download_coco_dataset_split(
 
         if num_samples >= split_size:
             logger.info("Writing annotations to '%s'", anno_path)
-            etau.copy_file(full_anno_path, anno_path)
+            if full_keypoints_path is None:
+                etau.copy_file(full_anno_path, anno_path)
+            else:
+                etas.write_json(d, anno_path)
         else:
             logger.info(
                 "Writing annotations for %d downloaded samples to '%s'",
@@ -1784,6 +1810,37 @@ def download_coco_dataset_split(
             )
 
     return num_samples, all_classes, did_download
+
+
+def _load_coco_annotations(anno_path, keypoints_path=None):
+    d = etas.load_json(anno_path)
+
+    if keypoints_path is not None:
+        keypoints_d = etas.load_json(keypoints_path)
+        _merge_coco_keypoints(d, keypoints_d)
+
+    return d
+
+
+def _merge_coco_keypoints(d, keypoints_d):
+    annotations = d.get("annotations", [])
+    annotations_map = {a["id"]: a for a in annotations}
+
+    for keypoints_anno in keypoints_d.get("annotations", []):
+        annotation = annotations_map.get(keypoints_anno["id"], None)
+        if annotation is None:
+            annotations.append(keypoints_anno)
+            continue
+
+        annotation["keypoints"] = keypoints_anno["keypoints"]
+        annotation["num_keypoints"] = keypoints_anno["num_keypoints"]
+
+    categories_map = {c["id"]: c for c in d.get("categories", [])}
+    for keypoints_category in keypoints_d.get("categories", []):
+        category = categories_map.get(keypoints_category["id"], None)
+        if category is not None:
+            category["keypoints"] = keypoints_category["keypoints"]
+            category["skeleton"] = keypoints_category["skeleton"]
 
 
 def _merge_dir(indir, outdir):
