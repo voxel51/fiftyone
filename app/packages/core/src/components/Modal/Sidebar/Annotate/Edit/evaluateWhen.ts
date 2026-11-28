@@ -216,8 +216,22 @@ export function applyConditionalOwnerChange(
     const defaultVal = currentOwner.default;
     if (defaultVal !== undefined) {
       nextValue[name] = defaultVal;
+    } else if (nextValue[name] === null && isListType(currentOwner.type)) {
+      // The hide branch above left an explicit `null` behind. For list
+      // attributes that is not a well-typed empty value — checkbox lists and
+      // tag inputs expect an array — so restore `[]` when the slot re-opens.
+      // `undefined` (never set) is left alone so fresh labels don't persist
+      // empty arrays they never touched.
+      nextValue[name] = [];
     }
   }
+}
+
+/**
+ * Returns true for list attribute types (`list<str>`, `list<int>`, ...).
+ */
+function isListType(type: string | undefined): boolean {
+  return typeof type === "string" && type.startsWith("list<");
 }
 
 /**
